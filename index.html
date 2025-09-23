@@ -21,3 +21,37 @@
     WHATS UP GOONERS
   </h1>
 </section>
+<style>
+  section {
+    background-color: #000;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 0 1rem; /* Padding so text doesn't touch screen edges */
+  }
+
+  h1 {
+    color: #ff0000;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    cursor: pointer;
+    transition: transform 0.3s ease, text-shadow 0.3s ease;
+    font-size: clamp(2.5rem, 8vw, 5rem); /* Responsive font size */
+    user-select: none; /* Prevent accidental text selection */
+  }
+
+  /* Hover effect for desktop */
+  h1:hover {
+    transform: scale(1.2);
+    text-shadow: 0 0 20px #ff0000, 0 0 30px #ff0000;
+  }
+
+  /* Touch effect for mobile: use :active to simulate hover on tap */
+  h1:active {
+    transform: scale(1.2);
+    text-shadow: 0 0 20px #ff0000, 0 0 30px #ff0000;
+  }
+</style>
