@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>What up Gooner</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -17,10 +17,10 @@
       height:100%;
       margin:0;
       background:var(--bg);
-      font-family:"Press Start 2P", monospace;
+      font-family: "Press Start 2P", monospace;
       overflow:hidden;
       color:var(--accent);
-      touch-action:none; /* stop accidental scrolling */
+      -webkit-tap-highlight-color: transparent; /* remove gray flash on mobile */
     }
 
     .wrap{
@@ -28,31 +28,45 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      flex-direction:column;
+      position:relative;
       user-select:none;
       text-align:center;
-      padding:20px;
+      padding:10px;
     }
 
-    .gooner{
-      font-size:12vw; /* scales with screen */
-      max-font-size:80px;
+    .gooner {
+      font-size: clamp(24px, 8vw, 72px); /* scales on phones */
       color:var(--accent);
-      border:5px solid var(--accent);
-      border-radius:10px;
-      padding:20px 24px;
       cursor:pointer;
-      transition:transform 200ms ease;
+      padding:20px 30px;
+      border:5px solid var(--accent);
+      border-radius:8px;
+      letter-spacing:4px;
+      background:rgba(255,6,6,0.02);
+      transition: transform 200ms ease, box-shadow 200ms ease;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.6);
+      touch-action:manipulation; /* better tap response */
+    }
+
+    .gooner:hover{
+      transform: translateY(-8px) scale(1.04);
+      box-shadow: 0 14px 0 rgba(0,0,0,0.6);
+      text-shadow:2px 2px 0 rgba(0,0,0,0.9);
     }
 
     .gooner:active{
-      transform:scale(0.95);
+      transform: translateY(-3px) scale(0.97);
+      box-shadow: 0 4px 0 rgba(0,0,0,0.6);
     }
 
     .hint{
-      font-size:3vw;
+      position:absolute;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:clamp(10px, 3vw, 14px);
       color:rgba(255,6,6,0.6);
-      margin-top:20px;
+      letter-spacing:2px;
     }
 
     .overlay{
@@ -63,65 +77,71 @@
       align-items:center;
       justify-content:center;
       z-index:9999;
+      overflow:hidden;
     }
-    .overlay.active{
-      display:flex;
-    }
+    .overlay.active{display:flex;}
 
     .surface{
-      position:absolute;
-      inset:0;
-      overflow:hidden;
+      position:relative;
+      width:100%;
+      height:100%;
     }
 
     .stamp{
       position:absolute;
       color:var(--accent);
-      font-family:"Press Start 2P", monospace;
-      font-size:18vw;
+      font-size:clamp(28px, 10vw, 160px);
       opacity:0;
+      pointer-events:none;
       animation:flash 1s linear infinite;
+      text-align:center;
     }
 
     @keyframes flash{
-      0%,100%{opacity:0;}
-      40%,60%{opacity:1;}
+      0%,100%{opacity:0;transform:scale(0.9);}
+      20%,80%{opacity:1;transform:scale(1);}
     }
 
     .center-giant{
-      font-size:20vw;
-      color:var(--accent);
-      opacity:0.9;
+      position:absolute;
+      top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      font-size:clamp(48px, 14vw, 240px);
+      opacity:0;
+      pointer-events:none;
       animation:pulse 1.2s ease-in-out infinite;
     }
+
     @keyframes pulse{
-      0%{transform:scale(0.9);opacity:0;}
-      50%{transform:scale(1.05);opacity:1;}
-      100%{transform:scale(0.95);opacity:0;}
+      0%{opacity:0;transform:translate(-50%,-50%) scale(0.9);}
+      50%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}
+      100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}
     }
 
     .close-btn{
-      position:absolute;
-      top:10px;
-      right:10px;
-      font-size:4vw;
+      position:fixed;
+      top:10px;right:10px;
+      font-size:clamp(10px, 4vw, 14px);
       border:2px solid var(--accent);
       color:var(--accent);
       background:transparent;
       padding:6px 10px;
       border-radius:6px;
       cursor:pointer;
+      z-index:10000;
     }
+
+    .close-btn:active{transform:scale(0.9);}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="gooner" id="mainGooner">what up gooner</div>
-    <div class="hint">tap me</div>
+    <div class="hint">tap / click me</div>
   </div>
 
   <div class="overlay" id="overlay">
-    <button class="close-btn" id="closeBtn">X</button>
+    <button class="close-btn" id="closeBtn">CLOSE</button>
     <div class="surface" id="surface"></div>
     <div class="center-giant">GONNER</div>
   </div>
@@ -131,38 +151,56 @@
     const overlay=document.getElementById('overlay');
     const surface=document.getElementById('surface');
     const closeBtn=document.getElementById('closeBtn');
+    const center=document.querySelector('.center-giant');
 
     function rand(min,max){return Math.random()*(max-min)+min;}
 
-    function populateStamps(count=20){
+    function populateStamps(count=30){
       surface.innerHTML='';
       for(let i=0;i<count;i++){
         const s=document.createElement('div');
         s.className='stamp';
         s.textContent='GONNER';
-        s.style.left=rand(0,90)+'vw';
-        s.style.top=rand(0,90)+'vh';
-        s.style.fontSize=rand(8,25)+'vw';
+        s.style.left=rand(-10,90)+'vw';
+        s.style.top=rand(-10,90)+'vh';
         s.style.animationDelay=rand(0,1)+'s';
+        s.style.animationDuration=rand(0.8,1.6)+'s';
         surface.appendChild(s);
       }
     }
 
     main.addEventListener('click',()=>{
       overlay.classList.add('active');
-      populateStamps(25);
+      populateStamps(35);
+      center.style.opacity=1;
     });
 
     closeBtn.addEventListener('click',()=>{
       overlay.classList.remove('active');
+      center.style.opacity=0;
     });
 
     overlay.addEventListener('click',(e)=>{
-      if(e.target===overlay){ overlay.classList.remove('active'); }
+      if(e.target===overlay){ overlay.classList.remove('active'); center.style.opacity=0; }
     });
 
     window.addEventListener('resize',()=>{
-      if(overlay.classList.contains('active')) populateStamps(25);
+      if(overlay.classList.contains('active')) populateStamps(35);
+    });
+
+    // hover glitch effect (desktop only)
+    let hoverInterval=null;
+    main.addEventListener('mouseenter',()=>{
+      if(window.matchMedia("(hover:hover)").matches){ // only on devices with hover
+        hoverInterval=setInterval(()=>{
+          main.style.letterSpacing=(Math.random()>0.5?'6px':'2px');
+        },120);
+      }
+    });
+    main.addEventListener('mouseleave',()=>{
+      clearInterval(hoverInterval);
+      hoverInterval=null;
+      main.style.letterSpacing='4px';
     });
   </script>
 </body>
