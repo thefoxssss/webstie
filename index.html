@@ -20,7 +20,7 @@
       font-family: "Press Start 2P", monospace;
       overflow:hidden;
       color:var(--accent);
-      -webkit-tap-highlight-color: transparent; /* remove gray flash on mobile */
+      -webkit-tap-highlight-color: transparent;
     }
 
     .wrap{
@@ -35,7 +35,7 @@
     }
 
     .gooner {
-      font-size: clamp(24px, 8vw, 72px); /* scales on phones */
+      font-size: clamp(24px, 8vw, 72px);
       color:var(--accent);
       cursor:pointer;
       padding:20px 30px;
@@ -45,7 +45,7 @@
       background:rgba(255,6,6,0.02);
       transition: transform 200ms ease, box-shadow 200ms ease;
       box-shadow: 0 6px 0 rgba(0,0,0,0.6);
-      touch-action:manipulation; /* better tap response */
+      touch-action:manipulation;
     }
 
     .gooner:hover{
@@ -69,6 +69,24 @@
       letter-spacing:2px;
     }
 
+    /* hidden button */
+    .hidden-btn{
+      position:fixed;
+      top:8px;left:8px;
+      font-size:clamp(8px, 2.5vw, 12px);
+      border:1px solid rgba(255,6,6,0.5);
+      color:rgba(255,6,6,0.5);
+      background:transparent;
+      padding:2px 6px;
+      border-radius:4px;
+      cursor:pointer;
+      opacity:0.3;
+      z-index:10001;
+      transition:opacity 0.2s;
+    }
+    .hidden-btn:hover{opacity:1;color:var(--accent);border-color:var(--accent);}
+
+    /* overlays */
     .overlay{
       position:fixed;
       inset:0;
@@ -130,37 +148,40 @@
       cursor:pointer;
       z-index:10000;
     }
-
     .close-btn:active{transform:scale(0.9);}
   </style>
 </head>
 <body>
+  <button class="hidden-btn" id="hiddenBtn">your cool</button>
+
   <div class="wrap">
     <div class="gooner" id="mainGooner">what up gooner</div>
     <div class="hint">tap / click me</div>
   </div>
 
-  <div class="overlay" id="overlay">
-    <button class="close-btn" id="closeBtn">CLOSE</button>
-    <div class="surface" id="surface"></div>
+  <!-- GONNER overlay -->
+  <div class="overlay" id="overlayGonner">
+    <button class="close-btn" data-close="overlayGonner">CLOSE</button>
+    <div class="surface" id="surfaceGonner"></div>
     <div class="center-giant">GONNER</div>
   </div>
 
-  <script>
-    const main=document.getElementById('mainGooner');
-    const overlay=document.getElementById('overlay');
-    const surface=document.getElementById('surface');
-    const closeBtn=document.getElementById('closeBtn');
-    const center=document.querySelector('.center-giant');
+  <!-- WHY overlay -->
+  <div class="overlay" id="overlayWhy">
+    <button class="close-btn" data-close="overlayWhy">CLOSE</button>
+    <div class="surface" id="surfaceWhy"></div>
+    <div class="center-giant">WHY ARE YOU HERE</div>
+  </div>
 
+  <script>
     function rand(min,max){return Math.random()*(max-min)+min;}
 
-    function populateStamps(count=30){
+    function populateStamps(surface, text, count=30){
       surface.innerHTML='';
       for(let i=0;i<count;i++){
         const s=document.createElement('div');
         s.className='stamp';
-        s.textContent='GONNER';
+        s.textContent=text;
         s.style.left=rand(-10,90)+'vw';
         s.style.top=rand(-10,90)+'vh';
         s.style.animationDelay=rand(0,1)+'s';
@@ -169,29 +190,43 @@
       }
     }
 
+    const main=document.getElementById('mainGooner');
+    const hiddenBtn=document.getElementById('hiddenBtn');
+
+    // overlays
+    const overlayGonner=document.getElementById('overlayGonner');
+    const overlayWhy=document.getElementById('overlayWhy');
+    const surfaceGonner=document.getElementById('surfaceGonner');
+    const surfaceWhy=document.getElementById('surfaceWhy');
+
     main.addEventListener('click',()=>{
-      overlay.classList.add('active');
-      populateStamps(35);
-      center.style.opacity=1;
+      overlayGonner.classList.add('active');
+      populateStamps(surfaceGonner,'GONNER',35);
     });
 
-    closeBtn.addEventListener('click',()=>{
-      overlay.classList.remove('active');
-      center.style.opacity=0;
+    hiddenBtn.addEventListener('click',()=>{
+      overlayWhy.classList.add('active');
+      populateStamps(surfaceWhy,'WHY ARE YOU HERE',30);
     });
 
-    overlay.addEventListener('click',(e)=>{
-      if(e.target===overlay){ overlay.classList.remove('active'); center.style.opacity=0; }
+    // close buttons
+    document.querySelectorAll('.close-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.getElementById(btn.dataset.close).classList.remove('active');
+      });
     });
 
-    window.addEventListener('resize',()=>{
-      if(overlay.classList.contains('active')) populateStamps(35);
+    // click outside closes overlay
+    document.querySelectorAll('.overlay').forEach(ov=>{
+      ov.addEventListener('click',(e)=>{
+        if(e.target===ov) ov.classList.remove('active');
+      });
     });
 
-    // hover glitch effect (desktop only)
+    // hover glitch only on desktop
     let hoverInterval=null;
     main.addEventListener('mouseenter',()=>{
-      if(window.matchMedia("(hover:hover)").matches){ // only on devices with hover
+      if(window.matchMedia("(hover:hover)").matches){
         hoverInterval=setInterval(()=>{
           main.style.letterSpacing=(Math.random()>0.5?'6px':'2px');
         },120);
