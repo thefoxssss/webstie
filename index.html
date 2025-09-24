@@ -127,28 +127,9 @@ const overlayWhy = document.getElementById("overlayWhy");
 const goonerSection = document.getElementById("goonerSection");
 const goonerText = document.getElementById("goonerText");
 
-// Combined click event listener for both effects
+// Click main text -> flood screen with repeated "WHAT UP GOONER"
 gooner.addEventListener("click", () => {
-  // --- Start of the "Flashing" effect from the first code block ---
-  const flashCount = 40;
-  for (let i = 0; i < flashCount; i++) {
-    const span = document.createElement("span");
-    span.textContent = "WHAT UP GOONER";
-    span.style.position = "absolute";
-    span.style.left = Math.random() * 100 + "vw";
-    span.style.top = Math.random() * 100 + "vh";
-    span.style.fontSize = `clamp(20px, ${Math.random()*8 + 3}vw, 80px)`;
-    span.style.textShadow = `2px 0 red, -2px 0 cyan`;
-    span.style.color = `hsl(${Math.random()*360}, 100%, 70%)`;
-    span.style.animation = `stormFlash ${0.05 + Math.random()*0.15}s infinite`;
-    document.body.appendChild(span);
-    setTimeout(() => { span.remove(); }, 1000 + Math.random()*500);
-  }
-
-  // --- End of the "Flashing" effect ---
-
-  // --- Start of the "Flooding" effect from the second code block ---
-  // Make background black (if it wasn't already)
+  // Make background black
   document.body.style.background = "#000";
 
   const interval = setInterval(() => {
@@ -167,9 +148,7 @@ gooner.addEventListener("click", () => {
   // Stop after 5 seconds
   setTimeout(() => { clearInterval(interval); }, 5000);
 
-  // --- End of the "Flooding" effect ---
-
-  // Show GONER section (common to both original blocks)
+  // Show GONER section
   goonerSection.classList.add("active");
 });
 
