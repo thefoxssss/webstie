@@ -75,6 +75,7 @@
       top:10px;left:10px;
       font-size:clamp(8px, 2.5vw, 12px);
       color:rgba(255,6,6,0.6);
+      pointer-events:auto;
       cursor:pointer;
       z-index:10001;
       animation:glitch 1.5s infinite;
@@ -139,6 +140,68 @@
       100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}
     }
 
+    /* glitch-style "WHY ARE YOU HERE" */
+    .glitch-text {
+      position:absolute;
+      top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      font-size:clamp(40px, 12vw, 200px);
+      color:#fff; /* base white */
+      text-shadow:
+        3px 0 red,
+        -3px 0 cyan;
+      animation: glitchShift 1.5s infinite;
+      letter-spacing:2px;
+    }
+
+    .glitch-text::before,
+    .glitch-text::after {
+      content: attr(data-text);
+      position:absolute;
+      left:0;top:0;
+      width:100%;height:100%;
+      overflow:hidden;
+    }
+
+    .glitch-text::before {
+      color:red;
+      transform:translate(2px,0);
+      clip-path: inset(0 0 50% 0);
+      animation: sliceTop 2s infinite linear alternate-reverse;
+    }
+
+    .glitch-text::after {
+      color:cyan;
+      transform:translate(-2px,0);
+      clip-path: inset(50% 0 0 0);
+      animation: sliceBottom 2s infinite linear alternate-reverse;
+    }
+
+    @keyframes glitchShift {
+      0%   { text-shadow: 3px 0 red, -3px 0 cyan; }
+      20%  { text-shadow: 2px 0 red, -2px 0 cyan; }
+      40%  { text-shadow: 4px 0 red, -4px 0 cyan; }
+      60%  { text-shadow: 1px 0 red, -1px 0 cyan; }
+      80%  { text-shadow: 3px 0 red, -3px 0 cyan; }
+      100% { text-shadow: 3px 0 red, -3px 0 cyan; }
+    }
+
+    @keyframes sliceTop {
+      0%   { clip-path: inset(0 0 60% 0); }
+      25%  { clip-path: inset(0 0 40% 0); }
+      50%  { clip-path: inset(0 0 70% 0); }
+      75%  { clip-path: inset(0 0 50% 0); }
+      100% { clip-path: inset(0 0 60% 0); }
+    }
+
+    @keyframes sliceBottom {
+      0%   { clip-path: inset(50% 0 0 0); }
+      25%  { clip-path: inset(60% 0 0 0); }
+      50%  { clip-path: inset(40% 0 0 0); }
+      75%  { clip-path: inset(55% 0 0 0); }
+      100% { clip-path: inset(50% 0 0 0); }
+    }
+
     .close-btn{
       position:fixed;
       top:10px;right:10px;
@@ -152,65 +215,6 @@
       z-index:10000;
     }
     .close-btn:active{transform:scale(0.9);}
-
-    /* TikTok glitch style for WHY overlay */
-    .glitch-text {
-      position:absolute;
-      top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      font-size:clamp(40px, 12vw, 200px);
-      color:var(--accent);
-      animation: glitchText 2s infinite;
-    }
-
-    .glitch-text::before,
-    .glitch-text::after {
-      content: attr(data-text);
-      position:absolute;
-      left:0;top:0;
-      width:100%;
-      height:100%;
-      color:var(--accent);
-      overflow:hidden;
-      clip: rect(0, 900px, 0, 0);
-    }
-
-    .glitch-text::before {
-      animation: glitchTop 2s infinite linear alternate-reverse;
-      color: rgba(255,6,6,0.7);
-    }
-
-    .glitch-text::after {
-      animation: glitchBottom 1.5s infinite linear alternate-reverse;
-      color: rgba(255,6,6,0.4);
-    }
-
-    @keyframes glitchText {
-      0% { transform:translate(-50%,-50%) }
-      20% { transform:translate(-51%,-49%) }
-      40% { transform:translate(-49%,-51%) }
-      60% { transform:translate(-50%,-50%) }
-      80% { transform:translate(-52%,-48%) }
-      100%{ transform:translate(-50%,-50%) }
-    }
-
-    @keyframes glitchTop {
-      0% { clip: rect(0,9999px,0,0); }
-      20% { clip: rect(0,9999px,50%,0); }
-      40% { clip: rect(0,9999px,20%,0); }
-      60% { clip: rect(0,9999px,60%,0); }
-      80% { clip: rect(0,9999px,10%,0); }
-      100%{ clip: rect(0,9999px,0,0); }
-    }
-
-    @keyframes glitchBottom {
-      0% { clip: rect(100%,9999px,100%,0); }
-      20% { clip: rect(40%,9999px,100%,0); }
-      40% { clip: rect(60%,9999px,100%,0); }
-      60% { clip: rect(30%,9999px,100%,0); }
-      80% { clip: rect(80%,9999px,100%,0); }
-      100%{ clip: rect(100%,9999px,100%,0); }
-    }
   </style>
 </head>
 <body>
