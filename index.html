@@ -69,22 +69,25 @@
       letter-spacing:2px;
     }
 
-    /* hidden button */
-    .hidden-btn{
+    /* "your cool" static glitch text */
+    .hidden-text{
       position:fixed;
-      top:8px;left:8px;
+      top:10px;left:10px;
       font-size:clamp(8px, 2.5vw, 12px);
-      border:1px solid rgba(255,6,6,0.5);
-      color:rgba(255,6,6,0.5);
-      background:transparent;
-      padding:2px 6px;
-      border-radius:4px;
+      color:rgba(255,6,6,0.6);
       cursor:pointer;
-      opacity:0.3;
       z-index:10001;
-      transition:opacity 0.2s;
+      animation:glitch 1.5s infinite;
     }
-    .hidden-btn:hover{opacity:1;color:var(--accent);border-color:var(--accent);}
+
+    @keyframes glitch {
+      0% { text-shadow:2px 0 var(--accent);}
+      20% { text-shadow:-2px 0 var(--accent);}
+      40% { text-shadow:2px 2px var(--accent);}
+      60% { text-shadow:-2px -2px var(--accent);}
+      80% { text-shadow:2px -2px var(--accent);}
+      100%{ text-shadow:none;}
+    }
 
     /* overlays */
     .overlay{
@@ -149,10 +152,69 @@
       z-index:10000;
     }
     .close-btn:active{transform:scale(0.9);}
+
+    /* TikTok glitch style for WHY overlay */
+    .glitch-text {
+      position:absolute;
+      top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      font-size:clamp(40px, 12vw, 200px);
+      color:var(--accent);
+      animation: glitchText 2s infinite;
+    }
+
+    .glitch-text::before,
+    .glitch-text::after {
+      content: attr(data-text);
+      position:absolute;
+      left:0;top:0;
+      width:100%;
+      height:100%;
+      color:var(--accent);
+      overflow:hidden;
+      clip: rect(0, 900px, 0, 0);
+    }
+
+    .glitch-text::before {
+      animation: glitchTop 2s infinite linear alternate-reverse;
+      color: rgba(255,6,6,0.7);
+    }
+
+    .glitch-text::after {
+      animation: glitchBottom 1.5s infinite linear alternate-reverse;
+      color: rgba(255,6,6,0.4);
+    }
+
+    @keyframes glitchText {
+      0% { transform:translate(-50%,-50%) }
+      20% { transform:translate(-51%,-49%) }
+      40% { transform:translate(-49%,-51%) }
+      60% { transform:translate(-50%,-50%) }
+      80% { transform:translate(-52%,-48%) }
+      100%{ transform:translate(-50%,-50%) }
+    }
+
+    @keyframes glitchTop {
+      0% { clip: rect(0,9999px,0,0); }
+      20% { clip: rect(0,9999px,50%,0); }
+      40% { clip: rect(0,9999px,20%,0); }
+      60% { clip: rect(0,9999px,60%,0); }
+      80% { clip: rect(0,9999px,10%,0); }
+      100%{ clip: rect(0,9999px,0,0); }
+    }
+
+    @keyframes glitchBottom {
+      0% { clip: rect(100%,9999px,100%,0); }
+      20% { clip: rect(40%,9999px,100%,0); }
+      40% { clip: rect(60%,9999px,100%,0); }
+      60% { clip: rect(30%,9999px,100%,0); }
+      80% { clip: rect(80%,9999px,100%,0); }
+      100%{ clip: rect(100%,9999px,100%,0); }
+    }
   </style>
 </head>
 <body>
-  <button class="hidden-btn" id="hiddenBtn">your cool</button>
+  <div class="hidden-text" id="hiddenText">your cool</div>
 
   <div class="wrap">
     <div class="gooner" id="mainGooner">what up gooner</div>
@@ -169,8 +231,7 @@
   <!-- WHY overlay -->
   <div class="overlay" id="overlayWhy">
     <button class="close-btn" data-close="overlayWhy">CLOSE</button>
-    <div class="surface" id="surfaceWhy"></div>
-    <div class="center-giant">WHY ARE YOU HERE</div>
+    <div class="glitch-text" data-text="WHY ARE YOU HERE">WHY ARE YOU HERE</div>
   </div>
 
   <script>
@@ -191,32 +252,27 @@
     }
 
     const main=document.getElementById('mainGooner');
-    const hiddenBtn=document.getElementById('hiddenBtn');
+    const hiddenText=document.getElementById('hiddenText');
 
-    // overlays
     const overlayGonner=document.getElementById('overlayGonner');
     const overlayWhy=document.getElementById('overlayWhy');
     const surfaceGonner=document.getElementById('surfaceGonner');
-    const surfaceWhy=document.getElementById('surfaceWhy');
 
     main.addEventListener('click',()=>{
       overlayGonner.classList.add('active');
       populateStamps(surfaceGonner,'GONNER',35);
     });
 
-    hiddenBtn.addEventListener('click',()=>{
+    hiddenText.addEventListener('click',()=>{
       overlayWhy.classList.add('active');
-      populateStamps(surfaceWhy,'WHY ARE YOU HERE',30);
     });
 
-    // close buttons
     document.querySelectorAll('.close-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
         document.getElementById(btn.dataset.close).classList.remove('active');
       });
     });
 
-    // click outside closes overlay
     document.querySelectorAll('.overlay').forEach(ov=>{
       ov.addEventListener('click',(e)=>{
         if(e.target===ov) ov.classList.remove('active');
