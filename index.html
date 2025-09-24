@@ -2,290 +2,168 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>What up Gooner</title>
 
-  <!-- Blocky / arcade font -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
     :root{
-      --bg: #000000;
-      --accent: #ff0606; /* bright red */
+      --bg: #000;
+      --accent: #ff0606;
     }
 
     html,body{
       height:100%;
       margin:0;
       background:var(--bg);
-      font-family: "Press Start 2P", system-ui, monospace;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
+      font-family:"Press Start 2P", monospace;
       overflow:hidden;
       color:var(--accent);
+      touch-action:none; /* stop accidental scrolling */
     }
 
-    /* Center area */
     .wrap{
       height:100%;
       display:flex;
       align-items:center;
       justify-content:center;
-      position:relative;
+      flex-direction:column;
       user-select:none;
-    }
-
-    /* The main clickable text */
-    .gooner {
-      font-size: clamp(28px, 6vw, 64px);
-      color:var(--accent);
-      text-decoration:none;
-      cursor:pointer;
-      display:inline-block;
-      padding:30px 50px;
-      border:6px solid var(--accent);
-      border-radius:8px;
-      letter-spacing:4px;
       text-align:center;
-      background:rgba(255,6,6,0.02); /* subtle */
-      transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
-      box-shadow: 0 8px 0 rgba(0,0,0,0.6);
-      will-change: transform;
+      padding:20px;
     }
 
-    /* Blocky hover / active effect */
-    .gooner:hover{
-      transform: translateY(-8px) scale(1.04);
-      box-shadow: 0 20px 0 rgba(0,0,0,0.6);
-      text-shadow:
-        4px 4px 0 rgba(0,0,0,0.9),
-        -2px -2px 0 rgba(0,0,0,0.4);
-      filter: drop-shadow(0 2px 0 rgba(255,6,6,0.08));
+    .gooner{
+      font-size:12vw; /* scales with screen */
+      max-font-size:80px;
+      color:var(--accent);
+      border:5px solid var(--accent);
+      border-radius:10px;
+      padding:20px 24px;
+      cursor:pointer;
+      transition:transform 200ms ease;
     }
 
     .gooner:active{
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 6px 0 rgba(0,0,0,0.6);
+      transform:scale(0.95);
     }
 
-    /* Small instruction hint (optional) */
     .hint{
-      position:absolute;
-      bottom:28px;
-      left:50%;
-      transform:translateX(-50%);
+      font-size:3vw;
       color:rgba(255,6,6,0.6);
-      font-size:12px;
-      letter-spacing:2px;
-      opacity:0.8;
+      margin-top:20px;
     }
 
-    /* Fullscreen overlay for flashing GONNER */
     .overlay{
       position:fixed;
       inset:0;
       background:var(--bg);
-      display:none; /* toggled on click */
+      display:none;
       align-items:center;
       justify-content:center;
       z-index:9999;
-      overflow:hidden;
     }
-
     .overlay.active{
       display:flex;
     }
 
-    /* Container holding many copies */
     .surface{
-      position:relative;
-      width:100%;
-      height:100%;
+      position:absolute;
+      inset:0;
+      overflow:hidden;
     }
 
-    /* Each big "GONNER" stamp */
     .stamp{
       position:absolute;
       color:var(--accent);
-      font-family: "Press Start 2P", monospace;
-      font-size: clamp(28px, 8vw, 150px);
-      white-space:nowrap;
-      pointer-events:none;
+      font-family:"Press Start 2P", monospace;
+      font-size:18vw;
       opacity:0;
-      transform-origin:center;
-      text-align:center;
-      /* blocky stroke */
-      -webkit-text-stroke: 2px rgba(0,0,0,0.9);
-      filter: drop-shadow(0 6px 0 rgba(0,0,0,0.85));
-      animation: flash 1s linear infinite;
+      animation:flash 1s linear infinite;
     }
 
-    /* Slight variations for variety (applied via JS with random delay/duration) */
     @keyframes flash{
-      0% { opacity:0; transform: scale(0.9) rotate(-2deg); }
-      10% { opacity:1; transform: scale(1.02) rotate(0deg); }
-      50% { opacity:1; transform: scale(1.0) rotate(1deg); }
-      90% { opacity:0.9; transform: scale(0.98) rotate(-1deg); }
-      100% { opacity:0; transform: scale(0.9) rotate(-2deg); }
+      0%,100%{opacity:0;}
+      40%,60%{opacity:1;}
     }
 
-    /* An optional giant centered GONNER that pulses */
     .center-giant{
-      position:absolute;
-      left:50%;
-      top:50%;
-      transform:translate(-50%,-50%);
-      font-size: clamp(48px, 12vw, 240px);
-      opacity:0;
-      pointer-events:none;
-      animation: pulse 1.2s ease-in-out infinite;
-      -webkit-text-stroke: 3px rgba(0,0,0,0.95);
+      font-size:20vw;
+      color:var(--accent);
+      opacity:0.9;
+      animation:pulse 1.2s ease-in-out infinite;
     }
-
     @keyframes pulse{
-      0% { opacity:0; transform:translate(-50%,-50%) scale(0.9); }
-      25% { opacity:1; transform:translate(-50%,-50%) scale(1.04); }
-      60% { opacity:1; transform:translate(-50%,-50%) scale(1.0); }
-      100% { opacity:0; transform:translate(-50%,-50%) scale(0.95); }
+      0%{transform:scale(0.9);opacity:0;}
+      50%{transform:scale(1.05);opacity:1;}
+      100%{transform:scale(0.95);opacity:0;}
     }
 
-    /* Close button */
     .close-btn{
-      position:fixed;
-      top:12px;
-      right:12px;
-      font-size:12px;
+      position:absolute;
+      top:10px;
+      right:10px;
+      font-size:4vw;
       border:2px solid var(--accent);
       color:var(--accent);
       background:transparent;
-      padding:8px 12px;
+      padding:6px 10px;
       border-radius:6px;
       cursor:pointer;
-      z-index:10000;
-      font-family: "Press Start 2P", monospace;
     }
-
-    .close-btn:hover{
-      transform:translateY(-3px);
-      box-shadow:0 8px 0 rgba(0,0,0,0.6);
-    }
-
-    /* Make sure layout is usable on small screens */
-    @media (max-width:520px){
-      .gooner { padding:20px 26px; font-size:20px; border-width:4px; }
-    }
-
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="gooner" id="mainGooner" title="Click me!">what up gooner</div>
-    <div class="hint">hover me • click to explode GONNER</div>
+    <div class="gooner" id="mainGooner">what up gooner</div>
+    <div class="hint">tap me</div>
   </div>
 
-  <!-- Overlay -->
   <div class="overlay" id="overlay">
-    <button class="close-btn" id="closeBtn">CLOSE</button>
+    <button class="close-btn" id="closeBtn">X</button>
     <div class="surface" id="surface"></div>
     <div class="center-giant">GONNER</div>
   </div>
 
   <script>
-    const main = document.getElementById('mainGooner');
-    const overlay = document.getElementById('overlay');
-    const surface = document.getElementById('surface');
-    const closeBtn = document.getElementById('closeBtn');
-    const center = document.querySelector('.center-giant');
+    const main=document.getElementById('mainGooner');
+    const overlay=document.getElementById('overlay');
+    const surface=document.getElementById('surface');
+    const closeBtn=document.getElementById('closeBtn');
 
-    // Utility: random in range
-    function rand(min, max){ return Math.random()*(max-min)+min; }
+    function rand(min,max){return Math.random()*(max-min)+min;}
 
-    // Create many stamp elements scattered across the screen
-    function populateStamps(count = 30){
-      surface.innerHTML = ''; // clear
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+    function populateStamps(count=20){
+      surface.innerHTML='';
       for(let i=0;i<count;i++){
-        const s = document.createElement('div');
-        s.className = 'stamp';
-        s.textContent = 'GONNER';
-        // random size (using scale via style)
-        const fontScale = rand(0.6, 1.6);
-        s.style.fontSize = (Math.round(rand(30,120))*fontScale) + 'px';
-        // position random across viewport (allow off-screen a bit)
-        s.style.left = (rand(-10, 90)) + 'vw';
-        s.style.top  = (rand(-10, 90)) + 'vh';
-        // random rotation for a chaotic feel
-        s.style.transform = `rotate(${rand(-20,20)}deg)`;
-        // random animation delay / duration so flashing is staggered
-        const dur = rand(0.9,1.6).toFixed(2) + 's';
-        const delay = rand(0,1.0).toFixed(2) + 's';
-        s.style.animationDuration = dur;
-        s.style.animationDelay = delay;
-        // slight opacity variance
-        s.style.opacity = rand(0.6,1.0).toFixed(2);
-        // z-index layering
-        s.style.zIndex = Math.floor(rand(9000,9998));
+        const s=document.createElement('div');
+        s.className='stamp';
+        s.textContent='GONNER';
+        s.style.left=rand(0,90)+'vw';
+        s.style.top=rand(0,90)+'vh';
+        s.style.fontSize=rand(8,25)+'vw';
+        s.style.animationDelay=rand(0,1)+'s';
         surface.appendChild(s);
       }
     }
 
-    // Toggle overlay on click
-    main.addEventListener('click', () => {
+    main.addEventListener('click',()=>{
       overlay.classList.add('active');
-      // repopulate with random placements each time
-      populateStamps(40);
-      // flash center giant more intensely
-      center.style.animationDuration = '1.1s';
-      center.style.opacity = 1;
-      // optionally add a little vibration to the main button
-      main.animate([
-        { transform: 'translateY(0) scale(1)' },
-        { transform: 'translateY(-6px) scale(1.02)' },
-        { transform: 'translateY(0) scale(0.98)' }
-      ], { duration:250, iterations:1 });
+      populateStamps(25);
     });
 
-    // Close overlay
-    closeBtn.addEventListener('click', () => {
+    closeBtn.addEventListener('click',()=>{
       overlay.classList.remove('active');
-      center.style.opacity = 0;
     });
 
-    // Also close overlay on ESC
-    window.addEventListener('keydown', (e) => {
-      if(e.key === 'Escape'){
-        overlay.classList.remove('active');
-        center.style.opacity = 0;
-      }
+    overlay.addEventListener('click',(e)=>{
+      if(e.target===overlay){ overlay.classList.remove('active'); }
     });
 
-    // Make overlay refill/rescale if user resizes screen
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if(overlay.classList.contains('active')) populateStamps(40);
-      }, 120);
+    window.addEventListener('resize',()=>{
+      if(overlay.classList.contains('active')) populateStamps(25);
     });
-
-    // Nice hover glitch effect (subtle): random quick text-shifts while hovered
-    let hoverInterval = null;
-    main.addEventListener('mouseenter', () => {
-      hoverInterval = setInterval(() => {
-        main.style.letterSpacing = (Math.random() > 0.5 ? '6px' : '2px');
-        main.style.transform = Math.random() > 0.5 ? 'translateY(-6px) skewX(-2deg) scale(1.03)' : 'translateY(-3px) skewX(1deg) scale(1.02)';
-      }, 140);
-    });
-    main.addEventListener('mouseleave', () => {
-      clearInterval(hoverInterval);
-      hoverInterval = null;
-      main.style.letterSpacing = '4px';
-      main.style.transform = '';
-    });
-
-    // Prevent accidental text selection on double click
-    main.addEventListener('mousedown', (e) => e.preventDefault());
   </script>
 </body>
 </html>
