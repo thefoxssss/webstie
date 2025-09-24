@@ -9,115 +9,115 @@
 
 <style>
 :root {
-  --bg: #000;
-  --accent: #ff0606;
+  --bg: #000;
+  --accent: #ff0606;
 }
 
 html, body {
-  height: 100%;
-  margin: 0;
-  background: var(--bg);
-  font-family: "Press Start 2P", monospace;
-  overflow: hidden;
-  color: var(--accent);
-  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  font-family: "Press Start 2P", monospace;
+  overflow: hidden;
+  color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .wrap {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  user-select: none;
-  text-align: center;
-  padding: 10px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  text-align: center;
+  padding: 10px;
 }
 
 .gooner {
-  font-size: clamp(24px, 8vw, 72px);
-  color: var(--accent);
-  cursor: pointer;
-  padding: 20px 30px;
-  border: 3px solid var(--accent);
-  border-radius: 8px;
-  letter-spacing: 2px;
-  background: rgba(255,6,6,0.02);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  box-shadow: 0px 0px 20px rgba(0,0,0,0.6);
-  touch-action: manipulation;
+  font-size: clamp(24px, 8vw, 72px);
+  color: var(--accent);
+  cursor: pointer;
+  padding: 20px 30px;
+  border: 3px solid var(--accent);
+  border-radius: 8px;
+  letter-spacing: 2px;
+  background: rgba(255,6,6,0.02);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: 0px 0px 20px rgba(0,0,0,0.6);
+  touch-action: manipulation;
 }
 
 .gooner:hover {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0px 0px 30px rgba(255,6,6,0.4);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0px 0px 30px rgba(255,6,6,0.4);
 }
 
 .hidden-button {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  font-size: 10px;
-  color: var(--accent);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  opacity: 0.3;
-  z-index: 10;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  font-size: 10px;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.3;
+  z-index: 10;
 }
 .hidden-button:hover { opacity: 1; }
 
 .overlay {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
 }
 .overlay.active { display: flex; }
 
 .glitch-text, .gooner-section {
-  font-size: clamp(40px, 12vw, 200px);
-  color: #fff;
-  font-family: "Press Start 2P", monospace;
-  text-shadow: 2px 0 red, -2px 0 cyan;
+  font-size: clamp(40px, 12vw, 200px);
+  color: #fff;
+  font-family: "Press Start 2P", monospace;
+  text-shadow: 2px 0 red, -2px 0 cyan;
 }
 
 .gooner-section {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9000;
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
 }
 
 .gooner-section.active { display: flex; }
 
 @keyframes glitchAnim {
-  0% { transform: translate(0,0) rotate(0deg); opacity:1; }
-  20% { transform: translate(-2px,2px) rotate(-1deg); opacity:0.8; color:red; }
-  40% { transform: translate(2px,-2px) rotate(1deg); opacity:1; color:cyan; }
-  60% { transform: translate(-1px,1px) rotate(-1deg); opacity:0.9; color:lime; }
-  80% { transform: translate(1px,-1px) rotate(1deg); opacity:1; color:yellow; }
-  100% { transform: translate(0,0) rotate(0deg); opacity:1; color:#fff; }
+  0% { transform: translate(0,0) rotate(0deg); opacity:1; }
+  20% { transform: translate(-2px,2px) rotate(-1deg); opacity:0.8; color:red; }
+  40% { transform: translate(2px,-2px) rotate(1deg); opacity:1; color:cyan; }
+  60% { transform: translate(-1px,1px) rotate(-1deg); opacity:0.9; color:lime; }
+  80% { transform: translate(1px,-1px) rotate(1deg); opacity:1; color:yellow; }
+  100% { transform: translate(0,0) rotate(0deg); opacity:1; color:#fff; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <button class="hidden-button" id="hiddenText">you're cool</button>
-  <div class="gooner" id="gooner">What up gooner</div>
+  <button class="hidden-button" id="hiddenText">you're cool</button>
+  <div class="gooner" id="gooner">What up gooner</div>
 </div>
 
 <div class="overlay" id="overlayWhy">
-  <div class="glitch-text" data-text="WHY ARE YOU HERE">WHY ARE YOU HERE</div>
+  <div class="glitch-text" data-text="WHY ARE YOU HERE">WHY ARE YOU HERE</div>
 </div>
 
 <div class="gooner-section" id="goonerSection">
-  <div id="goonerText">GONER</div>
+  <div id="goonerText">GONER</div>
 </div>
 
 <script>
@@ -127,47 +127,43 @@ const overlayWhy = document.getElementById("overlayWhy");
 const goonerSection = document.getElementById("goonerSection");
 const goonerText = document.getElementById("goonerText");
 
-// Click main text -> flood screen with repeated "WHAT UP GOONER"
+// Click main text -> flash "WHAT UP GOONER" all over
 gooner.addEventListener("click", () => {
-  // Make background black
-  document.body.style.background = "#000";
+  const flashCount = 40;
+  for (let i = 0; i < flashCount; i++) {
+    const span = document.createElement("span");
+    span.textContent = "WHAT UP GOONER";
+    span.style.position = "absolute";
+    span.style.left = Math.random() * 100 + "vw";
+    span.style.top = Math.random() * 100 + "vh";
+    span.style.fontSize = `clamp(20px, ${Math.random()*8 + 3}vw, 80px)`;
+    span.style.textShadow = `2px 0 red, -2px 0 cyan`;
+    span.style.color = `hsl(${Math.random()*360}, 100%, 70%)`;
+    span.style.animation = `stormFlash ${0.05 + Math.random()*0.15}s infinite`;
+    document.body.appendChild(span);
+    setTimeout(() => { span.remove(); }, 1000 + Math.random()*500);
+  }
 
-  const interval = setInterval(() => {
-    const span = document.createElement("span");
-    span.textContent = "WHAT UP GOONER";
-    span.style.position = "absolute";
-    span.style.left = Math.random() * 100 + "vw";
-    span.style.top = Math.random() * 100 + "vh";
-    span.style.fontSize = `${Math.random()*40 + 20}px`;
-    span.style.fontFamily = '"Press Start 2P", monospace';
-    span.style.color = `hsl(${Math.random()*360}, 100%, 70%)`;
-    span.style.textShadow = `2px 0 red, -2px 0 cyan`;
-    document.body.appendChild(span);
-  }, 50); // every 50ms a new piece of text
-
-  // Stop after 5 seconds
-  setTimeout(() => { clearInterval(interval); }, 5000);
-
-  // Show GONER section
-  goonerSection.classList.add("active");
+  // Show GONER section
+  goonerSection.classList.add("active");
 });
 
 // Hidden button -> open overlay
 hiddenText.addEventListener("click", () => {
-  overlayWhy.classList.add("active");
+  overlayWhy.classList.add("active");
 });
 
 // Click overlay to close
 overlayWhy.addEventListener("click", () => {
-  overlayWhy.classList.remove("active");
+  overlayWhy.classList.remove("active");
 });
 
 // Press G -> glitch GONER text in section
 document.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "g" && goonerSection.classList.contains("active")) {
-    goonerText.style.animation = "glitchAnim 0.1s infinite";
-    setTimeout(() => { goonerText.style.animation = ""; }, 2000); // glitch lasts 2s
-  }
+  if (e.key.toLowerCase() === "g" && goonerSection.classList.contains("active")) {
+    goonerText.style.animation = "glitchAnim 0.1s infinite";
+    setTimeout(() => { goonerText.style.animation = ""; }, 2000); // glitch lasts 2s
+  }
 });
 </script>
 </body>
