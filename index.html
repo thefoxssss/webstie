@@ -1,189 +1,265 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>What up Gooner</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
-    :root {
+    :root{
       --bg: #000;
       --accent: #ff0606;
     }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
       font-family: "Press Start 2P", monospace;
-      overflow: hidden;
-      color: var(--accent);
+      overflow:hidden;
+      color:var(--accent);
       -webkit-tap-highlight-color: transparent;
     }
 
-    .wrap {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      user-select: none;
-      text-align: center;
-      padding: 10px;
+    .wrap{
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      user-select:none;
+      text-align:center;
+      padding:10px;
     }
 
     .gooner {
       font-size: clamp(24px, 8vw, 72px);
-      color: var(--accent);
-      cursor: pointer;
-      padding: 20px 30px;
-      border: 3px solid var(--accent);
-      border-radius: 8px;
-      letter-spacing: 2px;
-      background: rgba(255,6,6,0.02);
+      color:var(--accent);
+      cursor:pointer;
+      padding:20px 30px;
+      border:5px solid var(--accent);
+      border-radius:8px;
+      letter-spacing:4px;
+      background:rgba(255,6,6,0.02);
       transition: transform 200ms ease, box-shadow 200ms ease;
-      box-shadow: 0px 0px 20px rgba(0,0,0,0.6);
-      touch-action: manipulation;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.6);
+      touch-action:manipulation;
     }
 
-    .gooner:hover {
-      transform: translateY(-3px) scale(1.01);
-      box-shadow: 0px 0px 30px rgba(255,6,6,0.4);
+    .gooner:hover{
+      transform: translateY(-8px) scale(1.04);
+      box-shadow: 0 14px 0 rgba(0,0,0,0.6);
+      text-shadow:2px 2px 0 rgba(0,0,0,0.9);
     }
 
-    /* Hidden button top-left */
-    .hidden-button {
-      position: absolute;
-      top: 5px;
-      left: 5px;
-      font-size: 10px;
-      color: var(--accent);
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      opacity: 0.3;
-      z-index: 10;
-    }
-    .hidden-button:hover { opacity: 1; }
-
-    /* Overlay for "WHY ARE YOU HERE" */
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: #000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-    .overlay.active { display: flex; }
-
-    .glitch-text {
-      font-size: clamp(40px, 12vw, 200px);
-      color: #fff;
-      font-family: "Press Start 2P", monospace;
-      text-shadow: 2px 0 red, -2px 0 cyan;
-      animation: staticNoise 0.2s infinite;
+    .gooner:active{
+      transform: translateY(-3px) scale(0.97);
+      box-shadow: 0 4px 0 rgba(0,0,0,0.6);
     }
 
-    @keyframes staticNoise {
-      0% { transform: translate(0,0); opacity:1; }
-      25% { transform: translate(-1px,1px); opacity:0.8; }
-      50% { transform: translate(2px,-2px); opacity:1; }
-      75% { transform: translate(-2px,2px); opacity:0.9; }
-      100% { transform: translate(0,0); opacity:1; }
+    .hint{
+      position:absolute;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:clamp(10px, 3vw, 14px);
+      color:rgba(255,6,6,0.6);
+      letter-spacing:2px;
     }
 
-    /* Glitch storm */
-    .glitch-storm {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 10000;
+    /* "your cool" static glitch text */
+    .hidden-text{
+      position:fixed;
+      top:10px;left:10px;
+      font-size:clamp(8px, 2.5vw, 12px);
+      color:rgba(255,6,6,0.6);
+      pointer-events:auto;
+      cursor:pointer;
+      z-index:10001;
+      animation:glitch 1.5s infinite;
     }
 
-    .glitch-storm span {
-      position: absolute;
-      font-size: clamp(20px, 5vw, 60px);
-      color: #fff;
-      font-family: "Press Start 2P", monospace;
-      text-shadow: 2px 0 red, -2px 0 cyan;
-      animation: stormFlash 0.2s infinite;
+    @keyframes glitch {
+      0% { text-shadow:2px 0 var(--accent);}
+      20% { text-shadow:-2px 0 var(--accent);}
+      40% { text-shadow:2px 2px var(--accent);}
+      60% { text-shadow:-2px -2px var(--accent);}
+      80% { text-shadow:2px -2px var(--accent);}
+      100%{ text-shadow:none;}
     }
 
-    @keyframes stormFlash {
-      0% { opacity: 1; transform: translate(0,0) scale(1); }
-      50% { opacity: 0.3; transform: translate(-2px,2px) scale(1.1); }
-      100% { opacity: 1; transform: translate(2px,-2px) scale(1); }
+    /* overlays */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:var(--bg);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      overflow:hidden;
     }
+    .overlay.active{display:flex;}
+
+    .surface{
+      position:relative;
+      width:100%;
+      height:100%;
+    }
+
+    .stamp{
+      position:absolute;
+      color:var(--accent);
+      font-size:clamp(28px, 10vw, 160px);
+      opacity:0;
+      pointer-events:none;
+      animation:flash 1s linear infinite;
+      text-align:center;
+    }
+
+    @keyframes flash{
+      0%,100%{opacity:0;transform:scale(0.9);}
+      20%,80%{opacity:1;transform:scale(1);}
+    }
+
+    .center-giant{
+      position:absolute;
+      top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      font-size:clamp(48px, 14vw, 240px);
+      opacity:0;
+      pointer-events:none;
+      animation:pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse{
+      0%{opacity:0;transform:translate(-50%,-50%) scale(0.9);}
+      50%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}
+      100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}
+    }
+
+    /* TV static glitch text for WHY ARE YOU HERE */
+    .glitch-static {
+      position:absolute;
+      top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      font-size:clamp(40px, 12vw, 200px);
+      color:white;
+      animation: tvGlitch 0.8s infinite;
+      letter-spacing:2px;
+    }
+
+    @keyframes tvGlitch {
+      0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }
+      10% { transform: translate(-49%,-51%) skew(1deg); opacity:0.8; }
+      20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }
+      30% { transform: translate(-50%,-50%) skew(2deg); opacity:0.9; }
+      40% { transform: translate(-50%,-50%) skew(-2deg); opacity:1; }
+      50% { transform: translate(-49%,-50%) skew(1deg); opacity:0.85; }
+      60% { transform: translate(-50%,-49%) skew(-1deg); opacity:1; }
+      70% { transform: translate(-51%,-50%) skew(2deg); opacity:0.9; }
+      80% { transform: translate(-50%,-51%) skew(-2deg); opacity:1; }
+      90% { transform: translate(-50%,-50%) skew(1deg); opacity:0.95; }
+      100%{ transform: translate(-50%,-50%) skew(0deg); opacity:1; }
+    }
+
+    .close-btn{
+      position:fixed;
+      top:10px;right:10px;
+      font-size:clamp(10px, 4vw, 14px);
+      border:2px solid var(--accent);
+      color:var(--accent);
+      background:transparent;
+      padding:6px 10px;
+      border-radius:6px;
+      cursor:pointer;
+      z-index:10000;
+    }
+    .close-btn:active{transform:scale(0.9);}
   </style>
 </head>
 <body>
+  <div class="hidden-text" id="hiddenText">your cool</div>
+
   <div class="wrap">
-    <button class="hidden-button" id="hiddenText">you're cool</button>
-    <div class="gooner" id="gooner">What up gooner</div>
+    <div class="gooner" id="mainGooner">what up gooner</div>
+    <div class="hint">tap / click me</div>
   </div>
 
+  <!-- GONNER overlay -->
+  <div class="overlay" id="overlayGonner">
+    <button class="close-btn" data-close="overlayGonner">CLOSE</button>
+    <div class="surface" id="surfaceGonner"></div>
+    <div class="center-giant">GONNER</div>
+  </div>
+
+  <!-- WHY overlay -->
   <div class="overlay" id="overlayWhy">
-    <div class="glitch-text" data-text="WHY ARE YOU HERE">WHY ARE YOU HERE</div>
+    <button class="close-btn" data-close="overlayWhy">CLOSE</button>
+    <div class="glitch-static">WHY ARE YOU HERE</div>
   </div>
 
   <script>
-    const gooner = document.getElementById("gooner");
-    const hiddenText = document.getElementById("hiddenText");
-    const overlayWhy = document.getElementById("overlayWhy");
+    function rand(min,max){return Math.random()*(max-min)+min;}
 
-    gooner.addEventListener("click", () => {
-      // spawn goner words
-      for (let i = 0; i < 30; i++) {
-        const span = document.createElement("span");
-        span.textContent = "GONER";
-        span.style.position = "absolute";
-        span.style.left = Math.random() * 100 + "vw";
-        span.style.top = Math.random() * 100 + "vh";
-        span.style.fontSize = "clamp(20px, 8vw, 80px)";
-        span.style.color = "#fff";
-        span.style.textShadow = "2px 0 red, -2px 0 cyan";
-        document.body.appendChild(span);
-
-        setTimeout(() => { span.remove(); }, 1500);
+    function populateStamps(surface, text, count=30){
+      surface.innerHTML='';
+      for(let i=0;i<count;i++){
+        const s=document.createElement('div');
+        s.className='stamp';
+        s.textContent=text;
+        s.style.left=rand(-10,90)+'vw';
+        s.style.top=rand(-10,90)+'vh';
+        s.style.animationDelay=rand(0,1)+'s';
+        s.style.animationDuration=rand(0.8,1.6)+'s';
+        surface.appendChild(s);
       }
-    });
-
-    hiddenText.addEventListener("click", () => {
-      overlayWhy.classList.add("active");
-    });
-
-    // Close overlay on click
-    overlayWhy.addEventListener("click", () => {
-      overlayWhy.classList.remove("active");
-    });
-
-    // Secret glitch storm on G key
-    document.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "g") {
-        triggerGlitchStorm();
-      }
-    });
-
-    function triggerGlitchStorm() {
-      const storm = document.createElement("div");
-      storm.className = "glitch-storm";
-      document.body.appendChild(storm);
-
-      const words = ["GONER", "ERROR", "???", "VOID"];
-      for (let i = 0; i < 25; i++) {
-        const span = document.createElement("span");
-        span.textContent = words[Math.floor(Math.random() * words.length)];
-        span.style.left = Math.random() * 100 + "vw";
-        span.style.top = Math.random() * 100 + "vh";
-        storm.appendChild(span);
-      }
-
-      setTimeout(() => { storm.remove(); }, 2000);
     }
+
+    const main=document.getElementById('mainGooner');
+    const hiddenText=document.getElementById('hiddenText');
+
+    const overlayGonner=document.getElementById('overlayGonner');
+    const overlayWhy=document.getElementById('overlayWhy');
+    const surfaceGonner=document.getElementById('surfaceGonner');
+
+    main.addEventListener('click',()=>{
+      overlayGonner.classList.add('active');
+      populateStamps(surfaceGonner,'GONNER',35);
+    });
+
+    hiddenText.addEventListener('click',()=>{
+      overlayWhy.classList.add('active');
+    });
+
+    document.querySelectorAll('.close-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.getElementById(btn.dataset.close).classList.remove('active');
+      });
+    });
+
+    document.querySelectorAll('.overlay').forEach(ov=>{
+      ov.addEventListener('click',(e)=>{
+        if(e.target===ov) ov.classList.remove('active');
+      });
+    });
+
+    // hover glitch only on desktop
+    let hoverInterval=null;
+    main.addEventListener('mouseenter',()=>{
+      if(window.matchMedia("(hover:hover)").matches){
+        hoverInterval=setInterval(()=>{
+          main.style.letterSpacing=(Math.random()>0.5?'6px':'2px');
+        },120);
+      }
+    });
+    main.addEventListener('mouseleave',()=>{
+      clearInterval(hoverInterval);
+      hoverInterval=null;
+      main.style.letterSpacing='4px';
+    });
   </script>
 </body>
 </html>
