@@ -135,8 +135,8 @@
     const hiddenText = document.getElementById("hiddenText");
     const overlayWhy = document.getElementById("overlayWhy");
 
-    // Click main text -> spawn "GONER"
     gooner.addEventListener("click", () => {
+      // spawn goner words
       for (let i = 0; i < 30; i++) {
         const span = document.createElement("span");
         span.textContent = "GONER";
@@ -152,12 +152,11 @@
       }
     });
 
-    // Hidden button -> open overlay
     hiddenText.addEventListener("click", () => {
       overlayWhy.classList.add("active");
     });
 
-    // Click overlay to close
+    // Close overlay on click
     overlayWhy.addEventListener("click", () => {
       overlayWhy.classList.remove("active");
     });
