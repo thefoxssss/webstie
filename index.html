@@ -6,118 +6,204 @@
 <title>What up Gooner</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #000;
-  --accent: #ff0606;
+  --bg: #000;
+  --accent: #ff0606; /* Red */
+  --secondary-glitch: #00ffff; /* Cyan */
 }
 
 html, body {
-  height: 100%;
-  margin: 0;
-  background: var(--bg);
-  font-family: "Press Start 2P", monospace;
-  overflow: hidden;
-  color: var(--accent);
-  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  font-family: "Press Start 2P", monospace;
+  overflow: hidden;
+  color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
+  animation: subtleFlicker 5s infinite step-end; /* Subtle background flicker */
 }
 
 .wrap {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  user-select: none;
-  text-align: center;
-  padding: 10px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  text-align: center;
+  padding: 10px;
 }
 
 .gooner {
-  font-size: clamp(24px, 8vw, 72px);
-  color: var(--accent);
-  cursor: pointer;
-  padding: 20px 30px;
-  border: 3px solid var(--accent);
-  border-radius: 8px;
-  letter-spacing: 2px;
-  background: rgba(255,6,6,0.02);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  box-shadow: 0px 0px 20px rgba(0,0,0,0.6);
-  touch-action: manipulation;
+  font-size: clamp(24px, 8vw, 72px);
+  color: var(--accent);
+  cursor: pointer;
+  padding: 20px 30px;
+  border: 3px solid var(--accent);
+  border-radius: 8px;
+  letter-spacing: 2px;
+  background: rgba(255,6,6,0.02);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: 0px 0px 20px rgba(0,0,0,0.6);
+  touch-action: manipulation;
+  position: relative; /* For glitch effect */
+  animation: goonerGlitch 3s infinite alternate ease-in-out; /* Added pre-interaction glitch */
 }
 
+.gooner::before, .gooner::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gooner::before {
+  content: "What up gooner"; /* Duplicate content for glitch */
+  color: var(--secondary-glitch);
+  z-index: -1;
+  animation: goonerTextGlitch 3s infinite alternate-reverse ease-in-out;
+}
+
+.gooner::after {
+  content: "What up gooner"; /* Duplicate content for glitch */
+  color: lime; /* A third color for more visual noise */
+  z-index: -2;
+  animation: goonerTextGlitchAlt 3s infinite alternate ease-in-out;
+}
+
+
 .gooner:hover {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0px 0px 30px rgba(255,6,6,0.4);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0px 0px 30px rgba(255,6,6,0.4);
 }
 
 .hidden-button {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  font-size: 10px;
-  color: var(--accent);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  opacity: 0.3;
-  z-index: 10;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  font-size: 10px;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.3;
+  z-index: 10;
 }
 .hidden-button:hover { opacity: 1; }
 
 .overlay {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.95); /* Slightly transparent for depth */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
 }
 .overlay.active { display: flex; }
 
 .glitch-text, .gooner-section {
-  font-size: clamp(40px, 12vw, 200px);
-  color: #fff;
-  font-family: "Press Start 2P", monospace;
-  text-shadow: 2px 0 red, -2px 0 cyan;
+  font-size: clamp(40px, 12vw, 200px);
+  color: #fff;
+  font-family: "Creepster", cursive; /* Using Creepster for WHY ARE YOU HERE */
+  text-shadow: 4px 0 red, -4px 0 var(--secondary-glitch); /* More aggressive shadow */
+  animation: glitchAnim 0.8s infinite alternate; /* Constant, subtle glitch */
 }
 
+#goonerText {
+  font-family: "Press Start 2P", monospace; /* Keep GONER in Press Start 2P */
+  text-shadow: 4px 0 red, -4px 0 var(--secondary-glitch), 2px 2px 5px rgba(0,0,0,0.5); /* Enhanced shadow */
+}
+
+
 .gooner-section {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9000;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9); /* Slightly transparent */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
 }
 
 .gooner-section.active { display: flex; }
 
-@keyframes glitchAnim {
-  0% { transform: translate(0,0) rotate(0deg); opacity:1; }
-  20% { transform: translate(-2px,2px) rotate(-1deg); opacity:0.8; color:red; }
-  40% { transform: translate(2px,-2px) rotate(1deg); opacity:1; color:cyan; }
-  60% { transform: translate(-1px,1px) rotate(-1deg); opacity:0.9; color:lime; }
-  80% { transform: translate(1px,-1px) rotate(1deg); opacity:1; color:yellow; }
-  100% { transform: translate(0,0) rotate(0deg); opacity:1; color:#fff; }
+/* Keyframes for animations */
+
+@keyframes subtleFlicker {
+  0%, 100% { background-color: #000; }
+  10% { background-color: #050000; } /* Very slight dark red tint */
+  20% { background-color: #000; }
+  30% { background-color: #000505; } /* Very slight dark cyan tint */
+  40% { background-color: #000; }
 }
+
+@keyframes glitchAnim {
+  0% { transform: translate(0,0) rotate(0deg); opacity:1; filter: blur(0px); }
+  20% { transform: translate(-5px,5px) rotate(-2deg); opacity:0.7; color:red; filter: blur(1px); }
+  40% { transform: translate(5px,-5px) rotate(2deg); opacity:1; color:var(--secondary-glitch); filter: blur(0px); }
+  60% { transform: translate(-3px,3px) rotate(-1.5deg); opacity:0.8; color:lime; filter: blur(0.5px); }
+  80% { transform: translate(3px,-3px) rotate(1.5deg); opacity:1; color:yellow; filter: blur(0px); }
+  100% { transform: translate(0,0) rotate(0deg); opacity:1; color:#fff; filter: blur(0px); }
+}
+
+@keyframes goonerGlitch {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-1px, 1px); }
+  40% { transform: translate(1px, -1px); }
+  60% { transform: translate(-0.5px, 0.5px); }
+  80% { transform: translate(0.5px, -0.5px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes goonerTextGlitch {
+  0% { clip-path: inset(0% 0% 0% 0%); }
+  20% { clip-path: inset(10% 0% 70% 0%); transform: translateX(-5px); }
+  40% { clip-path: inset(30% 0% 40% 0%); transform: translateX(5px); }
+  60% { clip-path: inset(60% 0% 10% 0%); transform: translateX(-3px); }
+  80% { clip-path: inset(80% 0% 0% 0%); transform: translateX(3px); }
+  100% { clip-path: inset(0% 0% 0% 0%); }
+}
+
+@keyframes goonerTextGlitchAlt {
+  0% { clip-path: inset(0% 0% 0% 0%); }
+  20% { clip-path: inset(70% 0% 10% 0%); transform: translateX(5px); }
+  40% { clip-path: inset(40% 0% 30% 0%); transform: translateX(-5px); }
+  60% { clip-path: inset(10% 0% 60% 0%); transform: translateX(3px); }
+  80% { clip-path: inset(0% 0% 80% 0%); transform: translateX(-3px); }
+  100% { clip-path: inset(0% 0% 0% 0%); }
+}
+
+/* New animation for stormFlash, removed from original JS */
+@keyframes stormFlash {
+  0% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(5deg); }
+  100% { opacity: 0; transform: scale(1.5) rotate(10deg); }
+}
+
 </style>
 </head>
 <body>
 <div class="wrap">
-  <button class="hidden-button" id="hiddenText">you're cool</button>
-  <div class="gooner" id="gooner">What up gooner</div>
+  <button class="hidden-button" id="hiddenText">you're cool</button>
+  <div class="gooner" id="gooner" data-text="What up gooner">What up gooner</div>
 </div>
 
 <div class="overlay" id="overlayWhy">
-  <div class="glitch-text" data-text="WHY ARE YOU HERE">WHY ARE YOU HERE</div>
+  <div class="glitch-text" data-text="WHY ARE YOU HERE">WHY ARE YOU HERE</div>
 </div>
 
 <div class="gooner-section" id="goonerSection">
-  <div id="goonerText">GONER</div>
+  <div id="goonerText">GONER</div>
 </div>
 
 <script>
@@ -127,43 +213,60 @@ const overlayWhy = document.getElementById("overlayWhy");
 const goonerSection = document.getElementById("goonerSection");
 const goonerText = document.getElementById("goonerText");
 
-// Click main text -> flash "WHAT UP GOONER" all over
+// Click main text -> flood screen with repeated "WHAT UP GOONER"
 gooner.addEventListener("click", () => {
-  const flashCount = 40;
-  for (let i = 0; i < flashCount; i++) {
-    const span = document.createElement("span");
-    span.textContent = "WHAT UP GOONER";
-    span.style.position = "absolute";
-    span.style.left = Math.random() * 100 + "vw";
-    span.style.top = Math.random() * 100 + "vh";
-    span.style.fontSize = `clamp(20px, ${Math.random()*8 + 3}vw, 80px)`;
-    span.style.textShadow = `2px 0 red, -2px 0 cyan`;
-    span.style.color = `hsl(${Math.random()*360}, 100%, 70%)`;
-    span.style.animation = `stormFlash ${0.05 + Math.random()*0.15}s infinite`;
-    document.body.appendChild(span);
-    setTimeout(() => { span.remove(); }, 1000 + Math.random()*500);
-  }
+  // Ensure background is black
+  document.body.style.background = "#000";
 
-  // Show GONER section
-  goonerSection.classList.add("active");
+  // Remove any existing flood spans to prevent overlap if clicked multiple times quickly
+  document.querySelectorAll('.flood-span').forEach(span => span.remove());
+
+  const interval = setInterval(() => {
+    const span = document.createElement("span");
+    span.textContent = "WHAT UP GOONER";
+    span.classList.add('flood-span'); // Add a class for easy removal
+    span.style.position = "absolute";
+    span.style.left = Math.random() * 100 + "vw";
+    span.style.top = Math.random() * 100 + "vh";
+    span.style.fontSize = `${Math.random()*50 + 25}px`; /* Denser and larger text */
+    span.style.fontFamily = '"Press Start 2P", monospace';
+    span.style.color = `hsl(${Math.random()*360}, 100%, 70%)`;
+    span.style.textShadow = `3px 0 red, -3px 0 cyan`; /* More aggressive shadow */
+    span.style.zIndex = Math.floor(Math.random() * 50); /* Random z-index for depth */
+    span.style.opacity = Math.random() * 0.8 + 0.2; /* Varied opacity */
+    span.style.animation = `stormFlash ${0.1 + Math.random()*0.2}s forwards`; /* Faster, more intense animation */
+    document.body.appendChild(span);
+
+    // Remove flood spans after they complete their animation/time
+    setTimeout(() => { span.remove(); }, 1000 + Math.random()*1000);
+
+  }, 20); // Faster interval (every 20ms)
+
+  // Stop creating new flood text after 4 seconds (instead of 5)
+  setTimeout(() => {
+    clearInterval(interval);
+  }, 4000);
+
+  // Show GONER section
+  goonerSection.classList.add("active");
 });
 
 // Hidden button -> open overlay
 hiddenText.addEventListener("click", () => {
-  overlayWhy.classList.add("active");
+  overlayWhy.classList.add("active");
 });
 
 // Click overlay to close
 overlayWhy.addEventListener("click", () => {
-  overlayWhy.classList.remove("active");
+  overlayWhy.classList.remove("active");
 });
 
 // Press G -> glitch GONER text in section
 document.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "g" && goonerSection.classList.contains("active")) {
-    goonerText.style.animation = "glitchAnim 0.1s infinite";
-    setTimeout(() => { goonerText.style.animation = ""; }, 2000); // glitch lasts 2s
-  }
+  if (e.key.toLowerCase() === "g" && goonerSection.classList.contains("active")) {
+    goonerText.style.animation = "glitchAnim 0.05s infinite"; /* Faster glitch */
+    setTimeout(() => { goonerText.style.animation = ""; }, 3000); // glitch lasts 3s
+  }
 });
 </script>
 </body>
