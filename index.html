@@ -8,187 +8,200 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
-    :root{
+    :root {
       --bg: #000;
       --accent: #ff0606;
     }
 
-    html,body{
-      height:100%;
-      margin:0;
-      background:var(--bg);
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
       font-family: "Press Start 2P", monospace;
-      overflow:hidden;
-      color:var(--accent);
+      overflow: hidden;
+      color: var(--accent);
       -webkit-tap-highlight-color: transparent;
     }
 
-    .wrap{
-      height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      position:relative;
-      user-select:none;
-      text-align:center;
-      padding:10px;
+    .wrap {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+      text-align: center;
+      padding: 10px;
     }
 
     .gooner {
       font-size: clamp(24px, 8vw, 72px);
-      color:var(--accent);
-      cursor:pointer;
-      padding:20px 30px;
-      border:5px solid var(--accent);
-      border-radius:8px;
-      letter-spacing:4px;
-      background:rgba(255,6,6,0.02);
+      color: var(--accent);
+      cursor: pointer;
+      padding: 20px 30px;
+      border: 5px solid var(--accent);
+      border-radius: 8px;
+      letter-spacing: 4px;
+      background: rgba(255, 6, 6, 0.02);
       transition: transform 200ms ease, box-shadow 200ms ease;
       box-shadow: 0 6px 0 rgba(0,0,0,0.6);
-      touch-action:manipulation;
+      touch-action: manipulation;
     }
 
-    .gooner:hover{
+    .gooner:hover {
       transform: translateY(-8px) scale(1.04);
       box-shadow: 0 14px 0 rgba(0,0,0,0.6);
-      text-shadow:2px 2px 0 rgba(0,0,0,0.9);
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.9);
     }
 
-    .gooner:active{
+    .gooner:active {
       transform: translateY(-3px) scale(0.97);
       box-shadow: 0 4px 0 rgba(0,0,0,0.6);
     }
 
-    .hint{
-      position:absolute;
-      bottom:20px;
-      left:50%;
-      transform:translateX(-50%);
-      font-size:clamp(10px, 3vw, 14px);
-      color:rgba(255,6,6,0.6);
-      letter-spacing:2px;
+    .hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(10px, 3vw, 14px);
+      color: rgba(255,6,6,0.6);
+      letter-spacing: 2px;
     }
 
-    .hidden-text{
-      position:fixed;
-      top:10px;left:10px;
-      font-size:clamp(8px, 2.5vw, 12px);
-      color:rgba(255,6,6,0.6);
-      pointer-events:auto;
-      cursor:pointer;
-      z-index:10001;
-      animation:glitch 1.5s 3s;
+    .hidden-text {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-size: clamp(8px, 2.5vw, 12px);
+      color: rgba(255,6,6,0.6);
+      pointer-events: auto;
+      cursor: pointer;
+      z-index: 10001;
+      animation: glitch 1.5s 3s;
     }
 
     @keyframes glitch {
-      0% { text-shadow:2px 0 var(--accent);}
-      20% { text-shadow:-2px 0 var(--accent);}
-      40% { text-shadow:2px 2px var(--accent);}
-      60% { text-shadow:-2px -2px var(--accent);}
-      80% { text-shadow:2px -2px var(--accent);}
-      100%{ text-shadow:none;}
+      0% { text-shadow: 2px 0 var(--accent); }
+      20% { text-shadow: -2px 0 var(--accent); }
+      40% { text-shadow: 2px 2px var(--accent); }
+      60% { text-shadow: -2px -2px var(--accent); }
+      80% { text-shadow: 2px -2px var(--accent); }
+      100% { text-shadow: none; }
     }
 
-    .overlay{
-      position:fixed;
-      inset:0;
-      background:var(--bg);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      overflow:hidden;
-    }
-    .overlay.active{display:flex;}
-
-    .surface{
-      position:relative;
-      width:100%;
-      height:100%;
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      overflow: hidden;
+      flex-direction: column;
     }
 
-    .stamp{
-      position:absolute;
-      color:var(--accent);
-      font-size:clamp(28px, 10vw, 160px);
-      opacity:0;
-      pointer-events:none;
-      animation:flash 1s linear infinite;
-      text-align:center;
+    .overlay.active { display: flex; }
+
+    .surface {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
 
-    @keyframes flash{
-      0%,100%{opacity:0;transform:scale(0.9);}
-      20%,80%{opacity:1;transform:scale(1);}
+    .stamp {
+      position: absolute;
+      color: var(--accent);
+      font-size: clamp(28px, 10vw, 160px);
+      opacity: 0;
+      pointer-events: none;
+      animation: flash 1s linear infinite;
+      text-align: center;
     }
 
-    .center-giant{
-      position:absolute;
-      top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      font-size:clamp(48px, 14vw, 240px);
-      opacity:0;
-      pointer-events:none;
-      animation:pulse 1.2s ease-in-out infinite;
+    @keyframes flash {
+      0%,100% {opacity:0;transform:scale(0.9);}
+      20%,80% {opacity:1;transform:scale(1);}
     }
 
-    @keyframes pulse{
-      0%{opacity:0;transform:translate(-50%,-50%) scale(0.9);}
-      50%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}
-      100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}
+    .center-giant {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(48px, 14vw, 240px);
+      opacity: 0;
+      pointer-events: none;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0% {opacity:0;transform:translate(-50%,-50%) scale(0.9);}
+      50% {opacity:1;transform:translate(-50%,-50%) scale(1.05);}
+      100% {opacity:0;transform:translate(-50%,-50%) scale(0.95);}
     }
 
     .glitch-static {
-      position:absolute;
-      top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      font-size:clamp(40px, 12vw, 200px);
-      color:white;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      font-size: clamp(40px, 12vw, 200px);
+      color: white;
       animation: tvGlitch 0.8s infinite;
-      letter-spacing:2px;
+      letter-spacing: 2px;
     }
 
     @keyframes tvGlitch {
       0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }
-      10% { transform: translate(-49%,-51%) skew(1deg); opacity:0.8; }
       20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }
-      30% { transform: translate(-50%,-50%) skew(2deg); opacity:0.9; }
-      40% { transform: translate(-50%,-50%) skew(-2deg); opacity:1; }
-      50% { transform: translate(-49%,-50%) skew(1deg); opacity:0.85; }
-      60% { transform: translate(-50%,-49%) skew(-1deg); opacity:1; }
-      70% { transform: translate(-51%,-50%) skew(2deg); opacity:0.9; }
-      80% { transform: translate(-50%,-51%) skew(-2deg); opacity:1; }
-      90% { transform: translate(-50%,-50%) skew(1deg); opacity:0.95; }
+      50% { transform: translate(-50%,-50%) skew(2deg); opacity:.9; }
       100%{ transform: translate(-50%,-50%) skew(0deg); opacity:1; }
     }
 
-    .close-btn{
-      position:fixed;
-      top:10px;right:10px;
-      font-size:clamp(10px, 4vw, 14px);
-      border:2px solid var(--accent);
-      color:var(--accent);
-      background:transparent;
-      padding:6px 10px;
-      border-radius:6px;
-      cursor:pointer;
-      z-index:10000;
-    }
-    .close-btn:active{transform:scale(0.9);}
-
-    /* PONG STYLES */
-    #pongCanvas {
-      background: black;
-      border: 3px solid var(--accent);
-    }
-    #scoreboard {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+    .close-btn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      font-size: clamp(10px, 4vw, 14px);
+      border: 2px solid var(--accent);
       color: var(--accent);
-      font-size: 20px;
+      background: transparent;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 10000;
+    }
+
+    .close-btn:active { transform: scale(0.9); }
+
+    /* 🔴 PONG overlay */
+    #overlayPong canvas {
+      border: 4px solid var(--accent);
+      background: black;
+    }
+
+    #overlayPong h1 {
+      color: var(--accent);
+      font-size: clamp(24px, 8vw, 72px);
+      margin-bottom: 20px;
       text-align: center;
+    }
+
+    #overlayPong .difficulty-btn {
+      color: var(--accent);
+      background: transparent;
+      border: 2px solid var(--accent);
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      font-family: "Press Start 2P", monospace;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    #scoreboard {
+      margin-top: 10px;
+      font-size: clamp(12px, 3vw, 18px);
     }
   </style>
 </head>
@@ -211,36 +224,45 @@
     <div class="glitch-static">WHY ARE YOU HERE</div>
   </div>
 
-  <!-- PONG OVERLAY -->
+  <!-- 🔴 PONG overlay -->
   <div class="overlay" id="overlayPong">
     <button class="close-btn" data-close="overlayPong">CLOSE</button>
+    <h1>PONG</h1>
+    <div>
+      <button class="difficulty-btn" data-speed="3">EASY</button>
+      <button class="difficulty-btn" data-speed="6">MEDIUM</button>
+      <button class="difficulty-btn" data-speed="9">HARD</button>
+    </div>
     <div id="scoreboard">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
   </div>
 
   <script>
-    function rand(min,max){return Math.random()*(max-min)+min;}
+    function rand(min, max){ return Math.random() * (max - min) + min; }
 
-    function populateStamps(surface, text, count=30){
-      surface.innerHTML='';
-      for(let i=0;i<count;i++){
-        const s=document.createElement('div');
-        s.className='stamp';
-        s.textContent=text;
-        s.style.left=rand(-10,90)+'vw';
-        s.style.top=rand(-10,90)+'vh';
-        s.style.animationDelay=rand(0,1)+'s';
-        s.style.animationDuration=rand(0.8,1.6)+'s';
+    function populateStamps(surface, text, count = 30){
+      surface.innerHTML = '';
+      for(let i=0; i<count; i++){
+        const s = document.createElement('div');
+        s.className = 'stamp';
+        s.textContent = text;
+        s.style.left = rand(-10,90) + 'vw';
+        s.style.top = rand(-10,90) + 'vh';
+        s.style.animationDelay = rand(0,1) + 's';
+        s.style.animationDuration = rand(0.8,1.6) + 's';
         surface.appendChild(s);
       }
     }
 
-    const main=document.getElementById('mainGooner');
-    const hiddenText=document.getElementById('hiddenText');
-    const overlayGonner=document.getElementById('overlayGonner');
-    const overlayWhy=document.getElementById('overlayWhy');
-    const surfaceGonner=document.getElementById('surfaceGonner');
-    const overlayPong=document.getElementById('overlayPong');
+    const main = document.getElementById('mainGooner');
+    const hiddenText = document.getElementById('hiddenText');
+    const overlayGonner = document.getElementById('overlayGonner');
+    const overlayWhy = document.getElementById('overlayWhy');
+    const surfaceGonner = document.getElementById('surfaceGonner');
+    const overlayPong = document.getElementById('overlayPong');
+    const canvas = document.getElementById('pongCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreboard = document.getElementById('scoreboard');
 
     main.addEventListener('click',()=>{
       overlayGonner.classList.add('active');
@@ -254,6 +276,7 @@
     document.querySelectorAll('.close-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
         document.getElementById(btn.dataset.close).classList.remove('active');
+        cancelAnimationFrame(animation);
       });
     });
 
@@ -277,120 +300,93 @@
       main.style.letterSpacing='4px';
     });
 
-    // KONAMI CODE DETECTOR
+    // 🕹️ Konami Code
     const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
-    let entered = [];
-
-    window.addEventListener('keydown', (e) => {
-      entered.push(e.key);
-      if (entered.length > konami.length) entered.shift();
-      if (konami.every((v,i)=>v===entered[i])) {
+    let inputSeq = [];
+    document.addEventListener('keydown',(e)=>{
+      inputSeq.push(e.key);
+      if(inputSeq.length > konami.length) inputSeq.shift();
+      if(JSON.stringify(inputSeq) === JSON.stringify(konami)){
         overlayPong.classList.add('active');
-        startPong();
-        entered = [];
       }
     });
 
-    // SIMPLE PONG GAME
-    function startPong(){
-      const canvas = document.getElementById('pongCanvas');
-      const ctx = canvas.getContext('2d');
-      const scoreboard = document.getElementById('scoreboard');
+    // 🏓 Pong game variables
+    const paddle = {x:20, y:canvas.height/2-40, w:10, h:80, dy:0};
+    const ai = {x:canvas.width-30, y:canvas.height/2-40, w:10, h:80};
+    const ball = {x:canvas.width/2, y:canvas.height/2, r:8, dx:4, dy:4};
+    let aiSpeed = 3;
+    let playerScore = 0;
+    let aiScore = 0;
+    let animation;
 
-      let paddleHeight = 100;
-      let paddleWidth = 10;
-      let playerY = (canvas.height - paddleHeight)/2;
-      let aiY = (canvas.height - paddleHeight)/2;
-      let ballX = canvas.width/2;
-      let ballY = canvas.height/2;
-      let ballSpeedX = 4;
-      let ballSpeedY = 4;
-      let playerScore = 0;
-      let aiScore = 0;
-
-      document.addEventListener('mousemove', function(e){
-        const rect = canvas.getBoundingClientRect();
-        playerY = e.clientY - rect.top - paddleHeight/2;
-      });
-
-      function resetBall(){
-        ballX = canvas.width/2;
-        ballY = canvas.height/2;
-        ballSpeedX = -ballSpeedX;
-        ballSpeedY = 4 * (Math.random() > 0.5 ? 1 : -1);
-      }
-
-      function draw(){
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-
-        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent');
-
-        // middle line
-        for(let i=0;i<canvas.height;i+=40){
-          ctx.fillRect(canvas.width/2-1,i,2,20);
-        }
-
-        // paddles
-        ctx.fillRect(0, playerY, paddleWidth, paddleHeight);
-        ctx.fillRect(canvas.width - paddleWidth, aiY, paddleWidth, paddleHeight);
-
-        // ball
-        ctx.beginPath();
-        ctx.arc(ballX, ballY, 8, 0, Math.PI*2);
-        ctx.fill();
-
-        // scores
-        scoreboard.textContent = `${playerScore} : ${aiScore}`;
-      }
-
-      function update(){
-        ballX += ballSpeedX;
-        ballY += ballSpeedY;
-
-        // AI follow ball
-        const aiCenter = aiY + paddleHeight/2;
-        if(aiCenter < ballY - 35) aiY += 6;
-        else if(aiCenter > ballY + 35) aiY -= 6;
-
-        // wall bounce
-        if(ballY < 0 || ballY > canvas.height) ballSpeedY = -ballSpeedY;
-
-        // left paddle collision
-        if(ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight){
-          ballSpeedX = -ballSpeedX;
-          const deltaY = ballY - (playerY + paddleHeight/2);
-          ballSpeedY = deltaY * 0.25;
-        }
-
-        // right paddle collision
-        if(ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight){
-          ballSpeedX = -ballSpeedX;
-          const deltaY = ballY - (aiY + paddleHeight/2);
-          ballSpeedY = deltaY * 0.25;
-        }
-
-        // score update
-        if(ballX < 0){
-          aiScore++;
-          resetBall();
-        }else if(ballX > canvas.width){
-          playerScore++;
-          resetBall();
-        }
-      }
-
-      function gameLoop(){
-        update();
-        draw();
-        if(overlayPong.classList.contains('active')){
-          requestAnimationFrame(gameLoop);
-        }
-      }
-
-      gameLoop();
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#ff0606";
+      ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+      ctx.fillRect(ai.x,ai.y,ai.w,ai.h);
+      ctx.beginPath();
+      ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.closePath();
+      ctx.fillRect(canvas.width/2-2,0,4,canvas.height);
+      scoreboard.textContent = `${playerScore} : ${aiScore}`;
     }
+
+    function update(){
+      // move player paddle
+      paddle.y += paddle.dy;
+      if(paddle.y < 0) paddle.y = 0;
+      if(paddle.y + paddle.h > canvas.height) paddle.y = canvas.height - paddle.h;
+
+      // move ball
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      // ball collision
+      if(ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.dy *= -1;
+
+      if(ball.x - ball.r < paddle.x + paddle.w && ball.y > paddle.y && ball.y < paddle.y + paddle.h) ball.dx *= -1;
+      if(ball.x + ball.r > ai.x && ball.y > ai.y && ball.y < ai.y + ai.h) ball.dx *= -1;
+
+      if(ball.x < 0){ aiScore++; resetBall(); }
+      if(ball.x > canvas.width){ playerScore++; resetBall(); }
+
+      // AI movement
+      if(ai.y + ai.h/2 < ball.y) ai.y += aiSpeed;
+      if(ai.y + ai.h/2 > ball.y) ai.y -= aiSpeed;
+      if(ai.y < 0) ai.y = 0;
+      if(ai.y + ai.h > canvas.height) ai.y = canvas.height - ai.h;
+
+      draw();
+      animation = requestAnimationFrame(update);
+    }
+
+    function resetBall(){
+      ball.x = canvas.width/2;
+      ball.y = canvas.height/2;
+      ball.dx = (Math.random() > 0.5 ? 4 : -4);
+      ball.dy = (Math.random() > 0.5 ? 4 : -4);
+    }
+
+    document.addEventListener('keydown', e=>{
+      if(e.key==='ArrowUp') paddle.dy=-6;
+      if(e.key==='ArrowDown') paddle.dy=6;
+    });
+    document.addEventListener('keyup', e=>{
+      if(e.key==='ArrowUp' || e.key==='ArrowDown') paddle.dy=0;
+    });
+
+    document.querySelectorAll('.difficulty-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        aiSpeed = parseInt(btn.dataset.speed);
+        playerScore = 0;
+        aiScore = 0;
+        resetBall();
+        cancelAnimationFrame(animation);
+        update();
+      });
+    });
   </script>
 </body>
 </html>
