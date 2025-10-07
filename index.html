@@ -44,6 +44,10 @@
     #overlayPong h1 { color: var(--accent); font-size: clamp(24px, 8vw, 72px); margin-bottom: 20px; text-align: center; }
     #overlayPong .difficulty-btn { color: var(--accent); background: transparent; border: 2px solid var(--accent); padding: 10px 20px; margin: 10px; cursor: pointer; font-family: "Press Start 2P", monospace; font-size: 12px; border-radius: 8px; }
     #scoreboard { margin-top: 10px; font-size: clamp(12px, 3vw, 18px); }
+
+    #winLoseScreen { display: none; flex-direction: column; align-items: center; justify-content: center; position: fixed; inset: 0; background: var(--bg); color: var(--accent); font-family: "Press Start 2P", monospace; z-index: 10000; }
+    #winLoseScreen h1 { font-size: clamp(24px, 8vw, 72px); margin-bottom: 20px; text-align:center;}
+    #winLoseScreen button { color: var(--accent); background: transparent; border: 2px solid var(--accent); padding: 10px 20px; margin-top: 20px; cursor: pointer; border-radius: 8px; font-family: "Press Start 2P", monospace; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -77,6 +81,11 @@
     <canvas id="pongCanvas" width="800" height="600"></canvas>
   </div>
 
+  <div id="winLoseScreen">
+    <h1 id="winLoseMessage">YOU WIN</h1>
+    <button id="tryAgainBtn">TRY AGAIN</button>
+  </div>
+
   <script>
     function rand(min,max){ return Math.random()*(max-min)+min; }
 
@@ -103,6 +112,9 @@
     const canvas=document.getElementById('pongCanvas');
     const ctx=canvas.getContext('2d');
     const scoreboard=document.getElementById('scoreboard');
+    const winLoseScreen=document.getElementById('winLoseScreen');
+    const winLoseMessage=document.getElementById('winLoseMessage');
+    const tryAgainBtn=document.getElementById('tryAgainBtn');
 
     main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
     hiddenText.addEventListener('click',()=>{ overlayWhy.classList.add('active'); });
@@ -157,6 +169,22 @@
       scoreboard.textContent=`${playerScore} : ${aiScore}`;
     }
 
+    function checkWinLose(){
+      if(playerScore>=10){
+        winLoseMessage.textContent="YOU WIN";
+        winLoseScreen.style.display="flex";
+        cancelAnimationFrame(animation);
+        return true;
+      }
+      if(aiScore>=10){
+        winLoseMessage.textContent="YOU LOSE";
+        winLoseScreen.style.display="flex";
+        cancelAnimationFrame(animation);
+        return true;
+      }
+      return false;
+    }
+
     function update(){
       paddle.y+=paddle.dy;
       if(paddle.y<0)paddle.y=0;
@@ -178,7 +206,7 @@
       if(ai.y+ai.h>canvas.height) ai.y=canvas.height-ai.h;
 
       draw();
-      animation=requestAnimationFrame(update);
+      if(!checkWinLose()) animation=requestAnimationFrame(update);
     }
 
     function resetBall(){
@@ -202,9 +230,18 @@
         ballSpeed=parseInt(btn.dataset.ball);
         playerScore=0; aiScore=0;
         resetBall();
+        winLoseScreen.style.display="none";
         cancelAnimationFrame(animation);
         update();
       });
+    });
+
+    tryAgainBtn.addEventListener('click',()=>{
+      playerScore=0; aiScore=0;
+      resetBall();
+      winLoseScreen.style.display="none";
+      cancelAnimationFrame(animation);
+      update();
     });
   </script>
 </body>
