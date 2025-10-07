@@ -224,14 +224,13 @@
     <div class="glitch-static">WHY ARE YOU HERE</div>
   </div>
 
-  <!-- 🔴 PONG overlay -->
   <div class="overlay" id="overlayPong">
     <button class="close-btn" data-close="overlayPong">CLOSE</button>
     <h1>PONG</h1>
     <div>
-      <button class="difficulty-btn" data-speed="3">EASY</button>
-      <button class="difficulty-btn" data-speed="6">MEDIUM</button>
-      <button class="difficulty-btn" data-speed="9">HARD</button>
+      <button class="difficulty-btn" data-speed="2" data-ai="0.04">EASY</button>
+      <button class="difficulty-btn" data-speed="4" data-ai="0.07">MEDIUM</button>
+      <button class="difficulty-btn" data-speed="6" data-ai="0.12">HARD</button>
     </div>
     <div id="scoreboard">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
@@ -311,11 +310,12 @@
       }
     });
 
-    // 🏓 Pong game variables
+    // 🏓 Pong
     const paddle = {x:20, y:canvas.height/2-40, w:10, h:80, dy:0};
     const ai = {x:canvas.width-30, y:canvas.height/2-40, w:10, h:80};
     const ball = {x:canvas.width/2, y:canvas.height/2, r:8, dx:4, dy:4};
-    let aiSpeed = 3;
+    let aiSpeed = 4;
+    let aiFactor = 0.07; // AI reaction speed
     let playerScore = 0;
     let aiScore = 0;
     let animation;
@@ -334,27 +334,27 @@
     }
 
     function update(){
-      // move player paddle
+      // Move player
       paddle.y += paddle.dy;
       if(paddle.y < 0) paddle.y = 0;
       if(paddle.y + paddle.h > canvas.height) paddle.y = canvas.height - paddle.h;
 
-      // move ball
+      // Move ball
       ball.x += ball.dx;
       ball.y += ball.dy;
 
-      // ball collision
+      // Collisions
       if(ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.dy *= -1;
-
       if(ball.x - ball.r < paddle.x + paddle.w && ball.y > paddle.y && ball.y < paddle.y + paddle.h) ball.dx *= -1;
       if(ball.x + ball.r > ai.x && ball.y > ai.y && ball.y < ai.y + ai.h) ball.dx *= -1;
 
+      // Score
       if(ball.x < 0){ aiScore++; resetBall(); }
       if(ball.x > canvas.width){ playerScore++; resetBall(); }
 
-      // AI movement
-      if(ai.y + ai.h/2 < ball.y) ai.y += aiSpeed;
-      if(ai.y + ai.h/2 > ball.y) ai.y -= aiSpeed;
+      // AI moves based on difficulty factor
+      let target = ball.y - (ai.h/2);
+      ai.y += (target - ai.y) * aiFactor;
       if(ai.y < 0) ai.y = 0;
       if(ai.y + ai.h > canvas.height) ai.y = canvas.height - ai.h;
 
@@ -380,6 +380,7 @@
     document.querySelectorAll('.difficulty-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
         aiSpeed = parseInt(btn.dataset.speed);
+        aiFactor = parseFloat(btn.dataset.ai);
         playerScore = 0;
         aiScore = 0;
         resetBall();
