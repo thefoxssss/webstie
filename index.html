@@ -21,7 +21,7 @@
     .hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: clamp(10px, 3vw, 14px); color: rgba(255,6,6,0.6); letter-spacing: 2px; }
 
     .hidden-text { position: fixed; top: 10px; left: 10px; font-size: clamp(8px, 2.5vw, 12px); color: rgba(255,6,6,0.6); pointer-events: auto; cursor: pointer; z-index: 10001; animation: glitch 1.5s 3s; }
-    @keyframes glitch { 0% { text-shadow: 2px 0 var(--accent); } 20% { text-shadow: -2px 0 var(--accent); } 40% { text-shadow: 2px 2 var(--accent); } 60% { text-shadow: -2px -2 var(--accent); } 80% { text-shadow: 2px -2px var(--accent); } 100% { text-shadow: none; } }
+    @keyframes glitch { 0% { text-shadow: 2px 0 var(--accent); } 20% { text-shadow: -2px 0 var(--accent); } 40% { text-shadow: 2px 2 var(--accent); } 60% { text-shadow: -2px -2 var(--accent); } 80% { text-shadow: 2px -2 var(--accent); } 100% { text-shadow: none; } }
 
     .overlay { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; z-index: 9999; overflow: hidden; flex-direction: column; }
     .overlay.active { display: flex; }
@@ -69,9 +69,9 @@
     <button class="close-btn" data-close="overlayPong">CLOSE</button>
     <h1>PONG</h1>
     <div>
-      <button class="difficulty-btn" data-speed="4" data-ai="0.04" data-ball="4">EASY</button>
-      <button class="difficulty-btn" data-speed="4" data-ai="0.07" data-ball="5">MEDIUM</button>
-      <button class="difficulty-btn" data-speed="6" data-ai="0.12" data-ball="8">HARD</button>
+      <button class="difficulty-btn" data-speed="8" data-ai="0.04" data-ball="8">EASY</button>
+      <button class="difficulty-btn" data-speed="8" data-ai="0.07" data-ball="10">MEDIUM</button>
+      <button class="difficulty-btn" data-speed="12" data-ai="0.12" data-ball="16">HARD</button>
     </div>
     <div id="scoreboard">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
@@ -141,7 +141,7 @@
     const ball={x:canvas.width/2,y:canvas.height/2,r:8,dx:1,dy:1};
     let aiFactor=0.07;
     let playerScore=0, aiScore=0;
-    let ballSpeed=4;
+    let ballSpeed=8;
     let animation;
 
     function draw(){
