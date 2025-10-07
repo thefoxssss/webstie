@@ -69,7 +69,6 @@
       letter-spacing:2px;
     }
 
-    /* "your cool" static glitch text */
     .hidden-text{
       position:fixed;
       top:10px;left:10px;
@@ -90,7 +89,6 @@
       100%{ text-shadow:none;}
     }
 
-    /* overlays */
     .overlay{
       position:fixed;
       inset:0;
@@ -140,7 +138,6 @@
       100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}
     }
 
-    /* TV static glitch text for WHY ARE YOU HERE */
     .glitch-static {
       position:absolute;
       top:50%;left:50%;
@@ -178,6 +175,21 @@
       z-index:10000;
     }
     .close-btn:active{transform:scale(0.9);}
+
+    /* PONG STYLES */
+    #pongCanvas {
+      background: black;
+      border: 3px solid var(--accent);
+    }
+    #scoreboard {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--accent);
+      font-size: 20px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -188,17 +200,22 @@
     <div class="hint">tap / click me</div>
   </div>
 
-  <!-- GONNER overlay -->
   <div class="overlay" id="overlayGonner">
     <button class="close-btn" data-close="overlayGonner">CLOSE</button>
     <div class="surface" id="surfaceGonner"></div>
     <div class="center-giant">GONNER</div>
   </div>
 
-  <!-- WHY overlay -->
   <div class="overlay" id="overlayWhy">
     <button class="close-btn" data-close="overlayWhy">CLOSE</button>
     <div class="glitch-static">WHY ARE YOU HERE</div>
+  </div>
+
+  <!-- PONG OVERLAY -->
+  <div class="overlay" id="overlayPong">
+    <button class="close-btn" data-close="overlayPong">CLOSE</button>
+    <div id="scoreboard">0 : 0</div>
+    <canvas id="pongCanvas" width="800" height="600"></canvas>
   </div>
 
   <script>
@@ -220,10 +237,10 @@
 
     const main=document.getElementById('mainGooner');
     const hiddenText=document.getElementById('hiddenText');
-
     const overlayGonner=document.getElementById('overlayGonner');
     const overlayWhy=document.getElementById('overlayWhy');
     const surfaceGonner=document.getElementById('surfaceGonner');
+    const overlayPong=document.getElementById('overlayPong');
 
     main.addEventListener('click',()=>{
       overlayGonner.classList.add('active');
@@ -246,7 +263,6 @@
       });
     });
 
-    // hover glitch only on desktop
     let hoverInterval=null;
     main.addEventListener('mouseenter',()=>{
       if(window.matchMedia("(hover:hover)").matches){
@@ -260,6 +276,121 @@
       hoverInterval=null;
       main.style.letterSpacing='4px';
     });
+
+    // KONAMI CODE DETECTOR
+    const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
+    let entered = [];
+
+    window.addEventListener('keydown', (e) => {
+      entered.push(e.key);
+      if (entered.length > konami.length) entered.shift();
+      if (konami.every((v,i)=>v===entered[i])) {
+        overlayPong.classList.add('active');
+        startPong();
+        entered = [];
+      }
+    });
+
+    // SIMPLE PONG GAME
+    function startPong(){
+      const canvas = document.getElementById('pongCanvas');
+      const ctx = canvas.getContext('2d');
+      const scoreboard = document.getElementById('scoreboard');
+
+      let paddleHeight = 100;
+      let paddleWidth = 10;
+      let playerY = (canvas.height - paddleHeight)/2;
+      let aiY = (canvas.height - paddleHeight)/2;
+      let ballX = canvas.width/2;
+      let ballY = canvas.height/2;
+      let ballSpeedX = 4;
+      let ballSpeedY = 4;
+      let playerScore = 0;
+      let aiScore = 0;
+
+      document.addEventListener('mousemove', function(e){
+        const rect = canvas.getBoundingClientRect();
+        playerY = e.clientY - rect.top - paddleHeight/2;
+      });
+
+      function resetBall(){
+        ballX = canvas.width/2;
+        ballY = canvas.height/2;
+        ballSpeedX = -ballSpeedX;
+        ballSpeedY = 4 * (Math.random() > 0.5 ? 1 : -1);
+      }
+
+      function draw(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent');
+
+        // middle line
+        for(let i=0;i<canvas.height;i+=40){
+          ctx.fillRect(canvas.width/2-1,i,2,20);
+        }
+
+        // paddles
+        ctx.fillRect(0, playerY, paddleWidth, paddleHeight);
+        ctx.fillRect(canvas.width - paddleWidth, aiY, paddleWidth, paddleHeight);
+
+        // ball
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, 8, 0, Math.PI*2);
+        ctx.fill();
+
+        // scores
+        scoreboard.textContent = `${playerScore} : ${aiScore}`;
+      }
+
+      function update(){
+        ballX += ballSpeedX;
+        ballY += ballSpeedY;
+
+        // AI follow ball
+        const aiCenter = aiY + paddleHeight/2;
+        if(aiCenter < ballY - 35) aiY += 6;
+        else if(aiCenter > ballY + 35) aiY -= 6;
+
+        // wall bounce
+        if(ballY < 0 || ballY > canvas.height) ballSpeedY = -ballSpeedY;
+
+        // left paddle collision
+        if(ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight){
+          ballSpeedX = -ballSpeedX;
+          const deltaY = ballY - (playerY + paddleHeight/2);
+          ballSpeedY = deltaY * 0.25;
+        }
+
+        // right paddle collision
+        if(ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight){
+          ballSpeedX = -ballSpeedX;
+          const deltaY = ballY - (aiY + paddleHeight/2);
+          ballSpeedY = deltaY * 0.25;
+        }
+
+        // score update
+        if(ballX < 0){
+          aiScore++;
+          resetBall();
+        }else if(ballX > canvas.width){
+          playerScore++;
+          resetBall();
+        }
+      }
+
+      function gameLoop(){
+        update();
+        draw();
+        if(overlayPong.classList.contains('active')){
+          requestAnimationFrame(gameLoop);
+        }
+      }
+
+      gameLoop();
+    }
   </script>
 </body>
 </html>
