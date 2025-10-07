@@ -228,9 +228,9 @@
     <button class="close-btn" data-close="overlayPong">CLOSE</button>
     <h1>PONG</h1>
     <div>
-      <button class="difficulty-btn" data-speed="2" data-ai="0.04">EASY</button>
-      <button class="difficulty-btn" data-speed="4" data-ai="0.07">MEDIUM</button>
-      <button class="difficulty-btn" data-speed="6" data-ai="0.12">HARD</button>
+      <button class="difficulty-btn" data-speed="2" data-ai="0.04" data-ball="2">EASY</button>
+      <button class="difficulty-btn" data-speed="4" data-ai="0.07" data-ball="4">MEDIUM</button>
+      <button class="difficulty-btn" data-speed="6" data-ai="0.12" data-ball="6">HARD</button>
     </div>
     <div id="scoreboard">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
@@ -314,10 +314,10 @@
     const paddle = {x:20, y:canvas.height/2-40, w:10, h:80, dy:0};
     const ai = {x:canvas.width-30, y:canvas.height/2-40, w:10, h:80};
     const ball = {x:canvas.width/2, y:canvas.height/2, r:8, dx:4, dy:4};
-    let aiSpeed = 4;
-    let aiFactor = 0.07; // AI reaction speed
+    let aiFactor = 0.07; // AI reaction
     let playerScore = 0;
     let aiScore = 0;
+    let ballSpeed = 4;
     let animation;
 
     function draw(){
@@ -340,8 +340,8 @@
       if(paddle.y + paddle.h > canvas.height) paddle.y = canvas.height - paddle.h;
 
       // Move ball
-      ball.x += ball.dx;
-      ball.y += ball.dy;
+      ball.x += ball.dx * ballSpeed/4;
+      ball.y += ball.dy * ballSpeed/4;
 
       // Collisions
       if(ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.dy *= -1;
@@ -365,8 +365,8 @@
     function resetBall(){
       ball.x = canvas.width/2;
       ball.y = canvas.height/2;
-      ball.dx = (Math.random() > 0.5 ? 4 : -4);
-      ball.dy = (Math.random() > 0.5 ? 4 : -4);
+      ball.dx = (Math.random() > 0.5 ? 1 : -1);
+      ball.dy = (Math.random() > 0.5 ? 1 : -1);
     }
 
     document.addEventListener('keydown', e=>{
@@ -379,8 +379,8 @@
 
     document.querySelectorAll('.difficulty-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
-        aiSpeed = parseInt(btn.dataset.speed);
         aiFactor = parseFloat(btn.dataset.ai);
+        ballSpeed = parseInt(btn.dataset.ball);
         playerScore = 0;
         aiScore = 0;
         resetBall();
