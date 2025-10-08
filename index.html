@@ -369,13 +369,11 @@
       btn.addEventListener('click', () => {
         const overlayId = btn.dataset.close;
         document.getElementById(overlayId).classList.remove('active');
-        // Cancel animations or intervals if needed
         cancelAnimationFrame(pongAnimationFrame);
         clearInterval(snakeInterval);
         snakeGameOver.style.display = 'none';
       });
     });
-    // Also clicking outside overlay closes
     document.querySelectorAll('.overlay').forEach(ov => {
       ov.addEventListener('click', e => {
         if (e.target === ov) {
@@ -387,7 +385,7 @@
       });
     });
 
-    // --- Pong logic (restored) ---
+    // --- Pong logic (unchanged) ---
     const overlayPong = document.getElementById('overlayPong');
     const canvas = document.getElementById('pongCanvas');
     const ctx = canvas.getContext('2d');
@@ -396,26 +394,9 @@
     const winLoseMessage = document.getElementById('winLoseMessage');
     const tryAgainBtn = document.getElementById('tryAgainBtn');
 
-    let paddle = {
-      x: 20,
-      y: canvas.height / 2 - 40,
-      w: 10,
-      h: 80,
-      dy: 0
-    };
-    let ai = {
-      x: canvas.width - 30,
-      y: canvas.height / 2 - 40,
-      w: 10,
-      h: 80
-    };
-    let ball = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      r: 8,
-      dx: 1,
-      dy: 1
-    };
+    let paddle = { x: 20, y: canvas.height / 2 - 40, w: 10, h: 80, dy: 0 };
+    let ai = { x: canvas.width - 30, y: canvas.height / 2 - 40, w: 10, h: 80 };
+    let ball = { x: canvas.width / 2, y: canvas.height / 2, r: 8, dx: 1, dy: 1 };
     let aiFactor = 0.07;
     let playerScore = 0, aiScore = 0;
     let ballSpeed = 8;
@@ -458,213 +439,143 @@
       ball.x += ball.dx * ballSpeed / 4;
       ball.y += ball.dy * ballSpeed / 4;
 
-      if (ball.y + ball.r > canvas.height || ball.y - ball.r < 0) {
-        ball.dy *= -1;
-      }
-      if (
-        ball.x - ball.r < paddle.x + paddle.w &&
-        ball.y > paddle.y && ball.y < paddle.y + paddle.h
-      ) {
-        ball.dx *= -1;
-      }
-      if (
-        ball.x + ball.r > ai.x &&
-        ball.y > ai.y && ball.y < ai.y + ai.h
-      ) {
-        ball.dx *= -1;
-      }
+      if (ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.dy *= -1;
+      if (ball.x - ball.r < paddle.x + paddle.w && ball.y > paddle.y && ball.y < paddle.y + paddle.h) ball.dx *= -1;
+      if (ball.x + ball.r > ai.x && ball.y > ai.y && ball.y < ai.y + ai.h) ball.dx *= -1;
 
-      if (ball.x < 0) {
-        aiScore++;
-        resetBall();
-      }
-      if (ball.x > canvas.width) {
-        playerScore++;
-        resetBall();
-      }
-
-      let target = ball.y - ai.h / 2;
-      ai.y += (target - ai.y) * aiFactor;
-      if (ai.y < 0) ai.y = 0;
-      if (ai.y + ai.h > canvas.height) ai.y = canvas.height - ai.h;
+      ai.y += ((ball.y - (ai.y + ai.h/2)) * aiFactor);
+      if (ball.x - ball.r < 0) { aiScore++; resetBall(); }
+      if (ball.x + ball.r > canvas.width) { playerScore++; resetBall(); }
 
       drawPong();
-      if (!checkWinLose()) {
-        pongAnimationFrame = requestAnimationFrame(updatePong);
-      }
+      if (!checkWinLose()) pongAnimationFrame = requestAnimationFrame(updatePong);
     }
 
     function resetBall() {
       ball.x = canvas.width / 2;
       ball.y = canvas.height / 2;
-      ball.dx = (Math.random() > 0.5 ? 1 : -1);
-      ball.dy = (Math.random() > 0.5 ? 1 : -1);
+      ball.dx = Math.random() > 0.5 ? 1 : -1;
+      ball.dy = Math.random() > 0.5 ? 1 : -1;
     }
-
-    document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowUp') paddle.dy = -6;
-      if (e.key === 'ArrowDown') paddle.dy = 6;
-    });
-    document.addEventListener('keyup', e => {
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        paddle.dy = 0;
-      }
-    });
 
     document.querySelectorAll('.difficulty-btn').forEach(btn => {
       btn.addEventListener('click', () => {
+        ballSpeed = parseFloat(btn.dataset.ball);
         aiFactor = parseFloat(btn.dataset.ai);
-        ballSpeed = parseInt(btn.dataset.ball);
-        playerScore = 0; aiScore = 0;
         resetBall();
+        playerScore = 0; aiScore = 0;
         winLoseScreen.style.display = 'none';
-        cancelAnimationFrame(pongAnimationFrame);
         updatePong();
       });
     });
 
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowUp') paddle.dy = -ballSpeed;
+      if (e.key === 'ArrowDown') paddle.dy = ballSpeed;
+    });
+    document.addEventListener('keyup', e => { if(e.key==='ArrowUp'||e.key==='ArrowDown') paddle.dy=0; });
+
     tryAgainBtn.addEventListener('click', () => {
       playerScore = 0; aiScore = 0;
-      resetBall();
       winLoseScreen.style.display = 'none';
-      cancelAnimationFrame(pongAnimationFrame);
+      resetBall();
       updatePong();
     });
 
-    // Konami code to trigger Pong
-    const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
-    let inputSeq = [];
-    document.addEventListener('keydown', e => {
-      inputSeq.push(e.key);
-      if (inputSeq.length > konami.length) inputSeq.shift();
-      if (JSON.stringify(inputSeq) === JSON.stringify(konami)) {
-        overlayPong.classList.add('active');
-      }
-    });
-
-    // --- Snake logic (enhanced) ---
+    // --- Snake logic ---
     const overlaySnake = document.getElementById('overlaySnake');
     const snakeCanvas = document.getElementById('snakeCanvas');
     const snakeCtx = snakeCanvas.getContext('2d');
-    const startSnake = document.getElementById('startSnake');
+    const startSnakeBtn = document.getElementById('startSnake');
     const snakeScore = document.getElementById('snakeScore');
     const snakeGameOver = document.getElementById('snakeGameOver');
     const snakeTryAgain = document.getElementById('snakeTryAgain');
 
-    const snakeGridSize = 20;
-    const snakeTileCount = 20;
-    let snake = [{ x: 10, y: 10 }];
-    let direction = { x: 0, y: 0 };
-    let nextDirection = { x: 0, y: 0 };
-    let apple = { x: 15, y: 15 };
-    let snakeInterval;
+    let snake = [];
+    let direction = {x:0, y:0};
+    let nextDirection = {x:1, y:0};
+    let apple = {x:0, y:0};
     let score = 0;
     let highScore = 0;
+    let snakeTileCount = 20;
+    let snakeInterval;
     let isPlaying = false;
 
-    function drawGrid() {
-      snakeCtx.fillStyle = "#000";
-      snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-      for (let x = 0; x < snakeTileCount; x++) {
-        for (let y = 0; y < snakeTileCount; y++) {
-          snakeCtx.strokeStyle = "#111";
-          snakeCtx.strokeRect(x * snakeGridSize, y * snakeGridSize, snakeGridSize, snakeGridSize);
-        }
-      }
-    }
-
-    function drawSnakeGame() {
-      drawGrid();
-      // draw apple
-      snakeCtx.fillStyle = "#ff0606";
-      snakeCtx.fillRect(apple.x * snakeGridSize, apple.y * snakeGridSize, snakeGridSize, snakeGridSize);
-      // draw snake
-      snakeCtx.fillStyle = "#fff";
-      snake.forEach(p => {
-        snakeCtx.fillRect(p.x * snakeGridSize, p.y * snakeGridSize, snakeGridSize, snakeGridSize);
-      });
+    function startSnakeGame() {
+      snake = [{ x: 10, y: 10 }];
+      direction = { x: 0, y: 0 };
+      nextDirection = { x: 1, y: 0 }; // initial movement
+      apple = { x: Math.floor(Math.random() * snakeTileCount), y: Math.floor(Math.random() * snakeTileCount) };
+      score = 0;
+      snakeScore.textContent = `SCORE: 0 | HIGH: ${highScore}`;
+      isPlaying = true;
+      clearInterval(snakeInterval);
+      snakeInterval = setInterval(() => {
+        if(direction.x !== 0 || direction.y !== 0) updateSnake();
+      }, 150);
     }
 
     function updateSnake() {
-      const head = {
-        x: snake[0].x + direction.x,
-        y: snake[0].y + direction.y
-      };
-
+      const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
       // collisions
-      if (
-        head.x < 0 || head.x >= snakeTileCount ||
-        head.y < 0 || head.y >= snakeTileCount ||
-        snake.some(s => s.x === head.x && s.y === head.y)
-      ) {
+      if(head.x < 0 || head.x >= snakeTileCount || head.y < 0 || head.y >= snakeTileCount || snake.some(s=>s.x===head.x&&s.y===head.y)) {
         gameOverSnake();
         return;
       }
 
       snake.unshift(head);
-      if (head.x === apple.x && head.y === apple.y) {
+
+      // eat apple
+      if(head.x===apple.x && head.y===apple.y) {
         score++;
-        apple = {
-          x: Math.floor(Math.random() * snakeTileCount),
-          y: Math.floor(Math.random() * snakeTileCount)
-        };
+        do {
+          apple = { x: Math.floor(Math.random()*snakeTileCount), y: Math.floor(Math.random()*snakeTileCount) };
+        } while(snake.some(s=>s.x===apple.x && s.y===apple.y));
       } else {
         snake.pop();
       }
 
       direction = nextDirection;
       snakeScore.textContent = `SCORE: ${score} | HIGH: ${highScore}`;
-      drawSnakeGame();
+      drawSnake();
     }
 
-    function startSnakeGame() {
-      snake = [{ x: 10, y: 10 }];
-      direction = { x: 0, y: 0 };
-      nextDirection = { x: 1, y: 0 };
-      apple = { x: 15, y: 15 };
-      score = 0;
-      snakeScore.textContent = `SCORE: 0 | HIGH: ${highScore}`;
-      drawSnakeGame();
-      isPlaying = true;
-      clearInterval(snakeInterval);
-      snakeInterval = setInterval(updateSnake, 150);
+    function drawSnake() {
+      snakeCtx.fillStyle = 'black';
+      snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+      snakeCtx.fillStyle = 'red';
+      snake.forEach(s=>snakeCtx.fillRect(s.x*snakeCanvas.width/snakeTileCount, s.y*snakeCanvas.height/snakeTileCount, snakeCanvas.width/snakeTileCount, snakeCanvas.height/snakeTileCount));
+      snakeCtx.fillStyle = 'lime';
+      snakeCtx.fillRect(apple.x*snakeCanvas.width/snakeTileCount, apple.y*snakeCanvas.height/snakeTileCount, snakeCanvas.width/snakeTileCount, snakeCanvas.height/snakeTileCount);
     }
 
     function gameOverSnake() {
       isPlaying = false;
       clearInterval(snakeInterval);
-      if (score > highScore) highScore = score;
+      if(score>highScore) highScore=score;
       snakeGameOver.style.display = 'flex';
     }
 
+    startSnakeBtn.addEventListener('click', () => { startSnakeGame(); });
+    snakeTryAgain.addEventListener('click', () => { startSnakeGame(); snakeGameOver.style.display='none'; });
+
     document.addEventListener('keydown', e => {
-      if (!isPlaying) return;
-      if (e.key === 'ArrowUp' && direction.y === 0) nextDirection = { x: 0, y: -1 };
-      if (e.key === 'ArrowDown' && direction.y === 0) nextDirection = { x: 0, y: 1 };
-      if (e.key === 'ArrowLeft' && direction.x === 0) nextDirection = { x: -1, y: 0 };
-      if (e.key === 'ArrowRight' && direction.x === 0) nextDirection = { x: 1, y: 0 };
+      if(e.key==='ArrowUp' && direction.y!==1) nextDirection={x:0,y:-1};
+      if(e.key==='ArrowDown' && direction.y!==-1) nextDirection={x:0,y:1};
+      if(e.key==='ArrowLeft' && direction.x!==1) nextDirection={x:-1,y:0};
+      if(e.key==='ArrowRight' && direction.x!==-1) nextDirection={x:1,y:0};
     });
 
-    startSnake.addEventListener('click', () => {
-      startSnakeGame();
-    });
-    snakeTryAgain.addEventListener('click', () => {
-      snakeGameOver.style.display = 'none';
-      startSnakeGame();
-    });
-
-    // Redbull secret code
-    const redbullCode = ['r','e','d','b','u','l','l'];
-    let input = [];
+    // --- Secret Redbull code to start Snake ---
+    let typedKeys = '';
     document.addEventListener('keydown', e => {
-      input.push(e.key.toLowerCase());
-      if (input.length > redbullCode.length) input.shift();
-      if (JSON.stringify(input) === JSON.stringify(redbullCode)) {
+      typedKeys += e.key.toLowerCase();
+      if(typedKeys.endsWith('redbull')) {
         overlaySnake.classList.add('active');
-        drawSnakeGame();
+        typedKeys = '';
       }
+      if(typedKeys.length > 10) typedKeys = typedKeys.slice(-10);
     });
-
   </script>
 </body>
 </html>
