@@ -1,444 +1,317 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>What up Gooner</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>what up gooner</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    color: lime;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+  }
 
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  h1 {
+    text-align: center;
+    font-size: 60px;
+    margin-top: 20%;
+    cursor: pointer;
+    transition: 0.2s;
+  }
 
-  <style>
-    :root { --bg: #000; --accent: #ff0606; }
+  h1:hover {
+    letter-spacing: 5px;
+  }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      font-family: "Press Start 2P", monospace;
-      overflow: hidden;
-      color: var(--accent);
-      -webkit-tap-highlight-color: transparent;
-    }
+  #cool {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: gray;
+    cursor: pointer;
+  }
 
-    .wrap {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      user-select: none;
-      text-align: center;
-      padding: 10px;
-    }
+  /* Overlays */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: black;
+    color: lime;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 10;
+  }
 
-    .gooner {
-      font-size: clamp(24px, 8vw, 72px);
-      color: var(--accent);
-      cursor: pointer;
-      padding: 20px 30px;
-      border: 5px solid var(--accent);
-      border-radius: 8px;
-      letter-spacing: 4px;
-      background: rgba(255,6,6,0.02);
-      transition: transform 200ms ease, box-shadow 200ms ease;
-      box-shadow: 0 6px 0 rgba(0,0,0,0.6);
-      touch-action: manipulation;
-    }
-    .gooner:hover {
-      transform: translateY(-8px) scale(1.04);
-      box-shadow: 0 14px 0 rgba(0,0,0,0.6);
-      text-shadow: 2px 2px 0 rgba(0,0,0,0.9);
-    }
-    .gooner:active {
-      transform: translateY(-3px) scale(0.97);
-      box-shadow: 0 4px 0 rgba(0,0,0,0.6);
-    }
+  canvas {
+    background: #111;
+    border: 2px solid lime;
+  }
 
-    .hint {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: clamp(10px, 3vw, 14px);
-      color: rgba(255,6,6,0.6);
-      letter-spacing: 2px;
-    }
+  .button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    border: 2px solid lime;
+    background: transparent;
+    color: lime;
+    cursor: pointer;
+    font-size: 20px;
+  }
 
-    .hidden-text {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      font-size: clamp(8px, 2.5vw, 12px);
-      color: rgba(255,6,6,0.6);
-      pointer-events: auto;
-      cursor: pointer;
-      z-index: 10001;
-      animation: glitch 1.5s 3s;
-    }
-    @keyframes glitch {
-      0% { text-shadow: 2px 0 var(--accent); }
-      20% { text-shadow: -2px 0 var(--accent); }
-      40% { text-shadow: 2px 2px var(--accent); }
-      60% { text-shadow: -2px -2px var(--accent); }
-      80% { text-shadow: 2px -2px var(--accent); }
-      100% { text-shadow: none; }
-    }
-
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      overflow: hidden;
-      flex-direction: column;
-    }
-    .overlay.active { display: flex; }
-
-    .surface { position: relative; width: 100%; height: 100%; }
-    .stamp {
-      position: absolute;
-      color: var(--accent);
-      font-size: clamp(28px, 10vw, 160px);
-      opacity: 0;
-      pointer-events: none;
-      animation: flash 1s linear infinite;
-      text-align: center;
-    }
-    @keyframes flash {
-      0%,100% { opacity:0; transform: scale(0.9); }
-      20%,80% { opacity:1; transform: scale(1); }
-    }
-
-    .center-giant {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: clamp(48px, 14vw, 240px);
-      opacity: 0;
-      pointer-events: none;
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0% { opacity:0; transform: translate(-50%, -50%) scale(0.9); }
-      50% { opacity:1; transform: translate(-50%,-50%) scale(1.05); }
-      100% { opacity:0; transform: translate(-50%,-50%) scale(0.95); }
-    }
-
-    .glitch-static {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      font-size: clamp(40px, 12vw, 200px);
-      color: white;
-      animation: tvGlitch 0.8s infinite;
-      letter-spacing: 2px;
-    }
-    @keyframes tvGlitch {
-      0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }
-      20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }
-      50% { transform: translate(-50%,-50%) skew(2deg); opacity:0.9; }
-      100% { transform: translate(-50%,-50%) skew(0deg); opacity:1;}
-    }
-
-    .close-btn {
-      position: fixed;
-      top: 10px; right: 10px;
-      font-size: clamp(10px, 4vw, 14px);
-      border: 2px solid var(--accent);
-      color: var(--accent);
-      background: transparent;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 10000;
-    }
-    .close-btn:active { transform: scale(0.9); }
-
-    /* Pong overlay styling */
-    #overlayPong canvas { border: 4px solid var(--accent); background: black; }
-    #overlayPong h1 {
-      color: var(--accent);
-      font-size: clamp(24px, 8vw, 72px);
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    #overlayPong .difficulty-btn {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin: 10px;
-      cursor: pointer;
-      font-family: "Press Start 2P", monospace;
-      font-size: 12px;
-      border-radius: 8px;
-    }
-    #scoreboard {
-      margin-top: 10px;
-      font-size: clamp(12px, 3vw, 18px);
-    }
-    #winLoseScreen {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      color: var(--accent);
-      font-family: "Press Start 2P", monospace;
-      z-index: 10000;
-    }
-    #winLoseScreen h1 {
-      font-size: clamp(24px, 8vw, 72px);
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    #winLoseScreen button {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin-top: 20px;
-      cursor: pointer;
-      border-radius: 8px;
-      font-family: "Press Start 2P", monospace;
-      font-size: 14px;
-    }
-
-    /* Snake overlay styling */
-    #overlaySnake canvas {
-      border: 4px solid var(--accent);
-      background: black;
-      margin-bottom: 10px;
-    }
-    #overlaySnake .start-btn {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin-top: 10px;
-      cursor: pointer;
-      font-family: "Press Start 2P", monospace;
-      font-size: 12px;
-      border-radius: 8px;
-    }
-    .snake-score {
-      font-size: clamp(10px, 2.5vw, 14px);
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    #snakeGameOver {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      color: var(--accent);
-      font-family: "Press Start 2P", monospace;
-      z-index: 10000;
-    }
-    #snakeGameOver h1 {
-      font-size: clamp(24px, 8vw, 72px);
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    #snakeGameOver button {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin-top: 20px;
-      cursor: pointer;
-      border-radius: 8px;
-      font-family: "Press Start 2P", monospace;
-      font-size: 14px;
-    }
-  </style>
+  .button:hover {
+    background: lime;
+    color: black;
+  }
+</style>
 </head>
 <body>
-  <div class="hidden-text" id="hiddenText">your cool</div>
+  <h1 id="gooner">what up gooner</h1>
+  <div id="cool">your cool</div>
 
-  <div class="wrap">
-    <div class="gooner" id="mainGooner">what up gooner</div>
-    <div class="hint">tap / click me</div>
+  <!-- GONNER overlay -->
+  <div id="gonner" class="overlay">
+    <h1>GONNER</h1>
   </div>
 
-  <div class="overlay" id="overlayGonner">
-    <button class="close-btn" data-close="overlayGonner">CLOSE</button>
-    <div class="surface" id="surfaceGonner"></div>
-    <div class="center-giant">GONNER</div>
+  <!-- WHY overlay -->
+  <div id="why" class="overlay">
+    <h1>WHY ARE YOU HERE</h1>
   </div>
 
-  <div class="overlay" id="overlayWhy">
-    <button class="close-btn" data-close="overlayWhy">CLOSE</button>
-    <div class="glitch-static">WHY ARE YOU HERE</div>
-  </div>
-
-  <div class="overlay" id="overlayPong">
-    <button class="close-btn" data-close="overlayPong">CLOSE</button>
-    <h1>PONG</h1>
-    <div>
-      <button class="difficulty-btn" data-speed="8" data-ai="0.04" data-ball="8">EASY</button>
-      <button class="difficulty-btn" data-speed="8" data-ai="0.07" data-ball="10">MEDIUM</button>
-      <button class="difficulty-btn" data-speed="12" data-ai="0.12" data-ball="16">HARD</button>
-    </div>
-    <div id="scoreboard">0 : 0</div>
+  <!-- Pong overlay -->
+  <div id="pong" class="overlay">
     <canvas id="pongCanvas" width="800" height="600"></canvas>
+    <div id="pongMessage" class="button" style="display:none;">TRY AGAIN</div>
   </div>
 
-  <div id="winLoseScreen">
-    <h1 id="winLoseMessage">YOU WIN</h1>
-    <button id="tryAgainBtn">TRY AGAIN</button>
+  <!-- Snake overlay -->
+  <div id="snake" class="overlay">
+    <canvas id="snakeCanvas" width="600" height="600"></canvas>
+    <div id="snakeMessage" class="button" style="display:none;">TRY AGAIN</div>
   </div>
 
-  <div class="overlay" id="overlaySnake">
-    <button class="close-btn" data-close="overlaySnake">CLOSE</button>
-    <div class="snake-score" id="snakeScore">SCORE: 0 | HIGH: 0</div>
-    <canvas id="snakeCanvas" width="400" height="400"></canvas>
-    <button class="start-btn" id="startSnake">PLAY</button>
-  </div>
+<script>
+/* -------------------- GONNER -------------------- */
+const gooner = document.getElementById('gooner');
+const gonner = document.getElementById('gonner');
+gooner.onclick = () => {
+  gonner.style.display = 'flex';
+  const spam = setInterval(() => {
+    const h = document.createElement('h1');
+    h.textContent = 'GONNER';
+    h.style.position = 'absolute';
+    h.style.top = Math.random() * window.innerHeight + 'px';
+    h.style.left = Math.random() * window.innerWidth + 'px';
+    h.style.color = `hsl(${Math.random() * 360},100%,50%)`;
+    h.style.fontSize = Math.random() * 80 + 20 + 'px';
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 500);
+  }, 80);
+  gonner.onclick = () => {
+    clearInterval(spam);
+    gonner.style.display = 'none';
+  };
+};
 
-  <div id="snakeGameOver">
-    <h1>YOU LOSE</h1>
-    <button id="snakeTryAgain">TRY AGAIN</button>
-  </div>
+/* -------------------- WHY -------------------- */
+document.getElementById('cool').onclick = () => {
+  document.getElementById('why').style.display = 'flex';
+  document.getElementById('why').onclick = () => {
+    document.getElementById('why').style.display = 'none';
+  };
+};
 
-  <script>
-    // --- Utility ---
-    function rand(min, max) { return Math.random() * (max - min) + min; }
+/* -------------------- KONAMI CODE -------------------- */
+const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
+let konamiIndex = 0;
 
-    // --- GONNER overlay logic ---
-    const main = document.getElementById('mainGooner');
-    const overlayGonner = document.getElementById('overlayGonner');
-    const surfaceGonner = document.getElementById('surfaceGonner');
-    function populateStamps(surface, text, count = 30) {
-      surface.innerHTML = '';
-      for (let i = 0; i < count; i++) {
-        const s = document.createElement('div');
-        s.className = 'stamp';
-        s.textContent = text;
-        s.style.left = rand(-10, 90) + 'vw';
-        s.style.top = rand(-10, 90) + 'vh';
-        s.style.animationDelay = rand(0, 1) + 's';
-        s.style.animationDuration = rand(0.8, 1.6) + 's';
-        surface.appendChild(s);
-      }
+document.addEventListener('keydown', e => {
+  if (e.key === KONAMI[konamiIndex]) {
+    konamiIndex++;
+    if (konamiIndex === KONAMI.length) {
+      startPong();
+      konamiIndex = 0;
     }
+  } else {
+    konamiIndex = 0;
+  }
+});
 
-    main.addEventListener('click', () => {
-      overlayGonner.classList.add('active');
-      populateStamps(surfaceGonner, 'GONNER', 35);
-    });
-
-    // Hover glitch
-    let hoverInterval = null;
-    main.addEventListener('mouseenter', () => {
-      if (window.matchMedia("(hover:hover)").matches) {
-        hoverInterval = setInterval(() => {
-          main.style.letterSpacing = (Math.random() > 0.5 ? '6px' : '2px');
-        }, 120);
-      }
-    });
-    main.addEventListener('mouseleave', () => {
-      clearInterval(hoverInterval);
-      hoverInterval = null;
-      main.style.letterSpacing = '4px';
-    });
-
-    // Hidden "your cool"
-    const hiddenText = document.getElementById('hiddenText');
-    const overlayWhy = document.getElementById('overlayWhy');
-    hiddenText.addEventListener('click', () => overlayWhy.classList.add('active'));
-
-    // Close buttons for overlays
-    document.querySelectorAll('.close-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const overlayId = btn.dataset.close;
-        document.getElementById(overlayId).classList.remove('active');
-        cancelAnimationFrame(pongAnimationFrame);
-        clearInterval(snakeInterval);
-        snakeGameOver.style.display = 'none';
-      });
-    });
-
-    document.querySelectorAll('.overlay').forEach(ov => {
-      ov.addEventListener('click', e => {
-        if (e.target === ov) {
-          ov.classList.remove('active');
-          cancelAnimationFrame(pongAnimationFrame);
-          clearInterval(snakeInterval);
-          snakeGameOver.style.display = 'none';
-        }
-      });
-    });
-
-    // --- Pong Logic ---
-    const overlayPong = document.getElementById('overlayPong');
-    const canvas = document.getElementById('pongCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreboard = document.getElementById('scoreboard');
-    const winLoseScreen = document.getElementById('winLoseScreen');
-    const winLoseMessage = document.getElementById('winLoseMessage');
-    const tryAgainBtn = document.getElementById('tryAgainBtn');
-
-    let paddle = { x: 20, y: canvas.height / 2 - 40, w: 10, h: 80, dy: 0 };
-    let ai = { x: canvas.width - 30, y: canvas.height / 2 - 40, w: 10, h: 80 };
-    let ball = { x: canvas.width / 2, y: canvas.height / 2, r: 8, dx: 1, dy: 1 };
-    let aiFactor = 0.07;
-    let playerScore = 0, aiScore = 0;
-    let ballSpeed = 8;
-    let pongAnimationFrame;
-
-    function drawPong() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#ff0606";
-      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-      ctx.fillRect(ai.x, ai.y, ai.w, ai.h);
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillRect(canvas.width / 2 - 2, 0, 4, canvas.height);
-      scoreboard.textContent = `${playerScore} : ${aiScore}`;
+/* -------------------- REDBULL SECRET (Snake) -------------------- */
+let typed = '';
+document.addEventListener('keydown', e => {
+  if (/^[a-zA-Z]$/.test(e.key)) {
+    typed += e.key.toLowerCase();
+    if (typed.endsWith('redbull')) {
+      startSnake();
+      typed = '';
     }
+  }
+});
 
-    function checkWinLose() {
-      if (playerScore >= 10) {
-        winLoseMessage.textContent = "YOU WIN";
-        winLoseScreen.style.display = 'flex';
-        cancelAnimationFrame(pongAnimationFrame);
-        return true;
-      }
-      if (aiScore >= 10) {
-        winLoseMessage.textContent = "YOU LOSE";
-        winLoseScreen.style.display = 'flex';
-        cancelAnimationFrame(pongAnimationFrame);
-        return true;
-      }
-      return false;
-    }
+/* -------------------- PONG GAME -------------------- */
+const pongOverlay = document.getElementById('pong');
+const pongCanvas = document.getElementById('pongCanvas');
+const pongCtx = pongCanvas.getContext('2d');
+const pongMessage = document.getElementById('pongMessage');
 
-    function updatePong() {
-      paddle.y += paddle.dy;
-      if (paddle.y < 0) paddle.y = 0;
-      if (paddle.y + paddle.h > canvas.height) paddle.y = canvas.height - paddle.h;
+let player, ai, ball, pongInterval, pongSpeed;
 
-      ball.x += ball.dx * ballSpeed / 4;
-      ball.y += ball.dy * ballSpeed / 4;
+function startPong() {
+  pongOverlay.style.display = 'flex';
+  initPong();
+  pongMessage.style.display = 'none';
+  pongInterval = setInterval(updatePong, 1000/60);
+}
 
-      if (ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.dy *= -1;
+function initPong() {
+  player = { x: 30, y: 250, w: 10, h: 100, score: 0 };
+  ai = { x: 760, y: 250, w: 10, h: 100, score: 0 };
+  ball = { x: 400, y: 300, vx: 6, vy: 6, size: 10 };
+  pongSpeed = 6;
+  document.addEventListener('mousemove', movePlayer);
+}
 
-      if (ball.x - ball.r < paddle.x + paddle.w && ball.y > paddle.y && ball.y < paddle.y + paddle.h)
-        ball.dx *= -1;
+function movePlayer(e) {
+  const rect = pongCanvas.getBoundingClientRect();
+  player.y = e.clientY - rect.top - player.h / 2;
+}
 
-      if (ball.x + ball.r > ai.x && ball.y > ai.y && ball.y < ai.y + ai.h)
-        ball.dx *= -1;
+function updatePong() {
+  pongCtx.fillStyle = 'black';
+  pongCtx.fillRect(0,0,800,600);
 
-      if (ball.x < 0) { aiScore++; resetBall(); }
-      if (ball.x > canvas.width) { playerScore++; resetBall(); }
+  pongCtx.fillStyle = 'lime';
+  pongCtx.fillRect(player.x, player.y, player.w, player.h);
+  pongCtx.fillRect(ai.x, ai.y, ai.w, ai.h);
+  pongCtx.fillRect(ball.x, ball.y, ball.size, ball.size);
 
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  if (ball.y <= 0 || ball.y + ball.size >= 600) ball.vy *= -1;
+  if (ball.x <= player.x + player.w && ball.y + ball.size > player.y && ball.y < player.y + player.h) ball.vx *= -1;
+  if (ball.x + ball.size >= ai.x && ball.y + ball.size > ai.y && ball.y < ai.y + ai.h) ball.vx *= -1;
+
+  ai.y += (ball.y - ai.y - ai.h/2) * 0.08;
+
+  if (ball.x < 0) {
+    ai.score++;
+    resetBall();
+  } else if (ball.x > 800) {
+    player.score++;
+    resetBall();
+  }
+
+  pongCtx.fillText(`Player: ${player.score} | AI: ${ai.score}`, 330, 30);
+
+  if (player.score === 10 || ai.score === 10) {
+    gameOverPong(player.score === 10 ? 'YOU WIN!' : 'YOU LOSE!');
+  }
+}
+
+function resetBall() {
+  ball.x = 400;
+  ball.y = 300;
+  ball.vx *= -1;
+}
+
+function gameOverPong(msg) {
+  clearInterval(pongInterval);
+  pongCtx.fillText(msg, 350, 250);
+  pongMessage.style.display = 'block';
+}
+
+pongMessage.onclick = () => {
+  startPong();
+};
+
+/* -------------------- SNAKE GAME -------------------- */
+const snakeOverlay = document.getElementById('snake');
+const snakeCanvas = document.getElementById('snakeCanvas');
+const sctx = snakeCanvas.getContext('2d');
+const snakeMessage = document.getElementById('snakeMessage');
+
+let snake, apple, direction, nextDirection, score, highScore = 0, snakeInterval, isPlaying;
+
+function startSnake() {
+  snakeOverlay.style.display = 'flex';
+  snakeMessage.style.display = 'none';
+  snake = [{x:10,y:10}];
+  apple = {x:15,y:15};
+  direction = {x:0,y:0};
+  nextDirection = {x:0,y:0};
+  score = 0;
+  isPlaying = true;
+  clearInterval(snakeInterval);
+  snakeInterval = setInterval(updateSnake, 150);
+}
+
+document.addEventListener('keydown', e => {
+  if (!isPlaying) return;
+  if (e.key === 'ArrowUp' && direction.y !== 1) nextDirection = {x:0,y:-1};
+  if (e.key === 'ArrowDown' && direction.y !== -1) nextDirection = {x:0,y:1};
+  if (e.key === 'ArrowLeft' && direction.x !== 1) nextDirection = {x:-1,y:0};
+  if (e.key === 'ArrowRight' && direction.x !== -1) nextDirection = {x:1,y:0};
+});
+
+function updateSnake() {
+  if (direction.x === 0 && direction.y === 0 && nextDirection.x === 0 && nextDirection.y === 0) {
+    drawSnake();
+    return;
+  }
+
+  direction = nextDirection;
+  const head = {x:snake[0].x + direction.x, y:snake[0].y + direction.y};
+
+  if (
+    head.x < 0 || head.x >= 30 ||
+    head.y < 0 || head.y >= 30 ||
+    snake.some(s => s.x === head.x && s.y === head.y)
+  ) {
+    gameOverSnake();
+    return;
+  }
+
+  snake.unshift(head);
+  if (head.x === apple.x && head.y === apple.y) {
+    score++;
+    apple = {x:Math.floor(Math.random()*30), y:Math.floor(Math.random()*30)};
+  } else {
+    snake.pop();
+  }
+
+  drawSnake();
+}
+
+function drawSnake() {
+  sctx.fillStyle = 'black';
+  sctx.fillRect(0,0,600,600);
+  sctx.fillStyle = 'lime';
+  for (let s of snake) {
+    sctx.fillRect(s.x*20, s.y*20, 18, 18);
+  }
+  sctx.fillStyle = 'red';
+  sctx.fillRect(apple.x*20, apple.y*20, 18, 18);
+  sctx.fillStyle = 'lime';
+  sctx.fillText(`SCORE: ${score}  HIGH: ${highScore}`, 10, 20);
+}
+
+function gameOverSnake() {
+  clearInterval(snakeInterval);
+  isPlaying = false;
+  if (score > highScore) highScore = score;
+  sctx.fillStyle = 'lime';
+  sctx.fillText('GAME OVER', 250, 280);
+  snakeMessage.style.display = 'block';
+}
+
+snakeMessage.onclick = () => {
+  startSnake();
+};
+</script>
+</body>
+</html>
