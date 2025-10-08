@@ -1,581 +1,317 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>What up Gooner</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>What up Gooner</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
-  <style>
-    :root { --bg: #000; --accent: #ff0606; }
-
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      font-family: "Press Start 2P", monospace;
-      overflow: hidden;
-      color: var(--accent);
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .wrap {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      user-select: none;
-      text-align: center;
-      padding: 10px;
-    }
-
-    .gooner {
-      font-size: clamp(24px, 8vw, 72px);
-      color: var(--accent);
-      cursor: pointer;
-      padding: 20px 30px;
-      border: 5px solid var(--accent);
-      border-radius: 8px;
-      letter-spacing: 4px;
-      background: rgba(255,6,6,0.02);
-      transition: transform 200ms ease, box-shadow 200ms ease;
-      box-shadow: 0 6px 0 rgba(0,0,0,0.6);
-      touch-action: manipulation;
-    }
-    .gooner:hover {
-      transform: translateY(-8px) scale(1.04);
-      box-shadow: 0 14px 0 rgba(0,0,0,0.6);
-      text-shadow: 2px 2px 0 rgba(0,0,0,0.9);
-    }
-    .gooner:active {
-      transform: translateY(-3px) scale(0.97);
-      box-shadow: 0 4px 0 rgba(0,0,0,0.6);
-    }
-
-    .hint {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: clamp(10px, 3vw, 14px);
-      color: rgba(255,6,6,0.6);
-      letter-spacing: 2px;
-    }
-
-    .hidden-text {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      font-size: clamp(8px, 2.5vw, 12px);
-      color: rgba(255,6,6,0.6);
-      pointer-events: auto;
-      cursor: pointer;
-      z-index: 10001;
-      animation: glitch 1.5s 3s;
-    }
-    @keyframes glitch {
-      0% { text-shadow: 2px 0 var(--accent); }
-      20% { text-shadow: -2px 0 var(--accent); }
-      40% { text-shadow: 2px 2px var(--accent); }
-      60% { text-shadow: -2px -2px var(--accent); }
-      80% { text-shadow: 2px -2px var(--accent); }
-      100% { text-shadow: none; }
-    }
-
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      overflow: hidden;
-      flex-direction: column;
-    }
-    .overlay.active { display: flex; }
-
-    .surface { position: relative; width: 100%; height: 100%; }
-    .stamp {
-      position: absolute;
-      color: var(--accent);
-      font-size: clamp(28px, 10vw, 160px);
-      opacity: 0;
-      pointer-events: none;
-      animation: flash 1s linear infinite;
-      text-align: center;
-    }
-    @keyframes flash {
-      0%,100% { opacity:0; transform: scale(0.9); }
-      20%,80% { opacity:1; transform: scale(1); }
-    }
-
-    .center-giant {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: clamp(48px, 14vw, 240px);
-      opacity: 0;
-      pointer-events: none;
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0% { opacity:0; transform: translate(-50%, -50%) scale(0.9); }
-      50% { opacity:1; transform: translate(-50%,-50%) scale(1.05); }
-      100% { opacity:0; transform: translate(-50%,-50%) scale(0.95); }
-    }
-
-    .glitch-static {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      font-size: clamp(40px, 12vw, 200px);
-      color: white;
-      animation: tvGlitch 0.8s infinite;
-      letter-spacing: 2px;
-    }
-    @keyframes tvGlitch {
-      0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }
-      20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }
-      50% { transform: translate(-50%,-50%) skew(2deg); opacity:0.9; }
-      100% { transform: translate(-50%,-50%) skew(0deg); opacity:1;}
-    }
-
-    .close-btn {
-      position: fixed;
-      top: 10px; right: 10px;
-      font-size: clamp(10px, 4vw, 14px);
-      border: 2px solid var(--accent);
-      color: var(--accent);
-      background: transparent;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 10000;
-    }
-    .close-btn:active { transform: scale(0.9); }
-
-    /* Pong overlay styling (unchanged) */
-    #overlayPong canvas { border: 4px solid var(--accent); background: black; }
-    #overlayPong h1 {
-      color: var(--accent);
-      font-size: clamp(24px, 8vw, 72px);
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    #overlayPong .difficulty-btn {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin: 10px;
-      cursor: pointer;
-      font-family: "Press Start 2P", monospace;
-      font-size: 12px;
-      border-radius: 8px;
-    }
-    #scoreboard {
-      margin-top: 10px;
-      font-size: clamp(12px, 3vw, 18px);
-    }
-    #winLoseScreen {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      color: var(--accent);
-      font-family: "Press Start 2P", monospace;
-      z-index: 10000;
-    }
-    #winLoseScreen h1 {
-      font-size: clamp(24px, 8vw, 72px);
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    #winLoseScreen button {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin-top: 20px;
-      cursor: pointer;
-      border-radius: 8px;
-      font-family: "Press Start 2P", monospace;
-      font-size: 14px;
-    }
-
-    /* Snake overlay styling */
-    #overlaySnake canvas {
-      border: 4px solid var(--accent);
-      background: black;
-      margin-bottom: 10px;
-    }
-    #overlaySnake .start-btn {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin-top: 10px;
-      cursor: pointer;
-      font-family: "Press Start 2P", monospace;
-      font-size: 12px;
-      border-radius: 8px;
-    }
-    .snake-score {
-      font-size: clamp(10px, 2.5vw, 14px);
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    #snakeGameOver {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      color: var(--accent);
-      font-family: "Press Start 2P", monospace;
-      z-index: 10000;
-    }
-    #snakeGameOver h1 {
-      font-size: clamp(24px, 8vw, 72px);
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    #snakeGameOver button {
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px 20px;
-      margin-top: 20px;
-      cursor: pointer;
-      border-radius: 8px;
-      font-family: "Press Start 2P", monospace;
-      font-size: 14px;
-    }
-  </style>
+<style>
+:root { --bg: #000; --accent: #ff0606; }
+html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Start 2P",monospace; overflow:hidden; color:var(--accent); -webkit-tap-highlight-color: transparent;}
+.wrap { height:100%; display:flex; align-items:center; justify-content:center; position:relative; user-select:none; text-align:center; padding:10px;}
+.gooner { font-size: clamp(24px,8vw,72px); color:var(--accent); cursor:pointer; padding:20px 30px; border:5px solid var(--accent); border-radius:8px; letter-spacing:4px; background:rgba(255,6,6,0.02); transition: transform 200ms ease, box-shadow 200ms ease; box-shadow: 0 6px 0 rgba(0,0,0,0.6); touch-action:manipulation;}
+.gooner:hover { transform: translateY(-8px) scale(1.04); box-shadow: 0 14px 0 rgba(0,0,0,0.6); text-shadow:2px 2px 0 rgba(0,0,0,0.9);}
+.gooner:active { transform: translateY(-3px) scale(0.97); box-shadow: 0 4px 0 rgba(0,0,0,0.6);}
+.hint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:clamp(10px,3vw,14px); color:rgba(255,6,6,0.6); letter-spacing:2px;}
+.hidden-text{ position:fixed; top:10px; left:10px; font-size:clamp(8px,2.5vw,12px); color:rgba(255,6,6,0.6); pointer-events:auto; cursor:pointer; z-index:10001; animation: glitch 1.5s 3s;}
+@keyframes glitch {0% {text-shadow:2px 0 var(--accent);}20% {text-shadow:-2px 0 var(--accent);}40% {text-shadow:2px 2 var(--accent);}60% {text-shadow:-2px -2 var(--accent);}80% {text-shadow:2px -2 var(--accent);}100% {text-shadow:none;}}
+.overlay { position:fixed; inset:0; background:var(--bg); display:none; align-items:center; justify-content:center; z-index:9999; overflow:hidden; flex-direction:column;}
+.overlay.active { display:flex;}
+.surface { position:relative; width:100%; height:100%; }
+.stamp { position:absolute; color:var(--accent); font-size:clamp(28px,10vw,160px); opacity:0; pointer-events:none; animation: flash 1s linear infinite; text-align:center;}
+@keyframes flash {0%,100%{opacity:0;transform:scale(0.9);} 20%,80%{opacity:1;transform:scale(1);}}
+.center-giant { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:clamp(48px,14vw,240px); opacity:0; pointer-events:none; animation:pulse 1.2s ease-in-out infinite;}
+@keyframes pulse {0%{opacity:0;transform:translate(-50%,-50%) scale(0.9);}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}}
+.glitch-static { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:clamp(40px,12vw,200px); color:white; animation: tvGlitch 0.8s infinite; letter-spacing:2px;}
+@keyframes tvGlitch {0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }50% { transform: translate(-50%,-50%) skew(2deg); opacity:.9; }100% { transform: translate(-50%,-50%) skew(0deg); opacity:1; } }
+.close-btn{ position:fixed; top:10px; right:10px; font-size:clamp(10px,4vw,14px); border:2px solid var(--accent); color:var(--accent); background:transparent; padding:6px 10px; border-radius:6px; cursor:pointer; z-index:10000;}
+.close-btn:active{ transform:scale(0.9);}
+#overlayPong canvas, #overlaySnake canvas { border:4px solid var(--accent); background:black; }
+#overlayPong h1, #overlaySnake h1 { color:var(--accent); font-size: clamp(24px, 8vw, 72px); margin-bottom:20px; text-align:center; }
+#overlayPong .difficulty-btn, #overlaySnake #snakeRestartBtn { color: var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin:10px; cursor:pointer; font-family:"Press Start 2P", monospace; font-size:12px; border-radius:8px;}
+#scoreboard, #snakeScore { margin-top:10px; font-size: clamp(12px, 3vw, 18px);}
+#winLoseScreen { display:none; flex-direction:column; align-items:center; justify-content:center; position:fixed; inset:0; background:var(--bg); color:var(--accent); font-family:"Press Start 2P",monospace; z-index:10000;}
+#winLoseScreen h1 { font-size:clamp(24px,8vw,72px); margin-bottom:20px; text-align:center; }
+#winLoseScreen button { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:8px; font-family:"Press Start 2P",monospace; font-size:14px;}
+</style>
 </head>
 <body>
-  <div class="hidden-text" id="hiddenText">your cool</div>
+<div class="hidden-text" id="hiddenText">your cool</div>
+<div class="wrap">
+  <div class="gooner" id="mainGooner">what up gooner</div>
+  <div class="hint">tap / click me</div>
+</div>
 
-  <div class="wrap">
-    <div class="gooner" id="mainGooner">what up gooner</div>
-    <div class="hint">tap / click me</div>
+<div class="overlay" id="overlayGonner">
+  <button class="close-btn" data-close="overlayGonner">CLOSE</button>
+  <div class="surface" id="surfaceGonner"></div>
+  <div class="center-giant">GONNER</div>
+</div>
+
+<div class="overlay" id="overlayWhy">
+  <button class="close-btn" data-close="overlayWhy">CLOSE</button>
+  <div class="glitch-static">WHY ARE YOU HERE</div>
+</div>
+
+<!-- Pong Overlay -->
+<div class="overlay" id="overlayPong">
+  <button class="close-btn" data-close="overlayPong">CLOSE</button>
+  <h1>PONG</h1>
+  <div>
+    <button class="difficulty-btn" data-speed="8" data-ai="0.04" data-ball="8">EASY</button>
+    <button class="difficulty-btn" data-speed="8" data-ai="0.07" data-ball="10">MEDIUM</button>
+    <button class="difficulty-btn" data-speed="12" data-ai="0.12" data-ball="16">HARD</button>
   </div>
+  <div id="scoreboard">0 : 0</div>
+  <canvas id="pongCanvas" width="800" height="600"></canvas>
+</div>
 
-  <!-- GONNER overlay -->
-  <div class="overlay" id="overlayGonner">
-    <button class="close-btn" data-close="overlayGonner">CLOSE</button>
-    <div class="surface" id="surfaceGonner"></div>
-    <div class="center-giant">GONNER</div>
-  </div>
+<!-- Snake Overlay -->
+<div class="overlay" id="overlaySnake">
+  <button class="close-btn" data-close="overlaySnake">CLOSE</button>
+  <h1>SNAKE</h1>
+  <div id="snakeScore">0</div>
+  <canvas id="snakeCanvas" width="600" height="400"></canvas>
+  <button id="snakeRestartBtn" class="difficulty-btn">TRY AGAIN</button>
+</div>
 
-  <!-- WHY overlay -->
-  <div class="overlay" id="overlayWhy">
-    <button class="close-btn" data-close="overlayWhy">CLOSE</button>
-    <div class="glitch-static">WHY ARE YOU HERE</div>
-  </div>
+<!-- Win/Lose Screen -->
+<div id="winLoseScreen">
+  <h1 id="winLoseMessage">YOU WIN</h1>
+  <button id="tryAgainBtn">TRY AGAIN</button>
+</div>
 
-  <!-- Pong overlay -->
-  <div class="overlay" id="overlayPong">
-    <button class="close-btn" data-close="overlayPong">CLOSE</button>
-    <h1>PONG</h1>
-    <div>
-      <button class="difficulty-btn" data-speed="8" data-ai="0.04" data-ball="8">EASY</button>
-      <button class="difficulty-btn" data-speed="8" data-ai="0.07" data-ball="10">MEDIUM</button>
-      <button class="difficulty-btn" data-speed="12" data-ai="0.12" data-ball="16">HARD</button>
-    </div>
-    <div id="scoreboard">0 : 0</div>
-    <canvas id="pongCanvas" width="800" height="600"></canvas>
-  </div>
+<script>
+function rand(min,max){ return Math.random()*(max-min)+min; }
+function populateStamps(surface,text,count=30){
+  surface.innerHTML='';
+  for(let i=0;i<count;i++){
+    const s=document.createElement('div');
+    s.className='stamp';
+    s.textContent=text;
+    s.style.left=rand(-10,90)+'vw';
+    s.style.top=rand(-10,90)+'vh';
+    s.style.animationDelay=rand(0,1)+'s';
+    s.style.animationDuration=rand(0.8,1.6)+'s';
+    surface.appendChild(s);
+  }
+}
 
-  <div id="winLoseScreen">
-    <h1 id="winLoseMessage">YOU WIN</h1>
-    <button id="tryAgainBtn">TRY AGAIN</button>
-  </div>
+// Main elements
+const main=document.getElementById('mainGooner');
+const hiddenText=document.getElementById('hiddenText');
+const overlayGonner=document.getElementById('overlayGonner');
+const overlayWhy=document.getElementById('overlayWhy');
+const surfaceGonner=document.getElementById('surfaceGonner');
 
-  <!-- Snake overlay -->
-  <div class="overlay" id="overlaySnake">
-    <button class="close-btn" data-close="overlaySnake">CLOSE</button>
-    <div class="snake-score" id="snakeScore">SCORE: 0 | HIGH: 0</div>
-    <canvas id="snakeCanvas" width="400" height="400"></canvas>
-    <button class="start-btn" id="startSnake">PLAY</button>
-  </div>
+const overlayPong=document.getElementById('overlayPong');
+const pongCanvas=document.getElementById('pongCanvas');
+const ctx=pongCanvas.getContext('2d');
+const scoreboard=document.getElementById('scoreboard');
+const winLoseScreen=document.getElementById('winLoseScreen');
+const winLoseMessage=document.getElementById('winLoseMessage');
+const tryAgainBtn=document.getElementById('tryAgainBtn');
+let pongAnimation=null;
 
-  <div id="snakeGameOver">
-    <h1>YOU LOSE</h1>
-    <button id="snakeTryAgain">TRY AGAIN</button>
-  </div>
+// Snake elements
+const snakeCanvas=document.getElementById('snakeCanvas');
+const snakeCtx=snakeCanvas.getContext('2d');
+const snakeScoreDisplay=document.getElementById('snakeScore');
+const snakeRestartBtn=document.getElementById('snakeRestartBtn');
+let snake, direction, food, snakeScore, snakeAnimation;
 
-  <script>
-    // Utility random
-    function rand(min, max) {
-      return Math.random() * (max - min) + min;
-    }
+// Close buttons
+document.querySelectorAll('.close-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{ 
+    document.getElementById(btn.dataset.close).classList.remove('active'); 
+    cancelAnimationFrame(pongAnimation);
+    clearTimeout(snakeAnimation);
+  });
+});
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click',(e)=>{ if(e.target===ov) ov.classList.remove('active'); });
+});
 
-    // --- GONNER overlay logic ---
-    const main = document.getElementById('mainGooner');
-    const overlayGonner = document.getElementById('overlayGonner');
-    const surfaceGonner = document.getElementById('surfaceGonner');
-    function populateStamps(surface, text, count = 30) {
-      surface.innerHTML = '';
-      for (let i = 0; i < count; i++) {
-        const s = document.createElement('div');
-        s.className = 'stamp';
-        s.textContent = text;
-        s.style.left = rand(-10, 90) + 'vw';
-        s.style.top = rand(-10, 90) + 'vh';
-        s.style.animationDelay = rand(0, 1) + 's';
-        s.style.animationDuration = rand(0.8, 1.6) + 's';
-        surface.appendChild(s);
-      }
-    }
+// Hover glitch
+let hoverInterval=null;
+main.addEventListener('mouseenter',()=>{
+  if(window.matchMedia("(hover:hover)").matches){
+    hoverInterval=setInterval(()=>{ main.style.letterSpacing=(Math.random()>0.5?'6px':'2px'); },120);
+  }
+});
+main.addEventListener('mouseleave',()=>{ clearInterval(hoverInterval); hoverInterval=null; main.style.letterSpacing='4px'; });
 
-    main.addEventListener('click', () => {
-      overlayGonner.classList.add('active');
-      populateStamps(surfaceGonner, 'GONNER', 35);
-    });
+// GONNER & WHY overlays
+main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
+hiddenText.addEventListener('click',()=>{ overlayWhy.classList.add('active'); });
 
-    // Hover glitch effect on .gooner
-    let hoverInterval = null;
-    main.addEventListener('mouseenter', () => {
-      if (window.matchMedia("(hover:hover)").matches) {
-        hoverInterval = setInterval(() => {
-          main.style.letterSpacing = (Math.random() > 0.5 ? '6px' : '2px');
-        }, 120);
-      }
-    });
-    main.addEventListener('mouseleave', () => {
-      clearInterval(hoverInterval);
-      hoverInterval = null;
-      main.style.letterSpacing = '4px';
-    });
+// Konami code triggers Pong
+const konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
+let inputSeq=[];
+document.addEventListener('keydown',(e)=>{
+  inputSeq.push(e.key);
+  if(inputSeq.length>konami.length) inputSeq.shift();
+  if(JSON.stringify(inputSeq)===JSON.stringify(konami)){
+    overlayPong.classList.add('active');
+    startPong();
+  }
+});
 
-    // --- Hidden "your cool" logic ---
-    const hiddenText = document.getElementById('hiddenText');
-    const overlayWhy = document.getElementById('overlayWhy');
-    hiddenText.addEventListener('click', () => {
-      overlayWhy.classList.add('active');
-    });
+///////////////////////////
+// PONG GAME LOGIC
+///////////////////////////
+const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
+const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
+const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
+let aiFactor=0.07;
+let playerScore=0, aiScore=0;
+let ballSpeed=8;
 
-    // --- Close buttons for overlays ---
-    document.querySelectorAll('.close-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const overlayId = btn.dataset.close;
-        document.getElementById(overlayId).classList.remove('active');
-        cancelAnimationFrame(pongAnimationFrame);
-        clearInterval(snakeInterval);
-        snakeGameOver.style.display = 'none';
-      });
-    });
-    document.querySelectorAll('.overlay').forEach(ov => {
-      ov.addEventListener('click', e => {
-        if (e.target === ov) {
-          ov.classList.remove('active');
-          cancelAnimationFrame(pongAnimationFrame);
-          clearInterval(snakeInterval);
-          snakeGameOver.style.display = 'none';
-        }
-      });
-    });
+function drawPong(){
+  ctx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
+  ctx.fillStyle="#ff0606";
+  ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+  ctx.fillRect(ai.x,ai.y,ai.w,ai.h);
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  ctx.fill();
+  ctx.closePath();
+  ctx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
+  scoreboard.textContent=`${playerScore} : ${aiScore}`;
+}
 
-    // --- Pong logic (unchanged) ---
-    const overlayPong = document.getElementById('overlayPong');
-    const canvas = document.getElementById('pongCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreboard = document.getElementById('scoreboard');
-    const winLoseScreen = document.getElementById('winLoseScreen');
-    const winLoseMessage = document.getElementById('winLoseMessage');
-    const tryAgainBtn = document.getElementById('tryAgainBtn');
+function resetBall(){
+  ball.x=pongCanvas.width/2; ball.y=pongCanvas.height/2;
+  ball.dx=(Math.random()>0.5?1:-1);
+  ball.dy=(Math.random()>0.5?1:-1);
+}
 
-    let paddle = { x: 20, y: canvas.height / 2 - 40, w: 10, h: 80, dy: 0 };
-    let ai = { x: canvas.width - 30, y: canvas.height / 2 - 40, w: 10, h: 80 };
-    let ball = { x: canvas.width / 2, y: canvas.height / 2, r: 8, dx: 1, dy: 1 };
-    let aiFactor = 0.07;
-    let playerScore = 0, aiScore = 0;
-    let ballSpeed = 8;
-    let pongAnimationFrame;
+function checkWinLose(){
+  if(playerScore>=10){ winLoseMessage.textContent="YOU WIN"; winLoseScreen.style.display="flex"; cancelAnimationFrame(pongAnimation); return true;}
+  if(aiScore>=10){ winLoseMessage.textContent="YOU LOSE"; winLoseScreen.style.display="flex"; cancelAnimationFrame(pongAnimation); return true;}
+  return false;
+}
 
-    function drawPong() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#ff0606";
-      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-      ctx.fillRect(ai.x, ai.y, ai.w, ai.h);
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.closePath();
-      ctx.fillRect(canvas.width / 2 - 2, 0, 4, canvas.height);
-      scoreboard.textContent = `${playerScore} : ${aiScore}`;
-    }
+function updatePong(){
+  paddle.y+=paddle.dy;
+  if(paddle.y<0)paddle.y=0;
+  if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;
 
-    function checkWinLose() {
-      if (playerScore >= 10) {
-        winLoseMessage.textContent = "YOU WIN";
-        winLoseScreen.style.display = 'flex';
-        cancelAnimationFrame(pongAnimationFrame);
-        return true;
-      }
-      if (aiScore >= 10) {
-        winLoseMessage.textContent = "YOU LOSE";
-        winLoseScreen.style.display = 'flex';
-        cancelAnimationFrame(pongAnimationFrame);
-        return true;
-      }
-      return false;
-    }
+  ball.x+=ball.dx*ballSpeed/4;
+  ball.y+=ball.dy*ballSpeed/4;
 
-    function updatePong() {
-      paddle.y += paddle.dy;
-      if (paddle.y < 0) paddle.y = 0;
-      if (paddle.y + paddle.h > canvas.height) paddle.y = canvas.height - paddle.h;
+  if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0) ball.dy*=-1;
+  if(ball.x-ball.r<paddle.x+paddle.w && ball.y>paddle.y && ball.y<paddle.y+paddle.h) ball.dx*=-1;
+  if(ball.x+ball.r>ai.x && ball.y>ai.y && ball.y<ai.y+ai.h) ball.dx*=-1;
 
-      ball.x += ball.dx * ballSpeed / 4;
-      ball.y += ball.dy * ballSpeed / 4;
+  if(ball.x<0){ aiScore++; resetBall(); }
+  if(ball.x>pongCanvas.width){ playerScore++; resetBall(); }
 
-      if (ball.y + ball.r > canvas.height || ball.y - ball.r < 0) ball.dy *= -1;
-      if (ball.x - ball.r < paddle.x + paddle.w && ball.y > paddle.y && ball.y < paddle.y + paddle.h) ball.dx *= -1;
-      if (ball.x + ball.r > ai.x && ball.y > ai.y && ball.y < ai.y + ai.h) ball.dx *= -1;
+  let target=ball.y-ai.h/2;
+  ai.y+=(target-ai.y)*aiFactor;
+  if(ai.y<0) ai.y=0;
+  if(ai.y+ai.h>pongCanvas.height) ai.y=pongCanvas.height-ai.h;
 
-      ai.y += ((ball.y - (ai.y + ai.h/2)) * aiFactor);
-      if (ball.x - ball.r < 0) { aiScore++; resetBall(); }
-      if (ball.x + ball.r > canvas.width) { playerScore++; resetBall(); }
+  drawPong();
+  pongAnimation=requestAnimationFrame(updatePong);
+  checkWinLose();
+}
 
-      drawPong();
-      if (!checkWinLose()) pongAnimationFrame = requestAnimationFrame(updatePong);
-    }
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowUp') paddle.dy=-6;
+  if(e.key==='ArrowDown') paddle.dy=6;
+});
+document.addEventListener('keyup',e=>{
+  if(e.key==='ArrowUp'||e.key==='ArrowDown') paddle.dy=0;
+});
 
-    function resetBall() {
-      ball.x = canvas.width / 2;
-      ball.y = canvas.height / 2;
-      ball.dx = Math.random() > 0.5 ? 1 : -1;
-      ball.dy = Math.random() > 0.5 ? 1 : -1;
-    }
+document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    aiFactor=parseFloat(btn.dataset.ai);
+    ballSpeed=parseInt(btn.dataset.ball);
+    playerScore=0; aiScore=0;
+    resetBall();
+    winLoseScreen.style.display="none";
+    cancelAnimationFrame(pongAnimation);
+    updatePong();
+  });
+});
 
-    document.querySelectorAll('.difficulty-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        ballSpeed = parseFloat(btn.dataset.ball);
-        aiFactor = parseFloat(btn.dataset.ai);
-        resetBall();
-        playerScore = 0; aiScore = 0;
-        winLoseScreen.style.display = 'none';
-        updatePong();
-      });
-    });
+tryAgainBtn.addEventListener('click',()=>{
+  playerScore=0; aiScore=0;
+  resetBall();
+  winLoseScreen.style.display="none";
+  cancelAnimationFrame(pongAnimation);
+  updatePong();
+});
 
-    document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowUp') paddle.dy = -ballSpeed;
-      if (e.key === 'ArrowDown') paddle.dy = ballSpeed;
-    });
-    document.addEventListener('keyup', e => { if(e.key==='ArrowUp'||e.key==='ArrowDown') paddle.dy=0; });
+function startPong(){
+  playerScore=0; aiScore=0;
+  resetBall();
+  cancelAnimationFrame(pongAnimation);
+  updatePong();
+}
 
-    tryAgainBtn.addEventListener('click', () => {
-      playerScore = 0; aiScore = 0;
-      winLoseScreen.style.display = 'none';
-      resetBall();
-      updatePong();
-    });
+///////////////////////////
+// SNAKE GAME LOGIC
+///////////////////////////
+function initSnakeGame(){
+  snake=[{x:5,y:5}];
+  direction='RIGHT';
+  snakeScore=0;
+  placeFood();
+  snakeScoreDisplay.textContent=snakeScore;
+  clearTimeout(snakeAnimation);
+  snakeAnimation = setTimeout(updateSnake,150);
+}
 
-    // --- Snake logic ---
-    const overlaySnake = document.getElementById('overlaySnake');
-    const snakeCanvas = document.getElementById('snakeCanvas');
-    const snakeCtx = snakeCanvas.getContext('2d');
-    const startSnakeBtn = document.getElementById('startSnake');
-    const snakeScore = document.getElementById('snakeScore');
-    const snakeGameOver = document.getElementById('snakeGameOver');
-    const snakeTryAgain = document.getElementById('snakeTryAgain');
+function placeFood(){
+  food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};
+}
 
-    let snake = [];
-    let direction = {x:0, y:0};
-    let nextDirection = {x:1, y:0};
-    let apple = {x:0, y:0};
-    let score = 0;
-    let highScore = 0;
-    let snakeTileCount = 20;
-    let snakeInterval;
-    let isPlaying = false;
+function drawSnake(){
+  snakeCtx.fillStyle='black';
+  snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+  snakeCtx.fillStyle='#ff0606';
+  snake.forEach(segment=>{ snakeCtx.fillRect(segment.x*20,segment.y*20,20,20); });
+  snakeCtx.fillStyle='#ff0606';
+  snakeCtx.fillRect(food.x*20,food.y*20,20,20);
+}
 
-    function startSnakeGame() {
-      snake = [{ x: 10, y: 10 }];
-      direction = { x: 0, y: 0 };
-      nextDirection = { x: 1, y: 0 }; // initial movement
-      apple = { x: Math.floor(Math.random() * snakeTileCount), y: Math.floor(Math.random() * snakeTileCount) };
-      score = 0;
-      snakeScore.textContent = `SCORE: 0 | HIGH: ${highScore}`;
-      isPlaying = true;
-      clearInterval(snakeInterval);
-      snakeInterval = setInterval(() => {
-        if(direction.x !== 0 || direction.y !== 0) updateSnake();
-      }, 150);
-    }
+function updateSnake(){
+  const head={...snake[0]};
+  if(direction==='RIGHT') head.x++;
+  if(direction==='LEFT') head.x--;
+  if(direction==='UP') head.y--;
+  if(direction==='DOWN') head.y++;
 
-    function updateSnake() {
-      const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
-      // collisions
-      if(head.x < 0 || head.x >= snakeTileCount || head.y < 0 || head.y >= snakeTileCount || snake.some(s=>s.x===head.x&&s.y===head.y)) {
-        gameOverSnake();
-        return;
-      }
+  if(head.x<0 || head.x>=30 || head.y<0 || head.y>=20 || snake.some(s=>s.x===head.x && s.y===head.y)){
+    return;
+  }
 
-      snake.unshift(head);
+  snake.unshift(head);
+  if(head.x===food.x && head.y===food.y){
+    snakeScore++;
+    snakeScoreDisplay.textContent=snakeScore;
+    placeFood();
+  } else snake.pop();
 
-      // eat apple
-      if(head.x===apple.x && head.y===apple.y) {
-        score++;
-        do {
-          apple = { x: Math.floor(Math.random()*snakeTileCount), y: Math.floor(Math.random()*snakeTileCount) };
-        } while(snake.some(s=>s.x===apple.x && s.y===apple.y));
-      } else {
-        snake.pop();
-      }
+  drawSnake();
+  snakeAnimation=setTimeout(updateSnake,150);
+}
 
-      direction = nextDirection;
-      snakeScore.textContent = `SCORE: ${score} | HIGH: ${highScore}`;
-      drawSnake();
-    }
+document.addEventListener('keydown',e=>{
+  if(overlaySnake.classList.contains('active')){
+    if(e.key==='ArrowUp' && direction!=='DOWN') direction='UP';
+    if(e.key==='ArrowDown' && direction!=='UP') direction='DOWN';
+    if(e.key==='ArrowLeft' && direction!=='RIGHT') direction='LEFT';
+    if(e.key==='ArrowRight' && direction!=='LEFT') direction='RIGHT';
+  }
+});
 
-    function drawSnake() {
-      snakeCtx.fillStyle = 'black';
-      snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
-      snakeCtx.fillStyle = 'red';
-      snake.forEach(s=>snakeCtx.fillRect(s.x*snakeCanvas.width/snakeTileCount, s.y*snakeCanvas.height/snakeTileCount, snakeCanvas.width/snakeTileCount, snakeCanvas.height/snakeTileCount));
-      snakeCtx.fillStyle = 'lime';
-      snakeCtx.fillRect(apple.x*snakeCanvas.width/snakeTileCount, apple.y*snakeCanvas.height/snakeTileCount, snakeCanvas.width/snakeTileCount, snakeCanvas.height/snakeTileCount);
-    }
-
-    function gameOverSnake() {
-      isPlaying = false;
-      clearInterval(snakeInterval);
-      if(score>highScore) highScore=score;
-      snakeGameOver.style.display = 'flex';
-    }
-
-    startSnakeBtn.addEventListener('click', () => { startSnakeGame(); });
-    snakeTryAgain.addEventListener('click', () => { startSnakeGame(); snakeGameOver.style.display='none'; });
-
-    document.addEventListener('keydown', e => {
-      if(e.key==='ArrowUp' && direction.y!==1) nextDirection={x:0,y:-1};
-      if(e.key==='ArrowDown' && direction.y!==-1) nextDirection={x:0,y:1};
-      if(e.key==='ArrowLeft' && direction.x!==1) nextDirection={x:-1,y:0};
-      if(e.key==='ArrowRight' && direction.x!==-1) nextDirection={x:1,y:0};
-    });
-
-    // --- Secret Redbull code to start Snake ---
-    let typedKeys = '';
-    document.addEventListener('keydown', e => {
-      typedKeys += e.key.toLowerCase();
-      if(typedKeys.endsWith('redbull')) {
-        overlaySnake.classList.add('active');
-        typedKeys = '';
-      }
-      if(typedKeys.length > 10) typedKeys = typedKeys.slice(-10);
-    });
-  </script>
+snakeRestartBtn.addEventListener('click',()=>{ initSnakeGame(); });
+</script>
 </body>
 </html>
