@@ -16,6 +16,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 .gooner:active { transform: translateY(-3px) scale(0.97); box-shadow: 0 4px 0 rgba(0,0,0,0.6);}
 .hint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:clamp(10px,3vw,14px); color:rgba(255,6,6,0.6); letter-spacing:2px;}
 .hidden-text{ position:fixed; top:10px; left:10px; font-size:clamp(8px,2.5vw,12px); color:rgba(255,6,6,0.6); pointer-events:auto; cursor:pointer; z-index:10001; animation: glitch 1.5s 3s;}
+.version{ position:fixed; top:10px; right:10px; font-size:clamp(8px,2.5vw,12px); color:rgba(255,6,6,0.6); z-index:10001; letter-spacing:1px;}
 @keyframes glitch {0% {text-shadow:2px 0 var(--accent);}20% {text-shadow:-2px 0 var(--accent);}40% {text-shadow:2px 2 var(--accent);}60% {text-shadow:-2px -2 var(--accent);}80% {text-shadow:2px -2 var(--accent);}100% {text-shadow:none;}}
 .overlay { position:fixed; inset:0; background:var(--bg); display:none; align-items:center; justify-content:center; z-index:9999; overflow:hidden; flex-direction:column;}
 .overlay.active { display:flex;}
@@ -26,7 +27,8 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 @keyframes pulse {0%{opacity:0;transform:translate(-50%,-50%) scale(0.9);}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}}
 .glitch-static { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:clamp(40px,12vw,200px); color:white; animation: tvGlitch 0.8s infinite; letter-spacing:2px;}
 @keyframes tvGlitch {0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }50% { transform: translate(-50%,-50%) skew(2deg); opacity:.9; }100% { transform: translate(-50%,-50%) skew(0deg); opacity:1; } }
-.close-btn{ position:fixed; top:10px; right:10px; font-size:clamp(10px,4vw,14px); border:2px solid var(--accent); color:var(--accent); background:transparent; padding:6px 10px; border-radius:6px; cursor:pointer; z-index:10000;}
+.close-btn{ position:fixed; top:10px; right:10px; font-size:clamp(10px,4vw,14px); border:2px solid var(--accent); color:var(--accent); background:transparent; padding:6px 10px; border-radius:6px; cursor:pointer; z-index:10000; display:none;}
+.close-btn.active{ display:block;}
 .close-btn:active{ transform:scale(0.9);}
 #overlayPong canvas, #overlaySnake canvas { border:4px solid var(--accent); background:black; }
 #overlayPong h1, #overlaySnake h1 { color:var(--accent); font-size: clamp(24px, 8vw, 72px); margin-bottom:20px; text-align:center; }
@@ -35,10 +37,22 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 #winLoseScreen { display:none; flex-direction:column; align-items:center; justify-content:center; position:fixed; inset:0; background:var(--bg); color:var(--accent); font-family:"Press Start 2P",monospace; z-index:10000;}
 #winLoseScreen h1 { font-size:clamp(24px,8vw,72px); margin-bottom:20px; text-align:center; }
 #winLoseScreen button { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:8px; font-family:"Press Start 2P",monospace; font-size:14px;}
+#snakeGameOver { display:none; flex-direction:column; align-items:center; justify-content:center; position:fixed; inset:0; background:var(--bg); color:var(--accent); font-family:"Press Start 2P",monospace; z-index:10000;}
+#snakeGameOver h1 { font-size:clamp(24px,8vw,72px); margin-bottom:20px; text-align:center; }
+#snakeGameOver .score-text { font-size:clamp(16px,4vw,24px); margin-bottom:20px; }
+#snakeGameOver button { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:8px; font-family:"Press Start 2P",monospace; font-size:14px;}
+.touch-controls { display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:10000; }
+.touch-controls.active { display:grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap:10px; }
+.touch-btn { background:rgba(255,6,6,0.3); border:2px solid var(--accent); color:var(--accent); font-size:24px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:manipulation;}
+.touch-btn:active { background:rgba(255,6,6,0.6); transform:scale(0.95); }
+.touch-btn.empty { opacity:0; pointer-events:none; }
+.mobile-hint { display:none; position:fixed; bottom:200px; left:50%; transform:translateX(-50%); font-size:clamp(10px,3vw,14px); color:rgba(255,6,6,0.6); text-align:center; z-index:9998; }
+.mobile-hint.active { display:block; }
 </style>
 </head>
 <body>
-<div class="hidden-text" id="hiddenText">your cool</div>
+<div class="hidden-text" id="hiddenText">you're cool</div>
+<div class="version">v1.0</div>
 <div class="wrap">
   <div class="gooner" id="mainGooner">what up gooner</div>
   <div class="hint">tap / click me</div>
@@ -65,6 +79,18 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   </div>
   <div id="scoreboard">0 : 0</div>
   <canvas id="pongCanvas" width="800" height="600"></canvas>
+  <div class="mobile-hint" id="pongMobileHint">Use buttons below to move</div>
+  <div class="touch-controls" id="pongControls">
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn" data-pong-dir="up">▲</div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn" data-pong-dir="down">▼</div>
+    <div class="touch-btn empty"></div>
+  </div>
 </div>
 
 <div class="overlay" id="overlaySnake">
@@ -72,12 +98,30 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <h1>SNAKE</h1>
   <div id="snakeScore">0</div>
   <canvas id="snakeCanvas" width="600" height="400"></canvas>
-  <button id="snakeRestartBtn" class="difficulty-btn">TRY AGAIN</button>
+  <div class="mobile-hint" id="snakeMobileHint">Swipe or use buttons to move</div>
+  <div class="touch-controls" id="snakeControls">
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn" data-snake-dir="UP">▲</div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn" data-snake-dir="LEFT">◄</div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn" data-snake-dir="RIGHT">►</div>
+    <div class="touch-btn empty"></div>
+    <div class="touch-btn" data-snake-dir="DOWN">▼</div>
+    <div class="touch-btn empty"></div>
+  </div>
 </div>
 
 <div id="winLoseScreen">
   <h1 id="winLoseMessage">YOU WIN</h1>
   <button id="tryAgainBtn">TRY AGAIN</button>
+</div>
+
+<div id="snakeGameOver">
+  <h1>GAME OVER</h1>
+  <div class="score-text">FINAL SCORE: <span id="finalSnakeScore">0</span></div>
+  <button id="snakePlayAgainBtn">PLAY AGAIN</button>
+  <button id="snakeCloseBtn">CLOSE</button>
 </div>
 
 <script>
@@ -115,8 +159,18 @@ const overlaySnake=document.getElementById('overlaySnake');
 const snakeCanvas=document.getElementById('snakeCanvas');
 const snakeCtx=snakeCanvas.getContext('2d');
 const snakeScoreDisplay=document.getElementById('snakeScore');
-const snakeRestartBtn=document.getElementById('snakeRestartBtn');
-let snake, direction, food, snakeScore, snakeAnimation;
+const snakeGameOver=document.getElementById('snakeGameOver');
+const finalSnakeScore=document.getElementById('finalSnakeScore');
+const snakePlayAgainBtn=document.getElementById('snakePlayAgainBtn');
+const snakeCloseBtn=document.getElementById('snakeCloseBtn');
+let snake, direction, food, snakeScore, snakeAnimation, snakeRunning=false;
+
+// Mobile controls
+const pongControls=document.getElementById('pongControls');
+const snakeControls=document.getElementById('snakeControls');
+const pongMobileHint=document.getElementById('pongMobileHint');
+const snakeMobileHint=document.getElementById('snakeMobileHint');
+const isMobile = 'ontouchstart' in window;
 
 // Close buttons
 document.querySelectorAll('.close-btn').forEach(btn=>{
@@ -124,10 +178,23 @@ document.querySelectorAll('.close-btn').forEach(btn=>{
     document.getElementById(btn.dataset.close).classList.remove('active');
     cancelAnimationFrame(pongAnimation);
     clearTimeout(snakeAnimation);
+    snakeRunning=false;
+    pongControls.classList.remove('active');
+    snakeControls.classList.remove('active');
+    pongMobileHint.classList.remove('active');
+    snakeMobileHint.classList.remove('active');
   });
 });
 document.querySelectorAll('.overlay').forEach(ov=>{
-  ov.addEventListener('click',(e)=>{ if(e.target===ov) ov.classList.remove('active'); });
+  ov.addEventListener('click',(e)=>{ 
+    if(e.target===ov){ 
+      ov.classList.remove('active'); 
+      pongControls.classList.remove('active');
+      snakeControls.classList.remove('active');
+      pongMobileHint.classList.remove('active');
+      snakeMobileHint.classList.remove('active');
+    } 
+  });
 });
 
 // Hover glitch
@@ -151,6 +218,7 @@ document.addEventListener('keydown',(e)=>{
   if(inputSeq.length>konami.length) inputSeq.shift();
   if(JSON.stringify(inputSeq)===JSON.stringify(konami)){
     overlayPong.classList.add('active');
+    if(isMobile){ pongControls.classList.add('active'); pongMobileHint.classList.add('active'); }
     startPong();
   }
 });
@@ -164,6 +232,7 @@ document.addEventListener('keydown',(e)=>{
   if(redbullInput.length>redbullSequence.length) redbullInput.shift();
   if(JSON.stringify(redbullInput)===JSON.stringify(redbullSequence)){
     overlaySnake.classList.add('active');
+    if(isMobile){ snakeControls.classList.add('active'); snakeMobileHint.classList.add('active'); }
     initSnakeGame();
   }
 });
@@ -222,6 +291,20 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>{
   if(e.key==='ArrowUp'||e.key==='ArrowDown') paddle.dy=0;
 });
+
+// Pong mobile controls
+document.querySelectorAll('[data-pong-dir]').forEach(btn=>{
+  btn.addEventListener('touchstart',(e)=>{
+    e.preventDefault();
+    if(btn.dataset.pongDir==='up') paddle.dy=-6;
+    if(btn.dataset.pongDir==='down') paddle.dy=6;
+  });
+  btn.addEventListener('touchend',(e)=>{
+    e.preventDefault();
+    paddle.dy=0;
+  });
+});
+
 document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     aiFactor=parseFloat(btn.dataset.ai);
@@ -240,8 +323,11 @@ function startPong(){ playerScore=0; aiScore=0; resetBall(); cancelAnimationFram
 // SNAKE LOGIC
 ///////////////////////////
 function initSnakeGame(){
-  snake=[{x:5,y:5}]; direction='RIGHT'; snakeScore=0; placeFood(); snakeScoreDisplay.textContent=snakeScore;
-  clearTimeout(snakeAnimation); snakeAnimation=setTimeout(updateSnake,150);
+  snake=[{x:5,y:5}]; direction='RIGHT'; snakeScore=0; snakeRunning=true; placeFood(); snakeScoreDisplay.textContent=snakeScore;
+  snakeGameOver.style.display='none';
+  clearTimeout(snakeAnimation); 
+  drawSnake();
+  snakeAnimation=setTimeout(updateSnake,150);
 }
 function placeFood(){ food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)}; }
 function drawSnake(){
@@ -250,9 +336,15 @@ function drawSnake(){
   snakeCtx.fillStyle='#ff0606'; snakeCtx.fillRect(food.x*20,food.y*20,20,20);
 }
 function updateSnake(){
+  if(!snakeRunning) return;
   const head={...snake[0]};
   if(direction==='RIGHT') head.x++; if(direction==='LEFT') head.x--; if(direction==='UP') head.y--; if(direction==='DOWN') head.y++;
-  if(head.x<0 || head.x>=30 || head.y<0 || head.y>=20 || snake.some(s=>s.x===head.x && s.y===head.y)) return;
+  if(head.x<0 || head.x>=30 || head.y<0 || head.y>=20 || snake.some(s=>s.x===head.x && s.y===head.y)){
+    snakeRunning=false;
+    finalSnakeScore.textContent=snakeScore;
+    snakeGameOver.style.display='flex';
+    return;
+  }
   snake.unshift(head);
   if(head.x===food.x && head.y===food.y){ snakeScore++; snakeScoreDisplay.textContent=snakeScore; placeFood(); } else snake.pop();
   drawSnake();
@@ -266,7 +358,53 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowRight' && direction!=='LEFT') direction='RIGHT';
   }
 });
-snakeRestartBtn.addEventListener('click',()=>{ initSnakeGame(); });
+
+// Snake mobile controls
+document.querySelectorAll('[data-snake-dir]').forEach(btn=>{
+  btn.addEventListener('click',(e)=>{
+    e.preventDefault();
+    const newDir=btn.dataset.snakeDir;
+    if(newDir==='UP' && direction!=='DOWN') direction='UP';
+    if(newDir==='DOWN' && direction!=='UP') direction='DOWN';
+    if(newDir==='LEFT' && direction!=='RIGHT') direction='LEFT';
+    if(newDir==='RIGHT' && direction!=='LEFT') direction='RIGHT';
+  });
+});
+
+// Snake swipe controls
+let touchStartX=0, touchStartY=0;
+snakeCanvas.addEventListener('touchstart',(e)=>{
+  touchStartX=e.touches[0].clientX;
+  touchStartY=e.touches[0].clientY;
+});
+snakeCanvas.addEventListener('touchend',(e)=>{
+  const touchEndX=e.changedTouches[0].clientX;
+  const touchEndY=e.changedTouches[0].clientY;
+  const diffX=touchEndX-touchStartX;
+  const diffY=touchEndY-touchStartY;
+  if(Math.abs(diffX)>Math.abs(diffY)){
+    if(diffX>30 && direction!=='LEFT') direction='RIGHT';
+    else if(diffX<-30 && direction!=='RIGHT') direction='LEFT';
+  } else {
+    if(diffY>30 && direction!=='UP') direction='DOWN';
+    else if(diffY<-30 && direction!=='DOWN') direction='UP';
+  }
+});
+
+snakePlayAgainBtn.addEventListener('click',(e)=>{ 
+  e.stopPropagation();
+  snakeGameOver.style.display='none'; 
+  initSnakeGame(); 
+});
+snakeCloseBtn.addEventListener('click',(e)=>{ 
+  e.stopPropagation();
+  snakeGameOver.style.display='none'; 
+  overlaySnake.classList.remove('active');
+  snakeControls.classList.remove('active');
+  snakeMobileHint.classList.remove('active');
+  clearTimeout(snakeAnimation);
+  snakeRunning=false;
+});
 </script>
 </body>
 </html>
