@@ -4,9 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
 <title>What up Gooner</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-
 <style>
 :root { --bg: #000; --accent: #ff0606; }
 html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Start 2P",monospace; overflow:hidden; color:var(--accent); -webkit-tap-highlight-color: transparent;}
@@ -27,20 +25,19 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 @keyframes pulse {0%{opacity:0;transform:translate(-50%,-50%) scale(0.9);}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05);}100%{opacity:0;transform:translate(-50%,-50%) scale(0.95);}}
 .glitch-static { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:clamp(40px,12vw,200px); color:white; animation: tvGlitch 0.8s infinite; letter-spacing:2px;}
 @keyframes tvGlitch {0% { transform: translate(-50%,-50%) skew(0deg); opacity:1; }20% { transform: translate(-51%,-49%) skew(-1deg); opacity:1; }50% { transform: translate(-50%,-50%) skew(2deg); opacity:.9; }100% { transform: translate(-50%,-50%) skew(0deg); opacity:1; } }
-.close-btn{ position:fixed; top:10px; right:10px; font-size:clamp(10px,4vw,14px); border:2px solid var(--accent); color:var(--accent); background:transparent; padding:6px 10px; border-radius:6px; cursor:pointer; z-index:10000; display:none;}
-.close-btn.active{ display:block;}
+.close-btn{ position:fixed; top:10px; right:10px; font-size:clamp(10px,4vw,14px); border:2px solid var(--accent); color:var(--accent); background:transparent; padding:6px 10px; border-radius:6px; cursor:pointer; z-index:10000;}
 .close-btn:active{ transform:scale(0.9);}
-#overlayPong canvas, #overlaySnake canvas { border:4px solid var(--accent); background:black; }
-#overlayPong h1, #overlaySnake h1 { color:var(--accent); font-size: clamp(24px, 8vw, 72px); margin-bottom:20px; text-align:center; }
-#overlayPong .difficulty-btn, #overlaySnake #snakeRestartBtn { color: var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin:10px; cursor:pointer; font-family:"Press Start 2P", monospace; font-size:12px; border-radius:8px;}
-#scoreboard, #snakeScore { margin-top:10px; font-size: clamp(12px, 3vw, 18px);}
+#overlayPong canvas, #overlaySnake canvas, #overlayRunner canvas { border:4px solid var(--accent); background:black; }
+#overlayPong h1, #overlaySnake h1, #overlayRunner h1 { color:var(--accent); font-size: clamp(24px, 8vw, 72px); margin-bottom:20px; text-align:center; }
+#overlayPong .difficulty-btn { color: var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin:10px; cursor:pointer; font-family:"Press Start 2P", monospace; font-size:12px; border-radius:8px;}
+#scoreboard, #snakeScore, #runnerScore { margin-top:10px; font-size: clamp(12px, 3vw, 18px);}
 #winLoseScreen { display:none; flex-direction:column; align-items:center; justify-content:center; position:fixed; inset:0; background:var(--bg); color:var(--accent); font-family:"Press Start 2P",monospace; z-index:10000;}
 #winLoseScreen h1 { font-size:clamp(24px,8vw,72px); margin-bottom:20px; text-align:center; }
 #winLoseScreen button { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:8px; font-family:"Press Start 2P",monospace; font-size:14px;}
-#snakeGameOver { display:none; flex-direction:column; align-items:center; justify-content:center; position:fixed; inset:0; background:var(--bg); color:var(--accent); font-family:"Press Start 2P",monospace; z-index:10000;}
-#snakeGameOver h1 { font-size:clamp(24px,8vw,72px); margin-bottom:20px; text-align:center; }
-#snakeGameOver .score-text { font-size:clamp(16px,4vw,24px); margin-bottom:20px; }
-#snakeGameOver button { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:8px; font-family:"Press Start 2P",monospace; font-size:14px;}
+#snakeGameOver, #runnerGameOver { display:none; flex-direction:column; align-items:center; justify-content:center; position:fixed; inset:0; background:var(--bg); color:var(--accent); font-family:"Press Start 2P",monospace; z-index:10000;}
+#snakeGameOver h1, #runnerGameOver h1 { font-size:clamp(24px,8vw,72px); margin-bottom:20px; text-align:center; }
+#snakeGameOver .score-text, #runnerGameOver .score-text { font-size:clamp(16px,4vw,24px); margin-bottom:20px; }
+#snakeGameOver button, #runnerGameOver button { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:8px; font-family:"Press Start 2P",monospace; font-size:14px;}
 .touch-controls { display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:10000; }
 .touch-controls.active { display:grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap:10px; }
 .touch-btn { background:rgba(255,6,6,0.3); border:2px solid var(--accent); color:var(--accent); font-size:24px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:manipulation;}
@@ -57,354 +54,76 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <div class="gooner" id="mainGooner">what up gooner</div>
   <div class="hint">tap / click me</div>
 </div>
-
-<div class="overlay" id="overlayGonner">
-  <button class="close-btn" data-close="overlayGonner">CLOSE</button>
-  <div class="surface" id="surfaceGonner"></div>
-  <div class="center-giant">GONNER</div>
-</div>
-
-<div class="overlay" id="overlayWhy">
-  <button class="close-btn" data-close="overlayWhy">CLOSE</button>
-  <div class="glitch-static">WHY ARE YOU HERE</div>
-</div>
-
-<div class="overlay" id="overlayPong">
-  <button class="close-btn" data-close="overlayPong">CLOSE</button>
-  <h1>PONG</h1>
-  <div>
-    <button class="difficulty-btn" data-speed="8" data-ai="0.04" data-ball="8">EASY</button>
-    <button class="difficulty-btn" data-speed="8" data-ai="0.07" data-ball="10">MEDIUM</button>
-    <button class="difficulty-btn" data-speed="12" data-ai="0.12" data-ball="16">HARD</button>
-  </div>
-  <div id="scoreboard">0 : 0</div>
-  <canvas id="pongCanvas" width="800" height="600"></canvas>
-  <div class="mobile-hint" id="pongMobileHint">Use buttons below to move</div>
-  <div class="touch-controls" id="pongControls">
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn" data-pong-dir="up">▲</div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn" data-pong-dir="down">▼</div>
-    <div class="touch-btn empty"></div>
-  </div>
-</div>
-
-<div class="overlay" id="overlaySnake">
-  <button class="close-btn" data-close="overlaySnake">CLOSE</button>
-  <h1>SNAKE</h1>
-  <div id="snakeScore">0</div>
-  <canvas id="snakeCanvas" width="600" height="400"></canvas>
-  <div class="mobile-hint" id="snakeMobileHint">Swipe or use buttons to move</div>
-  <div class="touch-controls" id="snakeControls">
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn" data-snake-dir="UP">▲</div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn" data-snake-dir="LEFT">◄</div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn" data-snake-dir="RIGHT">►</div>
-    <div class="touch-btn empty"></div>
-    <div class="touch-btn" data-snake-dir="DOWN">▼</div>
-    <div class="touch-btn empty"></div>
-  </div>
-</div>
-
-<div id="winLoseScreen">
-  <h1 id="winLoseMessage">YOU WIN</h1>
-  <button id="tryAgainBtn">TRY AGAIN</button>
-</div>
-
-<div id="snakeGameOver">
-  <h1>GAME OVER</h1>
-  <div class="score-text">FINAL SCORE: <span id="finalSnakeScore">0</span></div>
-  <button id="snakePlayAgainBtn">PLAY AGAIN</button>
-  <button id="snakeCloseBtn">CLOSE</button>
-</div>
-
+<div class="overlay" id="overlayGonner"><button class="close-btn" data-close="overlayGonner">CLOSE</button><div class="surface" id="surfaceGonner"></div><div class="center-giant">GONNER</div></div>
+<div class="overlay" id="overlayWhy"><button class="close-btn" data-close="overlayWhy">CLOSE</button><div class="glitch-static">WHY ARE YOU HERE</div></div>
+<div class="overlay" id="overlayPong"><button class="close-btn" data-close="overlayPong">CLOSE</button><h1>PONG</h1><div><button class="difficulty-btn" data-speed="8" data-ai="0.04" data-ball="8">EASY</button><button class="difficulty-btn" data-speed="8" data-ai="0.07" data-ball="10">MEDIUM</button><button class="difficulty-btn" data-speed="12" data-ai="0.12" data-ball="16">HARD</button></div><div id="scoreboard">0 : 0</div><canvas id="pongCanvas" width="800" height="600"></canvas><div class="mobile-hint" id="pongMobileHint">Use buttons below to move</div><div class="touch-controls" id="pongControls"><div class="touch-btn empty"></div><div class="touch-btn" data-pong-dir="up">▲</div><div class="touch-btn empty"></div><div class="touch-btn empty"></div><div class="touch-btn empty"></div><div class="touch-btn empty"></div><div class="touch-btn empty"></div><div class="touch-btn" data-pong-dir="down">▼</div><div class="touch-btn empty"></div></div></div>
+<div class="overlay" id="overlaySnake"><button class="close-btn" data-close="overlaySnake">CLOSE</button><h1>SNAKE</h1><div id="snakeScore">0</div><canvas id="snakeCanvas" width="600" height="400"></canvas><div class="mobile-hint" id="snakeMobileHint">Swipe or use buttons to move</div><div class="touch-controls" id="snakeControls"><div class="touch-btn empty"></div><div class="touch-btn" data-snake-dir="UP">▲</div><div class="touch-btn empty"></div><div class="touch-btn" data-snake-dir="LEFT">◄</div><div class="touch-btn empty"></div><div class="touch-btn" data-snake-dir="RIGHT">►</div><div class="touch-btn empty"></div><div class="touch-btn" data-snake-dir="DOWN">▼</div><div class="touch-btn empty"></div></div></div>
+<div class="overlay" id="overlayRunner"><button class="close-btn" data-close="overlayRunner">CLOSE</button><h1>RUNNER</h1><div id="runnerScore">SCORE: 0</div><canvas id="runnerCanvas" width="800" height="400"></canvas>  <div class="mobile-hint" id="runnerMobileHint">Tap to jump, swipe left/right to change lanes</div></div>
+<div id="winLoseScreen"><h1 id="winLoseMessage">YOU WIN</h1><button id="tryAgainBtn">TRY AGAIN</button></div>
+<div id="snakeGameOver"><h1>GAME OVER</h1><div class="score-text">FINAL SCORE: <span id="finalSnakeScore">0</span></div><button id="snakePlayAgainBtn">PLAY AGAIN</button><button id="snakeCloseBtn">CLOSE</button></div>
+<div id="runnerGameOver"><h1>GAME OVER</h1><div class="score-text">FINAL SCORE: <span id="finalRunnerScore">0</span></div><button id="runnerPlayAgainBtn">PLAY AGAIN</button><button id="runnerCloseBtn">CLOSE</button></div>
 <script>
-function rand(min,max){ return Math.random()*(max-min)+min; }
-function populateStamps(surface,text,count=30){
-  surface.innerHTML='';
-  for(let i=0;i<count;i++){
-    const s=document.createElement('div');
-    s.className='stamp';
-    s.textContent=text;
-    s.style.left=rand(-10,90)+'vw';
-    s.style.top=rand(-10,90)+'vh';
-    s.style.animationDelay=rand(0,1)+'s';
-    s.style.animationDuration=rand(0.8,1.6)+'s';
-    surface.appendChild(s);
-  }
-}
-
-// Elements
-const main=document.getElementById('mainGooner');
-const hiddenText=document.getElementById('hiddenText');
-const overlayGonner=document.getElementById('overlayGonner');
-const overlayWhy=document.getElementById('overlayWhy');
-const surfaceGonner=document.getElementById('surfaceGonner');
-const overlayPong=document.getElementById('overlayPong');
-const pongCanvas=document.getElementById('pongCanvas');
-const ctx=pongCanvas.getContext('2d');
-const scoreboard=document.getElementById('scoreboard');
-const winLoseScreen=document.getElementById('winLoseScreen');
-const winLoseMessage=document.getElementById('winLoseMessage');
-const tryAgainBtn=document.getElementById('tryAgainBtn');
+function rand(min,max){return Math.random()*(max-min)+min;}
+function populateStamps(surface,text,count=30){surface.innerHTML='';for(let i=0;i<count;i++){const s=document.createElement('div');s.className='stamp';s.textContent=text;s.style.left=rand(-10,90)+'vw';s.style.top=rand(-10,90)+'vh';s.style.animationDelay=rand(0,1)+'s';s.style.animationDuration=rand(0.8,1.6)+'s';surface.appendChild(s);}}
+const main=document.getElementById('mainGooner'),hiddenText=document.getElementById('hiddenText'),overlayGonner=document.getElementById('overlayGonner'),overlayWhy=document.getElementById('overlayWhy'),surfaceGonner=document.getElementById('surfaceGonner'),overlayPong=document.getElementById('overlayPong'),pongCanvas=document.getElementById('pongCanvas'),ctx=pongCanvas.getContext('2d'),scoreboard=document.getElementById('scoreboard'),winLoseScreen=document.getElementById('winLoseScreen'),winLoseMessage=document.getElementById('winLoseMessage'),tryAgainBtn=document.getElementById('tryAgainBtn');
 let pongAnimation=null;
-
-const overlaySnake=document.getElementById('overlaySnake');
-const snakeCanvas=document.getElementById('snakeCanvas');
-const snakeCtx=snakeCanvas.getContext('2d');
-const snakeScoreDisplay=document.getElementById('snakeScore');
-const snakeGameOver=document.getElementById('snakeGameOver');
-const finalSnakeScore=document.getElementById('finalSnakeScore');
-const snakePlayAgainBtn=document.getElementById('snakePlayAgainBtn');
-const snakeCloseBtn=document.getElementById('snakeCloseBtn');
-let snake, direction, food, snakeScore, snakeAnimation, snakeRunning=false;
-
-// Mobile controls
-const pongControls=document.getElementById('pongControls');
-const snakeControls=document.getElementById('snakeControls');
-const pongMobileHint=document.getElementById('pongMobileHint');
-const snakeMobileHint=document.getElementById('snakeMobileHint');
-const isMobile = 'ontouchstart' in window;
-
-// Close buttons
-document.querySelectorAll('.close-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.getElementById(btn.dataset.close).classList.remove('active');
-    cancelAnimationFrame(pongAnimation);
-    clearTimeout(snakeAnimation);
-    snakeRunning=false;
-    pongControls.classList.remove('active');
-    snakeControls.classList.remove('active');
-    pongMobileHint.classList.remove('active');
-    snakeMobileHint.classList.remove('active');
-  });
-});
-document.querySelectorAll('.overlay').forEach(ov=>{
-  ov.addEventListener('click',(e)=>{ 
-    if(e.target===ov){ 
-      ov.classList.remove('active'); 
-      pongControls.classList.remove('active');
-      snakeControls.classList.remove('active');
-      pongMobileHint.classList.remove('active');
-      snakeMobileHint.classList.remove('active');
-    } 
-  });
-});
-
-// Hover glitch
+const overlaySnake=document.getElementById('overlaySnake'),snakeCanvas=document.getElementById('snakeCanvas'),snakeCtx=snakeCanvas.getContext('2d'),snakeScoreDisplay=document.getElementById('snakeScore'),snakeGameOver=document.getElementById('snakeGameOver'),finalSnakeScore=document.getElementById('finalSnakeScore'),snakePlayAgainBtn=document.getElementById('snakePlayAgainBtn'),snakeCloseBtn=document.getElementById('snakeCloseBtn');
+let snake,direction,food,snakeScore,snakeAnimation,snakeRunning=false;
+const overlayRunner=document.getElementById('overlayRunner'),runnerCanvas=document.getElementById('runnerCanvas'),runnerCtx=runnerCanvas.getContext('2d'),runnerScoreDisplay=document.getElementById('runnerScore'),runnerGameOver=document.getElementById('runnerGameOver'),finalRunnerScore=document.getElementById('finalRunnerScore'),runnerPlayAgainBtn=document.getElementById('runnerPlayAgainBtn'),runnerCloseBtn=document.getElementById('runnerCloseBtn'),runnerMobileHint=document.getElementById('runnerMobileHint');
+let runnerAnimation,runnerRunning=false,runnerScore,runnerPlayer,runnerObstacles,runnerSpeed;
+const pongControls=document.getElementById('pongControls'),snakeControls=document.getElementById('snakeControls'),pongMobileHint=document.getElementById('pongMobileHint'),snakeMobileHint=document.getElementById('snakeMobileHint'),isMobile='ontouchstart'in window;
+document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.getElementById(btn.dataset.close).classList.remove('active');cancelAnimationFrame(pongAnimation);cancelAnimationFrame(runnerAnimation);clearTimeout(snakeAnimation);snakeRunning=false;runnerRunning=false;pongControls.classList.remove('active');snakeControls.classList.remove('active');pongMobileHint.classList.remove('active');snakeMobileHint.classList.remove('active');runnerMobileHint.classList.remove('active');});});
+document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',(e)=>{if(e.target===ov){ov.classList.remove('active');pongControls.classList.remove('active');snakeControls.classList.remove('active');pongMobileHint.classList.remove('active');snakeMobileHint.classList.remove('active');runnerMobileHint.classList.remove('active');}});});
 let hoverInterval=null;
-main.addEventListener('mouseenter',()=>{
-  if(window.matchMedia("(hover:hover)").matches){
-    hoverInterval=setInterval(()=>{ main.style.letterSpacing=(Math.random()>0.5?'6px':'2px'); },120);
-  }
-});
-main.addEventListener('mouseleave',()=>{ clearInterval(hoverInterval); hoverInterval=null; main.style.letterSpacing='4px'; });
-
-// GONNER & WHY overlays
-main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
-hiddenText.addEventListener('click',()=>{ overlayWhy.classList.add('active'); });
-
-// KONAMI code triggers Pong
+main.addEventListener('mouseenter',()=>{if(window.matchMedia("(hover:hover)").matches){hoverInterval=setInterval(()=>{main.style.letterSpacing=(Math.random()>0.5?'6px':'2px');},120);}});
+main.addEventListener('mouseleave',()=>{clearInterval(hoverInterval);hoverInterval=null;main.style.letterSpacing='4px';});
+main.addEventListener('click',()=>{overlayGonner.classList.add('active');populateStamps(surfaceGonner,'GONNER',35);});
+hiddenText.addEventListener('click',()=>{overlayWhy.classList.add('active');});
 const konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
 let inputSeq=[];
-document.addEventListener('keydown',(e)=>{
-  inputSeq.push(e.key);
-  if(inputSeq.length>konami.length) inputSeq.shift();
-  if(JSON.stringify(inputSeq)===JSON.stringify(konami)){
-    overlayPong.classList.add('active');
-    if(isMobile){ pongControls.classList.add('active'); pongMobileHint.classList.add('active'); }
-    startPong();
-  }
-});
-
-// REDBULL sequence triggers Snake
-const redbullSequence = ['r','e','d','b','u','l','l'];
-let redbullInput = [];
-document.addEventListener('keydown',(e)=>{
-  const key = e.key.toLowerCase();
-  redbullInput.push(key);
-  if(redbullInput.length>redbullSequence.length) redbullInput.shift();
-  if(JSON.stringify(redbullInput)===JSON.stringify(redbullSequence)){
-    overlaySnake.classList.add('active');
-    if(isMobile){ snakeControls.classList.add('active'); snakeMobileHint.classList.add('active'); }
-    initSnakeGame();
-  }
-});
-
-///////////////////////////
-// PONG LOGIC
-///////////////////////////
-const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
-const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
-const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
-let aiFactor=0.07, playerScore=0, aiScore=0, ballSpeed=8;
-
-function drawPong(){
-  ctx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
-  ctx.fillStyle="#ff0606";
-  ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
-  ctx.fillRect(ai.x,ai.y,ai.w,ai.h);
-  ctx.beginPath();
-  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-  ctx.fill(); ctx.closePath();
-  ctx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
-  scoreboard.textContent=`${playerScore} : ${aiScore}`;
-}
-function resetBall(){ ball.x=pongCanvas.width/2; ball.y=pongCanvas.height/2; ball.dx=(Math.random()>0.5?1:-1); ball.dy=(Math.random()>0.5?1:-1); }
-function checkWinLose(){
-  if(playerScore>=10){ winLoseMessage.textContent="YOU WIN"; winLoseScreen.style.display="flex"; cancelAnimationFrame(pongAnimation); return true;}
-  if(aiScore>=10){ winLoseMessage.textContent="YOU LOSE"; winLoseScreen.style.display="flex"; cancelAnimationFrame(pongAnimation); return true;}
-  return false;
-}
-function updatePong(){
-  paddle.y+=paddle.dy;
-  if(paddle.y<0)paddle.y=0;
-  if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;
-
-  ball.x+=ball.dx*ballSpeed/4;
-  ball.y+=ball.dy*ballSpeed/4;
-
-  if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0) ball.dy*=-1;
-  if(ball.x-ball.r<paddle.x+paddle.w && ball.y>paddle.y && ball.y<paddle.y+paddle.h) ball.dx*=-1;
-  if(ball.x+ball.r>ai.x && ball.y>ai.y && ball.y<ai.y+ai.h) ball.dx*=-1;
-
-  if(ball.x<0){ aiScore++; resetBall(); }
-  if(ball.x>pongCanvas.width){ playerScore++; resetBall(); }
-
-  let target=ball.y-ai.h/2; ai.y+=(target-ai.y)*aiFactor;
-  if(ai.y<0) ai.y=0; if(ai.y+ai.h>pongCanvas.height) ai.y=pongCanvas.height-ai.h;
-
-  drawPong();
-  pongAnimation=requestAnimationFrame(updatePong);
-  checkWinLose();
-}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowUp') paddle.dy=-6;
-  if(e.key==='ArrowDown') paddle.dy=6;
-});
-document.addEventListener('keyup',e=>{
-  if(e.key==='ArrowUp'||e.key==='ArrowDown') paddle.dy=0;
-});
-
-// Pong mobile controls
-document.querySelectorAll('[data-pong-dir]').forEach(btn=>{
-  btn.addEventListener('touchstart',(e)=>{
-    e.preventDefault();
-    if(btn.dataset.pongDir==='up') paddle.dy=-6;
-    if(btn.dataset.pongDir==='down') paddle.dy=6;
-  });
-  btn.addEventListener('touchend',(e)=>{
-    e.preventDefault();
-    paddle.dy=0;
-  });
-});
-
-document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    aiFactor=parseFloat(btn.dataset.ai);
-    ballSpeed=parseInt(btn.dataset.ball);
-    playerScore=0; aiScore=0;
-    resetBall();
-    winLoseScreen.style.display="none";
-    cancelAnimationFrame(pongAnimation);
-    updatePong();
-  });
-});
-tryAgainBtn.addEventListener('click',()=>{ playerScore=0; aiScore=0; resetBall(); winLoseScreen.style.display="none"; cancelAnimationFrame(pongAnimation); updatePong(); });
-function startPong(){ playerScore=0; aiScore=0; resetBall(); cancelAnimationFrame(pongAnimation); updatePong(); }
-
-///////////////////////////
-// SNAKE LOGIC
-///////////////////////////
-function initSnakeGame(){
-  snake=[{x:5,y:5}]; direction='RIGHT'; snakeScore=0; snakeRunning=true; placeFood(); snakeScoreDisplay.textContent=snakeScore;
-  snakeGameOver.style.display='none';
-  clearTimeout(snakeAnimation); 
-  drawSnake();
-  snakeAnimation=setTimeout(updateSnake,150);
-}
-function placeFood(){ food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)}; }
-function drawSnake(){
-  snakeCtx.fillStyle='black'; snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
-  snakeCtx.fillStyle='#ff0606'; snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));
-  snakeCtx.fillStyle='#ff0606'; snakeCtx.fillRect(food.x*20,food.y*20,20,20);
-}
-function updateSnake(){
-  if(!snakeRunning) return;
-  const head={...snake[0]};
-  if(direction==='RIGHT') head.x++; if(direction==='LEFT') head.x--; if(direction==='UP') head.y--; if(direction==='DOWN') head.y++;
-  if(head.x<0 || head.x>=30 || head.y<0 || head.y>=20 || snake.some(s=>s.x===head.x && s.y===head.y)){
-    snakeRunning=false;
-    finalSnakeScore.textContent=snakeScore;
-    snakeGameOver.style.display='flex';
-    return;
-  }
-  snake.unshift(head);
-  if(head.x===food.x && head.y===food.y){ snakeScore++; snakeScoreDisplay.textContent=snakeScore; placeFood(); } else snake.pop();
-  drawSnake();
-  snakeAnimation=setTimeout(updateSnake,150);
-}
-document.addEventListener('keydown',e=>{
-  if(overlaySnake.classList.contains('active')){
-    if(e.key==='ArrowUp' && direction!=='DOWN') direction='UP';
-    if(e.key==='ArrowDown' && direction!=='UP') direction='DOWN';
-    if(e.key==='ArrowLeft' && direction!=='RIGHT') direction='LEFT';
-    if(e.key==='ArrowRight' && direction!=='LEFT') direction='RIGHT';
-  }
-});
-
-// Snake mobile controls
-document.querySelectorAll('[data-snake-dir]').forEach(btn=>{
-  btn.addEventListener('click',(e)=>{
-    e.preventDefault();
-    const newDir=btn.dataset.snakeDir;
-    if(newDir==='UP' && direction!=='DOWN') direction='UP';
-    if(newDir==='DOWN' && direction!=='UP') direction='DOWN';
-    if(newDir==='LEFT' && direction!=='RIGHT') direction='LEFT';
-    if(newDir==='RIGHT' && direction!=='LEFT') direction='RIGHT';
-  });
-});
-
-// Snake swipe controls
-let touchStartX=0, touchStartY=0;
-snakeCanvas.addEventListener('touchstart',(e)=>{
-  touchStartX=e.touches[0].clientX;
-  touchStartY=e.touches[0].clientY;
-});
-snakeCanvas.addEventListener('touchend',(e)=>{
-  const touchEndX=e.changedTouches[0].clientX;
-  const touchEndY=e.changedTouches[0].clientY;
-  const diffX=touchEndX-touchStartX;
-  const diffY=touchEndY-touchStartY;
-  if(Math.abs(diffX)>Math.abs(diffY)){
-    if(diffX>30 && direction!=='LEFT') direction='RIGHT';
-    else if(diffX<-30 && direction!=='RIGHT') direction='LEFT';
-  } else {
-    if(diffY>30 && direction!=='UP') direction='DOWN';
-    else if(diffY<-30 && direction!=='DOWN') direction='UP';
-  }
-});
-
-snakePlayAgainBtn.addEventListener('click',(e)=>{ 
-  e.stopPropagation();
-  snakeGameOver.style.display='none'; 
-  initSnakeGame(); 
-});
-snakeCloseBtn.addEventListener('click',(e)=>{ 
-  e.stopPropagation();
-  snakeGameOver.style.display='none'; 
-  overlaySnake.classList.remove('active');
-  snakeControls.classList.remove('active');
-  snakeMobileHint.classList.remove('active');
-  clearTimeout(snakeAnimation);
-  snakeRunning=false;
-});
+document.addEventListener('keydown',(e)=>{inputSeq.push(e.key);if(inputSeq.length>konami.length)inputSeq.shift();if(JSON.stringify(inputSeq)===JSON.stringify(konami)){overlayPong.classList.add('active');if(isMobile){pongControls.classList.add('active');pongMobileHint.classList.add('active');}startPong();}});
+const redbullSequence=['r','e','d','b','u','l','l'];
+let redbullInput=[];
+document.addEventListener('keydown',(e)=>{const key=e.key.toLowerCase();redbullInput.push(key);if(redbullInput.length>redbullSequence.length)redbullInput.shift();if(JSON.stringify(redbullInput)===JSON.stringify(redbullSequence)){overlaySnake.classList.add('active');if(isMobile){snakeControls.classList.add('active');snakeMobileHint.classList.add('active');}initSnakeGame();}});
+const goodboySequence=['g','o','o','d','b','o','y'];
+let goodboyInput=[];
+document.addEventListener('keydown',(e)=>{const key=e.key.toLowerCase();goodboyInput.push(key);if(goodboyInput.length>goodboySequence.length)goodboyInput.shift();if(JSON.stringify(goodboyInput)===JSON.stringify(goodboySequence)){overlayRunner.classList.add('active');if(isMobile){runnerMobileHint.classList.add('active');}initRunnerGame();}});
+const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0},ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80},ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
+let aiFactor=0.07,playerScore=0,aiScore=0,ballSpeed=8;
+function drawPong(){ctx.clearRect(0,0,pongCanvas.width,pongCanvas.height);ctx.fillStyle="#ff0606";ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);ctx.fillRect(ai.x,ai.y,ai.w,ai.h);ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();ctx.closePath();ctx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);scoreboard.textContent=`${playerScore} : ${aiScore}`;}
+function resetBall(){ball.x=pongCanvas.width/2;ball.y=pongCanvas.height/2;ball.dx=(Math.random()>0.5?1:-1);ball.dy=(Math.random()>0.5?1:-1);}
+function checkWinLose(){if(playerScore>=10){winLoseMessage.textContent="YOU WIN";winLoseScreen.style.display="flex";cancelAnimationFrame(pongAnimation);return true;}if(aiScore>=10){winLoseMessage.textContent="YOU LOSE";winLoseScreen.style.display="flex";cancelAnimationFrame(pongAnimation);return true;}return false;}
+function updatePong(){paddle.y+=paddle.dy;if(paddle.y<0)paddle.y=0;if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;ball.x+=ball.dx*ballSpeed/4;ball.y+=ball.dy*ballSpeed/4;if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h)ball.dx*=-1;if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h)ball.dx*=-1;if(ball.x<0){aiScore++;resetBall();}if(ball.x>pongCanvas.width){playerScore++;resetBall();}let target=ball.y-ai.h/2;ai.y+=(target-ai.y)*aiFactor;if(ai.y<0)ai.y=0;if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;drawPong();pongAnimation=requestAnimationFrame(updatePong);checkWinLose();}
+document.addEventListener('keydown',e=>{if(overlayPong.classList.contains('active')){if(e.key==='ArrowUp')paddle.dy=-6;if(e.key==='ArrowDown')paddle.dy=6;}});
+document.addEventListener('keyup',e=>{if(e.key==='ArrowUp'||e.key==='ArrowDown')paddle.dy=0;});
+document.querySelectorAll('[data-pong-dir]').forEach(btn=>{btn.addEventListener('touchstart',(e)=>{e.preventDefault();if(btn.dataset.pongDir==='up')paddle.dy=-6;if(btn.dataset.pongDir==='down')paddle.dy=6;});btn.addEventListener('touchend',(e)=>{e.preventDefault();paddle.dy=0;});});
+document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{btn.addEventListener('click',()=>{aiFactor=parseFloat(btn.dataset.ai);ballSpeed=parseInt(btn.dataset.ball);playerScore=0;aiScore=0;resetBall();winLoseScreen.style.display="none";cancelAnimationFrame(pongAnimation);updatePong();});});
+tryAgainBtn.addEventListener('click',()=>{playerScore=0;aiScore=0;resetBall();winLoseScreen.style.display="none";cancelAnimationFrame(pongAnimation);updatePong();});
+function startPong(){playerScore=0;aiScore=0;resetBall();cancelAnimationFrame(pongAnimation);updatePong();}
+function initSnakeGame(){snake=[{x:5,y:5}];direction='RIGHT';snakeScore=0;snakeRunning=true;placeFood();snakeScoreDisplay.textContent=snakeScore;snakeGameOver.style.display='none';clearTimeout(snakeAnimation);drawSnake();snakeAnimation=setTimeout(updateSnake,150);}
+function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
+function drawSnake(){snakeCtx.fillStyle='black';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);snakeCtx.fillStyle='#ff0606';snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));snakeCtx.fillStyle='#ff0606';snakeCtx.fillRect(food.x*20,food.y*20,20,20);}
+function updateSnake(){if(!snakeRunning)return;const head={...snake[0]};if(direction==='RIGHT')head.x++;if(direction==='LEFT')head.x--;if(direction==='UP')head.y--;if(direction==='DOWN')head.y++;if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){snakeRunning=false;finalSnakeScore.textContent=snakeScore;snakeGameOver.style.display='flex';return;}snake.unshift(head);if(head.x===food.x&&head.y===food.y){snakeScore++;snakeScoreDisplay.textContent=snakeScore;placeFood();}else snake.pop();drawSnake();snakeAnimation=setTimeout(updateSnake,150);}
+document.addEventListener('keydown',e=>{if(overlaySnake.classList.contains('active')){if(e.key==='ArrowUp'&&direction!=='DOWN')direction='UP';if(e.key==='ArrowDown'&&direction!=='UP')direction='DOWN';if(e.key==='ArrowLeft'&&direction!=='RIGHT')direction='LEFT';if(e.key==='ArrowRight'&&direction!=='LEFT')direction='RIGHT';}});
+document.querySelectorAll('[data-snake-dir]').forEach(btn=>{btn.addEventListener('click',(e)=>{e.preventDefault();const newDir=btn.dataset.snakeDir;if(newDir==='UP'&&direction!=='DOWN')direction='UP';if(newDir==='DOWN'&&direction!=='UP')direction='DOWN';if(newDir==='LEFT'&&direction!=='RIGHT')direction='LEFT';if(newDir==='RIGHT'&&direction!=='LEFT')direction='RIGHT';});});
+let touchStartX=0,touchStartY=0;
+snakeCanvas.addEventListener('touchstart',(e)=>{touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;});
+snakeCanvas.addEventListener('touchend',(e)=>{const touchEndX=e.changedTouches[0].clientX,touchEndY=e.changedTouches[0].clientY,diffX=touchEndX-touchStartX,diffY=touchEndY-touchStartY;if(Math.abs(diffX)>Math.abs(diffY)){if(diffX>30&&direction!=='LEFT')direction='RIGHT';else if(diffX<-30&&direction!=='RIGHT')direction='LEFT';}else{if(diffY>30&&direction!=='UP')direction='DOWN';else if(diffY<-30&&direction!=='DOWN')direction='UP';}});
+snakePlayAgainBtn.addEventListener('click',(e)=>{e.stopPropagation();snakeGameOver.style.display='none';initSnakeGame();});
+snakeCloseBtn.addEventListener('click',(e)=>{e.stopPropagation();snakeGameOver.style.display='none';overlaySnake.classList.remove('active');snakeControls.classList.remove('active');snakeMobileHint.classList.remove('active');clearTimeout(snakeAnimation);snakeRunning=false;});
+function initRunnerGame(){runnerScore=0;runnerSpeed=4;runnerRunning=true;runnerPlayer={x:0,y:0,lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};runnerObstacles=[];runnerGameOver.style.display='none';runnerScoreDisplay.textContent='SCORE: 0';updateRunner();}
+function spawnObstacle(){if(!runnerRunning)return;const lane=Math.floor(Math.random()*3);runnerObstacles.push({z:100,lane:lane,type:'train'});setTimeout(spawnObstacle,2000+Math.random()*1500);}
+function drawTrain(x,y,size,scale){const trainW=size*2.5;const trainH=size*1.2;runnerCtx.fillStyle='#cc0000';runnerCtx.fillRect(x-trainW/2,y-trainH,trainW,trainH);runnerCtx.fillStyle='#880000';runnerCtx.fillRect(x-trainW/2+size*0.2,y-trainH+size*0.2,size*0.4,size*0.5);runnerCtx.fillRect(x+trainW/2-size*0.6,y-trainH+size*0.2,size*0.4,size*0.5);runnerCtx.fillStyle='#ffff00';runnerCtx.fillRect(x-size*0.15,y-trainH,size*0.3,size*0.2);runnerCtx.fillStyle='#333';runnerCtx.fillRect(x-trainW/2,y-size*0.25,size*0.3,size*0.25);runnerCtx.fillRect(x-trainW/2+trainW*0.35,y-size*0.25,size*0.3,size*0.25);runnerCtx.fillRect(x+trainW/2-size*0.3,y-size*0.25,size*0.3,size*0.25);runnerCtx.strokeStyle='#ffffff';runnerCtx.lineWidth=2*scale;runnerCtx.strokeRect(x-trainW/2,y-trainH,trainW,trainH);}
+function drawBlockyPerson(x,y,size,animFrame,isJumping){const legSwing=isJumping?0:Math.sin(animFrame)*0.3;const armSwing=isJumping?-0.5:Math.cos(animFrame)*0.3;const legSpread=isJumping?0.2:0;runnerCtx.fillStyle='#ff0606';runnerCtx.fillRect(x-size*0.2,y-size*0.9,size*0.4,size*0.3);runnerCtx.fillStyle='#cc0000';runnerCtx.fillRect(x-size*0.25,y-size*0.6,size*0.5,size*0.4);runnerCtx.fillStyle='#ff0606';runnerCtx.fillRect(x-size*(0.15+legSpread),y-size*0.2,size*0.15,size*0.35+legSwing*size*0.1);runnerCtx.fillRect(x+size*(0.0+legSpread),y-size*0.2,size*0.15,size*0.35-legSwing*size*0.1);runnerCtx.fillStyle='#ff4444';runnerCtx.fillRect(x-size*0.35,y-size*(0.55-armSwing*0.1),size*0.15,size*0.3);runnerCtx.fillRect(x+size*0.2,y-size*(0.55+armSwing*0.1),size*0.15,size*0.3);runnerCtx.fillStyle='#000';runnerCtx.fillRect(x-size*0.12,y-size*0.85,size*0.08,size*0.08);runnerCtx.fillRect(x+size*0.04,y-size*0.85,size*0.08,size*0.08);}
+function drawRunner(){const w=runnerCanvas.width,h=runnerCanvas.height;runnerCtx.fillStyle='#1a0033';runnerCtx.fillRect(0,0,w,h);const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;runnerCtx.strokeStyle='#ff0606';runnerCtx.lineWidth=2;for(let i=0;i<10;i++){const z=i*10;const scale=1/(z*0.05+1);const y=vanishY+(groundY-vanishY)*scale;const laneW=w*0.6*scale;const x1=vanishX-laneW/2,x2=vanishX+laneW/2;runnerCtx.beginPath();runnerCtx.moveTo(x1,y);runnerCtx.lineTo(x2,y);runnerCtx.stroke();if(i<9){const nextZ=z+10,nextScale=1/(nextZ*0.05+1),nextY=vanishY+(groundY-vanishY)*nextScale;for(let lane=0;lane<=3;lane++){const lx=x1+(x2-x1)*(lane/3);const nextLW=w*0.6*nextScale;const nextX1=vanishX-nextLW/2;const nextLx=nextX1+(vanishX+nextLW/2-nextX1)*(lane/3);runnerCtx.beginPath();runnerCtx.moveTo(lx,y);runnerCtx.lineTo(nextLx,nextY);runnerCtx.stroke();}}}runnerObstacles.forEach(obs=>{const scale=1/(obs.z*0.05+1);const y=vanishY+(groundY-vanishY)*scale;const laneW=w*0.6*scale;const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);const size=60*scale;drawTrain(laneX,y,size,scale);});const playerZ=5;const playerScale=1/(playerZ*0.05+1);const smoothLane=runnerPlayer.lane+(runnerPlayer.targetLane-runnerPlayer.lane)*runnerPlayer.laneTransition;const playerY=vanishY+(groundY-vanishY)*playerScale-runnerPlayer.jumpHeight*playerScale;const playerLaneW=w*0.6*playerScale;const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);const playerSize=50*playerScale;drawBlockyPerson(playerX,playerY,playerSize,runnerPlayer.animFrame,runnerPlayer.jumpHeight>0);runnerCtx.fillStyle='#ff0606';runnerCtx.font='20px "Press Start 2P"';runnerCtx.fillText('LANE: '+(runnerPlayer.targetLane+1),20,40);}
+function updateRunner(){if(!runnerRunning)return;if(runnerPlayer.jumpHeight===0){runnerPlayer.animFrame+=0.15;}if(runnerPlayer.laneTransition<1){runnerPlayer.laneTransition+=0.15;if(runnerPlayer.laneTransition>=1){runnerPlayer.laneTransition=1;runnerPlayer.lane=runnerPlayer.targetLane;}}if(runnerPlayer.jumping){runnerPlayer.jumpHeight+=12;if(runnerPlayer.jumpHeight>=140){runnerPlayer.jumping=false;}}else if(runnerPlayer.jumpHeight>0){runnerPlayer.jumpHeight-=12;if(runnerPlayer.jumpHeight<0)runnerPlayer.jumpHeight=0;}for(let i=runnerObstacles.length-1;i>=0;i--){runnerObstacles[i].z-=runnerSpeed*0.15;if(runnerObstacles[i].z<-5){runnerObstacles.splice(i,1);runnerScore++;runnerScoreDisplay.textContent='SCORE: '+runnerScore;if(runnerSpeed<12)runnerSpeed+=0.2;}else if(runnerObstacles[i].z<6&&runnerObstacles[i].z>4&&runnerObstacles[i].lane===runnerPlayer.lane&&runnerPlayer.jumpHeight<60){runnerRunning=false;finalRunnerScore.textContent=runnerScore;runnerGameOver.style.display='flex';return;}}if(runnerObstacles.length===0||runnerObstacles[runnerObstacles.length-1].z<80){spawnObstacle();}drawRunner();runnerAnimation=requestAnimationFrame(updateRunner);}
+document.addEventListener('keydown',e=>{if(overlayRunner.classList.contains('active')){if(e.key===' '&&!runnerPlayer.jumping&&runnerPlayer.jumpHeight===0){runnerPlayer.jumping=true;}if(e.key==='ArrowLeft'&&runnerPlayer.targetLane>0&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane--;runnerPlayer.laneTransition=0;}if(e.key==='ArrowRight'&&runnerPlayer.targetLane<2&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane++;runnerPlayer.laneTransition=0;}}});
+runnerCanvas.addEventListener('click',()=>{if(overlayRunner.classList.contains('active')&&!runnerPlayer.jumping&&runnerPlayer.jumpHeight===0){runnerPlayer.jumping=true;}});
+let runnerTouchX=0;
+runnerCanvas.addEventListener('touchstart',(e)=>{runnerTouchX=e.touches[0].clientX;});
+runnerCanvas.addEventListener('touchend',(e)=>{const touchEndX=e.changedTouches[0].clientX;const diff=touchEndX-runnerTouchX;if(Math.abs(diff)<30&&!runnerPlayer.jumping&&runnerPlayer.jumpHeight===0){runnerPlayer.jumping=true;}else if(diff<-50&&runnerPlayer.targetLane>0&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane--;runnerPlayer.laneTransition=0;}else if(diff>50&&runnerPlayer.targetLane<2&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane++;runnerPlayer.laneTransition=0;}});
+runnerPlayAgainBtn.addEventListener('click',(e)=>{e.stopPropagation();runnerGameOver.style.display='none';initRunnerGame();});
+runnerCloseBtn.addEventListener('click',(e)=>{e.stopPropagation();runnerGameOver.style.display='none';overlayRunner.classList.remove('active');runnerMobileHint.classList.remove('active');cancelAnimationFrame(runnerAnimation);runnerRunning=false;});
 </script>
 </body>
 </html>
