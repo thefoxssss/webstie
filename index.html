@@ -55,7 +55,6 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <div class="glitch-static">WHY ARE YOU HERE</div>
 </div>
 
-<!-- Pong Overlay -->
 <div class="overlay" id="overlayPong">
   <button class="close-btn" data-close="overlayPong">CLOSE</button>
   <h1>PONG</h1>
@@ -68,7 +67,6 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <canvas id="pongCanvas" width="800" height="600"></canvas>
 </div>
 
-<!-- Snake Overlay -->
 <div class="overlay" id="overlaySnake">
   <button class="close-btn" data-close="overlaySnake">CLOSE</button>
   <h1>SNAKE</h1>
@@ -77,7 +75,6 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <button id="snakeRestartBtn" class="difficulty-btn">TRY AGAIN</button>
 </div>
 
-<!-- Win/Lose Screen -->
 <div id="winLoseScreen">
   <h1 id="winLoseMessage">YOU WIN</h1>
   <button id="tryAgainBtn">TRY AGAIN</button>
@@ -99,13 +96,12 @@ function populateStamps(surface,text,count=30){
   }
 }
 
-// Main elements
+// Elements
 const main=document.getElementById('mainGooner');
 const hiddenText=document.getElementById('hiddenText');
 const overlayGonner=document.getElementById('overlayGonner');
 const overlayWhy=document.getElementById('overlayWhy');
 const surfaceGonner=document.getElementById('surfaceGonner');
-
 const overlayPong=document.getElementById('overlayPong');
 const pongCanvas=document.getElementById('pongCanvas');
 const ctx=pongCanvas.getContext('2d');
@@ -115,7 +111,7 @@ const winLoseMessage=document.getElementById('winLoseMessage');
 const tryAgainBtn=document.getElementById('tryAgainBtn');
 let pongAnimation=null;
 
-// Snake elements
+const overlaySnake=document.getElementById('overlaySnake');
 const snakeCanvas=document.getElementById('snakeCanvas');
 const snakeCtx=snakeCanvas.getContext('2d');
 const snakeScoreDisplay=document.getElementById('snakeScore');
@@ -124,8 +120,8 @@ let snake, direction, food, snakeScore, snakeAnimation;
 
 // Close buttons
 document.querySelectorAll('.close-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{ 
-    document.getElementById(btn.dataset.close).classList.remove('active'); 
+  btn.addEventListener('click',()=>{
+    document.getElementById(btn.dataset.close).classList.remove('active');
     cancelAnimationFrame(pongAnimation);
     clearTimeout(snakeAnimation);
   });
@@ -147,7 +143,7 @@ main.addEventListener('mouseleave',()=>{ clearInterval(hoverInterval); hoverInte
 main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
 hiddenText.addEventListener('click',()=>{ overlayWhy.classList.add('active'); });
 
-// Konami code triggers Pong
+// KONAMI code triggers Pong
 const konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight'];
 let inputSeq=[];
 document.addEventListener('keydown',(e)=>{
@@ -159,15 +155,26 @@ document.addEventListener('keydown',(e)=>{
   }
 });
 
+// REDBULL sequence triggers Snake
+const redbullSequence = ['r','e','d','b','u','l','l'];
+let redbullInput = [];
+document.addEventListener('keydown',(e)=>{
+  const key = e.key.toLowerCase();
+  redbullInput.push(key);
+  if(redbullInput.length>redbullSequence.length) redbullInput.shift();
+  if(JSON.stringify(redbullInput)===JSON.stringify(redbullSequence)){
+    overlaySnake.classList.add('active');
+    initSnakeGame();
+  }
+});
+
 ///////////////////////////
-// PONG GAME LOGIC
+// PONG LOGIC
 ///////////////////////////
 const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
 const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
 const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
-let aiFactor=0.07;
-let playerScore=0, aiScore=0;
-let ballSpeed=8;
+let aiFactor=0.07, playerScore=0, aiScore=0, ballSpeed=8;
 
 function drawPong(){
   ctx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
@@ -176,24 +183,16 @@ function drawPong(){
   ctx.fillRect(ai.x,ai.y,ai.w,ai.h);
   ctx.beginPath();
   ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-  ctx.fill();
-  ctx.closePath();
+  ctx.fill(); ctx.closePath();
   ctx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
   scoreboard.textContent=`${playerScore} : ${aiScore}`;
 }
-
-function resetBall(){
-  ball.x=pongCanvas.width/2; ball.y=pongCanvas.height/2;
-  ball.dx=(Math.random()>0.5?1:-1);
-  ball.dy=(Math.random()>0.5?1:-1);
-}
-
+function resetBall(){ ball.x=pongCanvas.width/2; ball.y=pongCanvas.height/2; ball.dx=(Math.random()>0.5?1:-1); ball.dy=(Math.random()>0.5?1:-1); }
 function checkWinLose(){
   if(playerScore>=10){ winLoseMessage.textContent="YOU WIN"; winLoseScreen.style.display="flex"; cancelAnimationFrame(pongAnimation); return true;}
   if(aiScore>=10){ winLoseMessage.textContent="YOU LOSE"; winLoseScreen.style.display="flex"; cancelAnimationFrame(pongAnimation); return true;}
   return false;
 }
-
 function updatePong(){
   paddle.y+=paddle.dy;
   if(paddle.y<0)paddle.y=0;
@@ -209,16 +208,13 @@ function updatePong(){
   if(ball.x<0){ aiScore++; resetBall(); }
   if(ball.x>pongCanvas.width){ playerScore++; resetBall(); }
 
-  let target=ball.y-ai.h/2;
-  ai.y+=(target-ai.y)*aiFactor;
-  if(ai.y<0) ai.y=0;
-  if(ai.y+ai.h>pongCanvas.height) ai.y=pongCanvas.height-ai.h;
+  let target=ball.y-ai.h/2; ai.y+=(target-ai.y)*aiFactor;
+  if(ai.y<0) ai.y=0; if(ai.y+ai.h>pongCanvas.height) ai.y=pongCanvas.height-ai.h;
 
   drawPong();
   pongAnimation=requestAnimationFrame(updatePong);
   checkWinLose();
 }
-
 document.addEventListener('keydown',e=>{
   if(e.key==='ArrowUp') paddle.dy=-6;
   if(e.key==='ArrowDown') paddle.dy=6;
@@ -226,7 +222,6 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>{
   if(e.key==='ArrowUp'||e.key==='ArrowDown') paddle.dy=0;
 });
-
 document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     aiFactor=parseFloat(btn.dataset.ai);
@@ -238,70 +233,31 @@ document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
     updatePong();
   });
 });
-
-tryAgainBtn.addEventListener('click',()=>{
-  playerScore=0; aiScore=0;
-  resetBall();
-  winLoseScreen.style.display="none";
-  cancelAnimationFrame(pongAnimation);
-  updatePong();
-});
-
-function startPong(){
-  playerScore=0; aiScore=0;
-  resetBall();
-  cancelAnimationFrame(pongAnimation);
-  updatePong();
-}
+tryAgainBtn.addEventListener('click',()=>{ playerScore=0; aiScore=0; resetBall(); winLoseScreen.style.display="none"; cancelAnimationFrame(pongAnimation); updatePong(); });
+function startPong(){ playerScore=0; aiScore=0; resetBall(); cancelAnimationFrame(pongAnimation); updatePong(); }
 
 ///////////////////////////
-// SNAKE GAME LOGIC
+// SNAKE LOGIC
 ///////////////////////////
 function initSnakeGame(){
-  snake=[{x:5,y:5}];
-  direction='RIGHT';
-  snakeScore=0;
-  placeFood();
-  snakeScoreDisplay.textContent=snakeScore;
-  clearTimeout(snakeAnimation);
-  snakeAnimation = setTimeout(updateSnake,150);
+  snake=[{x:5,y:5}]; direction='RIGHT'; snakeScore=0; placeFood(); snakeScoreDisplay.textContent=snakeScore;
+  clearTimeout(snakeAnimation); snakeAnimation=setTimeout(updateSnake,150);
 }
-
-function placeFood(){
-  food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};
-}
-
+function placeFood(){ food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)}; }
 function drawSnake(){
-  snakeCtx.fillStyle='black';
-  snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
-  snakeCtx.fillStyle='#ff0606';
-  snake.forEach(segment=>{ snakeCtx.fillRect(segment.x*20,segment.y*20,20,20); });
-  snakeCtx.fillStyle='#ff0606';
-  snakeCtx.fillRect(food.x*20,food.y*20,20,20);
+  snakeCtx.fillStyle='black'; snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+  snakeCtx.fillStyle='#ff0606'; snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));
+  snakeCtx.fillStyle='#ff0606'; snakeCtx.fillRect(food.x*20,food.y*20,20,20);
 }
-
 function updateSnake(){
   const head={...snake[0]};
-  if(direction==='RIGHT') head.x++;
-  if(direction==='LEFT') head.x--;
-  if(direction==='UP') head.y--;
-  if(direction==='DOWN') head.y++;
-
-  if(head.x<0 || head.x>=30 || head.y<0 || head.y>=20 || snake.some(s=>s.x===head.x && s.y===head.y)){
-    return;
-  }
-
+  if(direction==='RIGHT') head.x++; if(direction==='LEFT') head.x--; if(direction==='UP') head.y--; if(direction==='DOWN') head.y++;
+  if(head.x<0 || head.x>=30 || head.y<0 || head.y>=20 || snake.some(s=>s.x===head.x && s.y===head.y)) return;
   snake.unshift(head);
-  if(head.x===food.x && head.y===food.y){
-    snakeScore++;
-    snakeScoreDisplay.textContent=snakeScore;
-    placeFood();
-  } else snake.pop();
-
+  if(head.x===food.x && head.y===food.y){ snakeScore++; snakeScoreDisplay.textContent=snakeScore; placeFood(); } else snake.pop();
   drawSnake();
   snakeAnimation=setTimeout(updateSnake,150);
 }
-
 document.addEventListener('keydown',e=>{
   if(overlaySnake.classList.contains('active')){
     if(e.key==='ArrowUp' && direction!=='DOWN') direction='UP';
@@ -310,7 +266,6 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowRight' && direction!=='LEFT') direction='RIGHT';
   }
 });
-
 snakeRestartBtn.addEventListener('click',()=>{ initSnakeGame(); });
 </script>
 </body>
