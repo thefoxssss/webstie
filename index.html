@@ -28,7 +28,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   .chat-container { width: 95%; height: 65vh; padding: 15px; }
   .chat-message { padding: 12px; font-size: clamp(9px, 2.5vw, 12px); }
   .chat-input { padding: 10px; font-size: clamp(9px, 2.5vw, 11px); }
-  .chat-send-btn { padding: 10px 15px; font-size: clamp(9px, 2.5vw, 11px); }
+  .chat-send-btn { padding: 10px 15px; font-size: clamp(9px, 2.5vw, 11px); min-width: 60px; }
   #overlayPong h1, #overlaySnake h1, #overlayRunner h1 { font-size: clamp(20px, 6vw, 48px); margin-bottom: 10px; }
   .difficulty-btn { padding: 8px 15px; margin: 5px; font-size: clamp(9px, 2.5vw, 11px); }
   .touch-controls.active { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 8px; }
@@ -73,6 +73,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 .chat-container { width: 90%; max-width: 800px; height: 70vh; display: flex; flex-direction: column; border: 4px solid var(--accent); background: rgba(255,6,6,0.05); border-radius: 8px; padding: 20px; }
 .chat-messages { flex: 1; overflow-y: scroll; overflow-x: hidden; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; padding-right: 10px; -webkit-overflow-scrolling: touch; }
 .chat-message { padding: 15px; border-radius: 8px; font-size: clamp(10px, 2.5vw, 14px); line-height: 1.6; word-wrap: break-word; word-break: break-word; animation: messageSlide 0.3s ease; }
+.chat-message img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; display: block; border: 2px solid var(--accent); }
 @keyframes messageSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .chat-message.user { background: rgba(255,6,6,0.2); border: 2px solid var(--accent); align-self: flex-end; max-width: 80%; text-align: right; }
 .chat-message.ai { background: rgba(255,6,6,0.1); border: 2px solid rgba(255,6,6,0.5); align-self: flex-start; max-width: 80%; }
@@ -92,7 +93,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 </head>
 <body>
 <div class="hidden-text" id="hiddenText">you're cool</div>
-<div class="version">v7.0 MOBILE</div>
+<div class="version">v10.0 DALLE</div>
 <div class="wrap">
   <div class="gooner" id="mainGooner">what up gooner</div>
   <div class="hint">type a secret code below</div>
@@ -168,7 +169,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <h1>AI ASSISTANT</h1>
   <div class="chat-container">
     <div class="chat-messages" id="chatMessages">
-      <div class="chat-message ai">Hey! I'm your maximized AI with extensive knowledge about science (physics, biology, chemistry, space), technology (AI, programming, blockchain), history, philosophy, psychology, and practical advice. I can do complex math, have natural conversations, and discuss pretty much anything. What's on your mind?</div>
+      <div class="chat-message ai">Hey! I'm your maximized AI ready for OpenAI DALL-E 3 image generation! Just add your API key to the code, then ask me to "generate an image of [anything]" for professional AI art. I also have extensive knowledge about science, tech, history, philosophy, math, and more. Click 📷 to upload images. What's on your mind?</div>
     </div>
     <div class="chat-input-container">
       <input type="text" class="chat-input" id="chatInput" placeholder="Type your message..." />
@@ -197,6 +198,39 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 </div>
 
 <script>
+/*
+ * ==========================================
+ * 🎨 OPENAI DALL-E 3 IMAGE GENERATION 🎨
+ * ==========================================
+ * 
+ * This is ready for DALL-E 3!
+ * Just add your OpenAI API key:
+ * 
+ * 📍 LOCATION: Line ~575 in the code
+ * 
+ * Look for:
+ *   const AI_IMAGE_CONFIG = {
+ *     provider: 'openai',
+ *     openai: {
+ *       apiKey: '',  ← PASTE YOUR KEY HERE
+ * 
+ * 🔑 GET YOUR KEY:
+ * 1. Go to: https://platform.openai.com/api-keys
+ * 2. Click "Create new secret key"
+ * 3. Copy the key (starts with sk-proj-...)
+ * 4. Paste it between the quotes: apiKey: 'sk-proj-...'
+ * 5. Save and refresh!
+ * 
+ * 💰 COST: ~$0.04 per image (DALL-E 3)
+ * 
+ * ⚠️ SECURITY: Keep your key private!
+ * - Don't share your HTML file publicly
+ * - Don't commit to GitHub with the key
+ * - For production, use a backend server
+ * 
+ * ==========================================
+ */
+
 function rand(min,max){return Math.random()*(max-min)+min;}
 function populateStamps(surface,text,count=30){
   surface.innerHTML='';
@@ -1136,6 +1170,24 @@ function getAIResponse(msg){
     return'This site has awesome hidden games! Type in the home input box: "redbull" for Snake (classic!), "goodboy" for Runner (3D endless runner), "pong" for Pong (retro arcade). Or use the Konami code (↑↑↓↓←→←→) anywhere! Click "you\'re cool" in the top left for a surprise. Try them all!';
   }
   
+  // IMAGE GENERATION
+  if(msg.match(/image|picture|photo|drawing|art/)&&!msg.match(/generate|create|make/)){
+    const apiConfigured = AI_IMAGE_CONFIG.provider === 'openai' && AI_IMAGE_CONFIG.openai?.apiKey;
+    if(apiConfigured){
+      return 'I can generate professional AI images using OpenAI DALL-E 3! Just say "generate an image of a sunset" or "create a picture of a cyberpunk city" and I\'ll make stunning AI art for you. What would you like to see?';
+    }else{
+      return 'I\'m configured for OpenAI DALL-E 3! Just add your API key to line ~575 in the code (apiKey: \'\'), then I can generate professional AI images. For now, I\'ll use placeholder images. Say "generate an image of [anything]"!';
+    }
+  }
+  if(msg.match(/api key|dall.*e|stability|hugging/)){
+    const apiConfigured = AI_IMAGE_CONFIG.provider !== 'none' && AI_IMAGE_CONFIG[AI_IMAGE_CONFIG.provider]?.apiKey;
+    if(apiConfigured){
+      return 'OpenAI DALL-E 3 is configured and ready! Just ask me to "generate an image of [anything]" and I\'ll create professional AI art for you!';
+    }else{
+      return 'OpenAI DALL-E 3 is set up! To activate:\n\n1. Go to https://platform.openai.com/api-keys\n2. Create a new API key\n3. Paste it in the code where it says: apiKey: \'\' (line ~575)\n4. Save and refresh\n\nThen ask me to generate any image you want!';
+    }
+  }
+  
   // JOKES & FUN
   if(msg.match(/joke|funny|laugh/)){
     const jokes=[
@@ -1224,10 +1276,15 @@ function getAIResponse(msg){
   ][Math.floor(Math.random()*4)];
 }
 
-function addMessage(text,isUser,isTyping=false){
+function addMessage(content,isUser,isTyping=false){
   const msg=document.createElement('div');
   msg.className=isTyping?'typing-indicator':`chat-message ${isUser?'user':'ai'}`;
-  msg.textContent=text;
+  // Check if content is HTML (contains < and >)
+  if(content.includes('<')&&content.includes('>')){
+    msg.innerHTML=content;
+  }else{
+    msg.textContent=content;
+  }
   if(isTyping)msg.id='typingIndicator';
   chatMessages.appendChild(msg);
   chatMessages.scrollTop=chatMessages.scrollHeight;
@@ -1241,15 +1298,55 @@ function sendMessage(){
   addMessage(message,true);
   chatInput.value='';
   
-  // Add typing indicator as a message
+  // Check if user wants to generate an image
+  if(/(generate|make|create|draw|show me).*image/i.test(message)||(/(generate|make|create|draw)/i.test(message)&&/(picture|photo|art|artwork)/i.test(message))){
+    const typingMsg=addMessage('AI is generating your image...',false,true);
+    
+    // Extract prompt from message
+    let prompt=message.replace(/(generate|make|create|draw|show me|an|a|the|image|picture|photo|of|art|artwork)/gi,'').trim();
+    if(!prompt||prompt.length<3){
+      prompt='abstract digital art';
+    }
+    
+    // Generate image using AI API or placeholder
+    generateAIImage(prompt).then(imgUrl=>{
+      if(typingMsg&&typingMsg.parentNode){
+        typingMsg.remove();
+      }
+      
+      const apiConfigured = AI_IMAGE_CONFIG.provider === 'openai' && AI_IMAGE_CONFIG.openai?.apiKey;
+      const imgHtml=`<div style="margin:10px 0;">
+        <img src="${imgUrl}" alt="${prompt}" style="max-width:100%;border-radius:6px;display:block;margin-bottom:8px;">
+        <div style="font-size:10px;opacity:0.7;">${apiConfigured ? '✨ DALL-E 3 Generated' : '📷 Placeholder'}: ${prompt}</div>
+      </div>`;
+      
+      addMessage(imgHtml,false);
+      
+      if(!apiConfigured){
+        addMessage(`Here's a placeholder for "${prompt}". To get REAL DALL-E 3 images, add your OpenAI API key to line ~575 in the code (after revoking your old one!). Want to try another placeholder?`,false);
+      } else {
+        addMessage(`Here's your professional DALL-E 3 image for "${prompt}"! Want me to generate another one?`,false);
+      }
+    }).catch(error=>{
+      if(typingMsg&&typingMsg.parentNode){
+        typingMsg.remove();
+      }
+      addMessage('Sorry, there was an error generating the image. Using placeholder instead.',false);
+      const seed=encodeURIComponent(prompt+Date.now());
+      const fallbackUrl=`https://picsum.photos/seed/${seed}/600/400`;
+      const imgHtml=`<div style="margin:10px 0;"><img src="${fallbackUrl}" alt="${prompt}" style="max-width:100%;border-radius:6px;display:block;"></div>`;
+      addMessage(imgHtml,false);
+    });
+    return;
+  }
+  
+  // Normal AI response
   const typingMsg=addMessage('AI is typing...',false,true);
   
   setTimeout(()=>{
-    // Remove typing indicator
     if(typingMsg&&typingMsg.parentNode){
       typingMsg.remove();
     }
-    // Add AI response
     const response=getAIResponse(message);
     addMessage(response,false);
   },300+Math.random()*700);
@@ -1261,6 +1358,125 @@ chatInput.addEventListener('keypress',(e)=>{
     sendMessage();
   }
 });
+
+// ===== IMAGE UPLOAD & GENERATION =====
+// AI IMAGE API CONFIGURATION
+// PASTE YOUR NEW OPENAI API KEY BELOW (after revoking the old one!)
+const AI_IMAGE_CONFIG = {
+  provider: 'openai', // ← Already set to OpenAI!
+  openai: {
+    apiKey: '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', // ← PASTE YOUR NEW API KEY HERE (between the quotes)
+    model: 'dall-e-3',
+    endpoint: 'https://api.openai.com/v1/images/generations'
+  },
+  // Stability AI - Alternative option
+  stability: {
+    apiKey: '',
+    endpoint: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image'
+  },
+  // Hugging Face - Alternative option
+  huggingface: {
+    apiKey: '',
+    model: 'stabilityai/stable-diffusion-xl-base-1.0',
+    endpoint: 'https://api-inference.huggingface.co/models/'
+  }
+};
+
+const uploadInput=document.createElement("input");
+uploadInput.type="file";
+uploadInput.accept="image/*";
+uploadInput.style.display="none";
+uploadInput.id="imageUploadInput";
+
+const uploadBtn=document.createElement("button");
+uploadBtn.textContent="📷";
+uploadBtn.className="chat-send-btn";
+uploadBtn.style.flexShrink="0";
+uploadBtn.title="Upload Image";
+
+chatSendBtn.parentNode.insertBefore(uploadBtn,chatSendBtn);
+document.body.appendChild(uploadInput);
+
+uploadBtn.addEventListener("click",()=>uploadInput.click());
+
+uploadInput.addEventListener("change",async(e)=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  const imgHtml=`<img src="${url}" style="max-width:100%;border-radius:6px;margin-top:10px;display:block;">`;
+  addMessage(imgHtml,true);
+  
+  // AI response to image
+  const typingMsg=addMessage('AI is analyzing your image...',false,true);
+  setTimeout(()=>{
+    if(typingMsg&&typingMsg.parentNode){
+      typingMsg.remove();
+    }
+    const responses=[
+      "That's an interesting image! It looks great. What would you like to know about it?",
+      "Nice image! I can see you've shared something visual. How can I help you with it?",
+      "Cool picture! While I can't actually analyze images (I'm a browser-based AI), I'd love to hear what's in it!",
+      "Image received! Tell me more about what you'd like to do with it.",
+      "That looks fascinating! What's the story behind this image?"
+    ];
+    addMessage(responses[Math.floor(Math.random()*responses.length)],false);
+  },800);
+  uploadInput.value="";
+});
+
+// Generate image using configured AI API or fallback to placeholder
+async function generateAIImage(prompt) {
+  const provider = AI_IMAGE_CONFIG.provider;
+  
+  // Check if OpenAI API is configured
+  if (provider !== 'openai' || !AI_IMAGE_CONFIG.openai?.apiKey) {
+    console.log('OpenAI API key not configured, using placeholder images');
+    // Fallback to placeholder image
+    const seed = encodeURIComponent(prompt + Date.now());
+    return `https://picsum.photos/seed/${seed}/600/400`;
+  }
+  
+  try {
+    let imageUrl = '';
+    
+    // OpenAI DALL-E
+    const response = await fetch(AI_IMAGE_CONFIG.openai.endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_IMAGE_CONFIG.openai.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: AI_IMAGE_CONFIG.openai.model,
+        prompt: prompt,
+        n: 1,
+        size: '1024x1024'
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error. Check your API key and billing.'}`);
+    }
+    
+    const data = await response.json();
+    if (data.data && data.data[0]?.url) {
+      imageUrl = data.data[0].url;
+    } else {
+      throw new Error('No image URL in response');
+    }
+    
+    return imageUrl;
+    
+  } catch (error) {
+    console.error('DALL-E 3 generation error:', error);
+    // Show error to user and fallback to placeholder
+    addMessage(`⚠️ DALL-E 3 Error: ${error.message}. Using placeholder instead.`, false);
+    // Fallback to placeholder on error
+    const seed = encodeURIComponent(prompt + Date.now());
+    return `https://picsum.photos/seed/${seed}/600/400`;
+  }
+}
 </script>
 </body>
 </html>
