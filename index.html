@@ -198,14 +198,27 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <button id="runnerCloseBtn">CLOSE</button>
 </div>
 <script>
-/* Minimal helper + preserved game scaffolding (kept compact to avoid huge paste) */
+/* -------------------------
+   Utilities + visual helpers
+   ------------------------- */
 function rand(min,max){return Math.random()*(max-min)+min;}
 function populateStamps(surface,text,count=30){
   surface.innerHTML='';
-  for(let i=0;i<count;i++){const s=document.createElement('div');s.className='stamp';s.textContent=text;s.style.left=rand(-10,90)+'vw';s.style.top=rand(-10,90)+'vh';s.style.animationDelay=rand(0,1)+'s';s.style.animationDuration=rand(0.8,1.6)+'s';surface.appendChild(s);}
+  for(let i=0;i<count;i++){
+    const s=document.createElement('div');
+    s.className='stamp';
+    s.textContent=text;
+    s.style.left=rand(-10,90)+'vw';
+    s.style.top=rand(-10,90)+'vh';
+    s.style.animationDelay=rand(0,1)+'s';
+    s.style.animationDuration=rand(0.8,1.6)+'s';
+    surface.appendChild(s);
+  }
 }
 
-/* DOM refs */
+/* -------------------------
+   DOM Refs (new UI elements)
+   ------------------------- */
 const main=document.getElementById('mainGooner');
 const hiddenText=document.getElementById('hiddenText');
 const overlayGonner=document.getElementById('overlayGonner');
@@ -221,35 +234,554 @@ const scoreboard=document.getElementById('scoreboard');
 const overlaySnake=document.getElementById('overlaySnake');
 const snakeCanvas=document.getElementById('snakeCanvas');
 const snakeCtx=snakeCanvas.getContext('2d');
+const snakeScoreDisplay=document.getElementById('snakeScore');
+const snakeGameOver=document.getElementById('snakeGameOver');
+const finalSnakeScore=document.getElementById('finalSnakeScore');
+const snakePlayAgainBtn=document.getElementById('snakePlayAgainBtn');
+const snakeCloseBtn=document.getElementById('snakeCloseBtn');
 
 const overlayRunner=document.getElementById('overlayRunner');
 const runnerCanvas=document.getElementById('runnerCanvas');
 const runnerCtx=runnerCanvas.getContext('2d');
+const runnerScoreDisplay=document.getElementById('runnerScore');
+const runnerGameOver=document.getElementById('runnerGameOver');
+const finalRunnerScore=document.getElementById('finalRunnerScore');
+const runnerPlayAgainBtn=document.getElementById('runnerPlayAgainBtn');
+const runnerCloseBtn=document.getElementById('runnerCloseBtn');
+
+const pongControls=document.getElementById('pongControls');
+const snakeControls=document.getElementById('snakeControls');
+const pongMobileHint=document.getElementById('pongMobileHint');
+const snakeMobileHint=document.getElementById('snakeMobileHint');
+const runnerMobileHint=document.getElementById('runnerMobileHint');
 
 const overlayAI=document.getElementById('overlayAI');
 const chatMessages=document.getElementById('chatMessages');
 const chatInput=document.getElementById('chatInput');
 const chatSendBtn=document.getElementById('chatSendBtn');
 
-/* basic UI handlers (close overlays, click surfaces) */
-document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{const targetId=btn.dataset.close;document.getElementById(targetId).classList.remove('active');cancelAnimationFrame(window._pongAnim||0);cancelAnimationFrame(window._runnerAnim||0);clearTimeout(window._snakeAnim||0);});});
-document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',(e)=>{if(e.target===ov){ov.classList.remove('active');}});});
+const winLoseScreen=document.getElementById('winLoseScreen');
+const winLoseMessage=document.getElementById('winLoseMessage');
+const tryAgainBtn=document.getElementById('tryAgainBtn');
 
-/* main interactions */
-main.addEventListener('mouseenter',()=>{ if(window.matchMedia("(hover:hover)").matches){ window._hoverInterval=setInterval(()=>{ main.style.letterSpacing=(Math.random()>0.5?'6px':'2px'); },120); }});
-main.addEventListener('mouseleave',()=>{ clearInterval(window._hoverInterval); main.style.letterSpacing='4px'; });
+/* device detection */
+const isMobile = 'ontouchstart' in window;
+
+/* -------------------------
+   Basic UI handlers (close overlays)
+   ------------------------- */
+document.querySelectorAll('.close-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const targetId = btn.dataset.close;
+    document.getElementById(targetId).classList.remove('active');
+    stopPong();
+    stopRunner();
+    stopSnake();
+    pongControls.classList.remove('active');
+    snakeControls.classList.remove('active');
+    pongMobileHint.classList.remove('active');
+    snakeMobileHint.classList.remove('active');
+    runnerMobileHint.classList.remove('active');
+  });
+});
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click',(e)=>{
+    if(e.target===ov){
+      ov.classList.remove('active');
+      stopPong();
+      stopRunner();
+      stopSnake();
+      pongControls.classList.remove('active');
+      snakeControls.classList.remove('active');
+      pongMobileHint.classList.remove('active');
+      snakeMobileHint.classList.remove('active');
+      runnerMobileHint.classList.remove('active');
+    }
+  });
+});
+
+/* Fancy main hover */
+let _hoverInterval;
+main.addEventListener('mouseenter',()=>{
+  if(window.matchMedia("(hover:hover)").matches){
+    _hoverInterval=setInterval(()=>{ main.style.letterSpacing=(Math.random()>0.5?'6px':'2px'); },120);
+  }
+});
+main.addEventListener('mouseleave',()=>{ clearInterval(_hoverInterval); main.style.letterSpacing='4px'; });
 main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
 hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
 
-/* home input secret triggers */
-homeInput.addEventListener('input',()=>{ const value=homeInput.value.toLowerCase(); if(value.includes('ai')){ overlayAI.classList.add('active'); chatInput.focus(); homeInput.value=''; return; } if(value.includes('redbull')){ overlaySnake.classList.add('active'); initSnakeGame(); homeInput.value=''; return; } if(value.includes('goodboy')){ overlayRunner.classList.add('active'); initRunnerGame(); homeInput.value=''; return; } if(value.includes('pong')){ overlayPong.classList.add('active'); startPong(); homeInput.value=''; return; }});
+/* -------------------------
+   Home input triggers (AI + games)
+   ------------------------- */
+homeInput.addEventListener('input',()=>{
+  const value = homeInput.value.toLowerCase();
+  if(value.includes('ai')){
+    overlayAI.classList.add('active');
+    chatInput.focus();
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('redbull')){
+    overlaySnake.classList.add('active');
+    if(isMobile){ snakeControls.classList.add('active'); snakeMobileHint.classList.add('active'); }
+    initSnakeGame();
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('goodboy')){
+    overlayRunner.classList.add('active');
+    if(isMobile){ runnerMobileHint.classList.add('active'); }
+    initRunnerGame();
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('pong')){
+    overlayPong.classList.add('active');
+    if(isMobile){ pongControls.classList.add('active'); pongMobileHint.classList.add('active'); }
+    startPong();
+    homeInput.value='';
+    return;
+  }
+});
 
-/* (Games implementation preserved from original file — omitted here for brevity but remains intact in your original file)
-   If you notice any missing behaviour after pasting both parts, tell me which game feature, I will paste the exact original blocks back in.
-*/
+/* -------------------------
+   PONG (from old working code)
+   ------------------------- */
+const paddle = { x:20, y: pongCanvas.height/2 - 40, w:10, h:80, dy:0 };
+const ai = { x: pongCanvas.width - 30, y: pongCanvas.height/2 - 40, w:10, h:80 };
+const ball = { x: pongCanvas.width/2, y: pongCanvas.height/2, r:8, dx:1, dy:1 };
+let aiFactor = 0.07;
+let playerScore = 0, aiScore = 0, ballSpeed = 8;
+let _pongAnim = 0;
 
-/* ------------------ NEW: Worker-backed AI Chat (calls your Cloudflare Worker) ------------------ */
+function drawPong(){
+  ctx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
+  ctx.fillStyle = "#ff0606";
+  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+  ctx.fillRect(ai.x, ai.y, ai.w, ai.h);
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.closePath();
+  ctx.fillRect(pongCanvas.width/2-2, 0, 4, pongCanvas.height);
+  scoreboard.textContent = `${playerScore} : ${aiScore}`;
+}
 
+function resetBall(){
+  ball.x = pongCanvas.width/2;
+  ball.y = pongCanvas.height/2;
+  ball.dx = (Math.random()>0.5?1:-1);
+  ball.dy = (Math.random()>0.5?1:-1);
+}
+
+function checkWinLose(){
+  if(playerScore >= 10){ winLoseMessage.textContent = "YOU WIN"; winLoseScreen.style.display = "flex"; stopPong(); return true; }
+  if(aiScore >= 10){ winLoseMessage.textContent = "YOU LOSE"; winLoseScreen.style.display = "flex"; stopPong(); return true; }
+  return false;
+}
+
+function updatePong(){
+  // paddle movement
+  paddle.y += paddle.dy;
+  if(paddle.y < 0) paddle.y = 0;
+  if(paddle.y + paddle.h > pongCanvas.height) paddle.y = pongCanvas.height - paddle.h;
+
+  // ball movement
+  ball.x += ball.dx * ballSpeed / 4;
+  ball.y += ball.dy * ballSpeed / 4;
+
+  // bounce top/bottom
+  if(ball.y + ball.r > pongCanvas.height || ball.y - ball.r < 0) ball.dy *= -1;
+
+  // player paddle collision
+  if(ball.x - ball.r < paddle.x + paddle.w && ball.y > paddle.y && ball.y < paddle.y + paddle.h) ball.dx *= -1;
+
+  // ai paddle collision
+  if(ball.x + ball.r > ai.x && ball.y > ai.y && ball.y < ai.y + ai.h) ball.dx *= -1;
+
+  // scoring
+  if(ball.x < 0){ aiScore++; resetBall(); }
+  if(ball.x > pongCanvas.width){ playerScore++; resetBall(); }
+
+  // AI movement
+  let target = ball.y - ai.h/2;
+  ai.y += (target - ai.y) * aiFactor;
+  if(ai.y < 0) ai.y = 0;
+  if(ai.y + ai.h > pongCanvas.height) ai.y = pongCanvas.height - ai.h;
+
+  drawPong();
+  _pongAnim = requestAnimationFrame(updatePong);
+  checkWinLose();
+}
+
+function startPong(){
+  playerScore = 0; aiScore = 0; resetBall();
+  cancelAnimationFrame(_pongAnim);
+  updatePong();
+}
+
+function stopPong(){
+  cancelAnimationFrame(_pongAnim);
+  _pongAnim = 0;
+}
+
+document.addEventListener('keydown', (e) => {
+  if(overlayPong.classList.contains('active')){
+    if(e.key === 'ArrowUp') paddle.dy = -6;
+    if(e.key === 'ArrowDown') paddle.dy = 6;
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if(e.key === 'ArrowUp' || e.key === 'ArrowDown') paddle.dy = 0;
+});
+document.querySelectorAll('[data-pong-dir]').forEach(btn=>{
+  btn.addEventListener('touchstart',(e)=>{
+    e.preventDefault();
+    if(btn.dataset.pongDir === 'up') paddle.dy = -6;
+    if(btn.dataset.pongDir === 'down') paddle.dy = 6;
+  });
+  btn.addEventListener('touchend',(e)=>{
+    e.preventDefault();
+    paddle.dy = 0;
+  });
+});
+
+/* Difficulty buttons */
+document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    aiFactor = parseFloat(btn.dataset.ai);
+    ballSpeed = parseInt(btn.dataset.ball);
+    playerScore = 0; aiScore = 0; resetBall();
+    winLoseScreen.style.display = "none";
+    stopPong();
+    updatePong();
+  });
+});
+tryAgainBtn.addEventListener('click', ()=>{
+  playerScore = 0; aiScore = 0; resetBall();
+  winLoseScreen.style.display = "none";
+  stopPong();
+  updatePong();
+});
+
+/* -------------------------
+   SNAKE (from old working code)
+   ------------------------- */
+let snake = [{x:5,y:5}], direction = 'RIGHT', food = null, snakeScore = 0, snakeRunning = false, _snakeTimer = 0;
+
+function placeFood(){
+  food = { x: Math.floor(Math.random()*30), y: Math.floor(Math.random()*20) };
+}
+
+function drawSnake(){
+  snakeCtx.fillStyle = 'black';
+  snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+  snakeCtx.fillStyle = '#ff0606';
+  snake.forEach(segment => snakeCtx.fillRect(segment.x*20, segment.y*20, 20, 20));
+  snakeCtx.fillStyle = '#ff0606';
+  if(food) snakeCtx.fillRect(food.x*20, food.y*20, 20, 20);
+}
+
+function updateSnake(){
+  if(!snakeRunning) return;
+  const head = {...snake[0]};
+  if(direction === 'RIGHT') head.x++;
+  if(direction === 'LEFT') head.x--;
+  if(direction === 'UP') head.y--;
+  if(direction === 'DOWN') head.y++;
+
+  // collisions
+  if(head.x < 0 || head.x >= 30 || head.y < 0 || head.y >= 20 || snake.some(s => s.x === head.x && s.y === head.y)){
+    snakeRunning = false;
+    finalSnakeScore.textContent = snakeScore;
+    snakeGameOver.style.display = 'flex';
+    return;
+  }
+
+  snake.unshift(head);
+  if(head.x === food.x && head.y === food.y){
+    snakeScore++;
+    snakeScoreDisplay.textContent = snakeScore;
+    placeFood();
+  } else {
+    snake.pop();
+  }
+  drawSnake();
+  _snakeTimer = setTimeout(updateSnake, 150);
+}
+
+function initSnakeGame(){
+  snake = [{x:5,y:5}];
+  direction = 'RIGHT';
+  snakeScore = 0;
+  snakeRunning = true;
+  placeFood();
+  snakeScoreDisplay.textContent = snakeScore;
+  snakeGameOver.style.display = 'none';
+  clearTimeout(_snakeTimer);
+  drawSnake();
+  _snakeTimer = setTimeout(updateSnake, 150);
+}
+
+/* keyboard controls for snake */
+document.addEventListener('keydown', (e) => {
+  if(overlaySnake.classList.contains('active')){
+    if(e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
+    if(e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+    if(e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
+    if(e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
+  }
+});
+/* touch buttons for snake */
+document.querySelectorAll('[data-snake-dir]').forEach(btn=>{
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const newDir = btn.dataset.snakeDir;
+    if(newDir === 'UP' && direction !== 'DOWN') direction = 'UP';
+    if(newDir === 'DOWN' && direction !== 'UP') direction = 'DOWN';
+    if(newDir === 'LEFT' && direction !== 'RIGHT') direction = 'LEFT';
+    if(newDir === 'RIGHT' && direction !== 'LEFT') direction = 'RIGHT';
+  });
+});
+
+/* swipe for snake canvas */
+let snakeTouchStartX = 0, snakeTouchStartY = 0;
+snakeCanvas.addEventListener('touchstart', (e) => {
+  snakeTouchStartX = e.touches[0].clientX;
+  snakeTouchStartY = e.touches[0].clientY;
+});
+snakeCanvas.addEventListener('touchend', (e) => {
+  const touchEndX = e.changedTouches[0].clientX;
+  const touchEndY = e.changedTouches[0].clientY;
+  const diffX = touchEndX - snakeTouchStartX;
+  const diffY = touchEndY - snakeTouchStartY;
+  if(Math.abs(diffX) > Math.abs(diffY)){
+    if(diffX > 30 && direction !== 'LEFT') direction = 'RIGHT';
+    else if(diffX < -30 && direction !== 'RIGHT') direction = 'LEFT';
+  } else {
+    if(diffY > 30 && direction !== 'UP') direction = 'DOWN';
+    else if(diffY < -30 && direction !== 'DOWN') direction = 'UP';
+  }
+});
+
+/* snake overlays buttons */
+snakePlayAgainBtn.addEventListener('click', (e) => { e.stopPropagation(); snakeGameOver.style.display = 'none'; initSnakeGame(); });
+snakeCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); snakeGameOver.style.display = 'none'; overlaySnake.classList.remove('active'); snakeControls.classList.remove('active'); snakeMobileHint.classList.remove('active'); clearTimeout(_snakeTimer); snakeRunning = false; });
+
+function stopSnake(){
+  clearTimeout(_snakeTimer);
+  snakeRunning = false;
+}
+
+/* -------------------------
+   RUNNER (from old working code)
+   ------------------------- */
+let runnerAnimation = 0;
+let runnerRunning = false;
+let runnerScore = 0;
+let runnerPlayer = null;
+let runnerObstacles = [];
+let runnerSpeed = 4;
+
+function drawTrain(x,y,size,scale){
+  const trainW=size*2.5;
+  const trainH=size*1.2;
+  runnerCtx.fillStyle='#cc0000';
+  runnerCtx.fillRect(x-trainW/2,y-trainH,trainW,trainH);
+  runnerCtx.fillStyle='#880000';
+  runnerCtx.fillRect(x-trainW/2+size*0.2,y-trainH+size*0.2,size*0.4,size*0.5);
+  runnerCtx.fillRect(x+trainW/2-size*0.6,y-trainH+size*0.2,size*0.4,size*0.5);
+  runnerCtx.fillStyle='#ffff00';
+  runnerCtx.fillRect(x-size*0.15,y-trainH,size*0.3,size*0.2);
+  runnerCtx.fillStyle='#333';
+  runnerCtx.fillRect(x-trainW/2,y-size*0.25,size*0.3,size*0.25);
+  runnerCtx.fillRect(x-trainW/2+trainW*0.35,y-size*0.25,size*0.3,size*0.25);
+  runnerCtx.fillRect(x+trainW/2-size*0.3,y-size*0.25,size*0.3,size*0.25);
+  runnerCtx.strokeStyle='#ffffff';
+  runnerCtx.lineWidth=2*scale;
+  runnerCtx.strokeRect(x-trainW/2,y-trainH,trainW,trainH);
+}
+function drawBlockyPerson(x,y,size,animFrame,isJumping){
+  const legSwing=isJumping?0:Math.sin(animFrame)*0.3;
+  const armSwing=isJumping?-0.5:Math.cos(animFrame)*0.3;
+  const legSpread=isJumping?0.2:0;
+  runnerCtx.fillStyle='#ff0606';
+  runnerCtx.fillRect(x-size*0.2,y-size*0.9,size*0.4,size*0.3);
+  runnerCtx.fillStyle='#cc0000';
+  runnerCtx.fillRect(x-size*0.25,y-size*0.6,size*0.5,size*0.4);
+  runnerCtx.fillStyle='#ff0606';
+  runnerCtx.fillRect(x-size*(0.15+legSpread),y-size*0.2,size*0.15,size*0.35+legSwing*size*0.1);
+  runnerCtx.fillRect(x+size*(0.0+legSpread),y-size*0.2,size*0.15,size*0.35-legSwing*size*0.1);
+  runnerCtx.fillStyle='#ff4444';
+  runnerCtx.fillRect(x-size*0.35,y-size*(0.55-armSwing*0.1),size*0.15,size*0.3);
+  runnerCtx.fillRect(x+size*0.2,y-size*(0.55+armSwing*0.1),size*0.15,size*0.3);
+  runnerCtx.fillStyle='#000';
+  runnerCtx.fillRect(x-size*0.12,y-size*0.85,size*0.08,size*0.08);
+  runnerCtx.fillRect(x+size*0.04,y-size*0.85,size*0.08,size*0.08);
+}
+
+function drawRunner(){
+  const w=runnerCanvas.width, h=runnerCanvas.height;
+  runnerCtx.fillStyle='#1a0033';
+  runnerCtx.fillRect(0,0,w,h);
+  const vanishX=w/2, vanishY=h*0.3, groundY=h*0.85;
+  runnerCtx.strokeStyle='#ff0606';
+  runnerCtx.lineWidth=2;
+  for(let i=0;i<10;i++){
+    const z=i*10;
+    const scale=1/(z*0.05+1);
+    const y=vanishY+(groundY-vanishY)*scale;
+    const laneW=w*0.6*scale;
+    const x1=vanishX-laneW/2, x2=vanishX+laneW/2;
+    runnerCtx.beginPath();
+    runnerCtx.moveTo(x1,y);
+    runnerCtx.lineTo(x2,y);
+    runnerCtx.stroke();
+
+    if(i<9){
+      const nextZ=z+10;
+      const nextScale=1/(nextZ*0.05+1);
+      const nextY=vanishY+(groundY-vanishY)*nextScale;
+      for(let lane=0;lane<=3;lane++){
+        const lx=x1+(x2-x1)*(lane/3);
+        const nextLW=w*0.6*nextScale;
+        const nextX1=vanishX-nextLW/2;
+        const nextLx=nextX1+(vanishX+nextLW/2-nextX1)*(lane/3);
+        runnerCtx.beginPath();
+        runnerCtx.moveTo(lx,y);
+        runnerCtx.lineTo(nextLx,nextY);
+        runnerCtx.stroke();
+      }
+    }
+  }
+
+  runnerObstacles.forEach(obs=>{
+    const scale=1/(obs.z*0.05+1);
+    const y=vanishY+(groundY-vanishY)*scale;
+    const laneW=w*0.6*scale;
+    const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);
+    const size=60*scale;
+    drawTrain(laneX,y,size,scale);
+  });
+
+  const playerZ=5;
+  const playerScale=1/(playerZ*0.05+1);
+  const smoothLane=runnerPlayer.lane + (runnerPlayer.targetLane - runnerPlayer.lane) * runnerPlayer.laneTransition;
+  const playerY=vanishY+(groundY-vanishY)*playerScale - runnerPlayer.jumpHeight*playerScale;
+  const playerLaneW=w*0.6*playerScale;
+  const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);
+  const playerSize=50*playerScale;
+  drawBlockyPerson(playerX,playerY,playerSize,runnerPlayer.animFrame,runnerPlayer.jumpHeight>0);
+
+  runnerCtx.fillStyle='#ff0606';
+  runnerCtx.font='20px "Press Start 2P"';
+  runnerCtx.fillText('LANE: '+(runnerPlayer.targetLane+1),20,40);
+}
+
+function spawnObstacle(){
+  if(!runnerRunning) return;
+  const lane = Math.floor(Math.random()*3);
+  runnerObstacles.push({ z: 100, lane: lane, type: 'train' });
+  setTimeout(spawnObstacle, 2000 + Math.random()*1500);
+}
+
+function updateRunner(){
+  if(!runnerRunning) return;
+
+  if(runnerPlayer.jumpHeight === 0) runnerPlayer.animFrame += 0.15;
+
+  if(runnerPlayer.laneTransition < 1){
+    runnerPlayer.laneTransition += 0.15;
+    if(runnerPlayer.laneTransition >= 1){ runnerPlayer.laneTransition = 1; runnerPlayer.lane = runnerPlayer.targetLane; }
+  }
+
+  if(runnerPlayer.jumping){
+    runnerPlayer.jumpHeight += 12;
+    if(runnerPlayer.jumpHeight >= 140) { runnerPlayer.jumping = false; }
+  } else if(runnerPlayer.jumpHeight > 0){
+    runnerPlayer.jumpHeight -= 12;
+    if(runnerPlayer.jumpHeight < 0) runnerPlayer.jumpHeight = 0;
+  }
+
+  for(let i=runnerObstacles.length-1;i>=0;i--){
+    runnerObstacles[i].z -= runnerSpeed*0.15;
+    if(runnerObstacles[i].z < -5){
+      runnerObstacles.splice(i,1);
+      runnerScore++;
+      runnerScoreDisplay.textContent = 'SCORE: '+runnerScore;
+      if(runnerSpeed < 12) runnerSpeed += 0.2;
+    } else if(runnerObstacles[i].z < 6 && runnerObstacles[i].z > 4 && runnerObstacles[i].lane === runnerPlayer.lane && runnerPlayer.jumpHeight < 60){
+      // collision
+      runnerRunning = false;
+      finalRunnerScore.textContent = runnerScore;
+      runnerGameOver.style.display = 'flex';
+      return;
+    }
+  }
+
+  if(runnerObstacles.length === 0 || runnerObstacles[runnerObstacles.length-1].z < 80) spawnObstacle();
+
+  drawRunner();
+  runnerAnimation = requestAnimationFrame(updateRunner);
+}
+
+function initRunnerGame(){
+  runnerScore = 0;
+  runnerSpeed = 4;
+  runnerRunning = true;
+  runnerPlayer = { x:0, y:0, lane:1, jumping:false, jumpHeight:0, animFrame:0, targetLane:1, laneTransition:0 };
+  runnerObstacles = [];
+  runnerGameOver.style.display = 'none';
+  runnerScoreDisplay.textContent = 'SCORE: 0';
+  // start first spawn
+  spawnObstacle();
+  updateRunner();
+}
+
+function stopRunner(){
+  cancelAnimationFrame(runnerAnimation);
+  runnerAnimation = 0;
+  runnerRunning = false;
+}
+
+/* runner keyboard / mouse / touch */
+document.addEventListener('keydown', (e) => {
+  if(overlayRunner.classList.contains('active') && runnerPlayer){
+    if(e.key === ' ' && !runnerPlayer.jumping && runnerPlayer.jumpHeight === 0){ runnerPlayer.jumping = true; }
+    if(e.key === 'ArrowLeft' && runnerPlayer.targetLane > 0 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane--; runnerPlayer.laneTransition = 0; }
+    if(e.key === 'ArrowRight' && runnerPlayer.targetLane < 2 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane++; runnerPlayer.laneTransition = 0; }
+  }
+});
+runnerCanvas.addEventListener('click', ()=>{
+  if(overlayRunner.classList.contains('active') && runnerPlayer && !runnerPlayer.jumping && runnerPlayer.jumpHeight === 0) runnerPlayer.jumping = true;
+});
+let runnerTouchX = 0;
+runnerCanvas.addEventListener('touchstart', (e)=>{ runnerTouchX = e.touches[0].clientX; });
+runnerCanvas.addEventListener('touchend', (e)=>{
+  const touchEndX = e.changedTouches[0].clientX;
+  const diff = touchEndX - runnerTouchX;
+  if(Math.abs(diff) < 30 && runnerPlayer && !runnerPlayer.jumping && runnerPlayer.jumpHeight === 0){ runnerPlayer.jumping = true; }
+  else if(diff < -50 && runnerPlayer && runnerPlayer.targetLane > 0 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane--; runnerPlayer.laneTransition = 0; }
+  else if(diff > 50 && runnerPlayer && runnerPlayer.targetLane < 2 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane++; runnerPlayer.laneTransition = 0; }
+});
+
+/* runner overlay controls */
+runnerPlayAgainBtn.addEventListener('click', (e)=>{ e.stopPropagation(); runnerGameOver.style.display = 'none'; initRunnerGame(); });
+runnerCloseBtn.addEventListener('click', (e)=>{ e.stopPropagation(); runnerGameOver.style.display = 'none'; overlayRunner.classList.remove('active'); runnerMobileHint.classList.remove('active'); stopRunner(); });
+
+/* -------------------------
+   Utility stop functions
+   ------------------------- */
+function stopAllGames(){
+  stopPong();
+  stopRunner();
+  stopSnake();
+}
+
+/* -------------------------
+   AI Worker Chat (kept from new UI)
+   ------------------------- */
 const WORKER_URL = "https://aiworker.thefoxsss6969.workers.dev";
 
 /* Append a chat bubble */
@@ -265,9 +797,8 @@ function addMessage(who, text, isHTML=false){
 function showTyping(){ const t=document.createElement('div'); t.className='typing-indicator'; t.id='typingIndicator'; t.textContent='thinking...'; chatMessages.appendChild(t); chatMessages.scrollTop = chatMessages.scrollHeight; }
 function hideTyping(){ const t=document.getElementById('typingIndicator'); if(t) t.remove(); }
 
-/* Build messages array for worker (simple single-turn but you can extend to include history) */
+/* Build messages array for worker */
 function buildMessages(userText){
-  // You can expand this to include conversation history if desired
   return [
     { role: "system", content: "You are a helpful assistant." },
     { role: "user", content: userText }
@@ -345,12 +876,10 @@ document.addEventListener('keydown', (e)=>{
 
 /* initial focus behavior: focus input when AI opens */
 document.addEventListener('click', (e)=>{
-  const opens = ['overlayAI','overlayGonner','overlayPong','overlaySnake','overlayRunner'];
-  // If overlay opened, focus chat input for AI overlay
   if(overlayAI.classList.contains('active')) setTimeout(()=>chatInput.focus(),80);
 });
 
-/* End script and close html */
+/* End script */
 </script>
 </body>
 </html>
