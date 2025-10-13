@@ -1395,18 +1395,18 @@ chatInput.addEventListener('keypress',(e)=>{
 const AI_IMAGE_CONFIG = {
   provider: 'openai', // ← Already set to OpenAI!
   openai: {
-    apiKey: '', // ← PASTE YOUR NEW API KEY HERE (same key works for chat AND images!)
+    apiKey: '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', // ← PASTE YOUR NEW API KEY HERE (same key works for chat AND images!)
     model: 'dall-e-3',
     endpoint: 'https://api.openai.com/v1/images/generations'
   },
   // Stability AI - Alternative option
   stability: {
-    apiKey: '',
+    apiKey: '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',
     endpoint: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image'
   },
   // Hugging Face - Alternative option
   huggingface: {
-    apiKey: '',
+    apiKey: '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',
     model: 'stabilityai/stable-diffusion-xl-base-1.0',
     endpoint: 'https://api-inference.huggingface.co/models/'
   }
