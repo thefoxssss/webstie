@@ -168,13 +168,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <button class="close-btn" data-close="overlayAI">CLOSE</button>
   <h1>AI ASSISTANT</h1>
   <div class="chat-container">
-    <!-- API KEY UI inserted inside chat area (user-supplied key only) -->
-    <div id="apiKeyContainer" style="margin-bottom:12px;text-align:center;">
-      <input id="apiKeyInput" type="password" placeholder="Enter your OpenAI API key (sk-...)" style="width:70%;padding:8px;border-radius:6px;border:2px solid var(--accent);background:rgba(255,6,6,0.04);color:var(--accent);font-family:'Press Start 2P';font-size:12px;" />
-      <button id="saveApiKeyBtn" style="margin-left:8px;padding:8px 10px;border-radius:6px;border:2px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:'Press Start 2P';">Save Key</button>
-      <div id="apiKeyStatus" style="margin-top:8px;font-size:10px;color:rgba(255,6,6,0.6)"></div>
-    </div>
-
+    <!-- kept welcome message as requested -->
     <div class="chat-messages" id="chatMessages">
       <div class="chat-message ai">Hey! I'm powered by GPT-4 (when you add your API key) + DALL-E 3 for images! I can answer anything, have deep conversations, generate professional AI art, do complex math, and more. Click 📷 to upload images, or ask me to "generate an image of [anything]". Add your OpenAI API key (use the input above) to unlock full power! What's on your mind?</div>
     </div>
@@ -204,29 +198,14 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <button id="runnerCloseBtn">CLOSE</button>
 </div>
 <script>
-/* ----- Existing helper functions & games preserved (from original file)
-   The file originally had lots of game logic and helper functions.
-   Below we re-add necessary pre-existing functions (resize handling, etc.)
-   and then append the API key handling + send logic that uses ONLY user's key.
-*/
-
-/* minimal helper functions (to ensure things work) */
+/* Minimal helper + preserved game scaffolding (kept compact to avoid huge paste) */
 function rand(min,max){return Math.random()*(max-min)+min;}
 function populateStamps(surface,text,count=30){
   surface.innerHTML='';
-  for(let i=0;i<count;i++){
-    const s=document.createElement('div');
-    s.className='stamp';
-    s.textContent=text;
-    s.style.left=rand(-10,90)+'vw';
-    s.style.top=rand(-10,90)+'vh';
-    s.style.animationDelay=rand(0,1)+'s';
-    s.style.animationDuration=rand(0.8,1.6)+'s';
-    surface.appendChild(s);
-  }
+  for(let i=0;i<count;i++){const s=document.createElement('div');s.className='stamp';s.textContent=text;s.style.left=rand(-10,90)+'vw';s.style.top=rand(-10,90)+'vh';s.style.animationDelay=rand(0,1)+'s';s.style.animationDuration=rand(0.8,1.6)+'s';surface.appendChild(s);}
 }
 
-/* reference to DOM elements used elsewhere */
+/* DOM refs */
 const main=document.getElementById('mainGooner');
 const hiddenText=document.getElementById('hiddenText');
 const overlayGonner=document.getElementById('overlayGonner');
@@ -252,206 +231,126 @@ const chatMessages=document.getElementById('chatMessages');
 const chatInput=document.getElementById('chatInput');
 const chatSendBtn=document.getElementById('chatSendBtn');
 
-const apiKeyInput=document.getElementById('apiKeyInput');
-const saveApiKeyBtn=document.getElementById('saveApiKeyBtn');
-const apiKeyStatus=document.getElementById('apiKeyStatus');
+/* basic UI handlers (close overlays, click surfaces) */
+document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{const targetId=btn.dataset.close;document.getElementById(targetId).classList.remove('active');cancelAnimationFrame(window._pongAnim||0);cancelAnimationFrame(window._runnerAnim||0);clearTimeout(window._snakeAnim||0);});});
+document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',(e)=>{if(e.target===ov){ov.classList.remove('active');}});});
 
-/* Keep previous event handlers (some were in original). Re-attach minimal ones */
-document.querySelectorAll('.close-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const targetId=btn.dataset.close;
-    document.getElementById(targetId).classList.remove('active');
-    cancelAnimationFrame(window._pongAnim||0);
-    cancelAnimationFrame(window._runnerAnim||0);
-    clearTimeout(window._snakeAnim||0);
-  });
-});
-document.querySelectorAll('.overlay').forEach(ov=>{
-  ov.addEventListener('click',(e)=>{
-    if(e.target===ov){
-      ov.classList.remove('active');
-    }
-  });
-});
-
-/* Main interactions */
-main.addEventListener('mouseenter',()=>{
-  if(window.matchMedia("(hover:hover)").matches){
-    window._hoverInterval=setInterval(()=>{ main.style.letterSpacing=(Math.random()>0.5?'6px':'2px'); },120);
-  }
-});
-main.addEventListener('mouseleave',()=>{
-  clearInterval(window._hoverInterval);
-  main.style.letterSpacing='4px';
-});
-main.addEventListener('click',()=>{
-  overlayGonner.classList.add('active');
-  populateStamps(surfaceGonner,'GONNER',35);
-});
+/* main interactions */
+main.addEventListener('mouseenter',()=>{ if(window.matchMedia("(hover:hover)").matches){ window._hoverInterval=setInterval(()=>{ main.style.letterSpacing=(Math.random()>0.5?'6px':'2px'); },120); }});
+main.addEventListener('mouseleave',()=>{ clearInterval(window._hoverInterval); main.style.letterSpacing='4px'; });
+main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
 hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
 
-/* Home-input secret triggers */
-homeInput.addEventListener('input',()=>{
-  const value=homeInput.value.toLowerCase();
-  if(value.includes('ai')){ overlayAI.classList.add('active'); chatInput.focus(); homeInput.value=''; return; }
-  if(value.includes('redbull')){ overlaySnake.classList.add('active'); initSnakeGame(); homeInput.value=''; return; }
-  if(value.includes('goodboy')){ overlayRunner.classList.add('active'); initRunnerGame(); homeInput.value=''; return; }
-  if(value.includes('pong')){ overlayPong.classList.add('active'); startPong(); homeInput.value=''; return; }
-});
+/* home input secret triggers */
+homeInput.addEventListener('input',()=>{ const value=homeInput.value.toLowerCase(); if(value.includes('ai')){ overlayAI.classList.add('active'); chatInput.focus(); homeInput.value=''; return; } if(value.includes('redbull')){ overlaySnake.classList.add('active'); initSnakeGame(); homeInput.value=''; return; } if(value.includes('goodboy')){ overlayRunner.classList.add('active'); initRunnerGame(); homeInput.value=''; return; } if(value.includes('pong')){ overlayPong.classList.add('active'); startPong(); homeInput.value=''; return; }});
 
-/* (Games code omitted here for brevity because the original file already contains it.
-   When you paste Part 1 + Part 2 together into your existing file, your full game logic
-   will remain unchanged. The code below focuses on the API key handling + chat send logic.)
+/* (Games implementation preserved from original file — omitted here for brevity but remains intact in your original file)
+   If you notice any missing behaviour after pasting both parts, tell me which game feature, I will paste the exact original blocks back in.
 */
 
-/* ------------------ API key + Chat wiring (NEW) ------------------ */
+/* ------------------ NEW: Worker-backed AI Chat (calls your Cloudflare Worker) ------------------ */
 
-/* Load saved API key if present */
-let USER_OPENAI_KEY = localStorage.getItem('openai_api_key') || '';
+const WORKER_URL = "https://aiworker.thefoxsss6969.workers.dev";
 
-function updateApiKeyUI(){
-  if(USER_OPENAI_KEY){
-    apiKeyStatus.textContent = 'Key loaded ✅ (will be used for all AI requests)';
-    apiKeyInput.value = '';
-    apiKeyInput.placeholder = 'API key saved (hidden)';
-  } else {
-    apiKeyStatus.textContent = 'No API key saved — AI will not work until you save your key.';
-    apiKeyInput.placeholder = 'Enter your OpenAI API key (sk-...)';
-  }
-}
-updateApiKeyUI();
-
-/* Save button */
-saveApiKeyBtn.addEventListener('click',()=>{
-  const key = apiKeyInput.value.trim();
-  if(!key){ alert('Please paste your OpenAI key (starts with sk-)'); return; }
-  if(!key.startsWith('sk-')){ alert('Invalid key format. Make sure it starts with sk-'); return; }
-  localStorage.setItem('openai_api_key', key);
-  USER_OPENAI_KEY = key;
-  updateApiKeyUI();
-  alert('✅ API key saved locally. The AI will now use your key.');
-});
-
-/* Utility: append message bubble */
+/* Append a chat bubble */
 function addMessage(who, text, isHTML=false){
-  const div = document.createElement('div');
-  div.className = 'chat-message ' + (who==='user' ? 'user' : 'ai');
-  if(isHTML) div.innerHTML = text;
-  else div.textContent = text;
+  const div=document.createElement('div');
+  div.className='chat-message '+(who==='user'?'user':'ai');
+  if(isHTML) div.innerHTML = text; else div.textContent = text;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-/* Show typing indicator */
-function showTyping(){
-  const t = document.createElement('div');
-  t.className = 'typing-indicator';
-  t.id='typingIndicator';
-  t.textContent = 'thinking...';
-  chatMessages.appendChild(t);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-function hideTyping(){
-  const t = document.getElementById('typingIndicator');
-  if(t) t.remove();
-}
+/* Typing indicator */
+function showTyping(){ const t=document.createElement('div'); t.className='typing-indicator'; t.id='typingIndicator'; t.textContent='thinking...'; chatMessages.appendChild(t); chatMessages.scrollTop = chatMessages.scrollHeight; }
+function hideTyping(){ const t=document.getElementById('typingIndicator'); if(t) t.remove(); }
 
-/* Compose messages for API (simple single-turn + small system) */
+/* Build messages array for worker (simple single-turn but you can extend to include history) */
 function buildMessages(userText){
+  // You can expand this to include conversation history if desired
   return [
     { role: "system", content: "You are a helpful assistant." },
     { role: "user", content: userText }
   ];
 }
 
-/* Send message to OpenAI using user's key ONLY */
-async function sendMessageToOpenAI(userText){
-  if(!USER_OPENAI_KEY){
-    addMessage('ai', '⚠️ Please add your OpenAI API key in the input above to use the AI.');
-    return;
-  }
+/* Send to worker (which calls OpenAI with your secret key) */
+async function sendToWorker(userText){
   try{
     showTyping();
-    // Build body
-    const body = {
-      model: "gpt-4o-mini",
-      messages: buildMessages(userText),
-      temperature: 0.7,
-      max_tokens: 1000
-    };
-
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    const body = { messages: buildMessages(userText) };
+    const resp = await fetch(WORKER_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${USER_OPENAI_KEY}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
 
     if(!resp.ok){
-      const errorText = await resp.text();
-      console.error('OpenAI error:', resp.status, errorText);
       hideTyping();
-      addMessage('ai', `⚠️ OpenAI returned an error (${resp.status}). Check your key and quota.`);
+      const errText = await resp.text().catch(()=>`HTTP ${resp.status}`);
+      addMessage('ai', `⚠️ Worker error: ${errText}`);
       return;
     }
 
-    const data = await resp.json();
+    const data = await resp.json().catch(()=>null);
     hideTyping();
-    // Support stream or standard response: check structure
-    let reply = '';
-    if(data?.choices && data.choices.length){
-      const c = data.choices[0];
-      // Usually .message.content
-      reply = c.message?.content ?? (c.delta?.content ?? '');
-    } else {
-      reply = JSON.stringify(data);
+    if(!data){
+      addMessage('ai','⚠️ Invalid response from worker.');
+      return;
     }
+
+    // Assume standard OpenAI response structure
+    let reply = '';
+    try{
+      if(Array.isArray(data.choices) && data.choices.length){
+        reply = data.choices[0].message?.content ?? data.choices[0].text ?? JSON.stringify(data.choices[0]);
+      } else if(data.error){
+        reply = `OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;
+      } else {
+        reply = JSON.stringify(data);
+      }
+    }catch(e){ reply = JSON.stringify(data); }
+
     addMessage('ai', reply);
   }catch(err){
     hideTyping();
-    console.error('Network error:',err);
-    addMessage('ai', '⚠️ Network error while contacting OpenAI. See console for details.');
+    console.error(err);
+    addMessage('ai', '⚠️ Network error while contacting the worker.');
   }
 }
 
-/* If user presses send, use the user's key and send to OpenAI (no fallback) */
-chatSendBtn.addEventListener('click', async (e)=>{
+/* Send button handler */
+chatSendBtn.addEventListener('click', async ()=>{
   const text = chatInput.value.trim();
   if(!text) return;
   addMessage('user', text);
-  chatInput.value = '';
-  // Use user's API key only
-  await sendMessageToOpenAI(text);
+  chatInput.value='';
+  await sendToWorker(text);
 });
 
-/* allow Enter to send */
-chatInput.addEventListener('keydown', async (e)=>{
-  if(e.key === 'Enter'){
-    e.preventDefault();
-    chatSendBtn.click();
-  }
+/* Enter key send */
+chatInput.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); chatSendBtn.click(); }
 });
 
-/* Optional: quick clear/save keyboard shortcut: Ctrl+K to clear stored key */
+/* Ctrl+K clears local "not used" key — left here as a convenience (no secret stored now) */
 document.addEventListener('keydown', (e)=>{
-  if(e.ctrlKey && e.key.toLowerCase() === 'k'){
-    if(confirm('Clear saved OpenAI key from localStorage?')){
-      localStorage.removeItem('openai_api_key');
-      USER_OPENAI_KEY = '';
-      updateApiKeyUI();
-      alert('Saved key cleared.');
+  if(e.ctrlKey && e.key.toLowerCase()==='k'){
+    if(confirm('Clear localStorage? (no API key stored client-side)')){
+      localStorage.clear();
+      alert('Local storage cleared.');
     }
   }
 });
 
-/* Initial UI update (in case key existed) */
-updateApiKeyUI();
+/* initial focus behavior: focus input when AI opens */
+document.addEventListener('click', (e)=>{
+  const opens = ['overlayAI','overlayGonner','overlayPong','overlaySnake','overlayRunner'];
+  // If overlay opened, focus chat input for AI overlay
+  if(overlayAI.classList.contains('active')) setTimeout(()=>chatInput.focus(),80);
+});
 
-/* end of injected API/chat code */
-
-/* close script & html */
+/* End script and close html */
 </script>
 </body>
 </html>
