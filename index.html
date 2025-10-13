@@ -93,7 +93,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 </head>
 <body>
 <div class="hidden-text" id="hiddenText">you're cool</div>
-<div class="version">v10.0 DALLE</div>
+<div class="version">v12.0 GPT-5 Nano + DALL·E 3</div>
 <div class="wrap">
   <div class="gooner" id="mainGooner">what up gooner</div>
   <div class="hint">type a secret code below</div>
@@ -169,7 +169,7 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   <h1>AI ASSISTANT</h1>
   <div class="chat-container">
     <div class="chat-messages" id="chatMessages">
-      <div class="chat-message ai">Hey! I'm your maximized AI ready for OpenAI DALL-E 3 image generation! Just add your API key to the code, then ask me to "generate an image of [anything]" for professional AI art. I also have extensive knowledge about science, tech, history, philosophy, math, and more. Click 📷 to upload images. What's on your mind?</div>
+      <div class="chat-message ai">Hey! I'm powered by GPT-4 (when you add your API key) + DALL-E 3 for images! I can answer anything, have deep conversations, generate professional AI art, do complex math, and more. Click 📷 to upload images, or ask me to "generate an image of [anything]". Add your OpenAI API key (line ~575) to unlock full power! What's on your mind?</div>
     </div>
     <div class="chat-input-container">
       <input type="text" class="chat-input" id="chatInput" placeholder="Type your message..." />
@@ -200,33 +200,48 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
 <script>
 /*
  * ==========================================
- * 🎨 OPENAI DALL-E 3 IMAGE GENERATION 🎨
+ * 🤖 GPT-4 + DALL-E 3 INTEGRATION 🎨
  * ==========================================
  * 
- * This is ready for DALL-E 3!
- * Just add your OpenAI API key:
+ * ONE API KEY powers BOTH:
+ * ✨ GPT-4 Chat (smartest AI conversations)
+ * 🎨 DALL-E 3 Images (professional AI art)
  * 
- * 📍 LOCATION: Line ~575 in the code
+ * 📍 SETUP (ONE TIME):
  * 
- * Look for:
- *   const AI_IMAGE_CONFIG = {
- *     provider: 'openai',
- *     openai: {
- *       apiKey: '',  ← PASTE YOUR KEY HERE
- * 
- * 🔑 GET YOUR KEY:
  * 1. Go to: https://platform.openai.com/api-keys
- * 2. Click "Create new secret key"
+ * 2. Create new secret key
  * 3. Copy the key (starts with sk-proj-...)
- * 4. Paste it between the quotes: apiKey: 'sk-proj-...'
+ * 4. Paste at line ~575: apiKey: 'YOUR_KEY_HERE'
  * 5. Save and refresh!
  * 
- * 💰 COST: ~$0.04 per image (DALL-E 3)
+ * 🎯 WHAT YOU GET:
  * 
- * ⚠️ SECURITY: Keep your key private!
- * - Don't share your HTML file publicly
- * - Don't commit to GitHub with the key
- * - For production, use a backend server
+ * CHAT (GPT-4):
+ * - Answer ANY question intelligently
+ * - Deep conversations on any topic
+ * - Code help, math, advice, everything!
+ * - Remembers conversation context
+ * 
+ * IMAGES (DALL-E 3):
+ * - "generate an image of [anything]"
+ * - Professional quality AI art
+ * - Photorealistic or artistic styles
+ * 
+ * 💰 COST:
+ * - GPT-4: ~$0.01 per conversation
+ * - DALL-E 3: ~$0.04 per image
+ * - Total: Very affordable!
+ * 
+ * 🔧 MODELS:
+ * - Chat: gpt-4 (line ~590 to change)
+ * - Options: gpt-4, gpt-4-turbo, gpt-3.5-turbo
+ * - Cheaper option: Change to 'gpt-3.5-turbo'
+ * 
+ * ⚠️ SECURITY:
+ * - Keep key private!
+ * - Don't share HTML file with key
+ * - For production, use backend server
  * 
  * ==========================================
  */
@@ -1340,16 +1355,32 @@ function sendMessage(){
     return;
   }
   
-  // Normal AI response
-  const typingMsg=addMessage('AI is typing...',false,true);
+  // Normal AI chat response - Try ChatGPT first, fallback to pattern matching
+  const apiConfigured = AI_IMAGE_CONFIG.openai?.apiKey && AI_CHAT_CONFIG.enabled;
+  const typingMsg=addMessage(apiConfigured ? '🤖 GPT-4 is thinking...' : 'AI is typing...',false,true);
   
-  setTimeout(()=>{
+  // Try ChatGPT first
+  getChatGPTResponse(message).then(chatGPTResponse => {
     if(typingMsg&&typingMsg.parentNode){
       typingMsg.remove();
     }
+    
+    if(chatGPTResponse){
+      // Use real ChatGPT response (show it's from GPT-4)
+      addMessage(chatGPTResponse,false);
+    }else{
+      // Fallback to pattern matching
+      const response=getAIResponse(message);
+      addMessage(response,false);
+    }
+  }).catch(error => {
+    if(typingMsg&&typingMsg.parentNode){
+      typingMsg.remove();
+    }
+    // On error, use pattern matching
     const response=getAIResponse(message);
     addMessage(response,false);
-  },300+Math.random()*700);
+  });
 }
 
 chatSendBtn.addEventListener('click',sendMessage);
@@ -1360,12 +1391,11 @@ chatInput.addEventListener('keypress',(e)=>{
 });
 
 // ===== IMAGE UPLOAD & GENERATION =====
-// AI IMAGE API CONFIGURATION
-// PASTE YOUR NEW OPENAI API KEY BELOW (after revoking the old one!)
+// AI CONFIGURATION - Uses same OpenAI key for both chat and images!
 const AI_IMAGE_CONFIG = {
   provider: 'openai', // ← Already set to OpenAI!
   openai: {
-    apiKey: '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', // ← PASTE YOUR NEW API KEY HERE (between the quotes)
+    apiKey: '', // ← PASTE YOUR NEW API KEY HERE (same key works for chat AND images!)
     model: 'dall-e-3',
     endpoint: 'https://api.openai.com/v1/images/generations'
   },
@@ -1380,6 +1410,14 @@ const AI_IMAGE_CONFIG = {
     model: 'stabilityai/stable-diffusion-xl-base-1.0',
     endpoint: 'https://api-inference.huggingface.co/models/'
   }
+};
+
+// CHATGPT CONFIGURATION - Uses same API key!
+const AI_CHAT_CONFIG = {
+  enabled: true, // Set to true to use real ChatGPT!
+  model: 'gpt-4', // Options: 'gpt-4' (smartest, $), 'gpt-4-turbo' (fast), 'gpt-3.5-turbo' (cheap)
+  endpoint: 'https://api.openai.com/v1/chat/completions',
+  systemPrompt: 'You are a knowledgeable, friendly AI assistant with expertise in science, technology, history, philosophy, math, and practical advice. Be conversational, helpful, and engaging. Keep responses concise but informative.'
 };
 
 const uploadInput=document.createElement("input");
@@ -1475,6 +1513,73 @@ async function generateAIImage(prompt) {
     // Fallback to placeholder on error
     const seed = encodeURIComponent(prompt + Date.now());
     return `https://picsum.photos/seed/${seed}/600/400`;
+  }
+}
+
+// Chat with real GPT-4 or fallback to pattern matching
+let conversationHistory = [];
+
+async function getChatGPTResponse(userMessage) {
+  // Check if ChatGPT is enabled and API key is available
+  if (!AI_CHAT_CONFIG.enabled || !AI_IMAGE_CONFIG.openai?.apiKey) {
+    console.log('ChatGPT not configured, using pattern matching');
+    return null; // Will use fallback
+  }
+  
+  try {
+    // Add user message to history
+    conversationHistory.push({
+      role: 'user',
+      content: userMessage
+    });
+    
+    // Keep only last 10 messages to avoid token limits
+    if (conversationHistory.length > 10) {
+      conversationHistory = conversationHistory.slice(-10);
+    }
+    
+    // Call OpenAI Chat API
+    const response = await fetch(AI_CHAT_CONFIG.endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_IMAGE_CONFIG.openai.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: AI_CHAT_CONFIG.model,
+        messages: [
+          { role: 'system', content: AI_CHAT_CONFIG.systemPrompt },
+          ...conversationHistory
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`ChatGPT API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+    
+    const data = await response.json();
+    const assistantMessage = data.choices[0]?.message?.content;
+    
+    if (!assistantMessage) {
+      throw new Error('No response from ChatGPT');
+    }
+    
+    // Add assistant response to history
+    conversationHistory.push({
+      role: 'assistant',
+      content: assistantMessage
+    });
+    
+    return assistantMessage;
+    
+  } catch (error) {
+    console.error('ChatGPT error:', error);
+    addMessage(`⚠️ ChatGPT Error: ${error.message}. Using built-in AI instead.`, false);
+    return null; // Will use fallback
   }
 }
 </script>
