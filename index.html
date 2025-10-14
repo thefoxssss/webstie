@@ -428,12 +428,18 @@ function stopPong(){
 
 document.addEventListener('keydown', (e) => {
   if(overlayPong.classList.contains('active')){
-    if(e.key === 'ArrowUp') paddle.dy = -6;
-    if(e.key === 'ArrowDown') paddle.dy = 6;
+    const k = e.key.toLowerCase();
+    if(k === 'arrowup' || e.key === 'ArrowUp') paddle.dy = -6;
+    if(k === 'arrowdown' || e.key === 'ArrowDown') paddle.dy = 6;
+    // WASD support
+    if(k === 'w') paddle.dy = -6;
+    if(k === 's') paddle.dy = 6;
   }
 });
 document.addEventListener('keyup', (e) => {
-  if(e.key === 'ArrowUp' || e.key === 'ArrowDown') paddle.dy = 0;
+  const k = e.key.toLowerCase();
+  if(k === 'arrowup' || e.key === 'ArrowUp' || k === 'w') paddle.dy = 0;
+  if(k === 'arrowdown' || e.key === 'ArrowDown' || k === 's') paddle.dy = 0;
 });
 document.querySelectorAll('[data-pong-dir]').forEach(btn=>{
   btn.addEventListener('touchstart',(e)=>{
@@ -527,10 +533,11 @@ function initSnakeGame(){
 /* keyboard controls for snake */
 document.addEventListener('keydown', (e) => {
   if(overlaySnake.classList.contains('active')){
-    if(e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
-    if(e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
-    if(e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
-    if(e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
+    const k = e.key.toLowerCase();
+    if((k === 'arrowup' || e.key === 'ArrowUp' || k === 'w') && direction !== 'DOWN') direction = 'UP';
+    if((k === 'arrowdown' || e.key === 'ArrowDown' || k === 's') && direction !== 'UP') direction = 'DOWN';
+    if((k === 'arrowleft' || e.key === 'ArrowLeft' || k === 'a') && direction !== 'RIGHT') direction = 'LEFT';
+    if((k === 'arrowright' || e.key === 'ArrowRight' || k === 'd') && direction !== 'LEFT') direction = 'RIGHT';
   }
 });
 /* touch buttons for snake */
@@ -575,7 +582,7 @@ function stopSnake(){
 }
 
 /* -------------------------
-   RUNNER (from old working code)
+   RUNNER (from old working code, rebuilt where needed)
    ------------------------- */
 let runnerAnimation = 0;
 let runnerRunning = false;
@@ -748,9 +755,13 @@ function stopRunner(){
 /* runner keyboard / mouse / touch */
 document.addEventListener('keydown', (e) => {
   if(overlayRunner.classList.contains('active') && runnerPlayer){
-    if(e.key === ' ' && !runnerPlayer.jumping && runnerPlayer.jumpHeight === 0){ runnerPlayer.jumping = true; }
-    if(e.key === 'ArrowLeft' && runnerPlayer.targetLane > 0 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane--; runnerPlayer.laneTransition = 0; }
-    if(e.key === 'ArrowRight' && runnerPlayer.targetLane < 2 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane++; runnerPlayer.laneTransition = 0; }
+    const k = e.key.toLowerCase();
+    if((k === ' ' || e.key === ' ') && !runnerPlayer.jumping && runnerPlayer.jumpHeight === 0){ runnerPlayer.jumping = true; }
+    // support both space and 'w'
+    if(k === 'w' && !runnerPlayer.jumping && runnerPlayer.jumpHeight === 0){ runnerPlayer.jumping = true; }
+
+    if((k === 'arrowleft' || e.key === 'ArrowLeft' || k === 'a') && runnerPlayer.targetLane > 0 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane--; runnerPlayer.laneTransition = 0; }
+    if((k === 'arrowright' || e.key === 'ArrowRight' || k === 'd') && runnerPlayer.targetLane < 2 && runnerPlayer.laneTransition >= 1){ runnerPlayer.targetLane++; runnerPlayer.laneTransition = 0; }
   }
 });
 runnerCanvas.addEventListener('click', ()=>{
@@ -864,7 +875,7 @@ chatInput.addEventListener('keydown', (e)=>{
   if(e.key==='Enter'){ e.preventDefault(); chatSendBtn.click(); }
 });
 
-/* Ctrl+K clears local "not used" key — left here as a convenience (no secret stored now) */
+/* Ctrl+K clears local "not used" key — left here as a convenience (no API key stored now) */
 document.addEventListener('keydown', (e)=>{
   if(e.ctrlKey && e.key.toLowerCase()==='k'){
     if(confirm('Clear localStorage? (no API key stored client-side)')){
