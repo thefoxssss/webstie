@@ -1077,5 +1077,321 @@ function nextDialogue() {
 }
 /* End script */
 </script>
+<!-- PASTE THE FOLLOWING AT THE END OF YOUR FILE, BEFORE </body> -->
+<!-- NATE DATING-SIM OVERLAY (non-destructive add-on) -->
+<style>
+/* Nate overlay styles - uses same color variables so it blends with your theme */
+#overlayNate { position:fixed; left:0; top:0; height:100%; width:25vw; max-width:360px; min-width:220px; background:rgba(0,0,0,0.98); border-right:4px solid var(--accent); z-index:10002; display:none; flex-direction:column; align-items:center; padding:18px; box-sizing:border-box; }
+#overlayNate.active { display:flex; }
+#nateCanvas { width:100%; height:auto; background:#000; border:4px solid rgba(255,6,6,0.06); box-sizing:border-box; display:block; margin-bottom:8px; }
+.nate-portrait { width:100%; display:flex; justify-content:center; align-items:center; padding:6px 0; pointer-events:none; }
+.nate-portrait .pixel-sprite { width:80%; height:auto; transform-origin:center bottom; animation:bounceNate 800ms ease-in-out infinite; will-change:transform; }
+@keyframes bounceNate {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* dating UI */
+#nateUI { width:100%; color:var(--accent); font-family:"Press Start 2P",monospace; display:flex; flex-direction:column; gap:10px; }
+#nateName { text-align:center; font-size:clamp(12px,2.2vw,16px); margin-bottom:2px; }
+#nateText { background: rgba(255,6,6,0.05); border:2px solid rgba(255,6,6,0.12); padding:12px; border-radius:8px; min-height:74px; font-size:clamp(10px,2vw,12px); line-height:1.4; }
+.nate-choices { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px; }
+.nate-btn { color:var(--accent); background:transparent; border:2px solid var(--accent); padding:8px 10px; cursor:pointer; border-radius:6px; font-family:"Press Start 2P",monospace; font-size:11px; }
+.nate-close { position:absolute; right:8px; top:8px; background:transparent; border:2px solid var(--accent); color:var(--accent); padding:6px 8px; border-radius:6px; cursor:pointer; z-index:10003; }
+
+/* small-screen adjustments: overlay uses more width when narrow */
+@media (max-width:900px){
+  #overlayNate { width:32vw; max-width:320px; }
+}
+@media (max-width:600px){
+  #overlayNate { width:40vw; max-width:280px; }
+}
+</style>
+
+<div id="overlayNate" aria-hidden="true" role="dialog" aria-label="Nate dating overlay">
+  <button class="nate-close" id="nateCloseBtn">CLOSE</button>
+  <div class="nate-portrait" aria-hidden="true">
+    <!-- canvas fallback sprite -->
+    <canvas id="nateCanvas" width="240" height="320"></canvas>
+  </div>
+
+  <div id="nateUI" role="region" aria-live="polite">
+    <div id="nateName">Nate</div>
+    <div id="nateText">...you found me. what should we talk about?</div>
+    <div class="nate-choices" id="nateChoices">
+      <button class="nate-btn" data-choice="compliment">Give a compliment</button>
+      <button class="nate-btn" data-choice="ask_day">Ask about day</button>
+      <button class="nate-btn" data-choice="flirt">Flirt a little</button>
+      <button class="nate-btn" data-choice="backstory">Ask backstory</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * Nate Dating Sim - append-only script.
+ * It listens for the secret code "nate" typed into the existing homeInput,
+ * opens a left-side dating-sim overlay that behaves like the other game overlays.
+ *
+ * This script intentionally does NOT modify any existing variables in your page,
+ * and is safe to paste at the end of your file (before </body>).
+ */
+
+/* DOM refs */
+(function(){
+  const homeInputEl = document.getElementById('homeInput');
+  if(!homeInputEl) return; // can't find input - nothing to do
+
+  const overlay = document.getElementById('overlayNate');
+  const closeBtn = document.getElementById('nateCloseBtn');
+  const canvas = document.getElementById('nateCanvas');
+  const ctx = canvas.getContext && canvas.getContext('2d');
+  const textEl = document.getElementById('nateText');
+  const choicesEl = document.getElementById('nateChoices');
+
+  /* ensure overlay closes like the other overlays (stops games) */
+  function closeOverlay(){
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden','true');
+    // keep parity with other close handlers already present in your file
+    try { stopPong(); } catch(e) {}
+    try { stopRunner(); } catch(e) {}
+    try { stopSnake(); } catch(e) {}
+  }
+  closeBtn.addEventListener('click', (e)=>{ e.stopPropagation(); closeOverlay(); });
+
+  // clicking outside overlay shouldn't close since it's fixed left — but add escape
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && overlay.classList.contains('active')) closeOverlay();
+  });
+
+  /* Listen for 'nate' secret code typed into homeInput.
+     We add a small debounce so quick typing is captured once. */
+  let _nTimer = null;
+  homeInputEl.addEventListener('input', ()=>{
+    const v = (homeInputEl.value||'').toLowerCase();
+    if(v.includes('nate')){
+      // open overlay; mirror game behavior (mobile hints etc.)
+      overlay.classList.add('active');
+      overlay.setAttribute('aria-hidden','false');
+      homeInputEl.value = '';
+      // ensure focusable behavior similar to AI open:
+      setTimeout(()=>{ overlay.querySelector('.nate-btn')?.focus(); }, 60);
+    }
+  });
+
+  /* Dating-sim dialogue system (simple) */
+  const dialogues = {
+    start: {
+      text: "hey— i'm nate. i like weird music and pixel socks. what's up?",
+      choices: [
+        { id: 'compliment', text: "You look cool" },
+        { id: 'ask_day', text: "How's your day?" },
+        { id: 'flirt', text: "You're cute" },
+        { id: 'backstory', text: "Tell me about you" }
+      ]
+    },
+    compliment: {
+      text: "aw thanks~ i like that. fishnets and pixels appreciate it. wanna grab a virtual soda?",
+      choices: [
+        { id: 'accept_soda', text: "Yes, soda!" },
+        { id: 'decline', text: "Maybe later" }
+      ]
+    },
+    ask_day: {
+      text: "pretty chill. coded some tunes and fixed a synth. you?",
+      choices: [
+        { id: 'talk_music', text: "Tell me your tunes" },
+        { id: 'end_chat', text: "Nice, later" }
+      ]
+    },
+    flirt: {
+      text: "heh, bold. i blush in 8-bit. i wear fishnets ironically and proudly.",
+      choices: [
+        { id: 'compliment_back', text: "I'd like to see more" },
+        { id: 'end_chat', text: "Okay bye" }
+      ]
+    },
+    backstory: {
+      text: "grew up on late-night arcade runs. pixel art is therapy. fishnets are a vibe.",
+      choices: [
+        { id: 'ask_day', text: "How's your day?" },
+        { id: 'flirt', text: "You're cute" }
+      ]
+    },
+    accept_soda: {
+      text: "soda acquired. we clink cans in low-res fashion. hearts + pixels.",
+      choices: [
+        { id: 'end_chat', text: "This was cute" }
+      ]
+    },
+    decline: {
+      text: "no worries. i'll be here bouncing. say 'nate' again if you miss me.",
+      choices: [
+        { id: 'end_chat', text: "Will do" }
+      ]
+    },
+    talk_music: {
+      text: "i'll send you a playlist of beeps and broken beats. it's very vibey.",
+      choices: [
+        { id: 'end_chat', text: "Can't wait" }
+      ]
+    },
+    compliment_back: {
+      text: "i like where this is going. pixel hearts appear. thanks <3",
+      choices: [
+        { id: 'end_chat', text: "bye for now" }
+      ]
+    },
+    end_chat: {
+      text: "stay safe out there. press CLOSE to hide me (or type 'nate' again to reopen).",
+      choices: [
+        { id: 'start', text: "Back to start" }
+      ]
+    }
+  };
+
+  let current = 'start';
+  function renderDialogue(id){
+    current = id;
+    const node = dialogues[id];
+    if(!node) return;
+    textEl.textContent = node.text;
+    // update choices
+    choicesEl.innerHTML = '';
+    node.choices.forEach(c=>{
+      const b = document.createElement('button');
+      b.className = 'nate-btn';
+      b.textContent = c.text;
+      b.dataset.choice = c.id;
+      b.addEventListener('click', ()=> {
+        // simple branching
+        renderDialogue(c.id);
+      });
+      choicesEl.appendChild(b);
+    });
+  }
+
+  // initialize
+  renderDialogue('start');
+
+  /* PIXEL SPRITE drawing (non-explicit, pixel art 'femboy' with fishnet-styled leggings)
+     We draw a blocky, stylized character using canvas rectangles.
+     It's intentionally low-detail to match "pixelly" aesthetic.
+  */
+  function drawSprite() {
+    if(!ctx) return;
+    // scale to canvas size
+    const W = canvas.width = 240;
+    const H = canvas.height = 320;
+    ctx.clearRect(0,0,W,H);
+
+    // background behind sprite (keeps black area like games)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,W,H);
+
+    // grid size (pixel size)
+    const px = 8; // each "pixel" is 8x8
+    const cx = Math.floor(W/2);
+    const baseY = H - 40;
+
+    // helper: draw a single pixel
+    function p(x,y,color){
+      ctx.fillStyle = color;
+      ctx.fillRect(cx + x*px - 8*px, baseY - y*px - px, px, px);
+    }
+
+    // colors
+    const skin = '#f1c6b3';
+    const hair = '#222022';
+    const top = '#d34a6b';
+    const fish = 'rgba(0,0,0,0.9)'; // fishnet look with small dotted pattern
+    const accents = '#ff8aa0';
+
+    // hair (stylized fringe)
+    for(let hx = -6; hx <= 2; hx++){
+      for(let hy = 18; hy <= 20; hy++){
+        p(hx,hy,hair);
+      }
+    }
+    // face
+    p(-1,16,skin); p(0,16,skin);
+    p(-1,15,skin); p(0,15,skin);
+    // eyes (simple)
+    p(-1,15,'#000'); p(0,15,'#000');
+    // neck
+    p(0,14,skin); p(-1,14,skin);
+
+    // torso / top (a cropped top)
+    for(let tx = -4; tx <= 3; tx++){
+      for(let ty = 11; ty <= 13; ty++){
+        p(tx,ty,top);
+      }
+    }
+    // little accent / bow
+    p(1,12,accents); p(0,12,accents);
+
+    // arms
+    p(-5,13,skin); p(4,13,skin);
+    p(-6,12,skin); p(5,12,skin);
+
+    // legs - stockings with fishnet dots
+    for(let lx = -3; lx <= -1; lx++){
+      for(let ly = 1; ly <= 10; ly++){
+        // base leg color
+        p(lx,ly,'#ffcfdf');
+        // add fishnet pattern (dots) on alternate rows/cols
+        if((lx+ly)%2===0) p(lx,ly,fish);
+      }
+    }
+    for(let lx = 1; lx <= 3; lx++){
+      for(let ly = 1; ly <= 10; ly++){
+        p(lx,ly,'#ffcfdf');
+        if((lx+ly)%2===0) p(lx,ly,fish);
+      }
+    }
+
+    // shoes
+    for(let sx = -4; sx <= -2; sx++) p(sx,0,'#111');
+    for(let sx = 2; sx <= 4; sx++) p(sx,0,'#111');
+
+    // small blush accent
+    p(-2,15,'#ff99aa'); p(1,15,'#ff99aa');
+
+    // outline (slightly darker)
+    // (deliberately minimal so sprite remains 'cute' and non-explicit)
+  }
+
+  // animate slight "breathing" / bounce by redrawing on a timer if needed
+  let spriteAnim = 0;
+  function animateSprite(){
+    spriteAnim += 1;
+    // subtle wiggle could be added, here we keep static draw (CSS handles bounce)
+    drawSprite();
+    requestAnimationFrame(animateSprite);
+  }
+  // start drawing
+  drawSprite();
+  animateSprite();
+
+  /* Keep behavior consistent with other overlays: clicking overlay background shouldn't close (since left panel),
+     but pressing the existing overall overlay close should remove it too if desired.
+     We also expose a simple function so other parts of your code can open Nate programmatically:
+       window.openNateOverlay()
+  */
+  window.openNateOverlay = function(){
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden','false');
+    renderDialogue('start');
+  };
+  // you can also call window.closeNateOverlay()
+  window.closeNateOverlay = closeOverlay;
+
+})();
+</script>
+
+<!-- END OF NATE ADD-ON -->
+
 </body>
 </html>
