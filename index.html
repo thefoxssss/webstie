@@ -889,6 +889,192 @@ document.addEventListener('keydown', (e)=>{
 document.addEventListener('click', (e)=>{
   if(overlayAI.classList.contains('active')) setTimeout(()=>chatInput.focus(),80);
 });
+<!-- ============================
+     NATE DATING SIM OVERLAY (PART A)
+     Paste this BEFORE </body>
+============================ -->
+<div class="overlay" id="overlayNate">
+  <button class="close-btn" data-close="overlayNate">CLOSE</button>
+  
+  <!-- Title Screen -->
+  <div id="nateTitleScreen" style="text-align:center;">
+    <h1 style="color:var(--accent); font-size:clamp(24px,8vw,72px);">NATE</h1>
+    <button id="nateStartBtn"
+      style="
+        color: var(--accent);
+        background: transparent;
+        border: 2px solid var(--accent);
+        padding: 10px 20px;
+        margin-top: 20px;
+        cursor: pointer;
+        border-radius: 8px;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 14px;
+      ">
+      START
+    </button>
+  </div>
+
+  <!-- Dating Sim Content (hidden until start) -->
+  <div id="nateGameContainer" style="display:none; width:100%; height:100%; position:relative; background:black;">
+    
+    <!-- Character on left 1/4 -->
+    <div id="nateCharacter"
+      style="
+        position:absolute;
+        left:0;
+        top:0;
+        width:25%;
+        height:100%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      ">
+      <!-- Placeholder for pixel character (will animate via CSS/JS) -->
+      <div id="nateSprite"
+        style="
+          width:150px;
+          height:300px;
+          background:#ff0606;
+          image-rendering:pixelated;
+        ">
+        <!-- You can replace this with actual pixel art later -->
+      </div>
+    </div>
+
+    <!-- Dialogue + Choices Area -->
+    <div id="nateDialogueArea"
+      style="
+        position:absolute;
+        left:25%;
+        top:0;
+        width:75%;
+        height:100%;
+        display:flex;
+        flex-direction:column;
+        justify-content:flex-end;
+        padding:20px;
+        box-sizing:border-box;
+      ">
+      
+      <div id="nateDialogueBox"
+        style="
+          background:rgba(255,6,6,0.1);
+          border:2px solid var(--accent);
+          border-radius:8px;
+          padding:20px;
+          font-size:clamp(10px,2.5vw,14px);
+          color:var(--accent);
+          margin-bottom:20px;
+          min-height:100px;
+          display:flex;
+          align-items:center;
+        ">
+        <!-- Dialogue text goes here -->
+      </div>
+
+      <div id="nateChoices"
+        style="
+          display:flex;
+          flex-direction:column;
+          gap:10px;
+        ">
+        <!-- Choice buttons inserted here via JS -->
+      </div>
+    </div>
+
+  </div>
+</div>
+/* ============================
+   NATE DATING SIM (PART B)
+   Paste at the BOTTOM of your <script>
+============================ */
+
+// Add "nate" trigger to home input
+homeInput.addEventListener('input', () => {
+  const value = homeInput.value.toLowerCase();
+  if (value.includes('nate')) {
+    overlayNate.classList.add('active');
+    homeInput.value = '';
+    return;
+  }
+});
+
+// DOM refs for Nate Sim
+const overlayNate = document.getElementById('overlayNate');
+const nateTitleScreen = document.getElementById('nateTitleScreen');
+const nateStartBtn = document.getElementById('nateStartBtn');
+const nateGameContainer = document.getElementById('nateGameContainer');
+const nateDialogueBox = document.getElementById('nateDialogueBox');
+const nateChoices = document.getElementById('nateChoices');
+const nateSprite = document.getElementById('nateSprite');
+
+// Simple bounce animation for sprite
+let bounceUp = true;
+setInterval(() => {
+  nateSprite.style.transform = bounceUp ? 'translateY(-5px)' : 'translateY(5px)';
+  bounceUp = !bounceUp;
+}, 500);
+
+// Dialogue data (you can customize story later)
+const nateScript = [
+  {
+    text: "Hey there... you look kinda cute.",
+    choices: ["Thanks 😉", "Who are you?"]
+  },
+  {
+    text: "Name's Nate. I'm... complicated.",
+    choices: ["I like complicated.", "This is weird."]
+  },
+  {
+    text: "Wanna hang out with me?",
+    choices: ["Absolutely ❤️", "Nah, I'm busy."]
+  }
+];
+
+// Track progress
+let nateIndex = 0;
+
+// Start button -> show sim
+nateStartBtn.addEventListener('click', () => {
+  nateTitleScreen.style.display = 'none';
+  nateGameContainer.style.display = 'block';
+  showDialogue();
+});
+
+// Show current dialogue + choices
+function showDialogue() {
+  const scene = nateScript[nateIndex];
+  nateDialogueBox.textContent = scene.text;
+  nateChoices.innerHTML = '';
+
+  scene.choices.forEach(choiceText => {
+    const btn = document.createElement('button');
+    btn.textContent = choiceText;
+    btn.style.color = "var(--accent)";
+    btn.style.background = "transparent";
+    btn.style.border = "2px solid var(--accent)";
+    btn.style.padding = "10px";
+    btn.style.borderRadius = "6px";
+    btn.style.cursor = "pointer";
+    btn.style.fontFamily = "'Press Start 2P', monospace";
+    btn.addEventListener('click', () => {
+      nextDialogue();
+    });
+    nateChoices.appendChild(btn);
+  });
+}
+
+// Go to next scene or end
+function nextDialogue() {
+  nateIndex++;
+  if (nateIndex < nateScript.length) {
+    showDialogue();
+  } else {
+    nateDialogueBox.textContent = "He smiles at you... (To be continued)";
+    nateChoices.innerHTML = '';
+  }
+}
 
 /* End script */
 </script>
