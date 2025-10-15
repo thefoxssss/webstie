@@ -137,10 +137,10 @@ html,body { height:100%; margin:0; background:var(--bg); font-family:"Press Star
   </div>
 </div>
 
-<div class="overlay" id="overlayGonner">
-  <button class="close-btn" data-close="overlayGonner">CLOSE</button>
-  <div class="surface" id="surfaceGonner"></div>
-  <div class="center-giant">GONNER</div>
+<div class="overlay" id="overlaygooner">
+  <button class="close-btn" data-close="overlaygooner">CLOSE</button>
+  <div class="surface" id="surfacegooner"></div>
+  <div class="center-giant">gooner</div>
 </div>
 
 <div class="overlay" id="overlayWhy">
@@ -289,9 +289,9 @@ function populateStamps(surface,text,count=30){
 /* DOM Refs */
 const main=document.getElementById('mainGooner');
 const hiddenText=document.getElementById('hiddenText');
-const overlayGonner=document.getElementById('overlayGonner');
+const overlaygooner=document.getElementById('overlaygooner');
 const overlayWhy=document.getElementById('overlayWhy');
-const surfaceGonner=document.getElementById('surfaceGonner');
+const surfacegooner=document.getElementById('surfacegooner');
 const homeInput=document.getElementById('homeInput');
 
 const overlayPong=document.getElementById('overlayPong');
@@ -373,7 +373,7 @@ main.addEventListener('mouseenter',()=>{
   }
 });
 main.addEventListener('mouseleave',()=>{ clearInterval(_hoverInterval); main.style.letterSpacing='4px'; });
-main.addEventListener('click',()=>{ overlayGonner.classList.add('active'); populateStamps(surfaceGonner,'GONNER',35); });
+main.addEventListener('click',()=>{ overlaygooner.classList.add('active'); populateStamps(surfacegooner,'gooner',35); });
 hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
 
 /* Home input triggers */
