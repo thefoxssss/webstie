@@ -32,6 +32,7 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 .chat-message{margin:10px 0;padding:10px;border-radius:5px;font-size:12px}
 .chat-message.user{background:rgba(255,6,6,0.2);text-align:right}
 .chat-message.ai{background:rgba(255,6,6,0.1);text-align:left}
+.char-count{font-size:10px;color:rgba(255,6,6,0.5);margin-top:5px}
 .typing-indicator{color:rgba(255,6,6,0.6);font-style:italic}
 #chatInput{width:70%;background:rgba(255,6,6,0.1);border:2px solid var(--accent);color:var(--accent);padding:12px;font-family:"Press Start 2P",monospace;font-size:12px;border-radius:5px}
 #chatSendBtn{background:var(--accent);color:#000;border:none;padding:12px 25px;font-family:"Press Start 2P",monospace;font-size:12px;border-radius:5px;cursor:pointer;margin-left:10px}
@@ -120,10 +121,12 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
     <canvas id="snakeCanvas" width="600" height="400"></canvas>
     <div id="snakeScore">Score: 0</div>
     <div id="snakeGameOver" style="display:none;margin-top:20px">
-      <div style="color:var(--accent);font-size:24px">GAME OVER</div>
-      <div id="finalSnakeScore" style="color:#fff;font-size:20px;margin:10px">0</div>
-      <button class="difficulty-btn" id="snakePlayAgainBtn">PLAY AGAIN</button>
-      <button class="difficulty-btn" id="snakeCloseBtn">CLOSE</button>
+      <div style="color:var(--accent);font-size:24px;margin-bottom:15px">GAME OVER</div>
+      <div id="finalSnakeScore" style="color:#fff;font-size:20px;margin:10px 0">Score: 0</div>
+      <div style="display:flex;gap:10px">
+        <button class="difficulty-btn" id="snakePlayAgainBtn">PLAY AGAIN</button>
+        <button class="difficulty-btn" id="snakeCloseBtn">CLOSE</button>
+      </div>
     </div>
   </div>
 </div>
@@ -134,10 +137,12 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
     <canvas id="runnerCanvas" width="800" height="600"></canvas>
     <div id="runnerScore">SCORE: 0</div>
     <div id="runnerGameOver" style="display:none;margin-top:20px">
-      <div style="color:var(--accent);font-size:24px">GAME OVER</div>
-      <div id="finalRunnerScore" style="color:#fff;font-size:20px;margin:10px">0</div>
-      <button class="difficulty-btn" id="runnerPlayAgainBtn">PLAY AGAIN</button>
-      <button class="difficulty-btn" id="runnerCloseBtn">CLOSE</button>
+      <div style="color:var(--accent);font-size:24px;margin-bottom:15px">GAME OVER</div>
+      <div id="finalRunnerScore" style="color:#fff;font-size:20px;margin:10px 0">Score: 0</div>
+      <div style="display:flex;gap:10px">
+        <button class="difficulty-btn" id="runnerPlayAgainBtn">PLAY AGAIN</button>
+        <button class="difficulty-btn" id="runnerCloseBtn">CLOSE</button>
+      </div>
     </div>
   </div>
 </div>
@@ -149,6 +154,10 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
     <div style="display:flex;width:100%;gap:10px">
       <input type="text" id="chatInput" placeholder="Type message..." style="flex:1">
       <button id="chatSendBtn">SEND</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;width:100%;margin-top:5px;font-size:10px;color:rgba(255,6,6,0.6)">
+      <div id="aiCharCount">Last AI response: 0/150 characters</div>
+      <div id="userCharCount">Typing: 0 characters</div>
     </div>
   </div>
 </div>
@@ -212,12 +221,27 @@ const overlaygooner=document.getElementById('overlaygooner');
 const overlayWhy=document.getElementById('overlayWhy');
 const surfacegooner=document.getElementById('surfacegooner');
 const homeInput=document.getElementById('homeInput');
-const isMobile='ontouchstart' in window;
 
 document.querySelectorAll('.close-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const el=document.getElementById(btn.dataset.close);
-    if(el)el.classList.remove('active');
+    if(el){
+      el.classList.remove('active');
+      // Stop all games when closing
+      if(btn.dataset.close==='overlayPong'){
+        cancelAnimationFrame(_pongAnim);
+        playerScore=0;
+        aiScore=0;
+      }
+      if(btn.dataset.close==='overlaySnake'){
+        clearTimeout(_snakeTimer);
+        snakeRunning=false;
+      }
+      if(btn.dataset.close==='overlayRunner'){
+        cancelAnimationFrame(runnerAnimation);
+        runnerRunning=false;
+      }
+    }
   });
 });
 
@@ -369,6 +393,14 @@ document.querySelectorAll('.difficulty-btn[data-ai]').forEach(btn=>{
 
 document.getElementById('tryAgainBtn').addEventListener('click',startPong);
 
+document.getElementById('pongCloseBtn').addEventListener('click',()=>{
+  document.getElementById('winLoseScreen').style.display='none';
+  document.getElementById('overlayPong').classList.remove('active');
+  cancelAnimationFrame(_pongAnim);
+  playerScore=0;
+  aiScore=0;
+});
+
 /* SNAKE */
 const snakeCanvas=document.getElementById('snakeCanvas');
 const snakeCtx=snakeCanvas.getContext('2d');
@@ -509,7 +541,7 @@ function updateRunner(){
       runnerObstacles.splice(i,1);
       runnerScore++;
       runnerScoreDisplay.textContent='SCORE: '+runnerScore;
-      if(runnerSpeed<12)runnerSpeed+=0.2;
+      if(runnerSpeed<8)runnerSpeed+=0.01;
     }else if(runnerObstacles[i].z<6&&runnerObstacles[i].z>4&&runnerObstacles[i].lane===runnerPlayer.lane&&runnerPlayer.jumpHeight<60){
       runnerRunning=false;
       document.getElementById('finalRunnerScore').textContent=runnerScore;
@@ -560,6 +592,7 @@ document.getElementById('runnerCloseBtn').addEventListener('click',()=>{
 const chatMessages=document.getElementById('chatMessages');
 const chatInput=document.getElementById('chatInput');
 const chatSendBtn=document.getElementById('chatSendBtn');
+const aiCharCount=document.getElementById('aiCharCount');
 const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";
 
 function addMessage(who,text){
@@ -568,6 +601,9 @@ function addMessage(who,text){
   div.textContent=text;
   chatMessages.appendChild(div);
   chatMessages.scrollTop=chatMessages.scrollHeight;
+  if(who==='ai'&&aiCharCount){
+    aiCharCount.textContent=`Last AI response: ${text.length}/150 characters`;
+  }
 }
 
 function showTyping(){
@@ -588,7 +624,7 @@ async function sendToWorker(userText){
   try{
     showTyping();
     const body={messages:[
-      {role:"system",content:"You are a helpful assistant."},
+      {role:"system",content:"You are a helpful assistant. Keep responses under 150 characters total."},
       {role:"user",content:userText}
     ]};
     const resp=await fetch(WORKER_URL,{
@@ -618,7 +654,16 @@ async function sendToWorker(userText){
         reply=JSON.stringify(data);
       }
     }catch(e){reply=JSON.stringify(data)}
+    // Enforce 150 character limit - hard cut
+    if(reply.length>150){
+      reply=reply.substring(0,150);
+    }
     addMessage('ai',reply);
+    // Update character count
+    const aiCharCount=document.getElementById('aiCharCount');
+    if(aiCharCount){
+      aiCharCount.textContent=`Last AI response: ${reply.length}/150 characters`;
+    }
   }catch(err){
     hideTyping();
     console.error(err);
@@ -631,11 +676,39 @@ chatSendBtn.addEventListener('click',async()=>{
   if(!text)return;
   addMessage('user',text);
   chatInput.value='';
+  // Reset typing counter
+  const userCharCount=document.getElementById('userCharCount');
+  if(userCharCount){
+    userCharCount.textContent=`Typing: 0 characters`;
+  }
   await sendToWorker(text);
 });
 
 chatInput.addEventListener('keydown',(e)=>{
   if(e.key==='Enter'){e.preventDefault();chatSendBtn.click()}
+});
+
+chatInput.addEventListener('input',(e)=>{
+  const userCharCount=document.getElementById('userCharCount');
+  const len=e.target.value.length;
+  if(userCharCount){
+    userCharCount.textContent=`Typing: ${len}/150 characters`;
+    if(len>150){
+      userCharCount.style.color='#ff0000';
+    }else{
+      userCharCount.style.color='rgba(255,6,6,0.6)';
+    }
+  }
+  // Disable send button if over limit
+  if(len>150){
+    chatSendBtn.disabled=true;
+    chatSendBtn.style.opacity='0.5';
+    chatSendBtn.style.cursor='not-allowed';
+  }else{
+    chatSendBtn.disabled=false;
+    chatSendBtn.style.opacity='1';
+    chatSendBtn.style.cursor='pointer';
+  }
 });
 
 /* NATE DATING SIM */
