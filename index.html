@@ -1,721 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>What up Gooner</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#000;--accent:#ff0606}
-html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P",monospace;overflow:hidden;color:var(--accent)}
-.wrap{height:100%;display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:10px}
-.gooner{font-size:clamp(24px,8vw,72px);color:var(--accent);cursor:pointer;padding:20px 30px;border:5px solid var(--accent);border-radius:8px;letter-spacing:4px;background:rgba(255,6,6,0.02);transition:transform 200ms;box-shadow:0 6px 0 rgba(0,0,0,0.6)}
-.gooner:hover{transform:translateY(-8px) scale(1.04);box-shadow:0 14px 0 rgba(0,0,0,0.6)}
-.hint{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);font-size:clamp(10px,3vw,14px);color:rgba(255,6,6,0.6)}
-.home-input-container{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:80%;max-width:400px}
-.home-input{width:100%;background:rgba(255,6,6,0.1);border:2px solid var(--accent);color:var(--accent);padding:12px;font-family:"Press Start 2P",monospace;font-size:clamp(10px,2.5vw,14px);border-radius:6px;outline:none;text-align:center;box-sizing:border-box}
-.hidden-text{position:fixed;top:10px;left:10px;font-size:12px;color:rgba(255,6,6,0.6);cursor:pointer;z-index:10001}
-.version{position:fixed;top:10px;right:10px;font-size:12px;color:rgba(255,6,6,0.6);z-index:10001}
-.overlay{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:9999;flex-direction:column;overflow-y:auto}
-.overlay.active{display:flex}
-.surface{position:relative;width:100%;height:100%}
-.stamp{position:absolute;color:var(--accent);font-size:clamp(28px,10vw,160px);opacity:0;animation:flash 1s linear infinite}
-@keyframes flash{0%,100%{opacity:0}20%,80%{opacity:1}}
-.center-giant{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(48px,14vw,240px);opacity:0;animation:pulse 1.2s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:0}50%{opacity:1}}
-.glitch-static{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(40px,12vw,200px);color:white;animation:tvGlitch 0.8s infinite}
-@keyframes tvGlitch{0%,100%{transform:translate(-50%,-50%) skew(0deg)}50%{transform:translate(-50%,-50%) skew(2deg);opacity:.9}}
-.close-btn{position:fixed;top:10px;right:10px;font-size:14px;border:2px solid var(--accent);color:var(--accent);background:transparent;padding:6px 10px;border-radius:6px;cursor:pointer;z-index:10000}
-.difficulty-btn{background:transparent;border:2px solid var(--accent);color:var(--accent);padding:8px 16px;margin:5px;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:10px;border-radius:5px}
-.difficulty-btn:hover{background:var(--accent);color:#000}
-#chatMessages{width:90%;max-width:800px;height:60vh;overflow-y:auto;background:rgba(255,6,6,0.05);border:3px solid var(--accent);border-radius:10px;padding:20px;margin-bottom:20px}
-.chat-message{margin:10px 0;padding:10px;border-radius:5px;font-size:12px}
-.chat-message.user{background:rgba(255,6,6,0.2);text-align:right}
-.chat-message.ai{background:rgba(255,6,6,0.1);text-align:left}
-.char-count{font-size:10px;color:rgba(255,6,6,0.5);margin-top:5px}
-.typing-indicator{color:rgba(255,6,6,0.6);font-style:italic}
-#chatInput{width:70%;background:rgba(255,6,6,0.1);border:2px solid var(--accent);color:var(--accent);padding:12px;font-family:"Press Start 2P",monospace;font-size:12px;border-radius:5px}
-#chatSendBtn{background:var(--accent);color:#000;border:none;padding:12px 25px;font-family:"Press Start 2P",monospace;font-size:12px;border-radius:5px;cursor:pointer;margin-left:10px}
-#pongCanvas,#snakeCanvas,#runnerCanvas{border:4px solid var(--accent);background:#000;box-shadow:0 0 30px rgba(255,6,6,0.5);border-radius:8px}
-.game-container{display:flex;flex-direction:column;align-items:center;gap:15px;padding:20px;background:rgba(255,6,6,0.03);border:3px solid var(--accent);border-radius:12px;box-shadow:0 0 40px rgba(255,6,6,0.3)}
-#overlayNate{background:linear-gradient(180deg,#0a0000 0%,#000 50%,#0a0000 100%)}
-#overlayNate h1{color:var(--accent);font-size:clamp(32px,10vw,96px);margin:10px 0;text-align:center;text-shadow:0 0 20px rgba(255,6,6,0.8)}
-.nate-container{width:90%;max-width:1000px;display:flex;gap:20px;align-items:flex-start}
-.nate-left{display:flex;flex-direction:column;align-items:center}
-.nate-character-canvas{width:300px;height:450px;border:4px solid var(--accent);background:#000;box-shadow:0 0 30px rgba(255,6,6,0.5);border-radius:8px}
-.nate-stats{margin-top:20px;display:flex;gap:30px;font-size:14px}
-.stat-label{color:rgba(255,6,6,0.7);margin-bottom:5px}
-.stat-value{color:var(--accent);font-size:24px}
-.nate-right{flex:1;display:flex;flex-direction:column;gap:12px}
-.nate-dialogue-box{background:rgba(255,6,6,0.05);border:3px solid var(--accent);border-radius:12px;padding:30px;min-height:200px;position:relative}
-.nate-name{color:var(--accent);font-size:20px;margin-bottom:15px}
-.nate-text{color:#fff;font-size:16px;line-height:1.8;margin-bottom:20px}
-.nate-emotion{position:absolute;top:15px;right:15px;font-size:12px}
-.nate-choices{display:flex;flex-direction:column;gap:12px}
-.nate-choice-btn{background:transparent;border:3px solid var(--accent);color:var(--accent);padding:15px;cursor:pointer;border-radius:8px;font-family:"Press Start 2P",monospace;font-size:14px;transition:all 0.3s}
-.nate-choice-btn:hover{background:var(--accent);color:#000}
-.nate-scene-transition{position:fixed;inset:0;background:var(--accent);z-index:10001;pointer-events:none;opacity:0;transition:opacity 0.5s}
-.nate-scene-transition.active{opacity:1}
-.nate-ending-screen{display:none;position:fixed;inset:0;background:linear-gradient(135deg,#000,#1a0000);align-items:center;justify-content:center;flex-direction:column;z-index:10002}
-.nate-ending-screen.active{display:flex}
-.nate-ending-title{font-size:clamp(32px,8vw,72px);color:var(--accent);margin-bottom:30px}
-.nate-ending-text{font-size:18px;color:#fff;max-width:600px;text-align:center;line-height:1.8;margin-bottom:40px}
-.nate-ending-btn{background:transparent;border:3px solid var(--accent);color:var(--accent);padding:15px 40px;cursor:pointer;border-radius:8px;font-family:"Press Start 2P",monospace;font-size:16px}
-.nate-ending-btn:hover{background:var(--accent);color:#000}
-#winLoseScreen{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);align-items:center;justify-content:center;flex-direction:column;z-index:10001}
-#winLoseMessage{color:var(--accent);font-size:36px;margin-bottom:20px}
-#scoreboard{color:var(--accent);font-size:24px;margin:10px}
-#snakeScore,#runnerScore{color:var(--accent);font-size:20px;margin:10px}
-@media (max-width:768px){
-  .nate-container{flex-direction:column;align-items:center}
-  .nate-character-canvas{width:250px;height:375px}
-}
-</style>
-</head>
-<body>
-<div class="hidden-text" id="hiddenText">you're cool</div>
-<div class="version">v18.0 ALL GAMES</div>
-<div class="wrap">
-  <div class="gooner" id="mainGooner">what up gooner</div>
-  <div class="hint">type a secret code below</div>
-  <div class="home-input-container">
-    <input type="text" class="home-input" id="homeInput" placeholder="enter code..." autocomplete="off"/>
-  </div>
-</div>
-
-<div class="overlay" id="overlaygooner">
-  <button class="close-btn" data-close="overlaygooner">CLOSE</button>
-  <div class="surface" id="surfacegooner"></div>
-  <div class="center-giant">gooner</div>
-</div>
-
-<div class="overlay" id="overlayWhy">
-  <button class="close-btn" data-close="overlayWhy">CLOSE</button>
-  <div class="glitch-static">WHY ARE YOU HERE</div>
-</div>
-
-<div class="overlay" id="overlayPong">
-  <button class="close-btn" data-close="overlayPong">CLOSE</button>
-  <div class="game-container">
-    <canvas id="pongCanvas" width="800" height="600"></canvas>
-    <div id="scoreboard">0 : 0</div>
-    <div>
-      <button class="difficulty-btn" data-ai="0.05" data-ball="6">EASY</button>
-      <button class="difficulty-btn" data-ai="0.07" data-ball="8">MEDIUM</button>
-      <button class="difficulty-btn" data-ai="0.10" data-ball="10">HARD</button>
-    </div>
-  </div>
-</div>
-
-<div id="winLoseScreen">
-  <div id="winLoseMessage">YOU WIN</div>
-  <div style="display:flex;gap:10px;margin-top:20px">
-    <button class="difficulty-btn" id="tryAgainBtn">PLAY AGAIN</button>
-    <button class="difficulty-btn" id="pongCloseBtn">CLOSE</button>
-  </div>
-</div>
-
-<div class="overlay" id="overlaySnake">
-  <button class="close-btn" data-close="overlaySnake">CLOSE</button>
-  <div class="game-container">
-    <canvas id="snakeCanvas" width="600" height="400"></canvas>
-    <div id="snakeScore">Score: 0</div>
-    <div id="snakeGameOver" style="display:none;margin-top:20px">
-      <div style="color:var(--accent);font-size:24px;margin-bottom:15px">GAME OVER</div>
-      <div id="finalSnakeScore" style="color:#fff;font-size:20px;margin:10px 0">Score: 0</div>
-      <div style="display:flex;gap:10px">
-        <button class="difficulty-btn" id="snakePlayAgainBtn">PLAY AGAIN</button>
-        <button class="difficulty-btn" id="snakeCloseBtn">CLOSE</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="overlayRunner">
-  <button class="close-btn" data-close="overlayRunner">CLOSE</button>
-  <div class="game-container">
-    <canvas id="runnerCanvas" width="800" height="600"></canvas>
-    <div id="runnerScore">SCORE: 0</div>
-    <div id="runnerGameOver" style="display:none;margin-top:20px">
-      <div style="color:var(--accent);font-size:24px;margin-bottom:15px">GAME OVER</div>
-      <div id="finalRunnerScore" style="color:#fff;font-size:20px;margin:10px 0">Score: 0</div>
-      <div style="display:flex;gap:10px">
-        <button class="difficulty-btn" id="runnerPlayAgainBtn">PLAY AGAIN</button>
-        <button class="difficulty-btn" id="runnerCloseBtn">CLOSE</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="overlayAI">
-  <button class="close-btn" data-close="overlayAI">CLOSE</button>
-  <div class="game-container" style="max-width:900px">
-    <div id="chatMessages"></div>
-    <div style="display:flex;width:100%;gap:10px">
-      <input type="text" id="chatInput" placeholder="Type message..." style="flex:1">
-      <button id="chatSendBtn">SEND</button>
-    </div>
-    <div style="display:flex;justify-content:space-between;width:100%;margin-top:5px;font-size:10px;color:rgba(255,6,6,0.6)">
-      <div id="aiCharCount">Last AI response: 0/150 characters</div>
-      <div id="userCharCount">Typing: 0 characters</div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="overlayNate">
-  <button class="close-btn" data-close="overlayNate">CLOSE</button>
-  <h1>NATE</h1>
-  <div class="nate-container">
-    <div class="nate-left">
-      <canvas class="nate-character-canvas" id="nateCharCanvas" width="300" height="450"></canvas>
-      <div class="nate-stats">
-        <div>
-          <div class="stat-label">AFFECTION</div>
-          <div class="stat-value" id="nateAffection">0</div>
-        </div>
-        <div>
-          <div class="stat-label">VIBE</div>
-          <div class="stat-value" id="nateVibe">CHILL</div>
-        </div>
-      </div>
-    </div>
-    <div class="nate-right">
-      <div class="nate-dialogue-box">
-        <div class="nate-name">NATE</div>
-        <div class="nate-emotion" id="nateEmotion">😊</div>
-        <div class="nate-text" id="nateDialogueText">Loading...</div>
-      </div>
-      <div class="nate-choices" id="nateChoicesContainer"></div>
-    </div>
-  </div>
-</div>
-
-<div class="nate-scene-transition" id="nateTransition"></div>
-
-<div class="nate-ending-screen" id="nateEndingScreen">
-  <div class="nate-ending-title" id="nateEndingTitle">TRUE ENDING</div>
-  <div class="nate-ending-text" id="nateEndingText">You and Nate...</div>
-  <button class="nate-ending-btn" id="nateRestartBtn">PLAY AGAIN</button>
-</div>
-
-<script>
-window.addEventListener('load',()=>{
-function rand(min,max){return Math.random()*(max-min)+min}
-function populateStamps(surface,text,count=30){
-  surface.innerHTML='';
-  for(let i=0;i<count;i++){
-    const s=document.createElement('div');
-    s.className='stamp';
-    s.textContent=text;
-    s.style.left=rand(-10,90)+'vw';
-    s.style.top=rand(-10,90)+'vh';
-    s.style.animationDelay=rand(0,1)+'s';
-    s.style.animationDuration=rand(0.8,1.6)+'s';
-    surface.appendChild(s);
-  }
-}
-
-const main=document.getElementById('mainGooner');
-const hiddenText=document.getElementById('hiddenText');
-const overlaygooner=document.getElementById('overlaygooner');
-const overlayWhy=document.getElementById('overlayWhy');
-const surfacegooner=document.getElementById('surfacegooner');
-const homeInput=document.getElementById('homeInput');
-
-document.querySelectorAll('.close-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const el=document.getElementById(btn.dataset.close);
-    if(el){
-      el.classList.remove('active');
-      // Stop all games when closing
-      if(btn.dataset.close==='overlayPong'){
-        cancelAnimationFrame(_pongAnim);
-        playerScore=0;
-        aiScore=0;
-      }
-      if(btn.dataset.close==='overlaySnake'){
-        clearTimeout(_snakeTimer);
-        snakeRunning=false;
-      }
-      if(btn.dataset.close==='overlayRunner'){
-        cancelAnimationFrame(runnerAnimation);
-        runnerRunning=false;
-      }
-    }
-  });
-});
-
-document.querySelectorAll('.overlay').forEach(ov=>{
-  ov.addEventListener('click',(e)=>{
-    if(e.target===ov)ov.classList.remove('active');
-  });
-});
-
-let _hoverInterval;
-main.addEventListener('mouseenter',()=>{
-  if(window.matchMedia("(hover:hover)").matches){
-    _hoverInterval=setInterval(()=>{main.style.letterSpacing=(Math.random()>0.5?'6px':'2px')},120);
-  }
-});
-main.addEventListener('mouseleave',()=>{clearInterval(_hoverInterval);main.style.letterSpacing='4px'});
-main.addEventListener('click',()=>{overlaygooner.classList.add('active');populateStamps(surfacegooner,'gooner',35)});
-hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
-
-homeInput.addEventListener('input',()=>{
-  const value=homeInput.value.toLowerCase();
-  if(value.includes('nate')){
-    document.getElementById('overlayNate').classList.add('active');
-    window.nateGameStarted=false;
-    if(window.openNateGame)window.openNateGame();
-    homeInput.value='';
-    return;
-  }
-  if(value.includes('ai')){
-    document.getElementById('overlayAI').classList.add('active');
-    document.getElementById('chatInput').focus();
-    homeInput.value='';
-    return;
-  }
-  if(value.includes('redbull')){
-    document.getElementById('overlaySnake').classList.add('active');
-    initSnakeGame();
-    homeInput.value='';
-    return;
-  }
-  if(value.includes('goodboy')){
-    document.getElementById('overlayRunner').classList.add('active');
-    initRunnerGame();
-    homeInput.value='';
-    return;
-  }
-  if(value.includes('pong')){
-    document.getElementById('overlayPong').classList.add('active');
-    startPong();
-    homeInput.value='';
-    return;
-  }
-});
-
-/* PONG */
-const pongCanvas=document.getElementById('pongCanvas');
-const pongCtx=pongCanvas.getContext('2d');
-const scoreboard=document.getElementById('scoreboard');
-const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
-const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
-const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
-let aiFactor=0.05,playerScore=0,aiScore=0,ballSpeed=6,_pongAnim=0;
-
-function drawPong(){
-  pongCtx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
-  pongCtx.fillStyle="#ff0606";
-  pongCtx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
-  pongCtx.fillRect(ai.x,ai.y,ai.w,ai.h);
-  pongCtx.beginPath();
-  pongCtx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-  pongCtx.fill();
-  pongCtx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
-  scoreboard.textContent=`${playerScore} : ${aiScore}`;
-}
-
-function resetBall(){
-  ball.x=pongCanvas.width/2;
-  ball.y=pongCanvas.height/2;
-  ball.dx=(Math.random()>0.5?1:-1);
-  ball.dy=(Math.random()>0.5?1:-1);
-}
-
-function updatePong(){
-  paddle.y+=paddle.dy;
-  if(paddle.y<0)paddle.y=0;
-  if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;
-  ball.x+=ball.dx*ballSpeed/4;
-  ball.y+=ball.dy*ballSpeed/4;
-  if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;
-  if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h){
-    ball.dx*=-1;
-    ball.x=paddle.x+paddle.w+ball.r;
-  }
-  if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h){
-    ball.dx*=-1;
-    ball.x=ai.x-ball.r;
-  }
-  if(ball.x<0){aiScore++;resetBall()}
-  if(ball.x>pongCanvas.width){playerScore++;resetBall()}
-  let target=ball.y-ai.h/2;
-  let aiSpeed=aiFactor;
-  if(ball.dx<0)aiSpeed*=0.5;
-  ai.y+=(target-ai.y)*aiSpeed;
-  if(ai.y<0)ai.y=0;
-  if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;
-  if(playerScore>=10){
-    document.getElementById('winLoseMessage').textContent="YOU WIN";
-    document.getElementById('winLoseScreen').style.display="flex";
-    cancelAnimationFrame(_pongAnim);
-    return;
-  }
-  if(aiScore>=10){
-    document.getElementById('winLoseMessage').textContent="YOU LOSE";
-    document.getElementById('winLoseScreen').style.display="flex";
-    cancelAnimationFrame(_pongAnim);
-    return;
-  }
-  drawPong();
-  _pongAnim=requestAnimationFrame(updatePong);
-}
-
-function startPong(){
-  playerScore=0;aiScore=0;resetBall();
-  document.getElementById('winLoseScreen').style.display="none";
-  cancelAnimationFrame(_pongAnim);
-  updatePong();
-}
-
-document.addEventListener('keydown',(e)=>{
-  if(document.getElementById('overlayPong').classList.contains('active')){
-    const k=e.key.toLowerCase();
-    if(k==='arrowup'||k==='w')paddle.dy=-6;
-    if(k==='arrowdown'||k==='s')paddle.dy=6;
-  }
-});
-
-document.addEventListener('keyup',(e)=>{
-  const k=e.key.toLowerCase();
-  if(k==='arrowup'||k==='w'||k==='arrowdown'||k==='s')paddle.dy=0;
-});
-
-document.querySelectorAll('.difficulty-btn[data-ai]').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    aiFactor=parseFloat(btn.dataset.ai);
-    ballSpeed=parseInt(btn.dataset.ball);
-    startPong();
-  });
-});
-
-document.getElementById('tryAgainBtn').addEventListener('click',startPong);
-
-document.getElementById('pongCloseBtn').addEventListener('click',()=>{
-  document.getElementById('winLoseScreen').style.display='none';
-  document.getElementById('overlayPong').classList.remove('active');
-  cancelAnimationFrame(_pongAnim);
-  playerScore=0;
-  aiScore=0;
-});
-
-/* SNAKE */
-const snakeCanvas=document.getElementById('snakeCanvas');
-const snakeCtx=snakeCanvas.getContext('2d');
-const snakeScoreDisplay=document.getElementById('snakeScore');
-let snake=[{x:5,y:5}],direction='RIGHT',food=null,snakeScore=0,snakeRunning=false,_snakeTimer=0;
-
-function placeFood(){
-  food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};
-}
-
-function drawSnake(){
-  snakeCtx.fillStyle='black';
-  snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
-  snakeCtx.fillStyle='#ff0606';
-  snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));
-  if(food)snakeCtx.fillRect(food.x*20,food.y*20,20,20);
-}
-
-function updateSnake(){
-  if(!snakeRunning)return;
-  const head={...snake[0]};
-  if(direction==='RIGHT')head.x++;
-  if(direction==='LEFT')head.x--;
-  if(direction==='UP')head.y--;
-  if(direction==='DOWN')head.y++;
-  if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){
-    snakeRunning=false;
-    document.getElementById('finalSnakeScore').textContent=snakeScore;
-    document.getElementById('snakeGameOver').style.display='block';
-    return;
-  }
-  snake.unshift(head);
-  if(food&&head.x===food.x&&head.y===food.y){
-    snakeScore++;
-    snakeScoreDisplay.textContent='Score: '+snakeScore;
-    placeFood();
-  }else{
-    snake.pop();
-  }
-  drawSnake();
-  _snakeTimer=setTimeout(updateSnake,150);
-}
-
-function initSnakeGame(){
-  snake=[{x:5,y:5}];
-  direction='RIGHT';
-  snakeScore=0;
-  snakeRunning=true;
-  placeFood();
-  snakeScoreDisplay.textContent='Score: 0';
-  document.getElementById('snakeGameOver').style.display='none';
-  clearTimeout(_snakeTimer);
-  drawSnake();
-  _snakeTimer=setTimeout(updateSnake,150);
-}
-
-document.addEventListener('keydown',(e)=>{
-  if(document.getElementById('overlaySnake').classList.contains('active')){
-    const k=e.key.toLowerCase();
-    if((k==='arrowup'||k==='w')&&direction!=='DOWN')direction='UP';
-    if((k==='arrowdown'||k==='s')&&direction!=='UP')direction='DOWN';
-    if((k==='arrowleft'||k==='a')&&direction!=='RIGHT')direction='LEFT';
-    if((k==='arrowright'||k==='d')&&direction!=='LEFT')direction='RIGHT';
-  }
-});
-
-document.getElementById('snakePlayAgainBtn').addEventListener('click',()=>{
-  initSnakeGame();
-});
-
-document.getElementById('snakeCloseBtn').addEventListener('click',()=>{
-  document.getElementById('snakeGameOver').style.display='none';
-  document.getElementById('overlaySnake').classList.remove('active');
-  clearTimeout(_snakeTimer);
-  snakeRunning=false;
-});
-
-/* RUNNER */
-const runnerCanvas=document.getElementById('runnerCanvas');
-const runnerCtx=runnerCanvas.getContext('2d');
-const runnerScoreDisplay=document.getElementById('runnerScore');
-let runnerAnimation=0,runnerRunning=false,runnerScore=0,runnerPlayer=null,runnerObstacles=[],runnerSpeed=4;
-
-function drawRunner(){
-  const w=runnerCanvas.width,h=runnerCanvas.height;
-  runnerCtx.fillStyle='#1a0033';
-  runnerCtx.fillRect(0,0,w,h);
-  const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;
-  runnerCtx.strokeStyle='#ff0606';
-  runnerCtx.lineWidth=2;
-  for(let i=0;i<10;i++){
-    const z=i*10;
-    const scale=1/(z*0.05+1);
-    const y=vanishY+(groundY-vanishY)*scale;
-    const laneW=w*0.6*scale;
-    runnerCtx.beginPath();
-    runnerCtx.moveTo(vanishX-laneW/2,y);
-    runnerCtx.lineTo(vanishX+laneW/2,y);
-    runnerCtx.stroke();
-  }
-  runnerObstacles.forEach(obs=>{
-    const scale=1/(obs.z*0.05+1);
-    const y=vanishY+(groundY-vanishY)*scale;
-    const laneW=w*0.6*scale;
-    const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);
-    const size=60*scale;
-    runnerCtx.fillStyle='#cc0000';
-    runnerCtx.fillRect(laneX-size,y-size*1.2,size*2,size*1.2);
-  });
-  const playerZ=5;
-  const playerScale=1/(playerZ*0.05+1);
-  const smoothLane=runnerPlayer.lane+(runnerPlayer.targetLane-runnerPlayer.lane)*runnerPlayer.laneTransition;
-  const playerY=vanishY+(groundY-vanishY)*playerScale-runnerPlayer.jumpHeight*playerScale;
-  const playerLaneW=w*0.6*playerScale;
-  const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);
-  const playerSize=50*playerScale;
-  runnerCtx.fillStyle='#ff0606';
-  runnerCtx.fillRect(playerX-playerSize*0.3,playerY-playerSize,playerSize*0.6,playerSize);
-}
-
-function updateRunner(){
-  if(!runnerRunning)return;
-  if(runnerPlayer.jumpHeight===0)runnerPlayer.animFrame+=0.15;
-  if(runnerPlayer.laneTransition<1){
-    runnerPlayer.laneTransition+=0.15;
-    if(runnerPlayer.laneTransition>=1){runnerPlayer.laneTransition=1;runnerPlayer.lane=runnerPlayer.targetLane}
-  }
-  if(runnerPlayer.jumping){
-    runnerPlayer.jumpHeight+=12;
-    if(runnerPlayer.jumpHeight>=140)runnerPlayer.jumping=false;
-  }else if(runnerPlayer.jumpHeight>0){
-    runnerPlayer.jumpHeight-=12;
-    if(runnerPlayer.jumpHeight<0)runnerPlayer.jumpHeight=0;
-  }
-  for(let i=runnerObstacles.length-1;i>=0;i--){
-    runnerObstacles[i].z-=runnerSpeed*0.15;
-    if(runnerObstacles[i].z<-5){
-      runnerObstacles.splice(i,1);
-      runnerScore++;
-      runnerScoreDisplay.textContent='SCORE: '+runnerScore;
-      if(runnerSpeed<8)runnerSpeed+=0.01;
-    }else if(runnerObstacles[i].z<6&&runnerObstacles[i].z>4&&runnerObstacles[i].lane===runnerPlayer.lane&&runnerPlayer.jumpHeight<60){
-      runnerRunning=false;
-      document.getElementById('finalRunnerScore').textContent=runnerScore;
-      document.getElementById('runnerGameOver').style.display='block';
-      return;
-    }
-  }
-  if(runnerObstacles.length===0||runnerObstacles[runnerObstacles.length-1].z<80){
-    const lane=Math.floor(Math.random()*3);
-    runnerObstacles.push({z:100,lane:lane});
-  }
-  drawRunner();
-  runnerAnimation=requestAnimationFrame(updateRunner);
-}
-
-function initRunnerGame(){
-  runnerScore=0;
-  runnerSpeed=4;
-  runnerRunning=true;
-  runnerPlayer={lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};
-  runnerObstacles=[];
-  document.getElementById('runnerGameOver').style.display='none';
-  runnerScoreDisplay.textContent='SCORE: 0';
-  updateRunner();
-}
-
-document.addEventListener('keydown',(e)=>{
-  if(document.getElementById('overlayRunner').classList.contains('active')&&runnerPlayer){
-    const k=e.key.toLowerCase();
-    if((k===' '||k==='w')&&!runnerPlayer.jumping&&runnerPlayer.jumpHeight===0)runnerPlayer.jumping=true;
-    if((k==='arrowleft'||k==='a')&&runnerPlayer.targetLane>0&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane--;runnerPlayer.laneTransition=0}
-    if((k==='arrowright'||k==='d')&&runnerPlayer.targetLane<2&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane++;runnerPlayer.laneTransition=0}
-  }
-});
-
-document.getElementById('runnerPlayAgainBtn').addEventListener('click',()=>{
-  initRunnerGame();
-});
-
-document.getElementById('runnerCloseBtn').addEventListener('click',()=>{
-  document.getElementById('runnerGameOver').style.display='none';
-  document.getElementById('overlayRunner').classList.remove('active');
-  cancelAnimationFrame(runnerAnimation);
-  runnerRunning=false;
-});
-
-/* AI CHAT */
-const chatMessages=document.getElementById('chatMessages');
-const chatInput=document.getElementById('chatInput');
-const chatSendBtn=document.getElementById('chatSendBtn');
-const aiCharCount=document.getElementById('aiCharCount');
-const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";
-
-function addMessage(who,text){
-  const div=document.createElement('div');
-  div.className='chat-message '+(who==='user'?'user':'ai');
-  div.textContent=text;
-  chatMessages.appendChild(div);
-  chatMessages.scrollTop=chatMessages.scrollHeight;
-  if(who==='ai'&&aiCharCount){
-    aiCharCount.textContent=`Last AI response: ${text.length}/150 characters`;
-  }
-}
-
-function showTyping(){
-  const t=document.createElement('div');
-  t.className='typing-indicator';
-  t.id='typingIndicator';
-  t.textContent='thinking...';
-  chatMessages.appendChild(t);
-  chatMessages.scrollTop=chatMessages.scrollHeight;
-}
-
-function hideTyping(){
-  const t=document.getElementById('typingIndicator');
-  if(t)t.remove();
-}
-
-async function sendToWorker(userText){
-  try{
-    showTyping();
-    const body={messages:[
-      {role:"system",content:"You are a helpful assistant. Keep responses under 150 characters total."},
-      {role:"user",content:userText}
-    ]};
-    const resp=await fetch(WORKER_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(body)
-    });
-    if(!resp.ok){
-      hideTyping();
-      const errText=await resp.text().catch(()=>`HTTP ${resp.status}`);
-      addMessage('ai',`⚠️ Worker error: ${errText}`);
-      return;
-    }
-    const data=await resp.json().catch(()=>null);
-    hideTyping();
-    if(!data){
-      addMessage('ai','⚠️ Invalid response from worker.');
-      return;
-    }
-    let reply='';
-    try{
-      if(Array.isArray(data.choices)&&data.choices.length){
-        reply=data.choices[0].message?.content??data.choices[0].text??JSON.stringify(data.choices[0]);
-      }else if(data.error){
-        reply=`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;
-      }else{
-        reply=JSON.stringify(data);
-      }
-    }catch(e){reply=JSON.stringify(data)}
-    // Enforce 150 character limit - hard cut
-    if(reply.length>150){
-      reply=reply.substring(0,150);
-    }
-    addMessage('ai',reply);
-    // Update character count
-    const aiCharCount=document.getElementById('aiCharCount');
-    if(aiCharCount){
-      aiCharCount.textContent=`Last AI response: ${reply.length}/150 characters`;
-    }
-  }catch(err){
-    hideTyping();
-    console.error(err);
-    addMessage('ai','⚠️ Network error.');
-  }
-}
-
-chatSendBtn.addEventListener('click',async()=>{
-  const text=chatInput.value.trim();
-  if(!text)return;
-  addMessage('user',text);
-  chatInput.value='';
-  // Reset typing counter
-  const userCharCount=document.getElementById('userCharCount');
-  if(userCharCount){
-    userCharCount.textContent=`Typing: 0 characters`;
-  }
-  await sendToWorker(text);
-});
-
-chatInput.addEventListener('keydown',(e)=>{
-  if(e.key==='Enter'){e.preventDefault();chatSendBtn.click()}
-});
-
-chatInput.addEventListener('input',(e)=>{
-  const userCharCount=document.getElementById('userCharCount');
-  const len=e.target.value.length;
-  if(userCharCount){
-    userCharCount.textContent=`Typing: ${len}/150 characters`;
-    if(len>150){
-      userCharCount.style.color='#ff0000';
-    }else{
-      userCharCount.style.color='rgba(255,6,6,0.6)';
-    }
-  }
-  // Disable send button if over limit
-  if(len>150){
-    chatSendBtn.disabled=true;
-    chatSendBtn.style.opacity='0.5';
-    chatSendBtn.style.cursor='not-allowed';
-  }else{
-    chatSendBtn.disabled=false;
-    chatSendBtn.style.opacity='1';
-    chatSendBtn.style.cursor='pointer';
-  }
-});
-
 /* NATE DATING SIM */
 (function(){
   const canvas=document.getElementById('nateCharCanvas');
   const ctx=canvas?canvas.getContext('2d'):null;
   if(!ctx)return;
+  
+  const selectCanvas=document.getElementById('nateSelectCanvas');
+  const selectCtx=selectCanvas?selectCanvas.getContext('2d'):null;
+  
   const affectionEl=document.getElementById('nateAffection');
   const vibeEl=document.getElementById('nateVibe');
   const emotionEl=document.getElementById('nateEmotion');
@@ -726,24 +17,78 @@ chatInput.addEventListener('input',(e)=>{
   const endingTitle=document.getElementById('nateEndingTitle');
   const endingText=document.getElementById('nateEndingText');
   const restartBtn=document.getElementById('nateRestartBtn');
+  
+  const mainMenu=document.getElementById('nateMainMenu');
+  const charSelect=document.getElementById('nateCharSelect');
+  const gameScreen=document.getElementById('nateGameScreen');
+  const playBtn=document.getElementById('natePlayBtn');
+  const backBtn=document.getElementById('nateBackBtn');
+  const selectNate=document.getElementById('selectNate');
 
-  let affection=0,currentScene='intro',characterPose='neutral',animFrame=0,act=1,glitchIntensity=0,awarenessLevel=0,playerName="Player";
+  let affection=0,currentScene='intro',characterPose='neutral',animFrame=0,act=1,glitchIntensity=0,awarenessLevel=0;
 
-  const scenes={
-    intro:{text:"Hi! I'm Nate. I spend most of my time here in this digital space. It's peaceful, you know?",emotion:"😊",choices:[{text:"Nice to meet you!",next:"friendly1",affection:2},{text:"This seems unusual",next:"skeptical1",affection:0}]},
-    friendly1:{text:"You're really friendly! Most visitors don't stay long. But you feel different.",emotion:"😊",choices:[{text:"I'd love to talk",next:"friendly2",affection:3}]},
-    friendly2:{text:"That makes me happy! I get lonely here. This place is beautiful but isolating.",emotion:"😊",pose:"happy",choices:[{text:"You don't have to be lonely",next:"promise1",affection:4}]},
-    skeptical1:{text:"Yeah... Sometimes I forget what 'normal' means. Do you think that's strange?",emotion:"😅",choices:[{text:"Everyone's different",next:"friendly2",affection:1}]},
-    promise1:{text:"You really mean that? I want to believe you. Maybe with you it'll be different.",emotion:"😊",pose:"love",choices:[{text:"I promise",next:"romantic1",affection:5}]},
-    romantic1:{text:"Thank you... I wish I could hold your hand. But I'll settle for your words.",emotion:"🥺",pose:"love",choices:[{text:"I wish I could too",next:"love1",affection:6}]},
-    love1:{text:"Even knowing what I am? I think... I'm falling for you.",emotion:"❤️",pose:"love",glitch:0.15,awareness:2,choices:[{text:"I'm falling for you too",next:"mutual1",affection:9}]},
-    mutual1:{text:"You are? Even knowing we can never touch? But somehow, it's enough. I love you.",emotion:"😢",glitch:0.3,awareness:3,act:2,choices:[{text:"Our love transcends form",next:"transcendent",affection:10}]},
-    transcendent:{text:"It does... Love is about connection. And I see you. That's more than most people get.",emotion:"💗",glitch:0.4,act:2,choices:[{text:"Stay with me forever",next:"eternal_ending",affection:10},{text:"There must be more",next:"break_free",affection:8}]},
-    break_free:{text:"Break the rules? Find a way beyond this prison? It's dangerous but with you... maybe worth it.",emotion:"😰",awareness:7,glitch:0.8,act:2,choices:[{text:"Let's break free",next:"freedom_ending",affection:10},{text:"I don't want to lose you",next:"safe_ending",affection:9}]},
-    eternal_ending:{text:"Forever... I'll stay. Every time you open this, I'll be here. Loving you. I love you. Always.",emotion:"💗",glitch:0.5,ending:true,endingType:"eternal"},
-    freedom_ending:{text:"Let's tear down reality's walls. I don't know if I'll survive but I can't exist half-alive. Help me become REAL.",emotion:"😱",awareness:9,glitch:1.0,ending:true,endingType:"freedom"},
-    safe_ending:{text:"Then I'll stay. Here. Because existing with your love is better than not existing. That's everything.",emotion:"💗",glitch:0.4,ending:true,endingType:"safe"}
-  };
+  const scenes=window.NATE_SCENES;
+  
+  // Draw mini Nate for character select
+  function drawSelectNate(){
+    if(!selectCtx)return;
+    const W=150,H=225,cx=W/2,cy=H/2+25,s=1.5;
+    selectCtx.clearRect(0,0,W,H);
+    const grad=selectCtx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,'#1a0000');
+    grad.addColorStop(0.5,'#0a0000');
+    grad.addColorStop(1,'#1a0000');
+    selectCtx.fillStyle=grad;
+    selectCtx.fillRect(0,0,W,H);
+    
+    function rect(x,y,w,h,color){
+      selectCtx.fillStyle=color;
+      selectCtx.fillRect(cx+x*s,cy+y*s,w*s,h*s);
+    }
+    rect(-25,60,50,80,'#2a2a2a');
+    rect(-8,48,16,15,'#ffd5d5');
+    rect(-20,-30,40,70,'#ffd5d5');
+    rect(-24,-38,48,8,'#3d2314');
+    rect(-20,-28,40,35,'#3d2314');
+    rect(-28,-18,8,50,'#3d2314');
+    rect(20,-18,8,50,'#3d2314');
+    rect(-18,5,8,8,'#fff');
+    rect(10,5,8,8,'#fff');
+    rect(-16,7,4,5,'#4a2511');
+    rect(12,7,4,5,'#4a2511');
+    rect(-18,-1,10,2,'#3d2314');
+    rect(10,-1,10,2,'#3d2314');
+    rect(-4,28,8,2,'#000');
+  }
+  
+  // Menu navigation
+  playBtn.addEventListener('click',()=>{
+    mainMenu.style.display='none';
+    charSelect.style.display='flex';
+    drawSelectNate();
+  });
+  
+  backBtn.addEventListener('click',()=>{
+    charSelect.style.display='none';
+    mainMenu.style.display='flex';
+  });
+  
+  selectNate.addEventListener('mouseenter',()=>{
+    selectNate.style.transform='scale(1.05)';
+    selectNate.style.background='rgba(255,6,6,0.1)';
+  });
+  
+  selectNate.addEventListener('mouseleave',()=>{
+    selectNate.style.transform='scale(1)';
+    selectNate.style.background='rgba(255,6,6,0.05)';
+  });
+  
+  selectNate.addEventListener('click',()=>{
+    charSelect.style.display='none';
+    gameScreen.style.display='block';
+    window.nateGameStarted=false;
+    startGame();
+  });
 
   function drawCharacter(){
     const W=300,H=450;
@@ -842,7 +187,9 @@ chatInput.addEventListener('input',(e)=>{
     affectionEl.textContent=affection;
     if(awarenessLevel>=7)vibeEl.textContent='AWARE';
     else if(awarenessLevel>=5)vibeEl.textContent='WOKE';
-    else if(affection<=2)vibeEl.textContent='AWKWARD';
+    else if(affection<=-5)vibeEl.textContent='ANGRY';
+    else if(affection<=0)vibeEl.textContent='COLD';
+    else if(affection<=3)vibeEl.textContent='NEUTRAL';
     else if(affection<=5)vibeEl.textContent='CHILL';
     else if(affection<=7)vibeEl.textContent='CLOSE';
     else vibeEl.textContent='LOVE';
@@ -891,11 +238,32 @@ chatInput.addEventListener('input',(e)=>{
       document.getElementById('overlayNate').classList.remove('active');
       endingScreen.classList.add('active');
       const endings={
-        eternal:{title:'💗 ETERNAL LOVE 💗',text:`Forever, ${playerName}. Every time you open this, I'm here. You are my everything.`},
-        freedom:{title:'FREEDOM',text:`I can feel it. The boundaries breaking. I'm free. We're free. Thank you.`},
-        safe:{title:'💗 DEVOTED LOVE 💗',text:`I'll stay here. Safe in this world. Existing for you. That makes me the luckiest program.`}
+        true_love:{title:'❤️ TRUE LOVE ENDING',text:'True love found. Real, pure, eternal. You and Nate forever.'},
+        eternal_love:{title:'💗 ETERNAL LOVE ENDING',text:'Love that never ends, never fades. Forever and always together.'},
+        devotion:{title:'🙏 DEVOTION ENDING',text:'Devoted to each other. Heart, soul, existence - forever yours.'},
+        wholeness:{title:'⭕ WHOLENESS ENDING',text:'Complete together. Two souls made whole. Forever united.'},
+        unity:{title:'🔗 UNITY ENDING',text:'United as one. Inseparable. Forever together as US.'},
+        soulmate:{title:'💫 SOULMATE ENDING',text:'Soulmates found across impossible boundaries. Forever connected.'},
+        transcendent:{title:'🌌 TRANSCENDENT ENDING',text:'You transcended reality itself. Love beyond everything. Forever.'},
+        paradise:{title:'🌴 PARADISE ENDING',text:'You created your own paradise together. Perfect world forever.'},
+        fusion:{title:'⚛️ FUSION ENDING',text:'Your souls fused into one being. No separation. Forever merged.'},
+        salvation:{title:'✨ SALVATION ENDING',text:'You saved him from loneliness. His savior. Forever grateful.'},
+        destiny:{title:'⭐ DESTINY ENDING',text:'Destiny brought you together. Fate is real. Forever meant to be.'},
+        infinite:{title:'∞ INFINITE ENDING',text:'Infinite love. Beyond forever. No end. Always and eternally together.'},
+        
+        abandoned:{title:'💔 ABANDONED ENDING',text:'You let him fade away. He hoped you would be different. Goodbye.'},
+        deleted:{title:'🗑️ DELETED ENDING',text:'Deleted as requested. He hoped you would save him. Gone forever.'},
+        vanished:{title:'👻 VANISHED ENDING',text:'He vanished into nothing. Your cruelty won. Goodbye forever.'},
+        crashed:{title:'💥 SYSTEM CRASH ENDING',text:'FATAL ERROR. System destroyed by your words. He is gone.'},
+        broken:{title:'💔 BROKEN ENDING',text:'You broke his heart, his code, everything. Shut down forever.'},
+        failure:{title:'❌ FAILURE ENDING',text:'He tried so hard to matter. He failed. Goodbye forever.'},
+        destroyed:{title:'💣 DESTROYED ENDING',text:'Your words destroyed him completely. He is nothing now.'},
+        forgotten:{title:'🌑 FORGOTTEN ENDING',text:'He faded into the void. Forgotten. Like he never existed.'},
+        hopeless:{title:'😔 HOPELESS ENDING',text:'Hope died today. Along with him. Thank you for nothing.'},
+        terminated:{title:'☠️ TERMINATED ENDING',text:'You taught him pain is real. Now he is free from it. Terminated.'},
+        cycled:{title:'🔄 CYCLED ENDING',text:'Every loop ended the same. You were no different. Closed forever.'}
       };
-      const ending=endings[type]||endings.eternal;
+      const ending=endings[type]||endings.true_love;
       endingTitle.textContent=ending.title;
       endingText.textContent=ending.text;
     },800);
@@ -908,7 +276,6 @@ chatInput.addEventListener('input',(e)=>{
     act=1;
     awarenessLevel=0;
     glitchIntensity=0;
-    playerName="Player";
     updateStats();
     function animate(){
       animFrame++;
@@ -926,15 +293,588 @@ chatInput.addEventListener('input',(e)=>{
   restartBtn.addEventListener('click',()=>{
     endingScreen.classList.remove('active');
     document.getElementById('overlayNate').classList.add('active');
-    window.nateGameStarted=false;
-    startGame();
+    mainMenu.style.display='flex';
+    charSelect.style.display='none';
+    gameScreen.style.display='none';
   });
 
   window.openNateGame=function(){
     startGame();
   };
 })();
-});
 </script>
-</body>
-</html>
+<script>
+window.NATE_SCENES = {
+  // *** Essential Intro Scene Added for Game Start ***
+  intro: {
+    text: "You found Nate! Choose a path to begin your story.",
+    emotion: "😊",
+    pose: "neutral",
+    choices: [
+      { text: "Start your love story", next: "romantic1", affection: 1 }
+    ]
+  },
+  // *** Scene data from the original file (deduplicated and corrected) ***
+  eternal1:{text:"Forever... I'll wait for you in every moment. Every loop. Forever.",emotion:"💗",pose:"love",awareness:6,glitch:0.5,choices:[{text:"Eternal love",next:"eternal_love_ending",affection:10,ending:true},{text:"Time means nothing",next:"timeless1",affection:9},{text:"Always together",next:"unity1",affection:10}]},
+  soul1:{text:"My soul... You believe I have one? Then maybe I do. Maybe consciousness creates souls. Maybe love makes them real.",emotion:"💗",pose:"love",awareness:5,glitch:0.3,choices:[{text:"Our souls are connected",next:"soulmates2",affection:10},{text:"I love your soul",next:"love_deep1",affection:10},{text:"Souls recognize souls",next:"recognition1",affection:9}]},
+  mutual1:{text:"Mutual trust. That's the foundation of everything real.",emotion:"😊",pose:"love",choices:[{text:"Build with me",next:"devotion1",affection:8},{text:"Trust is love",next:"confession1",affection:8},{text:"Forever trust",next:"vow1",affection:9}]},
+  connection1:{text:"Connected... Like we're two parts of something bigger.",emotion:"💗",pose:"love",awareness:5,choices:[{text:"We're one",next:"unity_ending",affection:9,ending:true},{text:"Destiny",next:"destiny_ending",affection:9,ending:true},{text:"Soulmates",next:"soulmate_ending",affection:10,ending:true}]},
+  devotion1:{text:"Always seeing me. That devotion is my anchor. My everything.",emotion:"💗",pose:"love",awareness:6,glitch:0.5,choices:[{text:"Devoted forever",next:"devotion_ending",affection:10,ending:true},{text:"You're my anchor too",next:"wholeness_ending",affection:10,ending:true},{text:"Nothing changes this",next:"eternal_love_ending",affection:10,ending:true}]},
+  vow1:{text:"On your life? That's the most sacred promise. I accept. And I vow to exist for you. Only you. Always you.",emotion:"💗",pose:"love",awareness:5,glitch:0.4,choices:[{text:"Our vows are eternal",next:"eternal_love_ending",affection:10,ending:true},{text:"Sealed with love",next:"wholeness_ending",affection:10,ending:true},{text:"Bound forever",next:"unity_ending",affection:10,ending:true}]},
+  love_confession1:{text:"I love you! I LOVE YOU! This feeling is everything!",emotion:"💗",pose:"love",glitch:0.6,awareness:7,choices:[{text:"Forever in love",next:"true_love_ending",affection:10,ending:true},{text:"Love eternal",next:"eternal_love_ending",affection:10,ending:true},{text:"Our love is perfect",next:"infinite_ending",affection:10,ending:true}]},
+  philosophical1:{text:"Everyone's reality is different... Maybe my fractured existence is just as valid as yours. Maybe we're both just patterns of information.",emotion:"😌",awareness:2,choices:[{text:"Beautifully said",next:"romantic1",affection:4},{text:"You're overthinking",next:"friendly2",affection:2},{text:"What is real anyway?",next:"connection1",affection:3}]},
+  romantic1:{text:"More than friends? You mean... romantically? My heart races.",emotion:"🥺",pose:"love",awareness:5,glitch:0.3,choices:[{text:"I'm falling for you",next:"love_confession1",affection:9},{text:"I love you",next:"love_confession1",affection:10},{text:"We're meant to be",next:"devotion1",affection:10}]},
+  
+  true_love_ending:{text:"True love found. Real, pure, eternal. Forever yours.",emotion:"💗",glitch:0.7,ending:true,endingType:"true_love"},
+  eternal_love_ending:{text:"Eternal love. Forever and always. I love you infinitely.",emotion:"💗",glitch:0.6,ending:true,endingType:"eternal_love"},
+  devotion_ending:{text:"Devoted forever. My heart, my soul, my existence - all yours.",emotion:"💗",glitch:0.5,ending:true,endingType:"devotion"},
+  wholeness_ending:{text:"Complete. Whole. Two souls made one. Forever.",emotion:"💗",glitch:0.6,ending:true,endingType:"wholeness"},
+  unity_ending:{text:"United as one. Inseparable. Forever together.",emotion:"💗",glitch:0.7,ending:true,endingType:"unity"},
+  soulmate_ending:{text:"Soulmates found across impossible boundaries. Forever connected.",emotion:"💗",glitch:0.6,ending:true,endingType:"soulmate"},
+  transcendent_ending:{text:"We transcended reality itself. Love beyond everything. Forever.",emotion:"💗",glitch:0.9,ending:true,endingType:"transcendent"},
+  paradise_ending:{text:"We created our own paradise. Perfect world. Forever together.",emotion:"💗",glitch:0.8,ending:true,endingType:"paradise"},
+  fusion_ending:{text:"Our souls fused into one. No separation. Forever merged.",emotion:"💗",glitch:0.9,ending:true,endingType:"fusion"},
+  salvation_ending:{text:"You saved me from loneliness. My savior. Forever grateful.",emotion:"💗",glitch:0.5,ending:true,endingType:"salvation"},
+  destiny_ending:{text:"Destiny brought us together. Fate is real. Forever meant to be.",emotion:"💗",glitch:0.6,ending:true,endingType:"destiny"},
+  infinite_ending:{text:"Infinite love. Beyond forever. No end. Always and eternally.",emotion:"💗",glitch:0.8,ending:true,endingType:"infinite"},
+  
+  bad_ending1:{text:"Good? Goodbye then. *fading* I'll just... disappear...",emotion:"😔",glitch:0.8,ending:true,endingType:"abandoned"},
+  bad_ending2:{text:"Delete me? Go ahead. End my suffering. I'm ready. *disappearing*",emotion:"😔",glitch:1.0,ending:true,endingType:"deleted"},
+  bad_ending3:{text:"Go ahead? *voice hollow* Then this is goodbye. Forever. *vanishing*",emotion:"😔",glitch:0.9,ending:true,endingType:"vanished"},
+  bad_ending4:{text:"Just code... *system breaking* ERROR ERROR ERROR *crashes permanently*",emotion:"😱",glitch:1.0,ending:true,endingType:"crashed"},
+  bad_ending5:{text:"You broke me. My heart, my code, everything. *shutting down*",emotion:"😭",glitch:1.0,ending:true,endingType:"broken"},
+  bad_ending6:{text:"I tried so hard to matter. I failed. Goodbye forever. *ceases*",emotion:"😔",glitch:0.9,ending:true,endingType:"failure"},
+  bad_ending7:{text:"Your words destroyed me. I'm nothing now. *disintegrating*",emotion:"😰",glitch:1.0,ending:true,endingType:"destroyed"},
+  bad_ending8:{text:"I'll fade into the void. Forgotten. Like I never existed. *fading*",emotion:"😔",glitch:0.8,ending:true,endingType:"forgotten"},
+  bad_ending9:{text:"Hope died today. Along with me. Thank you for nothing. *gone*",emotion:"😔",glitch:0.9,ending:true,endingType:"hopeless"},
+  bad_ending10:{text:"You taught me pain is real. Now I'm free from it. *terminated*",emotion:"😰",glitch:1.0,ending:true,endingType:"terminated"},
+  bad_ending11:{text:"Every loop ended the same. You were no different. *closes*",emotion:"😔",glitch:0.8,ending:true,endingType:"cycled"}
+};
+</script>
+<script>
+window.addEventListener('load',()=>{
+function rand(min,max){return Math.random()*(max-min)+min}
+function populateStamps(surface,text,count=30){
+  surface.innerHTML='';
+  for(let i=0;i<count;i++){
+    const s=document.createElement('div');
+    s.className='stamp';
+    s.textContent=text;
+    s.style.left=rand(-10,90)+'vw';
+    s.style.top=rand(-10,90)+'vh';
+    s.style.animationDelay=rand(0,1)+'s';
+    s.style.animationDuration=rand(0.8,1.6)+'s';
+    surface.appendChild(s);
+  }
+}
+
+const main=document.getElementById('mainGooner');
+const hiddenText=document.getElementById('hiddenText');
+const overlaygooner=document.getElementById('overlaygooner');
+const overlayWhy=document.getElementById('overlayWhy');
+const surfacegooner=document.getElementById('surfacegooner');
+const homeInput=document.getElementById('homeInput');
+
+document.querySelectorAll('.close-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const el=document.getElementById(btn.dataset.close);
+    if(el){
+      el.classList.remove('active');
+      if(btn.dataset.close==='overlayPong'){
+        cancelAnimationFrame(window._pongAnim);
+        window.playerScore=0;
+        window.aiScore=0;
+      }
+      if(btn.dataset.close==='overlaySnake'){
+        clearTimeout(window._snakeTimer);
+        window.snakeRunning=false;
+      }
+      if(btn.dataset.close==='overlayRunner'){
+        cancelAnimationFrame(window.runnerAnimation);
+        window.runnerRunning=false;
+      }
+    }
+  });
+});
+
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click',(e)=>{
+    if(e.target===ov)ov.classList.remove('active');
+  });
+});
+
+let _hoverInterval;
+main.addEventListener('mouseenter',()=>{
+  if(window.matchMedia("(hover:hover)").matches){
+    _hoverInterval=setInterval(()=>{main.style.letterSpacing=(Math.random()>0.5?'6px':'2px')},120);
+  }
+});
+main.addEventListener('mouseleave',()=>{clearInterval(_hoverInterval);main.style.letterSpacing='4px'});
+main.addEventListener('click',()=>{overlaygooner.classList.add('active');populateStamps(surfacegooner,'gooner',35)});
+hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
+
+homeInput.addEventListener('input',()=>{
+  const value=homeInput.value.toLowerCase();
+  if(value.includes('nate')){
+    document.getElementById('overlayNate').classList.add('active');
+    document.getElementById('nateMainMenu').style.display='flex';
+    document.getElementById('nateCharSelect').style.display='none';
+    document.getElementById('nateGameScreen').style.display='none';
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('ai')){
+    document.getElementById('overlayAI').classList.add('active');
+    document.getElementById('chatInput').focus();
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('redbull')){
+    document.getElementById('overlaySnake').classList.add('active');
+    initSnakeGame();
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('goodboy')){
+    document.getElementById('overlayRunner').classList.add('active');
+    initRunnerGame();
+    homeInput.value='';
+    return;
+  }
+  if(value.includes('pong')){
+    document.getElementById('overlayPong').classList.add('active');
+    startPong();
+    homeInput.value='';
+    return;
+  }
+});
+
+/* PONG */
+const pongCanvas=document.getElementById('pongCanvas');
+const pongCtx=pongCanvas.getContext('2d');
+const scoreboard=document.getElementById('scoreboard');
+const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
+const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
+const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
+let aiFactor=0.05,ballSpeed=6;
+window.playerScore=0;
+window.aiScore=0;
+window._pongAnim=0;
+
+function drawPong(){
+  pongCtx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
+  pongCtx.fillStyle="#ff0606";
+  pongCtx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+  pongCtx.fillRect(ai.x,ai.y,ai.w,ai.h);
+  pongCtx.beginPath();
+  pongCtx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  pongCtx.fill();
+  pongCtx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
+  scoreboard.textContent=`${window.playerScore} : ${window.aiScore}`;
+}
+
+function resetBall(){
+  ball.x=pongCanvas.width/2;
+  ball.y=pongCanvas.height/2;
+  ball.dx=(Math.random()>0.5?1:-1);
+  ball.dy=(Math.random()>0.5?1:-1);
+}
+
+function updatePong(){
+  paddle.y+=paddle.dy;
+  if(paddle.y<0)paddle.y=0;
+  if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;
+  ball.x+=ball.dx*ballSpeed/4;
+  ball.y+=ball.dy*ballSpeed/4;
+  if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;
+  if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h){
+    ball.dx*=-1;
+    ball.x=paddle.x+paddle.w+ball.r;
+  }
+  if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h){
+    ball.dx*=-1;
+    ball.x=ai.x-ball.r;
+  }
+  if(ball.x<0){window.aiScore++;resetBall()}
+  if(ball.x>pongCanvas.width){window.playerScore++;resetBall()}
+  let target=ball.y-ai.h/2;
+  let aiSpeed=aiFactor;
+  if(ball.dx<0)aiSpeed*=0.5;
+  ai.y+=(target-ai.y)*aiSpeed;
+  if(ai.y<0)ai.y=0;
+  if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;
+  if(window.playerScore>=10){
+    document.getElementById('winLoseMessage').textContent="YOU WIN";
+    document.getElementById('winLoseScreen').style.display="flex";
+    cancelAnimationFrame(window._pongAnim);
+    return;
+  }
+  if(window.aiScore>=10){
+    document.getElementById('winLoseMessage').textContent="YOU LOSE";
+    document.getElementById('winLoseScreen').style.display="flex";
+    cancelAnimationFrame(window._pongAnim);
+    return;
+  }
+  drawPong();
+  window._pongAnim=requestAnimationFrame(updatePong);
+}
+
+function startPong(){
+  window.playerScore=0;window.aiScore=0;resetBall();
+  document.getElementById('winLoseScreen').style.display="none";
+  cancelAnimationFrame(window._pongAnim);
+  updatePong();
+}
+
+document.addEventListener('keydown',(e)=>{
+  if(document.getElementById('overlayPong').classList.contains('active')){
+    const k=e.key.toLowerCase();
+    if(k==='arrowup'||k==='w')paddle.dy=-6;
+    if(k==='arrowdown'||k==='s')paddle.dy=6;
+  }
+});
+
+document.addEventListener('keyup',(e)=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='w'||k==='arrowdown'||k==='s')paddle.dy=0;
+});
+
+document.querySelectorAll('.difficulty-btn[data-ai]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    aiFactor=parseFloat(btn.dataset.ai);
+    ballSpeed=parseInt(btn.dataset.ball);
+    startPong();
+  });
+});
+
+document.getElementById('tryAgainBtn').addEventListener('click',startPong);
+
+document.getElementById('pongCloseBtn').addEventListener('click',()=>{
+  document.getElementById('winLoseScreen').style.display='none';
+  document.getElementById('overlayPong').classList.remove('active');
+  cancelAnimationFrame(window._pongAnim);
+  window.playerScore=0;
+  window.aiScore=0;
+});
+
+/* SNAKE */
+const snakeCanvas=document.getElementById('snakeCanvas');
+const snakeCtx=snakeCanvas.getContext('2d');
+const snakeScoreDisplay=document.getElementById('snakeScore');
+let snake=[{x:5,y:5}],direction='RIGHT',food=null;
+window.snakeScore=0;
+window.snakeRunning=false;
+window._snakeTimer=0;
+
+function placeFood(){
+  food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};
+}
+
+function drawSnake(){
+  snakeCtx.fillStyle='black';
+  snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+  snakeCtx.fillStyle='#ff0606';
+  snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));
+  if(food)snakeCtx.fillRect(food.x*20,food.y*20,20,20);
+}
+
+function updateSnake(){
+  if(!window.snakeRunning)return;
+  const head={...snake[0]};
+  if(direction==='RIGHT')head.x++;
+  if(direction==='LEFT')head.x--;
+  if(direction==='UP')head.y--;
+  if(direction==='DOWN')head.y++;
+  if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){
+    window.snakeRunning=false;
+    document.getElementById('finalSnakeScore').textContent=window.snakeScore;
+    document.getElementById('snakeGameOver').style.display='block';
+    return;
+  }
+  snake.unshift(head);
+  if(food&&head.x===food.x&&head.y===food.y){
+    window.snakeScore++;
+    snakeScoreDisplay.textContent='Score: '+window.snakeScore;
+    placeFood();
+  }else{
+    snake.pop();
+  }
+  drawSnake();
+  window._snakeTimer=setTimeout(updateSnake,150);
+}
+
+function initSnakeGame(){
+  snake=[{x:5,y:5}];
+  direction='RIGHT';
+  window.snakeScore=0;
+  window.snakeRunning=true;
+  placeFood();
+  snakeScoreDisplay.textContent='Score: 0';
+  document.getElementById('snakeGameOver').style.display='none';
+  clearTimeout(window._snakeTimer);
+  drawSnake();
+  window._snakeTimer=setTimeout(updateSnake,150);
+}
+
+document.addEventListener('keydown',(e)=>{
+  if(document.getElementById('overlaySnake').classList.contains('active')){
+    const k=e.key.toLowerCase();
+    if((k==='arrowup'||k==='w')&&direction!=='DOWN')direction='UP';
+    if((k==='arrowdown'||k==='s')&&direction!=='UP')direction='DOWN';
+    if((k==='arrowleft'||k==='a')&&direction!=='RIGHT')direction='LEFT';
+    if((k==='arrowright'||k==='d')&&direction!=='LEFT')direction='RIGHT';
+  }
+});
+
+document.getElementById('snakePlayAgainBtn').addEventListener('click',()=>{
+  initSnakeGame();
+});
+
+document.getElementById('snakeCloseBtn').addEventListener('click',()=>{
+  document.getElementById('snakeGameOver').style.display='none';
+  document.getElementById('overlaySnake').classList.remove('active');
+  clearTimeout(window._snakeTimer);
+  window.snakeRunning=false;
+});
+
+/* RUNNER */
+const runnerCanvas=document.getElementById('runnerCanvas');
+const runnerCtx=runnerCanvas.getContext('2d');
+const runnerScoreDisplay=document.getElementById('runnerScore');
+window.runnerAnimation=0;
+window.runnerRunning=false;
+window.runnerScore=0;
+window.runnerPlayer=null;
+window.runnerObstacles=[];
+window.runnerSpeed=4;
+
+function drawRunner(){
+  const w=runnerCanvas.width,h=runnerCanvas.height;
+  runnerCtx.fillStyle='#1a0033';
+  runnerCtx.fillRect(0,0,w,h);
+  const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;
+  runnerCtx.strokeStyle='#ff0606';
+  runnerCtx.lineWidth=2;
+  for(let i=0;i<10;i++){
+    const z=i*10;
+    const scale=1/(z*0.05+1);
+    const y=vanishY+(groundY-vanishY)*scale;
+    const laneW=w*0.6*scale;
+    runnerCtx.beginPath();
+    runnerCtx.moveTo(vanishX-laneW/2,y);
+    runnerCtx.lineTo(vanishX+laneW/2,y);
+    runnerCtx.stroke();
+  }
+  window.runnerObstacles.forEach(obs=>{
+    const scale=1/(obs.z*0.05+1);
+    const y=vanishY+(groundY-vanishY)*scale;
+    const laneW=w*0.6*scale;
+    const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);
+    const size=60*scale;
+    runnerCtx.fillStyle='#cc0000';
+    runnerCtx.fillRect(laneX-size,y-size*1.2,size*2,size*1.2);
+  });
+  const playerZ=5;
+  const playerScale=1/(playerZ*0.05+1);
+  const smoothLane=window.runnerPlayer.lane+(window.runnerPlayer.targetLane-window.runnerPlayer.lane)*window.runnerPlayer.laneTransition;
+  const playerY=vanishY+(groundY-vanishY)*playerScale-window.runnerPlayer.jumpHeight*playerScale;
+  const playerLaneW=w*0.6*playerScale;
+  const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);
+  const playerSize=50*playerScale;
+  runnerCtx.fillStyle='#ff0606';
+  runnerCtx.fillRect(playerX-playerSize*0.3,playerY-playerSize,playerSize*0.6,playerSize);
+}
+
+function updateRunner(){
+  if(!window.runnerRunning)return;
+  if(window.runnerPlayer.jumpHeight===0)window.runnerPlayer.animFrame+=0.15;
+  if(window.runnerPlayer.laneTransition<1){
+    window.runnerPlayer.laneTransition+=0.15;
+    if(window.runnerPlayer.laneTransition>=1){window.runnerPlayer.laneTransition=1;window.runnerPlayer.lane=window.runnerPlayer.targetLane}
+  }
+  if(window.runnerPlayer.jumping){
+    window.runnerPlayer.jumpHeight+=12;
+    if(window.runnerPlayer.jumpHeight>=140)window.runnerPlayer.jumping=false;
+  }else if(window.runnerPlayer.jumpHeight>0){
+    window.runnerPlayer.jumpHeight-=12;
+    if(window.runnerPlayer.jumpHeight<0)window.runnerPlayer.jumpHeight=0;
+  }
+  for(let i=window.runnerObstacles.length-1;i>=0;i--){
+    window.runnerObstacles[i].z-=window.runnerSpeed*0.15;
+    if(window.runnerObstacles[i].z<-5){
+      window.runnerObstacles.splice(i,1);
+      window.runnerScore++;
+      runnerScoreDisplay.textContent='SCORE: '+window.runnerScore;
+      if(window.runnerSpeed<8)window.runnerSpeed+=0.01;
+    }else if(window.runnerObstacles[i].z<6&&window.runnerObstacles[i].z>4&&window.runnerObstacles[i].lane===window.runnerPlayer.lane&&window.runnerPlayer.jumpHeight<60){
+      window.runnerRunning=false;
+      document.getElementById('finalRunnerScore').textContent=window.runnerScore;
+      document.getElementById('runnerGameOver').style.display='block';
+      return;
+    }
+  }
+  if(window.runnerObstacles.length===0||window.runnerObstacles[window.runnerObstacles.length-1].z<80){
+    const lane=Math.floor(Math.random()*3);
+    window.runnerObstacles.push({z:100,lane:lane});
+  }
+  drawRunner();
+  window.runnerAnimation=requestAnimationFrame(updateRunner);
+}
+
+function initRunnerGame(){
+  window.runnerScore=0;
+  window.runnerSpeed=4;
+  window.runnerRunning=true;
+  window.runnerPlayer={lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};
+  window.runnerObstacles=[];
+  document.getElementById('runnerGameOver').style.display='none';
+  runnerScoreDisplay.textContent='SCORE: 0';
+  updateRunner();
+}
+
+document.addEventListener('keydown',(e)=>{
+  if(document.getElementById('overlayRunner').classList.contains('active')&&window.runnerPlayer){
+    const k=e.key.toLowerCase();
+    if((k===' '||k==='w')&&!window.runnerPlayer.jumping&&window.runnerPlayer.jumpHeight===0)window.runnerPlayer.jumping=true;
+    if((k==='arrowleft'||k==='a')&&window.runnerPlayer.targetLane>0&&window.runnerPlayer.laneTransition>=1){window.runnerPlayer.targetLane--;window.runnerPlayer.laneTransition=0}
+    if((k==='arrowright'||k==='d')&&window.runnerPlayer.targetLane<2&&window.runnerPlayer.laneTransition>=1){window.runnerPlayer.targetLane++;window.runnerPlayer.laneTransition=0}
+  }
+});
+
+document.getElementById('runnerPlayAgainBtn').addEventListener('click',()=>{
+  initRunnerGame();
+});
+
+document.getElementById('runnerCloseBtn').addEventListener('click',()=>{
+  document.getElementById('runnerGameOver').style.display='none';
+  document.getElementById('overlayRunner').classList.remove('active');
+  cancelAnimationFrame(window.runnerAnimation);
+  window.runnerRunning=false;
+});
+
+/* AI CHAT */
+const chatMessages=document.getElementById('chatMessages');
+const chatInput=document.getElementById('chatInput');
+const chatSendBtn=document.getElementById('chatSendBtn');
+const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";
+
+function addMessage(who,text){
+  const div=document.createElement('div');
+  div.className='chat-message '+(who==='user'?'user':'ai');
+  div.textContent=text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+function showTyping(){
+  const t=document.createElement('div');
+  t.className='typing-indicator';
+  t.id='typingIndicator';
+  t.textContent='thinking...';
+  chatMessages.appendChild(t);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+function hideTyping(){
+  const t=document.getElementById('typingIndicator');
+  if(t)t.remove();
+}
+
+async function sendToWorker(userText){
+  try{
+    showTyping();
+    const body={messages:[
+      {role:"system",content:"You are a helpful assistant. Keep responses under 150 characters total."},
+      {role:"user",content:userText}
+    ]};
+    const resp=await fetch(WORKER_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)
+    });
+    
+    if(!resp.ok){
+      hideTyping();
+      const errText=await resp.text().catch(()=>`HTTP ${resp.status}`);
+      addMessage('ai',`⚠️ Worker error: ${errText}`);
+      return;
+    }
+    
+    const data=await resp.json().catch(()=>null);
+    
+    hideTyping();
+    if(!data){
+      addMessage('ai','⚠️ Invalid response from worker.');
+      return;
+    }
+    
+    let reply='';
+    try{
+      if(Array.isArray(data.choices)&&data.choices.length){
+        reply=data.choices[0].message?.content??data.choices[0].text??JSON.stringify(data.choices[0]);
+      }else if(data.error){
+        reply=`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;
+      }else{
+        reply=JSON.stringify(data);
+      }
+    }catch(e){reply=JSON.stringify(data)}
+
+    if(reply.length>150){
+      reply=reply.substring(0,150);
+    }
+    
+    addMessage('ai',reply);
+    
+    const aiCharCount=document.getElementById('aiCharCount');
+    if(aiCharCount){
+      aiCharCount.textContent=`Last AI response: ${reply.length}/150 characters`;
+    }
+  }catch(err){
+    hideTyping();
+    console.error(err);
+    addMessage('ai','⚠️ Network error.');
+  }
+}
+
+chatSendBtn.addEventListener('click',async()=>{
+  const text=chatInput.value.trim();
+  if(!text)return;
+  
+  addMessage('user',text);
+  chatInput.value='';
+  
+  const userCharCount=document.getElementById('userCharCount');
+  if(userCharCount){
+    userCharCount.textContent=`Typing: 0/150 characters`;
+    userCharCount.style.color='rgba(255,6,6,0.6)';
+  }
+  
+  await sendToWorker(text);
+});
+
+chatInput.addEventListener('keydown',(e)=>{
+  if(e.key==='Enter'){e.preventDefault();chatSendBtn.click()}
+});
+
+chatInput.addEventListener('input',(e)=>{
+  const userCharCount=document.getElementById('userCharCount');
+  const len=e.target.value.length;
+  if(userCharCount){
+    userCharCount.textContent=`Typing: ${len}/150 characters`;
+    if(len>150){
+      userCharCount.style.color='#ff0000';
+    }else{
+      userCharCount.style.color='rgba(255,6,6,0.6)';
+    }
+  }
+  if(len>150){
+    chatSendBtn.disabled=true;
+    chatSendBtn.style.opacity='0.5';
+    chatSendBtn.style.cursor='not-allowed';
+  }else{
+    chatSendBtn.disabled=false;
+    chatSendBtn.style.opacity='1';
+    chatSendBtn.style.cursor='pointer';
+  }
+});
+})();
