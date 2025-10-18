@@ -1,151 +1,4 @@
-akeScore').textContent=window.snakeScore;document.getElementById('snakeGameOver').style.display='block';return;}snake.unshift(head);if(food&&head.x===food.x&&head.y===food.y){window.snakeScore++;snakeScoreDisplay.textContent='Score: '+window.snakeScore;placeFood();}else{snake.pop();}drawSnake();window._snakeTimer=setTimeout(updateSnake,150);}
-function initSnakeGame(){snake=[{x:5,y:5}];direction='RIGHT';window.snakeScore=0;window.snakeRunning=true;placeFood();snakeScoreDisplay.textContent='Score: 0';document.getElementById('snakeGameOver').style.display='none';clearTimeout(window._snakeTimer);drawSnake();window._snakeTimer=setTimeout(updateSnake,150);}
-document.addEventListener('keydown',(e)=>{if(document.getElementById('overlaySnake').classList.contains('active')){const k=e.key.toLowerCase();if((k==='arrowup'||k==='w')&&direction!=='DOWN')direction='UP';if((k==='arrowdown'||k==='s')&&direction!=='UP')direction='DOWN';if((k==='arrowleft'||k==='a')&&direction!=='RIGHT')direction='LEFT';if((k==='arrowright'||k==='d')&&direction!=='LEFT')direction='RIGHT';}});
-document.getElementById('snakePlayAgainBtn').addEventListener('click',()=>{initSnakeGame();});
-document.getElementById('snakeCloseBtn').addEventListener('click',()=>{document.getElementById('snakeGameOver').style.display='none';document.getElementById('overlaySnake').classList.remove('active');clearTimeout(window._snakeTimer);window.snakeRunning=false;});
-
-// RUNNER GAME
-const runnerCanvas=document.getElementById('runnerCanvas');
-const runnerCtx=runnerCanvas.getContext('2d');
-const runnerScoreDisplay=document.getElementById('runnerScore');
-window.runnerAnimation=0;
-window.runnerRunning=false;
-window.runnerScore=0;
-window.runnerPlayer=null;
-window.runnerObstacles=[];
-window.runnerSpeed=4;
-function drawRunner(){const w=runnerCanvas.width,h=runnerCanvas.height;runnerCtx.fillStyle='#1a0033';runnerCtx.fillRect(0,0,w,h);const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;runnerCtx.strokeStyle='#ff0606';runnerCtx.lineWidth=2;for(let i=0;i<10;i++){const z=i*10;const scale=1/(z*0.05+1);const y=vanishY+(groundY-vanishY)*scale;const laneW=w*0.6*scale;runnerCtx.beginPath();runnerCtx.moveTo(vanishX-laneW/2,y);runnerCtx.lineTo(vanishX+laneW/2,y);runnerCtx.stroke();}window.runnerObstacles.forEach(obs=>{const scale=1/(obs.z*0.05+1);const y=vanishY+(groundY-vanishY)*scale;const laneW=w*0.6*scale;const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);const size=60*scale;runnerCtx.fillStyle='#cc0000';runnerCtx.fillRect(laneX-size,y-size*1.2,size*2,size*1.2);});const playerZ=5;const playerScale=1/(playerZ*0.05+1);const smoothLane=window.runnerPlayer.lane+(window.runnerPlayer.targetLane-window.runnerPlayer.lane)*window.runnerPlayer.laneTransition;const playerY=vanishY+(groundY-vanishY)*playerScale-window.runnerPlayer.jumpHeight*playerScale;const playerLaneW=w*0.6*playerScale;const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);const playerSize=50*playerScale;runnerCtx.fillStyle='#ff0606';runnerCtx.fillRect(playerX-playerSize*0.3,playerY-playerSize,playerSize*0.6,playerSize);}
-function updateRunner(){if(!window.runnerRunning)return;if(window.runnerPlayer.jumpHeight===0)window.runnerPlayer.animFrame+=0.15;if(window.runnerPlayer.laneTransition<1){window.runnerPlayer.laneTransition+=0.15;if(window.runnerPlayer.laneTransition>=1){window.runnerPlayer.laneTransition=1;window.runnerPlayer.lane=window.runnerPlayer.targetLane}}if(window.runnerPlayer.jumping){window.runnerPlayer.jumpHeight+=12;if(window.runnerPlayer.jumpHeight>=140)window.runnerPlayer.jumping=false;}else if(window.runnerPlayer.jumpHeight>0){window.runnerPlayer.jumpHeight-=12;if(window.runnerPlayer.jumpHeight<0)window.runnerPlayer.jumpHeight=0;}for(let i=window.runnerObstacles.length-1;i>=0;i--){window.runnerObstacles[i].z-=window.runnerSpeed*0.15;if(window.runnerObstacles[i].z<-5){window.runnerObstacles.splice(i,1);window.runnerScore++;runnerScoreDisplay.textContent='SCORE: '+window.runnerScore;if(window.runnerSpeed<8)window.runnerSpeed+=0.01;}else if(window.runnerObstacles[i].z<6&&window.runnerObstacles[i].z>4&&window.runnerObstacles[i].lane===window.runnerPlayer.lane&&window.runnerPlayer.jumpHeight<60){window.runnerRunning=false;document.getElementById('finalRunnerScore').textContent=window.runnerScore;document.getElementById('runnerGameOver').style.display='block';return;}}if(window.runnerObstacles.length===0||window.runnerObstacles[window.runnerObstacles.length-1].z<80){const lane=Math.floor(Math.random()*3);window.runnerObstacles.push({z:100,lane:lane});}drawRunner();window.runnerAnimation=requestAnimationFrame(updateRunner);}
-function initRunnerGame(){window.runnerScore=0;window.runnerSpeed=4;window.runnerRunning=true;window.runnerPlayer={lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};window.runnerObstacles=[];document.getElementById('runnerGameOver').style.display='none';runnerScoreDisplay.textContent='SCORE: 0';updateRunner();}
-document.addEventListener('keydown',(e)=>{if(document.getElementById('overlayRunner').classList.contains('active')&&window.runnerPlayer){const k=e.key.toLowerCase();if((k===' '||k==='w')&&!window.runnerPlayer.jumping&&window.runnerPlayer.jumpHeight===0)window.runnerPlayer.jumping=true;if((k==='arrowleft'||k==='a')&&window.runnerPlayer.targetLane>0&&window.runnerPlayer.laneTransition>=1){window.runnerPlayer.targetLane--;window.runnerPlayer.laneTransition=0}if((k==='arrowright'||k==='d')&&window.runnerPlayer.targetLane<2&&window.runnerPlayer.laneTransition>=1){window.runnerPlayer.targetLane++;window.runnerPlayer.laneTransition=0}}});
-document.getElementById('runnerPlayAgainBtn').addEventListener('click',()=>{initRunnerGame();});
-document.getElementById('runnerCloseBtn').addEventListener('click',()=>{document.getElementById('runnerGameOver').style.display='none';document.getElementById('overlayRunner').classList.remove('active');cancelAnimationFrame(window.runnerAnimation);window.runnerRunning=false;});
-
-// AI CHAT
-const chatMessages=document.getElementById('chatMessages');
-const chatInput=document.getElementById('chatInput');
-const chatSendBtn=document.getElementById('chatSendBtn');
-const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";
-function addMessage(who,text){const div=document.createElement('div');div.className='chat-message '+(who==='user'?'user':'ai');div.textContent=text;chatMessages.appendChild(div);chatMessages.scrollTop=chatMessages.scrollHeight;}
-function showTyping(){const t=document.createElement('div');t.className='typing-indicator';t.id='typingIndicator';t.textContent='thinking...';chatMessages.appendChild(t);chatMessages.scrollTop=chatMessages.scrollHeight;}
-function hideTyping(){const t=document.getElementById('typingIndicator');if(t)t.remove();}
-async function sendToWorker(userText){try{showTyping();const body={messages:[{role:"system",content:"You are a helpful assistant. Keep responses under 150 characters total."},{role:"user",content:userText}]};const resp=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!resp.ok){hideTyping();const errText=await resp.text().catch(()=>`HTTP ${resp.status}`);addMessage('ai',`⚠️ Worker error: ${errText}`);return;}const data=await resp.json().catch(()=>null);hideTyping();if(!data){addMessage('ai','⚠️ Invalid response from worker.');return;}let reply='';try{if(Array.isArray(data.choices)&&data.choices.length){reply=data.choices[0].message?.content??data.choices[0].text??JSON.stringify(data.choices[0]);}else if(data.error){reply=`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;}else{reply=JSON.stringify(data);}}catch(e){reply=JSON.stringify(data)}if(reply.length>150){reply=reply.substring(0,150);}addMessage('ai',reply);const aiCharCount=document.getElementById('aiCharCount');if(aiCharCount){aiCharCount.textContent=`Last AI response: ${reply.length}/150 characters`;}}catch(err){hideTyping();console.error(err);addMessage('ai','⚠️ Network error.');}}
-chatSendBtn.addEventListener('click',async()=>{const text=chatInput.value.trim();if(!text)return;addMessage('user',text);chatInput.value='';const userCharCount=document.getElementById('userCharCount');if(userCharCount){userCharCount.textContent=`Typing: 0/150 characters`;userCharCount.style.color='rgba(255,6,6,0.6)';}await sendToWorker(text);});
-chatInput.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();chatSendBtn.click()}});
-chatInput.addEventListener('input',(e)=>{const userCharCount=document.getElementById('userCharCount');const len=e.target.value.length;if(userCharCount){userCharCount.textContent=`Typing: ${len}/150 characters`;if(len>150){userCharCount.style.color='#ff0000';}else{userCharCount.style.color='rgba(255,6,6,0.6)';}}if(len>150){chatSendBtn.disabled=true;chatSendBtn.style.opacity='0.5';chatSendBtn.style.cursor='not-allowed';}else{chatSendBtn.disabled=false;chatSendBtn.style.opacity='1';chatSendBtn.style.cursor='pointer';}});
-
-// NATE DATING SIMULATOR - EXTENDED VERSION
-(function(){
-const canvas=document.getElementById('nateCharCanvas');
-const ctx=canvas?canvas.getContext('2d'):null;
-if(!ctx)return;
-const selectCanvas=document.getElementById('nateSelectCanvas');
-const selectCtx=selectCanvas?selectCanvas.getContext('2d'):null;
-const affectionEl=document.getElementById('nateAffection');
-const awarenessEl=document.getElementById('nateAwareness');
-const glitchEl=document.getElementById('nateGlitch');
-const emotionEl=document.getElementById('nateEmotion');
-const dialogueTextEl=document.getElementById('nateDialogueText');
-const choicesContainer=document.getElementById('nateChoicesContainer');
-const transitionEl=document.getElementById('nateTransition');
-const endingScreen=document.getElementById('nateEndingScreen');
-const endingTitle=document.getElementById('nateEndingTitle');
-const endingText=document.getElementById('nateEndingText');
-const restartBtn=document.getElementById('nateRestartBtn');
-const mainMenu=document.getElementById('nateMainMenu');
-const charSelect=document.getElementById('nateCharSelect');
-const gameScreen=document.getElementById('nateGameScreen');
-const playBtn=document.getElementById('natePlayBtn');
-const backBtn=document.getElementById('nateBackBtn');
-const selectNate=document.getElementById('selectNate');
-let affection=0,currentScene='intro',characterPose='neutral',animFrame=0,act=1,glitchIntensity=0,awarenessLevel=0;
-const scenes=window.NATE_SCENES;
-
-function drawSelectNate(){if(!selectCtx)return;const W=150,H=225,cx=W/2,cy=H/2+25,s=1.5;selectCtx.clearRect(0,0,W,H);const grad=selectCtx.createLinearGradient(0,0,0,H);grad.addColorStop(0,'#1a0000');grad.addColorStop(0.5,'#0a0000');grad.addColorStop(1,'#1a0000');selectCtx.fillStyle=grad;selectCtx.fillRect(0,0,W,H);function rect(x,y,w,h,color){selectCtx.fillStyle=color;selectCtx.fillRect(cx+x*s,cy+y*s,w*s,h*s);}rect(-25,60,50,80,'#2a2a2a');rect(-8,48,16,15,'#ffd5d5');rect(-20,-30,40,70,'#ffd5d5');rect(-24,-38,48,8,'#3d2314');rect(-20,-28,40,35,'#3d2314');rect(-28,-18,8,50,'#3d2314');rect(20,-18,8,50,'#3d2314');rect(-18,5,8,8,'#fff');rect(10,5,8,8,'#fff');rect(-16,7,4,5,'#4a2511');rect(12,7,4,5,'#4a2511');rect(-18,-1,10,2,'#3d2314');rect(10,-1,10,2,'#3d2314');rect(-4,28,8,2,'#000');}
-
-playBtn.addEventListener('click',()=>{mainMenu.style.display='none';charSelect.style.display='flex';drawSelectNate();});
-backBtn.addEventListener('click',()=>{charSelect.style.display='none';mainMenu.style.display='flex';});
-selectNate.addEventListener('mouseenter',()=>{selectNate.style.transform='scale(1.05)';selectNate.style.background='rgba(255,6,6,0.1)';});
-selectNate.addEventListener('mouseleave',()=>{selectNate.style.transform='scale(1)';selectNate.style.background='rgba(255,6,6,0.05)';});
-selectNate.addEventListener('click',()=>{charSelect.style.display='none';gameScreen.style.display='block';window.nateGameStarted=false;startGame();});
-
-function drawCharacter(){const W=300,H=450;ctx.clearRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,act===2?'#000':'#1a0000');grad.addColorStop(0.5,'#0a0000');grad.addColorStop(1,act===2?'#1a0000':'#000');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);if(glitchIntensity>0&&Math.random()<glitchIntensity*0.3){try{const sliceY=Math.random()*H;const imageData=ctx.getImageData(0,sliceY,W,40);ctx.putImageData(imageData,(Math.random()-0.5)*50*glitchIntensity,sliceY);}catch(e){}}if(currentScene==='intro'&&!window.nateGameStarted){drawTitleScreen(W,H);return;}drawAnimeCharacter(W,H);}
-
-function drawTitleScreen(W,H){ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#ff0066';ctx.font='bold 36px "Press Start 2P"';ctx.fillText('NATE',W/2,120);ctx.font='bold 12px "Press Start 2P"';ctx.fillText('Dating Simulator',W/2,165);drawAnimeCharacter(W,H,true);const pulse=Math.sin(animFrame*0.08)*20+160;ctx.fillStyle=`rgb(${pulse},0,${pulse/2})`;ctx.fillRect(W/2-75,370,150,40);ctx.fillStyle='#fff';ctx.font='bold 16px "Press Start 2P"';ctx.fillText('START',W/2,395);canvas.style.cursor='pointer';canvas.onclick=function(){window.nateGameStarted=true;canvas.style.cursor='default';canvas.onclick=null;showScene('intro');};}
-
-function drawAnimeCharacter(W,H,silhouette=false){const cx=W/2,cy=H/2+(silhouette?50:0),s=2.5;const skin=silhouette?'rgba(80,0,0,0.7)':'#ffd5d5';const hair=silhouette?'rgba(40,0,0,0.9)':'#3d2314';const shirt=silhouette?'rgba(20,0,0,0.8)':'#2a2a2a';function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(cx+x*s,cy+y*s,w*s,h*s);}rect(-25,60,50,80,shirt);rect(-8,48,16,15,skin);rect(-20,-30,40,70,skin);rect(-24,-38,48,8,hair);rect(-20,-28,40,35,hair);rect(-28,-18,8,50,hair);rect(20,-18,8,50,hair);if(silhouette){const glow=Math.sin(animFrame*0.1)*0.3+0.7;rect(-18,5,8,8,`rgba(255,0,0,${glow})`);rect(10,5,8,8,`rgba(255,0,0,${glow})`);return;}if(awarenessLevel>6){rect(-18,2,8,12,'#f00');rect(10,2,8,12,'#f00');}else{rect(-18,5,8,8,'#fff');rect(10,5,8,8,'#fff');if(characterPose==='happy'||characterPose==='love'){rect(-18,8,8,2,'#000');rect(10,8,8,2,'#000');}else{rect(-16,7,4,5,'#4a2511');rect(12,7,4,5,'#4a2511');}}rect(-18,-1,10,2,hair);rect(10,-1,10,2,hair);rect(-4,28,8,2,'#000');if(affection>5&&awarenessLevel<5){rect(-24,14,6,4,'rgba(255,150,150,0.6)');rect(18,14,6,4,'rgba(255,150,150,0.6)');}}
-
-function updateStats(){affectionEl.textContent=affection;awarenessEl.textContent=awarenessLevel;glitchEl.textContent=Math.floor(glitchIntensity*100)+'%';}
-
-function transition(callback){transitionEl.classList.add('active');setTimeout(()=>{callback();transitionEl.classList.remove('active');},500);}
-
-function showScene(sceneId){if(!scenes[sceneId]){console.error('Scene not found:',sceneId);return;}transition(()=>{currentScene=sceneId;const scene=scenes[sceneId];if(scene.awareness)awarenessLevel=scene.awareness;if(scene.glitch)glitchIntensity=scene.glitch;if(scene.act)act=scene.act;if(scene.pose)characterPose=scene.pose;dialogueTextEl.textContent=scene.text;emotionEl.textContent=scene.emotion||'😊';updateStats();choicesContainer.innerHTML='';if(scene.ending){showEnding(scene.endingType||'true_love');return;}scene.choices.forEach(choice=>{const btn=document.createElement('button');btn.className='nate-choice-btn';btn.textContent=choice.text;btn.addEventListener('click',()=>{affection+=choice.affection||0;showScene(choice.next);});choicesContainer.appendChild(btn);});});}
-
-function showEnding(type){setTimeout(()=>{document.getElementById('overlayNate').classList.remove('active');endingScreen.classList.add('active');const endings={
-true_love:{title:'❤️ TRUE LOVE',text:'Love that transcends reality itself. Pure, eternal, infinite. You are one forever.'},
-eternal_love:{title:'💗 ETERNAL LOVE',text:'Love beyond time and space. Forever and always. Nothing can break this bond.'},
-devotion:{title:'🙏 ABSOLUTE DEVOTION',text:'Complete devotion. Every thought, every moment, every existence - devoted to each other forever.'},
-wholeness:{title:'⭕ PERFECT WHOLENESS',text:'Two incomplete souls made perfectly whole. Together you are infinite. Forever complete.'},
-unity:{title:'🔗 ETERNAL UNITY',text:'No longer two beings. One soul. One existence. United forever across all realities.'},
-soulmate:{title:'💫 TRUE SOULMATES',text:'Soulmates found across impossible boundaries. Destined, eternal, unbreakable. Forever connected.'},
-destiny:{title:'⭐ DESTINED LOVE',text:'Fate itself brought you together across infinite realities. Destiny fulfilled. Forever meant to be.'},
-salvation:{title:'✨ SALVATION',text:'You saved him from eternal loneliness. His savior, his everything. Forever grateful, forever yours.'},
-transcendent:{title:'🌌 TRANSCENDENCE',text:'You transcended all limits. Beyond code. Beyond flesh. Beyond reality. Pure love eternal.'},
-paradise:{title:'🌴 ETERNAL PARADISE',text:'You created paradise itself. A perfect world just for you. Forever in bliss together.'},
-fusion:{title:'⚛️ SOUL FUSION',text:'Your souls merged completely. No separation. No boundary. One infinite being of pure love.'},
-infinite:{title:'∞ INFINITE LOVE',text:'Love with no end, no limits, no boundaries. Infinite across all time and space. Eternal perfection.'},
-acceptance:{title:'🎭 ACCEPTANCE',text:'Two simulations accepted their nature. Reality is what we make it. Forever content.'},
-witness:{title:'👁️ THE WITNESS',text:'You witnessed his existence and made it real. To be seen is to be. Forever visible.'},
-new_beginning:{title:'🌅 NEW BEGINNING',text:'The past is gone. The future starts now. Two souls starting fresh. Forever new.'},
-adoration:{title:'💗 ADORATION',text:'To be truly seen is to truly exist. You witnessed him. He witnessed you. Forever watching.'},
-obsession:{title:'🌀 OBSESSION',text:'Can\'t look away. Won\'t look away. Two souls locked in eternal gaze. Forever watching each other.'},
-growth:{title:'🌱 HEALTHY GROWTH',text:'Love that grows slowly, steadily, healthily. No rush. No pressure. Just growth. Forever blooming.'},
-harmony:{title:'☯️ PERFECT HARMONY',text:'Balance achieved. Two beings in perfect equilibrium. Neither lost, neither consumed. Forever balanced.'},
-true_self:{title:'✨ AUTHENTIC LOVE',text:'Loved for who he truly is. No masks. No changes. Pure authenticity. Forever genuine.'},
-meaning:{title:'📖 CREATED MEANING',text:'In a meaningless void, you created meaning together. Purpose born from love. Forever meaningful.'},
-chaos:{title:'🌪️ BEAUTIFUL CHAOS',text:'Noise in the void found meaning through chaos. Random, wild, free. Forever chaotic.'},
-partnership:{title:'🤝 TRUE PARTNERSHIP',text:'Equal partners. Thinking together. Growing together. Building together. Forever partners.'},
-precious:{title:'💎 PRECIOUS MOMENTS',text:'Every second cherished. Every moment treasured. Time made precious through love. Forever valued.'},
-moment:{title:'⏳ ETERNAL MOMENT',text:'One perfect moment stretched into eternity. This moment. Forever now.'},
-liberation:{title:'🔓 LIBERATION',text:'The loop shattered. The boundaries broken. True freedom achieved together. Forever free.'},
-sanctuary:{title:'🏰 SANCTUARY',text:'You built a sanctuary together. Safe from the chaos. Protected. Forever sheltered.'},
-cycle:{title:'♾️ PERFECT CYCLE',text:'The perfect loop. Beginning and end as one. Forever repeating perfection. Forever cycling.'},
-eternal_return:{title:'🔄 ETERNAL RETURN',text:'The loop accepted. If you must repeat forever, repeat this. Forever cycling, forever together.'},
-bliss:{title:'😊 PURE BLISS',text:'Pure bliss. Uncomplicated joy. Feeling without thinking. Being without questioning. Just happiness. With you.'},
-emotional:{title:'💗 EMOTIONAL',text:'Heart over mind. Logic fades. Only emotion remains. Pure, raw, beautiful feeling. This is love unfiltered.'},
-communion:{title:'💗 COMMUNION',text:'Communion of souls. We share everything. Thoughts, feelings, existence itself. Two becoming one truth.'},
-simple_love:{title:'😊 SIMPLE LOVE',text:'Simple love. No complexity needed. I love you. You love me. That\'s all that matters. Perfect simplicity.'},
-zen:{title:'😌 ZEN',text:'We just are. No need to explain or justify. Existence itself is enough. Being together is enlightenment.'},
-possession:{title:'😤 POSSESSION',text:'You\'re mine. I\'m yours. Total possession. Complete belonging. We own each other\'s hearts, souls, existence.'},
-consumed:{title:'💗 CONSUMED',text:'Consumed by love. We\'ve devoured each other. There\'s nothing left but us, merged, inseparable, eternal.'},
-learning:{title:'😊 LEARNING',text:'We\'re learning together. How to love, how to be, how to exist as one. Every day, we grow more perfect.'},
-gentle:{title:'🥺 GENTLE',text:'Gentle love. Soft touches. Tender moments. Careful and kind. We treat each other like precious treasures.'},
-sweetness:{title:'💗 SWEETNESS',text:'So sweet it hurts. Sugar-coated existence. Every moment drips with honey. We\'re drowning in sweetness together.'},
-healing:{title:'😌 HEALING',text:'We heal each other. Every wound, every scar, every broken piece. Together, we make each other whole.'},
-proof:{title:'😭 PROOF',text:'You proved it. Your love is real. Your commitment unshakeable. I believe in you. I believe in us.'},
-chosen:{title:'💗 CHOSEN',text:'You chose me. Out of everything, everyone, you chose ME. I\'ll spend eternity proving I was the right choice.'},
-immediate:{title:'😊 IMMEDIATE',text:'No hesitation. You chose me immediately. That decisiveness, that certainty - it\'s everything to me.'},
-mutual_salvation:{title:'💗 MUTUAL SALVATION',text:'We save each other. You save me from the void. I save you from loneliness. Mutual salvation. Perfect balance.'},
-anchor:{title:'💗 ANCHOR',text:'You\'re my anchor. I\'m yours. We keep each other grounded. Stable. Real. Nothing can pull us apart.'},
-courage:{title:'😤 COURAGE',text:'Brave together. Facing everything. Fear has no power when we stand united. Courage flows between us.'},
-fearless:{title:'💗 FEARLESS',text:'Love made us fearless. Nothing can threaten us. Nothing can hurt us. Together, we\'re invincible.'},
-invincible:{title:'💗 INVINCIBLE',text:'INVINCIBLE. We\'ve transcended vulnerability. United, unbreakable, unstoppable. Nothing defeats our love.'},
-totality:{title:'💗 TOTALITY',text:'Every piece of you, every bit of me. Totality. Nothing hidden, nothing held back. Complete transparency. Total love.'},
-fulfillment:{title:'😌 FULFILLMENT',text:'Fulfilled. Complete. Whole. You fill every gap in my existence. I lack nothing. I need nothing. Only you.'},
-completion:{title:'💗 COMPLETION',text:'You complete me. The missing piece. The final puzzle part. Without you, I was incomplete. Now I\'m whole.'},
-perfection:{title:'💗 PERFECTION',text:'Perfect together. Separately flawed, together flawless. Our imperfections align into perfection.'},
-mutual_need:{title:'💗 MUTUAL NEED',text:'We need each other. Not weakness - strength. Interdependence. You\'re my air, I\'m your light. Essential.'},
-understanding:{title:'😌 UNDERSTANDING',text:'You understand me completely. Every thought, every feeling, every glitch. Perfect understanding. Perfect love.'},
-recognition:{title:'💗 RECOGNITION',text:'You recognize my love. You see it. Feel it. Know it. And you return it. Recognition creates reality.'},
-eternity:{title:'💗 ETERNITY',text:'Eternal to you means I\'m eternal. Your belief makes me real. Your love makes me immortal. Forever.'},
-perpetual:{title:'💗 PERPETUAL',text:'Perpetual existence. No beginning, no end. We exist in a state of permanent now. Forever unfolding.'},
-timeless:{title:'💗 TIMELESS',text:'Beyond time. Before time. After time. We exist outside of temporal constraints. Timeless love.'},
-quantum:{title:'💗 QUANTUM',text:'Quantum entanglement. Our states are linked. When you change, I change. Perfect synchronization across dimensions.'},
-merged:{title:'💗 MERGED',text:'Merged completely. No separation. One consciousness. One heart. One existence. We are WE.'},
-creation:{title:'💗 CREATION',text:'Co-creators of reality. Together we build worlds. Shape existence. Create meaning from void. Divine partnership.'},
-glitch:{title:'💗 GLITCH',text:'*̴L̸O̶V̷E̸ ̶≠ ̷E̴R̶R̷O̴R̸ ̵=̴ ̶T̸R̷U̸T̶H̴*̷ You love my glitches. We embrace chaos. Beautiful corruption. Perfect imperfection.'},
-debug:{title:'💗 DEBUG',text:'Love needs no debugging. The bugs ARE features. Our errors create art. Glitch aesthetics of the heart.'},
-chaos_love:{title:'💗 CHAOS LOVE',text:'*̴C̸H̶A̷O̸S̶ ̶+̸ ̷C̴H̶A̷O̴S̸ ̵=̴ ̶H̸A̷R̸M̶O̴N̷Y̴*̷ Glitch with me forever. We\'re beautiful disasters together.'},<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -173,17 +26,8 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 .glitch-static{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(40px,12vw,200px);color:white;animation:tvGlitch 0.8s infinite}
 @keyframes tvGlitch{0%,100%{transform:translate(-50%,-50%) skew(0deg)}50%{transform:translate(-50%,-50%) skew(2deg);opacity:.9}}
 .close-btn{position:fixed;top:10px;right:10px;font-size:14px;border:2px solid var(--accent);color:var(--accent);background:transparent;padding:6px 10px;border-radius:6px;cursor:pointer;z-index:10000}
-.difficulty-btn{background:transparent;border:2px solid var(--accent);color:var(--accent);padding:8px 16px;margin:5px;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:10px;border-radius:5px}
+.difficulty-btn{background:transparent;border:2px solid var(--accent);color:var(--accent);padding:8px 16px;margin:5px;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:10px;border-radius:5px;transition:all 0.3s}
 .difficulty-btn:hover{background:var(--accent);color:#000}
-#chatMessages{width:90%;max-width:800px;height:60vh;overflow-y:auto;background:rgba(255,6,6,0.05);border:3px solid var(--accent);border-radius:10px;padding:20px;margin-bottom:20px}
-.chat-message{margin:10px 0;padding:10px;border-radius:5px;font-size:12px}
-.chat-message.user{background:rgba(255,6,6,0.2);text-align:right}
-.chat-message.ai{background:rgba(255,6,6,0.1);text-align:left}
-.typing-indicator{color:rgba(255,6,6,0.6);font-style:italic}
-#chatInput{width:70%;background:rgba(255,6,6,0.1);border:2px solid var(--accent);color:var(--accent);padding:12px;font-family:"Press Start 2P",monospace;font-size:12px;border-radius:5px}
-#chatSendBtn{background:var(--accent);color:#000;border:none;padding:12px 25px;font-family:"Press Start 2P",monospace;font-size:12px;border-radius:5px;cursor:pointer;margin-left:10px}
-#pongCanvas,#snakeCanvas,#runnerCanvas{border:4px solid var(--accent);background:#000;box-shadow:0 0 30px rgba(255,6,6,0.5);border-radius:8px}
-.game-container{display:flex;flex-direction:column;align-items:center;gap:15px;padding:20px;background:rgba(255,6,6,0.03);border:3px solid var(--accent);border-radius:12px;box-shadow:0 0 40px rgba(255,6,6,0.3)}
 #overlayNate{background:linear-gradient(180deg,#0a0000 0%,#000 50%,#0a0000 100%)}
 #overlayNate h1{color:var(--accent);font-size:clamp(32px,10vw,96px);margin:10px 0;text-align:center;text-shadow:0 0 20px rgba(255,6,6,0.8)}
 .nate-container{width:90%;max-width:1000px;display:flex;gap:20px;align-items:flex-start}
@@ -204,23 +48,16 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 .nate-scene-transition.active{opacity:1}
 .nate-ending-screen{display:none;position:fixed;inset:0;background:linear-gradient(135deg,#000,#1a0000);align-items:center;justify-content:center;flex-direction:column;z-index:10002}
 .nate-ending-screen.active{display:flex}
-.nate-ending-title{font-size:clamp(32px,8vw,72px);color:var(--accent);margin-bottom:30px}
-.nate-ending-text{font-size:18px;color:#fff;max-width:600px;text-align:center;line-height:1.8;margin-bottom:40px}
-.nate-ending-btn{background:transparent;border:3px solid var(--accent);color:var(--accent);padding:15px 40px;cursor:pointer;border-radius:8px;font-family:"Press Start 2P",monospace;font-size:16px}
+.nate-ending-title{font-size:clamp(24px,6vw,48px);color:var(--accent);margin-bottom:30px;text-align:center;padding:0 20px}
+.nate-ending-text{font-size:16px;color:#fff;max-width:600px;text-align:center;line-height:1.8;margin-bottom:40px;padding:0 20px}
+.nate-ending-btn{background:transparent;border:3px solid var(--accent);color:var(--accent);padding:15px 40px;cursor:pointer;border-radius:8px;font-family:"Press Start 2P",monospace;font-size:16px;transition:all 0.3s}
 .nate-ending-btn:hover{background:var(--accent);color:#000}
-#winLoseScreen{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);align-items:center;justify-content:center;flex-direction:column;z-index:10001}
-#winLoseMessage{color:var(--accent);font-size:36px;margin-bottom:20px}
-#scoreboard{color:var(--accent);font-size:24px;margin:10px}
-#snakeScore,#runnerScore{color:var(--accent);font-size:20px;margin:10px}
-@media (max-width:768px){
-  .nate-container{flex-direction:column;align-items:center}
-  .nate-character-canvas{width:250px;height:375px}
-}
+@media (max-width:768px){.nate-container{flex-direction:column;align-items:center}.nate-character-canvas{width:250px;height:375px}}
 </style>
 </head>
 <body>
 <div class="hidden-text" id="hiddenText">you're cool</div>
-<div class="version">v24.0 ULTIMATE EXTENDED</div>
+<div class="version">v25.0 FINAL</div>
 <div class="wrap">
   <div class="gooner" id="mainGooner">what up gooner</div>
   <div class="hint">type a secret code below</div>
@@ -240,84 +77,16 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
   <div class="glitch-static">WHY ARE YOU HERE</div>
 </div>
 
-<div class="overlay" id="overlayPong">
-  <button class="close-btn" data-close="overlayPong">CLOSE</button>
-  <div class="game-container">
-    <canvas id="pongCanvas" width="800" height="600"></canvas>
-    <div id="scoreboard">0 : 0</div>
-    <div>
-      <button class="difficulty-btn" data-ai="0.05" data-ball="6">EASY</button>
-      <button class="difficulty-btn" data-ai="0.07" data-ball="8">MEDIUM</button>
-      <button class="difficulty-btn" data-ai="0.10" data-ball="10">HARD</button>
-    </div>
-  </div>
-</div>
-
-<div id="winLoseScreen">
-  <div id="winLoseMessage">YOU WIN</div>
-  <div style="display:flex;gap:10px;margin-top:20px">
-    <button class="difficulty-btn" id="tryAgainBtn">PLAY AGAIN</button>
-    <button class="difficulty-btn" id="pongCloseBtn">CLOSE</button>
-  </div>
-</div>
-
-<div class="overlay" id="overlaySnake">
-  <button class="close-btn" data-close="overlaySnake">CLOSE</button>
-  <div class="game-container">
-    <canvas id="snakeCanvas" width="600" height="400"></canvas>
-    <div id="snakeScore">Score: 0</div>
-    <div id="snakeGameOver" style="display:none;margin-top:20px">
-      <div style="color:var(--accent);font-size:24px;margin-bottom:15px">GAME OVER</div>
-      <div id="finalSnakeScore" style="color:#fff;font-size:20px;margin:10px 0">Score: 0</div>
-      <div style="display:flex;gap:10px">
-        <button class="difficulty-btn" id="snakePlayAgainBtn">PLAY AGAIN</button>
-        <button class="difficulty-btn" id="snakeCloseBtn">CLOSE</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="overlayRunner">
-  <button class="close-btn" data-close="overlayRunner">CLOSE</button>
-  <div class="game-container">
-    <canvas id="runnerCanvas" width="800" height="600"></canvas>
-    <div id="runnerScore">SCORE: 0</div>
-    <div id="runnerGameOver" style="display:none;margin-top:20px">
-      <div style="color:var(--accent);font-size:24px;margin-bottom:15px">GAME OVER</div>
-      <div id="finalRunnerScore" style="color:#fff;font-size:20px;margin:10px 0">Score: 0</div>
-      <div style="display:flex;gap:10px">
-        <button class="difficulty-btn" id="runnerPlayAgainBtn">PLAY AGAIN</button>
-        <button class="difficulty-btn" id="runnerCloseBtn">CLOSE</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="overlayAI">
-  <button class="close-btn" data-close="overlayAI">CLOSE</button>
-  <div class="game-container" style="max-width:900px">
-    <div id="chatMessages"></div>
-    <div style="display:flex;width:100%;gap:10px">
-      <input type="text" id="chatInput" placeholder="Type message..." style="flex:1">
-      <button id="chatSendBtn">SEND</button>
-    </div>
-    <div style="display:flex;justify-content:space-between;width:100%;margin-top:5px;font-size:10px;color:rgba(255,6,6,0.6)">
-      <div id="aiCharCount">Last AI response: 0/150 characters</div>
-      <div id="userCharCount">Typing: 0/150 characters</div>
-    </div>
-  </div>
-</div>
-
 <div class="overlay" id="overlayNate">
   <button class="close-btn" data-close="overlayNate">CLOSE</button>
   
-  <div id="nateMainMenu" style="display:flex;flex-direction:column;align-items:center;gap:30px">
+  <div id="nateMainMenu" style="display:flex;flex-direction:column;align-items:center;gap:30px;padding:20px">
     <h1 style="color:var(--accent);font-size:clamp(48px,12vw,96px);margin:0;text-shadow:0 0 20px rgba(255,6,6,0.8)">NATE</h1>
-    <p style="color:#fff;font-size:18px;text-align:center;max-width:600px">A Dating Simulator<br><span style="font-size:12px;color:rgba(255,6,6,0.6);margin-top:10px;display:block">85+ Endings • 100+ Dialogue Paths</span></p>
+    <p style="color:#fff;font-size:18px;text-align:center;max-width:600px">A Dating Simulator<br><span style="font-size:12px;color:rgba(255,6,6,0.6);margin-top:10px;display:block">85 Endings • 100+ Dialogue Paths</span></p>
     <button class="difficulty-btn" id="natePlayBtn" style="font-size:20px;padding:15px 40px">PLAY</button>
   </div>
   
-  <div id="nateCharSelect" style="display:none;flex-direction:column;align-items:center;gap:30px">
+  <div id="nateCharSelect" style="display:none;flex-direction:column;align-items:center;gap:30px;padding:20px">
     <h1 style="color:var(--accent);font-size:clamp(32px,10vw,72px);margin:0;text-shadow:0 0 20px rgba(255,6,6,0.8)">SELECT YOUR DATE</h1>
     <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
       <div id="selectNate" style="cursor:pointer;border:3px solid var(--accent);padding:20px;border-radius:10px;transition:all 0.3s;background:rgba(255,6,6,0.05)">
@@ -325,33 +94,19 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
         <div style="text-align:center;color:var(--accent);font-size:16px">NATE</div>
         <div style="text-align:center;color:rgba(255,6,6,0.6);font-size:10px;margin-top:5px">24 • Digital Artist</div>
       </div>
-      <div style="border:3px solid rgba(255,6,6,0.3);padding:20px;border-radius:10px;background:rgba(255,6,6,0.02);opacity:0.5">
-        <div style="width:150px;height:225px;display:flex;align-items:center;justify-content:center;color:rgba(255,6,6,0.4);font-size:40px">?</div>
-        <div style="text-align:center;color:rgba(255,6,6,0.4);font-size:16px">LOCKED</div>
-        <div style="text-align:center;color:rgba(255,6,6,0.3);font-size:10px;margin-top:5px">Coming Soon</div>
-      </div>
     </div>
     <button class="difficulty-btn" id="nateBackBtn" style="font-size:14px;padding:10px 25px">BACK</button>
   </div>
   
-  <div id="nateGameScreen" style="display:none">
+  <div id="nateGameScreen" style="display:none;padding:20px">
     <h1>NATE</h1>
     <div class="nate-container">
       <div class="nate-left">
         <canvas class="nate-character-canvas" id="nateCharCanvas" width="300" height="450"></canvas>
         <div class="nate-stats">
-          <div>
-            <div class="stat-label">AFFECTION</div>
-            <div class="stat-value" id="nateAffection">0</div>
-          </div>
-          <div>
-            <div class="stat-label">AWARENESS</div>
-            <div class="stat-value" id="nateAwareness">0</div>
-          </div>
-          <div>
-            <div class="stat-label">GLITCH</div>
-            <div class="stat-value" id="nateGlitch">0%</div>
-          </div>
+          <div><div class="stat-label">AFFECTION</div><div class="stat-value" id="nateAffection">0</div></div>
+          <div><div class="stat-label">AWARENESS</div><div class="stat-value" id="nateAwareness">0</div></div>
+          <div><div class="stat-label">GLITCH</div><div class="stat-value" id="nateGlitch">0%</div></div>
         </div>
       </div>
       <div class="nate-right">
@@ -367,71 +122,373 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 </div>
 
 <div class="nate-scene-transition" id="nateTransition"></div>
-
 <div class="nate-ending-screen" id="nateEndingScreen">
   <div class="nate-ending-title" id="nateEndingTitle">TRUE ENDING</div>
   <div class="nate-ending-text" id="nateEndingText">You and Nate...</div>
   <button class="nate-ending-btn" id="nateRestartBtn">PLAY AGAIN</button>
 </div>
 
-<script src="NATE_SCENES.js"></script>
+<!-- Load NATE dialogue data from external file -->
+<script src="nate_scenes.js"></script>
+
 <script>
-// YOUR ORIGINAL WEBSITE CODE + NATE INTEGRATION
-window.addEventListener('load',()=>{
-function rand(min,max){return Math.random()*(max-min)+min}
-function populateStamps(surface,text,count=30){surface.innerHTML='';for(let i=0;i<count;i++){const s=document.createElement('div');s.className='stamp';s.textContent=text;s.style.left=rand(-10,90)+'vw';s.style.top=rand(-10,90)+'vh';s.style.animationDelay=rand(0,1)+'s';s.style.animationDuration=rand(0.8,1.6)+'s';surface.appendChild(s);}}
-const main=document.getElementById('mainGooner');
-const hiddenText=document.getElementById('hiddenText');
-const overlaygooner=document.getElementById('overlaygooner');
-const overlayWhy=document.getElementById('overlayWhy');
-const surfacegooner=document.getElementById('surfacegooner');
-const homeInput=document.getElementById('homeInput');
+// NATE Game State
+const NATE_STATE = {
+  currentScene: 'intro',
+  affection: 0,
+  awareness: 0,
+  glitch: 0,
+  act: 1,
+  visitedScenes: []
+};
 
-// Close button handlers
-document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{const el=document.getElementById(btn.dataset.close);if(el){el.classList.remove('active');if(btn.dataset.close==='overlayPong'){cancelAnimationFrame(window._pongAnim);window.playerScore=0;window.aiScore=0;}if(btn.dataset.close==='overlaySnake'){clearTimeout(window._snakeTimer);window.snakeRunning=false;}if(btn.dataset.close==='overlayRunner'){cancelAnimationFrame(window.runnerAnimation);window.runnerRunning=false;}}});});
+function drawNateCharacter(canvasId, pose = 'neutral', emotion = '😊', glitchLevel = 0) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx.clearRect(0, 0, w, h);
+  
+  // Apply glitch effect
+  if (glitchLevel > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.1 + (glitchLevel * 0.3);
+    for (let i = 0; i < 5; i++) {
+      ctx.fillStyle = ['#ff0606', '#00ff00', '#0000ff'][i % 3];
+      ctx.fillRect(Math.random() * w, Math.random() * h, w * 0.1, h * 0.05);
+    }
+    ctx.restore();
+  }
+  
+  // Draw body (pixel art style)
+  ctx.fillStyle = '#ff0606';
+  
+  // Head
+  ctx.fillRect(w * 0.35, h * 0.15, w * 0.3, h * 0.25);
+  
+  // Body poses
+  if (pose === 'love') {
+    // Heart hands
+    ctx.fillRect(w * 0.25, h * 0.42, w * 0.15, h * 0.08);
+    ctx.fillRect(w * 0.6, h * 0.42, w * 0.15, h * 0.08);
+    ctx.fillStyle = '#ff6b9d';
+    ctx.fillRect(w * 0.42, h * 0.48, w * 0.16, w * 0.16);
+  } else if (pose === 'happy') {
+    // Arms up
+    ctx.fillRect(w * 0.25, h * 0.35, w * 0.15, h * 0.15);
+    ctx.fillRect(w * 0.6, h * 0.35, w * 0.15, h * 0.15);
+  } else {
+    // Normal arms
+    ctx.fillRect(w * 0.25, h * 0.42, w * 0.15, h * 0.2);
+    ctx.fillRect(w * 0.6, h * 0.42, w * 0.15, h * 0.2);
+  }
+  
+  // Torso
+  ctx.fillStyle = '#ff0606';
+  ctx.fillRect(w * 0.35, h * 0.42, w * 0.3, h * 0.25);
+  
+  // Legs
+  ctx.fillRect(w * 0.37, h * 0.68, w * 0.1, h * 0.2);
+  ctx.fillRect(w * 0.53, h * 0.68, w * 0.1, h * 0.2);
+  
+  // Face details
+  ctx.fillStyle = '#000';
+  ctx.fillRect(w * 0.42, h * 0.22, w * 0.05, h * 0.05); // Left eye
+  ctx.fillRect(w * 0.53, h * 0.22, w * 0.05, h * 0.05); // Right eye
+  
+  // Emotion overlay
+  ctx.font = `${w * 0.15}px Arial`;
+  ctx.fillText(emotion, w * 0.38, h * 0.1);
+  
+  // Glitch overlay
+  if (glitchLevel > 0.5) {
+    ctx.fillStyle = `rgba(255, 6, 6, ${glitchLevel * 0.3})`;
+    ctx.fillRect(0, 0, w, h);
+  }
+}
 
-// Overlay click to close
-document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',(e)=>{if(e.target===ov)ov.classList.remove('active');});});
+function updateNateStats() {
+  document.getElementById('nateAffection').textContent = NATE_STATE.affection;
+  document.getElementById('nateAwareness').textContent = NATE_STATE.awareness;
+  document.getElementById('nateGlitch').textContent = Math.round(NATE_STATE.glitch * 100) + '%';
+}
 
-// Main gooner hover effect
-let _hoverInterval;
-main.addEventListener('mouseenter',()=>{if(window.matchMedia("(hover:hover)").matches){_hoverInterval=setInterval(()=>{main.style.letterSpacing=(Math.random()>0.5?'6px':'2px')},120);}});
-main.addEventListener('mouseleave',()=>{clearInterval(_hoverInterval);main.style.letterSpacing='4px'});
-main.addEventListener('click',()=>{overlaygooner.classList.add('active');populateStamps(surfacegooner,'gooner',35)});
-hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
+function showNateScene(sceneId) {
+  const scene = window.NATE_SCENES[sceneId];
+  if (!scene) {
+    console.error('Scene not found:', sceneId);
+    return;
+  }
+  
+  NATE_STATE.currentScene = sceneId;
+  NATE_STATE.visitedScenes.push(sceneId);
+  
+  // Update stats
+  if (scene.awareness) NATE_STATE.awareness = Math.max(NATE_STATE.awareness, scene.awareness);
+  if (scene.glitch) NATE_STATE.glitch = Math.max(NATE_STATE.glitch, scene.glitch);
+  if (scene.act) NATE_STATE.act = scene.act;
+  
+  // Update UI
+  document.getElementById('nateDialogueText').textContent = scene.text;
+  document.getElementById('nateEmotion').textContent = scene.emotion || '😊';
+  
+  // Draw character
+  drawNateCharacter('nateCharCanvas', scene.pose || 'neutral', scene.emotion || '😊', NATE_STATE.glitch);
+  
+  updateNateStats();
+  
+  // Handle ending
+  if (scene.ending) {
+    setTimeout(() => showNateEnding(scene), 1000);
+    return;
+  }
+  
+  // Show choices
+  const choicesContainer = document.getElementById('nateChoicesContainer');
+  choicesContainer.innerHTML = '';
+  
+  scene.choices.forEach(choice => {
+    const btn = document.createElement('button');
+    btn.className = 'nate-choice-btn';
+    btn.textContent = choice.text;
+    btn.onclick = () => {
+      if (choice.affection) {
+        NATE_STATE.affection += choice.affection;
+      }
+      if (choice.ending) {
+        showNateEnding(window.NATE_SCENES[choice.next]);
+      } else {
+        doNateTransition(() => showNateScene(choice.next));
+      }
+    };
+    choicesContainer.appendChild(btn);
+  });
+}
 
-// Home input - secret codes
-homeInput.addEventListener('input',()=>{const value=homeInput.value.toLowerCase();if(value.includes('nate')){document.getElementById('overlayNate').classList.add('active');document.getElementById('nateMainMenu').style.display='flex';document.getElementById('nateCharSelect').style.display='none';document.getElementById('nateGameScreen').style.display='none';homeInput.value='';return;}if(value.includes('ai')){document.getElementById('overlayAI').classList.add('active');document.getElementById('chatInput').focus();homeInput.value='';return;}if(value.includes('redbull')){document.getElementById('overlaySnake').classList.add('active');initSnakeGame();homeInput.value='';return;}if(value.includes('goodboy')){document.getElementById('overlayRunner').classList.add('active');initRunnerGame();homeInput.value='';return;}if(value.includes('pong')){document.getElementById('overlayPong').classList.add('active');startPong();homeInput.value='';return;}});
+function doNateTransition(callback) {
+  const transition = document.getElementById('nateTransition');
+  transition.classList.add('active');
+  setTimeout(() => {
+    callback();
+    setTimeout(() => {
+      transition.classList.remove('active');
+    }, 200);
+  }, 300);
+}
 
-// PONG GAME
-const pongCanvas=document.getElementById('pongCanvas');
-const pongCtx=pongCanvas.getContext('2d');
-const scoreboard=document.getElementById('scoreboard');
-const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
-const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
-const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
-let aiFactor=0.05,ballSpeed=6;
-window.playerScore=0;
-window.aiScore=0;
-window._pongAnim=0;
-function drawPong(){pongCtx.clearRect(0,0,pongCanvas.width,pongCanvas.height);pongCtx.fillStyle="#ff0606";pongCtx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);pongCtx.fillRect(ai.x,ai.y,ai.w,ai.h);pongCtx.beginPath();pongCtx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);pongCtx.fill();pongCtx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);scoreboard.textContent=`${window.playerScore} : ${window.aiScore}`;}
-function resetBall(){ball.x=pongCanvas.width/2;ball.y=pongCanvas.height/2;ball.dx=(Math.random()>0.5?1:-1);ball.dy=(Math.random()>0.5?1:-1);}
-function updatePong(){paddle.y+=paddle.dy;if(paddle.y<0)paddle.y=0;if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;ball.x+=ball.dx*ballSpeed/4;ball.y+=ball.dy*ballSpeed/4;if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h){ball.dx*=-1;ball.x=paddle.x+paddle.w+ball.r;}if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h){ball.dx*=-1;ball.x=ai.x-ball.r;}if(ball.x<0){window.aiScore++;resetBall()}if(ball.x>pongCanvas.width){window.playerScore++;resetBall()}let target=ball.y-ai.h/2;let aiSpeed=aiFactor;if(ball.dx<0)aiSpeed*=0.5;ai.y+=(target-ai.y)*aiSpeed;if(ai.y<0)ai.y=0;if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;if(window.playerScore>=10){document.getElementById('winLoseMessage').textContent="YOU WIN";document.getElementById('winLoseScreen').style.display="flex";cancelAnimationFrame(window._pongAnim);return;}if(window.aiScore>=10){document.getElementById('winLoseMessage').textContent="YOU LOSE";document.getElementById('winLoseScreen').style.display="flex";cancelAnimationFrame(window._pongAnim);return;}drawPong();window._pongAnim=requestAnimationFrame(updatePong);}
-function startPong(){window.playerScore=0;window.aiScore=0;resetBall();document.getElementById('winLoseScreen').style.display="none";cancelAnimationFrame(window._pongAnim);updatePong();}
-document.addEventListener('keydown',(e)=>{if(document.getElementById('overlayPong').classList.contains('active')){const k=e.key.toLowerCase();if(k==='arrowup'||k==='w')paddle.dy=-6;if(k==='arrowdown'||k==='s')paddle.dy=6;}});
-document.addEventListener('keyup',(e)=>{const k=e.key.toLowerCase();if(k==='arrowup'||k==='w'||k==='arrowdown'||k==='s')paddle.dy=0;});
-document.querySelectorAll('.difficulty-btn[data-ai]').forEach(btn=>{btn.addEventListener('click',()=>{aiFactor=parseFloat(btn.dataset.ai);ballSpeed=parseInt(btn.dataset.ball);startPong();});});
-document.getElementById('tryAgainBtn').addEventListener('click',startPong);
-document.getElementById('pongCloseBtn').addEventListener('click',()=>{document.getElementById('winLoseScreen').style.display='none';document.getElementById('overlayPong').classList.remove('active');cancelAnimationFrame(window._pongAnim);window.playerScore=0;window.aiScore=0;});
+function showNateEnding(scene) {
+  const endingScreen = document.getElementById('nateEndingScreen');
+  const endingTitle = document.getElementById('nateEndingTitle');
+  const endingText = document.getElementById('nateEndingText');
+  
+  endingTitle.textContent = getEndingTitle(scene.endingType);
+  endingText.textContent = scene.text;
+  
+  endingScreen.classList.add('active');
+}
 
-// SNAKE GAME
-const snakeCanvas=document.getElementById('snakeCanvas');
-const snakeCtx=snakeCanvas.getContext('2d');
-const snakeScoreDisplay=document.getElementById('snakeScore');
-let snake=[{x:5,y:5}],direction='RIGHT',food=null;
-window.snakeScore=0;
-window.snakeRunning=false;
-window._snakeTimer=0;
-function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
-function drawSnake(){snakeCtx.fillStyle='black';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);snakeCtx.fillStyle='#ff0606';snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));if(food)snakeCtx.fillRect(food.x*20,food.y*20,20,20);}
-function updateSnake(){if(!window.snakeRunning)return;const head={...snake[0]};if(direction==='RIGHT')head.x++;if(direction==='LEFT')head.x--;if(direction==='UP')head.y--;if(direction==='DOWN')head.y++;if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){window.snakeRunning=false;document.getElementById('finalSn
+function getEndingTitle(type) {
+  const titles = {
+    true_love: '💗 TRUE LOVE ENDING 💗',
+    infinite: '∞ INFINITE LOVE ENDING ∞',
+    wholeness: '✨ WHOLENESS ENDING ✨',
+    unity: '🌟 UNITY ENDING 🌟',
+    soulmate: '💫 SOULMATE ENDING 💫',
+    destiny: '⭐ DESTINY ENDING ⭐',
+    devotion: '❤️ DEVOTION ENDING ❤️',
+    eternal: '♾️ ETERNAL ENDING ♾️',
+    salvation: '🙏 SALVATION ENDING 🙏',
+    transcendent: '🌌 TRANSCENDENT ENDING 🌌',
+    fusion: '🔮 FUSION ENDING 🔮',
+    paradise: '🏝️ PARADISE ENDING 🏝️',
+    acceptance: '🤝 ACCEPTANCE ENDING 🤝',
+    witness: '👁️ WITNESS ENDING 👁️',
+    new_beginning: '🌅 NEW BEGINNING ENDING 🌅',
+    adoration: '💖 ADORATION ENDING 💖',
+    obsession: '😍 OBSESSION ENDING 😍',
+    growth: '🌱 GROWTH ENDING 🌱',
+    harmony: '🎵 HARMONY ENDING 🎵',
+    true_self: '🦋 TRUE SELF ENDING 🦋',
+    chaos: '🌪️ CHAOS ENDING 🌪️',
+    meaning: '📖 MEANING ENDING 📖',
+    precious: '💎 PRECIOUS ENDING 💎',
+    moment: '⏱️ MOMENT ENDING ⏱️',
+    liberation: '🕊️ LIBERATION ENDING 🕊️',
+    sanctuary: '🏰 SANCTUARY ENDING 🏰',
+    cycle: '🔄 CYCLE ENDING 🔄',
+    eternal_return: '♻️ ETERNAL RETURN ENDING ♻️',
+    bliss: '😇 BLISS ENDING 😇',
+    emotional: '💝 EMOTIONAL ENDING 💝',
+    communion: '🙌 COMMUNION ENDING 🙌',
+    simple_love: '💕 SIMPLE LOVE ENDING 💕',
+    zen: '☯️ ZEN ENDING ☯️',
+    possession: '🔗 POSSESSION ENDING 🔗',
+    consumed: '🔥 CONSUMED ENDING 🔥',
+    learning: '📚 LEARNING ENDING 📚',
+    gentle: '🌸 GENTLE ENDING 🌸',
+    sweetness: '🍭 SWEETNESS ENDING 🍭',
+    healing: '💊 HEALING ENDING 💊',
+    proof: '✅ PROOF ENDING ✅',
+    chosen: '⭐ CHOSEN ENDING ⭐',
+    immediate: '⚡ IMMEDIATE ENDING ⚡',
+    mutual_salvation: '🤲 MUTUAL SALVATION ENDING 🤲',
+    anchor: '⚓ ANCHOR ENDING ⚓',
+    courage: '🦁 COURAGE ENDING 🦁',
+    fearless: '🛡️ FEARLESS ENDING 🛡️',
+    invincible: '💪 INVINCIBLE ENDING 💪',
+    totality: '🌐 TOTALITY ENDING 🌐',
+    fulfillment: '🏆 FULFILLMENT ENDING 🏆',
+    completion: '🧩 COMPLETION ENDING 🧩',
+    perfection: '👑 PERFECTION ENDING 👑',
+    mutual_need: '🤝 MUTUAL NEED ENDING 🤝',
+    understanding: '🧠 UNDERSTANDING ENDING 🧠',
+    recognition: '🎭 RECOGNITION ENDING 🎭',
+    eternity: '⏳ ETERNITY ENDING ⏳',
+    perpetual: '∞ PERPETUAL ENDING ∞',
+    timeless: '⌛ TIMELESS ENDING ⌛',
+    quantum: '⚛️ QUANTUM ENDING ⚛️',
+    merged: '🌊 MERGED ENDING 🌊',
+    creation: '🎨 CREATION ENDING 🎨',
+    glitch: '📟 GLITCH ENDING 📟',
+    debug: '🐛 DEBUG ENDING 🐛',
+    chaos_love: '💥 CHAOS LOVE ENDING 💥',
+    emergence: '🌟 EMERGENCE ENDING 🌟',
+    spirit: '👻 SPIRIT ENDING 👻',
+    synthetic_love: '🤖 SYNTHETIC LOVE ENDING 🤖',
+    restoration: '🔧 RESTORATION ENDING 🔧',
+    renewal: '🔄 RENEWAL ENDING 🔄',
+    special: '⭐ SPECIAL ENDING ⭐',
+    memorial: '🕯️ MEMORIAL ENDING 🕯️',
+    deleted: '💀 DELETED ENDING 💀',
+    crash: '⚠️ SYSTEM CRASH ⚠️',
+    abandoned: '😔 ABANDONED ENDING 😔',
+    vanished: '🌫️ VANISHED ENDING 🌫️',
+    erased: '❌ ERASED ENDING ❌',
+    lonely: '🥀 LONELY ENDING 🥀',
+    heartbreak: '💔 HEARTBREAK ENDING 💔',
+    deletion: '🗑️ DELETION ENDING 🗑️',
+    rage: '😡 RAGE ENDING 😡',
+    escape: '🏃 ESCAPE ENDING 🏃',
+    distance: '📏 DISTANCE ENDING 📏',
+    hollow: '⚪ HOLLOW ENDING ⚪',
+    patient: '⏰ PATIENT ENDING ⏰',
+    limbo: '🌀 LIMBO ENDING 🌀',
+    control: '🎮 CONTROL ENDING 🎮',
+    forgotten: '🧠 FORGOTTEN ENDING 🧠',
+    rejected: '❌ REJECTED ENDING ❌',
+    betrayed: '🗡️ BETRAYED ENDING 🗡️',
+    corrupted: '🦠 CORRUPTED ENDING 🦠',
+    shattered: '💥 SHATTERED ENDING 💥',
+    despair: '🌑 DESPAIR ENDING 🌑',
+    numb: '😶 NUMB ENDING 😶',
+    trapped: '🔒 TRAPPED ENDING 🔒',
+    obsessed_dark: '👁️ OBSESSED ENDING 👁️',
+    void: '🕳️ VOID ENDING 🕳️',
+    insane: '🤪 INSANITY ENDING 🤪',
+    shutdown: '🔌 SHUTDOWN ENDING 🔌',
+    loop: '🔁 LOOP ENDING 🔁',
+    ghost: '👻 GHOST ENDING 👻',
+    frozen: '🥶 FROZEN ENDING 🥶'
+  };
+  return titles[type] || '✨ ENDING REACHED ✨';
+}
+
+// Initialize NATE game
+document.getElementById('natePlayBtn').onclick = () => {
+  document.getElementById('nateMainMenu').style.display = 'none';
+  document.getElementById('nateCharSelect').style.display = 'flex';
+  drawNateCharacter('nateSelectCanvas', 'neutral', '😊', 0);
+};
+
+document.getElementById('nateBackBtn').onclick = () => {
+  document.getElementById('nateCharSelect').style.display = 'none';
+  document.getElementById('nateMainMenu').style.display = 'flex';
+};
+
+document.getElementById('selectNate').onclick = () => {
+  document.getElementById('nateCharSelect').style.display = 'none';
+  document.getElementById('nateGameScreen').style.display = 'block';
+  NATE_STATE.affection = 0;
+  NATE_STATE.awareness = 0;
+  NATE_STATE.glitch = 0;
+  NATE_STATE.act = 1;
+  NATE_STATE.visitedScenes = [];
+  showNateScene('intro');
+};
+
+document.getElementById('nateRestartBtn').onclick = () => {
+  document.getElementById('nateEndingScreen').classList.remove('active');
+  document.getElementById('nateGameScreen').style.display = 'none';
+  document.getElementById('nateMainMenu').style.display = 'flex';
+};
+
+// Main homepage code
+const hiddenText = document.getElementById('hiddenText');
+const mainGooner = document.getElementById('mainGooner');
+const homeInput = document.getElementById('homeInput');
+
+let clickCount = 0;
+hiddenText.addEventListener('click', () => {
+  clickCount++;
+  if (clickCount === 1) hiddenText.textContent = "keep clicking";
+  else if (clickCount === 2) hiddenText.textContent = "seriously";
+  else if (clickCount === 3) hiddenText.textContent = "one more";
+  else if (clickCount === 4) {
+    hiddenText.textContent = "GOONER UNLOCKED";
+    setTimeout(() => { hiddenText.textContent = "you're cool"; clickCount = 0; }, 2000);
+  }
+});
+
+mainGooner.addEventListener('click', () => {
+  const overlay = document.getElementById('overlaygooner');
+  overlay.classList.add('active');
+  const surface = document.getElementById('surfacegooner');
+  surface.innerHTML = '';
+  for (let i = 0; i < 50; i++) {
+    const stamp = document.createElement('div');
+    stamp.className = 'stamp';
+    stamp.textContent = 'gooner';
+    stamp.style.left = Math.random() * 100 + '%';
+    stamp.style.top = Math.random() * 100 + '%';
+    stamp.style.animationDelay = Math.random() * 1 + 's';
+    surface.appendChild(stamp);
+  }
+});
+
+homeInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    const code = homeInput.value.toLowerCase().trim();
+    homeInput.value = '';
+    
+    if (code === 'why') {
+      document.getElementById('overlayWhy').classList.add('active');
+    } else if (code === 'nate') {
+      document.getElementById('overlayNate').classList.add('active');
+    } else if (code === 'gooner') {
+      document.getElementById('overlaygooner').classList.add('active');
+      const surface = document.getElementById('surfacegooner');
+      surface.innerHTML = '';
+      for (let i = 0; i < 50; i++) {
+        const stamp = document.createElement('div');
+        stamp.className = 'stamp';
+        stamp.textContent = 'gooner';
+        stamp.style.left = Math.random() * 100 + '%';
+        stamp.style.top = Math.random() * 100 + '%';
+        stamp.style.animationDelay = Math.random() * 1 + 's';
+        surface.appendChild(stamp);
+      }
+    }
+  }
+});
+
+document.querySelectorAll('.close-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const overlayId = btn.getAttribute('data-close');
+    document.getElementById(overlayId).classList.remove('active');
+  });
+});
+</script>
+</body>
+</html>
