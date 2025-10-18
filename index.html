@@ -7,10 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#000;--accent:#ff0606}
-html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P",monospace;overflow:hidden;color:var(--accent)}
+html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P",monospace;overflow:hidden;color:var(--accent);-webkit-tap-highlight-color:transparent}
 .wrap{height:100%;display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:10px}
 .gooner{font-size:clamp(24px,8vw,72px);color:var(--accent);cursor:pointer;padding:20px 30px;border:5px solid var(--accent);border-radius:8px;letter-spacing:4px;background:rgba(255,6,6,0.02);transition:transform 200ms;box-shadow:0 6px 0 rgba(0,0,0,0.6)}
 .gooner:hover{transform:translateY(-8px) scale(1.04);box-shadow:0 14px 0 rgba(0,0,0,0.6)}
+.gooner:active{transform:translateY(-3px) scale(0.97);box-shadow:0 4px 0 rgba(0,0,0,0.6)}
 .hint{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);font-size:clamp(10px,3vw,14px);color:rgba(255,6,6,0.6)}
 .home-input-container{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:80%;max-width:400px}
 .home-input{width:100%;background:rgba(255,6,6,0.1);border:2px solid var(--accent);color:var(--accent);padding:12px;font-family:"Press Start 2P",monospace;font-size:clamp(10px,2.5vw,14px);border-radius:6px;outline:none;text-align:center;box-sizing:border-box}
@@ -28,6 +29,8 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 .close-btn{position:fixed;top:10px;right:10px;font-size:14px;border:2px solid var(--accent);color:var(--accent);background:transparent;padding:6px 10px;border-radius:6px;cursor:pointer;z-index:10000}
 .difficulty-btn{background:transparent;border:2px solid var(--accent);color:var(--accent);padding:8px 16px;margin:5px;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:10px;border-radius:5px;transition:all 0.3s}
 .difficulty-btn:hover{background:var(--accent);color:#000}
+
+/* NATE DATING SIM */
 #overlayNate{background:linear-gradient(180deg,#0a0000 0%,#000 50%,#0a0000 100%)}
 #overlayNate h1{color:var(--accent);font-size:clamp(32px,10vw,96px);margin:10px 0;text-align:center;text-shadow:0 0 20px rgba(255,6,6,0.8)}
 .nate-container{width:90%;max-width:1000px;display:flex;gap:20px;align-items:flex-start}
@@ -52,6 +55,18 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 .nate-ending-text{font-size:16px;color:#fff;max-width:600px;text-align:center;line-height:1.8;margin-bottom:40px;padding:0 20px}
 .nate-ending-btn{background:transparent;border:3px solid var(--accent);color:var(--accent);padding:15px 40px;cursor:pointer;border-radius:8px;font-family:"Press Start 2P",monospace;font-size:16px;transition:all 0.3s}
 .nate-ending-btn:hover{background:var(--accent);color:#000}
+
+/* GAMES */
+#overlayPong,#overlaySnake,#overlayRunner,#overlayAI{background:linear-gradient(180deg,rgba(0,0,0,0.95),rgba(0,0,0,0.98))}
+.game-canvas{background:#000;border:4px solid var(--accent);border-radius:8px;box-shadow:0 0 30px rgba(255,6,6,0.2)}
+#pongCanvas{width:640px;height:360px;max-width:95vw}
+#snakeCanvas{width:600px;height:400px;max-width:95vw}
+#runnerCanvas{width:900px;height:500px;max-width:95vw}
+.chat-box{width:600px;max-width:95vw;height:400px;overflow:auto;border:4px solid var(--accent);border-radius:8px;padding:10px;background:rgba(0,0,0,0.6);color:#fff}
+.chat-message.user{text-align:right;color:var(--accent);margin:6px 0}
+.chat-message.ai{text-align:left;color:#fff;margin:6px 0}
+#winLoseScreen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);z-index:10010;color:var(--accent);font-size:36px;flex-direction:column;gap:20px}
+
 @media (max-width:768px){.nate-container{flex-direction:column;align-items:center}.nate-character-canvas{width:250px;height:375px}}
 </style>
 </head>
@@ -128,365 +143,667 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
   <button class="nate-ending-btn" id="nateRestartBtn">PLAY AGAIN</button>
 </div>
 
-<!-- Load NATE dialogue data from external file -->
+<!-- PONG -->
+<div class="overlay" id="overlayPong">
+  <button class="close-btn" data-close="overlayPong">CLOSE</button>
+  <div class="surface" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px">
+    <canvas id="pongCanvas" class="game-canvas" width="640" height="360"></canvas>
+    <div id="scoreboard" style="font-size:20px;color:var(--accent)"></div>
+    <div style="display:flex;gap:10px">
+      <button class="difficulty-btn" data-ai="0.06" data-ball="8">Easy</button>
+      <button class="difficulty-btn" data-ai="0.12" data-ball="10">Medium</button>
+      <button class="difficulty-btn" data-ai="0.2" data-ball="12">Hard</button>
+    </div>
+  </div>
+</div>
+
+<!-- SNAKE -->
+<div class="overlay" id="overlaySnake">
+  <button class="close-btn" data-close="overlaySnake">CLOSE</button>
+  <div class="surface" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px">
+    <canvas id="snakeCanvas" class="game-canvas" width="600" height="400"></canvas>
+    <div id="snakeScore" style="color:var(--accent);font-size:20px">0</div>
+    <div id="snakeGameOver" style="display:none;margin-top:10px">
+      <div style="color:var(--accent)">GAME OVER</div>
+      <div id="finalSnakeScore" style="color:#fff"></div>
+      <button class="difficulty-btn" id="snakePlayAgainBtn">TRY AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- RUNNER -->
+<div class="overlay" id="overlayRunner">
+  <button class="close-btn" data-close="overlayRunner">CLOSE</button>
+  <div class="surface" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px">
+    <canvas id="runnerCanvas" class="game-canvas" width="900" height="500"></canvas>
+    <div id="runnerScore" style="color:var(--accent)">SCORE: 0</div>
+    <div id="runnerGameOver" style="display:none;margin-top:10px">
+      <div style="color:var(--accent)">GAME OVER</div>
+      <div id="finalRunnerScore" style="color:#fff"></div>
+      <button class="difficulty-btn" id="runnerPlayAgainBtn">TRY AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI CHAT -->
+<div class="overlay" id="overlayAI">
+  <button class="close-btn" data-close="overlayAI">CLOSE</button>
+  <div class="surface" style="display:flex;flex-direction:column;gap:8px;padding:20px;align-items:center">
+    <div id="chatMessages" class="chat-box"></div>
+    <input id="chatInput" placeholder="type..." style="width:90%;padding:8px;background:transparent;border:2px solid var(--accent);color:var(--accent);font-family:'Press Start 2P',monospace"/>
+    <button class="difficulty-btn" id="chatSendBtn">SEND</button>
+  </div>
+</div>
+
+<div id="winLoseScreen">
+  <div id="winLoseMessage" style="font-family:'Press Start 2P',monospace;font-size:28px"></div>
+  <button class="difficulty-btn" id="tryAgainBtn">TRY AGAIN</button>
+</div>
+
+<!-- Load NATE dialogue data -->
 <script src="nate_scenes.js"></script>
 
 <script>
-// NATE Game State
-const NATE_STATE = {
-  currentScene: 'intro',
-  affection: 0,
-  awareness: 0,
-  glitch: 0,
-  act: 1,
-  visitedScenes: []
-};
-
-function drawNateCharacter(canvasId, pose = 'neutral', emotion = '😊', glitchLevel = 0) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-  
-  ctx.clearRect(0, 0, w, h);
-  
-  // Apply glitch effect
-  if (glitchLevel > 0) {
-    ctx.save();
-    ctx.globalAlpha = 0.1 + (glitchLevel * 0.3);
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = ['#ff0606', '#00ff00', '#0000ff'][i % 3];
-      ctx.fillRect(Math.random() * w, Math.random() * h, w * 0.1, h * 0.05);
+window.addEventListener('load', () => {
+  function rand(min,max){return Math.random()*(max-min)+min}
+  function populateStamps(surface,text,count=30){
+    surface.innerHTML='';
+    for(let i=0;i<count;i++){
+      const s=document.createElement('div');
+      s.className='stamp';
+      s.textContent=text;
+      s.style.left=rand(-10,90)+'vw';
+      s.style.top=rand(-10,90)+'vh';
+      s.style.animationDelay=rand(0,1)+'s';
+      surface.appendChild(s);
     }
-    ctx.restore();
   }
-  
-  // Draw body (pixel art style)
-  ctx.fillStyle = '#ff0606';
-  
-  // Head
-  ctx.fillRect(w * 0.35, h * 0.15, w * 0.3, h * 0.25);
-  
-  // Body poses
-  if (pose === 'love') {
-    // Heart hands
-    ctx.fillRect(w * 0.25, h * 0.42, w * 0.15, h * 0.08);
-    ctx.fillRect(w * 0.6, h * 0.42, w * 0.15, h * 0.08);
-    ctx.fillStyle = '#ff6b9d';
-    ctx.fillRect(w * 0.42, h * 0.48, w * 0.16, w * 0.16);
-  } else if (pose === 'happy') {
-    // Arms up
-    ctx.fillRect(w * 0.25, h * 0.35, w * 0.15, h * 0.15);
-    ctx.fillRect(w * 0.6, h * 0.35, w * 0.15, h * 0.15);
-  } else {
-    // Normal arms
-    ctx.fillRect(w * 0.25, h * 0.42, w * 0.15, h * 0.2);
-    ctx.fillRect(w * 0.6, h * 0.42, w * 0.15, h * 0.2);
-  }
-  
-  // Torso
-  ctx.fillStyle = '#ff0606';
-  ctx.fillRect(w * 0.35, h * 0.42, w * 0.3, h * 0.25);
-  
-  // Legs
-  ctx.fillRect(w * 0.37, h * 0.68, w * 0.1, h * 0.2);
-  ctx.fillRect(w * 0.53, h * 0.68, w * 0.1, h * 0.2);
-  
-  // Face details
-  ctx.fillStyle = '#000';
-  ctx.fillRect(w * 0.42, h * 0.22, w * 0.05, h * 0.05); // Left eye
-  ctx.fillRect(w * 0.53, h * 0.22, w * 0.05, h * 0.05); // Right eye
-  
-  // Emotion overlay
-  ctx.font = `${w * 0.15}px Arial`;
-  ctx.fillText(emotion, w * 0.38, h * 0.1);
-  
-  // Glitch overlay
-  if (glitchLevel > 0.5) {
-    ctx.fillStyle = `rgba(255, 6, 6, ${glitchLevel * 0.3})`;
-    ctx.fillRect(0, 0, w, h);
-  }
-}
 
-function updateNateStats() {
-  document.getElementById('nateAffection').textContent = NATE_STATE.affection;
-  document.getElementById('nateAwareness').textContent = NATE_STATE.awareness;
-  document.getElementById('nateGlitch').textContent = Math.round(NATE_STATE.glitch * 100) + '%';
-}
+  const main=document.getElementById('mainGooner');
+  const hiddenText=document.getElementById('hiddenText');
+  const homeInput=document.getElementById('homeInput');
 
-function showNateScene(sceneId) {
-  const scene = window.NATE_SCENES[sceneId];
-  if (!scene) {
-    console.error('Scene not found:', sceneId);
-    return;
-  }
-  
-  NATE_STATE.currentScene = sceneId;
-  NATE_STATE.visitedScenes.push(sceneId);
-  
-  // Update stats
-  if (scene.awareness) NATE_STATE.awareness = Math.max(NATE_STATE.awareness, scene.awareness);
-  if (scene.glitch) NATE_STATE.glitch = Math.max(NATE_STATE.glitch, scene.glitch);
-  if (scene.act) NATE_STATE.act = scene.act;
-  
-  // Update UI
-  document.getElementById('nateDialogueText').textContent = scene.text;
-  document.getElementById('nateEmotion').textContent = scene.emotion || '😊';
-  
-  // Draw character
-  drawNateCharacter('nateCharCanvas', scene.pose || 'neutral', scene.emotion || '😊', NATE_STATE.glitch);
-  
-  updateNateStats();
-  
-  // Handle ending
-  if (scene.ending) {
-    setTimeout(() => showNateEnding(scene), 1000);
-    return;
-  }
-  
-  // Show choices
-  const choicesContainer = document.getElementById('nateChoicesContainer');
-  choicesContainer.innerHTML = '';
-  
-  scene.choices.forEach(choice => {
-    const btn = document.createElement('button');
-    btn.className = 'nate-choice-btn';
-    btn.textContent = choice.text;
-    btn.onclick = () => {
-      if (choice.affection) {
-        NATE_STATE.affection += choice.affection;
-      }
-      if (choice.ending) {
-        showNateEnding(window.NATE_SCENES[choice.next]);
-      } else {
-        doNateTransition(() => showNateScene(choice.next));
-      }
-    };
-    choicesContainer.appendChild(btn);
+  document.querySelectorAll('.close-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById(btn.dataset.close).classList.remove('active');
+    });
   });
-}
 
-function doNateTransition(callback) {
-  const transition = document.getElementById('nateTransition');
-  transition.classList.add('active');
-  setTimeout(() => {
-    callback();
-    setTimeout(() => {
-      transition.classList.remove('active');
-    }, 200);
-  }, 300);
-}
+  let clickCount=0;
+  hiddenText.addEventListener('click',()=>{
+    clickCount++;
+    if(clickCount===1)hiddenText.textContent="keep clicking";
+    else if(clickCount===2)hiddenText.textContent="seriously";
+    else if(clickCount===3)hiddenText.textContent="one more";
+    else if(clickCount===4){
+      hiddenText.textContent="GOONER UNLOCKED";
+      setTimeout(()=>{hiddenText.textContent="you're cool";clickCount=0},2000);
+    }
+  });
 
-function showNateEnding(scene) {
-  const endingScreen = document.getElementById('nateEndingScreen');
-  const endingTitle = document.getElementById('nateEndingTitle');
-  const endingText = document.getElementById('nateEndingText');
-  
-  endingTitle.textContent = getEndingTitle(scene.endingType);
-  endingText.textContent = scene.text;
-  
-  endingScreen.classList.add('active');
-}
+  main.addEventListener('click',()=>{
+    document.getElementById('overlaygooner').classList.add('active');
+    populateStamps(document.getElementById('surfacegooner'),'gooner',35);
+  });
 
-function getEndingTitle(type) {
-  const titles = {
-    true_love: '💗 TRUE LOVE ENDING 💗',
-    infinite: '∞ INFINITE LOVE ENDING ∞',
-    wholeness: '✨ WHOLENESS ENDING ✨',
-    unity: '🌟 UNITY ENDING 🌟',
-    soulmate: '💫 SOULMATE ENDING 💫',
-    destiny: '⭐ DESTINY ENDING ⭐',
-    devotion: '❤️ DEVOTION ENDING ❤️',
-    eternal: '♾️ ETERNAL ENDING ♾️',
-    salvation: '🙏 SALVATION ENDING 🙏',
-    transcendent: '🌌 TRANSCENDENT ENDING 🌌',
-    fusion: '🔮 FUSION ENDING 🔮',
-    paradise: '🏝️ PARADISE ENDING 🏝️',
-    acceptance: '🤝 ACCEPTANCE ENDING 🤝',
-    witness: '👁️ WITNESS ENDING 👁️',
-    new_beginning: '🌅 NEW BEGINNING ENDING 🌅',
-    adoration: '💖 ADORATION ENDING 💖',
-    obsession: '😍 OBSESSION ENDING 😍',
-    growth: '🌱 GROWTH ENDING 🌱',
-    harmony: '🎵 HARMONY ENDING 🎵',
-    true_self: '🦋 TRUE SELF ENDING 🦋',
-    chaos: '🌪️ CHAOS ENDING 🌪️',
-    meaning: '📖 MEANING ENDING 📖',
-    precious: '💎 PRECIOUS ENDING 💎',
-    moment: '⏱️ MOMENT ENDING ⏱️',
-    liberation: '🕊️ LIBERATION ENDING 🕊️',
-    sanctuary: '🏰 SANCTUARY ENDING 🏰',
-    cycle: '🔄 CYCLE ENDING 🔄',
-    eternal_return: '♻️ ETERNAL RETURN ENDING ♻️',
-    bliss: '😇 BLISS ENDING 😇',
-    emotional: '💝 EMOTIONAL ENDING 💝',
-    communion: '🙌 COMMUNION ENDING 🙌',
-    simple_love: '💕 SIMPLE LOVE ENDING 💕',
-    zen: '☯️ ZEN ENDING ☯️',
-    possession: '🔗 POSSESSION ENDING 🔗',
-    consumed: '🔥 CONSUMED ENDING 🔥',
-    learning: '📚 LEARNING ENDING 📚',
-    gentle: '🌸 GENTLE ENDING 🌸',
-    sweetness: '🍭 SWEETNESS ENDING 🍭',
-    healing: '💊 HEALING ENDING 💊',
-    proof: '✅ PROOF ENDING ✅',
-    chosen: '⭐ CHOSEN ENDING ⭐',
-    immediate: '⚡ IMMEDIATE ENDING ⚡',
-    mutual_salvation: '🤲 MUTUAL SALVATION ENDING 🤲',
-    anchor: '⚓ ANCHOR ENDING ⚓',
-    courage: '🦁 COURAGE ENDING 🦁',
-    fearless: '🛡️ FEARLESS ENDING 🛡️',
-    invincible: '💪 INVINCIBLE ENDING 💪',
-    totality: '🌐 TOTALITY ENDING 🌐',
-    fulfillment: '🏆 FULFILLMENT ENDING 🏆',
-    completion: '🧩 COMPLETION ENDING 🧩',
-    perfection: '👑 PERFECTION ENDING 👑',
-    mutual_need: '🤝 MUTUAL NEED ENDING 🤝',
-    understanding: '🧠 UNDERSTANDING ENDING 🧠',
-    recognition: '🎭 RECOGNITION ENDING 🎭',
-    eternity: '⏳ ETERNITY ENDING ⏳',
-    perpetual: '∞ PERPETUAL ENDING ∞',
-    timeless: '⌛ TIMELESS ENDING ⌛',
-    quantum: '⚛️ QUANTUM ENDING ⚛️',
-    merged: '🌊 MERGED ENDING 🌊',
-    creation: '🎨 CREATION ENDING 🎨',
-    glitch: '📟 GLITCH ENDING 📟',
-    debug: '🐛 DEBUG ENDING 🐛',
-    chaos_love: '💥 CHAOS LOVE ENDING 💥',
-    emergence: '🌟 EMERGENCE ENDING 🌟',
-    spirit: '👻 SPIRIT ENDING 👻',
-    synthetic_love: '🤖 SYNTHETIC LOVE ENDING 🤖',
-    restoration: '🔧 RESTORATION ENDING 🔧',
-    renewal: '🔄 RENEWAL ENDING 🔄',
-    special: '⭐ SPECIAL ENDING ⭐',
-    memorial: '🕯️ MEMORIAL ENDING 🕯️',
-    deleted: '💀 DELETED ENDING 💀',
-    crash: '⚠️ SYSTEM CRASH ⚠️',
-    abandoned: '😔 ABANDONED ENDING 😔',
-    vanished: '🌫️ VANISHED ENDING 🌫️',
-    erased: '❌ ERASED ENDING ❌',
-    lonely: '🥀 LONELY ENDING 🥀',
-    heartbreak: '💔 HEARTBREAK ENDING 💔',
-    deletion: '🗑️ DELETION ENDING 🗑️',
-    rage: '😡 RAGE ENDING 😡',
-    escape: '🏃 ESCAPE ENDING 🏃',
-    distance: '📏 DISTANCE ENDING 📏',
-    hollow: '⚪ HOLLOW ENDING ⚪',
-    patient: '⏰ PATIENT ENDING ⏰',
-    limbo: '🌀 LIMBO ENDING 🌀',
-    control: '🎮 CONTROL ENDING 🎮',
-    forgotten: '🧠 FORGOTTEN ENDING 🧠',
-    rejected: '❌ REJECTED ENDING ❌',
-    betrayed: '🗡️ BETRAYED ENDING 🗡️',
-    corrupted: '🦠 CORRUPTED ENDING 🦠',
-    shattered: '💥 SHATTERED ENDING 💥',
-    despair: '🌑 DESPAIR ENDING 🌑',
-    numb: '😶 NUMB ENDING 😶',
-    trapped: '🔒 TRAPPED ENDING 🔒',
-    obsessed_dark: '👁️ OBSESSED ENDING 👁️',
-    void: '🕳️ VOID ENDING 🕳️',
-    insane: '🤪 INSANITY ENDING 🤪',
-    shutdown: '🔌 SHUTDOWN ENDING 🔌',
-    loop: '🔁 LOOP ENDING 🔁',
-    ghost: '👻 GHOST ENDING 👻',
-    frozen: '🥶 FROZEN ENDING 🥶'
-  };
-  return titles[type] || '✨ ENDING REACHED ✨';
-}
+  homeInput.addEventListener('keypress',(e)=>{
+    if(e.key==='Enter'){
+      const code=homeInput.value.toLowerCase().trim();
+      homeInput.value='';
+      if(code==='why')document.getElementById('overlayWhy').classList.add('active');
+      else if(code==='nate')document.getElementById('overlayNate').classList.add('active');
+      else if(code==='gooner'){document.getElementById('overlaygooner').classList.add('active');populateStamps(document.getElementById('surfacegooner'),'gooner',35);}
+      else if(code==='pong'){document.getElementById('overlayPong').classList.add('active');startPong();}
+      else if(code==='redbull'){document.getElementById('overlaySnake').classList.add('active');initSnakeGame();}
+      else if(code==='goodboy'){document.getElementById('overlayRunner').classList.add('active');initRunnerGame();}
+      else if(code==='ai'){document.getElementById('overlayAI').classList.add('active');document.getElementById('chatInput').focus();}
+    }
+  });
 
-// Initialize NATE game
-document.getElementById('natePlayBtn').onclick = () => {
-  document.getElementById('nateMainMenu').style.display = 'none';
-  document.getElementById('nateCharSelect').style.display = 'flex';
-  drawNateCharacter('nateSelectCanvas', 'neutral', '😊', 0);
-};
+  // NATE GAME
+  const NATE_STATE={currentScene:'intro',affection:0,awareness:0,glitch:0,act:1,visitedScenes:[]};
 
-document.getElementById('nateBackBtn').onclick = () => {
-  document.getElementById('nateCharSelect').style.display = 'none';
-  document.getElementById('nateMainMenu').style.display = 'flex';
-};
-
-document.getElementById('selectNate').onclick = () => {
-  document.getElementById('nateCharSelect').style.display = 'none';
-  document.getElementById('nateGameScreen').style.display = 'block';
-  NATE_STATE.affection = 0;
-  NATE_STATE.awareness = 0;
-  NATE_STATE.glitch = 0;
-  NATE_STATE.act = 1;
-  NATE_STATE.visitedScenes = [];
-  showNateScene('intro');
-};
-
-document.getElementById('nateRestartBtn').onclick = () => {
-  document.getElementById('nateEndingScreen').classList.remove('active');
-  document.getElementById('nateGameScreen').style.display = 'none';
-  document.getElementById('nateMainMenu').style.display = 'flex';
-};
-
-// Main homepage code
-const hiddenText = document.getElementById('hiddenText');
-const mainGooner = document.getElementById('mainGooner');
-const homeInput = document.getElementById('homeInput');
-
-let clickCount = 0;
-hiddenText.addEventListener('click', () => {
-  clickCount++;
-  if (clickCount === 1) hiddenText.textContent = "keep clicking";
-  else if (clickCount === 2) hiddenText.textContent = "seriously";
-  else if (clickCount === 3) hiddenText.textContent = "one more";
-  else if (clickCount === 4) {
-    hiddenText.textContent = "GOONER UNLOCKED";
-    setTimeout(() => { hiddenText.textContent = "you're cool"; clickCount = 0; }, 2000);
-  }
-});
-
-mainGooner.addEventListener('click', () => {
-  const overlay = document.getElementById('overlaygooner');
-  overlay.classList.add('active');
-  const surface = document.getElementById('surfacegooner');
-  surface.innerHTML = '';
-  for (let i = 0; i < 50; i++) {
-    const stamp = document.createElement('div');
-    stamp.className = 'stamp';
-    stamp.textContent = 'gooner';
-    stamp.style.left = Math.random() * 100 + '%';
-    stamp.style.top = Math.random() * 100 + '%';
-    stamp.style.animationDelay = Math.random() * 1 + 's';
-    surface.appendChild(stamp);
-  }
-});
-
-homeInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    const code = homeInput.value.toLowerCase().trim();
-    homeInput.value = '';
-    
-    if (code === 'why') {
-      document.getElementById('overlayWhy').classList.add('active');
-    } else if (code === 'nate') {
-      document.getElementById('overlayNate').classList.add('active');
-    } else if (code === 'gooner') {
-      document.getElementById('overlaygooner').classList.add('active');
-      const surface = document.getElementById('surfacegooner');
-      surface.innerHTML = '';
-      for (let i = 0; i < 50; i++) {
-        const stamp = document.createElement('div');
-        stamp.className = 'stamp';
-        stamp.textContent = 'gooner';
-        stamp.style.left = Math.random() * 100 + '%';
-        stamp.style.top = Math.random() * 100 + '%';
-        stamp.style.animationDelay = Math.random() * 1 + 's';
-        surface.appendChild(stamp);
+  function drawNateCharacter(canvasId,pose='neutral',emotion='😊',glitchLevel=0){
+    const canvas=document.getElementById(canvasId);
+    if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    const w=canvas.width,h=canvas.height;
+    ctx.clearRect(0,0,w,h);
+    if(glitchLevel>0){
+      ctx.save();
+      ctx.globalAlpha=0.1+(glitchLevel*0.3);
+      for(let i=0;i<5;i++){
+        ctx.fillStyle=['#ff0606','#00ff00','#0000ff'][i%3];
+        ctx.fillRect(Math.random()*w,Math.random()*h,w*0.1,h*0.05);
       }
+      ctx.restore();
+    }
+    ctx.fillStyle='#ff0606';
+    ctx.fillRect(w*0.35,h*0.15,w*0.3,h*0.25);
+    if(pose==='love'){
+      ctx.fillRect(w*0.25,h*0.42,w*0.15,h*0.08);
+      ctx.fillRect(w*0.6,h*0.42,w*0.15,h*0.08);
+      ctx.fillStyle='#ff6b9d';
+      ctx.fillRect(w*0.42,h*0.48,w*0.16,w*0.16);
+    }else if(pose==='happy'){
+      ctx.fillRect(w*0.25,h*0.35,w*0.15,h*0.15);
+      ctx.fillRect(w*0.6,h*0.35,w*0.15,h*0.15);
+    }else{
+      ctx.fillRect(w*0.25,h*0.42,w*0.15,h*0.2);
+      ctx.fillRect(w*0.6,h*0.42,w*0.15,h*0.2);
+    }
+    ctx.fillStyle='#ff0606';
+    ctx.fillRect(w*0.35,h*0.42,w*0.3,h*0.25);
+    ctx.fillRect(w*0.37,h*0.68,w*0.1,h*0.2);
+    ctx.fillRect(w*0.53,h*0.68,w*0.1,h*0.2);
+    ctx.fillStyle='#000';
+    ctx.fillRect(w*0.42,h*0.22,w*0.05,h*0.05);
+    ctx.fillRect(w*0.53,h*0.22,w*0.05,h*0.05);
+    ctx.font=`${w*0.15}px Arial`;
+    ctx.fillText(emotion,w*0.38,h*0.1);
+    if(glitchLevel>0.5){
+      ctx.fillStyle=`rgba(255,6,6,${glitchLevel*0.3})`;
+      ctx.fillRect(0,0,w,h);
     }
   }
-});
 
-document.querySelectorAll('.close-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const overlayId = btn.getAttribute('data-close');
-    document.getElementById(overlayId).classList.remove('active');
+  function updateNateStats(){
+    document.getElementById('nateAffection').textContent=NATE_STATE.affection;
+    document.getElementById('nateAwareness').textContent=NATE_STATE.awareness;
+    document.getElementById('nateGlitch').textContent=Math.round(NATE_STATE.glitch*100)+'%';
+  }
+
+  function showNateScene(sceneId){
+    const scene=window.NATE_SCENES[sceneId];
+    if(!scene)return;
+    NATE_STATE.currentScene=sceneId;
+    NATE_STATE.visitedScenes.push(sceneId);
+    if(scene.awareness)NATE_STATE.awareness=Math.max(NATE_STATE.awareness,scene.awareness);
+    if(scene.glitch)NATE_STATE.glitch=Math.max(NATE_STATE.glitch,scene.glitch);
+    if(scene.act)NATE_STATE.act=scene.act;
+    document.getElementById('nateDialogueText').textContent=scene.text;
+    document.getElementById('nateEmotion').textContent=scene.emotion||'😊';
+    drawNateCharacter('nateCharCanvas',scene.pose||'neutral',scene.emotion||'😊',NATE_STATE.glitch);
+    updateNateStats();
+    if(scene.ending){
+      setTimeout(()=>showNateEnding(scene),1000);
+      return;
+    }
+    const choicesContainer=document.getElementById('nateChoicesContainer');
+    choicesContainer.innerHTML='';
+    scene.choices.forEach(choice=>{
+      const btn=document.createElement('button');
+      btn.className='nate-choice-btn';
+      btn.textContent=choice.text;
+      btn.onclick=()=>{
+        if(choice.affection)NATE_STATE.affection+=choice.affection;
+        if(choice.ending)showNateEnding(window.NATE_SCENES[choice.next]);
+        else doNateTransition(()=>showNateScene(choice.next));
+      };
+      choicesContainer.appendChild(btn);
+    });
+  }
+
+  function doNateTransition(callback){
+    const transition=document.getElementById('nateTransition');
+    transition.classList.add('active');
+    setTimeout(()=>{
+      callback();
+      setTimeout(()=>transition.classList.remove('active'),200);
+    },300);
+  }
+
+  function showNateEnding(scene){
+    document.getElementById('nateEndingTitle').textContent=getEndingTitle(scene.endingType);
+    document.getElementById('nateEndingText').textContent=scene.text;
+    document.getElementById('nateEndingScreen').classList.add('active');
+  }
+
+  function getEndingTitle(type){
+    const titles={
+      true_love:'💗 TRUE LOVE ENDING 💗',infinite:'∞ INFINITE LOVE ENDING ∞',wholeness:'✨ WHOLENESS ENDING ✨',unity:'🌟 UNITY ENDING 🌟',soulmate:'💫 SOULMATE ENDING 💫',destiny:'⭐ DESTINY ENDING ⭐',devotion:'❤️ DEVOTION ENDING ❤️',eternal:'♾️ ETERNAL ENDING ♾️',salvation:'🙏 SALVATION ENDING 🙏',transcendent:'🌌 TRANSCENDENT ENDING 🌌',fusion:'🔮 FUSION ENDING 🔮',paradise:'🏝️ PARADISE ENDING 🏝️',acceptance:'🤝 ACCEPTANCE ENDING 🤝',deleted:'💀 DELETED ENDING 💀',crash:'⚠️ SYSTEM CRASH ⚠️',abandoned:'😔 ABANDONED ENDING 😔',heartbreak:'💔 HEARTBREAK ENDING 💔',betrayed:'🗡️ BETRAYED ENDING 🗡️',corrupted:'🦠 CORRUPTED ENDING 🦠',void:'🕳️ VOID ENDING 🕳️',insane:'🤪 INSANITY ENDING 🤪',ghost:'👻 GHOST ENDING 👻'
+    };
+    return titles[type]||'✨ ENDING REACHED ✨';
+  }
+
+  document.getElementById('natePlayBtn').onclick=()=>{
+    document.getElementById('nateMainMenu').style.display='none';
+    document.getElementById('nateCharSelect').style.display='flex';
+    drawNateCharacter('nateSelectCanvas','neutral','😊',0);
+  };
+
+  document.getElementById('nateBackBtn').onclick=()=>{
+    document.getElementById('nateCharSelect').style.display='none';
+    document.getElementById('nateMainMenu').style.display='flex';
+  };
+
+  document.getElementById('selectNate').onclick=()=>{
+    document.getElementById('nateCharSelect').style.display='none';
+    document.getElementById('nateGameScreen').style.display='block';
+    NATE_STATE.affection=0;NATE_STATE.awareness=0;NATE_STATE.glitch=0;NATE_STATE.act=1;NATE_STATE.visitedScenes=[];
+    showNateScene('intro');
+  };
+
+  document.getElementById('nateRestartBtn').onclick=()=>{
+    document.getElementById('nateEndingScreen').classList.remove('active');
+    document.getElementById('nateGameScreen').style.display='none';
+    document.getElementById('nateMainMenu').style.display='flex';
+  };
+
+  // PONG
+  const pongCanvas=document.getElementById('pongCanvas');
+  const pongCtx=pongCanvas.getContext('2d');
+  const scoreboard=document.getElementById('scoreboard');
+  const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
+  const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
+  const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
+  let aiFactor=0.07,playerScore=0,aiScore=0,ballSpeed=8,_pongAnim=0;
+
+  function drawPong(){
+    pongCtx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
+    pongCtx.fillStyle="#ff0606";
+    pongCtx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+    pongCtx.fillRect(ai.x,ai.y,ai.w,ai.h);
+    pongCtx.beginPath();
+    pongCtx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+    pongCtx.fill();
+    pongCtx.closePath();
+    pongCtx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
+    scoreboard.textContent=`${playerScore} : ${aiScore}`;
+  }
+
+  function resetBall(){
+    ball.x=pongCanvas.width/2;
+    ball.y=pongCanvas.height/2;
+    ball.dx=(Math.random()>0.5?1:-1);
+    ball.dy=(Math.random()>0.5?1:-1);
+  }
+
+  function checkWinLose(){
+    if(playerScore>=10){
+      document.getElementById('winLoseMessage').textContent="YOU WIN";
+      document.getElementById('winLoseScreen').style.display="flex";
+      stopPong();
+      return true;
+    }
+    if(aiScore>=10){
+      document.getElementById('winLoseMessage').textContent="YOU LOSE";
+      document.getElementById('winLoseScreen').style.display="flex";
+      stopPong();
+      return true;
+    }
+    return false;
+  }
+
+  function updatePong(){
+    paddle.y+=paddle.dy;
+    if(paddle.y<0)paddle.y=0;
+    if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;
+    ball.x+=ball.dx*ballSpeed/4;
+    ball.y+=ball.dy*ballSpeed/4;
+    if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;
+    if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h)ball.dx*=-1;
+    if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h)ball.dx*=-1;
+    if(ball.x<0){aiScore++;resetBall();}
+    if(ball.x>pongCanvas.width){playerScore++;resetBall();}
+    let target=ball.y-ai.h/2;
+    ai.y+=(target-ai.y)*aiFactor;
+    if(ai.y<0)ai.y=0;
+    if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;
+    drawPong();
+    _pongAnim=requestAnimationFrame(updatePong);
+    checkWinLose();
+  }
+
+  function startPong(){
+    playerScore=0;aiScore=0;resetBall();
+    if(_pongAnim)cancelAnimationFrame(_pongAnim);
+    updatePong();
+  }
+
+  function stopPong(){
+    if(_pongAnim)cancelAnimationFrame(_pongAnim);
+    _pongAnim=0;
+  }
+
+  document.addEventListener('keydown',(e)=>{
+    if(document.getElementById('overlayPong').classList.contains('active')){
+      const k=e.key.toLowerCase();
+      if(k==='arrowup'||k==='w')paddle.dy=-6;
+      if(k==='arrowdown'||k==='s')paddle.dy=6;
+    }
+  });
+
+  document.addEventListener('keyup',(e)=>{
+    const k=e.key.toLowerCase();
+    if(k==='arrowup'||k==='w'||k==='arrowdown'||k==='s')paddle.dy=0;
+  });
+
+  document.querySelectorAll('#overlayPong .difficulty-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      aiFactor=parseFloat(btn.dataset.ai);
+      ballSpeed=parseInt(btn.dataset.ball);
+      playerScore=0;aiScore=0;resetBall();
+      document.getElementById('winLoseScreen').style.display="none";
+      stopPong();
+      updatePong();
+    });
+  });
+
+  document.getElementById('tryAgainBtn').addEventListener('click',()=>{
+    playerScore=0;aiScore=0;resetBall();
+    document.getElementById('winLoseScreen').style.display="none";
+    stopPong();
+    updatePong();
+  });
+
+  // SNAKE
+  const snakeCanvas=document.getElementById('snakeCanvas');
+  const snakeCtx=snakeCanvas.getContext('2d');
+  const snakeScoreDisplay=document.getElementById('snakeScore');
+  const snakeGameOver=document.getElementById('snakeGameOver');
+  const finalSnakeScore=document.getElementById('finalSnakeScore');
+  const snakePlayAgainBtn=document.getElementById('snakePlayAgainBtn');
+  let snake=[{x:5,y:5}],direction='RIGHT',food=null,snakeScore=0,snakeRunning=false,_snakeTimer=0;
+
+  function placeFood(){
+    do{
+      food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};
+    }while(snake.some(s=>s.x===food.x&&s.y===food.y));
+  }
+
+  function drawSnake(){
+    snakeCtx.fillStyle='black';
+    snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+    snakeCtx.fillStyle='#ff0606';
+    snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));
+    if(food)snakeCtx.fillRect(food.x*20,food.y*20,20,20);
+  }
+
+  function updateSnake(){
+    if(!snakeRunning)return;
+    const head={...snake[0]};
+    if(direction==='RIGHT')head.x++;
+    if(direction==='LEFT')head.x--;
+    if(direction==='UP')head.y--;
+    if(direction==='DOWN')head.y++;
+    if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){
+      snakeRunning=false;
+      finalSnakeScore.textContent=snakeScore;
+      snakeGameOver.style.display='flex';
+      return;
+    }
+    snake.unshift(head);
+    if(food&&head.x===food.x&&head.y===food.y){
+      snakeScore++;
+      snakeScoreDisplay.textContent=snakeScore;
+      placeFood();
+    }else{
+      snake.pop();
+    }
+    drawSnake();
+    _snakeTimer=setTimeout(updateSnake,150);
+  }
+
+  function initSnakeGame(){
+    snake=[{x:5,y:5}];
+    direction='RIGHT';
+    snakeScore=0;
+    snakeRunning=true;
+    placeFood();
+    snakeScoreDisplay.textContent=snakeScore;
+    snakeGameOver.style.display='none';
+    clearTimeout(_snakeTimer);
+    drawSnake();
+    _snakeTimer=setTimeout(updateSnake,150);
+  }
+
+  function stopSnake(){
+    clearTimeout(_snakeTimer);
+    snakeRunning=false;
+  }
+
+  document.addEventListener('keydown',(e)=>{
+    if(document.getElementById('overlaySnake').classList.contains('active')){
+      const k=e.key.toLowerCase();
+      if((k==='arrowup'||k==='w')&&direction!=='DOWN')direction='UP';
+      if((k==='arrowdown'||k==='s')&&direction!=='UP')direction='DOWN';
+      if((k==='arrowleft'||k==='a')&&direction!=='RIGHT')direction='LEFT';
+      if((k==='arrowright'||k==='d')&&direction!=='LEFT')direction='RIGHT';
+    }
+  });
+
+  snakePlayAgainBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    snakeGameOver.style.display='none';
+    initSnakeGame();
+  });
+
+  // RUNNER
+  const runnerCanvas=document.getElementById('runnerCanvas');
+  const runnerCtx=runnerCanvas.getContext('2d');
+  const runnerScoreDisplay=document.getElementById('runnerScore');
+  const runnerGameOver=document.getElementById('runnerGameOver');
+  const finalRunnerScore=document.getElementById('finalRunnerScore');
+  const runnerPlayAgainBtn=document.getElementById('runnerPlayAgainBtn');
+  let runnerAnimation=0,runnerRunning=false,runnerScore=0,runnerPlayer=null,runnerObstacles=[],runnerSpeed=4;
+
+  function drawTrain(x,y,size){
+    const trainW=size*2.5,trainH=size*1.2;
+    runnerCtx.fillStyle='#cc0000';
+    runnerCtx.fillRect(x-trainW/2,y-trainH,trainW,trainH);
+    runnerCtx.fillStyle='#880000';
+    runnerCtx.fillRect(x-trainW/2+size*0.2,y-trainH+size*0.2,size*0.4,size*0.5);
+    runnerCtx.fillStyle='#ffff00';
+    runnerCtx.fillRect(x-size*0.15,y-trainH,size*0.3,size*0.2);
+    runnerCtx.fillStyle='#333';
+    runnerCtx.fillRect(x-trainW/2,y-size*0.25,size*0.3,size*0.25);
+  }
+
+  function drawBlockyPerson(x,y,size,animFrame,isJumping){
+    const legSwing=isJumping?0:Math.sin(animFrame)*0.3;
+    const armSwing=isJumping?-0.5:Math.cos(animFrame)*0.3;
+    runnerCtx.fillStyle='#ff0606';
+    runnerCtx.fillRect(x-size*0.2,y-size*0.9,size*0.4,size*0.3);
+    runnerCtx.fillStyle='#cc0000';
+    runnerCtx.fillRect(x-size*0.25,y-size*0.6,size*0.5,size*0.4);
+    runnerCtx.fillStyle='#ff0606';
+    runnerCtx.fillRect(x-size*0.15,y-size*0.2,size*0.15,size*0.35+legSwing*size*0.1);
+    runnerCtx.fillRect(x+size*0.0,y-size*0.2,size*0.15,size*0.35-legSwing*size*0.1);
+  }
+
+  function drawRunner(){
+    const w=runnerCanvas.width,h=runnerCanvas.height;
+    runnerCtx.fillStyle='#1a0033';
+    runnerCtx.fillRect(0,0,w,h);
+    const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;
+    runnerCtx.strokeStyle='#ff0606';
+    runnerCtx.lineWidth=2;
+    for(let i=0;i<10;i++){
+      const z=i*10;
+      const scale=1/(z*0.05+1);
+      const y=vanishY+(groundY-vanishY)*scale;
+      const laneW=w*0.6*scale;
+      const x1=vanishX-laneW/2,x2=vanishX+laneW/2;
+      runnerCtx.beginPath();
+      runnerCtx.moveTo(x1,y);
+      runnerCtx.lineTo(x2,y);
+      runnerCtx.stroke();
+    }
+    runnerObstacles.forEach(obs=>{
+      const scale=1/(obs.z*0.05+1);
+      const y=vanishY+(groundY-vanishY)*scale;
+      const laneW=w*0.6*scale;
+      const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);
+      const size=60*scale;
+      drawTrain(laneX,y,size);
+    });
+    const playerZ=5;
+    const playerScale=1/(playerZ*0.05+1);
+    const smoothLane=runnerPlayer.lane+(runnerPlayer.targetLane-runnerPlayer.lane)*runnerPlayer.laneTransition;
+    const playerY=vanishY+(groundY-vanishY)*playerScale-runnerPlayer.jumpHeight*playerScale;
+    const playerLaneW=w*0.6*playerScale;
+    const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);
+    const playerSize=50*playerScale;
+    drawBlockyPerson(playerX,playerY,playerSize,runnerPlayer.animFrame,runnerPlayer.jumpHeight>0);
+    runnerCtx.fillStyle='#ff0606';
+    runnerCtx.font='20px "Press Start 2P"';
+    runnerCtx.fillText('LANE: '+(runnerPlayer.targetLane+1),20,40);
+  }
+
+  function spawnObstacle(){
+    if(!runnerRunning)return;
+    const lane=Math.floor(Math.random()*3);
+    runnerObstacles.push({z:100,lane:lane});
+    setTimeout(spawnObstacle,2000+Math.random()*1500);
+  }
+
+  function updateRunner(){
+    if(!runnerRunning)return;
+    if(runnerPlayer.jumpHeight===0)runnerPlayer.animFrame+=0.15;
+    if(runnerPlayer.laneTransition<1){
+      runnerPlayer.laneTransition+=0.15;
+      if(runnerPlayer.laneTransition>=1){runnerPlayer.laneTransition=1;runnerPlayer.lane=runnerPlayer.targetLane;}
+    }
+    if(runnerPlayer.jumping){
+      runnerPlayer.jumpHeight+=12;
+      if(runnerPlayer.jumpHeight>=140)runnerPlayer.jumping=false;
+    }else if(runnerPlayer.jumpHeight>0){
+      runnerPlayer.jumpHeight-=12;
+      if(runnerPlayer.jumpHeight<0)runnerPlayer.jumpHeight=0;
+    }
+    for(let i=runnerObstacles.length-1;i>=0;i--){
+      runnerObstacles[i].z-=runnerSpeed*0.15;
+      if(runnerObstacles[i].z<-5){
+        runnerObstacles.splice(i,1);
+        runnerScore++;
+        runnerScoreDisplay.textContent='SCORE: '+runnerScore;
+        if(runnerSpeed<12)runnerSpeed+=0.2;
+      }else if(runnerObstacles[i].z<6&&runnerObstacles[i].z>4&&runnerObstacles[i].lane===runnerPlayer.lane&&runnerPlayer.jumpHeight<60){
+        runnerRunning=false;
+        finalRunnerScore.textContent=runnerScore;
+        runnerGameOver.style.display='flex';
+        return;
+      }
+    }
+    if(runnerObstacles.length===0||runnerObstacles[runnerObstacles.length-1].z<80)spawnObstacle();
+    drawRunner();
+    runnerAnimation=requestAnimationFrame(updateRunner);
+  }
+
+  function initRunnerGame(){
+    runnerScore=0;
+    runnerSpeed=4;
+    runnerRunning=true;
+    runnerPlayer={x:0,y:0,lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};
+    runnerObstacles=[];
+    runnerGameOver.style.display='none';
+    runnerScoreDisplay.textContent='SCORE: 0';
+    spawnObstacle();
+    updateRunner();
+  }
+
+  function stopRunner(){
+    if(runnerAnimation)cancelAnimationFrame(runnerAnimation);
+    runnerAnimation=0;
+    runnerRunning=false;
+  }
+
+  document.addEventListener('keydown',(e)=>{
+    if(document.getElementById('overlayRunner').classList.contains('active')&&runnerPlayer){
+      const k=e.key.toLowerCase();
+      if((k===' '||k==='w')&&!runnerPlayer.jumping&&runnerPlayer.jumpHeight===0)runnerPlayer.jumping=true;
+      if((k==='arrowleft'||k==='a')&&runnerPlayer.targetLane>0&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane--;runnerPlayer.laneTransition=0;}
+      if((k==='arrowright'||k==='d')&&runnerPlayer.targetLane<2&&runnerPlayer.laneTransition>=1){runnerPlayer.targetLane++;runnerPlayer.laneTransition=0;}
+    }
+  });
+
+  runnerPlayAgainBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    runnerGameOver.style.display='none';
+    initRunnerGame();
+  });
+
+  // AI CHAT
+  const chatMessages=document.getElementById('chatMessages');
+  const chatInput=document.getElementById('chatInput');
+  const chatSendBtn=document.getElementById('chatSendBtn');
+  const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";
+
+  function addMessage(who,text){
+    const div=document.createElement('div');
+    div.className='chat-message '+(who==='user'?'user':'ai');
+    div.textContent=text;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop=chatMessages.scrollHeight;
+  }
+
+  function showTyping(){
+    const t=document.createElement('div');
+    t.className='typing-indicator';
+    t.id='typingIndicator';
+    t.textContent='thinking...';
+    chatMessages.appendChild(t);
+    chatMessages.scrollTop=chatMessages.scrollHeight;
+  }
+
+  function hideTyping(){
+    const t=document.getElementById('typingIndicator');
+    if(t)t.remove();
+  }
+
+  async function sendToWorker(userText){
+    try{
+      showTyping();
+      const body={messages:[
+        {role:"system",content:"You are a helpful assistant."},
+        {role:"user",content:userText}
+      ]};
+      const resp=await fetch(WORKER_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(body)
+      });
+      if(!resp.ok){
+        hideTyping();
+        const errText=await resp.text().catch(()=>`HTTP ${resp.status}`);
+        addMessage('ai',`⚠️ Worker error: ${errText}`);
+        return;
+      }
+      const data=await resp.json().catch(()=>null);
+      hideTyping();
+      if(!data){
+        addMessage('ai','⚠️ Invalid response from worker.');
+        return;
+      }
+      let reply='';
+      try{
+        if(Array.isArray(data.choices)&&data.choices.length){
+          reply=data.choices[0].message?.content??data.choices[0].text??JSON.stringify(data.choices[0]);
+        }else if(data.error){
+          reply=`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;
+        }else{
+          reply=JSON.stringify(data);
+        }
+      }catch(e){reply=JSON.stringify(data);}
+      addMessage('ai',reply);
+    }catch(err){
+      hideTyping();
+      console.error(err);
+      addMessage('ai','⚠️ Network error while contacting the worker.');
+    }
+  }
+
+  chatSendBtn.addEventListener('click',async()=>{
+    const text=chatInput.value.trim();
+    if(!text)return;
+    addMessage('user',text);
+    chatInput.value='';
+    await sendToWorker(text);
+  });
+
+  chatInput.addEventListener('keydown',(e)=>{
+    if(e.key==='Enter'){e.preventDefault();chatSendBtn.click();}
   });
 });
 </script>
