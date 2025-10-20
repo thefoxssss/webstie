@@ -3,104 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TheFoxsss Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<title>TheFoxsss - Mind Blown</title>
 <style>
-body {
-  margin:0; font-family:'Roboto',sans-serif; background:#36393f; color:#ddd; display:flex; justify-content:center; align-items:center; height:100vh;
-}
-#chat-container {
-  background:#2f3136; width:400px; max-width:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.5);
-}
-#messages { flex:1; padding:10px; overflow-y:auto; display:flex; flex-direction:column; }
-.message {
-  margin-bottom:8px; padding:6px 10px; border-radius:8px; max-width:80%;
-}
-.message .username { font-weight:500; margin-right:5px; }
-.message.self { background:#7289da; align-self:flex-end; color:#fff; }
-.message.other { background:#40444b; align-self:flex-start; color:#ddd; }
-#input-container { display:flex; padding:10px; background:#40444b; gap:5px; }
-#message { flex:1; padding:8px; border-radius:5px; border:none; background:#202225; color:#ddd; }
-#message:focus { outline:none; }
-button { padding:8px 12px; background:#7289da; color:white; border:none; border-radius:5px; cursor:pointer; }
-button:hover { background:#5b6eae; }
-#username-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:10; flex-direction:column; }
-#username-overlay input { padding:10px; border-radius:5px; border:none; margin-bottom:10px; width:250px; }
-#username-overlay button { padding:10px 20px; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    background: #0d0d0d;
+    font-family: 'Arial', sans-serif;
+  }
+  #canvas {
+    display: block;
+  }
+  #title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4em;
+    color: #fff;
+    text-shadow: 0 0 20px #00f, 0 0 40px #0ff, 0 0 60px #0ff, 0 0 80px #0ff;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
 
-<div id="chat-container">
-  <div id="messages"></div>
-  <div id="input-container">
-    <input id="message" type="text" placeholder="Type a message..." disabled />
-    <button onclick="sendMessage()" disabled>Send</button>
-  </div>
-</div>
-
-<div id="username-overlay">
-  <input id="username-input" type="text" placeholder="Enter your username" />
-  <button onclick="setUsername()">Join Chat</button>
-</div>
+<canvas id="canvas"></canvas>
+<div id="title">THEFOXSSS</div>
 
 <script>
-const workerURL = "https://aiworker.thefoxsss6969.workers.dev/";
-let ws;
-let username = "";
-const messagesDiv = document.getElementById('messages');
-const messageInput = document.getElementById('message');
-const sendButton = document.querySelector('#input-container button');
-const overlay = document.getElementById('username-overlay');
-const usernameInput = document.getElementById('username-input');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-function randomColor(str) {
-  let hash = 0;
-  for(let i=0;i<str.length;i++) hash = str.charCodeAt(i)+((hash<<5)-hash);
-  const h = hash % 360;
-  return `hsl(${h},70%,70%)`;
+let particles = [];
+const colors = ['#ff3f3f','#ff9f3f','#3fff9f','#3f9fff','#9f3fff','#ff3fff'];
+
+function random(min,max){ return Math.random()*(max-min)+min; }
+
+class Particle {
+  constructor(x,y){
+    this.x = x;
+    this.y = y;
+    this.vx = random(-2,2);
+    this.vy = random(-2,2);
+    this.size = random(2,6);
+    this.color = colors[Math.floor(Math.random()*colors.length)];
+  }
+  update(){
+    this.x += this.vx;
+    this.y += this.vy;
+    this.size *= 0.96;
+  }
+  draw(){
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+  }
 }
 
-function addMessage(msgObj){
-  const div = document.createElement('div');
-  div.className = 'message';
-  div.classList.add(msgObj.username===username?'self':'other');
-  const color = randomColor(msgObj.username);
-  div.innerHTML = `<span class="username" style="color:${color}">${msgObj.username}</span>: ${msgObj.text}`;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+function explode(x,y){
+  for(let i=0;i<200;i++){
+    particles.push(new Particle(x,y));
+  }
 }
 
-function setUsername(){
-  const val = usernameInput.value.trim();
-  if(!val) return alert("Enter a username");
-  username = val;
-  overlay.style.display = 'none';
-  messageInput.disabled = false;
-  sendButton.disabled = false;
+canvas.addEventListener('mousemove', e => {
+  explode(e.clientX, e.clientY);
+});
 
-  ws = new WebSocket(workerURL.replace(/^https?/, 'ws'));
-  ws.onopen = () => console.log("Connected");
-  ws.onmessage = e => {
-    try {
-      const msgObj = JSON.parse(e.data);
-      addMessage(msgObj);
-    } catch { console.error("Invalid message", e.data); }
-  };
-  ws.onerror = e => console.error("WebSocket error", e);
-  ws.onclose = () => console.log("Disconnected");
+canvas.addEventListener('click', e => {
+  explode(e.clientX, e.clientY);
+});
+
+function animate(){
+  ctx.fillStyle = 'rgba(13,13,13,0.2)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let i=particles.length-1;i>=0;i--){
+    let p = particles[i];
+    p.update();
+    p.draw();
+    if(p.size<0.5) particles.splice(i,1);
+  }
+  requestAnimationFrame(animate);
 }
 
-function sendMessage(){
-  const text = messageInput.value.trim();
-  if(!text || !ws || ws.readyState!==WebSocket.OPEN) return;
-  const msgObj = {username, text, timestamp: Date.now()};
-  ws.send(JSON.stringify(msgObj));
-  messageInput.value='';
-  addMessage(msgObj); // show instantly
-}
+animate();
 
-messageInput.addEventListener('keydown', e => { if(e.key==='Enter') sendMessage(); });
+// Responsive canvas
+window.addEventListener('resize', ()=>{
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
 </script>
+
 </body>
 </html>
