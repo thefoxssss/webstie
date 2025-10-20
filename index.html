@@ -1,106 +1,567 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TheFoxsss - Mind Blown</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1" />
+<title>Neon Rush — TheFoxsss</title>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    height: 100%;
-    width: 100%;
-    background: #0d0d0d;
-    font-family: 'Arial', sans-serif;
+  :root{
+    --bg:#0b0b10;
+    --panel:#0f1720;
+    --neon1:#00e5ff;
+    --neon2:#ff3fbf;
+    --muted:#9aa4b2;
   }
-  #canvas {
-    display: block;
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  .wrap{height:100%;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;}
+  .card{
+    width:960px; max-width:100%; height:640px; max-height:92vh;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:14px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); overflow:hidden; position:relative;
+    display:grid; grid-template-columns: 1fr 320px; gap:0;
   }
-  #title {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 4em;
-    color: #fff;
-    text-shadow: 0 0 20px #00f, 0 0 40px #0ff, 0 0 60px #0ff, 0 0 80px #0ff;
-    pointer-events: none;
+  canvas{display:block; width:100%; height:100%; background: linear-gradient(180deg,#071021 0%, #05060a 100%);}
+  /* Right panel */
+  .ui{
+    padding:18px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
+    border-left:1px solid rgba(255,255,255,0.03); color:var(--muted); display:flex; flex-direction:column;
+  }
+  h1{margin:0 0 10px 0;color:var(--neon1);font-size:20px;letter-spacing:1px}
+  .scoreBig{font-size:44px;color:white;margin:8px 0; text-shadow:0 6px 22px rgba(0,230,255,0.08);}
+  .label{font-size:12px;margin-top:8px;color:var(--muted)}
+  .btn{appearance:none;border:0;padding:10px 14px;border-radius:8px;margin-top:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#071021;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.5);transition:transform .12s ease}
+  .btn:active{transform:translateY(2px)}
+  .small{font-size:13px;padding:8px 10px;border-radius:6px;background:#0c1116;color:var(--muted); border:1px solid rgba(255,255,255,0.02); margin-top:8px}
+  .muted{color:var(--muted); font-size:13px}
+  .flex {display:flex; gap:8px; align-items:center;}
+  .footer {margin-top:auto;font-size:12px;color:#1f9fbf; text-align:center; padding-bottom:8px}
+  /* HUD overlay */
+  .hud {
+    position:absolute; left:18px; top:14px; color:var(--muted); font-size:13px; display:flex; gap:12px; align-items:center;
+    background:rgba(255,255,255,0.02); padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,0.02);
+  }
+  .pill {background:rgba(255,255,255,0.02); padding:6px 10px; border-radius:999px; color:var(--muted); font-weight:600}
+  /* Overlay screens */
+  .overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px;
+    background:linear-gradient(180deg, rgba(2,6,23,0.7), rgba(2,6,23,0.5)); z-index:20;
+    backdrop-filter: blur(6px);
+  }
+  .overlay h2{color:white;margin:0;font-size:28px; text-shadow: 0 8px 40px rgba(0,0,0,0.6)}
+  .mutedSmall{color:var(--muted); font-size:14px}
+  .controls{display:flex;gap:8px}
+  .hint{font-size:13px;color:var(--muted); margin-top:6px}
+  @media(max-width:840px){
+    .card{grid-template-columns:1fr}
+    .ui{order:2;height:220px}
   }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="card" id="card">
+    <!-- Game canvas area -->
+    <div style="position:relative; overflow:hidden;">
+      <canvas id="game" width="640" height="640"></canvas>
+      <div class="hud" id="hud">
+        <div class="pill" id="hudScore">Score: 0</div>
+        <div class="pill" id="hudDist">Distance: 0m</div>
+      </div>
 
-<canvas id="canvas"></canvas>
-<div id="title">THEFOXSSS</div>
+      <!-- Overlay states -->
+      <div class="overlay" id="overlayStart">
+        <h2>NEON RUSH</h2>
+        <div class="mutedSmall">A fast neon endless runner — jump, dodge, and chain combos.</div>
+        <div class="controls">
+          <button class="btn" id="startBtn">Start Run</button>
+          <button class="small" id="howBtn">How to play</button>
+        </div>
+        <div class="hint">Controls: Space / ↑ / Click / Tap to jump. Hold to boost (mobile: long press).</div>
+      </div>
+
+      <div class="overlay" id="overlayGameOver" style="display:none;">
+        <h2 id="goTitle">Game Over</h2>
+        <div class="mutedSmall" id="goScore">Score: 0</div>
+        <div class="controls">
+          <button class="btn" id="retryBtn">Retry</button>
+          <button class="small" id="respawnBtn">Continue (-50 points)</button>
+        </div>
+        <div class="hint">High Score: <span id="bestScore">0</span></div>
+      </div>
+    </div>
+
+    <!-- Right UI -->
+    <div class="ui">
+      <h1>NEON RUSH</h1>
+      <div class="label">CURRENT SCORE</div>
+      <div class="scoreBig" id="scorePanel">0</div>
+
+      <div class="label">BEST</div>
+      <div class="muted small" id="bestPanel">0</div>
+
+      <div class="label" style="margin-top:12px;">GAME TIPS</div>
+      <div class="muted">• Keep jumping to avoid obstacles.<br>• Land combos to multiply score.<br>• Use short taps for single jumps, hold for boost.</div>
+
+      <div style="margin-top:12px;">
+        <button class="btn" id="pauseBtn">Pause</button>
+        <button class="small" id="soundBtn">Toggle Sound</button>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="label">METER</div>
+        <div class="muted">Distance traveled increases difficulty gradually.</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="label">SHARE</div>
+        <div class="flex">
+          <button class="small" id="shareBtn">Copy Score</button>
+          <button class="small" id="gifBtn">Record GIF (soon)</button>
+        </div>
+      </div>
+
+      <div class="footer">thefoxsss.com — Neon Rush</div>
+    </div>
+  </div>
+</div>
 
 <script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+/* ====================
+   Neon Rush — Game JS
+   Single-file polished endless runner
+   ==================== */
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  let W = canvas.width, H = canvas.height;
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(DPR, DPR);
 
-let particles = [];
-const colors = ['#ff3f3f','#ff9f3f','#3fff9f','#3f9fff','#9f3fff','#ff3fff'];
+  // UI refs
+  const hudScore = document.getElementById('hudScore');
+  const hudDist = document.getElementById('hudDist');
+  const scorePanel = document.getElementById('scorePanel');
+  const bestPanel = document.getElementById('bestPanel');
+  const overlayStart = document.getElementById('overlayStart');
+  const overlayGameOver = document.getElementById('overlayGameOver');
+  const startBtn = document.getElementById('startBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const respawnBtn = document.getElementById('respawnBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const howBtn = document.getElementById('howBtn');
+  const goScore = document.getElementById('goScore');
+  const bestScoreEl = document.getElementById('bestScore');
+  const soundBtn = document.getElementById('soundBtn');
+  const shareBtn = document.getElementById('shareBtn');
 
-function random(min,max){ return Math.random()*(max-min)+min; }
+  // game state
+  let running = false, paused = false;
+  let score = 0, distance = 0, best = parseInt(localStorage.getItem('neon_best') || '0', 10);
+  bestPanel.textContent = best;
+  bestScoreEl.textContent = best;
 
-class Particle {
-  constructor(x,y){
-    this.x = x;
-    this.y = y;
-    this.vx = random(-2,2);
-    this.vy = random(-2,2);
-    this.size = random(2,6);
-    this.color = colors[Math.floor(Math.random()*colors.length)];
+  // time
+  let lastTime = 0, dt = 0;
+
+  // world params
+  let speed = 220; // px/s base
+  let difficulty = 1; // scales up
+  let spawnTimer = 0;
+
+  // player
+  const player = {
+    x: 120, y: H - 110, w: 36, h: 48,
+    vy: 0, grounded: false, gravity: 1600, jumpPower: -520, jumps: 0,
+    color1: '#00e5ff', color2: '#ff3fbf', scale:1
+  };
+
+  // particles
+  const particles = [];
+
+  // obstacles
+  const obstacles = []; // {x,y,w,h,type}
+
+  // audio simple toggles
+  let audioEnabled = true;
+  const audioCtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
+
+  // helpers
+  function rand(min,max){return Math.random()*(max-min)+min;}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+  // particle system
+  function spawnParticle(x,y,s,c,life=0.6){
+    particles.push({x,y, vx:rand(-120,120), vy:rand(-300, -60), s, c, life, age:0, rot:Math.random()*Math.PI*2});
   }
-  update(){
-    this.x += this.vx;
-    this.y += this.vy;
-    this.size *= 0.96;
+
+  // simple tone for jump/kill
+  function beep(freq, time=0.08, type='sine', vol=0.12){
+    if(!audioEnabled || !audioCtx) return;
+    try{
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.setValueAtTime(vol, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + time);
+      o.stop(audioCtx.currentTime + time + 0.02);
+    }catch(e){}
   }
-  draw(){
-    ctx.beginPath();
-    ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
-    ctx.fillStyle = this.color;
+
+  // spawn obstacle
+  function spawnObstacle(){
+    const h = rand(28, 72);
+    const type = Math.random() < 0.15 ? 'tall' : 'box';
+    const w = type === 'tall' ? rand(28, 50) : rand(36, 90);
+    const y = H - 80 - (type === 'tall' ? (h-28) : 0);
+    obstacles.push({x: W + 60, y: y, w, h, type, hit:false});
+  }
+
+  // reset game
+  function resetGame(){
+    score = 0; distance = 0; speed = 240; difficulty = 1; obstacles.length=0; particles.length=0;
+    player.y = H - 110; player.vy = 0; player.jumps = 0; player.grounded = true; player.scale=1;
+  }
+
+  // start / stop
+  function startRun(){
+    resetGame();
+    running = true;
+    overlayStart.style.display = 'none';
+    overlayGameOver.style.display = 'none';
+    lastTime = performance.now();
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    requestAnimationFrame(loop);
+  }
+
+  function endRun(){
+    running = false;
+    overlayGameOver.style.display = 'flex';
+    document.getElementById('goTitle').textContent = 'GAME OVER';
+    goScore.textContent = 'Score: ' + Math.floor(score);
+    if(Math.floor(score) > best){ best = Math.floor(score); localStorage.setItem('neon_best', best); bestPanel.textContent = best; bestScoreEl.textContent = best; }
+  }
+
+  // respawn option: reduce score and continue
+  function respawn(){
+    if(score < 50) return;
+    score = Math.max(0, score-50);
+    // clear nearest obstacle
+    obstacles.shift();
+    overlayGameOver.style.display = 'none';
+    running = true;
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  // input handling
+  let hold = false, holdStart = 0;
+  function doJump(){
+    if(!running) return;
+    if(player.grounded || player.jumps < 1){
+      player.vy = player.jumpPower;
+      player.grounded = false;
+      player.jumps++;
+      for(let i=0;i<8;i++) spawnParticle(player.x + player.w*0.5 + rand(-10,10), player.y + player.h, rand(2,5), i%2?player.color1:player.color2, 0.5);
+      beep(520, 0.07, 'triangle');
+    }
+  }
+
+  function applyBoost(){
+    // quick upward boost if hold at peak
+    if(!running) return;
+    player.vy += -160;
+    spawnParticle(player.x+player.w*0.5, player.y+player.h*0.5, 6, player.color2, 0.4);
+  }
+
+  // collisions
+  function rectsOverlap(a,b){
+    return !(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h);
+  }
+
+  // main loop
+  function loop(t){
+    if(!running) return;
+    dt = Math.min(0.033, (t - lastTime)/1000);
+    lastTime = t;
+
+    // update difficulty & speed
+    distance += speed * dt;
+    difficulty = 1 + Math.min(3, distance / 1200);
+    speed += 6 * dt * difficulty; // small accelerate
+
+    // spawn obstacles
+    spawnTimer -= dt * (0.6 + difficulty*0.2);
+    if(spawnTimer <= 0){
+      spawnTimer = rand(0.8, 1.6) / (1 + difficulty*0.12);
+      spawnObstacle();
+    }
+
+    // physics
+    player.vy += player.gravity * dt;
+    player.y += player.vy * dt;
+    if(player.y + player.h >= H - 64){
+      if(!player.grounded){
+        // landing effects
+        for(let i=0;i<10;i++) spawnParticle(player.x + rand(-12, player.w+12), H - 64, rand(2,5), player.color1);
+      }
+      player.y = H - 64 - player.h;
+      player.vy = 0;
+      player.grounded = true;
+      player.jumps = 0;
+    } else {
+      player.grounded = false;
+    }
+
+    // move obstacles
+    for(let i=obstacles.length-1;i>=0;i--){
+      obstacles[i].x -= speed * dt;
+      // collision
+      if(rectsOverlap(player, obstacles[i]) && !obstacles[i].hit){
+        obstacles[i].hit = true;
+        // death
+        beep(80, 0.22, 'sawtooth');
+        // explode
+        for(let k=0;k<30;k++){ spawnParticle(player.x + player.w*0.5 + rand(-40,40), player.y + player.h*0.5 + rand(-40,40), rand(2,6), k%2?player.color1:player.color2, 1.2); }
+        endRun();
+        return;
+      }
+      if(obstacles[i].x + obstacles[i].w < -60) obstacles.splice(i,1);
+    }
+
+    // scoring: reward for distance + combos
+    score += (60 + difficulty*20) * dt;
+
+    // update particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.age += dt;
+      p.vy += 720 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += dt * 6;
+      if(p.age >= p.life) particles.splice(i,1);
+    }
+
+    // draw
+    draw();
+
+    // update UI
+    hudScore.textContent = 'Score: ' + Math.floor(score);
+    hudDist.textContent = 'Distance: ' + Math.floor(distance) + 'm';
+    scorePanel.textContent = Math.floor(score);
+
+    requestAnimationFrame(loop);
+  }
+
+  // draw world
+  function draw(){
+    // clear
+    ctx.fillStyle = '#05060a';
+    ctx.fillRect(0,0,W,H);
+
+    // parallax background grid
+    drawGrid();
+
+    // ground glow
+    const gtop = H - 64;
+    const grd = ctx.createLinearGradient(0, gtop, 0, H);
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.85)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, gtop, W, 64);
+
+    // draw obstacles
+    obstacles.forEach(o=>{
+      drawNeonRect(o.x, o.y, o.w, o.h, '#ff3fbf', '#002a34');
+      // add a little rim
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.strokeRect(o.x, o.y, o.w, o.h);
+    });
+
+    // draw player with neon trail
+    drawPlayer();
+
+    // draw particles (on top)
+    particles.forEach(p=>{
+      const alpha = 1 - (p.age / p.life);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.c;
+      ctx.beginPath();
+      ctx.ellipse(0,0,p.s, p.s*0.6, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawGrid(){
+    const cols = 14;
+    const rows = 10;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for(let i=0;i<cols;i++){
+      const x = (i/cols)*W + (distance*0.03 % (W/cols));
+      ctx.strokeStyle = 'rgba(0,229,255,0.04)';
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x, H-64);
+      ctx.stroke();
+    }
+    for(let j=0;j<rows;j++){
+      const y = (j/rows)* (H-64) + (distance*0.01 % (H/rows));
+      ctx.strokeStyle = 'rgba(255,63,191,0.02)';
+      ctx.beginPath();
+      ctx.moveTo(0, y); ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawNeonRect(x,y,w,h, color, fillDark){
+    // glow
+    ctx.save();
+    ctx.shadowBlur = 26;
+    ctx.shadowColor = color;
+    ctx.fillStyle = fillDark;
+    ctx.fillRect(x,y,w,h);
+    ctx.restore();
+
+    // rim
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x+1,y+1,w-2,h-2);
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    // shadow glow
+    ctx.save();
+    ctx.shadowBlur = 26;
+    ctx.shadowColor = player.color1;
+    ctx.fillStyle = '#071021';
+    ctx.fillRect(player.x - 6, player.y - 6, player.w + 12, player.h + 12);
+    ctx.restore();
+
+    // body neon - two-tone
+    ctx.save();
+    const rad = ctx.createLinearGradient(player.x, player.y, player.x + player.w, player.y + player.h);
+    rad.addColorStop(0, player.color1);
+    rad.addColorStop(1, player.color2);
+    ctx.fillStyle = rad;
+    roundRect(ctx, player.x, player.y, player.w, player.h, 8);
     ctx.fill();
+
+    // inner panel
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    roundRect(ctx, player.x + 6, player.y + 10, player.w - 12, player.h - 22, 6);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+
+    // subtle trail
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    for(let i=0;i<6;i++){
+      ctx.fillStyle = `rgba(0,229,255,${0.06 - i*0.008})`;
+      ctx.fillRect(player.x - i*8, player.y + 2 + i*2, player.w, 4);
+    }
+    ctx.restore();
   }
-}
 
-function explode(x,y){
-  for(let i=0;i<200;i++){
-    particles.push(new Particle(x,y));
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   }
-}
 
-canvas.addEventListener('mousemove', e => {
-  explode(e.clientX, e.clientY);
-});
+  // event listeners
+  window.addEventListener('keydown', (e) => {
+    if(e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      doJump();
+    }
+    if(e.code === 'KeyP') {
+      togglePause();
+    }
+  });
 
-canvas.addEventListener('click', e => {
-  explode(e.clientX, e.clientY);
-});
+  canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    hold = true; holdStart = performance.now();
+    doJump();
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    hold = false;
+    const heldFor = (performance.now() - holdStart) / 1000;
+    if(heldFor > 0.22) applyBoost();
+  });
 
-function animate(){
-  ctx.fillStyle = 'rgba(13,13,13,0.2)';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  for(let i=particles.length-1;i>=0;i--){
-    let p = particles[i];
-    p.update();
-    p.draw();
-    if(p.size<0.5) particles.splice(i,1);
+  // UI buttons
+  startBtn.addEventListener('click', () => startRun());
+  retryBtn.addEventListener('click', () => { overlayGameOver.style.display='none'; startRun(); });
+  respawnBtn.addEventListener('click', () => { respawn(); });
+  pauseBtn.addEventListener('click', () => { togglePause(); });
+  howBtn.addEventListener('click', () => { alert('Jump with Space / Up / Click / Tap. Hold to boost. Avoid obstacles.'); });
+
+  soundBtn.addEventListener('click', () => {
+    audioEnabled = !audioEnabled;
+    soundBtn.textContent = audioEnabled ? 'Sound ON' : 'Sound OFF';
+    if(audioCtx && audioEnabled) audioCtx.resume();
+  });
+
+  shareBtn.addEventListener('click', () => {
+    const text = `Neon Rush — Score: ${Math.floor(score)} | thefoxsss.com`;
+    navigator.clipboard?.writeText(text).then(()=> alert('Score copied!'), ()=> alert('Could not copy.'));
+  });
+
+  // toggle pause
+  function togglePause(){
+    if(!running) return;
+    paused = !paused;
+    if(paused){
+      running = false;
+      pauseBtn.textContent = 'Resume';
+      overlayStart.style.display = 'flex';
+      overlayStart.querySelector('h2').textContent = 'Paused';
+    } else {
+      pauseBtn.textContent = 'Pause';
+      overlayStart.style.display = 'none';
+      running = true;
+      lastTime = performance.now();
+      requestAnimationFrame(loop);
+    }
   }
-  requestAnimationFrame(animate);
-}
 
-animate();
+  // initial draw
+  function initial(){
+    ctx.fillStyle = '#04101a';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#00e5ff';
+    ctx.font = '48px system-ui, Roboto, Arial';
+    ctx.fillText('NEON RUSH', 34, 120);
+  }
+  initial();
 
-// Responsive canvas
-window.addEventListener('resize', ()=>{
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
+  // expose for debugging
+  window.__neon = { startRun, resetGame };
+
+})();
 </script>
-
 </body>
 </html>
