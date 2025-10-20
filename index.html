@@ -1,569 +1,169 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1" />
-<title>Pixel Doom — TheFoxsss</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel DOOM</title>
 <style>
-  html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,Arial}
-  #gameWrap{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
-  canvas{image-rendering: pixelated; image-rendering: crisp-edges; background:#101018; display:block}
-  #ui{
-    position:absolute;left:12px;bottom:12px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.8);
-    font-weight:600; font-size:14px;
-  }
-  #hudTop{position:absolute;left:50%;transform:translateX(-50%);top:12px;color:#fff;font-weight:700}
-  .stat{display:inline-block;margin-right:12px;padding:6px 10px;background:rgba(0,0,0,0.45);border-radius:8px}
-  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff}
-  .btn{background:linear-gradient(90deg,#ff7  ,#f06);padding:10px 14px;border-radius:8px;border:none;font-weight:800;cursor:pointer}
-  .muted{color:#bfc7d3;font-weight:600}
-  #instructions{position:absolute;right:12px;bottom:12px;color:#cfd8e3;padding:10px;background:rgba(0,0,0,0.45);border-radius:8px}
-  #cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;pointer-events:none}
-  #cross:before,#cross:after{content:'';position:absolute;background:rgba(255,255,255,0.9)}
-  #cross:before{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%)}
-  #cross:after{top:50%;left:0;height:2px;width:100%;transform:translateY(-50%)}
+html,body {
+  margin:0; padding:0; overflow:hidden;
+  background:black; height:100%; width:100%;
+}
+#game {
+  display:block; width:100vw; height:100vh;
+  image-rendering: pixelated;
+}
+#hud {
+  position:absolute; bottom:0; left:0; width:100%;
+  text-align:center;
+}
+#gun {
+  position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:200px; image-rendering: pixelated;
+}
 </style>
 </head>
 <body>
-<div id="gameWrap">
-  <canvas id="screen"></canvas>
-  <div id="hudTop"><span class="stat" id="score">SCORE 0</span><span class="stat" id="enemies">ENEMIES 0</span></div>
-  <div id="ui">
-    <div class="stat" id="health">HEALTH 100</div>
-    <div class="stat" id="ammo">AMMO 20</div>
-  </div>
-  <div id="instructions">
-    <div class="muted">W/A/S/D: Move • Q/E: Strafe • Mouse: Turn • Click: Shoot • Shift: Run • Space: Jump</div>
-  </div>
-  <div id="cross"></div>
 
-  <div id="overlay">
-    <h1 style="font-size:40px;margin:0">PIXEL DOOM</h1>
-    <div class="muted">A tiny retro 3D raycaster — pre-alpha demo</div>
-    <div style="display:flex;gap:10px">
-      <button class="btn" id="startBtn">START</button>
-      <button class="btn" id="easyBtn">EASY</button>
-      <button class="btn" id="hardBtn">HARD</button>
-    </div>
-  </div>
-</div>
+<canvas id="game"></canvas>
+<img id="gun" src="https://i.ibb.co/mGPW9rq/pistol.png">
+<div id="hud"></div>
 
 <script>
-/*
-  Pixel Doom - JS Raycaster
-  - Single-file, no external assets
-  - Map grid, textured walls, floor/ceiling shading
-  - Enemy sprites (simple), basic AI & shooting
-  - Pixelated look via small internal canvas scaled up
-*/
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// ---------- Config ----------
-const LOW_W = 320; // internal rendering width (low = chunky pixels)
-const LOW_H = 200;
-const SCALE = Math.max(1, Math.floor(Math.min(window.innerWidth / LOW_W, window.innerHeight / LOW_H)));
-const SCREEN_W = LOW_W;
-const SCREEN_H = LOW_H;
+// Map setup
+const map = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,0,1],
+  [1,0,0,1,0,1,0,1,0,0,1],
+  [1,0,0,1,0,0,0,1,0,0,1],
+  [1,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
 
-const FOV = Math.PI/3; // 60 degrees
-const MAX_DEPTH = 22; // view distance
-const TEXTURE_SIZE = 64;
+const tileSize = 64;
+let posX = 3.5, posY = 3.5;
+let dir = 0;
+let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
+const speed = 0.06;
 
-// ---------- Canvas setup ----------
-const screen = document.getElementById('screen');
-screen.width = SCREEN_W;
-screen.height = SCREEN_H;
-screen.style.width = (SCREEN_W * SCALE) + 'px';
-screen.style.height = (SCREEN_H * SCALE) + 'px';
-const ctx = screen.getContext('2d');
-const imagedata = ctx.createImageData(SCREEN_W, SCREEN_H);
+// Enemies
+let enemies = [
+  {x:6.5, y:5.5, alive:true},
+  {x:8.5, y:3.5, alive:true}
+];
 
-// offscreen texture atlases
-const texCanvas = document.createElement('canvas');
-texCanvas.width = TEXTURE_SIZE * 4;
-texCanvas.height = TEXTURE_SIZE;
-const tctx = texCanvas.getContext('2d');
+function castRays() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const fov = Math.PI / 3;
+  const numRays = w / 2; // resolution
+  const distProjPlane = (w / 2) / Math.tan(fov / 2);
+  
+  ctx.fillStyle = "#111";
+  ctx.fillRect(0,0,w,h/2);
+  ctx.fillStyle = "#333";
+  ctx.fillRect(0,h/2,w,h/2);
 
-// ---------- Procedural textures ----------
-function makeTextures(){
-  // 4 tiles: stone, brick, metal, wood (procedural)
-  // Stone - noisy gray
-  function stone(x,y){
-    const n = (Math.sin(x*12.9898+y*78.233)*43758.5453) % 1;
-    return (n*80 + 90) | 0;
-  }
-  for(let i=0;i<4;i++){
-    const off = i*TEXTURE_SIZE;
-    for(let y=0;y<TEXTURE_SIZE;y++){
-      for(let x=0;x<TEXTURE_SIZE;x++){
-        let r,g,b;
-        if(i===0){ // stone
-          const v = stone(x/12,y/12);
-          r=g=b=v;
-        } else if(i===1){ // brick - red bricks with mortar
-          const bx = Math.floor(x/16), by = Math.floor(y/16);
-          const mortar = (x%16===0 || y%16===0) ? 200 : 100;
-          r = 150 + (Math.sin(bx*3+by)*30|0);
-          g = 40;
-          b = 40;
-          if(mortar===200){ r=g=b=200; }
-        } else if(i===2){ // metal - stripes
-          const s = (Math.floor(x/6)%2) ? 220 : 120;
-          r=g=b=s;
-        } else { // wood - grain
-          const grain = 100 + Math.floor(50 * Math.abs(Math.sin(y/6 + x/80)));
-          r = grain+30; g = grain-8; b = grain-30;
-        }
-        tctx.fillStyle = `rgb(${r},${g},${b})`;
-        tctx.fillRect(off + x, y, 1, 1);
-      }
-    }
-  }
-}
+  for(let i=0; i<numRays; i++){
+    const rayScreenPos = (i - numRays/2);
+    const rayAngle = dir + Math.atan(rayScreenPos / distProjPlane);
+    let sin = Math.sin(rayAngle);
+    let cos = Math.cos(rayAngle);
 
-makeTextures();
-
-// convert texture into ImageData for sampling
-const texData = tctx.getImageData(0,0,texCanvas.width,texCanvas.height).data;
-
-// ---------- Map (0 empty, 1-4 wall types) ----------
-const map = {
-  w: 16, h: 16,
-  grid: [
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,1,
-    1,0,3,0,0,0,0,2,0,0,4,0,0,0,0,1,
-    1,0,0,0,0,0,0,2,0,0,4,0,3,0,0,1,
-    1,0,0,0,0,2,2,2,0,0,0,0,0,0,0,1,
-    1,0,0,0,0,2,0,0,0,0,1,0,0,0,0,1,
-    1,0,0,3,0,0,0,0,0,0,1,0,0,0,0,1,
-    1,0,0,0,0,0,0,0,0,0,1,0,0,4,0,1,
-    1,0,0,0,0,0,0,0,0,0,1,0,0,4,0,1,
-    1,0,0,0,0,0,0,0,3,0,1,0,0,0,0,1,
-    1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,
-    1,0,0,0,4,0,0,0,0,0,1,0,0,0,0,1,
-    1,0,0,3,0,0,0,0,0,0,4,0,0,0,0,1,
-    1,0,0,0,0,0,2,2,2,0,0,0,0,0,0,1,
-    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-  ]
-};
-function mapAt(x,y){ if(x<0||y<0||x>=map.w||y>=map.h) return 1; return map.grid[y*map.w + x]; }
-
-// ---------- Player ----------
-const player = {
-  x: 3.5, y: 3.5, angle: 0,
-  height: 0.5, // camera height
-  speed: 3.2, // units/s
-  turnSpeed: 3.6, // rad/s
-  health: 100,
-  ammo: 20
-};
-
-// ---------- Enemies (simple) ----------
-let enemies = [];
-function spawnEnemies(difficulty=1){
-  enemies = [
-    {x:10.3,y:6.4,z:0.0,hp:30* difficulty, speed: 1.0 + difficulty*0.2, alive:true},
-    {x:12.6,y:9.8,z:0.0,hp:30* difficulty, speed: 0.9 + difficulty*0.2, alive:true},
-  ];
-}
-spawnEnemies(1);
-
-// ---------- Input ----------
-const keys = {};
-let mouseDX = 0;
-let pointerLocked = false;
-window.addEventListener('keydown', e=> keys[e.key.toLowerCase()] = true);
-window.addEventListener('keyup', e=> keys[e.key.toLowerCase()] = false);
-window.addEventListener('mousemove', e=>{
-  if(pointerLocked){ mouseDX += e.movementX; }
-});
-screen.addEventListener('click', ()=> { if(!pointerLocked) requestPointerLock(); else shoot(); });
-
-function requestPointerLock(){
-  const el = document.body;
-  if(el.requestPointerLock) el.requestPointerLock();
-}
-document.addEventListener('pointerlockchange', ()=> {
-  pointerLocked = document.pointerLockElement === document.body;
-});
-
-// ---------- Raycasting & Rendering ----------
-let lastTime = performance.now();
-let running = false;
-let difficulty = 1;
-let score = 0;
-
-function gameStart(diff=1){
-  difficulty = diff;
-  player.x = 3.5; player.y = 3.5; player.angle = 0; player.health = 100; player.ammo = 20;
-  score = 0;
-  spawnEnemies(diff);
-  running = true;
-  document.querySelector('#overlay').style.display = 'none';
-  lastTime = performance.now();
-  loop(lastTime);
-}
-
-function rndInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
-
-// sample texture color at tileIndex, tx, ty (0..1)
-function sampleTex(tileIndex, u, v){
-  tileIndex = Math.max(0, Math.min(3, tileIndex-1)); // wall types 1..4 -> 0..3
-  const tx = Math.floor(u * TEXTURE_SIZE) % TEXTURE_SIZE;
-  const ty = Math.floor(v * TEXTURE_SIZE) % TEXTURE_SIZE;
-  const baseX = tileIndex * TEXTURE_SIZE;
-  const idx = ((ty * texCanvas.width) + (baseX + tx)) * 4;
-  return [ texData[idx], texData[idx+1], texData[idx+2], 255 ];
-}
-
-function drawPixel(x,y,r,g,b,a=255){
-  if(x<0||x>=SCREEN_W||y<0||y>=SCREEN_H) return;
-  const i = (y*SCREEN_W + x)*4;
-  imagedata.data[i]=r; imagedata.data[i+1]=g; imagedata.data[i+2]=b; imagedata.data[i+3]=a;
-}
-
-function clearScreen(){
-  for(let i=0;i<imagedata.data.length;i+=4){
-    imagedata.data[i]=8; imagedata.data[i+1]=10; imagedata.data[i+2]=16; imagedata.data[i+3]=255;
-  }
-}
-
-function castRays(dt){
-  // for each column
-  const halfH = SCREEN_H/2;
-  for(let x=0;x<SCREEN_W;x++){
-    const cameraX = (2 * x / SCREEN_W) - 1; // -1..1
-    const rayAngle = player.angle + cameraX * (FOV/2);
-    const rayDirX = Math.cos(rayAngle);
-    const rayDirY = Math.sin(rayAngle);
-
-    // DDA
-    let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
-    const deltaDistX = Math.abs(1 / rayDirX);
-    const deltaDistY = Math.abs(1 / rayDirY);
-    let stepX, stepY;
-    let sideDistX, sideDistY;
-    if(rayDirX < 0){ stepX = -1; sideDistX = (player.x - mapX) * deltaDistX; } else { stepX = 1; sideDistX = (mapX + 1 - player.x) * deltaDistX; }
-    if(rayDirY < 0){ stepY = -1; sideDistY = (player.y - mapY) * deltaDistY; } else { stepY = 1; sideDistY = (mapY + 1 - player.y) * deltaDistY; }
-
-    let hit = false, side = 0;
-    let wallType = 0;
-    let perpWallDist = 0;
-    let hitX = 0, hitY = 0;
-
-    while(!hit){
-      if(sideDistX < sideDistY){
-        sideDistX += deltaDistX;
-        mapX += stepX;
-        side = 0;
-      } else {
-        sideDistY += deltaDistY;
-        mapY += stepY;
-        side = 1;
-      }
-      const m = mapAt(mapX, mapY);
-      if(m>0){ hit = true; wallType = m; }
-      // safety
-      if(Math.hypot(mapX - player.x, mapY - player.y) > MAX_DEPTH) { break; }
+    let dist = 0;
+    let hit = 0;
+    while(!hit && dist < 20){
+      dist += 0.05;
+      let x = Math.floor(posX + cos * dist);
+      let y = Math.floor(posY + sin * dist);
+      if(map[y] && map[y][x] && map[y][x] != 0) hit = 1;
     }
 
-    if(hit){
-      // compute distance to wall
-      if(side===0){
-        perpWallDist = (mapX - player.x + (1 - stepX)/2) / rayDirX;
-        hitX = player.y + perpWallDist * rayDirY;
-      } else {
-        perpWallDist = (mapY - player.y + (1 - stepY)/2) / rayDirY;
-        hitX = player.x + perpWallDist * rayDirX;
-      }
-      // texture coordinate
-      const texU = hitX - Math.floor(hitX);
-      const lineHeight = Math.floor(SCREEN_H / perpWallDist);
-      const drawStart = Math.max(0, Math.floor(halfH - lineHeight/2));
-      const drawEnd = Math.min(SCREEN_H-1, Math.floor(halfH + lineHeight/2));
-
-      // Draw vertical slice with texture sampling
-      for(let y=drawStart;y<=drawEnd;y++){
-        // compute v coordinate
-        const v = (y - (halfH - lineHeight/2)) / lineHeight;
-        const c = sampleTex(wallType, texU, v);
-        // darken based on perp distance and side
-        const shade = Math.max(0.25, 1 - perpWallDist * 0.06);
-        const sideShade = side ? 0.85 : 1.0;
-        drawPixel(x, y, (c[0]*shade*sideShade)|0, (c[1]*shade*sideShade)|0, (c[2]*shade*sideShade)|0);
-      }
-
-      // floor and ceiling shading for column
-      for(let y=drawEnd+1;y<SCREEN_H;y++){
-        // floor shading
-        const dist = SCREEN_H / (2.0 * y - SCREEN_H);
-        const weight = dist / perpWallDist;
-        // floor color mix (simple)
-        const floorShade = Math.max(0.05, 1 - (dist*0.02));
-        drawPixel(x, y, (20*floorShade)|0, (24*floorShade)|0, (30*floorShade)|0);
-        // ceiling
-        const cy = SCREEN_H - y;
-        const ceilingShade = Math.max(0.05, 1 - (dist*0.025));
-        drawPixel(x, cy, (10*ceilingShade)|0, (12*ceilingShade)|0, (18*ceilingShade)|0);
-      }
-    } else {
-      // nobody hit: draw sky & floor
-      for(let y=0;y<SCREEN_H;y++){
-        if(y<halfH) drawPixel(x,y,6,8,12);
-        else drawPixel(x,y,16,18,26);
-      }
-    }
+    const wallHeight = (tileSize / dist) * distProjPlane;
+    const shade = Math.max(0, 255 - dist * 30);
+    ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+    ctx.fillRect(i*2, (h/2)-wallHeight/2, 2, wallHeight);
   }
 }
 
-// ---------- Sprite rendering (enemies) ----------
-function drawSprites(){
-  // simple billboard — sort by distance desc
-  const spriteData = [];
-  for(const e of enemies){
-    if(!e.alive) continue;
-    const dx = e.x - player.x, dy = e.y - player.y;
-    const dist = Math.hypot(dx,dy);
-    // angle between player direction and sprite
-    const ang = Math.atan2(dy,dx) - player.angle;
-    // normalize angle to -PI..PI
-    let a = ang;
-    while(a<-Math.PI) a+=Math.PI*2; while(a>Math.PI) a-=Math.PI*2;
-    // if within FOV/1.5 roughly visible
-    if(Math.abs(a) < FOV/1.2 && dist>0.3 && dist < MAX_DEPTH*1.2){
-      spriteData.push({e, dist, ang: a});
-    }
+function drawEnemies(){
+  const fov = Math.PI/3;
+  const w = canvas.width;
+  const distProjPlane = (w / 2) / Math.tan(fov / 2);
+
+  enemies.forEach(e=>{
+    if(!e.alive) return;
+    const dx = e.x - posX;
+    const dy = e.y - posY;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const angleToEnemy = Math.atan2(dy,dx) - dir;
+    const size = (tileSize / dist) * distProjPlane;
+
+    const x = (w/2) + Math.tan(angleToEnemy)*distProjPlane - size/2;
+    ctx.fillStyle = "red";
+    ctx.fillRect(x, canvas.height/2 - size/2, size, size);
+  });
+}
+
+function movePlayer(){
+  if(turnLeft) dir -= 0.05;
+  if(turnRight) dir += 0.05;
+  const dx = Math.cos(dir);
+  const dy = Math.sin(dir);
+  if(moveForward){
+    if(map[Math.floor(posY+dy*speed)][Math.floor(posX)]==0) posY += dy*speed;
+    if(map[Math.floor(posY)][Math.floor(posX+dx*speed)]==0) posX += dx*speed;
   }
-  spriteData.sort((a,b)=>b.dist-a.dist);
-  for(const s of spriteData){
-    const e = s.e;
-    const dist = s.dist;
-    const spriteScreenX = Math.tan(s.ang) * (SCREEN_W/2) / Math.tan(FOV/2) + SCREEN_W/2;
-    const spriteSize = Math.min(SCREEN_H, Math.floor((1/dist) * SCREEN_H * 0.9));
-    const left = Math.floor(spriteScreenX - spriteSize/2);
-    const top = Math.floor(SCREEN_H/2 - spriteSize/2);
-    // simple colored sprite with eyes using fillRect into imagedata
-    for(let sy=0; sy<spriteSize; sy++){
-      const py = top + sy;
-      if(py<0 || py>=SCREEN_H) continue;
-      for(let sx=0;sx<spriteSize;sx++){
-        const px = left + sx;
-        if(px<0 || px>=SCREEN_W) continue;
-        // create cartoon enemy pattern
-        const nx = Math.floor((sx/spriteSize)*8), ny = Math.floor((sy/spriteSize)*8);
-        let r,g,b;
-        // base body color
-        r = 190; g = 60; b = 60;
-        // eyes
-        if(nx>=3 && nx<=4 && ny===2){ r=255; g=255; b=180; }
-        // add alpha falloff by dist to make farther sprites translucent
-        const alpha = Math.max(0.2, 1 - dist*0.07);
-        // draw only if not occluded by nearer walls: we skip occlusion test for complexity; it'll still look ok
-        drawPixel(px, py, (r*alpha)|0, (g*alpha)|0, (b*alpha)|0);
-      }
-    }
+  if(moveBackward){
+    if(map[Math.floor(posY-dy*speed)][Math.floor(posX)]==0) posY -= dy*speed;
+    if(map[Math.floor(posY)][Math.floor(posX-dx*speed)]==0) posX -= dx*speed;
   }
 }
 
-// ---------- Enemy AI & updates ----------
-function updateEnemies(dt){
-  for(const e of enemies){
-    if(!e.alive) continue;
-    // simple chase if player visible (line of sight not implemented, so just chase)
-    const dx = player.x - e.x, dy = player.y - e.y;
-    const dist = Math.hypot(dx,dy);
-    if(dist > 0.6){
-      e.x += (dx/dist) * e.speed * dt;
-      e.y += (dy/dist) * e.speed * dt;
-    } else {
-      // close -> attack
-      if(!e._attackCooldown || e._attackCooldown<=0){
-        player.health -= 6;
-        e._attackCooldown = 1.0;
-      }
-    }
-    e._attackCooldown = Math.max(0, (e._attackCooldown||0) - dt);
-    // die if hp<=0
-    if(e.hp<=0) { e.alive=false; score += 120; }
-  }
-}
-
-// ---------- Shooting ----------
 function shoot(){
-  if(!running) return;
-  if(player.ammo <= 0) return;
-  player.ammo--;
-  document.getElementById('ammo').textContent = 'AMMO ' + player.ammo;
-  // simple hitscan along player's angle: find closest enemy within small angle
-  let hit = null;
-  let bestd = Infinity;
-  for(const e of enemies){
-    if(!e.alive) continue;
-    const dx = e.x - player.x, dy = e.y - player.y;
-    const dist = Math.hypot(dx,dy);
-    const angTo = Math.atan2(dy,dx);
-    let diff = angTo - player.angle;
-    while(diff<-Math.PI) diff+=Math.PI*2; while(diff>Math.PI) diff-=Math.PI*2;
-    if(Math.abs(diff) < 0.15){ // narrow cone
-      if(dist < bestd){ bestd = dist; hit = e; }
+  // find nearest enemy in front
+  const fov = Math.PI/8;
+  enemies.forEach(e=>{
+    if(!e.alive) return;
+    const dx = e.x - posX;
+    const dy = e.y - posY;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const angleToEnemy = Math.atan2(dy,dx) - dir;
+    if(Math.abs(angleToEnemy) < fov && dist < 5){
+      e.alive = false;
     }
-  }
-  if(hit){
-    hit.hp -= 30;
-    // spawn gore particles
-    for(let i=0;i<12;i++) spawnTiny(hit.x, hit.y);
-    if(hit.hp <= 0){ hit.alive=false; score += 100; document.getElementById('enemies').textContent = 'ENEMIES ' + enemies.filter(x=>x.alive).length; }
-  }
-  // small muzzle flash effect via screen tint (not implemented for performance)
+  });
 }
 
-// tiny particles when hit
-const tiny = [];
-function spawnTiny(x,y){
-  tiny.push({x,y,vx: (Math.random()*2-1)*3, vy:(Math.random()*2-1)*3, life:0.5 + Math.random()*0.7});
+function gameLoop(){
+  movePlayer();
+  castRays();
+  drawEnemies();
+  requestAnimationFrame(gameLoop);
 }
-function updateTiny(dt){
-  for(let i=tiny.length-1;i>=0;i--){
-    const p = tiny[i];
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.life -= dt;
-    if(p.life<=0) tiny.splice(i,1);
-  }
-}
-function drawTiny(){
-  for(const p of tiny){
-    const sx = Math.floor((p.x - player.x) * 10 + SCREEN_W/2);
-    const sy = Math.floor((player.y - p.y) * 10 + SCREEN_H/2);
-    if(sx>=0 && sx<SCREEN_W && sy>=0 && sy<SCREEN_H) drawPixel(sx,sy,255,80,80,200);
-  }
-}
+gameLoop();
 
-// ---------- Movement & collision ----------
-function movePlayer(dt){
-  // rotation via mouseDX
-  const turn = -mouseDX * 0.002;
-  player.angle += turn * player.turnSpeed * dt * 60;
-  mouseDX = 0;
-
-  // keyboard movement
-  let mvx = 0, mvy = 0;
-  const forward = (keys['w']||keys['arrowup']) ? 1 : 0;
-  const back = (keys['s']||keys['arrowdown']) ? 1 : 0;
-  const left = (keys['a']||keys['arrowleft']) ? 1 : 0;
-  const right = (keys['d']||keys['arrowright']) ? 1 : 0;
-  const run = keys['shift'];
-  const strafeLeft = keys['q'], strafeRight = keys['e'];
-
-  const spd = player.speed * (run?1.8:1.0);
-
-  // forward/back vector
-  const dirx = Math.cos(player.angle), diry = Math.sin(player.angle);
-  mvx += (forward - back) * dirx * spd * dt;
-  mvy += (forward - back) * diry * spd * dt;
-  // strafing
-  mvx += (strafeRight ? 1 : 0) * Math.cos(player.angle + Math.PI/2) * spd * dt;
-  mvy += (strafeRight ? 1 : 0) * Math.sin(player.angle + Math.PI/2) * spd * dt;
-  mvx += (strafeLeft ? 1 : 0) * Math.cos(player.angle - Math.PI/2) * spd * dt;
-  mvy += (strafeLeft ? 1 : 0) * Math.sin(player.angle - Math.PI/2) * spd * dt;
-  // WASD lateral movement fudge
-  if(left){ mvx += Math.cos(player.angle - Math.PI/2) * spd * dt; mvy += Math.sin(player.angle - Math.PI/2) * spd * dt; }
-  if(right){ mvx += Math.cos(player.angle + Math.PI/2) * spd * dt; mvy += Math.sin(player.angle + Math.PI/2) * spd * dt; }
-
-  // collision: try moving in x then y, simple AABB vs map blocks
-  const tryX = player.x + mvx;
-  const tryY = player.y + mvy;
-  if(!collide(tryX, player.y)) player.x = tryX;
-  if(!collide(player.x, tryY)) player.y = tryY;
-}
-
-function collide(px,py){
-  // check four corners against map
-  const r = 0.22; // player radius
-  const corners = [
-    [px - r, py - r], [px + r, py - r], [px - r, py + r], [px + r, py + r]
-  ];
-  for(const c of corners){
-    const mx = Math.floor(c[0]), my = Math.floor(c[1]);
-    if(mapAt(mx,my) !== 0) return true;
-  }
-  return false;
-}
-
-// ---------- Main loop ----------
-function loop(now){
-  if(!running) return;
-  const dt = Math.min(0.05, (now - lastTime)/1000);
-  lastTime = now;
-
-  // update
-  movePlayer(dt);
-  updateEnemies(dt);
-  updateTiny(dt);
-
-  // clear
-  clearScreen();
-
-  // render scene
-  castRays(dt);
-  drawSprites();
-  drawSprites(); // call twice to layer (cheap)
-  drawSprites(); // accent
-  drawSprites(); // tiny hack to make enemies brighter
-  drawTiny();
-
-  // draw HUD overlays into imagedata? We'll draw via canvas 2D on top
-  ctx.putImageData(imagedata, 0, 0);
-
-  // update DOM HUD
-  document.getElementById('health').textContent = 'HEALTH ' + Math.max(0, Math.floor(player.health));
-  document.getElementById('ammo').textContent = 'AMMO ' + player.ammo;
-  document.getElementById('score').textContent = 'SCORE ' + Math.floor(score);
-  document.getElementById('enemies').textContent = 'ENEMIES ' + enemies.filter(e=>e.alive).length;
-
-  // check death
-  if(player.health <= 0){
-    running = false;
-    document.getElementById('overlay').style.display = 'flex';
-    document.querySelector('#overlay h1').textContent = 'YOU DIED';
-  } else {
-    requestAnimationFrame(loop);
-  }
-}
-
-// ---------- Buttons ----------
-document.getElementById('startBtn').addEventListener('click', ()=> gameStart(1));
-document.getElementById('easyBtn').addEventListener('click', ()=> gameStart(0.7));
-document.getElementById('hardBtn').addEventListener('click', ()=> gameStart(1.8));
-
-// expose simple resize to keep scale on orientation change
-window.addEventListener('resize', ()=> {
-  const s = Math.max(1, Math.floor(Math.min(window.innerWidth / LOW_W, window.innerHeight / LOW_H)));
-  screen.style.width = (SCREEN_W * s) + 'px';
-  screen.style.height = (SCREEN_H * s) + 'px';
+window.addEventListener('keydown', e=>{
+  if(e.key=='w') moveForward=true;
+  if(e.key=='s') moveBackward=true;
+  if(e.key=='a') turnLeft=true;
+  if(e.key=='d') turnRight=true;
+  if(e.key==' ') shoot();
 });
-
-// initial HUD populate
-document.getElementById('health').textContent = 'HEALTH ' + player.health;
-document.getElementById('ammo').textContent = 'AMMO ' + player.ammo;
-document.getElementById('enemies').textContent = 'ENEMIES ' + enemies.length;
-
-// helper draw sprites (wraps sprite pipeline above)
-function drawSprites(){ drawSpritesMain(); } // alias placeholder
-
-// We defined drawSpritesMain as drawSprites earlier; ensure referencing correctly
-function drawSpritesMain(){ /* placeholder overwritten above */ }
-
-// Quick hook up (we actually already defined the function drawSprites above; redirect)
-drawSpritesMain = function(){ drawSpritesLocal(); };
-function drawSpritesLocal(){ // call the earlier sprite rendering function (we already have drawSprites defined above in code)
-  // the function drawSprites is defined in earlier block; call it by name (it shadows). So simply do nothing here - left for structural clarity.
-}
-
-// But to avoid confusion, we'll call the actual sprite rendering inside the main loop above directly.
-// The code above already calls drawSprites() which invokes the correct implementation.
-
+window.addEventListener('keyup', e=>{
+  if(e.key=='w') moveForward=false;
+  if(e.key=='s') moveBackward=false;
+  if(e.key=='a') turnLeft=false;
+  if(e.key=='d') turnRight=false;
+});
 </script>
 </body>
 </html>
