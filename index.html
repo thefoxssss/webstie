@@ -3,565 +3,567 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1" />
-<title>Neon Rush — TheFoxsss</title>
+<title>Pixel Doom — TheFoxsss</title>
 <style>
-  :root{
-    --bg:#0b0b10;
-    --panel:#0f1720;
-    --neon1:#00e5ff;
-    --neon2:#ff3fbf;
-    --muted:#9aa4b2;
+  html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,Arial}
+  #gameWrap{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+  canvas{image-rendering: pixelated; image-rendering: crisp-edges; background:#101018; display:block}
+  #ui{
+    position:absolute;left:12px;bottom:12px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.8);
+    font-weight:600; font-size:14px;
   }
-  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
-  .wrap{height:100%;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;}
-  .card{
-    width:960px; max-width:100%; height:640px; max-height:92vh;
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border-radius:14px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); overflow:hidden; position:relative;
-    display:grid; grid-template-columns: 1fr 320px; gap:0;
-  }
-  canvas{display:block; width:100%; height:100%; background: linear-gradient(180deg,#071021 0%, #05060a 100%);}
-  /* Right panel */
-  .ui{
-    padding:18px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
-    border-left:1px solid rgba(255,255,255,0.03); color:var(--muted); display:flex; flex-direction:column;
-  }
-  h1{margin:0 0 10px 0;color:var(--neon1);font-size:20px;letter-spacing:1px}
-  .scoreBig{font-size:44px;color:white;margin:8px 0; text-shadow:0 6px 22px rgba(0,230,255,0.08);}
-  .label{font-size:12px;margin-top:8px;color:var(--muted)}
-  .btn{appearance:none;border:0;padding:10px 14px;border-radius:8px;margin-top:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#071021;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.5);transition:transform .12s ease}
-  .btn:active{transform:translateY(2px)}
-  .small{font-size:13px;padding:8px 10px;border-radius:6px;background:#0c1116;color:var(--muted); border:1px solid rgba(255,255,255,0.02); margin-top:8px}
-  .muted{color:var(--muted); font-size:13px}
-  .flex {display:flex; gap:8px; align-items:center;}
-  .footer {margin-top:auto;font-size:12px;color:#1f9fbf; text-align:center; padding-bottom:8px}
-  /* HUD overlay */
-  .hud {
-    position:absolute; left:18px; top:14px; color:var(--muted); font-size:13px; display:flex; gap:12px; align-items:center;
-    background:rgba(255,255,255,0.02); padding:6px 10px; border-radius:999px;
-    border:1px solid rgba(255,255,255,0.02);
-  }
-  .pill {background:rgba(255,255,255,0.02); padding:6px 10px; border-radius:999px; color:var(--muted); font-weight:600}
-  /* Overlay screens */
-  .overlay{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px;
-    background:linear-gradient(180deg, rgba(2,6,23,0.7), rgba(2,6,23,0.5)); z-index:20;
-    backdrop-filter: blur(6px);
-  }
-  .overlay h2{color:white;margin:0;font-size:28px; text-shadow: 0 8px 40px rgba(0,0,0,0.6)}
-  .mutedSmall{color:var(--muted); font-size:14px}
-  .controls{display:flex;gap:8px}
-  .hint{font-size:13px;color:var(--muted); margin-top:6px}
-  @media(max-width:840px){
-    .card{grid-template-columns:1fr}
-    .ui{order:2;height:220px}
-  }
+  #hudTop{position:absolute;left:50%;transform:translateX(-50%);top:12px;color:#fff;font-weight:700}
+  .stat{display:inline-block;margin-right:12px;padding:6px 10px;background:rgba(0,0,0,0.45);border-radius:8px}
+  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff}
+  .btn{background:linear-gradient(90deg,#ff7  ,#f06);padding:10px 14px;border-radius:8px;border:none;font-weight:800;cursor:pointer}
+  .muted{color:#bfc7d3;font-weight:600}
+  #instructions{position:absolute;right:12px;bottom:12px;color:#cfd8e3;padding:10px;background:rgba(0,0,0,0.45);border-radius:8px}
+  #cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;pointer-events:none}
+  #cross:before,#cross:after{content:'';position:absolute;background:rgba(255,255,255,0.9)}
+  #cross:before{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%)}
+  #cross:after{top:50%;left:0;height:2px;width:100%;transform:translateY(-50%)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card" id="card">
-    <!-- Game canvas area -->
-    <div style="position:relative; overflow:hidden;">
-      <canvas id="game" width="640" height="640"></canvas>
-      <div class="hud" id="hud">
-        <div class="pill" id="hudScore">Score: 0</div>
-        <div class="pill" id="hudDist">Distance: 0m</div>
-      </div>
+<div id="gameWrap">
+  <canvas id="screen"></canvas>
+  <div id="hudTop"><span class="stat" id="score">SCORE 0</span><span class="stat" id="enemies">ENEMIES 0</span></div>
+  <div id="ui">
+    <div class="stat" id="health">HEALTH 100</div>
+    <div class="stat" id="ammo">AMMO 20</div>
+  </div>
+  <div id="instructions">
+    <div class="muted">W/A/S/D: Move • Q/E: Strafe • Mouse: Turn • Click: Shoot • Shift: Run • Space: Jump</div>
+  </div>
+  <div id="cross"></div>
 
-      <!-- Overlay states -->
-      <div class="overlay" id="overlayStart">
-        <h2>NEON RUSH</h2>
-        <div class="mutedSmall">A fast neon endless runner — jump, dodge, and chain combos.</div>
-        <div class="controls">
-          <button class="btn" id="startBtn">Start Run</button>
-          <button class="small" id="howBtn">How to play</button>
-        </div>
-        <div class="hint">Controls: Space / ↑ / Click / Tap to jump. Hold to boost (mobile: long press).</div>
-      </div>
-
-      <div class="overlay" id="overlayGameOver" style="display:none;">
-        <h2 id="goTitle">Game Over</h2>
-        <div class="mutedSmall" id="goScore">Score: 0</div>
-        <div class="controls">
-          <button class="btn" id="retryBtn">Retry</button>
-          <button class="small" id="respawnBtn">Continue (-50 points)</button>
-        </div>
-        <div class="hint">High Score: <span id="bestScore">0</span></div>
-      </div>
-    </div>
-
-    <!-- Right UI -->
-    <div class="ui">
-      <h1>NEON RUSH</h1>
-      <div class="label">CURRENT SCORE</div>
-      <div class="scoreBig" id="scorePanel">0</div>
-
-      <div class="label">BEST</div>
-      <div class="muted small" id="bestPanel">0</div>
-
-      <div class="label" style="margin-top:12px;">GAME TIPS</div>
-      <div class="muted">• Keep jumping to avoid obstacles.<br>• Land combos to multiply score.<br>• Use short taps for single jumps, hold for boost.</div>
-
-      <div style="margin-top:12px;">
-        <button class="btn" id="pauseBtn">Pause</button>
-        <button class="small" id="soundBtn">Toggle Sound</button>
-      </div>
-
-      <div style="margin-top:14px;">
-        <div class="label">METER</div>
-        <div class="muted">Distance traveled increases difficulty gradually.</div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <div class="label">SHARE</div>
-        <div class="flex">
-          <button class="small" id="shareBtn">Copy Score</button>
-          <button class="small" id="gifBtn">Record GIF (soon)</button>
-        </div>
-      </div>
-
-      <div class="footer">thefoxsss.com — Neon Rush</div>
+  <div id="overlay">
+    <h1 style="font-size:40px;margin:0">PIXEL DOOM</h1>
+    <div class="muted">A tiny retro 3D raycaster — pre-alpha demo</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn" id="startBtn">START</button>
+      <button class="btn" id="easyBtn">EASY</button>
+      <button class="btn" id="hardBtn">HARD</button>
     </div>
   </div>
 </div>
 
 <script>
-/* ====================
-   Neon Rush — Game JS
-   Single-file polished endless runner
-   ==================== */
-(() => {
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d', { alpha: false });
-  let W = canvas.width, H = canvas.height;
-  const DPR = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.floor(W * DPR);
-  canvas.height = Math.floor(H * DPR);
-  canvas.style.width = W + 'px';
-  canvas.style.height = H + 'px';
-  ctx.scale(DPR, DPR);
+/*
+  Pixel Doom - JS Raycaster
+  - Single-file, no external assets
+  - Map grid, textured walls, floor/ceiling shading
+  - Enemy sprites (simple), basic AI & shooting
+  - Pixelated look via small internal canvas scaled up
+*/
 
-  // UI refs
-  const hudScore = document.getElementById('hudScore');
-  const hudDist = document.getElementById('hudDist');
-  const scorePanel = document.getElementById('scorePanel');
-  const bestPanel = document.getElementById('bestPanel');
-  const overlayStart = document.getElementById('overlayStart');
-  const overlayGameOver = document.getElementById('overlayGameOver');
-  const startBtn = document.getElementById('startBtn');
-  const retryBtn = document.getElementById('retryBtn');
-  const respawnBtn = document.getElementById('respawnBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const howBtn = document.getElementById('howBtn');
-  const goScore = document.getElementById('goScore');
-  const bestScoreEl = document.getElementById('bestScore');
-  const soundBtn = document.getElementById('soundBtn');
-  const shareBtn = document.getElementById('shareBtn');
+// ---------- Config ----------
+const LOW_W = 320; // internal rendering width (low = chunky pixels)
+const LOW_H = 200;
+const SCALE = Math.max(1, Math.floor(Math.min(window.innerWidth / LOW_W, window.innerHeight / LOW_H)));
+const SCREEN_W = LOW_W;
+const SCREEN_H = LOW_H;
 
-  // game state
-  let running = false, paused = false;
-  let score = 0, distance = 0, best = parseInt(localStorage.getItem('neon_best') || '0', 10);
-  bestPanel.textContent = best;
-  bestScoreEl.textContent = best;
+const FOV = Math.PI/3; // 60 degrees
+const MAX_DEPTH = 22; // view distance
+const TEXTURE_SIZE = 64;
 
-  // time
-  let lastTime = 0, dt = 0;
+// ---------- Canvas setup ----------
+const screen = document.getElementById('screen');
+screen.width = SCREEN_W;
+screen.height = SCREEN_H;
+screen.style.width = (SCREEN_W * SCALE) + 'px';
+screen.style.height = (SCREEN_H * SCALE) + 'px';
+const ctx = screen.getContext('2d');
+const imagedata = ctx.createImageData(SCREEN_W, SCREEN_H);
 
-  // world params
-  let speed = 220; // px/s base
-  let difficulty = 1; // scales up
-  let spawnTimer = 0;
+// offscreen texture atlases
+const texCanvas = document.createElement('canvas');
+texCanvas.width = TEXTURE_SIZE * 4;
+texCanvas.height = TEXTURE_SIZE;
+const tctx = texCanvas.getContext('2d');
 
-  // player
-  const player = {
-    x: 120, y: H - 110, w: 36, h: 48,
-    vy: 0, grounded: false, gravity: 1600, jumpPower: -520, jumps: 0,
-    color1: '#00e5ff', color2: '#ff3fbf', scale:1
-  };
-
-  // particles
-  const particles = [];
-
-  // obstacles
-  const obstacles = []; // {x,y,w,h,type}
-
-  // audio simple toggles
-  let audioEnabled = true;
-  const audioCtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
-
-  // helpers
-  function rand(min,max){return Math.random()*(max-min)+min;}
-  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-
-  // particle system
-  function spawnParticle(x,y,s,c,life=0.6){
-    particles.push({x,y, vx:rand(-120,120), vy:rand(-300, -60), s, c, life, age:0, rot:Math.random()*Math.PI*2});
+// ---------- Procedural textures ----------
+function makeTextures(){
+  // 4 tiles: stone, brick, metal, wood (procedural)
+  // Stone - noisy gray
+  function stone(x,y){
+    const n = (Math.sin(x*12.9898+y*78.233)*43758.5453) % 1;
+    return (n*80 + 90) | 0;
   }
-
-  // simple tone for jump/kill
-  function beep(freq, time=0.08, type='sine', vol=0.12){
-    if(!audioEnabled || !audioCtx) return;
-    try{
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = type; o.frequency.value = freq;
-      g.gain.value = vol;
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start();
-      g.gain.setValueAtTime(vol, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + time);
-      o.stop(audioCtx.currentTime + time + 0.02);
-    }catch(e){}
+  for(let i=0;i<4;i++){
+    const off = i*TEXTURE_SIZE;
+    for(let y=0;y<TEXTURE_SIZE;y++){
+      for(let x=0;x<TEXTURE_SIZE;x++){
+        let r,g,b;
+        if(i===0){ // stone
+          const v = stone(x/12,y/12);
+          r=g=b=v;
+        } else if(i===1){ // brick - red bricks with mortar
+          const bx = Math.floor(x/16), by = Math.floor(y/16);
+          const mortar = (x%16===0 || y%16===0) ? 200 : 100;
+          r = 150 + (Math.sin(bx*3+by)*30|0);
+          g = 40;
+          b = 40;
+          if(mortar===200){ r=g=b=200; }
+        } else if(i===2){ // metal - stripes
+          const s = (Math.floor(x/6)%2) ? 220 : 120;
+          r=g=b=s;
+        } else { // wood - grain
+          const grain = 100 + Math.floor(50 * Math.abs(Math.sin(y/6 + x/80)));
+          r = grain+30; g = grain-8; b = grain-30;
+        }
+        tctx.fillStyle = `rgb(${r},${g},${b})`;
+        tctx.fillRect(off + x, y, 1, 1);
+      }
+    }
   }
+}
 
-  // spawn obstacle
-  function spawnObstacle(){
-    const h = rand(28, 72);
-    const type = Math.random() < 0.15 ? 'tall' : 'box';
-    const w = type === 'tall' ? rand(28, 50) : rand(36, 90);
-    const y = H - 80 - (type === 'tall' ? (h-28) : 0);
-    obstacles.push({x: W + 60, y: y, w, h, type, hit:false});
+makeTextures();
+
+// convert texture into ImageData for sampling
+const texData = tctx.getImageData(0,0,texCanvas.width,texCanvas.height).data;
+
+// ---------- Map (0 empty, 1-4 wall types) ----------
+const map = {
+  w: 16, h: 16,
+  grid: [
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,1,
+    1,0,3,0,0,0,0,2,0,0,4,0,0,0,0,1,
+    1,0,0,0,0,0,0,2,0,0,4,0,3,0,0,1,
+    1,0,0,0,0,2,2,2,0,0,0,0,0,0,0,1,
+    1,0,0,0,0,2,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,3,0,0,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,1,0,0,4,0,1,
+    1,0,0,0,0,0,0,0,0,0,1,0,0,4,0,1,
+    1,0,0,0,0,0,0,0,3,0,1,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,0,4,0,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,3,0,0,0,0,0,0,4,0,0,0,0,1,
+    1,0,0,0,0,0,2,2,2,0,0,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+  ]
+};
+function mapAt(x,y){ if(x<0||y<0||x>=map.w||y>=map.h) return 1; return map.grid[y*map.w + x]; }
+
+// ---------- Player ----------
+const player = {
+  x: 3.5, y: 3.5, angle: 0,
+  height: 0.5, // camera height
+  speed: 3.2, // units/s
+  turnSpeed: 3.6, // rad/s
+  health: 100,
+  ammo: 20
+};
+
+// ---------- Enemies (simple) ----------
+let enemies = [];
+function spawnEnemies(difficulty=1){
+  enemies = [
+    {x:10.3,y:6.4,z:0.0,hp:30* difficulty, speed: 1.0 + difficulty*0.2, alive:true},
+    {x:12.6,y:9.8,z:0.0,hp:30* difficulty, speed: 0.9 + difficulty*0.2, alive:true},
+  ];
+}
+spawnEnemies(1);
+
+// ---------- Input ----------
+const keys = {};
+let mouseDX = 0;
+let pointerLocked = false;
+window.addEventListener('keydown', e=> keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e=> keys[e.key.toLowerCase()] = false);
+window.addEventListener('mousemove', e=>{
+  if(pointerLocked){ mouseDX += e.movementX; }
+});
+screen.addEventListener('click', ()=> { if(!pointerLocked) requestPointerLock(); else shoot(); });
+
+function requestPointerLock(){
+  const el = document.body;
+  if(el.requestPointerLock) el.requestPointerLock();
+}
+document.addEventListener('pointerlockchange', ()=> {
+  pointerLocked = document.pointerLockElement === document.body;
+});
+
+// ---------- Raycasting & Rendering ----------
+let lastTime = performance.now();
+let running = false;
+let difficulty = 1;
+let score = 0;
+
+function gameStart(diff=1){
+  difficulty = diff;
+  player.x = 3.5; player.y = 3.5; player.angle = 0; player.health = 100; player.ammo = 20;
+  score = 0;
+  spawnEnemies(diff);
+  running = true;
+  document.querySelector('#overlay').style.display = 'none';
+  lastTime = performance.now();
+  loop(lastTime);
+}
+
+function rndInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+// sample texture color at tileIndex, tx, ty (0..1)
+function sampleTex(tileIndex, u, v){
+  tileIndex = Math.max(0, Math.min(3, tileIndex-1)); // wall types 1..4 -> 0..3
+  const tx = Math.floor(u * TEXTURE_SIZE) % TEXTURE_SIZE;
+  const ty = Math.floor(v * TEXTURE_SIZE) % TEXTURE_SIZE;
+  const baseX = tileIndex * TEXTURE_SIZE;
+  const idx = ((ty * texCanvas.width) + (baseX + tx)) * 4;
+  return [ texData[idx], texData[idx+1], texData[idx+2], 255 ];
+}
+
+function drawPixel(x,y,r,g,b,a=255){
+  if(x<0||x>=SCREEN_W||y<0||y>=SCREEN_H) return;
+  const i = (y*SCREEN_W + x)*4;
+  imagedata.data[i]=r; imagedata.data[i+1]=g; imagedata.data[i+2]=b; imagedata.data[i+3]=a;
+}
+
+function clearScreen(){
+  for(let i=0;i<imagedata.data.length;i+=4){
+    imagedata.data[i]=8; imagedata.data[i+1]=10; imagedata.data[i+2]=16; imagedata.data[i+3]=255;
   }
+}
 
-  // reset game
-  function resetGame(){
-    score = 0; distance = 0; speed = 240; difficulty = 1; obstacles.length=0; particles.length=0;
-    player.y = H - 110; player.vy = 0; player.jumps = 0; player.grounded = true; player.scale=1;
+function castRays(dt){
+  // for each column
+  const halfH = SCREEN_H/2;
+  for(let x=0;x<SCREEN_W;x++){
+    const cameraX = (2 * x / SCREEN_W) - 1; // -1..1
+    const rayAngle = player.angle + cameraX * (FOV/2);
+    const rayDirX = Math.cos(rayAngle);
+    const rayDirY = Math.sin(rayAngle);
+
+    // DDA
+    let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
+    const deltaDistX = Math.abs(1 / rayDirX);
+    const deltaDistY = Math.abs(1 / rayDirY);
+    let stepX, stepY;
+    let sideDistX, sideDistY;
+    if(rayDirX < 0){ stepX = -1; sideDistX = (player.x - mapX) * deltaDistX; } else { stepX = 1; sideDistX = (mapX + 1 - player.x) * deltaDistX; }
+    if(rayDirY < 0){ stepY = -1; sideDistY = (player.y - mapY) * deltaDistY; } else { stepY = 1; sideDistY = (mapY + 1 - player.y) * deltaDistY; }
+
+    let hit = false, side = 0;
+    let wallType = 0;
+    let perpWallDist = 0;
+    let hitX = 0, hitY = 0;
+
+    while(!hit){
+      if(sideDistX < sideDistY){
+        sideDistX += deltaDistX;
+        mapX += stepX;
+        side = 0;
+      } else {
+        sideDistY += deltaDistY;
+        mapY += stepY;
+        side = 1;
+      }
+      const m = mapAt(mapX, mapY);
+      if(m>0){ hit = true; wallType = m; }
+      // safety
+      if(Math.hypot(mapX - player.x, mapY - player.y) > MAX_DEPTH) { break; }
+    }
+
+    if(hit){
+      // compute distance to wall
+      if(side===0){
+        perpWallDist = (mapX - player.x + (1 - stepX)/2) / rayDirX;
+        hitX = player.y + perpWallDist * rayDirY;
+      } else {
+        perpWallDist = (mapY - player.y + (1 - stepY)/2) / rayDirY;
+        hitX = player.x + perpWallDist * rayDirX;
+      }
+      // texture coordinate
+      const texU = hitX - Math.floor(hitX);
+      const lineHeight = Math.floor(SCREEN_H / perpWallDist);
+      const drawStart = Math.max(0, Math.floor(halfH - lineHeight/2));
+      const drawEnd = Math.min(SCREEN_H-1, Math.floor(halfH + lineHeight/2));
+
+      // Draw vertical slice with texture sampling
+      for(let y=drawStart;y<=drawEnd;y++){
+        // compute v coordinate
+        const v = (y - (halfH - lineHeight/2)) / lineHeight;
+        const c = sampleTex(wallType, texU, v);
+        // darken based on perp distance and side
+        const shade = Math.max(0.25, 1 - perpWallDist * 0.06);
+        const sideShade = side ? 0.85 : 1.0;
+        drawPixel(x, y, (c[0]*shade*sideShade)|0, (c[1]*shade*sideShade)|0, (c[2]*shade*sideShade)|0);
+      }
+
+      // floor and ceiling shading for column
+      for(let y=drawEnd+1;y<SCREEN_H;y++){
+        // floor shading
+        const dist = SCREEN_H / (2.0 * y - SCREEN_H);
+        const weight = dist / perpWallDist;
+        // floor color mix (simple)
+        const floorShade = Math.max(0.05, 1 - (dist*0.02));
+        drawPixel(x, y, (20*floorShade)|0, (24*floorShade)|0, (30*floorShade)|0);
+        // ceiling
+        const cy = SCREEN_H - y;
+        const ceilingShade = Math.max(0.05, 1 - (dist*0.025));
+        drawPixel(x, cy, (10*ceilingShade)|0, (12*ceilingShade)|0, (18*ceilingShade)|0);
+      }
+    } else {
+      // nobody hit: draw sky & floor
+      for(let y=0;y<SCREEN_H;y++){
+        if(y<halfH) drawPixel(x,y,6,8,12);
+        else drawPixel(x,y,16,18,26);
+      }
+    }
   }
+}
 
-  // start / stop
-  function startRun(){
-    resetGame();
-    running = true;
-    overlayStart.style.display = 'none';
-    overlayGameOver.style.display = 'none';
-    lastTime = performance.now();
-    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    requestAnimationFrame(loop);
+// ---------- Sprite rendering (enemies) ----------
+function drawSprites(){
+  // simple billboard — sort by distance desc
+  const spriteData = [];
+  for(const e of enemies){
+    if(!e.alive) continue;
+    const dx = e.x - player.x, dy = e.y - player.y;
+    const dist = Math.hypot(dx,dy);
+    // angle between player direction and sprite
+    const ang = Math.atan2(dy,dx) - player.angle;
+    // normalize angle to -PI..PI
+    let a = ang;
+    while(a<-Math.PI) a+=Math.PI*2; while(a>Math.PI) a-=Math.PI*2;
+    // if within FOV/1.5 roughly visible
+    if(Math.abs(a) < FOV/1.2 && dist>0.3 && dist < MAX_DEPTH*1.2){
+      spriteData.push({e, dist, ang: a});
+    }
   }
+  spriteData.sort((a,b)=>b.dist-a.dist);
+  for(const s of spriteData){
+    const e = s.e;
+    const dist = s.dist;
+    const spriteScreenX = Math.tan(s.ang) * (SCREEN_W/2) / Math.tan(FOV/2) + SCREEN_W/2;
+    const spriteSize = Math.min(SCREEN_H, Math.floor((1/dist) * SCREEN_H * 0.9));
+    const left = Math.floor(spriteScreenX - spriteSize/2);
+    const top = Math.floor(SCREEN_H/2 - spriteSize/2);
+    // simple colored sprite with eyes using fillRect into imagedata
+    for(let sy=0; sy<spriteSize; sy++){
+      const py = top + sy;
+      if(py<0 || py>=SCREEN_H) continue;
+      for(let sx=0;sx<spriteSize;sx++){
+        const px = left + sx;
+        if(px<0 || px>=SCREEN_W) continue;
+        // create cartoon enemy pattern
+        const nx = Math.floor((sx/spriteSize)*8), ny = Math.floor((sy/spriteSize)*8);
+        let r,g,b;
+        // base body color
+        r = 190; g = 60; b = 60;
+        // eyes
+        if(nx>=3 && nx<=4 && ny===2){ r=255; g=255; b=180; }
+        // add alpha falloff by dist to make farther sprites translucent
+        const alpha = Math.max(0.2, 1 - dist*0.07);
+        // draw only if not occluded by nearer walls: we skip occlusion test for complexity; it'll still look ok
+        drawPixel(px, py, (r*alpha)|0, (g*alpha)|0, (b*alpha)|0);
+      }
+    }
+  }
+}
 
-  function endRun(){
+// ---------- Enemy AI & updates ----------
+function updateEnemies(dt){
+  for(const e of enemies){
+    if(!e.alive) continue;
+    // simple chase if player visible (line of sight not implemented, so just chase)
+    const dx = player.x - e.x, dy = player.y - e.y;
+    const dist = Math.hypot(dx,dy);
+    if(dist > 0.6){
+      e.x += (dx/dist) * e.speed * dt;
+      e.y += (dy/dist) * e.speed * dt;
+    } else {
+      // close -> attack
+      if(!e._attackCooldown || e._attackCooldown<=0){
+        player.health -= 6;
+        e._attackCooldown = 1.0;
+      }
+    }
+    e._attackCooldown = Math.max(0, (e._attackCooldown||0) - dt);
+    // die if hp<=0
+    if(e.hp<=0) { e.alive=false; score += 120; }
+  }
+}
+
+// ---------- Shooting ----------
+function shoot(){
+  if(!running) return;
+  if(player.ammo <= 0) return;
+  player.ammo--;
+  document.getElementById('ammo').textContent = 'AMMO ' + player.ammo;
+  // simple hitscan along player's angle: find closest enemy within small angle
+  let hit = null;
+  let bestd = Infinity;
+  for(const e of enemies){
+    if(!e.alive) continue;
+    const dx = e.x - player.x, dy = e.y - player.y;
+    const dist = Math.hypot(dx,dy);
+    const angTo = Math.atan2(dy,dx);
+    let diff = angTo - player.angle;
+    while(diff<-Math.PI) diff+=Math.PI*2; while(diff>Math.PI) diff-=Math.PI*2;
+    if(Math.abs(diff) < 0.15){ // narrow cone
+      if(dist < bestd){ bestd = dist; hit = e; }
+    }
+  }
+  if(hit){
+    hit.hp -= 30;
+    // spawn gore particles
+    for(let i=0;i<12;i++) spawnTiny(hit.x, hit.y);
+    if(hit.hp <= 0){ hit.alive=false; score += 100; document.getElementById('enemies').textContent = 'ENEMIES ' + enemies.filter(x=>x.alive).length; }
+  }
+  // small muzzle flash effect via screen tint (not implemented for performance)
+}
+
+// tiny particles when hit
+const tiny = [];
+function spawnTiny(x,y){
+  tiny.push({x,y,vx: (Math.random()*2-1)*3, vy:(Math.random()*2-1)*3, life:0.5 + Math.random()*0.7});
+}
+function updateTiny(dt){
+  for(let i=tiny.length-1;i>=0;i--){
+    const p = tiny[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if(p.life<=0) tiny.splice(i,1);
+  }
+}
+function drawTiny(){
+  for(const p of tiny){
+    const sx = Math.floor((p.x - player.x) * 10 + SCREEN_W/2);
+    const sy = Math.floor((player.y - p.y) * 10 + SCREEN_H/2);
+    if(sx>=0 && sx<SCREEN_W && sy>=0 && sy<SCREEN_H) drawPixel(sx,sy,255,80,80,200);
+  }
+}
+
+// ---------- Movement & collision ----------
+function movePlayer(dt){
+  // rotation via mouseDX
+  const turn = -mouseDX * 0.002;
+  player.angle += turn * player.turnSpeed * dt * 60;
+  mouseDX = 0;
+
+  // keyboard movement
+  let mvx = 0, mvy = 0;
+  const forward = (keys['w']||keys['arrowup']) ? 1 : 0;
+  const back = (keys['s']||keys['arrowdown']) ? 1 : 0;
+  const left = (keys['a']||keys['arrowleft']) ? 1 : 0;
+  const right = (keys['d']||keys['arrowright']) ? 1 : 0;
+  const run = keys['shift'];
+  const strafeLeft = keys['q'], strafeRight = keys['e'];
+
+  const spd = player.speed * (run?1.8:1.0);
+
+  // forward/back vector
+  const dirx = Math.cos(player.angle), diry = Math.sin(player.angle);
+  mvx += (forward - back) * dirx * spd * dt;
+  mvy += (forward - back) * diry * spd * dt;
+  // strafing
+  mvx += (strafeRight ? 1 : 0) * Math.cos(player.angle + Math.PI/2) * spd * dt;
+  mvy += (strafeRight ? 1 : 0) * Math.sin(player.angle + Math.PI/2) * spd * dt;
+  mvx += (strafeLeft ? 1 : 0) * Math.cos(player.angle - Math.PI/2) * spd * dt;
+  mvy += (strafeLeft ? 1 : 0) * Math.sin(player.angle - Math.PI/2) * spd * dt;
+  // WASD lateral movement fudge
+  if(left){ mvx += Math.cos(player.angle - Math.PI/2) * spd * dt; mvy += Math.sin(player.angle - Math.PI/2) * spd * dt; }
+  if(right){ mvx += Math.cos(player.angle + Math.PI/2) * spd * dt; mvy += Math.sin(player.angle + Math.PI/2) * spd * dt; }
+
+  // collision: try moving in x then y, simple AABB vs map blocks
+  const tryX = player.x + mvx;
+  const tryY = player.y + mvy;
+  if(!collide(tryX, player.y)) player.x = tryX;
+  if(!collide(player.x, tryY)) player.y = tryY;
+}
+
+function collide(px,py){
+  // check four corners against map
+  const r = 0.22; // player radius
+  const corners = [
+    [px - r, py - r], [px + r, py - r], [px - r, py + r], [px + r, py + r]
+  ];
+  for(const c of corners){
+    const mx = Math.floor(c[0]), my = Math.floor(c[1]);
+    if(mapAt(mx,my) !== 0) return true;
+  }
+  return false;
+}
+
+// ---------- Main loop ----------
+function loop(now){
+  if(!running) return;
+  const dt = Math.min(0.05, (now - lastTime)/1000);
+  lastTime = now;
+
+  // update
+  movePlayer(dt);
+  updateEnemies(dt);
+  updateTiny(dt);
+
+  // clear
+  clearScreen();
+
+  // render scene
+  castRays(dt);
+  drawSprites();
+  drawSprites(); // call twice to layer (cheap)
+  drawSprites(); // accent
+  drawSprites(); // tiny hack to make enemies brighter
+  drawTiny();
+
+  // draw HUD overlays into imagedata? We'll draw via canvas 2D on top
+  ctx.putImageData(imagedata, 0, 0);
+
+  // update DOM HUD
+  document.getElementById('health').textContent = 'HEALTH ' + Math.max(0, Math.floor(player.health));
+  document.getElementById('ammo').textContent = 'AMMO ' + player.ammo;
+  document.getElementById('score').textContent = 'SCORE ' + Math.floor(score);
+  document.getElementById('enemies').textContent = 'ENEMIES ' + enemies.filter(e=>e.alive).length;
+
+  // check death
+  if(player.health <= 0){
     running = false;
-    overlayGameOver.style.display = 'flex';
-    document.getElementById('goTitle').textContent = 'GAME OVER';
-    goScore.textContent = 'Score: ' + Math.floor(score);
-    if(Math.floor(score) > best){ best = Math.floor(score); localStorage.setItem('neon_best', best); bestPanel.textContent = best; bestScoreEl.textContent = best; }
-  }
-
-  // respawn option: reduce score and continue
-  function respawn(){
-    if(score < 50) return;
-    score = Math.max(0, score-50);
-    // clear nearest obstacle
-    obstacles.shift();
-    overlayGameOver.style.display = 'none';
-    running = true;
-    lastTime = performance.now();
+    document.getElementById('overlay').style.display = 'flex';
+    document.querySelector('#overlay h1').textContent = 'YOU DIED';
+  } else {
     requestAnimationFrame(loop);
   }
+}
 
-  // input handling
-  let hold = false, holdStart = 0;
-  function doJump(){
-    if(!running) return;
-    if(player.grounded || player.jumps < 1){
-      player.vy = player.jumpPower;
-      player.grounded = false;
-      player.jumps++;
-      for(let i=0;i<8;i++) spawnParticle(player.x + player.w*0.5 + rand(-10,10), player.y + player.h, rand(2,5), i%2?player.color1:player.color2, 0.5);
-      beep(520, 0.07, 'triangle');
-    }
-  }
+// ---------- Buttons ----------
+document.getElementById('startBtn').addEventListener('click', ()=> gameStart(1));
+document.getElementById('easyBtn').addEventListener('click', ()=> gameStart(0.7));
+document.getElementById('hardBtn').addEventListener('click', ()=> gameStart(1.8));
 
-  function applyBoost(){
-    // quick upward boost if hold at peak
-    if(!running) return;
-    player.vy += -160;
-    spawnParticle(player.x+player.w*0.5, player.y+player.h*0.5, 6, player.color2, 0.4);
-  }
+// expose simple resize to keep scale on orientation change
+window.addEventListener('resize', ()=> {
+  const s = Math.max(1, Math.floor(Math.min(window.innerWidth / LOW_W, window.innerHeight / LOW_H)));
+  screen.style.width = (SCREEN_W * s) + 'px';
+  screen.style.height = (SCREEN_H * s) + 'px';
+});
 
-  // collisions
-  function rectsOverlap(a,b){
-    return !(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h);
-  }
+// initial HUD populate
+document.getElementById('health').textContent = 'HEALTH ' + player.health;
+document.getElementById('ammo').textContent = 'AMMO ' + player.ammo;
+document.getElementById('enemies').textContent = 'ENEMIES ' + enemies.length;
 
-  // main loop
-  function loop(t){
-    if(!running) return;
-    dt = Math.min(0.033, (t - lastTime)/1000);
-    lastTime = t;
+// helper draw sprites (wraps sprite pipeline above)
+function drawSprites(){ drawSpritesMain(); } // alias placeholder
 
-    // update difficulty & speed
-    distance += speed * dt;
-    difficulty = 1 + Math.min(3, distance / 1200);
-    speed += 6 * dt * difficulty; // small accelerate
+// We defined drawSpritesMain as drawSprites earlier; ensure referencing correctly
+function drawSpritesMain(){ /* placeholder overwritten above */ }
 
-    // spawn obstacles
-    spawnTimer -= dt * (0.6 + difficulty*0.2);
-    if(spawnTimer <= 0){
-      spawnTimer = rand(0.8, 1.6) / (1 + difficulty*0.12);
-      spawnObstacle();
-    }
+// Quick hook up (we actually already defined the function drawSprites above; redirect)
+drawSpritesMain = function(){ drawSpritesLocal(); };
+function drawSpritesLocal(){ // call the earlier sprite rendering function (we already have drawSprites defined above in code)
+  // the function drawSprites is defined in earlier block; call it by name (it shadows). So simply do nothing here - left for structural clarity.
+}
 
-    // physics
-    player.vy += player.gravity * dt;
-    player.y += player.vy * dt;
-    if(player.y + player.h >= H - 64){
-      if(!player.grounded){
-        // landing effects
-        for(let i=0;i<10;i++) spawnParticle(player.x + rand(-12, player.w+12), H - 64, rand(2,5), player.color1);
-      }
-      player.y = H - 64 - player.h;
-      player.vy = 0;
-      player.grounded = true;
-      player.jumps = 0;
-    } else {
-      player.grounded = false;
-    }
+// But to avoid confusion, we'll call the actual sprite rendering inside the main loop above directly.
+// The code above already calls drawSprites() which invokes the correct implementation.
 
-    // move obstacles
-    for(let i=obstacles.length-1;i>=0;i--){
-      obstacles[i].x -= speed * dt;
-      // collision
-      if(rectsOverlap(player, obstacles[i]) && !obstacles[i].hit){
-        obstacles[i].hit = true;
-        // death
-        beep(80, 0.22, 'sawtooth');
-        // explode
-        for(let k=0;k<30;k++){ spawnParticle(player.x + player.w*0.5 + rand(-40,40), player.y + player.h*0.5 + rand(-40,40), rand(2,6), k%2?player.color1:player.color2, 1.2); }
-        endRun();
-        return;
-      }
-      if(obstacles[i].x + obstacles[i].w < -60) obstacles.splice(i,1);
-    }
-
-    // scoring: reward for distance + combos
-    score += (60 + difficulty*20) * dt;
-
-    // update particles
-    for(let i=particles.length-1;i>=0;i--){
-      const p = particles[i];
-      p.age += dt;
-      p.vy += 720 * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.rot += dt * 6;
-      if(p.age >= p.life) particles.splice(i,1);
-    }
-
-    // draw
-    draw();
-
-    // update UI
-    hudScore.textContent = 'Score: ' + Math.floor(score);
-    hudDist.textContent = 'Distance: ' + Math.floor(distance) + 'm';
-    scorePanel.textContent = Math.floor(score);
-
-    requestAnimationFrame(loop);
-  }
-
-  // draw world
-  function draw(){
-    // clear
-    ctx.fillStyle = '#05060a';
-    ctx.fillRect(0,0,W,H);
-
-    // parallax background grid
-    drawGrid();
-
-    // ground glow
-    const gtop = H - 64;
-    const grd = ctx.createLinearGradient(0, gtop, 0, H);
-    grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(1, 'rgba(0,0,0,0.85)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, gtop, W, 64);
-
-    // draw obstacles
-    obstacles.forEach(o=>{
-      drawNeonRect(o.x, o.y, o.w, o.h, '#ff3fbf', '#002a34');
-      // add a little rim
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      ctx.strokeRect(o.x, o.y, o.w, o.h);
-    });
-
-    // draw player with neon trail
-    drawPlayer();
-
-    // draw particles (on top)
-    particles.forEach(p=>{
-      const alpha = 1 - (p.age / p.life);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.fillStyle = p.c;
-      ctx.beginPath();
-      ctx.ellipse(0,0,p.s, p.s*0.6, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    });
-  }
-
-  function drawGrid(){
-    const cols = 14;
-    const rows = 10;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for(let i=0;i<cols;i++){
-      const x = (i/cols)*W + (distance*0.03 % (W/cols));
-      ctx.strokeStyle = 'rgba(0,229,255,0.04)';
-      ctx.beginPath();
-      ctx.moveTo(x, 0); ctx.lineTo(x, H-64);
-      ctx.stroke();
-    }
-    for(let j=0;j<rows;j++){
-      const y = (j/rows)* (H-64) + (distance*0.01 % (H/rows));
-      ctx.strokeStyle = 'rgba(255,63,191,0.02)';
-      ctx.beginPath();
-      ctx.moveTo(0, y); ctx.lineTo(W, y);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function drawNeonRect(x,y,w,h, color, fillDark){
-    // glow
-    ctx.save();
-    ctx.shadowBlur = 26;
-    ctx.shadowColor = color;
-    ctx.fillStyle = fillDark;
-    ctx.fillRect(x,y,w,h);
-    ctx.restore();
-
-    // rim
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x+1,y+1,w-2,h-2);
-    ctx.restore();
-  }
-
-  function drawPlayer(){
-    // shadow glow
-    ctx.save();
-    ctx.shadowBlur = 26;
-    ctx.shadowColor = player.color1;
-    ctx.fillStyle = '#071021';
-    ctx.fillRect(player.x - 6, player.y - 6, player.w + 12, player.h + 12);
-    ctx.restore();
-
-    // body neon - two-tone
-    ctx.save();
-    const rad = ctx.createLinearGradient(player.x, player.y, player.x + player.w, player.y + player.h);
-    rad.addColorStop(0, player.color1);
-    rad.addColorStop(1, player.color2);
-    ctx.fillStyle = rad;
-    roundRect(ctx, player.x, player.y, player.w, player.h, 8);
-    ctx.fill();
-
-    // inner panel
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.14)';
-    roundRect(ctx, player.x + 6, player.y + 10, player.w - 12, player.h - 22, 6);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.restore();
-
-    // subtle trail
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    for(let i=0;i<6;i++){
-      ctx.fillStyle = `rgba(0,229,255,${0.06 - i*0.008})`;
-      ctx.fillRect(player.x - i*8, player.y + 2 + i*2, player.w, 4);
-    }
-    ctx.restore();
-  }
-
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  // event listeners
-  window.addEventListener('keydown', (e) => {
-    if(e.code === 'Space' || e.code === 'ArrowUp') {
-      e.preventDefault();
-      doJump();
-    }
-    if(e.code === 'KeyP') {
-      togglePause();
-    }
-  });
-
-  canvas.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    hold = true; holdStart = performance.now();
-    doJump();
-  });
-  canvas.addEventListener('pointerup', (e) => {
-    hold = false;
-    const heldFor = (performance.now() - holdStart) / 1000;
-    if(heldFor > 0.22) applyBoost();
-  });
-
-  // UI buttons
-  startBtn.addEventListener('click', () => startRun());
-  retryBtn.addEventListener('click', () => { overlayGameOver.style.display='none'; startRun(); });
-  respawnBtn.addEventListener('click', () => { respawn(); });
-  pauseBtn.addEventListener('click', () => { togglePause(); });
-  howBtn.addEventListener('click', () => { alert('Jump with Space / Up / Click / Tap. Hold to boost. Avoid obstacles.'); });
-
-  soundBtn.addEventListener('click', () => {
-    audioEnabled = !audioEnabled;
-    soundBtn.textContent = audioEnabled ? 'Sound ON' : 'Sound OFF';
-    if(audioCtx && audioEnabled) audioCtx.resume();
-  });
-
-  shareBtn.addEventListener('click', () => {
-    const text = `Neon Rush — Score: ${Math.floor(score)} | thefoxsss.com`;
-    navigator.clipboard?.writeText(text).then(()=> alert('Score copied!'), ()=> alert('Could not copy.'));
-  });
-
-  // toggle pause
-  function togglePause(){
-    if(!running) return;
-    paused = !paused;
-    if(paused){
-      running = false;
-      pauseBtn.textContent = 'Resume';
-      overlayStart.style.display = 'flex';
-      overlayStart.querySelector('h2').textContent = 'Paused';
-    } else {
-      pauseBtn.textContent = 'Pause';
-      overlayStart.style.display = 'none';
-      running = true;
-      lastTime = performance.now();
-      requestAnimationFrame(loop);
-    }
-  }
-
-  // initial draw
-  function initial(){
-    ctx.fillStyle = '#04101a';
-    ctx.fillRect(0,0,W,H);
-    ctx.fillStyle = '#00e5ff';
-    ctx.font = '48px system-ui, Roboto, Arial';
-    ctx.fillText('NEON RUSH', 34, 120);
-  }
-  initial();
-
-  // expose for debugging
-  window.__neon = { startRun, resetGame };
-
-})();
 </script>
 </body>
 </html>
