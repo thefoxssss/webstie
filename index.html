@@ -1,213 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>What up Gooner</title>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+<div id="statusText">Connecting...</div>
+<div id="board" style="display:grid; grid-template-columns: repeat(3, 100px); gap: 5px;"></div>
 
-  <style>
-    :root {
-      --bg: #000;
-      --accent: #ff0606;
-    }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      font-family: 'Press Start 2P', monospace;
-      color: var(--accent);
-      text-align: center;
-      overflow: hidden;
-    }
-    .wrap {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-    button, input {
-      font-family: inherit;
-      color: var(--accent);
-      background: transparent;
-      border: 2px solid var(--accent);
-      padding: 10px;
-      margin: 5px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #board {
-      display: grid;
-      grid-template-columns: repeat(3, 100px);
-      grid-gap: 5px;
-      justify-content: center;
-      margin-top: 20px;
-    }
-    .cell {
-      width: 100px;
-      height: 100px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid var(--accent);
-      font-size: 2em;
-      cursor: pointer;
-    }
-    #overlayTicTacToe {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-    }
-    #overlayTicTacToe.active {
-      display: flex;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>You're cool</h1>
-    <h3>v23.0 TTT</h3>
+<script>
+  let ws;
+  let playerId = null;
+  let gameState = null;
 
-    <div id="homeScreen">
-      <p>Type a secret code below</p>
-      <input id="roomInput" type="text" placeholder="Room code" />
-      <div>
-        <button id="createBtn">Create Game</button>
-        <button id="joinBtn">Join Game</button>
-      </div>
-      <p id="status"></p>
-    </div>
+  function connect(roomCode) {
+    ws = new WebSocket(`wss://YOUR_WORKER_DOMAIN/tictactoe/join/${roomCode}`);
 
-    <div id="overlayTicTacToe">
-      <h2 id="statusText">Waiting...</h2>
-      <div id="board"></div>
-      <div>
-        <button id="resetBtn">RESET</button>
-        <button id="closeBtn">CLOSE</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let tttSocket = null;
-    let tttGameState = null;
-    let tttMyPlayer = null;
-    let tttMySymbol = null;
-
-    const WORKER_BASE = "wss://aiworker.thefoxsss6969.workers.dev";
-    const createBtn = document.getElementById("createBtn");
-    const joinBtn = document.getElementById("joinBtn");
-    const roomInput = document.getElementById("roomInput");
-    const status = document.getElementById("status");
-    const boardEl = document.getElementById("board");
-    const statusText = document.getElementById("statusText");
-    const overlay = document.getElementById("overlayTicTacToe");
-    const closeBtn = document.getElementById("closeBtn");
-    const resetBtn = document.getElementById("resetBtn");
-
-    createBtn.onclick = async () => {
-      const resp = await fetch("https://aiworker.thefoxsss6969.workers.dev/tictactoe/create");
-      const code = await resp.text();
-      roomInput.value = code;
-      status.innerText = `Room created: ${code}`;
+    ws.onopen = () => {
+      document.getElementById('statusText').textContent = "Connected. Waiting for opponent...";
     };
 
-    joinBtn.onclick = () => {
-      const code = roomInput.value.trim().toUpperCase();
-      if (!code) return alert("Enter room code!");
-      connectToTTTRoom(code);
-    };
-
-    closeBtn.onclick = () => window.closeTTTGame();
-    resetBtn.onclick = () => window.resetTTTGame();
-
-    function updateTTTBoard() {
-      boardEl.innerHTML = "";
-      tttGameState.board.forEach((cell, i) => {
-        const div = document.createElement("div");
-        div.className = "cell";
-        div.textContent = cell || "";
-        div.onclick = () => window.handleTTTCellClick(i);
-        boardEl.appendChild(div);
-      });
-    }
-
-    function updateTTTStatus() {
-      if (tttGameState.gameOver) {
-        if (tttGameState.winner === "draw") {
-          statusText.textContent = "DRAW!";
-        } else {
-          statusText.textContent = `${tttGameState.winner} wins!`;
-        }
-      } else {
-        const turnSymbol = tttGameState.currentPlayer === 0 ? "X" : "O";
-        statusText.textContent = (turnSymbol === tttMySymbol)
-          ? "Your turn!"
-          : "Opponent's turn...";
-      }
-    }
-
-    function connectToTTTRoom(roomCode) {
-      overlay.classList.add("active");
-      document.getElementById("homeScreen").style.display = "none";
-
-      tttSocket = new WebSocket(`${WORKER_BASE}/tictactoe/join/${roomCode}`);
-
-      tttSocket.onopen = () => console.log("Connected to room", roomCode);
-
-      tttSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "init") {
-          tttMyPlayer = data.player;
-          tttMySymbol = data.symbol;
-          tttGameState = data.state;
-          updateTTTBoard();
-          updateTTTStatus();
-        } else if (data.type === "update" || data.type === "sync") {
-          tttGameState = data.state;
-          updateTTTBoard();
-          updateTTTStatus();
-        } else if (data.type === "playerLeft") {
-          alert("Other player left!");
-          window.closeTTTGame();
-        } else if (data.type === "error") {
-          alert(data.message);
-          window.closeTTTGame();
-        }
-      };
-
-      tttSocket.onerror = (err) => {
-        console.error("TTT WebSocket error", err);
-        alert("Connection failed");
-        window.closeTTTGame();
-      };
-
-      tttSocket.onclose = () => console.log("TTT socket closed");
-    }
-
-    window.handleTTTCellClick = (index) => {
-      if (!tttSocket || tttSocket.readyState !== WebSocket.OPEN) return;
-      if (!tttGameState || tttGameState.gameOver) return;
-      if (tttGameState.currentPlayer !== tttMyPlayer) return;
-      if (tttGameState.board[index] !== null) return;
-      tttSocket.send(JSON.stringify({ type: "move", player: tttMyPlayer, index }));
-    };
-
-    window.resetTTTGame = () => {
-      if (tttSocket && tttSocket.readyState === WebSocket.OPEN) {
-        tttSocket.send(JSON.stringify({ type: "reset" }));
+    ws.onmessage = event => {
+      const data = JSON.parse(event.data);
+      switch(data.type) {
+        case "init":
+          playerId = data.playerId;
+          gameState = data.state;
+          renderBoard();
+          updateStatus();
+          break;
+        case "update":
+        case "sync":
+          gameState = data.state;
+          renderBoard();
+          updateStatus();
+          break;
+        case "playerLeft":
+          document.getElementById('statusText').textContent = "Opponent left. Waiting for new opponent...";
+          break;
+        default:
+          console.warn("Unknown message:", data);
       }
     };
 
-    window.closeTTTGame = () => {
-      overlay.classList.remove("active");
-      document.getElementById("homeScreen").style.display = "block";
-      if (tttSocket) {
-        tttSocket.close();
-        tttSocket = null;
-      }
+    ws.onclose = () => {
+      document.getElementById('statusText').textContent = "Disconnected.";
     };
-  </script>
-</body>
-</html>
+  }
+
+  function renderBoard() {
+    const boardDiv = document.getElementById("board");
+    boardDiv.innerHTML = '';
+    gameState.board.forEach((cell, idx) => {
+      const cellDiv = document.createElement("div");
+      cellDiv.className = "cell";
+      cellDiv.style.width = "100px";
+      cellDiv.style.height = "100px";
+      cellDiv.style.border = "1px solid black";
+      cellDiv.style.display = "flex";
+      cellDiv.style.alignItems = "center";
+      cellDiv.style.justifyContent = "center";
+      cellDiv.style.fontSize = "3rem";
+      cellDiv.style.cursor = "default";
+
+      cellDiv.textContent = cell || "";
+
+      // Enable click only if it's player's turn, cell empty, and game not over
+      if (!cell && !gameState.gameOver && gameState.currentPlayer === playerId) {
+        cellDiv.style.cursor = "pointer";
+        cellDiv.onclick = () => {
+          ws.send(JSON.stringify({ type: "move", playerId, index: idx }));
+        };
+      }
+
+      boardDiv.appendChild(cellDiv);
+    });
+  }
+
+  function updateStatus() {
+    const statusDiv = document.getElementById('statusText');
+    if (gameState.sessions?.length < 2) {
+      statusDiv.textContent = "Waiting for opponent...";
+    } else if (gameState.gameOver) {
+      statusDiv.textContent = gameState.winner === "draw" ? "It's a draw!" : `${gameState.winner} wins!`;
+    } else {
+      statusDiv.textContent = gameState.currentPlayer === playerId ? "Your turn" : "Opponent's turn";
+    }
+  }
+
+  // Example usage: connect with a fixed room code
+  connect("SOMECODE");
+</script>
