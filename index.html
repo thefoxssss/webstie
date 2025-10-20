@@ -6,19 +6,27 @@
 <title>TheFoxsss Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <style>
-body { margin:0; font-family:'Roboto',sans-serif; background:#36393f; display:flex; justify-content:center; align-items:center; height:100vh; color:#ddd; }
-#chat-container { background:#2f3136; width:400px; max-width:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.5);}
-#messages { flex:1; padding:10px; overflow-y:auto; height:300px; display:flex; flex-direction:column;}
-.message { margin-bottom:8px; padding:6px 8px; border-radius:5px; background:#40444b; word-wrap: break-word;}
-.username { font-weight:500; margin-right:5px;}
-#input-container { display:flex; padding:10px; background:#40444b; gap:5px;}
-#message { flex:1; padding:8px; border-radius:5px; border:none; background:#202225; color:#ddd;}
+body {
+  margin:0; font-family:'Roboto',sans-serif; background:#36393f; color:#ddd; display:flex; justify-content:center; align-items:center; height:100vh;
+}
+#chat-container {
+  background:#2f3136; width:400px; max-width:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.5);
+}
+#messages { flex:1; padding:10px; overflow-y:auto; display:flex; flex-direction:column; }
+.message {
+  margin-bottom:8px; padding:6px 10px; border-radius:8px; max-width:80%;
+}
+.message .username { font-weight:500; margin-right:5px; }
+.message.self { background:#7289da; align-self:flex-end; color:#fff; }
+.message.other { background:#40444b; align-self:flex-start; color:#ddd; }
+#input-container { display:flex; padding:10px; background:#40444b; gap:5px; }
+#message { flex:1; padding:8px; border-radius:5px; border:none; background:#202225; color:#ddd; }
 #message:focus { outline:none; }
-button { padding:8px 12px; background:#7289da; color:white; border:none; border-radius:5px; cursor:pointer;}
-button:hover { background:#5b6eae;}
-#username-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:10; flex-direction:column;}
-#username-overlay input { padding:10px; border-radius:5px; border:none; margin-bottom:10px; width:250px;}
-#username-overlay button { padding:10px 20px;}
+button { padding:8px 12px; background:#7289da; color:white; border:none; border-radius:5px; cursor:pointer; }
+button:hover { background:#5b6eae; }
+#username-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:10; flex-direction:column; }
+#username-overlay input { padding:10px; border-radius:5px; border:none; margin-bottom:10px; width:250px; }
+#username-overlay button { padding:10px 20px; }
 </style>
 </head>
 <body>
@@ -40,71 +48,59 @@ button:hover { background:#5b6eae;}
 const workerURL = "https://aiworker.thefoxsss6969.workers.dev/";
 let ws;
 let username = "";
-const usernameColors = {}; // store colors for each username
-
 const messagesDiv = document.getElementById('messages');
 const messageInput = document.getElementById('message');
 const sendButton = document.querySelector('#input-container button');
 const overlay = document.getElementById('username-overlay');
 const usernameInput = document.getElementById('username-input');
 
-function getColorForUsername(name) {
-  if(usernameColors[name]) return usernameColors[name];
-  // Generate random pastel color
-  const color = `hsl(${Math.floor(Math.random()*360)}, 70%, 70%)`;
-  usernameColors[name] = color;
-  return color;
+function randomColor(str) {
+  let hash = 0;
+  for(let i=0;i<str.length;i++) hash = str.charCodeAt(i)+((hash<<5)-hash);
+  const h = hash % 360;
+  return `hsl(${h},70%,70%)`;
 }
 
-function addMessage(rawMsg) {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'message';
-
-  // Parse username and message
-  const separator = rawMsg.indexOf(": ");
-  if(separator !== -1){
-    const name = rawMsg.substring(0, separator);
-    const text = rawMsg.substring(separator + 2);
-    const color = getColorForUsername(name);
-    msgDiv.innerHTML = `<span class="username" style="color:${color}">${name}:</span> ${text}`;
-  } else {
-    msgDiv.textContent = rawMsg;
-  }
-
-  messagesDiv.appendChild(msgDiv);
+function addMessage(msgObj){
+  const div = document.createElement('div');
+  div.className = 'message';
+  div.classList.add(msgObj.username===username?'self':'other');
+  const color = randomColor(msgObj.username);
+  div.innerHTML = `<span class="username" style="color:${color}">${msgObj.username}</span>: ${msgObj.text}`;
+  messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-function setUsername() {
-  const value = usernameInput.value.trim();
-  if(!value) return alert("Please enter a username");
-  username = value;
-
+function setUsername(){
+  const val = usernameInput.value.trim();
+  if(!val) return alert("Enter a username");
+  username = val;
   overlay.style.display = 'none';
   messageInput.disabled = false;
   sendButton.disabled = false;
 
   ws = new WebSocket(workerURL.replace(/^https?/, 'ws'));
-
-  ws.onopen = () => console.log("Connected to chat Worker");
-
-  ws.onmessage = (event) => {
-    addMessage(event.data);
+  ws.onopen = () => console.log("Connected");
+  ws.onmessage = e => {
+    try {
+      const msgObj = JSON.parse(e.data);
+      addMessage(msgObj);
+    } catch { console.error("Invalid message", e.data); }
   };
-  ws.onerror = err => console.error("WebSocket error:", err);
-  ws.onclose = () => console.log("Disconnected from chat Worker");
+  ws.onerror = e => console.error("WebSocket error", e);
+  ws.onclose = () => console.log("Disconnected");
 }
 
-function sendMessage() {
-  const msg = messageInput.value.trim();
-  if(!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(username + ": " + msg);
-  messageInput.value = '';
+function sendMessage(){
+  const text = messageInput.value.trim();
+  if(!text || !ws || ws.readyState!==WebSocket.OPEN) return;
+  const msgObj = {username, text, timestamp: Date.now()};
+  ws.send(JSON.stringify(msgObj));
+  messageInput.value='';
+  addMessage(msgObj); // show instantly
 }
 
-messageInput.addEventListener('keydown', e => {
-  if(e.key === 'Enter') sendMessage();
-});
+messageInput.addEventListener('keydown', e => { if(e.key==='Enter') sendMessage(); });
 </script>
 </body>
 </html>
