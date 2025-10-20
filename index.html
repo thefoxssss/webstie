@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Live Chat</title>
+<title>TheFoxsss Live Chat</title>
 <style>
-body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f7f7f7; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7f7; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
 #chat-container { background: #fff; width: 400px; max-width: 90%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
 #messages { flex: 1; padding: 10px; border-bottom: 1px solid #ddd; overflow-y: auto; height: 300px; }
 .message { margin-bottom: 8px; }
@@ -20,6 +20,7 @@ button:hover { background: #45a049; }
 </style>
 </head>
 <body>
+
 <div id="chat-container">
   <div id="messages"></div>
   <div id="input-container">
@@ -34,7 +35,7 @@ button:hover { background: #45a049; }
 </div>
 
 <script>
-const workerURL = "https://aiworker.thefoxsss6969.workers.dev/";
+const workerURL = "https://aiworker.thefoxsss6969.workers.dev/"; // Your Worker URL
 let ws;
 let username = "";
 
@@ -48,22 +49,22 @@ function setUsername() {
   const value = usernameInput.value.trim();
   if (!value) return alert("Please enter a username");
   username = value;
+
   overlay.style.display = 'none';
   messageInput.disabled = false;
   sendButton.disabled = false;
 
-  // Connect WebSocket
+  // Connect to WebSocket
   ws = new WebSocket(workerURL.replace(/^https?/, 'ws'));
-  ws.onopen = () => console.log("Connected to chat Worker");
 
+  ws.onopen = () => console.log("Connected to chat Worker");
   ws.onmessage = (event) => {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message';
-    msgDiv.innerHTML = event.data;
+    msgDiv.innerHTML = event.data; // Display messages as HTML
     messagesDiv.appendChild(msgDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   };
-
   ws.onerror = (err) => console.error("WebSocket error:", err);
   ws.onclose = () => console.log("Disconnected from chat Worker");
 }
@@ -79,5 +80,6 @@ messageInput.addEventListener('keydown', (e) => {
   if(e.key === 'Enter') sendMessage();
 });
 </script>
+
 </body>
 </html>
