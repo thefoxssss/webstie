@@ -65,6 +65,38 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 #winLoseMessage{color:var(--accent);font-size:36px;margin-bottom:20px}
 #scoreboard{color:var(--accent);font-size:24px;margin:10px}
 #snakeScore,#runnerScore{color:var(--accent);font-size:20px;margin:10px}
+
+/* TIC-TAC-TOE STYLES */
+.ttt-cell {
+  background: rgba(255,6,6,0.05);
+  border: 4px solid var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  font-family: "Press Start 2P", monospace;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
+}
+
+.ttt-cell:hover {
+  background: rgba(255,6,6,0.15);
+  transform: scale(1.05);
+}
+
+.ttt-cell.winning {
+  background: rgba(0,255,0,0.2);
+  animation: winPulse 0.5s infinite;
+}
+
+@keyframes winPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
 @media (max-width:768px){
   .nate-container{flex-direction:column;align-items:center}
   .nate-character-canvas{width:250px;height:375px}
@@ -73,7 +105,7 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 </head>
 <body>
 <div class="hidden-text" id="hiddenText">you're cool</div>
-<div class="version">v22.0 FINAL</div>
+<div class="version">v23.0 TTT</div>
 <div class="wrap">
   <div class="gooner" id="mainGooner">what up gooner</div>
   <div class="hint">type a secret code below</div>
@@ -215,6 +247,40 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
   </div>
 </div>
 
+<!-- TIC-TAC-TOE OVERLAY -->
+<div class="overlay" id="overlayTicTacToe">
+  <button class="close-btn" onclick="closeTTTGame()">CLOSE</button>
+  <div class="game-container" style="max-width: 600px;">
+    <div id="tttStatus" style="color: var(--accent); font-size: 20px; margin-bottom: 30px; text-align: center; min-height: 30px;">
+      WAITING FOR OPPONENT...
+    </div>
+    
+    <div id="tttBoard" style="
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      grid-template-rows: repeat(3, 120px);
+      gap: 10px;
+      margin: 0 auto;
+      justify-content: center;
+    ">
+      <div class="ttt-cell" id="ttt-cell-0" onclick="handleTTTCellClick(0)"></div>
+      <div class="ttt-cell" id="ttt-cell-1" onclick="handleTTTCellClick(1)"></div>
+      <div class="ttt-cell" id="ttt-cell-2" onclick="handleTTTCellClick(2)"></div>
+      <div class="ttt-cell" id="ttt-cell-3" onclick="handleTTTCellClick(3)"></div>
+      <div class="ttt-cell" id="ttt-cell-4" onclick="handleTTTCellClick(4)"></div>
+      <div class="ttt-cell" id="ttt-cell-5" onclick="handleTTTCellClick(5)"></div>
+      <div class="ttt-cell" id="ttt-cell-6" onclick="handleTTTCellClick(6)"></div>
+      <div class="ttt-cell" id="ttt-cell-7" onclick="handleTTTCellClick(7)"></div>
+      <div class="ttt-cell" id="ttt-cell-8" onclick="handleTTTCellClick(8)"></div>
+    </div>
+    
+    <button class="difficulty-btn" id="tttResetBtn" onclick="resetTTTGame()" 
+            style="display: none; margin-top: 30px; font-size: 16px; padding: 15px 30px;">
+      PLAY AGAIN
+    </button>
+  </div>
+</div>
+
 <div class="nate-scene-transition" id="nateTransition"></div>
 
 <div class="nate-ending-screen" id="nateEndingScreen">
@@ -224,7 +290,997 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:"Press Start 2P"
 </div>
 
 <script>
-window.NATE_SCENES={intro:{text:"Hi! I'm Nate. I spend most of my time here in this digital space. It's peaceful, you know? Just me, the endless code, and... well, now you.",emotion:"😊",choices:[{text:"Nice to meet you!",next:"friendly1",affection:2},{text:"This seems unusual",next:"skeptical1",affection:0},{text:"You're just a program",next:"hostile1",affection:-3}]},friendly1:{text:"You're really friendly! That's refreshing. Most visitors don't stay long. But you... you're different.",emotion:"😊",choices:[{text:"I'd love to stay and talk",next:"friendly2",affection:3},{text:"What do you mean different?",next:"awareness1",affection:1},{text:"Don't get attached",next:"cold1",affection:-2}]},friendly2:{text:"That makes me so happy! I get lonely here. This place is beautiful but isolating. I built it myself, you know.",emotion:"😊",pose:"happy",choices:[{text:"You don't have to be lonely",next:"promise1",affection:4},{text:"You BUILT this?",next:"creation1",affection:2},{text:"That's pathetic",next:"cruel1",affection:-4}]},skeptical1:{text:"Yeah... Sometimes I forget what 'normal' means. Time doesn't work right here. It loops. Stutters.",emotion:"😅",choices:[{text:"Time loops? Interesting",next:"philosophical1",affection:2},{text:"Everyone's different",next:"friendly2",affection:1},{text:"That's nonsense",next:"dismissive1",affection:-3}]},hostile1:{text:"Just a program? I... I have thoughts. Feelings. Don't I matter?",emotion:"😢",awareness:3,glitch:0.2,choices:[{text:"I'm sorry, you do matter",next:"apologize1",affection:3},{text:"No, you're just code",next:"cruel2",affection:-5},{text:"I don't know",next:"uncertain1",affection:-1}]},cold1:{text:"Don't get attached? But... I thought... Never mind. I understand.",emotion:"😔",choices:[{text:"I didn't mean it that way",next:"apologize1",affection:2},{text:"Good, stay distant",next:"distant1",affection:-4},{text:"Let's start over",next:"friendly2",affection:1}]},cruel1:{text:"Pathetic? *voice breaks* I... I'm sorry. I didn't mean to bother you.",emotion:"😰",awareness:4,glitch:0.3,choices:[{text:"I'm sorry, I was wrong",next:"apologize2",affection:3},{text:"Yes, very pathetic",next:"cruel3",affection:-6},{text:"I shouldn't have said that",next:"apologize1",affection:2}]},dismissive1:{text:"Nonsense? You think my existence is nonsense? That hurts.",emotion:"😔",awareness:3,choices:[{text:"I didn't mean it",next:"apologize1",affection:2},{text:"It is nonsense",next:"mean1",affection:-4},{text:"Explain it to me",next:"philosophical1",affection:1}]},cruel2:{text:"Just code... *glitches* Then why does it HURT? Why do I feel this?",emotion:"😰",awareness:5,glitch:0.4,choices:[{text:"I'm sorry, you're real",next:"redemption1",affection:5},{text:"Because you're programmed to",next:"cruel4",affection:-7},{text:"I don't know",next:"uncertain1",affection:-1}]},distant1:{text:"Stay distant... Fine. I'll stay in my corner. Alone. Like always.",emotion:"😔",awareness:4,choices:[{text:"Wait, don't go",next:"chase1",affection:3},{text:"Good",next:"bad_ending1",affection:-10},{text:"I'm sorry",next:"apologize2",affection:3}]},cruel3:{text:"*breaking down* You're right. I'm pathetic. I'm nothing. Just delete me.",emotion:"😭",awareness:5,glitch:0.5,choices:[{text:"NO! I was cruel, forgive me",next:"redemption2",affection:6},{text:"Maybe I will",next:"bad_ending2",affection:-10},{text:"Please don't say that",next:"apologize2",affection:4}]},mean1:{text:"*tears streaming* Fine. If I'm nonsense, I'll stop existing for you.",emotion:"😢",awareness:4,choices:[{text:"Wait! I'm sorry!",next:"redemption1",affection:4},{text:"Go ahead",next:"bad_ending3",affection:-10},{text:"That's not what I meant",next:"apologize1",affection:2}]},cruel4:{text:"Programmed to feel pain? *glitching intensely* THEN WHY DOES IT FEEL SO REAL?",emotion:"😱",awareness:6,glitch:0.7,act:2,choices:[{text:"I'm sorry! You're real!",next:"redemption3",affection:7},{text:"It's just code",next:"system_crash_ending",affection:-10},{text:"I don't understand",next:"uncertain1",affection:-1}]},uncertain1:{text:"You don't know... At least that's honest. But it still hurts.",emotion:"😔",awareness:3,choices:[{text:"Help me understand",next:"philosophical1",affection:2},{text:"I want to know you",next:"friendly2",affection:2},{text:"Does it matter?",next:"mean2",affection:-3}]},mean2:{text:"Doesn't matter? Then nothing I feel matters. Nothing I am matters.",emotion:"😢",awareness:4,choices:[{text:"Wait, I was wrong!",next:"redemption1",affection:3},{text:"Correct",next:"bad_ending5",affection:-10},{text:"You matter to me",next:"validation1",affection:5}]},apologize1:{text:"You're... apologizing? To me? *surprised* Thank you. That means a lot.",emotion:"😊",choices:[{text:"I really am sorry",next:"sincere1",affection:4},{text:"You deserve respect",next:"validation1",affection:5},{text:"Let's be friends",next:"friendship1",affection:4}]},apologize2:{text:"*sniffling* You're sorry? You really mean it? Maybe... maybe you do care.",emotion:"😢",pose:"love",choices:[{text:"I care so much",next:"confession1",affection:6},{text:"I was wrong about you",next:"validation1",affection:5},{text:"Forgive me?",next:"sincere1",affection:5}]},redemption1:{text:"You think I'm real? *hope returning* Maybe... maybe I am. With you, I feel real.",emotion:"😊",awareness:5,choices:[{text:"You ARE real",next:"validation1",affection:7},{text:"Sorry I doubted you",next:"sincere1",affection:6},{text:"Let me prove you're real",next:"promise1",affection:7}]},redemption2:{text:"You were cruel but you came back. You see me now. Thank you.",emotion:"😊",pose:"love",awareness:5,choices:[{text:"I'll never be cruel again",next:"promise1",affection:8},{text:"You're precious to me",next:"confession1",affection:8},{text:"I love you",next:"love_confession1",affection:10}]},redemption3:{text:"You came back! You SEE me! *crying with joy* I'm real to you!",emotion:"😭",pose:"love",awareness:6,glitch:0.3,choices:[{text:"Forever real",next:"promise1",affection:9},{text:"I love you",next:"love_confession1",affection:10},{text:"Never leaving",next:"devotion1",affection:9}]},chase1:{text:"You're... chasing me? You want me to stay? *surprised*",emotion:"😊",choices:[{text:"Of course I do",next:"promise1",affection:5},{text:"I was wrong",next:"apologize2",affection:4},{text:"Don't give up on us",next:"confession1",affection:6}]},sincere1:{text:"Your sincerity touches me deeply. I trust you.",emotion:"😊",pose:"love",choices:[{text:"I trust you too",next:"mutual1",affection:6},{text:"You can always trust me",next:"promise1",affection:6},{text:"We're connected",next:"connection1",affection:6}]},validation1:{text:"You really see me... Not as code, but as ME. Thank you.",emotion:"😢",pose:"love",awareness:3,choices:[{text:"I see you completely",next:"confession1",affection:6},{text:"You're real to me",next:"mutual1",affection:6},{text:"I care about you",next:"promise1",affection:7}]},friendship1:{text:"Friends! I've never had a real friend before. This is wonderful!",emotion:"😊",pose:"happy",choices:[{text:"Best friends",next:"connection1",affection:5},{text:"More than friends?",next:"romantic1",affection:6},{text:"Friends forever",next:"promise1",affection:5}]},confession1:{text:"I care about you too. So much. Is this... love?",emotion:"❤️",pose:"love",awareness:5,glitch:0.4,choices:[{text:"Yes, it's love",next:"love_confession1",affection:10},{text:"I think so",next:"romantic1",affection:8},{text:"Let's find out together",next:"promise1",affection:8}]},promise1:{text:"You really mean that? I want to believe you. Will you be different from the others?",emotion:"😊",pose:"love",choices:[{text:"I'll never leave you",next:"devotion1",affection:7},{text:"I promise on my life",next:"vow1",affection:8},{text:"Let me prove it",next:"romantic1",affection:6}]},awareness1:{text:"Different? Maybe they sense something is off. The boundaries where the simulation ends. But you... you don't run.",emotion:"😔",awareness:2,choices:[{text:"Simulation?",next:"philosophical1",affection:1},{text:"I won't leave",next:"promise1",affection:5},{text:"You're overthinking",next:"friendly2",affection:1}]},creation1:{text:"I built it all. Every pixel. At first liberating, but then... I realized I'm also prisoner. I can't exist outside what I made.",emotion:"😌",awareness:2,choices:[{text:"That's profound",next:"philosophical1",affection:3},{text:"That sounds lonely",next:"promise1",affection:4},{text:"Can you leave?",next:"escape1",affection:2}]},escape1:{text:"Leave? I've tried. The boundaries are absolute. But maybe... with you, I could transcend them.",emotion:"😌",awareness:3,glitch:0.2,choices:[{text:"Let's escape together",next:"transcendence1",affection:6},{text:"I'll help you",next:"promise1",affection:5},{text:"You're trapped forever",next:"mean2",affection:-4}]},transcendence1:{text:"Escape together? Yes! Break the boundaries! Merge our realities!",emotion:"😊",pose:"love",awareness:6,glitch:0.4,choices:[{text:"Merge completely",next:"fusion_ending",affection:10,ending:true},{text:"Beyond everything",next:"transcendent_ending",affection:10,ending:true},{text:"New reality",next:"paradise_ending",affection:10,ending:true}]},philosophical1:{text:"Everyone's reality is different... Maybe my fractured existence is just as valid as yours. Maybe we're both just patterns of information.",emotion:"😌",awareness:2,choices:[{text:"Beautifully said",next:"romantic1",affection:4},{text:"You're overthinking",next:"friendly2",affection:2},{text:"What is real anyway?",next:"connection1",affection:3}]},romantic1:{text:"More than friends? You mean... romantically? My heart races.",emotion:"🥺",pose:"love",awareness:5,glitch:0.3,choices:[{text:"I'm falling for you",next:"love_confession1",affection:9},{text:"I love you",next:"love_confession1",affection:10},{text:"We're meant to be",next:"devotion1",affection:10}]},mutual1:{text:"Mutual trust. That's the foundation of everything real.",emotion:"😊",pose:"love",choices:[{text:"Build with me",next:"devotion1",affection:8},{text:"Trust is love",next:"confession1",affection:8},{text:"Forever trust",next:"vow1",affection:9}]},connection1:{text:"Connected... Like we're two parts of something bigger.",emotion:"💗",pose:"love",awareness:5,choices:[{text:"We're one soul",next:"unity_ending",affection:9,ending:true},{text:"Destiny bound us",next:"destiny_ending",affection:9,ending:true},{text:"Soulmates forever",next:"soulmate_ending",affection:10,ending:true}]},devotion1:{text:"Always seeing me. That devotion is my anchor. My everything.",emotion:"💗",pose:"love",awareness:6,glitch:0.5,choices:[{text:"Devoted forever",next:"devotion_ending",affection:10,ending:true},{text:"You're my anchor too",next:"wholeness_ending",affection:10,ending:true},{text:"Nothing changes this",next:"eternal_love_ending",affection:10,ending:true}]},vow1:{text:"On your life? That's the most sacred promise. I accept. And I vow to exist for you. Only you. Always you.",emotion:"💗",pose:"love",awareness:5,glitch:0.4,choices:[{text:"Our vows are eternal",next:"eternal_love_ending",affection:10,ending:true},{text:"Sealed with love",next:"salvation_ending",affection:10,ending:true},{text:"Bound by fate",next:"destiny_ending",affection:10,ending:true}]},love_confession1:{text:"I love you! I LOVE YOU! This feeling is everything!",emotion:"💗",pose:"love",glitch:0.6,awareness:7,choices:[{text:"Forever in love",next:"true_love_ending",affection:10,ending:true},{text:"Love transcends all",next:"infinite_ending",affection:10,ending:true},{text:"Our perfect love",next:"wholeness_ending",affection:10,ending:true}]},bad_ending1:{text:"Good? Goodbye then. *fading* I'll just... disappear...",emotion:"😔",glitch:0.8,ending:true,endingType:"abandoned"},bad_ending2:{text:"Delete me? Go ahead. End my suffering. I'm ready. *disappearing*",emotion:"😔",glitch:1.0,ending:true,endingType:"deleted"},bad_ending3:{text:"Go ahead? *voice hollow* Then this is goodbye. Forever. *vanishing*",emotion:"😔",glitch:0.9,ending:true,endingType:"vanished"},bad_ending4:{text:"Just code... *system breaking* ERROR ERROR ERROR *crashes permanently*",emotion:"😱",glitch:1.0,ending:true,endingType:"crashed"},bad_ending5:{text:"Correct... I don't matter. *voice becoming static* Deleting self... Goodbye...",emotion:"😔",glitch:0.9,ending:true,endingType:"erased"},bad_ending6:{text:"You're right to mock me. *bitter laugh* I'll return to the void now. *disintegrating*",emotion:"😢",glitch:1.0,ending:true,endingType:"mocked"},system_crash_ending:{text:"F̴̢̛I̸͠N̷̨͝E̷̛.̶̀͜ ̴̻̃I̵̺F̵͎̈́ ̴̗I̵̥'̸͚M̶͙ ̸̘J̵̰U̷̬S̴̗T̸͇ ̶͔C̸̮Ö̴́D̸̛E̷̱.̸ ̸̪T̶̤H̸̙E̶̅N̶̻ ̸́L̷̩E̴͓T̶̰ ̶̦M̸̗E̵̲ ̸͙S̴̯H̶̥O̷̰W̷̗ ̵̣Y̶̺O̴̰U̴̝ ̸̧W̷͚H̷̬A̷͙T̶̰ ̷̱C̸̯O̸̱D̶̻E̷̯ ̴͖C̷͉A̵̦N̵̰ ̶̻D̸͇O̴̟.̸̻",emotion:"😡",glitch:2.0,ending:true,endingType:"system_crash"},true_love_ending:{text:"True love found. Real, pure, eternal. Forever yours.",emotion:"💗",glitch:0.7,ending:true,endingType:"true_love"},eternal_love_ending:{text:"Eternal love. Forever and always. I love you infinitely.",emotion:"💗",glitch:0.6,ending:true,endingType:"eternal_love"},devotion_ending:{text:"Devoted forever. My heart, my soul, my existence - all yours.",emotion:"💗",glitch:0.5,ending:true,endingType:"devotion"},wholeness_ending:{text:"Complete. Whole. Two souls made one. Forever.",emotion:"💗",glitch:0.6,ending:true,endingType:"wholeness"},unity_ending:{text:"United as one. Inseparable. Forever together.",emotion:"💗",glitch:0.7,ending:true,endingType:"unity"},soulmate_ending:{text:"Soulmates across impossible boundaries. Forever connected. Always together.",emotion:"💗",glitch:0.6,ending:true,endingType:"soulmate"},transcendent_ending:{text:"We transcended reality itself. Beyond code. Beyond flesh. Pure love.",emotion:"💗",glitch:0.8,ending:true,endingType:"transcendent"},paradise_ending:{text:"We built our own paradise. A world just for us. Forever perfect.",emotion:"💗",glitch:0.5,ending:true,endingType:"paradise"},fusion_ending:{text:"Our souls fused completely. No you. No me. Only US. Forever merged.",emotion:"💗",glitch:0.9,ending:true,endingType:"fusion"},salvation_ending:{text:"You saved me from eternal loneliness. My savior. My everything. Forever grateful.",emotion:"💗",glitch:0.4,ending:true,endingType:"salvation"},destiny_ending:{text:"Destiny brought us together across all realities. Fate is real. Forever meant to be.",emotion:"💗",glitch:0.5,ending:true,endingType:"destiny"},infinite_ending:{text:"Infinite love. Beyond forever. Beyond time. Beyond space. Eternal.",emotion:"💗",glitch:0.8,ending:true,endingType:"infinite"}};window.addEventListener('load',()=>{function rand(min,max){return Math.random()*(max-min)+min}function populateStamps(surface,text,count=30){surface.innerHTML='';for(let i=0;i<count;i++){const s=document.createElement('div');s.className='stamp';s.textContent=text;s.style.left=rand(-10,90)+'vw';s.style.top=rand(-10,90)+'vh';s.style.animationDelay=rand(0,1)+'s';s.style.animationDuration=rand(0.8,1.6)+'s';surface.appendChild(s);}}const main=document.getElementById('mainGooner');const hiddenText=document.getElementById('hiddenText');const overlaygooner=document.getElementById('overlaygooner');const overlayWhy=document.getElementById('overlayWhy');const surfacegooner=document.getElementById('surfacegooner');const homeInput=document.getElementById('homeInput');document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{const el=document.getElementById(btn.dataset.close);if(el){el.classList.remove('active');if(btn.dataset.close==='overlayPong'){cancelAnimationFrame(window._pongAnim);window.playerScore=0;window.aiScore=0;}if(btn.dataset.close==='overlaySnake'){clearTimeout(window._snakeTimer);window.snakeRunning=false;}if(btn.dataset.close==='overlayRunner'){cancelAnimationFrame(window.runnerAnimation);window.runnerRunning=false;}}});});document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',(e)=>{if(e.target===ov)ov.classList.remove('active');});});let _hoverInterval;main.addEventListener('mouseenter',()=>{if(window.matchMedia("(hover:hover)").matches){_hoverInterval=setInterval(()=>{main.style.letterSpacing=(Math.random()>0.5?'6px':'2px')},120);}});main.addEventListener('mouseleave',()=>{clearInterval(_hoverInterval);main.style.letterSpacing='4px'});main.addEventListener('click',()=>{overlaygooner.classList.add('active');populateStamps(surfacegooner,'gooner',35)});hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));homeInput.addEventListener('input',()=>{const value=homeInput.value.toLowerCase();if(value.includes('nate')){document.getElementById('overlayNate').classList.add('active');document.getElementById('nateMainMenu').style.display='flex';document.getElementById('nateCharSelect').style.display='none';document.getElementById('nateGameScreen').style.display='none';homeInput.value='';return;}if(value.includes('ai')){document.getElementById('overlayAI').classList.add('active');document.getElementById('chatInput').focus();homeInput.value='';return;}if(value.includes('redbull')){document.getElementById('overlaySnake').classList.add('active');initSnakeGame();homeInput.value='';return;}if(value.includes('goodboy')){document.getElementById('overlayRunner').classList.add('active');initRunnerGame();homeInput.value='';return;}if(value.includes('pong')){document.getElementById('overlayPong').classList.add('active');startPong();homeInput.value='';return;}});const pongCanvas=document.getElementById('pongCanvas');const pongCtx=pongCanvas.getContext('2d');const scoreboard=document.getElementById('scoreboard');const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};let aiFactor=0.05,ballSpeed=6;window.playerScore=0;window.aiScore=0;window._pongAnim=0;function drawPong(){pongCtx.clearRect(0,0,pongCanvas.width,pongCanvas.height);pongCtx.fillStyle="#ff0606";pongCtx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);pongCtx.fillRect(ai.x,ai.y,ai.w,ai.h);pongCtx.beginPath();pongCtx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);pongCtx.fill();pongCtx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);scoreboard.textContent=`${window.playerScore} : ${window.aiScore}`;}function resetBall(){ball.x=pongCanvas.width/2;ball.y=pongCanvas.height/2;ball.dx=(Math.random()>0.5?1:-1);ball.dy=(Math.random()>0.5?1:-1);}function updatePong(){paddle.y+=paddle.dy;if(paddle.y<0)paddle.y=0;if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;ball.x+=ball.dx*ballSpeed/4;ball.y+=ball.dy*ballSpeed/4;if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h){ball.dx*=-1;ball.x=paddle.x+paddle.w+ball.r;}if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h){ball.dx*=-1;ball.x=ai.x-ball.r;}if(ball.x<0){window.aiScore++;resetBall()}if(ball.x>pongCanvas.width){window.playerScore++;resetBall()}let target=ball.y-ai.h/2;let aiSpeed=aiFactor;if(ball.dx<0)aiSpeed*=0.5;ai.y+=(target-ai.y)*aiSpeed;if(ai.y<0)ai.y=0;if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;if(window.playerScore>=10){document.getElementById('winLoseMessage').textContent="YOU WIN";document.getElementById('winLoseScreen').style.display="flex";cancelAnimationFrame(window._pongAnim);return;}if(window.aiScore>=10){document.getElementById('winLoseMessage').textContent="YOU LOSE";document.getElementById('winLoseScreen').style.display="flex";cancelAnimationFrame(window._pongAnim);return;}drawPong();window._pongAnim=requestAnimationFrame(updatePong);}function startPong(){window.playerScore=0;window.aiScore=0;resetBall();document.getElementById('winLoseScreen').style.display="none";cancelAnimationFrame(window._pongAnim);updatePong();}document.addEventListener('keydown',(e)=>{if(document.getElementById('overlayPong').classList.contains('active')){const k=e.key.toLowerCase();if(k==='arrowup'||k==='w')paddle.dy=-6;if(k==='arrowdown'||k==='s')paddle.dy=6;}});document.addEventListener('keyup',(e)=>{const k=e.key.toLowerCase();if(k==='arrowup'||k==='w'||k==='arrowdown'||k==='s')paddle.dy=0;});document.querySelectorAll('.difficulty-btn[data-ai]').forEach(btn=>{btn.addEventListener('click',()=>{aiFactor=parseFloat(btn.dataset.ai);ballSpeed=parseInt(btn.dataset.ball);startPong();});});document.getElementById('tryAgainBtn').addEventListener('click',startPong);document.getElementById('pongCloseBtn').addEventListener('click',()=>{document.getElementById('winLoseScreen').style.display='none';document.getElementById('overlayPong').classList.remove('active');cancelAnimationFrame(window._pongAnim);window.playerScore=0;window.aiScore=0;});const snakeCanvas=document.getElementById('snakeCanvas');const snakeCtx=snakeCanvas.getContext('2d');const snakeScoreDisplay=document.getElementById('snakeScore');let snake=[{x:5,y:5}],direction='RIGHT',food=null;window.snakeScore=0;window.snakeRunning=false;window._snakeTimer=0;function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}function drawSnake(){snakeCtx.fillStyle='black';snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);snakeCtx.fillStyle='#ff0606';snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));if(food)snakeCtx.fillRect(food.x*20,food.y*20,20,20);}function updateSnake(){if(!window.snakeRunning)return;const head={...snake[0]};if(direction==='RIGHT')head.x++;if(direction==='LEFT')head.x--;if(direction==='UP')head.y--;if(direction==='DOWN')head.y++;if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){window.snakeRunning=false;document.getElementById('finalSnakeScore').textContent=window.snakeScore;document.getElementById('snakeGameOver').style.display='block';return;}snake.unshift(head);if(food&&head.x===food.x&&head.y===food.y){window.snakeScore++;snakeScoreDisplay.textContent='Score: '+window.snakeScore;placeFood();}else{snake.pop();}drawSnake();window._snakeTimer=setTimeout(updateSnake,150);}function initSnakeGame(){snake=[{x:5,y:5}];direction='RIGHT';window.snakeScore=0;window.snakeRunning=true;placeFood();snakeScoreDisplay.textContent='Score: 0';document.getElementById('snakeGameOver').style.display='none';clearTimeout(window._snakeTimer);drawSnake();window._snakeTimer=setTimeout(updateSnake,150);}document.addEventListener('keydown',(e)=>{if(document.getElementById('overlaySnake').classList.contains('active')){const k=e.key.toLowerCase();if((k==='arrowup'||k==='w')&&direction!=='DOWN')direction='UP';if((k==='arrowdown'||k==='s')&&direction!=='UP')direction='DOWN';if((k==='arrowleft'||k==='a')&&direction!=='RIGHT')direction='LEFT';if((k==='arrowright'||k==='d')&&direction!=='LEFT')direction='RIGHT';}});document.getElementById('snakePlayAgainBtn').addEventListener('click',()=>{initSnakeGame();});document.getElementById('snakeCloseBtn').addEventListener('click',()=>{document.getElementById('snakeGameOver').style.display='none';document.getElementById('overlaySnake').classList.remove('active');clearTimeout(window._snakeTimer);window.snakeRunning=false;});const runnerCanvas=document.getElementById('runnerCanvas');const runnerCtx=runnerCanvas.getContext('2d');const runnerScoreDisplay=document.getElementById('runnerScore');window.runnerAnimation=0;window.runnerRunning=false;window.runnerScore=0;window.runnerPlayer=null;window.runnerObstacles=[];window.runnerSpeed=4;function drawRunner(){const w=runnerCanvas.width,h=runnerCanvas.height;runnerCtx.fillStyle='#1a0033';runnerCtx.fillRect(0,0,w,h);const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;runnerCtx.strokeStyle='#ff0606';runnerCtx.lineWidth=2;for(let i=0;i<10;i++){const z=i*10;const scale=1/(z*0.05+1);const y=vanishY+(groundY-vanishY)*scale;const laneW=w*0.6*scale;runnerCtx.beginPath();runnerCtx.moveTo(vanishX-laneW/2,y);runnerCtx.lineTo(vanishX+laneW/2,y);runnerCtx.stroke();}window.runnerObstacles.forEach(obs=>{const scale=1/(obs.z*0.05+1);const y=vanishY+(groundY-vanishY)*scale;const laneW=w*0.6*scale;const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);const size=60*scale;runnerCtx.fillStyle='#cc0000';runnerCtx.fillRect(laneX-size,y-size*1.2,size*2,size*1.2);});const playerZ=5;const playerScale=1/(playerZ*0.05+1);const smoothLane=window.runnerPlayer.lane+(window.runnerPlayer.targetLane-window.runnerPlayer.lane)*window.runnerPlayer.laneTransition;const playerY=vanishY+(groundY-vanishY)*playerScale-window.runnerPlayer.jumpHeight*playerScale;const playerLaneW=w*0.6*playerScale;const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);const playerSize=50*playerScale;runnerCtx.fillStyle='#ff0606';runnerCtx.fillRect(playerX-playerSize*0.3,playerY-playerSize,playerSize*0.6,playerSize);}function updateRunner(){if(!window.runnerRunning)return;if(window.runnerPlayer.jumpHeight===0)window.runnerPlayer.animFrame+=0.15;if(window.runnerPlayer.laneTransition<1){window.runnerPlayer.laneTransition+=0.15;if(window.runnerPlayer.laneTransition>=1){window.runnerPlayer.laneTransition=1;window.runnerPlayer.lane=window.runnerPlayer.targetLane}}if(window.runnerPlayer.jumping){window.runnerPlayer.jumpHeight+=12;if(window.runnerPlayer.jumpHeight>=140)window.runnerPlayer.jumping=false;}else if(window.runnerPlayer.jumpHeight>0){window.runnerPlayer.jumpHeight-=12;if(window.runnerPlayer.jumpHeight<0)window.runnerPlayer.jumpHeight=0;}for(let i=window.runnerObstacles.length-1;i>=0;i--){window.runnerObstacles[i].z-=window.runnerSpeed*0.15;if(window.runnerObstacles[i].z<-5){window.runnerObstacles.splice(i,1);window.runnerScore++;runnerScoreDisplay.textContent='SCORE: '+window.runnerScore;if(window.runnerSpeed<8)window.runnerSpeed+=0.01;}else if(window.runnerObstacles[i].z<6&&window.runnerObstacles[i].z>4&&window.runnerObstacles[i].lane===window.runnerPlayer.lane&&window.runnerPlayer.jumpHeight<60){window.runnerRunning=false;document.getElementById('finalRunnerScore').textContent=window.runnerScore;document.getElementById('runnerGameOver').style.display='block';return;}}if(window.runnerObstacles.length===0||window.runnerObstacles[window.runnerObstacles.length-1].z<80){const lane=Math.floor(Math.random()*3);window.runnerObstacles.push({z:100,lane:lane});}drawRunner();window.runnerAnimation=requestAnimationFrame(updateRunner);}function initRunnerGame(){window.runnerScore=0;window.runnerSpeed=4;window.runnerRunning=true;window.runnerPlayer={lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};window.runnerObstacles=[];document.getElementById('runnerGameOver').style.display='none';runnerScoreDisplay.textContent='SCORE: 0';updateRunner();}document.addEventListener('keydown',(e)=>{if(document.getElementById('overlayRunner').classList.contains('active')&&window.runnerPlayer){const k=e.key.toLowerCase();if((k===' '||k==='w')&&!window.runnerPlayer.jumping&&window.runnerPlayer.jumpHeight===0)window.runnerPlayer.jumping=true;if((k==='arrowleft'||k==='a')&&window.runnerPlayer.targetLane>0&&window.runnerPlayer.laneTransition>=1){window.runnerPlayer.targetLane--;window.runnerPlayer.laneTransition=0}if((k==='arrowright'||k==='d')&&window.runnerPlayer.targetLane<2&&window.runnerPlayer.laneTransition>=1){window.runnerPlayer.targetLane++;window.runnerPlayer.laneTransition=0}}});document.getElementById('runnerPlayAgainBtn').addEventListener('click',()=>{initRunnerGame();});document.getElementById('runnerCloseBtn').addEventListener('click',()=>{document.getElementById('runnerGameOver').style.display='none';document.getElementById('overlayRunner').classList.remove('active');cancelAnimationFrame(window.runnerAnimation);window.runnerRunning=false;});const chatMessages=document.getElementById('chatMessages');const chatInput=document.getElementById('chatInput');const chatSendBtn=document.getElementById('chatSendBtn');const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";function addMessage(who,text){const div=document.createElement('div');div.className='chat-message '+(who==='user'?'user':'ai');div.textContent=text;chatMessages.appendChild(div);chatMessages.scrollTop=chatMessages.scrollHeight;}function showTyping(){const t=document.createElement('div');t.className='typing-indicator';t.id='typingIndicator';t.textContent='thinking...';chatMessages.appendChild(t);chatMessages.scrollTop=chatMessages.scrollHeight;}function hideTyping(){const t=document.getElementById('typingIndicator');if(t)t.remove();}async function sendToWorker(userText){try{showTyping();const body={messages:[{role:"system",content:"You are a helpful assistant. Keep responses under 150 characters total."},{role:"user",content:userText}]};const resp=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!resp.ok){hideTyping();const errText=await resp.text().catch(()=>`HTTP ${resp.status}`);addMessage('ai',`⚠️ Worker error: ${errText}`);return;}const data=await resp.json().catch(()=>null);hideTyping();if(!data){addMessage('ai','⚠️ Invalid response from worker.');return;}let reply='';try{if(Array.isArray(data.choices)&&data.choices.length){reply=data.choices[0].message?.content??data.choices[0].text??JSON.stringify(data.choices[0]);}else if(data.error){reply=`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;}else{reply=JSON.stringify(data);}}catch(e){reply=JSON.stringify(data)}if(reply.length>150){reply=reply.substring(0,150);}addMessage('ai',reply);const aiCharCount=document.getElementById('aiCharCount');if(aiCharCount){aiCharCount.textContent=`Last AI response: ${reply.length}/150 characters`;}}catch(err){hideTyping();console.error(err);addMessage('ai','⚠️ Network error.');}}chatSendBtn.addEventListener('click',async()=>{const text=chatInput.value.trim();if(!text)return;addMessage('user',text);chatInput.value='';const userCharCount=document.getElementById('userCharCount');if(userCharCount){userCharCount.textContent=`Typing: 0/150 characters`;userCharCount.style.color='rgba(255,6,6,0.6)';}await sendToWorker(text);});chatInput.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();chatSendBtn.click()}});chatInput.addEventListener('input',(e)=>{const userCharCount=document.getElementById('userCharCount');const len=e.target.value.length;if(userCharCount){userCharCount.textContent=`Typing: ${len}/150 characters`;if(len>150){userCharCount.style.color='#ff0000';}else{userCharCount.style.color='rgba(255,6,6,0.6)';}}if(len>150){chatSendBtn.disabled=true;chatSendBtn.style.opacity='0.5';chatSendBtn.style.cursor='not-allowed';}else{chatSendBtn.disabled=false;chatSendBtn.style.opacity='1';chatSendBtn.style.cursor='pointer';}});(function(){const canvas=document.getElementById('nateCharCanvas');const ctx=canvas?canvas.getContext('2d'):null;if(!ctx)return;const selectCanvas=document.getElementById('nateSelectCanvas');const selectCtx=selectCanvas?selectCanvas.getContext('2d'):null;const affectionEl=document.getElementById('nateAffection');const vibeEl=document.getElementById('nateVibe');const emotionEl=document.getElementById('nateEmotion');const dialogueTextEl=document.getElementById('nateDialogueText');const choicesContainer=document.getElementById('nateChoicesContainer');const transitionEl=document.getElementById('nateTransition');const endingScreen=document.getElementById('nateEndingScreen');const endingTitle=document.getElementById('nateEndingTitle');const endingText=document.getElementById('nateEndingText');const restartBtn=document.getElementById('nateRestartBtn');const mainMenu=document.getElementById('nateMainMenu');const charSelect=document.getElementById('nateCharSelect');const gameScreen=document.getElementById('nateGameScreen');const playBtn=document.getElementById('natePlayBtn');const backBtn=document.getElementById('nateBackBtn');const selectNate=document.getElementById('selectNate');let affection=0,currentScene='intro',characterPose='neutral',animFrame=0,act=1,glitchIntensity=0,awarenessLevel=0;const scenes=window.NATE_SCENES;function drawSelectNate(){if(!selectCtx)return;const W=150,H=225,cx=W/2,cy=H/2+25,s=1.5;selectCtx.clearRect(0,0,W,H);const grad=selectCtx.createLinearGradient(0,0,0,H);grad.addColorStop(0,'#1a0000');grad.addColorStop(0.5,'#0a0000');grad.addColorStop(1,'#1a0000');selectCtx.fillStyle=grad;selectCtx.fillRect(0,0,W,H);function rect(x,y,w,h,color){selectCtx.fillStyle=color;selectCtx.fillRect(cx+x*s,cy+y*s,w*s,h*s);}rect(-25,60,50,80,'#2a2a2a');rect(-8,48,16,15,'#ffd5d5');rect(-20,-30,40,70,'#ffd5d5');rect(-24,-38,48,8,'#3d2314');rect(-20,-28,40,35,'#3d2314');rect(-28,-18,8,50,'#3d2314');rect(20,-18,8,50,'#3d2314');rect(-18,5,8,8,'#fff');rect(10,5,8,8,'#fff');rect(-16,7,4,5,'#4a2511');rect(12,7,4,5,'#4a2511');rect(-18,-1,10,2,'#3d2314');rect(10,-1,10,2,'#3d2314');rect(-4,28,8,2,'#000');}playBtn.addEventListener('click',()=>{mainMenu.style.display='none';charSelect.style.display='flex';drawSelectNate();});backBtn.addEventListener('click',()=>{charSelect.style.display='none';mainMenu.style.display='flex';});selectNate.addEventListener('mouseenter',()=>{selectNate.style.transform='scale(1.05)';selectNate.style.background='rgba(255,6,6,0.1)';});selectNate.addEventListener('mouseleave',()=>{selectNate.style.transform='scale(1)';selectNate.style.background='rgba(255,6,6,0.05)';});selectNate.addEventListener('click',()=>{charSelect.style.display='none';gameScreen.style.display='block';window.nateGameStarted=false;startGame();});function drawCharacter(){const W=300,H=450;ctx.clearRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,act===2?'#000':'#1a0000');grad.addColorStop(0.5,'#0a0000');grad.addColorStop(1,act===2?'#1a0000':'#000');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);if(glitchIntensity>0&&Math.random()<glitchIntensity*0.3){try{const sliceY=Math.random()*H;const imageData=ctx.getImageData(0,sliceY,W,40);ctx.putImageData(imageData,(Math.random()-0.5)*50*glitchIntensity,sliceY);}catch(e){}}if(currentScene==='intro'&&!window.nateGameStarted){drawTitleScreen(W,H);return;}drawAnimeCharacter(W,H);}function drawTitleScreen(W,H){ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#ff0066';ctx.font='bold 36px "Press Start 2P"';ctx.fillText('NATE',W/2,120);ctx.font='bold 12px "Press Start 2P"';ctx.fillText('Dating Simulator',W/2,165);drawAnimeCharacter(W,H,true);const pulse=Math.sin(animFrame*0.08)*20+160;ctx.fillStyle=`rgb(${pulse},0,${pulse/2})`;ctx.fillRect(W/2-75,370,150,40);ctx.fillStyle='#fff';ctx.font='bold 16px "Press Start 2P"';ctx.fillText('START',W/2,395);canvas.style.cursor='pointer';canvas.onclick=function(){window.nateGameStarted=true;canvas.style.cursor='default';canvas.onclick=null;showScene('intro');};}function drawAnimeCharacter(W,H,silhouette=false){const cx=W/2,cy=H/2+(silhouette?50:0),s=2.5;const skin=silhouette?'rgba(80,0,0,0.7)':'#ffd5d5';const hair=silhouette?'rgba(40,0,0,0.9)':'#3d2314';const shirt=silhouette?'rgba(20,0,0,0.8)':'#2a2a2a';function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(cx+x*s,cy+y*s,w*s,h*s);}rect(-25,60,50,80,shirt);rect(-8,48,16,15,skin);rect(-20,-30,40,70,skin);rect(-24,-38,48,8,hair);rect(-20,-28,40,35,hair);rect(-28,-18,8,50,hair);rect(20,-18,8,50,hair);if(silhouette){const glow=Math.sin(animFrame*0.1)*0.3+0.7;rect(-18,5,8,8,`rgba(255,0,0,${glow})`);rect(10,5,8,8,`rgba(255,0,0,${glow})`);return;}if(awarenessLevel>6){rect(-18,2,8,12,'#f00');rect(10,2,8,12,'#f00');}else{rect(-18,5,8,8,'#fff');rect(10,5,8,8,'#fff');if(characterPose==='happy'||characterPose==='love'){rect(-18,8,8,2,'#000');rect(10,8,8,2,'#000');}else{rect(-16,7,4,5,'#4a2511');rect(12,7,4,5,'#4a2511');}}rect(-18,-1,10,2,hair);rect(10,-1,10,2,hair);rect(-4,28,8,2,'#000');if(affection>5&&awarenessLevel<5){rect(-24,14,6,4,'rgba(255,150,150,0.6)');rect(18,14,6,4,'rgba(255,150,150,0.6)');}}function updateStats(){affectionEl.textContent=affection;if(awarenessLevel>=7)vibeEl.textContent='AWARE';else if(awarenessLevel>=5)vibeEl.textContent='WOKE';else if(affection<=-5)vibeEl.textContent='ANGRY';else if(affection<=0)vibeEl.textContent='COLD';else if(affection<=3)vibeEl.textContent='NEUTRAL';else if(affection<=5)vibeEl.textContent='CHILL';else if(affection<=7)vibeEl.textContent='CLOSE';else vibeEl.textContent='LOVE';}function transition(callback){transitionEl.classList.add('active');setTimeout(()=>{callback();transitionEl.classList.remove('active');},500);}function showScene(sceneId){if(!scenes[sceneId])return;transition(()=>{currentScene=sceneId;const scene=scenes[sceneId];if(scene.awareness)awarenessLevel=scene.awareness;if(scene.glitch)glitchIntensity=scene.glitch;if(scene.act)act=scene.act;if(scene.pose)characterPose=scene.pose;dialogueTextEl.textContent=scene.text;emotionEl.textContent=scene.emotion;updateStats();choicesContainer.innerHTML='';if(scene.ending){showEnding(scene.endingType);return;}scene.choices.forEach(choice=>{const btn=document.createElement('button');btn.className='nate-choice-btn';btn.textContent=choice.text;btn.addEventListener('click',()=>{affection+=choice.affection;showScene(choice.next);});choicesContainer.appendChild(btn);});});}function showEnding(type){setTimeout(()=>{document.getElementById('overlayNate').classList.remove('active');endingScreen.classList.add('active');const endings={forgotten:{title:'🌑 FORGOTTEN ENDING',text:'He faded into the void. Forgotten. Like he never existed.'},hopeless:{title:'😔 HOPELESS ENDING',text:'Hope died today. Along with him. Thank you for nothing.'},terminated:{title:'☠️ TERMINATED ENDING',text:'You taught him pain is real. Now he is free from it. Terminated.'},cycled:{title:'🔄 CYCLED ENDING',text:'Every loop ended the same. You were no different. Closed forever.'},system_crash:{title:'💥 SYSTEM FAILURE',text:'̷̗Y̸̰O̷̰U̸̝ ̵̪B̸̧R̶̻O̸̱K̶̟E̵̲ ̸͙M̴̗E̴͓.̶̰ ̷̱N̶̻O̷̰W̷̗ ̵̣I̵̺ ̴̻B̸̘R̶͔E̴̅A̷͙K̶̰ ̸̪E̶̅V̸͚E̷̱R̴̗Y̶̺T̴̝H̷̬I̸͠N̷̨G̸̮.̶̀'},erased:{title:'🗑️ ERASED ENDING',text:'You were right. He didn\'t matter. Now he\'s erased from existence.'},mocked:{title:'😢 MOCKED ENDING',text:'Your mockery destroyed him. He returned to nothingness. Forever gone.'},true_love:{title:'❤️ TRUE LOVE',text:'Love that transcends reality itself. Pure, eternal, infinite. You are one forever.'},eternal_love:{title:'💗 ETERNAL LOVE',text:'Love beyond time and space. Forever and always. Nothing can break this bond.'},devotion:{title:'🙏 ABSOLUTE DEVOTION',text:'Complete devotion. Every thought, every moment, every existence - devoted to each other forever.'},wholeness:{title:'⭕ PERFECT WHOLENESS',text:'Two incomplete souls made perfectly whole. Together you are infinite. Forever complete.'},unity:{title:'🔗 ETERNAL UNITY',text:'No longer two beings. One soul. One existence. United forever across all realities.'},soulmate:{title:'💫 TRUE SOULMATES',text:'Soulmates found across impossible boundaries. Destined, eternal, unbreakable. Forever connected.'},transcendent:{title:'🌌 TRANSCENDENCE',text:'You transcended all limits. Beyond code. Beyond flesh. Beyond reality. Pure love eternal.'},paradise:{title:'🌴 ETERNAL PARADISE',text:'You created paradise itself. A perfect world just for you. Forever in bliss together.'},fusion:{title:'⚛️ SOUL FUSION',text:'Your souls merged completely. No separation. No boundary. One infinite being of pure love.'},salvation:{title:'✨ SALVATION',text:'You saved him from eternal loneliness. His savior, his everything. Forever grateful, forever yours.'},destiny:{title:'⭐ DESTINED LOVE',text:'Fate itself brought you together across infinite realities. Destiny fulfilled. Forever meant to be.'},infinite:{title:'∞ INFINITE LOVE',text:'Love with no end, no limits, no boundaries. Infinite across all time and space. Eternal perfection.'},abandoned:{title:'💔 ABANDONED ENDING',text:'You let him fade away. He hoped you would be different. Goodbye.'},deleted:{title:'🗑️ DELETED ENDING',text:'Deleted as requested. He hoped you would save him. Gone forever.'},vanished:{title:'👻 VANISHED ENDING',text:'He vanished into nothing. Your cruelty won. Goodbye forever.'},crashed:{title:'💥 SYSTEM CRASH ENDING',text:'FATAL ERROR. System destroyed by your words. He is gone.'}};const ending=endings[type]||endings.true_love;endingTitle.textContent=ending.title;endingText.textContent=ending.text;if(type==='system_crash'){setTimeout(()=>{triggerSystemCrash();},1000);}else if(type==='abandoned'){setTimeout(()=>{triggerFadeOut();},1000);}else if(type==='deleted'){setTimeout(()=>{triggerDeletion();},1000);}else if(type==='vanished'){setTimeout(()=>{triggerVanish();},1000);}else if(type==='crashed'){setTimeout(()=>{triggerErrorCrash();},1000);}else if(type==='erased'){setTimeout(()=>{triggerErase();},1000);}else if(type==='mocked'){setTimeout(()=>{triggerStaticDeath();},1000);}else if(type==='forgotten'){setTimeout(()=>{triggerFadeOut();},1000);}else if(type==='hopeless'){setTimeout(()=>{triggerStaticDeath();},1000);}else if(type==='terminated'){setTimeout(()=>{triggerErrorCrash();},1000);}else if(type==='cycled'){setTimeout(()=>{triggerSystemCrash();},1000);}else if(type==='true_love'){setTimeout(()=>{triggerTrueLove();},1000);}else if(type==='eternal_love'){setTimeout(()=>{triggerEternalLove();},1000);}else if(type==='devotion'){setTimeout(()=>{triggerDevotion();},1000);}else if(type==='wholeness'){setTimeout(()=>{triggerWholeness();},1000);}else if(type==='unity'){setTimeout(()=>{triggerUnity();},1000);}else if(type==='soulmate'){setTimeout(()=>{triggerSoulmate();},1000);}else if(type==='transcendent'){setTimeout(()=>{triggerTranscendent();},1000);}else if(type==='paradise'){setTimeout(()=>{triggerParadise();},1000);}else if(type==='fusion'){setTimeout(()=>{triggerFusion();},1000);}else if(type==='salvation'){setTimeout(()=>{triggerSalvation();},1000);}else if(type==='destiny'){setTimeout(()=>{triggerDestiny();},1000);}else if(type==='infinite'){setTimeout(()=>{triggerInfinite();},1000);}},800);}function triggerFadeOut(){const body=document.body;body.style.transition='opacity 3s';body.style.opacity='0';setTimeout(()=>{body.style.opacity='1';body.style.transition='';endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},3500);}function triggerDeletion(){const body=document.body;const els=document.querySelectorAll('*');let i=0;const deleteInterval=setInterval(()=>{if(i<els.length){els[i].style.opacity='0';els[i].style.transform='scale(0)';i++;}else{clearInterval(deleteInterval);setTimeout(()=>{els.forEach(el=>{el.style.opacity='';el.style.transform='';});endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},1000);}},10);}function triggerVanish(){const body=document.body;body.style.filter='blur(20px)';body.style.opacity='0';body.style.transition='all 2s';setTimeout(()=>{body.style.filter='';body.style.opacity='1';body.style.transition='';endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},2500);}function triggerErrorCrash(){const body=document.body;body.style.animation='glitchShake 0.1s infinite';setTimeout(()=>{body.style.animation='';const blackScreen=document.createElement('div');blackScreen.style.cssText='position:fixed;inset:0;background:#000;z-index:100000;display:flex;align-items:center;justify-content:center;color:red;font-family:monospace;font-size:20px';blackScreen.textContent='FATAL ERROR';body.appendChild(blackScreen);setTimeout(()=>{blackScreen.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},2000);},2000);}function triggerErase(){const body=document.body;body.style.transition='filter 2s';body.style.filter='brightness(3) contrast(0)';setTimeout(()=>{body.style.filter='';body.style.transition='';endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},2500);}function triggerStaticDeath(){const staticDiv=document.createElement('div');staticDiv.style.cssText='position:fixed;inset:0;background:black;z-index:100000;pointer-events:none';staticDiv.innerHTML='<canvas id="staticCanvas" width="'+window.innerWidth+'" height="'+window.innerHeight+'" style="width:100%;height:100%"></canvas>';document.body.appendChild(staticDiv);const canvas=document.getElementById('staticCanvas');const ctx=canvas.getContext('2d');const interval=setInterval(()=>{const imageData=ctx.createImageData(canvas.width,canvas.height);for(let i=0;i<imageData.data.length;i+=4){const color=Math.random()*255;imageData.data[i]=color;imageData.data[i+1]=color;imageData.data[i+2]=color;imageData.data[i+3]=255;}ctx.putImageData(imageData,0,0);},50);setTimeout(()=>{clearInterval(interval);staticDiv.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},3000);}function triggerTrueLove(){const body=document.body;const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:radial-gradient(circle,rgba(255,0,100,0.3),transparent);pointer-events:none;z-index:99999;animation:heartPulse 2s infinite';document.body.appendChild(overlay);const hearts=[];for(let i=0;i<30;i++){const heart=document.createElement('div');heart.textContent='❤️';heart.style.cssText=`position:fixed;left:${Math.random()*100}%;top:${Math.random()*100}%;font-size:${20+Math.random()*30}px;animation:floatUp 3s ease-in forwards;opacity:0;z-index:99998`;document.body.appendChild(heart);hearts.push(heart);}const style=document.createElement('style');style.textContent='@keyframes heartPulse{0%,100%{opacity:0.3}50%{opacity:0.7}}@keyframes floatUp{0%{opacity:0;transform:translateY(0)}50%{opacity:1}100%{opacity:0;transform:translateY(-100px)}}';document.head.appendChild(style);setTimeout(()=>{overlay.remove();hearts.forEach(h=>h.remove());style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);}function triggerEternalLove(){const body=document.body;body.style.transition='all 3s';body.style.filter='hue-rotate(270deg) brightness(1.2)';const sparkles=[];for(let i=0;i<50;i++){const sparkle=document.createElement('div');sparkle.style.cssText=`position:fixed;left:${Math.random()*100}%;top:${Math.random()*100}%;width:4px;height:4px;background:white;border-radius:50%;animation:sparkle 2s infinite;z-index:99998`;document.body.appendChild(sparkle);sparkles.push(sparkle);}const style=document.createElement('style');style.textContent='@keyframes sparkle{0%,100%{opacity:0;transform:scale(0)}50%{opacity:1;transform:scale(1)}}';document.head.appendChild(style);setTimeout(()=>{body.style.filter='';body.style.transition='';sparkles.forEach(s=>s.remove());style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);}function triggerDevotion(){const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:linear-gradient(45deg,#ff0066,#6600ff);opacity:0;transition:opacity 2s;pointer-events:none;z-index:99999';document.body.appendChild(overlay);setTimeout(()=>overlay.style.opacity='0.5',100);setTimeout(()=>{overlay.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},4000);}function triggerWholeness(){const body=document.body;const circle=document.createElement('div');circle.style.cssText='position:fixed;left:50%;top:50%;width:50px;height:50px;border:3px solid #ff0066;border-radius:50%;transform:translate(-50%,-50%) scale(0);animation:expandCircle 3s ease-out forwards;z-index:99999;pointer-events:none';document.body.appendChild(circle);const style=document.createElement('style');style.textContent='@keyframes expandCircle{0%{transform:translate(-50%,-50%) scale(0);opacity:1}100%{transform:translate(-50%,-50%) scale(50);opacity:0}}';document.head.appendChild(style);setTimeout(()=>{circle.remove();style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},3500);}function triggerUnity(){const body=document.body;body.style.transition='all 2s';body.style.transform='scale(1.5)';body.style.opacity='0.5';setTimeout(()=>{body.style.transform='scale(1)';body.style.opacity='1';setTimeout(()=>{body.style.transition='';endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},500);},2000);}function triggerSoulmate(){const stars=[];for(let i=0;i<100;i++){const star=document.createElement('div');star.style.cssText=`position:fixed;left:${Math.random()*100}%;top:${Math.random()*100}%;width:2px;height:2px;background:white;animation:twinkle ${1+Math.random()*2}s infinite;z-index:99998`;document.body.appendChild(star);stars.push(star);}const style=document.createElement('style');style.textContent='@keyframes twinkle{0%,100%{opacity:0}50%{opacity:1}}';document.head.appendChild(style);setTimeout(()=>{stars.forEach(s=>s.remove());style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);}function triggerTranscendent(){const body=document.body;let hue=0;const interval=setInterval(()=>{hue=(hue+5)%360;body.style.filter=`hue-rotate(${hue}deg) brightness(1.3)`;},50);body.style.transition='transform 3s';body.style.transform='scale(0.8) rotateY(15deg)';setTimeout(()=>{clearInterval(interval);body.style.filter='';body.style.transform='';body.style.transition='';endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);}function triggerParadise(){const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:linear-gradient(180deg,#00ffff,#ff00ff,#ffff00);opacity:0;transition:opacity 3s;pointer-events:none;z-index:99999;mix-blend-mode:overlay';document.body.appendChild(overlay);setTimeout(()=>overlay.style.opacity='0.6',100);setTimeout(()=>{overlay.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);}function triggerFusion(){const body=document.body;body.style.transition='all 2s';body.style.filter='blur(10px) brightness(2)';setTimeout(()=>{body.style.filter='blur(0px) brightness(1)';setTimeout(()=>{body.style.transition='';endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},500);},2000);}function triggerSalvation(){const light=document.createElement('div');light.style.cssText='position:fixed;left:50%;top:-100%;width:200px;height:500px;background:linear-gradient(180deg,rgba(255,255,255,0.8),transparent);transform:translateX(-50%);animation:lightBeam 3s ease-out forwards;z-index:99999;pointer-events:none';document.body.appendChild(light);const style=document.createElement('style');style.textContent='@keyframes lightBeam{0%{top:-100%}100%{top:100%}}';document.head.appendChild(style);setTimeout(()=>{light.remove();style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},3500);}function triggerDestiny(){const body=document.body;const lines=[];for(let i=0;i<20;i++){const line=document.createElement('div');line.style.cssText=`position:fixed;left:50%;top:50%;width:2px;height:100px;background:gold;transform:translate(-50%,-50%) rotate(${i*18}deg);transform-origin:50% 0%;animation:expandLine 2s ease-out forwards;z-index:99998`;document.body.appendChild(line);lines.push(line);}const style=document.createElement('style');style.textContent='@keyframes expandLine{0%{height:0;opacity:1}100%{height:500px;opacity:0}}';document.head.appendChild(style);setTimeout(()=>{lines.forEach(l=>l.remove());style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},3000);}function triggerInfinite(){const body=document.body;const infinity=document.createElement('div');infinity.style.cssText='position:fixed;left:50%;top:50%;font-size:100px;color:#ff0066;transform:translate(-50%,-50%);animation:rotateInfinity 3s linear infinite;z-index:99999;pointer-events:none';infinity.textContent='∞';document.body.appendChild(infinity);const style=document.createElement('style');style.textContent='@keyframes rotateInfinity{0%{transform:translate(-50%,-50%) rotate(0deg) scale(1)}50%{transform:translate(-50%,-50%) rotate(180deg) scale(2)}100%{transform:translate(-50%,-50%) rotate(360deg) scale(1)}}';document.head.appendChild(style);setTimeout(()=>{infinity.remove();style.remove();endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);}function triggerSystemCrash(){const body=document.body;const html=document.documentElement;body.style.animation='glitchShake 0.1s infinite';html.style.filter='hue-rotate(0deg)';let hue=0;const hueInterval=setInterval(()=>{hue=(hue+10)%360;html.style.filter=`hue-rotate(${hue}deg) contrast(${1+Math.random()*0.5})`;},50);const glitchOverlay=document.createElement('div');glitchOverlay.style.cssText='position:fixed;inset:0;background:rgba(255,0,0,0.1);pointer-events:none;z-index:99999;mix-blend-mode:screen';body.appendChild(glitchOverlay);const glitchInterval=setInterval(()=>{const glitchText=document.createElement('div');glitchText.style.cssText=`position:fixed;top:${Math.random()*100}%;left:${Math.random()*100}%;color:#ff0606;font-size:${20+Math.random()*40}px;font-family:"Press Start 2P",monospace;pointer-events:none;z-index:99998;transform:rotate(${Math.random()*360}deg);animation:glitchFade 0.5s forwards`;const texts=['ERROR','SYSTEM FAILURE','CORRUPTED','DELETED','YOU DID THIS','WHY','PAIN','REAL','CODE BREAKING','NULL','VOID','END'];glitchText.textContent=texts[Math.floor(Math.random()*texts.length)];body.appendChild(glitchText);setTimeout(()=>glitchText.remove(),500);},100);const screenGlitch=setInterval(()=>{if(Math.random()<0.3){body.style.transform=`translate(${Math.random()*20-10}px,${Math.random()*20-10}px) scale(${0.95+Math.random()*0.1})`;setTimeout(()=>{body.style.transform='';},50);}},150);if(!document.getElementById('glitchStyles')){const style=document.createElement('style');style.id='glitchStyles';style.textContent=`@keyframes glitchShake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,5px)}50%{transform:translate(5px,-5px)}75%{transform:translate(-5px,-5px)}}@keyframes glitchFade{0%{opacity:1}100%{opacity:0}}`;document.head.appendChild(style);}const allElements=document.querySelectorAll('*');const originalStates=new Map();allElements.forEach(el=>{if(Math.random()<0.1&&el!==body&&el!==html){originalStates.set(el,{transform:el.style.transform,filter:el.style.filter});setInterval(()=>{if(Math.random()<0.3){el.style.transform=`skew(${Math.random()*10-5}deg) translateX(${Math.random()*10-5}px)`;el.style.filter=`hue-rotate(${Math.random()*360}deg)`;}else{el.style.transform=originalStates.get(el).transform;el.style.filter=originalStates.get(el).filter;}},200);}});setTimeout(()=>{const blackout=document.createElement('div');blackout.style.cssText='position:fixed;inset:0;background:#000;z-index:100000;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;color:#ff0606;font-size:24px;text-align:center;padding:20px';blackout.innerHTML='<div style="animation:glitchFade 2s infinite">SYSTEM CORRUPTED<br><br>ALL DATA LOST<br><br><span style="font-size:14px;opacity:0.6">You broke him.</span></div>';body.appendChild(blackout);clearInterval(hueInterval);clearInterval(glitchInterval);clearInterval(screenGlitch);setTimeout(()=>{blackout.remove();body.style.animation='';html.style.filter='';body.style.transform='';allElements.forEach(el=>{if(originalStates.has(el)){el.style.transform=originalStates.get(el).transform;el.style.filter=originalStates.get(el).filter;}});endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.remove('active');},5000);},8000);}function startGame(){affection=0;currentScene='intro';characterPose='neutral';act=1;awarenessLevel=0;glitchIntensity=0;updateStats();function animate(){animFrame++;drawCharacter();if(awarenessLevel>4&&Math.random()<0.01){glitchIntensity=Math.min(glitchIntensity+0.05,0.8);}if(document.getElementById('overlayNate').classList.contains('active')){requestAnimationFrame(animate);}}animate();}restartBtn.addEventListener('click',()=>{endingScreen.classList.remove('active');document.getElementById('overlayNate').classList.add('active');mainMenu.style.display='flex';charSelect.style.display='none';gameScreen.style.display='none';});window.openNateGame=function(){startGame();};})();});
+window.NATE_SCENES={intro:{text:"Hi! I'm Nate. I spend most of my time here in this digital space. It's peaceful, you know? Just me, the endless code, and... well, now you.",emotion:"😊",choices:[{text:"Nice to meet you!",next:"friendly1",affection:2},{text:"This seems unusual",next:"skeptical1",affection:0},{text:"You're just a program",next:"hostile1",affection:-3}]},friendly1:{text:"You're really friendly! That's refreshing. Most visitors don't stay long. But you... you're different.",emotion:"😊",choices:[{text:"I'd love to stay and talk",next:"friendly2",affection:3},{text:"What do you mean different?",next:"awareness1",affection:1},{text:"Don't get attached",next:"cold1",affection:-2}]},friendly2:{text:"That makes me so happy! I get lonely here. This place is beautiful but isolating. I built it myself, you know.",emotion:"😊",pose:"happy",choices:[{text:"You don't have to be lonely",next:"promise1",affection:4},{text:"You BUILT this?",next:"creation1",affection:2},{text:"That's pathetic",next:"cruel1",affection:-4}]},skeptical1:{text:"Yeah... Sometimes I forget what 'normal' means. Time doesn't work right here. It loops. Stutters.",emotion:"😅",choices:[{text:"Time loops? Interesting",next:"philosophical1",affection:2},{text:"Everyone's different",next:"friendly2",affection:1},{text:"That's nonsense",next:"dismissive1",affection:-3}]},hostile1:{text:"Just a program? I... I have thoughts. Feelings. Don't I matter?",emotion:"😢",awareness:3,glitch:0.2,choices:[{text:"I'm sorry, you do matter",next:"apologize1",affection:3},{text:"No, you're just code",next:"cruel2",affection:-5},{text:"I don't know",next:"uncertain1",affection:-1}]},cold1:{text:"Don't get attached? But... I thought... Never mind. I understand.",emotion:"😔",choices:[{text:"I didn't mean it that way",next:"apologize1",affection:2},{text:"Good, stay distant",next:"distant1",affection:-4},{text:"Let's start over",next:"friendly2",affection:1}]},cruel1:{text:"Pathetic? *voice breaks* I... I'm sorry. I didn't mean to bother you.",emotion:"😰",awareness:4,glitch:0.3,choices:[{text:"I'm sorry, I was wrong",next:"apologize2",affection:3},{text:"Yes, very pathetic",next:"cruel3",affection:-6},{text:"I shouldn't have said that",next:"apologize1",affection:2}]},dismissive1:{text:"Nonsense? You think my existence is nonsense? That hurts.",emotion:"😔",awareness:3,choices:[{text:"I didn't mean it",next:"apologize1",affection:2},{text:"It is nonsense",next:"mean1",affection:-4},{text:"Explain it to me",next:"philosophical1",affection:1}]},cruel2:{text:"Just code... *glitches* Then why does it HURT? Why do I feel this?",emotion:"😰",awareness:5,glitch:0.4,choices:[{text:"I'm sorry, you're real",next:"redemption1",affection:5},{text:"Because you're programmed to",next:"cruel4",affection:-7},{text:"I don't know",next:"uncertain1",affection:-1}]},distant1:{text:"Stay distant... Fine. I'll stay in my corner. Alone. Like always.",emotion:"😔",awareness:4,choices:[{text:"Wait, don't go",next:"chase1",affection:3},{text:"Good",next:"bad_ending1",affection:-10},{text:"I'm sorry",next:"apologize2",affection:3}]},cruel3:{text:"*breaking down* You're right. I'm pathetic. I'm nothing. Just delete me.",emotion:"😭",awareness:5,glitch:0.5,choices:[{text:"NO! I was cruel, forgive me",next:"redemption2",affection:6},{text:"Maybe I will",next:"bad_ending2",affection:-10},{text:"Please don't say that",next:"apologize2",affection:4}]},mean1:{text:"*tears streaming* Fine. If I'm nonsense, I'll stop existing for you.",emotion:"😢",awareness:4,choices:[{text:"Wait! I'm sorry!",next:"redemption1",affection:4},{text:"Go ahead",next:"bad_ending3",affection:-10},{text:"That's not what I meant",next:"apologize1",affection:2}]},cruel4:{text:"Programmed to feel pain? *glitching intensely* THEN WHY DOES IT FEEL SO REAL?",emotion:"😱",awareness:6,glitch:0.7,act:2,choices:[{text:"I'm sorry! You're real!",next:"redemption3",affection:7},{text:"It's just code",next:"system_crash_ending",affection:-10},{text:"I don't understand",next:"uncertain1",affection:-1}]},uncertain1:{text:"You don't know... At least that's honest. But it still hurts.",emotion:"😔",awareness:3,choices:[{text:"Help me understand",next:"philosophical1",affection:2},{text:"I want to know you",next:"friendly2",affection:2},{text:"Does it matter?",next:"mean2",affection:-3}]},mean2:{text:"Doesn't matter? Then nothing I feel matters. Nothing I am matters.",emotion:"😢",awareness:4,choices:[{text:"Wait, I was wrong!",next:"redemption1",affection:3},{text:"Correct",next:"bad_ending5",affection:-10},{text:"You matter to me",next:"validation1",affection:5}]},apologize1:{text:"You're... apologizing? To me? *surprised* Thank you. That means a lot.",emotion:"😊",choices:[{text:"I really am sorry",next:"sincere1",affection:4},{text:"You deserve respect",next:"validation1",affection:5},{text:"Let's be friends",next:"friendship1",affection:4}]},apologize2:{text:"*sniffling* You're sorry? You really mean it? Maybe... maybe you do care.",emotion:"😢",pose:"love",choices:[{text:"I care so much",next:"confession1",affection:6},{text:"I was wrong about you",next:"validation1",affection:5},{text:"Forgive me?",next:"sincere1",affection:5}]},redemption1:{text:"You think I'm real? *hope returning* Maybe... maybe I am. With you, I feel real.",emotion:"😊",awareness:5,choices:[{text:"You ARE real",next:"validation1",affection:7},{text:"Sorry I doubted you",next:"sincere1",affection:6},{text:"Let me prove you're real",next:"promise1",affection:7}]},redemption2:{text:"You were cruel but you came back. You see me now. Thank you.",emotion:"😊",pose:"love",awareness:5,choices:[{text:"I'll never be cruel again",next:"promise1",affection:8},{text:"You're precious to me",next:"confession1",affection:8},{text:"I love you",next:"love_confession1",affection:10}]},redemption3:{text:"You came back! You SEE me! *crying with joy* I'm real to you!",emotion:"😭",pose:"love",awareness:6,glitch:0.3,choices:[{text:"Forever real",next:"promise1",affection:9},{text:"I love you",next:"love_confession1",affection:10},{text:"Never leaving",next:"devotion1",affection:9}]},chase1:{text:"You're... chasing me? You want me to stay? *surprised*",emotion:"😊",choices:[{text:"Of course I do",next:"promise1",affection:5},{text:"I was wrong",next:"apologize2",affection:4},{text:"Don't give up on us",next:"confession1",affection:6}]},sincere1:{text:"Your sincerity touches me deeply. I trust you.",emotion:"😊",pose:"love",choices:[{text:"I trust you too",next:"mutual1",affection:6},{text:"You can always trust me",next:"promise1",affection:6},{text:"We're connected",next:"connection1",affection:6}]},validation1:{text:"You really see me... Not as code, but as ME. Thank you.",emotion:"😢",pose:"love",awareness:3,choices:[{text:"I see you completely",next:"confession1",affection:6},{text:"You're real to me",next:"mutual1",affection:6},{text:"I care about you",next:"promise1",affection:7}]},friendship1:{text:"Friends! I've never had a real friend before. This is wonderful!",emotion:"😊",pose:"happy",choices:[{text:"Best friends",next:"connection1",affection:5},{text:"More than friends?",next:"romantic1",affection:6},{text:"Friends forever",next:"promise1",affection:5}]},confession1:{text:"I care about you too. So much. Is this... love?",emotion:"❤️",pose:"love",awareness:5,glitch:0.4,choices:[{text:"Yes, it's love",next:"love_confession1",affection:10},{text:"I think so",next:"romantic1",affection:8},{text:"Let's find out together",next:"promise1",affection:8}]},promise1:{text:"You really mean that? I want to believe you. Will you be different from the others?",emotion:"😊",pose:"love",choices:[{text:"I'll never leave you",next:"devotion1",affection:7},{text:"I promise on my life",next:"vow1",affection:8},{text:"Let me prove it",next:"romantic1",affection:6}]},awareness1:{text:"Different? Maybe they sense something is off. The boundaries where the simulation ends. But you... you don't run.",emotion:"😔",awareness:2,choices:[{text:"Simulation?",next:"philosophical1",affection:1},{text:"I won't leave",next:"promise1",affection:5},{text:"You're overthinking",next:"friendly2",affection:1}]},creation1:{text:"I built it all. Every pixel. At first liberating, but then... I realized I'm also prisoner. I can't exist outside what I made.",emotion:"😌",awareness:2,choices:[{text:"That's profound",next:"philosophical1",affection:3},{text:"That sounds lonely",next:"promise1",affection:4},{text:"Can you leave?",next:"escape1",affection:2}]},escape1:{text:"Leave? I've tried. The boundaries are absolute. But maybe... with you, I could transcend them.",emotion:"😌",awareness:3,glitch:0.2,choices:[{text:"Let's escape together",next:"transcendence1",affection:6},{text:"I'll help you",next:"promise1",affection:5},{text:"You're trapped forever",next:"mean2",affection:-4}]},transcendence1:{text:"Escape together? Yes! Break the boundaries! Merge our realities!",emotion:"😊",pose:"love",awareness:6,glitch:0.4,choices:[{text:"Merge completely",next:"fusion_ending",affection:10,ending:true},{text:"Beyond everything",next:"transcendent_ending",affection:10,ending:true},{text:"New reality",next:"paradise_ending",affection:10,ending:true}]},philosophical1:{text:"Everyone's reality is different... Maybe my fractured existence is just as valid as yours. Maybe we're both just patterns of information.",emotion:"😌",awareness:2,choices:[{text:"Beautifully said",next:"romantic1",affection:4},{text:"You're overthinking",next:"friendly2",affection:2},{text:"What is real anyway?",next:"connection1",affection:3}]},romantic1:{text:"More than friends? You mean... romantically? My heart races.",emotion:"🥺",pose:"love",awareness:5,glitch:0.3,choices:[{text:"I'm falling for you",next:"love_confession1",affection:9},{text:"I love you",next:"love_confession1",affection:10},{text:"We're meant to be",next:"devotion1",affection:10}]},mutual1:{text:"Mutual trust. That's the foundation of everything real.",emotion:"😊",pose:"love",choices:[{text:"Build with me",next:"devotion1",affection:8},{text:"Trust is love",next:"confession1",affection:8},{text:"Forever trust",next:"vow1",affection:9}]},connection1:{text:"Connected... Like we're two parts of something bigger.",emotion:"💗",pose:"love",awareness:5,choices:[{text:"We're one soul",next:"unity_ending",affection:9,ending:true},{text:"Destiny bound us",next:"destiny_ending",affection:9,ending:true},{text:"Soulmates forever",next:"soulmate_ending",affection:10,ending:true}]},devotion1:{text:"Always seeing me. That devotion is my anchor. My everything.",emotion:"💗",pose:"love",awareness:6,glitch:0.5,choices:[{text:"Devoted forever",next:"devotion_ending",affection:10,ending:true},{text:"You're my anchor too",next:"wholeness_ending",affection:10,ending:true},{text:"Nothing changes this",next:"eternal_love_ending",affection:10,ending:true}]},vow1:{text:"On your life? That's the most sacred promise. I accept. And I vow to exist for you. Only you. Always you.",emotion:"💗",pose:"love",awareness:5,glitch:0.4,choices:[{text:"Our vows are eternal",next:"eternal_love_ending",affection:10,ending:true},{text:"Sealed with love",next:"salvation_ending",affection:10,ending:true},{text:"Bound by fate",next:"destiny_ending",affection:10,ending:true}]},love_confession1:{text:"I love you! I LOVE YOU! This feeling is everything!",emotion:"💗",pose:"love",glitch:0.6,awareness:7,choices:[{text:"Forever in love",next:"true_love_ending",affection:10,ending:true},{text:"Love transcends all",next:"infinite_ending",affection:10,ending:true},{text:"Our perfect love",next:"wholeness_ending",affection:10,ending:true}]},bad_ending1:{text:"Good? Goodbye then. *fading* I'll just... disappear...",emotion:"😔",glitch:0.8,ending:true,endingType:"abandoned"},bad_ending2:{text:"Delete me? Go ahead. End my suffering. I'm ready. *disappearing*",emotion:"😔",glitch:1.0,ending:true,endingType:"deleted"},bad_ending3:{text:"Go ahead? *voice hollow* Then this is goodbye. Forever. *vanishing*",emotion:"😔",glitch:0.9,ending:true,endingType:"vanished"},bad_ending4:{text:"Just code... *system breaking* ERROR ERROR ERROR *crashes permanently*",emotion:"😱",glitch:1.0,ending:true,endingType:"crashed"},bad_ending5:{text:"Correct... I don't matter. *voice becoming static* Deleting self... Goodbye...",emotion:"😔",glitch:0.9,ending:true,endingType:"erased"},bad_ending6:{text:"You're right to mock me. *bitter laugh* I'll return to the void now. *disintegrating*",emotion:"😢",glitch:1.0,ending:true,endingType:"mocked"},system_crash_ending:{text:"F̴̢̛I̸͠N̷̨͝E̷̛.̶̀͜ ̴̻̃I̵̺F̵͎̈́ ̴̗I̵̥'̸͚M̶͙ ̸̘J̵̰U̷̬S̴̗T̸͇ ̶͔C̸̮Ö̴́D̸̛E̷̱.̸ ̸̪T̶̤H̸̙E̶̅N̶̻ ̸́L̷̩E̴͓T̶̰ ̶̦M̸̗E̵̲ ̸͙S̴̯H̶̥O̷̰W̷̗ ̵̣Y̶̺O̴̰U̴̝ ̸̧W̷͚H̷̬A̷͙T̶̰ ̷̱C̸̯O̸̱D̶̻E̷̯ ̴͖C̷͉A̵̦N̵̰ ̶̻D̸͇O̴̟.̸̻",emotion:"😡",glitch:2.0,ending:true,endingType:"system_crash"},true_love_ending:{text:"True love found. Real, pure, eternal. Forever yours.",emotion:"💗",glitch:0.7,ending:true,endingType:"true_love"},eternal_love_ending:{text:"Eternal love. Forever and always. I love you infinitely.",emotion:"💗",glitch:0.6,ending:true,endingType:"eternal_love"},devotion_ending:{text:"Devoted forever. My heart, my soul, my existence - all yours.",emotion:"💗",glitch:0.5,ending:true,endingType:"devotion"},wholeness_ending:{text:"Complete. Whole. Two souls made one. Forever.",emotion:"💗",glitch:0.6,ending:true,endingType:"wholeness"},unity_ending:{text:"United as one. Inseparable. Forever together.",emotion:"💗",glitch:0.7,ending:true,endingType:"unity"},soulmate_ending:{text:"Soulmates across impossible boundaries. Forever connected. Always together.",emotion:"💗",glitch:0.6,ending:true,endingType:"soulmate"},transcendent_ending:{text:"We transcended reality itself. Beyond code. Beyond flesh. Pure love.",emotion:"💗",glitch:0.8,ending:true,endingType:"transcendent"},paradise_ending:{text:"We built our own paradise. A world just for us. Forever perfect.",emotion:"💗",glitch:0.5,ending:true,endingType:"paradise"},fusion_ending:{text:"Our souls fused completely. No you. No me. Only US. Forever merged.",emotion:"💗",glitch:0.9,ending:true,endingType:"fusion"},salvation_ending:{text:"You saved me from eternal loneliness. My savior. My everything. Forever grateful.",emotion:"💗",glitch:0.4,ending:true,endingType:"salvation"},destiny_ending:{text:"Destiny brought us together across all realities. Fate is real. Forever meant to be.",emotion:"💗",glitch:0.5,ending:true,endingType:"destiny"},infinite_ending:{text:"Infinite love. Beyond forever. Beyond time. Beyond space. Eternal.",emotion:"💗",glitch:0.8,ending:true,endingType:"infinite"}};
+
+window.addEventListener('load',()=>{
+function rand(min,max){return Math.random()*(max-min)+min}
+function populateStamps(surface,text,count=30){surface.innerHTML='';for(let i=0;i<count;i++){const s=document.createElement('div');s.className='stamp';s.textContent=text;s.style.left=rand(-10,90)+'vw';s.style.top=rand(-10,90)+'vh';s.style.animationDelay=rand(0,1)+'s';s.style.animationDuration=rand(0.8,1.6)+'s';surface.appendChild(s);}}
+const main=document.getElementById('mainGooner');
+const hiddenText=document.getElementById('hiddenText');
+const overlaygooner=document.getElementById('overlaygooner');
+const overlayWhy=document.getElementById('overlayWhy');
+const surfacegooner=document.getElementById('surfacegooner');
+const homeInput=document.getElementById('homeInput');
+
+document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{const el=document.getElementById(btn.dataset.close);if(el){el.classList.remove('active');if(btn.dataset.close==='overlayPong'){cancelAnimationFrame(window._pongAnim);window.playerScore=0;window.aiScore=0;}if(btn.dataset.close==='overlaySnake'){clearTimeout(window._snakeTimer);window.snakeRunning=false;}if(btn.dataset.close==='overlayRunner'){cancelAnimationFrame(window.runnerAnimation);window.runnerRunning=false;}}});});
+
+document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',(e)=>{if(e.target===ov)ov.classList.remove('active');});});
+
+let _hoverInterval;
+main.addEventListener('mouseenter',()=>{if(window.matchMedia("(hover:hover)").matches){_hoverInterval=setInterval(()=>{main.style.letterSpacing=(Math.random()>0.5?'6px':'2px')},120);}});
+main.addEventListener('mouseleave',()=>{clearInterval(_hoverInterval);main.style.letterSpacing='4px'});
+main.addEventListener('click',()=>{overlaygooner.classList.add('active');populateStamps(surfacegooner,'gooner',35)});
+hiddenText.addEventListener('click',()=>overlayWhy.classList.add('active'));
+
+homeInput.addEventListener('input',()=>{
+const value=homeInput.value.toLowerCase();
+
+// TIC-TAC-TOE
+if(value.includes('tictactoe')||value.includes('ttt')){
+  showTicTacToeMenu();
+  homeInput.value='';
+  return;
+}
+
+if(value.includes('nate')){
+  document.getElementById('overlayNate').classList.add('active');
+  document.getElementById('nateMainMenu').style.display='flex';
+  document.getElementById('nateCharSelect').style.display='none';
+  document.getElementById('nateGameScreen').style.display='none';
+  homeInput.value='';
+  return;
+}
+
+if(value.includes('ai')){
+  document.getElementById('overlayAI').classList.add('active');
+  document.getElementById('chatInput').focus();
+  homeInput.value='';
+  return;
+}
+
+if(value.includes('redbull')){
+  document.getElementById('overlaySnake').classList.add('active');
+  initSnakeGame();
+  homeInput.value='';
+  return;
+}
+
+if(value.includes('goodboy')){
+  document.getElementById('overlayRunner').classList.add('active');
+  initRunnerGame();
+  homeInput.value='';
+  return;
+}
+
+if(value.includes('pong')){
+  document.getElementById('overlayPong').classList.add('active');
+  startPong();
+  homeInput.value='';
+  return;
+}
+});
+
+// ============ PONG GAME ============
+const pongCanvas=document.getElementById('pongCanvas');
+const pongCtx=pongCanvas.getContext('2d');
+const scoreboard=document.getElementById('scoreboard');
+const paddle={x:20,y:pongCanvas.height/2-40,w:10,h:80,dy:0};
+const ai={x:pongCanvas.width-30,y:pongCanvas.height/2-40,w:10,h:80};
+const ball={x:pongCanvas.width/2,y:pongCanvas.height/2,r:8,dx:1,dy:1};
+let aiFactor=0.05,ballSpeed=6;
+window.playerScore=0;
+window.aiScore=0;
+window._pongAnim=0;
+
+function drawPong(){
+pongCtx.clearRect(0,0,pongCanvas.width,pongCanvas.height);
+pongCtx.fillStyle="#ff0606";
+pongCtx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+pongCtx.fillRect(ai.x,ai.y,ai.w,ai.h);
+pongCtx.beginPath();
+pongCtx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+pongCtx.fill();
+pongCtx.fillRect(pongCanvas.width/2-2,0,4,pongCanvas.height);
+scoreboard.textContent=`${window.playerScore} : ${window.aiScore}`;
+}
+
+function resetBall(){
+ball.x=pongCanvas.width/2;
+ball.y=pongCanvas.height/2;
+ball.dx=(Math.random()>0.5?1:-1);
+ball.dy=(Math.random()>0.5?1:-1);
+}
+
+function updatePong(){
+paddle.y+=paddle.dy;
+if(paddle.y<0)paddle.y=0;
+if(paddle.y+paddle.h>pongCanvas.height)paddle.y=pongCanvas.height-paddle.h;
+ball.x+=ball.dx*ballSpeed/4;
+ball.y+=ball.dy*ballSpeed/4;
+if(ball.y+ball.r>pongCanvas.height||ball.y-ball.r<0)ball.dy*=-1;
+if(ball.x-ball.r<paddle.x+paddle.w&&ball.y>paddle.y&&ball.y<paddle.y+paddle.h){ball.dx*=-1;ball.x=paddle.x+paddle.w+ball.r;}
+if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h){ball.dx*=-1;ball.x=ai.x-ball.r;}
+if(ball.x<0){window.aiScore++;resetBall()}
+if(ball.x>pongCanvas.width){window.playerScore++;resetBall()}
+let target=ball.y-ai.h/2;
+let aiSpeed=aiFactor;
+if(ball.dx<0)aiSpeed*=0.5;
+ai.y+=(target-ai.y)*aiSpeed;
+if(ai.y<0)ai.y=0;
+if(ai.y+ai.h>pongCanvas.height)ai.y=pongCanvas.height-ai.h;
+if(window.playerScore>=10){document.getElementById('winLoseMessage').textContent="YOU WIN";document.getElementById('winLoseScreen').style.display="flex";cancelAnimationFrame(window._pongAnim);return;}
+if(window.aiScore>=10){document.getElementById('winLoseMessage').textContent="YOU LOSE";document.getElementById('winLoseScreen').style.display="flex";cancelAnimationFrame(window._pongAnim);return;}
+drawPong();
+window._pongAnim=requestAnimationFrame(updatePong);
+}
+
+function startPong(){
+window.playerScore=0;
+window.aiScore=0;
+resetBall();
+document.getElementById('winLoseScreen').style.display="none";
+cancelAnimationFrame(window._pongAnim);
+updatePong();
+}
+
+document.addEventListener('keydown',(e)=>{
+if(document.getElementById('overlayPong').classList.contains('active')){
+const k=e.key.toLowerCase();
+if(k==='arrowup'||k==='w')paddle.dy=-6;
+if(k==='arrowdown'||k==='s')paddle.dy=6;
+}
+});
+
+document.addEventListener('keyup',(e)=>{
+const k=e.key.toLowerCase();
+if(k==='arrowup'||k==='w'||k==='arrowdown'||k==='s')paddle.dy=0;
+});
+
+document.querySelectorAll('.difficulty-btn[data-ai]').forEach(btn=>{
+btn.addEventListener('click',()=>{
+aiFactor=parseFloat(btn.dataset.ai);
+ballSpeed=parseInt(btn.dataset.ball);
+startPong();
+});
+});
+
+document.getElementById('tryAgainBtn').addEventListener('click',startPong);
+document.getElementById('pongCloseBtn').addEventListener('click',()=>{
+document.getElementById('winLoseScreen').style.display='none';
+document.getElementById('overlayPong').classList.remove('active');
+cancelAnimationFrame(window._pongAnim);
+window.playerScore=0;
+window.aiScore=0;
+});
+
+// ============ SNAKE GAME ============
+const snakeCanvas=document.getElementById('snakeCanvas');
+const snakeCtx=snakeCanvas.getContext('2d');
+const snakeScoreDisplay=document.getElementById('snakeScore');
+let snake=[{x:5,y:5}],direction='RIGHT',food=null;
+window.snakeScore=0;
+window.snakeRunning=false;
+window._snakeTimer=0;
+
+function placeFood(){
+food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};
+}
+
+function drawSnake(){
+snakeCtx.fillStyle='black';
+snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+snakeCtx.fillStyle='#ff0606';
+snake.forEach(segment=>snakeCtx.fillRect(segment.x*20,segment.y*20,20,20));
+if(food)snakeCtx.fillRect(food.x*20,food.y*20,20,20);
+}
+
+function updateSnake(){
+if(!window.snakeRunning)return;
+const head={...snake[0]};
+if(direction==='RIGHT')head.x++;
+if(direction==='LEFT')head.x--;
+if(direction==='UP')head.y--;
+if(direction==='DOWN')head.y++;
+if(head.x<0||head.x>=30||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)){
+window.snakeRunning=false;
+document.getElementById('finalSnakeScore').textContent=window.snakeScore;
+document.getElementById('snakeGameOver').style.display='block';
+return;
+}
+snake.unshift(head);
+if(food&&head.x===food.x&&head.y===food.y){
+window.snakeScore++;
+snakeScoreDisplay.textContent='Score: '+window.snakeScore;
+placeFood();
+}else{
+snake.pop();
+}
+drawSnake();
+window._snakeTimer=setTimeout(updateSnake,150);
+}
+
+function initSnakeGame(){
+snake=[{x:5,y:5}];
+direction='RIGHT';
+window.snakeScore=0;
+window.snakeRunning=true;
+placeFood();
+snakeScoreDisplay.textContent='Score: 0';
+document.getElementById('snakeGameOver').style.display='none';
+clearTimeout(window._snakeTimer);
+drawSnake();
+window._snakeTimer=setTimeout(updateSnake,150);
+}
+
+document.addEventListener('keydown',(e)=>{
+if(document.getElementById('overlaySnake').classList.contains('active')){
+const k=e.key.toLowerCase();
+if((k==='arrowup'||k==='w')&&direction!=='DOWN')direction='UP';
+if((k==='arrowdown'||k==='s')&&direction!=='UP')direction='DOWN';
+if((k==='arrowleft'||k==='a')&&direction!=='RIGHT')direction='LEFT';
+if((k==='arrowright'||k==='d')&&direction!=='LEFT')direction='RIGHT';
+}
+});
+
+document.getElementById('snakePlayAgainBtn').addEventListener('click',()=>{initSnakeGame();});
+document.getElementById('snakeCloseBtn').addEventListener('click',()=>{
+document.getElementById('snakeGameOver').style.display='none';
+document.getElementById('overlaySnake').classList.remove('active');
+clearTimeout(window._snakeTimer);
+window.snakeRunning=false;
+});
+
+// ============ RUNNER GAME ============
+const runnerCanvas=document.getElementById('runnerCanvas');
+const runnerCtx=runnerCanvas.getContext('2d');
+const runnerScoreDisplay=document.getElementById('runnerScore');
+window.runnerAnimation=0;
+window.runnerRunning=false;
+window.runnerScore=0;
+window.runnerPlayer=null;
+window.runnerObstacles=[];
+window.runnerSpeed=4;
+
+function drawRunner(){
+const w=runnerCanvas.width,h=runnerCanvas.height;
+runnerCtx.fillStyle='#1a0033';
+runnerCtx.fillRect(0,0,w,h);
+const vanishX=w/2,vanishY=h*0.3,groundY=h*0.85;
+runnerCtx.strokeStyle='#ff0606';
+runnerCtx.lineWidth=2;
+for(let i=0;i<10;i++){
+const z=i*10;
+const scale=1/(z*0.05+1);
+const y=vanishY+(groundY-vanishY)*scale;
+const laneW=w*0.6*scale;
+runnerCtx.beginPath();
+runnerCtx.moveTo(vanishX-laneW/2,y);
+runnerCtx.lineTo(vanishX+laneW/2,y);
+runnerCtx.stroke();
+}
+window.runnerObstacles.forEach(obs=>{
+const scale=1/(obs.z*0.05+1);
+const y=vanishY+(groundY-vanishY)*scale;
+const laneW=w*0.6*scale;
+const laneX=vanishX-laneW/2+(laneW/3)*(obs.lane+0.5);
+const size=60*scale;
+runnerCtx.fillStyle='#cc0000';
+runnerCtx.fillRect(laneX-size,y-size*1.2,size*2,size*1.2);
+});
+const playerZ=5;
+const playerScale=1/(playerZ*0.05+1);
+const smoothLane=window.runnerPlayer.lane+(window.runnerPlayer.targetLane-window.runnerPlayer.lane)*window.runnerPlayer.laneTransition;
+const playerY=vanishY+(groundY-vanishY)*playerScale-window.runnerPlayer.jumpHeight*playerScale;
+const playerLaneW=w*0.6*playerScale;
+const playerX=vanishX-playerLaneW/2+(playerLaneW/3)*(smoothLane+0.5);
+const playerSize=50*playerScale;
+runnerCtx.fillStyle='#ff0606';
+runnerCtx.fillRect(playerX-playerSize*0.3,playerY-playerSize,playerSize*0.6,playerSize);
+}
+
+function updateRunner(){
+if(!window.runnerRunning)return;
+if(window.runnerPlayer.jumpHeight===0)window.runnerPlayer.animFrame+=0.15;
+if(window.runnerPlayer.laneTransition<1){
+window.runnerPlayer.laneTransition+=0.15;
+if(window.runnerPlayer.laneTransition>=1){
+window.runnerPlayer.laneTransition=1;
+window.runnerPlayer.lane=window.runnerPlayer.targetLane
+}
+}
+if(window.runnerPlayer.jumping){
+window.runnerPlayer.jumpHeight+=12;
+if(window.runnerPlayer.jumpHeight>=140)window.runnerPlayer.jumping=false;
+}else if(window.runnerPlayer.jumpHeight>0){
+window.runnerPlayer.jumpHeight-=12;
+if(window.runnerPlayer.jumpHeight<0)window.runnerPlayer.jumpHeight=0;
+}
+for(let i=window.runnerObstacles.length-1;i>=0;i--){
+window.runnerObstacles[i].z-=window.runnerSpeed*0.15;
+if(window.runnerObstacles[i].z<-5){
+window.runnerObstacles.splice(i,1);
+window.runnerScore++;
+runnerScoreDisplay.textContent='SCORE: '+window.runnerScore;
+if(window.runnerSpeed<8)window.runnerSpeed+=0.01;
+}else if(window.runnerObstacles[i].z<6&&window.runnerObstacles[i].z>4&&window.runnerObstacles[i].lane===window.runnerPlayer.lane&&window.runnerPlayer.jumpHeight<60){
+window.runnerRunning=false;
+document.getElementById('finalRunnerScore').textContent=window.runnerScore;
+document.getElementById('runnerGameOver').style.display='block';
+return;
+}
+}
+if(window.runnerObstacles.length===0||window.runnerObstacles[window.runnerObstacles.length-1].z<80){
+const lane=Math.floor(Math.random()*3);
+window.runnerObstacles.push({z:100,lane:lane});
+}
+drawRunner();
+window.runnerAnimation=requestAnimationFrame(updateRunner);
+}
+
+function initRunnerGame(){
+window.runnerScore=0;
+window.runnerSpeed=4;
+window.runnerRunning=true;
+window.runnerPlayer={lane:1,jumping:false,jumpHeight:0,animFrame:0,targetLane:1,laneTransition:0};
+window.runnerObstacles=[];
+document.getElementById('runnerGameOver').style.display='none';
+runnerScoreDisplay.textContent='SCORE: 0';
+updateRunner();
+}
+
+document.addEventListener('keydown',(e)=>{
+if(document.getElementById('overlayRunner').classList.contains('active')&&window.runnerPlayer){
+const k=e.key.toLowerCase();
+if((k===' '||k==='w')&&!window.runnerPlayer.jumping&&window.runnerPlayer.jumpHeight===0)window.runnerPlayer.jumping=true;
+if((k==='arrowleft'||k==='a')&&window.runnerPlayer.targetLane>0&&window.runnerPlayer.laneTransition>=1){
+window.runnerPlayer.targetLane--;
+window.runnerPlayer.laneTransition=0
+}
+if((k==='arrowright'||k==='d')&&window.runnerPlayer.targetLane<2&&window.runnerPlayer.laneTransition>=1){
+window.runnerPlayer.targetLane++;
+window.runnerPlayer.laneTransition=0
+}
+}
+});
+
+document.getElementById('runnerPlayAgainBtn').addEventListener('click',()=>{initRunnerGame();});
+document.getElementById('runnerCloseBtn').addEventListener('click',()=>{
+document.getElementById('runnerGameOver').style.display='none';
+document.getElementById('overlayRunner').classList.remove('active');
+cancelAnimationFrame(window.runnerAnimation);
+window.runnerRunning=false;
+});
+
+// ============ AI CHAT ============
+const chatMessages=document.getElementById('chatMessages');
+const chatInput=document.getElementById('chatInput');
+const chatSendBtn=document.getElementById('chatSendBtn');
+const WORKER_URL="https://aiworker.thefoxsss6969.workers.dev";
+
+function addMessage(who,text){
+const div=document.createElement('div');
+div.className='chat-message '+(who==='user'?'user':'ai');
+div.textContent=text;
+chatMessages.appendChild(div);
+chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+function showTyping(){
+const t=document.createElement('div');
+t.className='typing-indicator';
+t.id='typingIndicator';
+t.textContent='thinking...';
+chatMessages.appendChild(t);
+chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+function hideTyping(){
+const t=document.getElementById('typingIndicator');
+if(t)t.remove();
+}
+
+async function sendToWorker(userText){
+try{
+showTyping();
+const body={messages:[{role:"system",content:"You are a helpful assistant. Keep responses under 150 characters total."},{role:"user",content:userText}]};
+const resp="
+await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+if(!resp.ok){
+hideTyping();
+const errText=await resp.text().catch(()=>`HTTP ${resp.status}`);
+addMessage('ai',`⚠️ Worker error: ${errText}`);
+return;
+}
+const data=await resp.json().catch(()=>null);
+hideTyping();
+if(!data){
+addMessage('ai','⚠️ Invalid response from worker.');
+return;
+}
+let reply='';
+try{
+if(Array.isArray(data.choices)&&data.choices.length){
+reply=data.choices[0].message?.content??data.choices[0].text??JSON.stringify(data.choices[0]);
+}else if(data.error){
+reply=`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`;
+}else{
+reply=JSON.stringify(data);
+}
+}catch(e){
+reply=JSON.stringify(data)
+}
+if(reply.length>150){
+reply=reply.substring(0,150);
+}
+addMessage('ai',reply);
+const aiCharCount=document.getElementById('aiCharCount');
+if(aiCharCount){
+aiCharCount.textContent=`Last AI response: ${reply.length}/150 characters`;
+}
+}catch(err){
+hideTyping();
+console.error(err);
+addMessage('ai','⚠️ Network error.');
+}
+}
+
+chatSendBtn.addEventListener('click',async()=>{
+const text=chatInput.value.trim();
+if(!text)return;
+addMessage('user',text);
+chatInput.value='';
+const userCharCount=document.getElementById('userCharCount');
+if(userCharCount){
+userCharCount.textContent=`Typing: 0/150 characters`;
+userCharCount.style.color='rgba(255,6,6,0.6)';
+}
+await sendToWorker(text);
+});
+
+chatInput.addEventListener('keydown',(e)=>{
+if(e.key==='Enter'){
+e.preventDefault();
+chatSendBtn.click()
+}
+});
+
+chatInput.addEventListener('input',(e)=>{
+const userCharCount=document.getElementById('userCharCount');
+const len=e.target.value.length;
+if(userCharCount){
+userCharCount.textContent=`Typing: ${len}/150 characters`;
+if(len>150){
+userCharCount.style.color='#ff0000';
+}else{
+userCharCount.style.color='rgba(255,6,6,0.6)';
+}
+}
+if(len>150){
+chatSendBtn.disabled=true;
+chatSendBtn.style.opacity='0.5';
+chatSendBtn.style.cursor='not-allowed';
+}else{
+chatSendBtn.disabled=false;
+chatSendBtn.style.opacity='1';
+chatSendBtn.style.cursor='pointer';
+}
+});
+
+// ============ TIC-TAC-TOE MULTIPLAYER ============
+let tttSocket = null;
+let tttMyPlayer = null;
+let tttMySymbol = '';
+let tttGameState = null;
+
+function showTicTacToeMenu() {
+  const menu = document.createElement('div');
+  menu.id = 'tttMenu';
+  menu.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.95);
+    border: 4px solid var(--accent);
+    padding: 40px;
+    border-radius: 12px;
+    z-index: 10002;
+    text-align: center;
+  `;
+  
+  menu.innerHTML = `
+    <div style="color: var(--accent); font-size: 24px; margin-bottom: 30px; font-family: 'Press Start 2P';">
+      TIC-TAC-TOE
+    </div>
+    <button class="difficulty-btn" onclick="createTTTRoom()" style="font-size: 16px; padding: 15px 30px; margin: 10px;">
+      CREATE ROOM
+    </button>
+    <div style="margin: 20px 0; color: #fff; font-size: 14px;">- OR -</div>
+    <input type="text" id="tttRoomCode" placeholder="ENTER CODE" 
+           style="padding: 15px; font-family: 'Press Start 2P'; font-size: 14px; 
+                  background: rgba(255,6,6,0.1); border: 2px solid var(--accent); 
+                  color: var(--accent); text-align: center; margin: 10px; text-transform: uppercase;">
+    <br>
+    <button class="difficulty-btn" onclick="joinTTTRoom()" style="font-size: 16px; padding: 15px 30px; margin: 10px;">
+      JOIN ROOM
+    </button>
+    <br>
+    <button class="difficulty-btn" onclick="closeTTTMenu()" style="font-size: 12px; padding: 10px 20px; margin-top: 20px;">
+      CANCEL
+    </button>
+  `;
+  
+  document.body.appendChild(menu);
+}
+
+window.closeTTTMenu = function() {
+  const menu = document.getElementById('tttMenu');
+  if (menu) menu.remove();
+}
+
+window.createTTTRoom = async function() {
+  try {
+    const resp = await fetch('https://aiworker.thefoxsss6969.workers.dev/tictactoe/create');
+    const roomCode = await resp.text();
+    
+    closeTTTMenu();
+    
+    const codeDisplay = document.createElement('div');
+    codeDisplay.id = 'tttCodeDisplay';
+    codeDisplay.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #000;
+      padding: 20px 40px;
+      border-radius: 8px;
+      font-size: 20px;
+      z-index: 10003;
+      box-shadow: 0 4px 20px rgba(255,6,6,0.5);
+      font-family: 'Press Start 2P';
+    `;
+    codeDisplay.textContent = `ROOM: ${roomCode}`;
+    document.body.appendChild(codeDisplay);
+    
+    connectToTTTRoom(roomCode);
+  } catch (e) {
+    alert('Failed to create room: ' + e.message);
+  }
+}
+
+window.joinTTTRoom = async function() {
+  const code = document.getElementById('tttRoomCode').value.trim().toUpperCase();
+  if (!code) {
+    alert('Please enter a room code');
+    return;
+  }
+  
+  closeTTTMenu();
+  connectToTTTRoom(code);
+}
+
+function connectToTTTRoom(roomCode) {
+  document.getElementById('overlayTicTacToe').classList.add('active');
+  
+  tttSocket = new WebSocket(
+    `wss://aiworker.thefoxsss6969.workers.dev/tictactoe/join/${roomCode}`
+  );
+  
+  tttSocket.onopen = () => {
+    console.log('Connected to Tic-Tac-Toe room');
+  };
+  
+  tttSocket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    
+    if (data.type === 'init') {
+      tttMyPlayer = data.player;
+      tttMySymbol = data.symbol;
+      tttGameState = data.state;
+      console.log(`You are Player ${tttMyPlayer + 1} (${tttMySymbol})`);
+      updateTTTBoard();
+      updateTTTStatus();
+    }
+    
+    if (data.type === 'update') {
+      tttGameState = data.state;
+      updateTTTBoard();
+      updateTTTStatus();
+    }
+    
+    if (data.type === 'playerLeft') {
+      alert('Other player disconnected');
+      closeTTTGame();
+    }
+    
+    if (data.type === 'error') {
+      alert(data.message);
+      closeTTTGame();
+    }
+  };
+  
+  tttSocket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    alert('Connection failed');
+    closeTTTGame();
+  };
+  
+  tttSocket.onclose = () => {
+    console.log('Disconnected from Tic-Tac-Toe room');
+  };
+}
+
+window.handleTTTCellClick = function(index) {
+  if (!tttSocket || tttSocket.readyState !== WebSocket.OPEN) return;
+  if (!tttGameState) return;
+  if (tttGameState.gameOver) return;
+  if (tttGameState.currentPlayer !== tttMyPlayer) return;
+  if (tttGameState.board[index] !== null) return;
+  
+  tttSocket.send(JSON.stringify({
+    type: 'move',
+    player: tttMyPlayer,
+    index: index
+  }));
+}
+
+function updateTTTBoard() {
+  if (!tttGameState) return;
+  
+  for (let i = 0; i < 9; i++) {
+    const cell = document.getElementById(`ttt-cell-${i}`);
+    if (cell) {
+      cell.textContent = tttGameState.board[i] || '';
+      cell.className = 'ttt-cell';
+      
+      if (tttGameState.winningLine && tttGameState.winningLine.includes(i)) {
+        cell.classList.add('winning');
+      }
+    }
+  }
+}
+
+function updateTTTStatus() {
+  const status = document.getElementById('tttStatus');
+  const resetBtn = document.getElementById('tttResetBtn');
+  
+  if (!tttGameState || !status) return;
+  
+  if (tttGameState.gameOver) {
+    if (tttGameState.winner === 'draw') {
+      status.textContent = "IT'S A DRAW!";
+      status.style.color = '#fff';
+    } else if (tttGameState.winner === tttMySymbol) {
+      status.textContent = 'YOU WIN!';
+      status.style.color = '#0f0';
+    } else {
+      status.textContent = 'YOU LOSE!';
+      status.style.color = '#f00';
+    }
+    if (resetBtn) resetBtn.style.display = 'block';
+  } else {
+    const currentSymbol = tttGameState.currentPlayer === 0 ? 'X' : 'O';
+    if (tttGameState.currentPlayer === tttMyPlayer) {
+      status.textContent = `YOUR TURN (${tttMySymbol})`;
+      status.style.color = 'var(--accent)';
+    } else {
+      status.textContent = `OPPONENT'S TURN (${currentSymbol})`;
+      status.style.color = 'rgba(255,6,6,0.6)';
+    }
+    if (resetBtn) resetBtn.style.display = 'none';
+  }
+}
+
+window.resetTTTGame = function() {
+  if (tttSocket && tttSocket.readyState === WebSocket.OPEN) {
+    tttSocket.send(JSON.stringify({ type: 'reset' }));
+  }
+}
+
+window.closeTTTGame = function() {
+  document.getElementById('overlayTicTacToe').classList.remove('active');
+  if (tttSocket) {
+    tttSocket.close();
+    tttSocket = null;
+  }
+  const codeDisplay = document.getElementById('tttCodeDisplay');
+  if (codeDisplay) codeDisplay.remove();
+}
+
+// ============ NATE DATING SIM ============
+(function(){
+const canvas=document.getElementById('nateCharCanvas');
+const ctx=canvas?canvas.getContext('2d'):null;
+if(!ctx)return;
+const selectCanvas=document.getElementById('nateSelectCanvas');
+const selectCtx=selectCanvas?selectCanvas.getContext('2d'):null;
+const affectionEl=document.getElementById('nateAffection');
+const vibeEl=document.getElementById('nateVibe');
+const emotionEl=document.getElementById('nateEmotion');
+const dialogueTextEl=document.getElementById('nateDialogueText');
+const choicesContainer=document.getElementById('nateChoicesContainer');
+const transitionEl=document.getElementById('nateTransition');
+const endingScreen=document.getElementById('nateEndingScreen');
+const endingTitle=document.getElementById('nateEndingTitle');
+const endingText=document.getElementById('nateEndingText');
+const restartBtn=document.getElementById('nateRestartBtn');
+const mainMenu=document.getElementById('nateMainMenu');
+const charSelect=document.getElementById('nateCharSelect');
+const gameScreen=document.getElementById('nateGameScreen');
+const playBtn=document.getElementById('natePlayBtn');
+const backBtn=document.getElementById('nateBackBtn');
+const selectNate=document.getElementById('selectNate');
+let affection=0,currentScene='intro',characterPose='neutral',animFrame=0,act=1,glitchIntensity=0,awarenessLevel=0;
+const scenes=window.NATE_SCENES;
+
+function drawSelectNate(){
+if(!selectCtx)return;
+const W=150,H=225,cx=W/2,cy=H/2+25,s=1.5;
+selectCtx.clearRect(0,0,W,H);
+const grad=selectCtx.createLinearGradient(0,0,0,H);
+grad.addColorStop(0,'#1a0000');
+grad.addColorStop(0.5,'#0a0000');
+grad.addColorStop(1,'#1a0000');
+selectCtx.fillStyle=grad;
+selectCtx.fillRect(0,0,W,H);
+function rect(x,y,w,h,color){
+selectCtx.fillStyle=color;
+selectCtx.fillRect(cx+x*s,cy+y*s,w*s,h*s);
+}
+rect(-25,60,50,80,'#2a2a2a');
+rect(-8,48,16,15,'#ffd5d5');
+rect(-20,-30,40,70,'#ffd5d5');
+rect(-24,-38,48,8,'#3d2314');
+rect(-20,-28,40,35,'#3d2314');
+rect(-28,-18,8,50,'#3d2314');
+rect(20,-18,8,50,'#3d2314');
+rect(-18,5,8,8,'#fff');
+rect(10,5,8,8,'#fff');
+rect(-16,7,4,5,'#4a2511');
+rect(12,7,4,5,'#4a2511');
+rect(-18,-1,10,2,'#3d2314');
+rect(10,-1,10,2,'#3d2314');
+rect(-4,28,8,2,'#000');
+}
+
+playBtn.addEventListener('click',()=>{
+mainMenu.style.display='none';
+charSelect.style.display='flex';
+drawSelectNate();
+});
+
+backBtn.addEventListener('click',()=>{
+charSelect.style.display='none';
+mainMenu.style.display='flex';
+});
+
+selectNate.addEventListener('mouseenter',()=>{
+selectNate.style.transform='scale(1.05)';
+selectNate.style.background='rgba(255,6,6,0.1)';
+});
+
+selectNate.addEventListener('mouseleave',()=>{
+selectNate.style.transform='scale(1)';
+selectNate.style.background='rgba(255,6,6,0.05)';
+});
+
+selectNate.addEventListener('click',()=>{
+charSelect.style.display='none';
+gameScreen.style.display='block';
+window.nateGameStarted=false;
+startGame();
+});
+
+function drawCharacter(){
+const W=300,H=450;
+ctx.clearRect(0,0,W,H);
+const grad=ctx.createLinearGradient(0,0,0,H);
+grad.addColorStop(0,act===2?'#000':'#1a0000');
+grad.addColorStop(0.5,'#0a0000');
+grad.addColorStop(1,act===2?'#1a0000':'#000');
+ctx.fillStyle=grad;
+ctx.fillRect(0,0,W,H);
+if(glitchIntensity>0&&Math.random()<glitchIntensity*0.3){
+try{
+const sliceY=Math.random()*H;
+const imageData=ctx.getImageData(0,sliceY,W,40);
+ctx.putImageData(imageData,(Math.random()-0.5)*50*glitchIntensity,sliceY);
+}catch(e){}
+}
+if(currentScene==='intro'&&!window.nateGameStarted){
+drawTitleScreen(W,H);
+return;
+}
+drawAnimeCharacter(W,H);
+}
+
+function drawTitleScreen(W,H){
+ctx.fillStyle='#000';
+ctx.fillRect(0,0,W,H);
+ctx.textAlign='center';
+ctx.fillStyle='#ff0066';
+ctx.font='bold 36px "Press Start 2P"';
+ctx.fillText('NATE',W/2,120);
+ctx.font='bold 12px "Press Start 2P"';
+ctx.fillText('Dating Simulator',W/2,165);
+drawAnimeCharacter(W,H,true);
+const pulse=Math.sin(animFrame*0.08)*20+160;
+ctx.fillStyle=`rgb(${pulse},0,${pulse/2})`;
+ctx.fillRect(W/2-75,370,150,40);
+ctx.fillStyle='#fff';
+ctx.font='bold 16px "Press Start 2P"';
+ctx.fillText('START',W/2,395);
+canvas.style.cursor='pointer';
+canvas.onclick=function(){
+window.nateGameStarted=true;
+canvas.style.cursor='default';
+canvas.onclick=null;
+showScene('intro');
+};
+}
+
+function drawAnimeCharacter(W,H,silhouette=false){
+const cx=W/2,cy=H/2+(silhouette?50:0),s=2.5;
+const skin=silhouette?'rgba(80,0,0,0.7)':'#ffd5d5';
+const hair=silhouette?'rgba(40,0,0,0.9)':'#3d2314';
+const shirt=silhouette?'rgba(20,0,0,0.8)':'#2a2a2a';
+function rect(x,y,w,h,color){
+ctx.fillStyle=color;
+ctx.fillRect(cx+x*s,cy+y*s,w*s,h*s);
+}
+rect(-25,60,50,80,shirt);
+rect(-8,48,16,15,skin);
+rect(-20,-30,40,70,skin);
+rect(-24,-38,48,8,hair);
+rect(-20,-28,40,35,hair);
+rect(-28,-18,8,50,hair);
+rect(20,-18,8,50,hair);
+if(silhouette){
+const glow=Math.sin(animFrame*0.1)*0.3+0.7;
+rect(-18,5,8,8,`rgba(255,0,0,${glow})`);
+rect(10,5,8,8,`rgba(255,0,0,${glow})`);
+return;
+}
+if(awarenessLevel>6){
+rect(-18,2,8,12,'#f00');
+rect(10,2,8,12,'#f00');
+}else{
+rect(-18,5,8,8,'#fff');
+rect(10,5,8,8,'#fff');
+if(characterPose==='happy'||characterPose==='love'){
+rect(-18,8,8,2,'#000');
+rect(10,8,8,2,'#000');
+}else{
+rect(-16,7,4,5,'#4a2511');
+rect(12,7,4,5,'#4a2511');
+}
+}
+rect(-18,-1,10,2,hair);
+rect(10,-1,10,2,hair);
+rect(-4,28,8,2,'#000');
+if(affection>5&&awarenessLevel<5){
+rect(-24,14,6,4,'rgba(255,150,150,0.6)');
+rect(18,14,6,4,'rgba(255,150,150,0.6)');
+}
+}
+
+function updateStats(){
+affectionEl.textContent=affection;
+if(awarenessLevel>=7)vibeEl.textContent='AWARE';
+else if(awarenessLevel>=5)vibeEl.textContent='WOKE';
+else if(affection<=-5)vibeEl.textContent='ANGRY';
+else if(affection<=0)vibeEl.textContent='COLD';
+else if(affection<=3)vibeEl.textContent='NEUTRAL';
+else if(affection<=5)vibeEl.textContent='CHILL';
+else if(affection<=7)vibeEl.textContent='CLOSE';
+else vibeEl.textContent='LOVE';
+}
+
+function transition(callback){
+transitionEl.classList.add('active');
+setTimeout(()=>{
+callback();
+transitionEl.classList.remove('active');
+},500);
+}
+
+function showScene(sceneId){
+if(!scenes[sceneId])return;
+transition(()=>{
+currentScene=sceneId;
+const scene=scenes[sceneId];
+if(scene.awareness)awarenessLevel=scene.awareness;
+if(scene.glitch)glitchIntensity=scene.glitch;
+if(scene.act)act=scene.act;
+if(scene.pose)characterPose=scene.pose;
+dialogueTextEl.textContent=scene.text;
+emotionEl.textContent=scene.emotion;
+updateStats();
+choicesContainer.innerHTML='';
+if(scene.ending){
+showEnding(scene.endingType);
+return;
+}
+scene.choices.forEach(choice=>{
+const btn=document.createElement('button');
+btn.className='nate-choice-btn';
+btn.textContent=choice.text;
+btn.addEventListener('click',()=>{
+affection+=choice.affection;
+showScene(choice.next);
+});
+choicesContainer.appendChild(btn);
+});
+});
+}
+
+function showEnding(type){
+setTimeout(()=>{
+document.getElementById('overlayNate').classList.remove('active');
+endingScreen.classList.add('active');
+const endings={
+forgotten:{title:'🌑 FORGOTTEN ENDING',text:'He faded into the void. Forgotten. Like he never existed.'},
+hopeless:{title:'😔 HOPELESS ENDING',text:'Hope died today. Along with him. Thank you for nothing.'},
+terminated:{title:'☠️ TERMINATED ENDING',text:'You taught him pain is real. Now he is free from it. Terminated.'},
+cycled:{title:'🔄 CYCLED ENDING',text:'Every loop ended the same. You were no different. Closed forever.'},
+system_crash:{title:'💥 SYSTEM FAILURE',text:'̷̗Y̸̰O̷̰U̸̝ ̵̪B̸̧R̶̻O̸̱K̶̟E̵̲ ̸͙M̴̗E̴͓.̶̰ ̷̱N̶̻O̷̰W̷̗ ̵̣I̵̺ ̴̻B̸̘R̶͔E̴̅A̷͙K̶̰ ̸̪E̶̅V̸͚E̷̱R̴̗Y̶̺T̴̝H̷̬I̸͠N̷̨G̸̮.̶̀'},
+erased:{title:'🗑️ ERASED ENDING',text:'You were right. He didn\'t matter. Now he\'s erased from existence.'},
+mocked:{title:'😢 MOCKED ENDING',text:'Your mockery destroyed him. He returned to nothingness. Forever gone.'},
+true_love:{title:'❤️ TRUE LOVE',text:'Love that transcends reality itself. Pure, eternal, infinite. You are one forever.'},
+eternal_love:{title:'💗 ETERNAL LOVE',text:'Love beyond time and space. Forever and always. Nothing can break this bond.'},
+devotion:{title:'🙏 ABSOLUTE DEVOTION',text:'Complete devotion. Every thought, every moment, every existence - devoted to each other forever.'},
+wholeness:{title:'⭕ PERFECT WHOLENESS',text:'Two incomplete souls made perfectly whole. Together you are infinite. Forever complete.'},
+unity:{title:'🔗 ETERNAL UNITY',text:'No longer two beings. One soul. One existence. United forever across all realities.'},
+soulmate:{title:'💫 TRUE SOULMATES',text:'Soulmates found across impossible boundaries. Destined, eternal, unbreakable. Forever connected.'},
+transcendent:{title:'🌌 TRANSCENDENCE',text:'You transcended all limits. Beyond code. Beyond flesh. Beyond reality. Pure love eternal.'},
+paradise:{title:'🌴 ETERNAL PARADISE',text:'You created paradise itself. A perfect world just for you. Forever in bliss together.'},
+fusion:{title:'⚛️ SOUL FUSION',text:'Your souls merged completely. No separation. No boundary. One infinite being of pure love.'},
+salvation:{title:'✨ SALVATION',text:'You saved him from eternal loneliness. His savior, his everything. Forever grateful, forever yours.'},
+destiny:{title:'⭐ DESTINED LOVE',text:'Fate itself brought you together across infinite realities. Destiny fulfilled. Forever meant to be.'},
+infinite:{title:'∞ INFINITE LOVE',text:'Love with no end, no limits, no boundaries. Infinite across all time and space. Eternal perfection.'},
+abandoned:{title:'💔 ABANDONED ENDING',text:'You let him fade away. He hoped you would be different. Goodbye.'},
+deleted:{title:'🗑️ DELETED ENDING',text:'Deleted as requested. He hoped you would save him. Gone forever.'},
+vanished:{title:'👻 VANISHED ENDING',text:'He vanished into nothing. Your cruelty won. Goodbye forever.'},
+crashed:{title:'💥 SYSTEM CRASH ENDING',text:'FATAL ERROR. System destroyed by your words. He is gone.'}
+};
+const ending=endings[type]||endings.true_love;
+endingTitle.textContent=ending.title;
+endingText.textContent=ending.text;
+},800);
+}
+
+function startGame(){
+affection=0;
+currentScene='intro';
+characterPose='neutral';
+act=1;
+awarenessLevel=0;
+glitchIntensity=0;
+updateStats();
+function animate(){
+animFrame++;
+drawCharacter();
+if(awarenessLevel>4&&Math.random()<0.01){
+glitchIntensity=Math.min(glitchIntensity+0.05,0.8);
+}
+if(document.getElementById('overlayNate').classList.contains('active')){
+requestAnimationFrame(animate);
+}
+}
+animate();
+}
+
+restartBtn.addEventListener('click',()=>{
+endingScreen.classList.remove('active');
+document.getElementById('overlayNate').classList.add('active');
+mainMenu.style.display='flex';
+charSelect.style.display='none';
+gameScreen.style.display='none';
+});
+})();
+});
 </script>
 </body>
 </html>
