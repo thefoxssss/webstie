@@ -1,160 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Live Chat</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f7f7f7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    #chat-container {
-      background: #fff;
-      width: 400px;
-      max-width: 90%;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    #messages {
-      flex: 1;
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
-      overflow-y: auto;
-      height: 300px;
-    }
-
-    .message {
-      margin-bottom: 8px;
-    }
-
-    .username {
-      font-weight: bold;
-      color: #333;
-    }
-
-    #input-container {
-      display: flex;
-      padding: 10px;
-      gap: 5px;
-    }
-
-    #message {
-      flex: 1;
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      padding: 8px 12px;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #45a049;
-    }
-
-    #username-overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-    }
-
-    #username-overlay input {
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
-      margin-right: 5px;
-      width: 200px;
-    }
-
-    #username-overlay button {
-      padding: 10px 15px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Live Chat</title>
+<style>
+body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f7f7f7; }
+#chat-container { background: #fff; width: 400px; max-width: 90%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+#messages { flex: 1; padding: 10px; border-bottom: 1px solid #ddd; overflow-y: auto; height: 300px; }
+.message { margin-bottom: 8px; }
+.username { font-weight: bold; color: #333; }
+#input-container { display: flex; padding: 10px; gap: 5px; }
+#message { flex: 1; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+button { padding: 8px 12px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+button:hover { background: #45a049; }
+#username-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 10; }
+#username-overlay input { padding: 10px; border-radius: 5px; border: none; margin-right: 5px; width: 200px; }
+#username-overlay button { padding: 10px 15px; }
+</style>
 </head>
 <body>
-  <div id="chat-container">
-    <div id="messages"></div>
-    <div id="input-container">
-      <input id="message" type="text" placeholder="Type a message..." disabled />
-      <button onclick="sendMessage()" disabled>Send</button>
-    </div>
+<div id="chat-container">
+  <div id="messages"></div>
+  <div id="input-container">
+    <input id="message" type="text" placeholder="Type a message..." disabled />
+    <button onclick="sendMessage()" disabled>Send</button>
   </div>
+</div>
 
-  <!-- Username overlay -->
-  <div id="username-overlay">
-    <input id="username-input" type="text" placeholder="Enter your username" />
-    <button onclick="setUsername()">Join Chat</button>
-  </div>
+<div id="username-overlay">
+  <input id="username-input" type="text" placeholder="Enter your username" />
+  <button onclick="setUsername()">Join Chat</button>
+</div>
 
-  <script>
-    const workerURL = "https://aiworker.thefoxsss6969.workers.dev/";
-    let ws;
-    let username = "";
+<script>
+const workerURL = "https://aiworker.thefoxsss6969.workers.dev/";
+let ws;
+let username = "";
 
-    const messagesDiv = document.getElementById('messages');
-    const messageInput = document.getElementById('message');
-    const sendButton = document.querySelector('#input-container button');
-    const overlay = document.getElementById('username-overlay');
-    const usernameInput = document.getElementById('username-input');
+const messagesDiv = document.getElementById('messages');
+const messageInput = document.getElementById('message');
+const sendButton = document.querySelector('#input-container button');
+const overlay = document.getElementById('username-overlay');
+const usernameInput = document.getElementById('username-input');
 
-    function setUsername() {
-      const value = usernameInput.value.trim();
-      if (!value) return alert("Please enter a username");
-      username = value;
+function setUsername() {
+  const value = usernameInput.value.trim();
+  if (!value) return alert("Please enter a username");
+  username = value;
+  overlay.style.display = 'none';
+  messageInput.disabled = false;
+  sendButton.disabled = false;
 
-      // Remove overlay
-      overlay.style.display = 'none';
+  // Connect WebSocket
+  ws = new WebSocket(workerURL.replace(/^https?/, 'ws'));
+  ws.onopen = () => console.log("Connected to chat Worker");
 
-      // Enable input
-      messageInput.disabled = false;
-      sendButton.disabled = false;
+  ws.onmessage = (event) => {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message';
+    msgDiv.innerHTML = event.data;
+    messagesDiv.appendChild(msgDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  };
 
-      // Connect to WebSocket
-      ws = new WebSocket(workerURL.replace(/^https?/, 'ws'));
+  ws.onerror = (err) => console.error("WebSocket error:", err);
+  ws.onclose = () => console.log("Disconnected from chat Worker");
+}
 
-      ws.onmessage = (event) => {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'message';
-        msgDiv.innerHTML = event.data; // Expect formatted message
-        messagesDiv.appendChild(msgDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      };
-    }
+function sendMessage() {
+  const msg = messageInput.value.trim();
+  if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(`<span class="username">${username}:</span> ${msg}`);
+  messageInput.value = '';
+}
 
-    function sendMessage() {
-      const msg = messageInput.value.trim();
-      if (!msg || !ws) return;
-      // Format: "username: message"
-      ws.send(username + ": " + msg);
-      messageInput.value = '';
-    }
-
-    messageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
-  </script>
+messageInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') sendMessage();
+});
+</script>
 </body>
 </html>
-
