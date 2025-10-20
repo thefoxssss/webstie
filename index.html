@@ -1,86 +1,193 @@
-<div id="statusText">Connecting...</div>
-<div id="board" style="display:grid; grid-template-columns: repeat(3, 100px); gap: 5px;"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multiplayer Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #000;
+      color: #f06;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #board {
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+      width: max-content;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: #111;
+      border: 2px solid #f06;
+      font-size: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+    #joinSection {
+      margin-top: 50px;
+    }
+    input, button {
+      font-size: 18px;
+      padding: 10px;
+      margin: 10px 5px;
+      border-radius: 6px;
+      border: none;
+      background-color: #f06;
+      color: #000;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Multiplayer Tic Tac Toe</h1>
+
+<div id="joinSection">
+  <button id="createBtn">Create New Game</button>
+  <input type="text" id="roomInput" placeholder="Enter room code" maxlength="6" />
+  <button id="joinBtn">Join Game</button>
+  <div id="roomInfo"></div>
+</div>
+
+<div id="gameSection" style="display:none;">
+  <div id="board"></div>
+  <div id="status">Connecting...</div>
+  <button id="resetBtn" style="margin-top: 20px; display:none;">Reset Game</button>
+</div>
 
 <script>
+  const createBtn = document.getElementById('createBtn');
+  const joinBtn = document.getElementById('joinBtn');
+  const roomInput = document.getElementById('roomInput');
+  const roomInfo = document.getElementById('roomInfo');
+  const joinSection = document.getElementById('joinSection');
+
+  const gameSection = document.getElementById('gameSection');
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const resetBtn = document.getElementById('resetBtn');
+
   let ws;
   let playerId = null;
   let gameState = null;
 
-  function connect(roomCode) {
+  createBtn.onclick = async () => {
+    createBtn.disabled = true;
+    roomInfo.textContent = "Creating room...";
+    const res = await fetch('https://YOUR_WORKER_DOMAIN/tictactoe/create');
+    const code = await res.text();
+    roomInfo.textContent = `Room created! Code: ${code}`;
+    roomInput.value = code;
+    createBtn.disabled = false;
+  };
+
+  joinBtn.onclick = () => {
+    const code = roomInput.value.trim().toUpperCase();
+    if (!code) {
+      alert("Please enter a room code");
+      return;
+    }
+    startGame(code);
+  };
+
+  function startGame(roomCode) {
+    joinSection.style.display = 'none';
+    gameSection.style.display = 'block';
+    statusEl.textContent = "Connecting to room " + roomCode + "...";
+
     ws = new WebSocket(`wss://YOUR_WORKER_DOMAIN/tictactoe/join/${roomCode}`);
 
-    ws.onopen = () => {
-      document.getElementById('statusText').textContent = "Connected. Waiting for opponent...";
-    };
+    ws.onopen = () => statusEl.textContent = "Connected. Waiting for opponent...";
 
-    ws.onmessage = event => {
-      const data = JSON.parse(event.data);
-      switch(data.type) {
-        case "init":
-          playerId = data.playerId;
-          gameState = data.state;
-          renderBoard();
-          updateStatus();
-          break;
-        case "update":
-        case "sync":
-          gameState = data.state;
-          renderBoard();
-          updateStatus();
-          break;
-        case "playerLeft":
-          document.getElementById('statusText').textContent = "Opponent left. Waiting for new opponent...";
-          break;
-        default:
-          console.warn("Unknown message:", data);
+    ws.onmessage = (e) => {
+      let data;
+      try {
+        data = JSON.parse(e.data);
+      } catch { return; }
+
+      if(data.type === 'init') {
+        playerId = data.playerId;
+        gameState = data.state;
+        renderBoard();
+        updateStatus();
+      } else if(data.type === 'update' || data.type === 'sync') {
+        gameState = data.state;
+        renderBoard();
+        updateStatus();
+      } else if(data.type === 'playerLeft') {
+        statusEl.textContent = "Opponent left. Waiting for new opponent...";
+        resetBtn.style.display = 'none';
+      } else if(data.type === 'error') {
+        alert("Error: " + data.message);
+        ws.close();
       }
     };
 
     ws.onclose = () => {
-      document.getElementById('statusText').textContent = "Disconnected.";
+      statusEl.textContent = "Disconnected from server";
+      resetBtn.style.display = 'none';
+      boardEl.innerHTML = '';
+      joinSection.style.display = 'block';
+      gameSection.style.display = 'none';
     };
   }
 
   function renderBoard() {
-    const boardDiv = document.getElementById("board");
-    boardDiv.innerHTML = '';
+    boardEl.innerHTML = '';
     gameState.board.forEach((cell, idx) => {
-      const cellDiv = document.createElement("div");
-      cellDiv.className = "cell";
-      cellDiv.style.width = "100px";
-      cellDiv.style.height = "100px";
-      cellDiv.style.border = "1px solid black";
-      cellDiv.style.display = "flex";
-      cellDiv.style.alignItems = "center";
-      cellDiv.style.justifyContent = "center";
-      cellDiv.style.fontSize = "3rem";
-      cellDiv.style.cursor = "default";
-
-      cellDiv.textContent = cell || "";
-
-      // Enable click only if it's player's turn, cell empty, and game not over
+      const cellDiv = document.createElement('div');
+      cellDiv.classList.add('cell');
+      cellDiv.textContent = cell || '';
       if (!cell && !gameState.gameOver && gameState.currentPlayer === playerId) {
-        cellDiv.style.cursor = "pointer";
+        cellDiv.style.cursor = 'pointer';
         cellDiv.onclick = () => {
-          ws.send(JSON.stringify({ type: "move", playerId, index: idx }));
+          ws.send(JSON.stringify({ type: 'move', playerId, index: idx }));
         };
       }
-
-      boardDiv.appendChild(cellDiv);
+      boardEl.appendChild(cellDiv);
     });
   }
 
   function updateStatus() {
-    const statusDiv = document.getElementById('statusText');
     if (gameState.sessions?.length < 2) {
-      statusDiv.textContent = "Waiting for opponent...";
-    } else if (gameState.gameOver) {
-      statusDiv.textContent = gameState.winner === "draw" ? "It's a draw!" : `${gameState.winner} wins!`;
+      statusEl.textContent = "Waiting for opponent...";
+      resetBtn.style.display = 'none';
+      return;
+    }
+    if (gameState.gameOver) {
+      let msg;
+      if (gameState.winner === 'draw') msg = "It's a draw!";
+      else if (gameState.winner === (playerId === 0 ? 'X' : 'O')) msg = "You win!";
+      else msg = "You lose!";
+      statusEl.textContent = msg;
+      resetBtn.style.display = 'inline-block';
     } else {
-      statusDiv.textContent = gameState.currentPlayer === playerId ? "Your turn" : "Opponent's turn";
+      resetBtn.style.display = 'none';
+      statusEl.textContent = gameState.currentPlayer === playerId ? "Your turn" : "Opponent's turn";
     }
   }
 
-  // Example usage: connect with a fixed room code
-  connect("SOMECODE");
+  resetBtn.onclick = () => {
+    if(ws && ws.readyState === WebSocket.OPEN)
+      ws.send(JSON.stringify({ type: 'reset' }));
+  };
 </script>
+
+</body>
+</html>
