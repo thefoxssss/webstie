@@ -1,160 +1,141 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Multiplayer Battle Game</title>
-    <style>
-        body { margin: 0; padding: 20px; background: #1a1a1a; color: white; font-family: Arial; }
-        canvas { border: 2px solid #4ECDC4; display: block; margin: 20px auto; }
-        #status { text-align: center; margin: 10px; }
-    </style>
+<meta charset="utf-8">
+<title>Crown Castle</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#0a0a0a;display:flex;justify-content:center;align-items:center}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#1a1a2e;border:2px solid #444}
+  #c{position:relative}
+  #w{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;color:#fff;font-family:monospace;text-align:center;pointer-events:none}
+  #w button{margin-top:8px;padding:4px 8px;font:inherit;pointer-events:auto}
+</style>
 </head>
 <body>
-    <h1 style="text-align: center;">Multiplayer Battle Arena</h1>
-    <div id="status">Click "Join Game" to start!</div>
-    <canvas id="game" width="800" height="600"></canvas>
-    
-    <!-- NetplayJS - handles ALL multiplayer complexity! -->
-    <script src="https://unpkg.com/netplayjs@0.4.1/dist/netplay.js"></script>
-    
-    <script>
-        // Your game code - NetplayJS makes it multiplayer automatically!
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        
-        // Simple game using NetplayJS
-        class BattleGame extends NetplayGame {
-            constructor() {
-                super();
-                this.players = {};
-                this.bullets = [];
-                this.myPlayer = null;
-            }
-            
-            init() {
-                // Create player for this user
-                this.myPlayer = {
-                    id: this.getPlayerId(),
-                    x: Math.random() * 700 + 50,
-                    y: Math.random() * 500 + 50,
-                    vx: 0,
-                    vy: 0,
-                    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
-                    health: 100,
-                    score: 0
-                };
-                
-                document.getElementById('status').textContent = 'Connected! Use WASD to move, click to shoot';
-            }
-            
-            update(input) {
-                // Player movement
-                if (input.keys['w'] || input.keys['arrowup']) this.myPlayer.vy = -5;
-                else if (input.keys['s'] || input.keys['arrowdown']) this.myPlayer.vy = 5;
-                else this.myPlayer.vy = 0;
-                
-                if (input.keys['a'] || input.keys['arrowleft']) this.myPlayer.vx = -5;
-                else if (input.keys['d'] || input.keys['arrowright']) this.myPlayer.vx = 5;
-                else this.myPlayer.vx = 0;
-                
-                // Update position
-                this.myPlayer.x += this.myPlayer.vx;
-                this.myPlayer.y += this.myPlayer.vy;
-                
-                // Keep in bounds
-                this.myPlayer.x = Math.max(20, Math.min(780, this.myPlayer.x));
-                this.myPlayer.y = Math.max(20, Math.min(580, this.myPlayer.y));
-                
-                // Shooting
-                if (input.mouseClicked) {
-                    this.bullets.push({
-                        x: this.myPlayer.x,
-                        y: this.myPlayer.y,
-                        vx: (input.mouseX - this.myPlayer.x) * 0.1,
-                        vy: (input.mouseY - this.myPlayer.y) * 0.1,
-                        owner: this.myPlayer.id
-                    });
-                }
-                
-                // Update bullets
-                this.bullets = this.bullets.filter(bullet => {
-                    bullet.x += bullet.vx;
-                    bullet.y += bullet.vy;
-                    return bullet.x > 0 && bullet.x < 800 && bullet.y > 0 && bullet.y < 600;
-                });
-                
-                // Simple collision (for demo)
-                this.bullets.forEach((bullet, bi) => {
-                    if (bullet.owner !== this.myPlayer.id) {
-                        const dx = bullet.x - this.myPlayer.x;
-                        const dy = bullet.y - this.myPlayer.y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        
-                        if (dist < 25) {
-                            this.myPlayer.health -= 10;
-                            this.bullets.splice(bi, 1);
-                            if (this.myPlayer.health <= 0) {
-                                this.myPlayer.health = 100;
-                                this.myPlayer.x = Math.random() * 700 + 50;
-                                this.myPlayer.y = Math.random() * 500 + 50;
-                            }
-                        }
-                    }
-                });
-            }
-            
-            render(ctx) {
-                // Clear background
-                ctx.fillStyle = '#0a0a0a';
-                ctx.fillRect(0, 0, 800, 600);
-                
-                // Draw grid
-                ctx.strokeStyle = '#222';
-                for (let x = 0; x <= 800; x += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, 600);
-                    ctx.stroke();
-                }
-                for (let y = 0; y <= 600; y += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(800, y);
-                    ctx.stroke();
-                }
-                
-                // Draw players
-                ctx.fillStyle = this.myPlayer.color;
-                ctx.beginPath();
-                ctx.arc(this.myPlayer.x, this.myPlayer.y, 20, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Direction indicator
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(this.myPlayer.x, this.myPlayer.y);
-                ctx.lineTo(this.myPlayer.x + Math.cos(0) * 25, this.myPlayer.y + Math.sin(0) * 25);
-                ctx.stroke();
-                
-                // Draw bullets
-                ctx.fillStyle = '#FFD700';
-                this.bullets.forEach(bullet => {
-                    ctx.beginPath();
-                    ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                
-                // UI
-                ctx.fillStyle = '#fff';
-                ctx.font = '16px Arial';
-                ctx.fillText(`Health: ${this.myPlayer.health}`, 10, 30);
-                ctx.fillText(`Score: ${this.myPlayer.score}`, 10, 50);
-            }
-        }
-        
-        // Start the game with NetplayJS
-        const game = new BattleGame();
-        game.start();
-    </script>
+<div id="c">
+  <canvas id="g" width="240" height="160"></canvas>
+  <div id="w" style="display:none">
+    <div>
+      <div id="wt"></div>
+      <button onclick="reset()">Play Again</button>
+    </div>
+  </div>
+</div>
+<script>
+/* --------- params --------- */
+const W=240,H=160,GRAV=0.3,JUMP=-5,SPD=1.2,ENEMY_SPD=0.4;
+const TILE=8,PLATFORMS=[
+  {x:0,y:140,w:240},          // ground
+  {x:40,y:100,w:80},          // mid-left
+  {x:140,y:80,w:60},          // mid-right
+  {x:90,y:50,w:60}            // top
+];
+const ENEMY={x:120,y:132,w:8,h:8,dir:-1};
+const CROWN={x:180,y:20,w:8,h:8,collected:false};
+const DOOR={x:220,y:112,w:16,h:28,open:false};
+/* --------- state --------- */
+let ctx=document.getElementById('g').getContext('2d');
+ctx.imageSmoothingEnabled=false;
+let p={x:10,y:100,w:8,h:8,vx:0,vy:0,onground:false};
+let enemy={...ENEMY};
+let crown={...CROWN};
+let door={...DOOR};
+let keys={},start=Date.now(),best=localStorage.best||0,win=false;
+/* --------- input --------- */
+onkeydown=e=>keys[e.key]="1";
+onkeyup=e=>keys[e.key]=0;
+/* --------- loop --------- */
+requestAnimationFrame(loop);
+function loop(){
+  if(!win)update();
+  draw();
+  requestAnimationFrame(loop);
+}
+function update(){
+  /* player input */
+  if(keys["ArrowLeft"]||keys["a"])p.vx=-SPD;
+  else if(keys["ArrowRight"]||keys["d"])p.vx=SPD;
+  else p.vx*=0.8;
+  if((keys[" "]||keys["ArrowUp"]||keys["w"])&&p.onground){p.vy=JUMP;keys[" "]=0}
+  /* gravity */
+  p.vy+=GRAV;
+  if(p.vy>5)p.vy=5;
+  /* move */
+  move(p);
+  /* enemy */
+  enemy.x+=enemy.dir*ENEMY_SPD;
+  if(enemy.x<20||enemy.x>180)enemy.dir*=-1;
+  if(aabb(p,enemy))reset();          // touch = die
+  /* crown */
+  if(!crown.collected&&aabb(p,crown)){crown.collected=true;door.open=true}
+  /* door */
+  if(door.open&&aabb(p,door))win=true;
+}
+function move(ent){
+  ent.onground=false;
+  ent.x+=ent.vx;
+  for(let b of PLATFORMS){
+    if(ent.vx>0&&ent.x> b.x-TILE&&ent.x< b.x+b.w&&ent.y>b.y-TILE&&ent.y<b.y+TILE)
+      ent.x=b.x-TILE;
+    if(ent.vx<0&&ent.x> b.x+b.w&&ent.x< b.x+b.w+TILE&&ent.y>b.y-TILE&&ent.y<b.y+TILE)
+      ent.x=b.x+b.w;
+  }
+  ent.y+=ent.vy;
+  for(let b of PLATFORMS){
+    if(ent.vy>0&&ent.x+ent.w>b.x&&ent.x<b.x+b.w&&ent.y+ent.h>b.y&&ent.y+ent.h<b.y+TILE){
+      ent.y=b.y-ent.h;ent.vy=0;ent.onground=true;
+    }
+    if(ent.vy<0&&ent.x+ent.w>b.x&&ent.x<b.x+b.w&&ent.y>b.y+TILE&&ent.y<b.y+b.h){
+      ent.y=b.y+b.h;ent.vy=0;
+    }
+  }
+  if(ent.y>H){reset()} // fell
+}
+function aabb(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function reset(){
+  p={x:10,y:100,w:8,h:8,vx:0,vy:0,onground:false};
+  enemy={...ENEMY};
+  crown={...CROWN,collected:false};
+  door={...DOOR,open:false};
+  win=false;
+  start=Date.now();
+  document.getElementById('w').style.display='none';
+}
+/* --------- draw --------- */
+function draw(){
+  ctx.fillStyle="#1a1a2e";ctx.fillRect(0,0,W,H);
+  /* parallax bg */
+  ctx.fillStyle="#16213e";for(let i=0;i<6;i++){ctx.fillRect(i*40-(Date.now()/50)%40,20,20,60)}
+  /* platforms */
+  ctx.fillStyle="#444";
+  for(let b of PLATFORMS)ctx.fillRect(b.x,b.y,b.w,TILE);
+  /* door */
+  ctx.fillStyle=door.open?"#6a4":"#333";
+  ctx.fillRect(door.x,door.y,door.w,door.h);
+  /* crown */
+  if(!crown.collected){ctx.fillStyle="#ffd93d";pixelCrown(crown.x,crown.y)}
+  /* enemy */
+  ctx.fillStyle="#e94560";ctx.fillRect(enemy.x,enemy.y,enemy.w,enemy.h);
+  /* player */
+  ctx.fillStyle="#f3f3f3";ctx.fillRect(p.x,p.y,p.w,p.h);
+  /* hud */
+  ctx.fillStyle="#fff";
+  ctx.font="8px monospace";
+  let t=((Date.now()-start)/1000).toFixed(1);
+  ctx.fillText(`Time ${t}s`+(best?`  Best ${best}s`:''),4,10);
+  if(win){
+    if(!best||t<best){best=t;localStorage.best=best}
+    document.getElementById('wt').textContent=`You got the Crown! Time ${t}s`;
+    document.getElementById('w').style.display='flex';
+  }
+}
+function pixelCrown(x,y){
+  ctx.fillRect(x+2,y,4,1);
+  ctx.fillRect(x+1,y+1,6,1);
+  ctx.fillRect(x,y+2,8,2);
+  ctx.fillRect(x+1,y+4,6,1);
+}
+</script>
 </body>
 </html>
