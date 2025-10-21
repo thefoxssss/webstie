@@ -1,31 +1,160 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GitHub Multiplayer Game</title>
+    <title>Multiplayer Battle Game</title>
     <style>
-        body { margin: 0; padding: 20px; font-family: Arial; background: #1a1a1a; color: white; }
-        #gameCanvas { border: 2px solid #4ECDC4; background: #000; }
-        #status { margin: 10px 0; }
-        .connected { color: #4ECDC4; }
-        .disconnected { color: #FF6B6B; }
-        #roomCode { font-size: 24px; font-weight: bold; color: #FFD700; }
+        body { margin: 0; padding: 20px; background: #1a1a1a; color: white; font-family: Arial; }
+        canvas { border: 2px solid #4ECDC4; display: block; margin: 20px auto; }
+        #status { text-align: center; margin: 10px; }
     </style>
 </head>
 <body>
-    <h1>GitHub Hosted Multiplayer Game</h1>
-    <div id="status" class="disconnected">Connecting...</div>
-    <div>
-        <button onclick="createRoom()">Create Room</button>
-        <button onclick="joinRoom()">Join Room</button>
-        <input type="text" id="roomInput" placeholder="Enter room code">
-    </div>
-    <div id="roomCode"></div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div>
-        <strong>Controls:</strong> WASD to move, Mouse to aim, Click to shoot
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
-    <script src="game.js"></script>
+    <h1 style="text-align: center;">Multiplayer Battle Arena</h1>
+    <div id="status">Click "Join Game" to start!</div>
+    <canvas id="game" width="800" height="600"></canvas>
+    
+    <!-- NetplayJS - handles ALL multiplayer complexity! -->
+    <script src="https://unpkg.com/netplayjs@0.4.1/dist/netplay.js"></script>
+    
+    <script>
+        // Your game code - NetplayJS makes it multiplayer automatically!
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        // Simple game using NetplayJS
+        class BattleGame extends NetplayGame {
+            constructor() {
+                super();
+                this.players = {};
+                this.bullets = [];
+                this.myPlayer = null;
+            }
+            
+            init() {
+                // Create player for this user
+                this.myPlayer = {
+                    id: this.getPlayerId(),
+                    x: Math.random() * 700 + 50,
+                    y: Math.random() * 500 + 50,
+                    vx: 0,
+                    vy: 0,
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                    health: 100,
+                    score: 0
+                };
+                
+                document.getElementById('status').textContent = 'Connected! Use WASD to move, click to shoot';
+            }
+            
+            update(input) {
+                // Player movement
+                if (input.keys['w'] || input.keys['arrowup']) this.myPlayer.vy = -5;
+                else if (input.keys['s'] || input.keys['arrowdown']) this.myPlayer.vy = 5;
+                else this.myPlayer.vy = 0;
+                
+                if (input.keys['a'] || input.keys['arrowleft']) this.myPlayer.vx = -5;
+                else if (input.keys['d'] || input.keys['arrowright']) this.myPlayer.vx = 5;
+                else this.myPlayer.vx = 0;
+                
+                // Update position
+                this.myPlayer.x += this.myPlayer.vx;
+                this.myPlayer.y += this.myPlayer.vy;
+                
+                // Keep in bounds
+                this.myPlayer.x = Math.max(20, Math.min(780, this.myPlayer.x));
+                this.myPlayer.y = Math.max(20, Math.min(580, this.myPlayer.y));
+                
+                // Shooting
+                if (input.mouseClicked) {
+                    this.bullets.push({
+                        x: this.myPlayer.x,
+                        y: this.myPlayer.y,
+                        vx: (input.mouseX - this.myPlayer.x) * 0.1,
+                        vy: (input.mouseY - this.myPlayer.y) * 0.1,
+                        owner: this.myPlayer.id
+                    });
+                }
+                
+                // Update bullets
+                this.bullets = this.bullets.filter(bullet => {
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+                    return bullet.x > 0 && bullet.x < 800 && bullet.y > 0 && bullet.y < 600;
+                });
+                
+                // Simple collision (for demo)
+                this.bullets.forEach((bullet, bi) => {
+                    if (bullet.owner !== this.myPlayer.id) {
+                        const dx = bullet.x - this.myPlayer.x;
+                        const dy = bullet.y - this.myPlayer.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < 25) {
+                            this.myPlayer.health -= 10;
+                            this.bullets.splice(bi, 1);
+                            if (this.myPlayer.health <= 0) {
+                                this.myPlayer.health = 100;
+                                this.myPlayer.x = Math.random() * 700 + 50;
+                                this.myPlayer.y = Math.random() * 500 + 50;
+                            }
+                        }
+                    }
+                });
+            }
+            
+            render(ctx) {
+                // Clear background
+                ctx.fillStyle = '#0a0a0a';
+                ctx.fillRect(0, 0, 800, 600);
+                
+                // Draw grid
+                ctx.strokeStyle = '#222';
+                for (let x = 0; x <= 800; x += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, 600);
+                    ctx.stroke();
+                }
+                for (let y = 0; y <= 600; y += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(800, y);
+                    ctx.stroke();
+                }
+                
+                // Draw players
+                ctx.fillStyle = this.myPlayer.color;
+                ctx.beginPath();
+                ctx.arc(this.myPlayer.x, this.myPlayer.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Direction indicator
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.myPlayer.x, this.myPlayer.y);
+                ctx.lineTo(this.myPlayer.x + Math.cos(0) * 25, this.myPlayer.y + Math.sin(0) * 25);
+                ctx.stroke();
+                
+                // Draw bullets
+                ctx.fillStyle = '#FFD700';
+                this.bullets.forEach(bullet => {
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // UI
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px Arial';
+                ctx.fillText(`Health: ${this.myPlayer.health}`, 10, 30);
+                ctx.fillText(`Score: ${this.myPlayer.score}`, 10, 50);
+            }
+        }
+        
+        // Start the game with NetplayJS
+        const game = new BattleGame();
+        game.start();
+    </script>
 </body>
 </html>
