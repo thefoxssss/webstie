@@ -1,141 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Crown Castle</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Silksong-like 2D Game</title>
 <style>
-  html,body{margin:0;height:100%;background:#0a0a0a;display:flex;justify-content:center;align-items:center}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#1a1a2e;border:2px solid #444}
-  #c{position:relative}
-  #w{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;color:#fff;font-family:monospace;text-align:center;pointer-events:none}
-  #w button{margin-top:8px;padding:4px 8px;font:inherit;pointer-events:auto}
+  body { margin: 0; overflow: hidden; background: #111; }
+  canvas { display: block; background: linear-gradient(#222,#111); cursor: crosshair; }
 </style>
 </head>
 <body>
-<div id="c">
-  <canvas id="g" width="240" height="160"></canvas>
-  <div id="w" style="display:none">
-    <div>
-      <div id="wt"></div>
-      <button onclick="reset()">Play Again</button>
-    </div>
-  </div>
-</div>
+<canvas id="game"></canvas>
 <script>
-/* --------- params --------- */
-const W=240,H=160,GRAV=0.3,JUMP=-5,SPD=1.2,ENEMY_SPD=0.4;
-const TILE=8,PLATFORMS=[
-  {x:0,y:140,w:240},          // ground
-  {x:40,y:100,w:80},          // mid-left
-  {x:140,y:80,w:60},          // mid-right
-  {x:90,y:50,w:60}            // top
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+// ===== Player setup =====
+const player = {
+  x: 100,
+  y: 300,
+  w: 40,
+  h: 60,
+  vx: 0,
+  vy: 0,
+  onGround: false,
+  attacking: false,
+  facing: 1,
+  health: 5
+};
+
+// ===== World =====
+const gravity = 0.6;
+const friction = 0.8;
+const ground = { y: canvas.height - 100, h: 100 };
+const platforms = [
+  { x: 200, y: canvas.height - 200, w: 200, h: 20 },
+  { x: 500, y: canvas.height - 300, w: 150, h: 20 }
 ];
-const ENEMY={x:120,y:132,w:8,h:8,dir:-1};
-const CROWN={x:180,y:20,w:8,h:8,collected:false};
-const DOOR={x:220,y:112,w:16,h:28,open:false};
-/* --------- state --------- */
-let ctx=document.getElementById('g').getContext('2d');
-ctx.imageSmoothingEnabled=false;
-let p={x:10,y:100,w:8,h:8,vx:0,vy:0,onground:false};
-let enemy={...ENEMY};
-let crown={...CROWN};
-let door={...DOOR};
-let keys={},start=Date.now(),best=localStorage.best||0,win=false;
-/* --------- input --------- */
-onkeydown=e=>keys[e.key]="1";
-onkeyup=e=>keys[e.key]=0;
-/* --------- loop --------- */
-requestAnimationFrame(loop);
-function loop(){
-  if(!win)update();
-  draw();
+
+// ===== Enemies =====
+let enemies = [
+  { x: 600, y: ground.y - 50, w: 40, h: 50, health: 3 },
+  { x: 300, y: ground.y - 50, w: 40, h: 50, health: 3 }
+];
+
+// ===== Input =====
+const keys = {};
+onkeydown = e => keys[e.key.toLowerCase()] = true;
+onkeyup   = e => keys[e.key.toLowerCase()] = false;
+
+// ===== Mouse input (Left click to attack) =====
+canvas.addEventListener("mousedown", e => {
+  if (e.button === 0) player.attacking = true;
+});
+canvas.addEventListener("mouseup", e => {
+  if (e.button === 0) player.attacking = false;
+});
+
+// ===== Game Loop =====
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#222";
+  ctx.fillRect(0, ground.y, canvas.width, ground.h);
+
+  // Platforms
+  ctx.fillStyle = "#333";
+  for (let p of platforms) ctx.fillRect(p.x, p.y, p.w, p.h);
+
+  // Movement
+  if (keys["a"]) { player.vx = -4; player.facing = -1; }
+  else if (keys["d"]) { player.vx = 4; player.facing = 1; }
+  else player.vx *= friction;
+
+  if (keys["w"] && player.onGround) {
+    player.vy = -12; player.onGround = false;
+  }
+
+  // Also allow spacebar attack
+  if (keys[" "]) player.attacking = true;
+
+  // Apply physics
+  player.vy += gravity;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // Ground + platform collisions
+  if (player.y + player.h >= ground.y) {
+    player.y = ground.y - player.h; player.vy = 0; player.onGround = true;
+  } else {
+    player.onGround = false;
+    for (let p of platforms) {
+      if (player.x + player.w > p.x && player.x < p.x + p.w &&
+          player.y + player.h > p.y && player.y + player.h < p.y + p.h + 10 &&
+          player.vy >= 0) {
+        player.y = p.y - player.h; player.vy = 0; player.onGround = true;
+      }
+    }
+  }
+
+  // Draw player
+  ctx.fillStyle = player.attacking ? "#ff3" : "#0f0";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // Draw attack slash
+  if (player.attacking) {
+    ctx.strokeStyle = "#fff";
+    ctx.beginPath();
+    const slashX = player.x + (player.facing === 1 ? player.w : -20);
+    ctx.moveTo(slashX, player.y + player.h/2);
+    ctx.lineTo(slashX + 20 * player.facing, player.y + player.h/2 - 10);
+    ctx.stroke();
+  }
+
+  // Enemies
+  for (let e of enemies) {
+    if (e.health <= 0) continue;
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+
+    // Simple patrol AI
+    e.x += Math.sin(Date.now()/500) * 0.5;
+
+    // Attack detection
+    if (player.attacking &&
+        player.x + player.w >= e.x &&
+        player.x <= e.x + e.w &&
+        player.y + player.h >= e.y &&
+        player.y <= e.y + e.h) {
+      e.health -= 1;
+    }
+  }
+
+  enemies = enemies.filter(e => e.health > 0);
+
   requestAnimationFrame(loop);
 }
-function update(){
-  /* player input */
-  if(keys["ArrowLeft"]||keys["a"])p.vx=-SPD;
-  else if(keys["ArrowRight"]||keys["d"])p.vx=SPD;
-  else p.vx*=0.8;
-  if((keys[" "]||keys["ArrowUp"]||keys["w"])&&p.onground){p.vy=JUMP;keys[" "]=0}
-  /* gravity */
-  p.vy+=GRAV;
-  if(p.vy>5)p.vy=5;
-  /* move */
-  move(p);
-  /* enemy */
-  enemy.x+=enemy.dir*ENEMY_SPD;
-  if(enemy.x<20||enemy.x>180)enemy.dir*=-1;
-  if(aabb(p,enemy))reset();          // touch = die
-  /* crown */
-  if(!crown.collected&&aabb(p,crown)){crown.collected=true;door.open=true}
-  /* door */
-  if(door.open&&aabb(p,door))win=true;
-}
-function move(ent){
-  ent.onground=false;
-  ent.x+=ent.vx;
-  for(let b of PLATFORMS){
-    if(ent.vx>0&&ent.x> b.x-TILE&&ent.x< b.x+b.w&&ent.y>b.y-TILE&&ent.y<b.y+TILE)
-      ent.x=b.x-TILE;
-    if(ent.vx<0&&ent.x> b.x+b.w&&ent.x< b.x+b.w+TILE&&ent.y>b.y-TILE&&ent.y<b.y+TILE)
-      ent.x=b.x+b.w;
-  }
-  ent.y+=ent.vy;
-  for(let b of PLATFORMS){
-    if(ent.vy>0&&ent.x+ent.w>b.x&&ent.x<b.x+b.w&&ent.y+ent.h>b.y&&ent.y+ent.h<b.y+TILE){
-      ent.y=b.y-ent.h;ent.vy=0;ent.onground=true;
-    }
-    if(ent.vy<0&&ent.x+ent.w>b.x&&ent.x<b.x+b.w&&ent.y>b.y+TILE&&ent.y<b.y+b.h){
-      ent.y=b.y+b.h;ent.vy=0;
-    }
-  }
-  if(ent.y>H){reset()} // fell
-}
-function aabb(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
-function reset(){
-  p={x:10,y:100,w:8,h:8,vx:0,vy:0,onground:false};
-  enemy={...ENEMY};
-  crown={...CROWN,collected:false};
-  door={...DOOR,open:false};
-  win=false;
-  start=Date.now();
-  document.getElementById('w').style.display='none';
-}
-/* --------- draw --------- */
-function draw(){
-  ctx.fillStyle="#1a1a2e";ctx.fillRect(0,0,W,H);
-  /* parallax bg */
-  ctx.fillStyle="#16213e";for(let i=0;i<6;i++){ctx.fillRect(i*40-(Date.now()/50)%40,20,20,60)}
-  /* platforms */
-  ctx.fillStyle="#444";
-  for(let b of PLATFORMS)ctx.fillRect(b.x,b.y,b.w,TILE);
-  /* door */
-  ctx.fillStyle=door.open?"#6a4":"#333";
-  ctx.fillRect(door.x,door.y,door.w,door.h);
-  /* crown */
-  if(!crown.collected){ctx.fillStyle="#ffd93d";pixelCrown(crown.x,crown.y)}
-  /* enemy */
-  ctx.fillStyle="#e94560";ctx.fillRect(enemy.x,enemy.y,enemy.w,enemy.h);
-  /* player */
-  ctx.fillStyle="#f3f3f3";ctx.fillRect(p.x,p.y,p.w,p.h);
-  /* hud */
-  ctx.fillStyle="#fff";
-  ctx.font="8px monospace";
-  let t=((Date.now()-start)/1000).toFixed(1);
-  ctx.fillText(`Time ${t}s`+(best?`  Best ${best}s`:''),4,10);
-  if(win){
-    if(!best||t<best){best=t;localStorage.best=best}
-    document.getElementById('wt').textContent=`You got the Crown! Time ${t}s`;
-    document.getElementById('w').style.display='flex';
-  }
-}
-function pixelCrown(x,y){
-  ctx.fillRect(x+2,y,4,1);
-  ctx.fillRect(x+1,y+1,6,1);
-  ctx.fillRect(x,y+2,8,2);
-  ctx.fillRect(x+1,y+4,6,1);
-}
+loop();
 </script>
 </body>
 </html>
