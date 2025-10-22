@@ -157,6 +157,69 @@
             font-size: 14px;
             line-height: 1.5;
         }
+
+        .game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .game-over-title {
+            font-size: 48px;
+            color: #ff0000;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+        }
+
+        .game-over-stats {
+            color: #ffd700;
+            font-size: 20px;
+            margin-bottom: 30px;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .game-button {
+            background: linear-gradient(135deg, #8b4513, #654321);
+            border: 3px solid #ffd700;
+            padding: 15px 40px;
+            color: #fff;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
+            background: linear-gradient(135deg, #a0522d, #8b4513);
+        }
+
+        .game-button:active {
+            transform: translateY(-2px);
+        }
+        
+        @keyframes mythicGlow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.6);
+            }
+        }
     </style>
 </head>
 <body>
@@ -167,10 +230,16 @@
         </div>
         <div style="margin-top: 10px;">Chamber: <span id="room">1</span></div>
         <div>Knights: <span id="enemies">0</span></div>
+        
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #666;">
+            <div style="font-size: 12px; color: #ffd700; margin-bottom: 5px;">⚡ ABILITIES</div>
+            <div style="font-size: 11px;">Special 1 [Q]: <span id="special1Bind">N/A</span></div>
+            <div style="font-size: 11px;">Special 2 [E]: <span id="special2Bind">N/A</span></div>
+        </div>
     </div>
 
     <div class="controls">
-        WASD/Arrows: Move | SPACE: Jump | J: Dagger Attack | K: Shadow Dash | L: Throw Knife
+        WASD/Arrows: Move | SPACE: Jump | J: Dagger | K: Dash | L: Knife | Q/E: Specials
     </div>
 
     <div class="title" id="titleScreen">
@@ -185,6 +254,17 @@
         </div>
     </div>
 
+    <div class="game-over-screen" id="gameOverScreen">
+        <div class="game-over-title">💀 DEFEATED 💀</div>
+        <div class="game-over-stats">
+            You reached Chamber <span id="finalRoom">1</span>
+        </div>
+        <div class="button-container">
+            <button class="game-button" id="playAgainBtn">⚔️ Play Again</button>
+            <button class="game-button" id="loadCheckpointBtn">📍 Load Checkpoint</button>
+        </div>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -193,6 +273,126 @@
         
         canvas.width = 1200;
         canvas.height = 700;
+
+        // Shadow Clone class
+        class ShadowClone {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 28;
+                this.height = 38;
+                this.lifetime = 600; // 10 seconds at 60fps
+                this.facing = player.facing;
+                this.opacity = 0.6;
+                this.attackCooldown = 0;
+                this.rangedCooldown = 0;
+            }
+
+            update() {
+                this.lifetime--;
+                
+                // Follow player position with offset
+                const targetX = player.x - this.facing * 60;
+                const targetY = player.y;
+                
+                this.x += (targetX - this.x) * 0.1;
+                this.y += (targetY - this.y) * 0.1;
+                this.facing = player.facing;
+                
+                // Cooldowns
+                if (this.attackCooldown > 0) this.attackCooldown--;
+                if (this.rangedCooldown > 0) this.rangedCooldown--;
+                
+                // Fade out near end
+                if (this.lifetime < 60) {
+                    this.opacity = this.lifetime / 60 * 0.6;
+                }
+            }
+
+            mimicMeleeAttack() {
+                if (this.attackCooldown <= 0) {
+                    this.attackCooldown = 30;
+                    
+                    // Check enemies in range
+                    for (const enemy of currentRoom.enemies) {
+                        const dx = enemy.x - (this.x + this.facing * 30);
+                        const dy = enemy.y - this.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < 40 && Math.sign(dx) === this.facing) {
+                            enemy.takeDamage(player.attackDamage * 0.5);
+                        }
+                    }
+                    
+                    // Check boss
+                    if (currentRoom.boss && currentRoom.boss.health > 0) {
+                        const boss = currentRoom.boss;
+                        const dx = boss.x - (this.x + this.facing * 30);
+                        const dy = boss.y - this.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < 50) {
+                            boss.takeDamage(player.attackDamage * 0.5);
+                        }
+                    }
+                }
+            }
+
+            mimicRangedAttack() {
+                if (this.rangedCooldown <= 0) {
+                    this.rangedCooldown = 25;
+                    
+                    const angle = Math.atan2(player.aimDirection.y, player.aimDirection.x);
+                    const proj = new Projectile(
+                        this.x + Math.cos(angle) * 20,
+                        this.y + Math.sin(angle) * 20,
+                        angle,
+                        12,
+                        'player'
+                    );
+                    proj.damage *= 0.5; // Clone does half damage
+                    projectiles.push(proj);
+                    
+                    // Clone particles
+                    for (let i = 0; i < 5; i++) {
+                        particles.push(new Particle(
+                            this.x, this.y, '#4a4a4a',
+                            (Math.random() - 0.5) * 4,
+                            (Math.random() - 0.5) * 4,
+                            15
+                        ));
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.facing, 1);
+                
+                // Clone body (darker version of player)
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                
+                // Shadow effect
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, this.height / 2);
+                
+                // Hood
+                ctx.fillStyle = '#0a0a0a';
+                ctx.beginPath();
+                ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glowing eyes
+                ctx.fillStyle = '#00ffff';
+                ctx.fillRect(-6, -this.height / 2 + 4, 4, 4);
+                ctx.fillRect(2, -this.height / 2 + 4, 4, 4);
+                
+                ctx.restore();
+            }
+        }
 
         // Particle system for visual effects
         class Particle {
@@ -389,6 +589,16 @@
                 this.shield = 0;
                 this.hasDoubleJumped = false;
                 
+                // Special ability slots
+                this.special1 = null; // Ability name like 'shadowClone'
+                this.special2 = null;
+                this.special1Cooldown = 0;
+                this.special2Cooldown = 0;
+                
+                // Ability effects
+                this.invincible = false;
+                this.damageMultiplier = 1;
+                
                 // Animation
                 this.animFrame = 0;
                 this.animCounter = 0;
@@ -399,6 +609,11 @@
                     this.attacking = true;
                     this.attackFrame = 0;
                     this.attackCooldown = 30;
+                    
+                    // Trigger clone attacks
+                    for (const clone of shadowClones) {
+                        clone.mimicMeleeAttack();
+                    }
                     
                     // Attack particles
                     for (let i = 0; i < 15; i++) {
@@ -452,6 +667,11 @@
                     
                     this.rangedCooldown = cooldown;
                     
+                    // Trigger clone ranged attacks
+                    for (const clone of shadowClones) {
+                        clone.mimicRangedAttack();
+                    }
+                    
                     // Muzzle flash
                     for (let i = 0; i < 10; i++) {
                         particles.push(new Particle(
@@ -462,6 +682,214 @@
                             (Math.random() - 0.5) * 4 + Math.sin(angle) * 3,
                             15
                         ));
+                    }
+                }
+            }
+
+            useSpecial1() {
+                if (this.special1 && this.special1Cooldown <= 0) {
+                    const ability = upgradeDefinitions[this.special1];
+                    this.special1Cooldown = ability.cooldown || 300;
+                    
+                    switch(this.special1) {
+                        case 'shadowClone':
+                            // Create actual shadow clone
+                            shadowClones.push(new ShadowClone(this.x, this.y));
+                            for (let i = 0; i < 30; i++) {
+                                particles.push(new Particle(
+                                    this.x, this.y, '#2a2a2a',
+                                    (Math.random() - 0.5) * 10,
+                                    (Math.random() - 0.5) * 10,
+                                    50
+                                ));
+                            }
+                            break;
+                            
+                        case 'fireStorm':
+                            // Rain fire projectiles
+                            for (let i = 0; i < 12; i++) {
+                                setTimeout(() => {
+                                    const x = this.x + (Math.random() - 0.5) * 200;
+                                    const y = 50;
+                                    projectiles.push(new Projectile(
+                                        x, y, Math.PI / 2, 8, 'player'
+                                    ));
+                                    particles.push(new Particle(x, y, '#ff6600', 0, 0, 20));
+                                }, i * 100);
+                            }
+                            break;
+                            
+                        case 'bladeDance':
+                            // Spinning knife attack
+                            for (let i = 0; i < 16; i++) {
+                                const angle = (Math.PI * 2 / 16) * i;
+                                projectiles.push(new Projectile(
+                                    this.x, this.y, angle, 12, 'player'
+                                ));
+                            }
+                            break;
+                            
+                        case 'timeStop':
+                            // Freeze all enemies
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.frozen = true;
+                                setTimeout(() => enemy.frozen = false, 3000);
+                            }
+                            if (currentRoom.boss) {
+                                currentRoom.boss.frozen = true;
+                                setTimeout(() => currentRoom.boss.frozen = false, 3000);
+                            }
+                            break;
+                            
+                        case 'phantomStrike':
+                            // Teleport behind nearest enemy
+                            let nearest = null;
+                            let nearestDist = Infinity;
+                            for (const enemy of currentRoom.enemies) {
+                                const dist = Math.sqrt((enemy.x - this.x)**2 + (enemy.y - this.y)**2);
+                                if (dist < nearestDist) {
+                                    nearestDist = dist;
+                                    nearest = enemy;
+                                }
+                            }
+                            if (nearest) {
+                                this.x = nearest.x - nearest.facing * 50;
+                                this.y = nearest.y;
+                                nearest.takeDamage(100);
+                            }
+                            break;
+                            
+                        case 'omniSlash':
+                            // Dash through all enemies
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.takeDamage(80);
+                            }
+                            if (currentRoom.boss) currentRoom.boss.takeDamage(80);
+                            break;
+                            
+                        case 'godMode':
+                            // Invincible + 10x damage
+                            this.invincible = true;
+                            this.damageMultiplier = 10;
+                            setTimeout(() => {
+                                this.invincible = false;
+                                this.damageMultiplier = 1;
+                            }, 5000);
+                            break;
+                            
+                        case 'armageddon':
+                            // Meteors everywhere
+                            for (let i = 0; i < 30; i++) {
+                                setTimeout(() => {
+                                    const x = Math.random() * canvas.width;
+                                    projectiles.push(new Projectile(x, 0, Math.PI / 2, 15, 'player'));
+                                }, i * 50);
+                            }
+                            break;
+                            
+                        case 'infinityEdge':
+                            // Summon 20 homing blades
+                            for (let i = 0; i < 20; i++) {
+                                setTimeout(() => {
+                                    const angle = Math.random() * Math.PI * 2;
+                                    const proj = new Projectile(this.x, this.y, angle, 10, 'player');
+                                    proj.homing = true;
+                                    projectiles.push(proj);
+                                }, i * 50);
+                            }
+                            break;
+                    }
+                }
+            }
+
+            useSpecial2() {
+                if (this.special2 && this.special2Cooldown <= 0) {
+                    const ability = upgradeDefinitions[this.special2];
+                    this.special2Cooldown = ability.cooldown || 300;
+                    
+                    // Same implementations as useSpecial1
+                    switch(this.special2) {
+                        case 'shadowClone':
+                            shadowClones.push(new ShadowClone(this.x, this.y));
+                            for (let i = 0; i < 30; i++) {
+                                particles.push(new Particle(
+                                    this.x, this.y, '#2a2a2a',
+                                    (Math.random() - 0.5) * 10,
+                                    (Math.random() - 0.5) * 10,
+                                    50
+                                ));
+                            }
+                            break;
+                        case 'fireStorm':
+                            for (let i = 0; i < 12; i++) {
+                                setTimeout(() => {
+                                    const x = this.x + (Math.random() - 0.5) * 200;
+                                    projectiles.push(new Projectile(x, 50, Math.PI / 2, 8, 'player'));
+                                }, i * 100);
+                            }
+                            break;
+                        case 'bladeDance':
+                            for (let i = 0; i < 16; i++) {
+                                const angle = (Math.PI * 2 / 16) * i;
+                                projectiles.push(new Projectile(this.x, this.y, angle, 12, 'player'));
+                            }
+                            break;
+                        case 'timeStop':
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.frozen = true;
+                                setTimeout(() => enemy.frozen = false, 3000);
+                            }
+                            if (currentRoom.boss) {
+                                currentRoom.boss.frozen = true;
+                                setTimeout(() => currentRoom.boss.frozen = false, 3000);
+                            }
+                            break;
+                        case 'phantomStrike':
+                            let nearest = null;
+                            let nearestDist = Infinity;
+                            for (const enemy of currentRoom.enemies) {
+                                const dist = Math.sqrt((enemy.x - this.x)**2 + (enemy.y - this.y)**2);
+                                if (dist < nearestDist) {
+                                    nearestDist = dist;
+                                    nearest = enemy;
+                                }
+                            }
+                            if (nearest) {
+                                this.x = nearest.x - nearest.facing * 50;
+                                this.y = nearest.y;
+                                nearest.takeDamage(100);
+                            }
+                            break;
+                        case 'omniSlash':
+                            for (const enemy of currentRoom.enemies) enemy.takeDamage(80);
+                            if (currentRoom.boss) currentRoom.boss.takeDamage(80);
+                            break;
+                        case 'godMode':
+                            this.invincible = true;
+                            this.damageMultiplier = 10;
+                            setTimeout(() => {
+                                this.invincible = false;
+                                this.damageMultiplier = 1;
+                            }, 5000);
+                            break;
+                        case 'armageddon':
+                            for (let i = 0; i < 30; i++) {
+                                setTimeout(() => {
+                                    const x = Math.random() * canvas.width;
+                                    projectiles.push(new Projectile(x, 0, Math.PI / 2, 15, 'player'));
+                                }, i * 50);
+                            }
+                            break;
+                        case 'infinityEdge':
+                            for (let i = 0; i < 20; i++) {
+                                setTimeout(() => {
+                                    const angle = Math.random() * Math.PI * 2;
+                                    const proj = new Projectile(this.x, this.y, angle, 10, 'player');
+                                    proj.homing = true;
+                                    projectiles.push(proj);
+                                }, i * 50);
+                            }
+                            break;
                     }
                 }
             }
@@ -480,6 +908,8 @@
                 if (this.attackCooldown > 0) this.attackCooldown--;
                 if (this.dashCooldown > 0) this.dashCooldown--;
                 if (this.rangedCooldown > 0) this.rangedCooldown--;
+                if (this.special1Cooldown > 0) this.special1Cooldown--;
+                if (this.special2Cooldown > 0) this.special2Cooldown--;
                 
                 // Attack animation
                 if (this.attacking) {
@@ -499,14 +929,21 @@
                         trails.push(new Trail(this.x, this.y, '#2a2a2a'));
                     }
                     
-                    // Dash attack upgrade - damage enemies during dash
+                    // Dash attack upgrade - damage enemies during dash (FIX: prevent negative health)
                     if (this.upgrades.dashAttack > 0) {
                         for (const enemy of currentRoom.enemies) {
                             const dx = enemy.x - this.x;
                             const dy = enemy.y - this.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
-                            if (dist < 40) {
+                            if (dist < 40 && !enemy.dashedThisFrame) {
+                                enemy.dashedThisFrame = true;
                                 enemy.takeDamage(10 * this.upgrades.dashAttack);
+                            }
+                        }
+                        // Reset dash flag after dash ends
+                        if (this.dashFrame === 1) {
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.dashedThisFrame = false;
                             }
                         }
                     }
@@ -536,6 +973,7 @@
                         this.y = platform.y - this.height / 2;
                         this.vy = 0;
                         this.onGround = true;
+                        this.hasDoubleJumped = false;
                     }
                 }
                 
@@ -544,6 +982,7 @@
                     this.y = canvas.height - 50 - this.height / 2;
                     this.vy = 0;
                     this.onGround = true;
+                    this.hasDoubleJumped = false;
                 }
                 
                 // Boundaries
@@ -653,6 +1092,9 @@
             }
 
             takeDamage(amount) {
+                // Invincibility check
+                if (this.invincible) return;
+                
                 // Thorns upgrade - reflect damage
                 if (this.upgrades.thorns > 0) {
                     for (const enemy of currentRoom.enemies) {
@@ -692,14 +1134,29 @@
                 this.vx = 0;
                 this.vy = 0;
                 this.gravity = 0.6;
-                this.health = type === 'basic' ? 50 : 80;
-                this.maxHealth = this.health;
-                this.type = type; // 'basic' = sword knight, 'advanced' = archer knight
+                
+                // Enemy types: basic (sword), advanced (archer), heavy (tank), assassin (fast), mage (ranged caster)
+                const enemyStats = {
+                    'basic': { health: 50, speed: 2, color: '#808080', damage: 10 },
+                    'advanced': { health: 60, speed: 2.5, color: '#8b4513', damage: 12 },
+                    'heavy': { health: 100, speed: 1, color: '#4a4a4a', damage: 15 },
+                    'assassin': { health: 35, speed: 4, color: '#1a1a1a', damage: 8 },
+                    'mage': { health: 40, speed: 1.5, color: '#4b0082', damage: 10 }
+                };
+                
+                const stats = enemyStats[type] || enemyStats['basic'];
+                this.health = stats.health;
+                this.maxHealth = stats.health;
+                this.speed = stats.speed;
+                this.color = stats.color;
+                this.baseDamage = stats.damage;
+                this.type = type;
                 this.facing = -1;
                 this.onGround = false;
                 
                 this.attackCooldown = 0;
                 this.shootCooldown = 0;
+                this.teleportCooldown = 0;
                 this.state = 'idle';
                 this.stateTimer = 0;
                 
@@ -742,35 +1199,144 @@
                 
                 if (this.attackCooldown > 0) this.attackCooldown--;
                 if (this.shootCooldown > 0) this.shootCooldown--;
+                if (this.teleportCooldown > 0) this.teleportCooldown--;
                 
-                if (dist < 300) {
-                    if (dist > 60) {
-                        this.vx = this.facing * 2;
-                    } else {
-                        this.vx = 0;
-                        // Melee attack
-                        if (this.attackCooldown <= 0 && dist < 50) {
-                            this.attackCooldown = 60;
-                            if (dist < 40) {
-                                player.takeDamage(10);
+                // Type-specific AI
+                switch(this.type) {
+                    case 'basic':
+                        // Sword knight - charges and melees
+                        if (dist < 300) {
+                            if (dist > 60) {
+                                this.vx = this.facing * this.speed;
+                            } else {
+                                this.vx = 0;
+                                if (this.attackCooldown <= 0 && dist < 50) {
+                                    this.attackCooldown = 60;
+                                    if (dist < 40) {
+                                        player.takeDamage(this.baseDamage);
+                                    }
+                                }
                             }
+                        } else {
+                            this.vx *= 0.9;
                         }
-                    }
-                    
-                    // Ranged attack for advanced enemies
-                    if (this.type === 'advanced' && this.shootCooldown <= 0 && dist > 100 && dist < 400) {
-                        this.shootCooldown = 90;
-                        const angle = Math.atan2(dy, dx);
-                        projectiles.push(new Projectile(
-                            this.x + this.facing * 15,
-                            this.y,
-                            angle,
-                            8,
-                            'enemy'
-                        ));
-                    }
-                } else {
-                    this.vx *= 0.9;
+                        break;
+                        
+                    case 'advanced':
+                        // Archer - keeps distance and shoots
+                        if (dist < 350 && dist > 150) {
+                            this.vx = 0;
+                            if (this.shootCooldown <= 0) {
+                                this.shootCooldown = 90;
+                                const angle = Math.atan2(dy, dx);
+                                projectiles.push(new Projectile(
+                                    this.x + this.facing * 15,
+                                    this.y,
+                                    angle,
+                                    8,
+                                    'enemy'
+                                ));
+                            }
+                        } else if (dist < 150) {
+                            // Back away
+                            this.vx = -this.facing * this.speed;
+                        } else if (dist < 400) {
+                            this.vx = this.facing * this.speed * 0.8;
+                        } else {
+                            this.vx *= 0.9;
+                        }
+                        break;
+                        
+                    case 'heavy':
+                        // Tank - slow but tanky, devastating melee
+                        if (dist < 250) {
+                            if (dist > 70) {
+                                this.vx = this.facing * this.speed;
+                            } else {
+                                this.vx = 0;
+                                if (this.attackCooldown <= 0) {
+                                    this.attackCooldown = 90;
+                                    if (dist < 60) {
+                                        player.takeDamage(this.baseDamage);
+                                        // Knockback
+                                        player.vx = this.facing * 8;
+                                    }
+                                }
+                            }
+                        } else {
+                            this.vx *= 0.9;
+                        }
+                        break;
+                        
+                    case 'assassin':
+                        // Fast, unpredictable movement
+                        if (Math.random() < 0.03) {
+                            this.vx = (Math.random() - 0.5) * this.speed * 2;
+                        }
+                        
+                        if (dist < 200) {
+                            if (dist > 50) {
+                                this.vx = this.facing * this.speed;
+                            } else {
+                                if (this.attackCooldown <= 0) {
+                                    this.attackCooldown = 40;
+                                    if (dist < 45) {
+                                        player.takeDamage(this.baseDamage);
+                                    }
+                                }
+                            }
+                        } else {
+                            this.vx *= 0.95;
+                        }
+                        break;
+                        
+                    case 'mage':
+                        // Ranged caster, teleports occasionally
+                        if (dist < 400 && dist > 200) {
+                            this.vx = 0;
+                            if (this.shootCooldown <= 0) {
+                                this.shootCooldown = 70;
+                                const angle = Math.atan2(dy, dx);
+                                // Fire burst of 3 projectiles
+                                for (let i = -1; i <= 1; i++) {
+                                    projectiles.push(new Projectile(
+                                        this.x,
+                                        this.y,
+                                        angle + i * 0.2,
+                                        9,
+                                        'enemy'
+                                    ));
+                                }
+                            }
+                        } else if (dist < 200 && this.teleportCooldown <= 0) {
+                            // Teleport away (with bounds checking)
+                            this.teleportCooldown = 150;
+                            const teleAngle = Math.random() * Math.PI * 2;
+                            let newX = this.x + Math.cos(teleAngle) * 150;
+                            let newY = this.y + Math.sin(teleAngle) * 100;
+                            
+                            // Keep within bounds
+                            newX = Math.max(50, Math.min(canvas.width - 50, newX));
+                            newY = Math.max(100, Math.min(canvas.height - 100, newY));
+                            
+                            this.x = newX;
+                            this.y = newY;
+                            
+                            // Teleport effect
+                            for (let i = 0; i < 20; i++) {
+                                particles.push(new Particle(
+                                    this.x, this.y, '#4b0082',
+                                    (Math.random() - 0.5) * 10,
+                                    (Math.random() - 0.5) * 10,
+                                    30
+                                ));
+                            }
+                        } else if (dist > 400) {
+                            this.vx = this.facing * this.speed * 0.7;
+                        } else {
+                            this.vx *= 0.9;
+                        }
+                        break;
                 }
                 
                 // Animation
@@ -792,92 +1358,186 @@
                 ctx.ellipse(0, this.height / 2 + 5, this.width / 2, 5, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                if (this.type === 'basic') {
-                    // Sword Knight - Heavy armor (silver/gray)
-                    
-                    // Body armor
-                    ctx.fillStyle = '#808080';
-                    ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                    
-                    // Chest plate highlight
-                    ctx.fillStyle = '#a0a0a0';
-                    ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, this.height / 2);
-                    
-                    // Helmet
-                    ctx.fillStyle = '#696969';
-                    ctx.beginPath();
-                    ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Visor slit
-                    ctx.fillStyle = '#000000';
-                    ctx.fillRect(-6, -this.height / 2 + 4, 12, 3);
-                    
-                    // Shield
-                    ctx.fillStyle = '#8b0000';
-                    ctx.beginPath();
-                    ctx.arc(-8, 0, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#ffd700';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    // Sword
-                    ctx.strokeStyle = '#c0c0c0';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(8, -4);
-                    ctx.lineTo(8, -16);
-                    ctx.stroke();
-                    
-                    // Sword handle
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(6, -6, 4, 6);
-                    
-                } else {
-                    // Archer Knight - Lighter armor (brown/leather with metal)
-                    
-                    // Body
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                    
-                    // Leather vest
-                    ctx.fillStyle = '#654321';
-                    ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 8, this.width - 8, this.height - 12);
-                    
-                    // Helmet (lighter)
-                    ctx.fillStyle = '#a0a0a0';
-                    ctx.beginPath();
-                    ctx.arc(0, -this.height / 2 + 6, 9, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Face opening
-                    ctx.fillStyle = '#ffe0bd';
-                    ctx.fillRect(-4, -this.height / 2 + 4, 8, 6);
-                    
-                    // Eyes
-                    ctx.fillStyle = '#000000';
-                    ctx.fillRect(-3, -this.height / 2 + 5, 2, 2);
-                    ctx.fillRect(1, -this.height / 2 + 5, 2, 2);
-                    
-                    // Bow
-                    ctx.strokeStyle = '#8b4513';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(10, 0, 12, -Math.PI/3, Math.PI/3);
-                    ctx.stroke();
-                    
-                    // Bow string
-                    ctx.strokeStyle = '#d3d3d3';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(10 + Math.cos(-Math.PI/3) * 12, Math.sin(-Math.PI/3) * 12);
-                    ctx.lineTo(10 + Math.cos(Math.PI/3) * 12, Math.sin(Math.PI/3) * 12);
-                    ctx.stroke();
-                    
-                    // Quiver
-                    ctx.fillStyle = '#654321';
-                    ctx.fillRect(-10, this.height / 4, 4, 8);
+                switch(this.type) {
+                    case 'basic':
+                        // Sword Knight - Heavy armor (silver/gray)
+                        ctx.fillStyle = '#808080';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        ctx.fillStyle = '#a0a0a0';
+                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, this.height / 2);
+                        
+                        ctx.fillStyle = '#696969';
+                        ctx.beginPath();
+                        ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(-6, -this.height / 2 + 4, 12, 3);
+                        
+                        // Shield
+                        ctx.fillStyle = '#8b0000';
+                        ctx.beginPath();
+                        ctx.arc(-8, 0, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffd700';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // Sword
+                        ctx.strokeStyle = '#c0c0c0';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(8, -4);
+                        ctx.lineTo(8, -16);
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#8b4513';
+                        ctx.fillRect(6, -6, 4, 6);
+                        break;
+                        
+                    case 'advanced':
+                        // Archer Knight - Lighter armor
+                        ctx.fillStyle = '#8b4513';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        ctx.fillStyle = '#654321';
+                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 8, this.width - 8, this.height - 12);
+                        
+                        ctx.fillStyle = '#a0a0a0';
+                        ctx.beginPath();
+                        ctx.arc(0, -this.height / 2 + 6, 9, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#ffe0bd';
+                        ctx.fillRect(-4, -this.height / 2 + 4, 8, 6);
+                        
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(-3, -this.height / 2 + 5, 2, 2);
+                        ctx.fillRect(1, -this.height / 2 + 5, 2, 2);
+                        
+                        // Bow
+                        ctx.strokeStyle = '#8b4513';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(10, 0, 12, -Math.PI/3, Math.PI/3);
+                        ctx.stroke();
+                        
+                        ctx.strokeStyle = '#d3d3d3';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(10 + Math.cos(-Math.PI/3) * 12, Math.sin(-Math.PI/3) * 12);
+                        ctx.lineTo(10 + Math.cos(Math.PI/3) * 12, Math.sin(Math.PI/3) * 12);
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#654321';
+                        ctx.fillRect(-10, this.height / 4, 4, 8);
+                        break;
+                        
+                    case 'heavy':
+                        // Tank - Massive armor
+                        ctx.fillStyle = '#4a4a4a';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Extra armor plates
+                        ctx.fillStyle = '#5a5a5a';
+                        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, 8);
+                        ctx.fillRect(-this.width / 2 + 2, 0, this.width - 4, 6);
+                        
+                        // Helmet with spikes
+                        ctx.fillStyle = '#3a3a3a';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 10);
+                        
+                        // Spikes
+                        ctx.fillStyle = '#8b4513';
+                        for (let i = -1; i <= 1; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(i * 8, -this.height / 2);
+                            ctx.lineTo(i * 8 - 3, -this.height / 2 - 6);
+                            ctx.lineTo(i * 8 + 3, -this.height / 2 - 6);
+                            ctx.fill();
+                        }
+                        
+                        // Visor
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(-8, -this.height / 2 + 12, 16, 3);
+                        
+                        // Giant hammer
+                        ctx.fillStyle = '#696969';
+                        ctx.fillRect(8, -8, 4, 16);
+                        ctx.fillRect(6, -12, 8, 8);
+                        break;
+                        
+                    case 'assassin':
+                        // Fast assassin - Dark and slim
+                        ctx.fillStyle = '#1a1a1a';
+                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2, this.width - 8, this.height);
+                        
+                        // Hood
+                        ctx.fillStyle = '#0a0a0a';
+                        ctx.beginPath();
+                        ctx.arc(0, -this.height / 2 + 4, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Red eyes
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(-3, -this.height / 2 + 6, 2, 2);
+                        ctx.fillRect(1, -this.height / 2 + 6, 2, 2);
+                        
+                        // Daggers
+                        ctx.fillStyle = '#c0c0c0';
+                        ctx.beginPath();
+                        ctx.moveTo(8, 0);
+                        ctx.lineTo(14, -2);
+                        ctx.lineTo(14, 2);
+                        ctx.fill();
+                        
+                        // Shadow trail
+                        ctx.globalAlpha = 0.3;
+                        ctx.fillStyle = '#1a1a1a';
+                        ctx.fillRect(-this.width / 2 - 8, -this.height / 2, this.width - 8, this.height);
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'mage':
+                        // Mage - Robes and staff
+                        ctx.fillStyle = '#4b0082';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Robe trim
+                        ctx.fillStyle = '#8b008b';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 4);
+                        ctx.fillRect(-this.width / 2, this.height / 2 - 4, this.width, 4);
+                        
+                        // Hood
+                        ctx.fillStyle = '#6a0dad';
+                        ctx.beginPath();
+                        ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Glowing eyes
+                        ctx.fillStyle = '#00ffff';
+                        ctx.beginPath();
+                        ctx.arc(-3, -this.height / 2 + 6, 2, 0, Math.PI * 2);
+                        ctx.arc(3, -this.height / 2 + 6, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Staff with crystal
+                        ctx.strokeStyle = '#8b4513';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(10, this.height / 2);
+                        ctx.lineTo(10, -this.height / 2 + 4);
+                        ctx.stroke();
+                        
+                        // Crystal
+                        ctx.fillStyle = '#00ffff';
+                        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                        ctx.beginPath();
+                        ctx.arc(10, -this.height / 2 + 4, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
                 }
                 
                 ctx.restore();
@@ -922,18 +1582,18 @@
                 this.facing = -1;
                 this.onGround = false;
                 
-                // Boss stats based on type
+                // Boss stats based on type - MUCH HARDER
                 const bossStats = {
-                    'Crimson Knight': { health: 500, speed: 3, color: '#8b0000' },
-                    'Shadow Lord': { health: 400, speed: 5, color: '#2a2a2a' },
-                    'Frost Warden': { health: 450, speed: 2, color: '#00bfff' },
-                    'Flame Tyrant': { health: 400, speed: 4, color: '#ff4500' },
-                    'Stone Golem': { health: 700, speed: 1, color: '#696969' },
-                    'Toxic Assassin': { health: 350, speed: 6, color: '#228b22' },
-                    'Thunder King': { health: 450, speed: 3.5, color: '#ffd700' },
-                    'Necromancer': { health: 300, speed: 2, color: '#4b0082' },
-                    'Blood Reaper': { health: 500, speed: 4, color: '#8b0000' },
-                    'Void Walker': { health: 400, speed: 5, color: '#483d8b' }
+                    'Crimson Knight': { health: 800, speed: 4, color: '#8b0000', damage: 25 },
+                    'Shadow Lord': { health: 600, speed: 6, color: '#2a2a2a', damage: 20 },
+                    'Frost Warden': { health: 700, speed: 3, color: '#00bfff', damage: 22 },
+                    'Flame Tyrant': { health: 650, speed: 5, color: '#ff4500', damage: 28 },
+                    'Stone Golem': { health: 1000, speed: 2, color: '#696969', damage: 35 },
+                    'Toxic Assassin': { health: 550, speed: 7, color: '#228b22', damage: 18 },
+                    'Thunder King': { health: 750, speed: 4.5, color: '#ffd700', damage: 30 },
+                    'Necromancer': { health: 500, speed: 3, color: '#4b0082', damage: 20 },
+                    'Blood Reaper': { health: 700, speed: 5, color: '#dc143c', damage: 26 },
+                    'Void Walker': { health: 650, speed: 6, color: '#483d8b', damage: 24 }
                 };
                 
                 const stats = bossStats[type];
@@ -941,6 +1601,7 @@
                 this.maxHealth = stats.health;
                 this.speed = stats.speed;
                 this.color = stats.color;
+                this.baseDamage = stats.damage;
                 
                 this.attackCooldown = 0;
                 this.specialCooldown = 0;
@@ -975,21 +1636,24 @@
                     this.onGround = true;
                 }
                 
-                // Phase transition
+                // Phase transition - gets MUCH harder at 50% HP
                 if (this.health < this.maxHealth / 2 && this.phase === 1) {
                     this.phase = 2;
-                    this.speed *= 1.5;
-                    for (let i = 0; i < 50; i++) {
+                    this.speed *= 1.8;
+                    this.baseDamage *= 1.5;
+                    
+                    // Big phase change effect
+                    for (let i = 0; i < 80; i++) {
                         particles.push(new Particle(
                             this.x, this.y, this.color,
-                            (Math.random() - 0.5) * 15,
-                            (Math.random() - 0.5) * 15,
-                            40
+                            (Math.random() - 0.5) * 20,
+                            (Math.random() - 0.5) * 20,
+                            50
                         ));
                     }
                 }
                 
-                // AI behavior
+                // AI behavior - MUCH MORE AGGRESSIVE
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -999,26 +1663,309 @@
                 if (this.attackCooldown > 0) this.attackCooldown--;
                 if (this.specialCooldown > 0) this.specialCooldown--;
                 
-                // Basic AI - charge and melee
-                if (dist > 100) {
-                    this.vx = this.facing * this.speed;
-                } else {
-                    this.vx = 0;
-                    if (this.attackCooldown <= 0) {
-                        this.attackCooldown = 40;
-                        if (dist < 80) player.takeDamage(20);
-                    }
-                }
+                // Faster cooldowns in phase 2
+                const attackSpeed = this.phase === 2 ? 0.6 : 1;
+                const specialSpeed = this.phase === 2 ? 0.5 : 1;
                 
-                // Projectile attacks for ranged bosses
-                if (['Frost Warden', 'Flame Tyrant', 'Thunder King', 'Necromancer', 'Void Walker'].includes(this.type)) {
-                    if (this.specialCooldown <= 0 && dist < 400) {
-                        this.specialCooldown = 80;
-                        const angle = Math.atan2(dy, dx);
-                        projectiles.push(new Projectile(
-                            this.x + this.facing * 30, this.y, angle, 10, 'enemy'
-                        ));
-                    }
+                // Boss-specific aggressive behaviors
+                switch(this.type) {
+                    case 'Crimson Knight':
+                        if (dist > 80) {
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            this.vx = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = Math.floor(30 * attackSpeed);
+                                if (dist < 90) player.takeDamage(this.baseDamage);
+                            }
+                        }
+                        
+                        // Shield bash - VERY aggressive
+                        if (this.specialCooldown <= 0 && dist < 200) {
+                            this.specialCooldown = Math.floor(80 * specialSpeed);
+                            this.vx = this.facing * this.speed * 4;
+                            // Damage during charge
+                            if (dist < 70) player.takeDamage(this.baseDamage * 1.5);
+                        }
+                        break;
+                        
+                    case 'Shadow Lord':
+                        // Teleport frequently and unpredictably
+                        if (this.specialCooldown <= 0 && (dist > 150 || Math.random() < 0.3)) {
+                            this.specialCooldown = Math.floor(60 * specialSpeed);
+                            const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * Math.PI;
+                            let newX = player.x + Math.cos(angle) * 120;
+                            let newY = player.y + Math.sin(angle) * 80;
+                            
+                            // Keep within bounds
+                            newX = Math.max(60, Math.min(canvas.width - 60, newX));
+                            newY = Math.max(100, Math.min(canvas.height - 100, newY));
+                            
+                            this.x = newX;
+                            this.y = newY;
+                            
+                            // Teleport attack
+                            if (dist < 100) player.takeDamage(this.baseDamage);
+                            
+                            for (let i = 0; i < 30; i++) {
+                                particles.push(new Particle(
+                                    this.x, this.y, '#2a2a2a',
+                                    (Math.random() - 0.5) * 12,
+                                    (Math.random() - 0.5) * 12,
+                                    35
+                                ));
+                            }
+                        }
+                        
+                        if (dist > 60) {
+                            this.vx = this.facing * this.speed;
+                        } else if (this.attackCooldown <= 0) {
+                            this.attackCooldown = Math.floor(25 * attackSpeed);
+                            if (dist < 75) player.takeDamage(this.baseDamage);
+                        }
+                        break;
+                        
+                    case 'Frost Warden':
+                        this.vx = this.facing * this.speed * 0.7;
+                        
+                        // Ice projectile barrage
+                        if (this.attackCooldown <= 0 && dist < 450) {
+                            this.attackCooldown = Math.floor(40 * attackSpeed);
+                            const angle = Math.atan2(dy, dx);
+                            const projCount = this.phase === 2 ? 5 : 3;
+                            for (let i = 0; i < projCount; i++) {
+                                const offset = (i - (projCount - 1) / 2) * 0.25;
+                                projectiles.push(new Projectile(
+                                    this.x, this.y, angle + offset, 11, 'enemy'
+                                ));
+                            }
+                        }
+                        
+                        // Ice nova
+                        if (this.specialCooldown <= 0 && dist < 150) {
+                            this.specialCooldown = Math.floor(100 * specialSpeed);
+                            for (let i = 0; i < 8; i++) {
+                                const angle = (Math.PI * 2 / 8) * i;
+                                projectiles.push(new Projectile(
+                                    this.x, this.y, angle, 9, 'enemy'
+                                ));
+                            }
+                        }
+                        break;
+                        
+                    case 'Flame Tyrant':
+                        if (dist > 100) {
+                            this.vx = this.facing * this.speed;
+                        }
+                        
+                        // Rapid fire breath
+                        if (this.attackCooldown <= 0 && dist < 300) {
+                            this.attackCooldown = Math.floor(15 * attackSpeed);
+                            const angle = Math.atan2(dy, dx);
+                            projectiles.push(new Projectile(
+                                this.x + this.facing * 35, this.y, angle, 13, 'enemy'
+                            ));
+                        }
+                        
+                        // Fire wave
+                        if (this.specialCooldown <= 0) {
+                            this.specialCooldown = Math.floor(70 * specialSpeed);
+                            for (let i = -2; i <= 2; i++) {
+                                projectiles.push(new Projectile(
+                                    this.x, this.y, i * 0.4, 10, 'enemy'
+                                ));
+                            }
+                        }
+                        break;
+                        
+                    case 'Stone Golem':
+                        if (dist > 80) {
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            this.vx = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = Math.floor(60 * attackSpeed);
+                                // Massive ground slam
+                                if (dist < 180) {
+                                    player.takeDamage(this.baseDamage);
+                                    player.vx = this.facing * 10;
+                                    
+                                    for (let i = 0; i < 40; i++) {
+                                        particles.push(new Particle(
+                                            this.x, this.y + this.height/2,
+                                            '#8b4513',
+                                            (Math.random() - 0.5) * 25,
+                                            -Math.random() * 12,
+                                            35
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'Toxic Assassin':
+                        // Extremely erratic and fast
+                        if (Math.random() < 0.08) {
+                            this.vx = (Math.random() - 0.5) * this.speed * 2.5;
+                        }
+                        
+                        if (dist < 70 && this.attackCooldown <= 0) {
+                            this.attackCooldown = Math.floor(20 * attackSpeed);
+                            player.takeDamage(this.baseDamage);
+                        }
+                        
+                        // Poison dart spam
+                        if (this.specialCooldown <= 0 && dist < 350) {
+                            this.specialCooldown = Math.floor(35 * specialSpeed);
+                            const angle = Math.atan2(dy, dx);
+                            const dartCount = this.phase === 2 ? 3 : 2;
+                            for (let i = 0; i < dartCount; i++) {
+                                setTimeout(() => {
+                                    projectiles.push(new Projectile(
+                                        this.x, this.y, angle + (Math.random() - 0.5) * 0.3, 16, 'enemy'
+                                    ));
+                                }, i * 100);
+                            }
+                        }
+                        break;
+                        
+                    case 'Thunder King':
+                        if (dist > 90) {
+                            this.vx = this.facing * this.speed;
+                        }
+                        
+                        // Lightning strikes - multiple
+                        if (this.specialCooldown <= 0) {
+                            this.specialCooldown = Math.floor(70 * specialSpeed);
+                            const strikeCount = this.phase === 2 ? 3 : 2;
+                            
+                            for (let i = 0; i < strikeCount; i++) {
+                                setTimeout(() => {
+                                    const targetX = player.x;
+                                    const targetY = player.y;
+                                    
+                                    // Visual warning
+                                    for (let j = 0; j < 20; j++) {
+                                        particles.push(new Particle(
+                                            targetX, targetY - 200,
+                                            '#ffff00',
+                                            (Math.random() - 0.5) * 5,
+                                            Math.random() * 15,
+                                            30
+                                        ));
+                                    }
+                                    
+                                    setTimeout(() => {
+                                        const pdx = player.x - targetX;
+                                        const pdy = player.y - targetY;
+                                        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+                                        if (pdist < 60) {
+                                            player.takeDamage(this.baseDamage);
+                                        }
+                                        
+                                        // Lightning visual
+                                        for (let j = 0; j < 50; j++) {
+                                            particles.push(new Particle(
+                                                targetX, targetY,
+                                                '#ffd700',
+                                                (Math.random() - 0.5) * 15,
+                                                (Math.random() - 0.5) * 15,
+                                                25
+                                            ));
+                                        }
+                                    }, 600);
+                                }, i * 400);
+                            }
+                        }
+                        break;
+                        
+                    case 'Necromancer':
+                        this.vx = this.facing * this.speed * 0.8;
+                        
+                        // Summon minions frequently
+                        if (this.specialCooldown <= 0 && currentRoom.enemies.length < 4) {
+                            this.specialCooldown = Math.floor(150 * specialSpeed);
+                            const minionCount = this.phase === 2 ? 2 : 1;
+                            for (let i = 0; i < minionCount; i++) {
+                                currentRoom.enemies.push(new Enemy(
+                                    this.x + (Math.random() - 0.5) * 120,
+                                    this.y - 60,
+                                    'assassin'
+                                ));
+                            }
+                        }
+                        
+                        // Dark bolt barrage
+                        if (this.attackCooldown <= 0 && dist < 380) {
+                            this.attackCooldown = Math.floor(30 * attackSpeed);
+                            const angle = Math.atan2(dy, dx);
+                            projectiles.push(new Projectile(
+                                this.x, this.y, angle, 12, 'enemy'
+                            ));
+                        }
+                        break;
+                        
+                    case 'Blood Reaper':
+                        if (dist > 85) {
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            this.vx = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = Math.floor(28 * attackSpeed);
+                                if (dist < 90) {
+                                    player.takeDamage(this.baseDamage);
+                                    // Strong heal
+                                    this.health = Math.min(this.health + 15, this.maxHealth);
+                                }
+                            }
+                        }
+                        
+                        // Blood projectiles
+                        if (this.specialCooldown <= 0 && dist < 300) {
+                            this.specialCooldown = Math.floor(50 * specialSpeed);
+                            const angle = Math.atan2(dy, dx);
+                            for (let i = -1; i <= 1; i++) {
+                                projectiles.push(new Projectile(
+                                    this.x, this.y, angle + i * 0.3, 11, 'enemy'
+                                ));
+                            }
+                        }
+                        break;
+                        
+                    case 'Void Walker':
+                        // Constant phasing (with bounds)
+                        if (Math.random() < 0.03) {
+                            let newX = this.x + (Math.random() - 0.5) * 120;
+                            let newY = this.y + (Math.random() - 0.5) * 60;
+                            
+                            // Keep within bounds
+                            newX = Math.max(60, Math.min(canvas.width - 60, newX));
+                            newY = Math.max(100, Math.min(canvas.height - 100, newY));
+                            
+                            this.x = newX;
+                            this.y = newY;
+                        }
+                        
+                        if (dist > 90) {
+                            this.vx = this.facing * this.speed;
+                        } else if (this.attackCooldown <= 0) {
+                            this.attackCooldown = Math.floor(32 * attackSpeed);
+                            if (dist < 80) player.takeDamage(this.baseDamage);
+                        }
+                        
+                        // Void orb storm
+                        if (this.specialCooldown <= 0) {
+                            this.specialCooldown = Math.floor(60 * specialSpeed);
+                            const orbCount = this.phase === 2 ? 6 : 4;
+                            for (let i = 0; i < orbCount; i++) {
+                                const angle = (Math.PI * 2 / orbCount) * i;
+                                projectiles.push(new Projectile(
+                                    this.x, this.y, angle, 9, 'enemy'
+                                ));
+                            }
+                        }
+                        break;
                 }
                 
                 this.animFrame++;
@@ -1029,41 +1976,330 @@
                 ctx.translate(this.x, this.y);
                 ctx.scale(this.facing, 1);
                 
-                // Boss body
-                ctx.fillStyle = this.color;
-                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                // Boss-specific unique visuals
+                switch(this.type) {
+                    case 'Crimson Knight':
+                        // Massive armored knight with giant sword
+                        ctx.fillStyle = '#8b0000';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Gold trim
+                        ctx.fillStyle = '#ffd700';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 6);
+                        ctx.fillRect(-this.width / 2, this.height / 2 - 6, this.width, 6);
+                        
+                        // Crown
+                        ctx.fillStyle = '#ffd700';
+                        for (let i = -2; i <= 2; i++) {
+                            ctx.fillRect(i * 10 - 3, -this.height / 2 - 8, 6, 12);
+                        }
+                        
+                        // Giant sword
+                        ctx.fillStyle = '#c0c0c0';
+                        ctx.fillRect(this.width / 2, -this.height / 2, 8, this.height);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(this.width / 2 + 2, -this.height / 2, 2, this.height);
+                        break;
+                        
+                    case 'Shadow Lord':
+                        // Dark phantom with flowing shadows
+                        ctx.fillStyle = '#2a2a2a';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Shadow aura
+                        ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 150) * 0.2;
+                        ctx.fillStyle = '#000000';
+                        for (let i = 0; i < 3; i++) {
+                            ctx.fillRect(-this.width / 2 - i * 8, -this.height / 2, this.width, this.height);
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Glowing red eyes
+                        ctx.fillStyle = '#ff0000';
+                        ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 200) * 0.2;
+                        ctx.beginPath();
+                        ctx.arc(-8, -this.height / 2 + 15, 5, 0, Math.PI * 2);
+                        ctx.arc(8, -this.height / 2 + 15, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'Frost Warden':
+                        // Ice-covered guardian
+                        ctx.fillStyle = '#00bfff';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Ice crystals
+                        ctx.fillStyle = '#87ceeb';
+                        for (let i = 0; i < 5; i++) {
+                            const x = (i - 2) * 10;
+                            const y = -this.height / 2 + (i % 2) * 20;
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(x - 5, y + 10);
+                            ctx.lineTo(x + 5, y + 10);
+                            ctx.fill();
+                        }
+                        
+                        // Frost aura
+                        ctx.globalAlpha = 0.4;
+                        const iceGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.width);
+                        iceGrad.addColorStop(0, '#00ffff');
+                        iceGrad.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                        ctx.fillStyle = iceGrad;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, this.width, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'Flame Tyrant':
+                        // Fire demon
+                        ctx.fillStyle = '#ff4500';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Flames
+                        ctx.fillStyle = '#ff6600';
+                        for (let i = 0; i < 6; i++) {
+                            const flameX = (i - 2.5) * 10;
+                            const flameHeight = 10 + Math.sin(Date.now() / 100 + i) * 5;
+                            ctx.beginPath();
+                            ctx.moveTo(flameX, this.height / 2);
+                            ctx.lineTo(flameX - 5, this.height / 2 - flameHeight);
+                            ctx.lineTo(flameX + 5, this.height / 2 - flameHeight);
+                            ctx.fill();
+                        }
+                        
+                        // Horns
+                        ctx.fillStyle = '#8b0000';
+                        ctx.beginPath();
+                        ctx.moveTo(-15, -this.height / 2);
+                        ctx.lineTo(-20, -this.height / 2 - 15);
+                        ctx.lineTo(-10, -this.height / 2 - 10);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(15, -this.height / 2);
+                        ctx.lineTo(20, -this.height / 2 - 15);
+                        ctx.lineTo(10, -this.height / 2 - 10);
+                        ctx.fill();
+                        
+                        // Fire eyes
+                        ctx.fillStyle = '#ffff00';
+                        ctx.fillRect(-10, -this.height / 2 + 12, 6, 6);
+                        ctx.fillRect(4, -this.height / 2 + 12, 6, 6);
+                        break;
+                        
+                    case 'Stone Golem':
+                        // Massive stone creature
+                        ctx.fillStyle = '#696969';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Stone blocks
+                        ctx.strokeStyle = '#4a4a4a';
+                        ctx.lineWidth = 2;
+                        for (let y = -this.height / 2; y < this.height / 2; y += 15) {
+                            ctx.strokeRect(-this.width / 2, y, this.width, 15);
+                        }
+                        
+                        // Cracks
+                        ctx.strokeStyle = '#2a2a2a';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width / 4, -this.height / 2);
+                        ctx.lineTo(-this.width / 4 + 5, 0);
+                        ctx.lineTo(-this.width / 4, this.height / 2);
+                        ctx.stroke();
+                        
+                        // Glowing core
+                        ctx.fillStyle = '#ff6600';
+                        ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 200) * 0.4;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'Toxic Assassin':
+                        // Poisonous rogue
+                        ctx.fillStyle = '#228b22';
+                        ctx.fillRect(-this.width / 2 + 6, -this.height / 2, this.width - 12, this.height);
+                        
+                        // Poison drips
+                        ctx.fillStyle = '#00ff00';
+                        for (let i = 0; i < 4; i++) {
+                            const dripX = (i - 1.5) * 12;
+                            const dripY = this.height / 2 + (Math.sin(Date.now() / 100 + i) * 5);
+                            ctx.beginPath();
+                            ctx.arc(dripX, dripY, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        // Toxic mask
+                        ctx.fillStyle = '#1a4d1a';
+                        ctx.fillRect(-12, -this.height / 2 + 8, 24, 12);
+                        
+                        ctx.fillStyle = '#00ff00';
+                        ctx.globalAlpha = 0.7;
+                        ctx.fillRect(-8, -this.height / 2 + 10, 5, 8);
+                        ctx.fillRect(3, -this.height / 2 + 10, 5, 8);
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'Thunder King':
+                        // Electric ruler
+                        ctx.fillStyle = '#ffd700';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Lightning bolts
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 3;
+                        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 100) * 0.3;
+                        for (let i = 0; i < 3; i++) {
+                            const x = (i - 1) * 15;
+                            ctx.beginPath();
+                            ctx.moveTo(x, -this.height / 2);
+                            ctx.lineTo(x - 5, -this.height / 4);
+                            ctx.lineTo(x + 5, 0);
+                            ctx.lineTo(x - 5, this.height / 4);
+                            ctx.lineTo(x, this.height / 2);
+                            ctx.stroke();
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Crown
+                        ctx.fillStyle = '#ffaa00';
+                        for (let i = -2; i <= 2; i++) {
+                            ctx.fillRect(i * 8 - 2, -this.height / 2 - 10, 4, 15);
+                        }
+                        break;
+                        
+                    case 'Necromancer':
+                        // Death mage
+                        ctx.fillStyle = '#4b0082';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Skulls
+                        ctx.fillStyle = '#ffffff';
+                        ctx.globalAlpha = 0.8;
+                        for (let i = 0; i < 3; i++) {
+                            const skullY = -this.height / 2 + i * 20 + 10;
+                            ctx.beginPath();
+                            ctx.arc(-this.width / 3, skullY, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Staff
+                        ctx.strokeStyle = '#8b008b';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(this.width / 2, this.height / 2);
+                        ctx.lineTo(this.width / 2, -this.height / 2);
+                        ctx.stroke();
+                        
+                        // Dark orb
+                        ctx.fillStyle = '#000000';
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2, -this.height / 2, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#8b008b';
+                        ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 150) * 0.5;
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2, -this.height / 2, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'Blood Reaper':
+                        // Vampiric warrior
+                        ctx.fillStyle = '#dc143c';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Blood drips
+                        ctx.fillStyle = '#8b0000';
+                        for (let i = 0; i < 5; i++) {
+                            const bloodX = (i - 2) * 12;
+                            const bloodY = this.height / 2 + Math.sin(Date.now() / 80 + i) * 8;
+                            ctx.fillRect(bloodX - 2, bloodY - 10, 4, 10);
+                            ctx.beginPath();
+                            ctx.arc(bloodX, bloodY, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        // Scythe
+                        ctx.strokeStyle = '#2a2a2a';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(this.width / 2, this.height / 2);
+                        ctx.lineTo(this.width / 2, -this.height / 2 + 10);
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#c0c0c0';
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2, -this.height / 2 + 10, 10, Math.PI, 0);
+                        ctx.fill();
+                        break;
+                        
+                    case 'Void Walker':
+                        // Dimensional being
+                        ctx.fillStyle = '#483d8b';
+                        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 120) * 0.3;
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        ctx.globalAlpha = 1;
+                        
+                        // Void portals
+                        ctx.fillStyle = '#000000';
+                        for (let i = 0; i < 4; i++) {
+                            const portalX = (i % 2) * 20 - 10;
+                            const portalY = Math.floor(i / 2) * 30 - 15;
+                            ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 100 + i) * 0.4;
+                            ctx.beginPath();
+                            ctx.arc(portalX, portalY, 6, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Energy outline
+                        ctx.strokeStyle = '#9370db';
+                        ctx.lineWidth = 2;
+                        ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 150) * 0.4;
+                        ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        ctx.globalAlpha = 1;
+                        break;
+                }
                 
-                // Phase 2 glow
+                // Phase 2 intense glow
                 if (this.phase === 2) {
-                    ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.3;
+                    ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 80) * 0.4;
                     ctx.strokeStyle = '#ff0000';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(-this.width / 2 - 2, -this.height / 2 - 2, this.width + 4, this.height + 4);
+                    
+                    // Pulsing aura
+                    const auraGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.width * 1.5);
+                    auraGrad.addColorStop(0, 'rgba(255, 0, 0, 0.5)');
+                    auraGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    ctx.fillStyle = auraGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.width * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.globalAlpha = 1;
                 }
                 
-                // Armor
-                ctx.fillStyle = '#ffd700';
-                ctx.fillRect(-this.width / 2 + 8, -this.height / 2 + 8, this.width - 16, 10);
-                ctx.fillRect(-this.width / 2 + 10, -this.height / 2, this.width - 20, 8);
-                
-                // Eyes
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(8, -this.height / 2 + 15, 6, 6);
-                
                 ctx.restore();
                 
-                // Health bar
+                // Health bar - larger for boss
                 ctx.fillStyle = '#333';
-                ctx.fillRect(this.x - 40, this.y - this.height / 2 - 20, 80, 6);
+                ctx.fillRect(this.x - 50, this.y - this.height / 2 - 25, 100, 8);
                 ctx.fillStyle = this.phase === 2 ? '#ff0000' : '#8b0000';
-                ctx.fillRect(this.x - 40, this.y - this.height / 2 - 20, 80 * (this.health / this.maxHealth), 6);
+                ctx.fillRect(this.x - 50, this.y - this.height / 2 - 25, 100 * (this.health / this.maxHealth), 8);
                 
-                // Boss name
-                ctx.fillStyle = '#ffd700';
-                ctx.font = '14px Courier New';
+                // Boss name and phase
+                ctx.fillStyle = this.phase === 2 ? '#ff0000' : '#ffd700';
+                ctx.font = 'bold 16px Courier New';
                 ctx.textAlign = 'center';
-                ctx.fillText(this.type, this.x, this.y - this.height / 2 - 30);
+                ctx.fillText(this.type + (this.phase === 2 ? ' [ENRAGED]' : ''), this.x, this.y - this.height / 2 - 35);
             }
 
             takeDamage(amount) {
@@ -1161,9 +2397,11 @@
                     const bossType = bossTypes[Math.floor(rand() * bossTypes.length)];
                     this.boss = new Boss(canvas.width / 2, canvas.height - 200, bossType);
                 } else {
-                    // Generate enemies on platforms
+                    // Generate enemies on platforms with variety
                     const enemyCount = Math.min(2 + Math.floor(rand() * 4), this.platforms.length);
                     const usedPlatforms = [];
+                    
+                    const enemyTypes = ['basic', 'advanced', 'heavy', 'assassin', 'mage'];
                     
                     for (let i = 0; i < enemyCount; i++) {
                         let platformIndex;
@@ -1176,7 +2414,15 @@
                         if (!usedPlatforms.includes(platformIndex)) {
                             usedPlatforms.push(platformIndex);
                             const platform = this.platforms[platformIndex];
-                            const type = rand() > 0.75 ? 'advanced' : 'basic';
+                            
+                            // Varied enemy type selection
+                            const typeRoll = rand();
+                            let type;
+                            if (typeRoll < 0.3) type = 'basic';
+                            else if (typeRoll < 0.55) type = 'advanced';
+                            else if (typeRoll < 0.7) type = 'heavy';
+                            else if (typeRoll < 0.85) type = 'assassin';
+                            else type = 'mage';
                             
                             // Spawn enemy in middle of platform
                             this.enemies.push(new Enemy(
@@ -1331,190 +2577,335 @@
         let particles = [];
         let trails = [];
         let projectiles = [];
+        let shadowClones = [];
         let gameStarted = false;
         let showingUpgrade = false;
+        let gameOver = false;
+        
+        // Checkpoint system
+        let checkpoint = {
+            room: 1,
+            health: 100,
+            upgrades: {},
+            special1: null,
+            special2: null
+        };
 
-        // Upgrade definitions
+        function saveCheckpoint() {
+            checkpoint = {
+                room: roomNumber,
+                health: player.health,
+                upgrades: JSON.parse(JSON.stringify(player.upgrades)),
+                special1: player.special1,
+                special2: player.special2
+            };
+            console.log('Checkpoint saved at room', checkpoint.room);
+        }
+
+        function loadCheckpoint() {
+            roomNumber = checkpoint.room;
+            const isBossRoom = (roomNumber % 5 === 0);
+            currentRoom = new Room(roomNumber * 12345, isBossRoom);
+            
+            player = new Player(100, canvas.height - 200);
+            player.health = checkpoint.health;
+            player.upgrades = JSON.parse(JSON.stringify(checkpoint.upgrades));
+            player.special1 = checkpoint.special1;
+            player.special2 = checkpoint.special2;
+            
+            projectiles = [];
+            particles = [];
+            trails = [];
+            gameOver = false;
+            gameStarted = true; // Make sure game is started
+            
+            document.getElementById('gameOverScreen').style.display = 'none';
+            updateSpecialBinds();
+            
+            // Restart game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            roomNumber = 1;
+            currentRoom = new Room(1);
+            player = new Player(100, 300);
+            projectiles = [];
+            particles = [];
+            trails = [];
+            gameOver = false;
+            gameStarted = true; // Make sure game is started
+            
+            // Reset checkpoint
+            checkpoint = {
+                room: 1,
+                health: 100,
+                upgrades: {},
+                special1: null,
+                special2: null
+            };
+            
+            document.getElementById('gameOverScreen').style.display = 'none';
+            updateSpecialBinds();
+            
+            // Restart game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateSpecialBinds() {
+            const special1Name = player.special1 ? upgradeDefinitions[player.special1].name : 'N/A';
+            const special2Name = player.special2 ? upgradeDefinitions[player.special2].name : 'N/A';
+            document.getElementById('special1Bind').textContent = special1Name;
+            document.getElementById('special2Bind').textContent = special2Name;
+        }
+
+        // Ability/Upgrade rarities with Fortnite colors
+        const rarityColors = {
+            common: '#b3b3b3',
+            uncommon: '#5cb85c',
+            rare: '#5bc0de',
+            epic: '#a335ee',
+            legendary: '#ff8c00',
+            mythic: '#ffd700'
+        };
+
+        // Upgrade definitions with rarities
         const upgradeDefinitions = {
+            // PASSIVE UPGRADES
             multishot: {
                 name: "Multi-Shot",
                 description: "Throw additional knives in a spread pattern",
                 maxLevel: 3,
-                icon: "⚔️"
+                icon: "⚔️",
+                rarity: "uncommon",
+                type: "passive"
             },
             rapidFire: {
                 name: "Rapid Fire",
                 description: "Reduce knife throwing cooldown significantly",
                 maxLevel: 5,
-                icon: "⚡"
+                icon: "⚡",
+                rarity: "common",
+                type: "passive"
             },
             lifesteal: {
                 name: "Life Steal",
                 description: "Restore health when defeating enemies",
                 maxLevel: 3,
-                icon: "💉"
+                icon: "💉",
+                rarity: "rare",
+                type: "passive"
             },
             dashAttack: {
                 name: "Shadow Strike",
                 description: "Deal damage to enemies you dash through",
                 maxLevel: 3,
-                icon: "💨"
+                icon: "💨",
+                rarity: "uncommon",
+                type: "passive"
             },
             criticalHit: {
                 name: "Assassinate",
                 description: "Chance to deal triple damage with attacks",
                 maxLevel: 3,
-                icon: "💥"
+                icon: "💥",
+                rarity: "rare",
+                type: "passive"
             },
             thorns: {
                 name: "Retribution",
                 description: "Reflect damage back to nearby attackers",
                 maxLevel: 3,
-                icon: "🛡️"
+                icon: "🛡️",
+                rarity: "uncommon",
+                type: "passive"
             },
             speedBoost: {
                 name: "Swift Steps",
                 description: "Increase movement speed",
                 maxLevel: 4,
-                icon: "🏃"
+                icon: "🏃",
+                rarity: "common",
+                type: "passive"
             },
             vampiricAura: {
                 name: "Dark Essence",
                 description: "Slowly regenerate health over time",
                 maxLevel: 3,
-                icon: "🌙"
+                icon: "🌙",
+                rarity: "rare",
+                type: "passive"
             },
             explosiveKnives: {
                 name: "Explosive Blades",
                 description: "Knives explode on impact, damaging nearby enemies",
                 maxLevel: 1,
-                icon: "💣"
-            },
-            timeSlowOnKill: {
-                name: "Momento Mori",
-                description: "Briefly slow time when defeating enemies",
-                maxLevel: 2,
-                icon: "⏱️"
-            },
-            poisonDagger: {
-                name: "Toxic Strike",
-                description: "Attacks poison enemies, dealing damage over time",
-                maxLevel: 3,
-                icon: "☠️"
-            },
-            chainLightning: {
-                name: "Arc Lightning",
-                description: "Attacks chain to nearby enemies",
-                maxLevel: 2,
-                icon: "⚡"
-            },
-            shadowClone: {
-                name: "Shadow Clone",
-                description: "Create clones that mimic your attacks",
-                maxLevel: 2,
-                icon: "👥"
-            },
-            berserker: {
-                name: "Berserker Rage",
-                description: "Deal more damage at low health",
-                maxLevel: 3,
-                icon: "😈"
-            },
-            ghostWalk: {
-                name: "Ghost Walk",
-                description: "Become invulnerable during dash",
-                maxLevel: 1,
-                icon: "👻"
-            },
-            bloodRage: {
-                name: "Blood Rage",
-                description: "Gain attack speed on kill (stacks)",
-                maxLevel: 3,
-                icon: "🔥"
-            },
-            frostNova: {
-                name: "Frost Nova",
-                description: "Dash creates ice explosion that slows enemies",
-                maxLevel: 2,
-                icon: "❄️"
-            },
-            executeThreshold: {
-                name: "Executioner",
-                description: "Instantly kill enemies below 15% health",
-                maxLevel: 1,
-                icon: "⚰️"
-            },
-            knifeStorm: {
-                name: "Blade Storm",
-                description: "Knives orbit around you",
-                maxLevel: 3,
-                icon: "🌀"
-            },
-            lastStand: {
-                name: "Last Stand",
-                description: "Survive fatal damage once per room",
-                maxLevel: 2,
-                icon: "✝️"
-            },
-            magneticKnives: {
-                name: "Homing Blades",
-                description: "Knives home in on enemies",
-                maxLevel: 2,
-                icon: "🧲"
-            },
-            ricochet: {
-                name: "Ricochet",
-                description: "Knives bounce between enemies",
-                maxLevel: 3,
-                icon: "🎯"
-            },
-            shadowStep: {
-                name: "Blink Strike",
-                description: "Teleport short distances on attack",
-                maxLevel: 2,
-                icon: "✨"
+                icon: "💣",
+                rarity: "epic",
+                type: "passive"
             },
             armorPierce: {
                 name: "Armor Breaker",
                 description: "Deal extra damage to bosses and armored foes",
                 maxLevel: 3,
-                icon: "🔨"
+                icon: "🔨",
+                rarity: "rare",
+                type: "passive"
             },
             doubleJump: {
                 name: "Double Jump",
                 description: "Jump again while in the air",
                 maxLevel: 1,
-                icon: "🦅"
+                icon: "🦅",
+                rarity: "uncommon",
+                type: "passive"
             },
-            vortex: {
-                name: "Death Vortex",
-                description: "Pull enemies toward you on dash",
-                maxLevel: 2,
-                icon: "🌪️"
+            
+            // ACTIVE ABILITIES - Common
+            dashBoost: {
+                name: "Dash Boost",
+                description: "Extended dash range and reduced cooldown",
+                maxLevel: 1,
+                icon: "💫",
+                rarity: "common",
+                type: "ability",
+                cooldown: 0
             },
-            backstab: {
-                name: "Backstab",
-                description: "Massive damage bonus from behind",
-                maxLevel: 3,
-                icon: "🗡️"
+            
+            // ACTIVE ABILITIES - Uncommon
+            fireStorm: {
+                name: "Fire Storm",
+                description: "Rain fire projectiles around you",
+                maxLevel: 1,
+                icon: "🔥",
+                rarity: "uncommon",
+                type: "ability",
+                cooldown: 400
             },
-            necromancy: {
-                name: "Necromancy",
-                maxLevel: 2,
-                description: "Killed enemies fight for you briefly",
-                icon: "💀"
+            iceWall: {
+                name: "Ice Wall",
+                description: "Create barrier that blocks projectiles",
+                maxLevel: 1,
+                icon: "❄️",
+                rarity: "uncommon",
+                type: "ability",
+                cooldown: 500
             },
-            bloodArmor: {
-                name: "Blood Armor",
-                description: "Gain temporary shields on kill",
-                maxLevel: 3,
-                icon: "🩸"
+            
+            // ACTIVE ABILITIES - Rare
+            shadowClone: {
+                name: "Shadow Clone",
+                description: "Create a clone that mimics your attacks for 10s",
+                maxLevel: 1,
+                icon: "👥",
+                rarity: "rare",
+                type: "ability",
+                cooldown: 600
             },
-            flurry: {
-                name: "Blade Flurry",
-                description: "Attack speed increases dramatically",
-                maxLevel: 3,
-                icon: "🌪️"
+            bladeDance: {
+                name: "Blade Dance",
+                description: "Spinning knife attack all around you",
+                maxLevel: 1,
+                icon: "🌀",
+                rarity: "rare",
+                type: "ability",
+                cooldown: 350
+            },
+            venomStrike: {
+                name: "Venom Strike",
+                description: "Poison all nearby enemies for massive DOT",
+                maxLevel: 1,
+                icon: "☠️",
+                rarity: "rare",
+                type: "ability",
+                cooldown: 450
+            },
+            
+            // ACTIVE ABILITIES - Epic
+            timeStop: {
+                name: "Time Stop",
+                description: "Freeze all enemies for 3 seconds",
+                maxLevel: 1,
+                icon: "⏸️",
+                rarity: "epic",
+                type: "ability",
+                cooldown: 800
+            },
+            deathMark: {
+                name: "Death Mark",
+                description: "Mark enemies - next hit deals 5x damage",
+                maxLevel: 1,
+                icon: "💀",
+                rarity: "epic",
+                type: "ability",
+                cooldown: 500
+            },
+            phantomStrike: {
+                name: "Phantom Strike",
+                description: "Teleport behind nearest enemy and strike",
+                maxLevel: 1,
+                icon: "👻",
+                rarity: "epic",
+                type: "ability",
+                cooldown: 400
+            },
+            
+            // ACTIVE ABILITIES - Legendary
+            omniSlash: {
+                name: "Omni Slash",
+                description: "Dash through all enemies dealing massive damage",
+                maxLevel: 1,
+                icon: "⚡",
+                rarity: "legendary",
+                type: "ability",
+                cooldown: 700
+            },
+            voidRift: {
+                name: "Void Rift",
+                description: "Create portal that sucks in and damages enemies",
+                maxLevel: 1,
+                icon: "🌀",
+                rarity: "legendary",
+                type: "ability",
+                cooldown: 900
+            },
+            bloodMoon: {
+                name: "Blood Moon",
+                description: "Lifesteal aura + attack speed for 8 seconds",
+                maxLevel: 1,
+                icon: "🔴",
+                rarity: "legendary",
+                type: "ability",
+                cooldown: 1000
+            },
+            
+            // ACTIVE ABILITIES - Mythic
+            godMode: {
+                name: "Ascension",
+                description: "Invincible + 10x damage for 5 seconds",
+                maxLevel: 1,
+                icon: "✨",
+                rarity: "mythic",
+                type: "ability",
+                cooldown: 1500
+            },
+            armageddon: {
+                name: "Armageddon",
+                description: "Meteors rain down destroying everything",
+                maxLevel: 1,
+                icon: "☄️",
+                rarity: "mythic",
+                type: "ability",
+                cooldown: 1200
+            },
+            infinityEdge: {
+                name: "Infinity Edge",
+                description: "Summon 20 homing blades for 10 seconds",
+                maxLevel: 1,
+                icon: "⚔️",
+                rarity: "mythic",
+                type: "ability",
+                cooldown: 1400
             }
         };
 
@@ -1542,23 +2933,51 @@
                 
                 const card = document.createElement('div');
                 card.className = 'upgrade-card';
+                const rarity = upgrade.rarity || 'common';
+                const color = rarityColors[rarity];
+                card.style.borderColor = color;
+                card.style.boxShadow = `0 5px 20px rgba(${rarity === 'mythic' ? '255, 215, 0' : '0, 0, 0'}, 0.${rarity === 'mythic' ? 6 : 3})`;
+                
+                // Mythic glow animation
+                if (rarity === 'mythic') {
+                    card.style.animation = 'mythicGlow 2s ease-in-out infinite';
+                    card.style.background = 'linear-gradient(135deg, #2a1810, #1a0f08)';
+                }
+                
                 card.innerHTML = `
                     <h3>${upgrade.icon} ${upgrade.name}</h3>
+                    <div class="level" style="color: ${color};">${rarity.toUpperCase()}</div>
                     <div class="level">Level ${currentLevel} → ${currentLevel + 1}</div>
                     <p>${upgrade.description}</p>
                 `;
                 
                 card.onclick = () => {
                     player.upgrades[upgradeKey]++;
+                    
+                    // Assign to special slot if it's an ability type
+                    if (upgrade.type === 'ability') {
+                        if (!player.special1) {
+                            player.special1 = upgradeKey;
+                        } else if (!player.special2) {
+                            player.special2 = upgradeKey;
+                        } else {
+                            // Replace special1 if both are full
+                            player.special1 = upgradeKey;
+                        }
+                    }
+                    
                     upgradeScreen.style.display = 'none';
                     showingUpgrade = false;
                     
-                    // Visual feedback
+                    // Update special binds display
+                    updateSpecialBinds();
+                    
+                    // Visual feedback with rarity color
                     for (let i = 0; i < 50; i++) {
                         particles.push(new Particle(
                             player.x,
                             player.y,
-                            '#ffd700',
+                            color,
                             (Math.random() - 0.5) * 10,
                             (Math.random() - 0.5) * 10 - 5,
                             40
@@ -1573,6 +2992,15 @@
         }
 
         const keys = {};
+
+        // Button event listeners
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            resetGame();
+        });
+
+        document.getElementById('loadCheckpointBtn').addEventListener('click', () => {
+            loadCheckpoint();
+        });
 
         window.addEventListener('keydown', (e) => {
             if (!gameStarted) {
@@ -1608,6 +3036,20 @@
             if (e.key === ' ' || e.key.toLowerCase() === 'w' || e.key === 'ArrowUp') {
                 if (player.onGround && !showingUpgrade) {
                     player.vy = -player.jumpPower;
+                } else if (!player.onGround && !player.hasDoubleJumped && player.upgrades.doubleJump > 0 && !showingUpgrade) {
+                    player.vy = -player.jumpPower;
+                    player.hasDoubleJumped = true;
+                    
+                    // Double jump effect
+                    for (let i = 0; i < 15; i++) {
+                        particles.push(new Particle(
+                            player.x, player.y,
+                            '#00ffff',
+                            (Math.random() - 0.5) * 8,
+                            Math.random() * 5,
+                            20
+                        ));
+                    }
                 }
             }
             if (e.key.toLowerCase() === 'j' && !showingUpgrade) {
@@ -1618,6 +3060,12 @@
             }
             if (e.key.toLowerCase() === 'l' && !showingUpgrade) {
                 player.shootRanged();
+            }
+            if (e.key.toLowerCase() === 'q' && !showingUpgrade) {
+                player.useSpecial1();
+            }
+            if (e.key.toLowerCase() === 'e' && !showingUpgrade) {
+                player.useSpecial2();
             }
         });
 
@@ -1909,6 +3357,12 @@
                 return;
             }
             
+            // Game over check
+            if (gameOver) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
             // Pause game when showing upgrades
             if (showingUpgrade) {
                 requestAnimationFrame(gameLoop);
@@ -1927,6 +3381,15 @@
                 trails[i].draw();
                 if (trails[i].life <= 0) {
                     trails.splice(i, 1);
+                }
+            }
+            
+            // Update and draw shadow clones
+            for (let i = shadowClones.length - 1; i >= 0; i--) {
+                shadowClones[i].update();
+                shadowClones[i].draw();
+                if (shadowClones[i].lifetime <= 0) {
+                    shadowClones.splice(i, 1);
                 }
             }
             
@@ -2035,6 +3498,11 @@
             
             // Check for room transition
             if (roomCleared && player.x > canvas.width - 50) {
+                // Save checkpoint if this was a boss room
+                if (currentRoom.isBossRoom) {
+                    saveCheckpoint();
+                }
+                
                 roomNumber++;
                 
                 // Boss room every 5 rooms
@@ -2049,6 +3517,7 @@
                 projectiles = [];
                 particles = [];
                 trails = [];
+                shadowClones = [];
                 
                 // Transition effect
                 for (let i = 0; i < 50; i++) {
@@ -2076,23 +3545,17 @@
             document.getElementById('enemies').textContent = enemyCount;
             
             // Game over
-            if (player.health <= 0) {
-                ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#ff0066';
-                ctx.font = '48px Courier New';
-                ctx.textAlign = 'center';
-                ctx.fillText('DEFEATED', canvas.width / 2, canvas.height / 2);
-                ctx.fillStyle = '#fff';
-                ctx.font = '20px Courier New';
-                ctx.fillText('Refresh to try again', canvas.width / 2, canvas.height / 2 + 50);
-                return;
+            if (player.health <= 0 && !gameOver) {
+                gameOver = true;
+                document.getElementById('finalRoom').textContent = roomNumber;
+                document.getElementById('gameOverScreen').style.display = 'flex';
             }
             
             requestAnimationFrame(gameLoop);
         }
 
         gameLoop();
+        updateSpecialBinds();
     </script>
 </body>
 </html>
