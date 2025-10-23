@@ -391,11 +391,16 @@
         </div>
         <div style="margin-top: 10px;">Chamber: <span id="room">1</span></div>
         <div>Enemies: <span id="enemies">0</span></div>
+        
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #666;">
+            <div style="font-size: 12px; color: #ffd700; margin-bottom: 5px;">⚡ SPECIAL ABILITIES</div>
+            <div id="specialAbilitiesList" style="font-size: 11px;"></div>
+        </div>
     </div>
     
     <!-- Controls -->
     <div class="controls">
-        WASD/Arrows: Move & Aim Knife | SPACE: Jump | J: Dagger | K: Dash | L: Knife<br>
+        WASD/Arrows: Move & Aim | SPACE: Jump | J: Dagger | K: Dash | L: Knife | Q/E: Specials<br>
         Q/E: Special Abilities
     </div>
     
@@ -1300,6 +1305,298 @@
                             ));
                         }
                         break;
+                    
+                    // NEW LEGENDARY ABILITIES
+                    case 'bladeTornado':
+                        for (let i = 0; i < 32; i++) {
+                            const angle = (Math.PI * 2 / 32) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 15, 'player'));
+                        }
+                        for (let i = 0; i < 100; i++) {
+                            particles.push(new Particle(
+                                this.x, this.y, '#00ffff',
+                                (Math.random() - 0.5) * 25,
+                                (Math.random() - 0.5) * 25,
+                                40
+                            ));
+                        }
+                        break;
+                    
+                    case 'dimensionShift':
+                        this.invincible = true;
+                        this.speed *= 3;
+                        setTimeout(() => {
+                            this.invincible = false;
+                            this.speed /= 3;
+                        }, 3000);
+                        break;
+                    
+                    case 'vortex':
+                        for (const enemy of currentRoom.enemies) {
+                            const dx = this.x - enemy.x;
+                            const dy = this.y - enemy.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist > 0) {
+                                enemy.x += (dx / dist) * 15;
+                                enemy.y += (dy / dist) * 15;
+                            }
+                            enemy.takeDamage(30);
+                        }
+                        if (currentRoom.boss) {
+                            const dx = this.x - currentRoom.boss.x;
+                            const dy = this.y - currentRoom.boss.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist > 0) {
+                                currentRoom.boss.x += (dx / dist) * 10;
+                                currentRoom.boss.y += (dy / dist) * 10;
+                            }
+                            currentRoom.boss.takeDamage(30);
+                        }
+                        break;
+                    
+                    case 'blackHole':
+                        const blackHoleX = this.x;
+                        const blackHoleY = this.y;
+                        let blackHoleDuration = 0;
+                        const blackHoleInterval = setInterval(() => {
+                            blackHoleDuration++;
+                            for (const enemy of currentRoom.enemies) {
+                                const dx = blackHoleX - enemy.x;
+                                const dy = blackHoleY - enemy.y;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                if (dist > 0 && dist < 300) {
+                                    enemy.x += (dx / dist) * 5;
+                                    enemy.y += (dy / dist) * 5;
+                                    enemy.takeDamage(15);
+                                }
+                            }
+                            if (currentRoom.boss) {
+                                const dx = blackHoleX - currentRoom.boss.x;
+                                const dy = blackHoleY - currentRoom.boss.y;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                if (dist > 0 && dist < 300) {
+                                    currentRoom.boss.x += (dx / dist) * 3;
+                                    currentRoom.boss.y += (dy / dist) * 3;
+                                    currentRoom.boss.takeDamage(15);
+                                }
+                            }
+                            // Black hole particles
+                            for (let i = 0; i < 10; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                const radius = Math.random() * 200;
+                                particles.push(new Particle(
+                                    blackHoleX + Math.cos(angle) * radius,
+                                    blackHoleY + Math.sin(angle) * radius,
+                                    '#9400d3',
+                                    -Math.cos(angle) * 8,
+                                    -Math.sin(angle) * 8,
+                                    30
+                                ));
+                            }
+                            if (blackHoleDuration >= 90) clearInterval(blackHoleInterval);
+                        }, 33);
+                        break;
+                    
+                    case 'novaBlast':
+                        for (let i = 0; i < 360; i += 10) {
+                            const angle = (i * Math.PI) / 180;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 18, 'player'));
+                        }
+                        for (const enemy of currentRoom.enemies) {
+                            enemy.takeDamage(150);
+                        }
+                        if (currentRoom.boss) currentRoom.boss.takeDamage(150);
+                        break;
+                    
+                    case 'ghostArmy':
+                        for (let i = 0; i < 5; i++) {
+                            setTimeout(() => {
+                                shadowClones.push(new ShadowClone(this.x + (i - 2) * 50, this.y));
+                            }, i * 100);
+                        }
+                        break;
+                    
+                    case 'judgement':
+                        for (const enemy of currentRoom.enemies) {
+                            enemy.takeDamage(500);
+                            for (let i = 0; i < 50; i++) {
+                                particles.push(new Particle(
+                                    enemy.x, enemy.y, '#ffd700',
+                                    (Math.random() - 0.5) * 15,
+                                    -Math.random() * 20,
+                                    40
+                                ));
+                            }
+                        }
+                        if (currentRoom.boss) {
+                            currentRoom.boss.takeDamage(500);
+                            for (let i = 0; i < 100; i++) {
+                                particles.push(new Particle(
+                                    currentRoom.boss.x, currentRoom.boss.y, '#ffd700',
+                                    (Math.random() - 0.5) * 15,
+                                    -Math.random() * 20,
+                                    40
+                                ));
+                            }
+                        }
+                        break;
+                    
+                    case 'resurrection':
+                        this.health = this.maxHealth;
+                        this.invincible = true;
+                        setTimeout(() => this.invincible = false, 3000);
+                        for (let i = 0; i < 150; i++) {
+                            particles.push(new Particle(
+                                this.x, this.y, '#00ff00',
+                                (Math.random() - 0.5) * 20,
+                                -Math.random() * 25,
+                                60
+                            ));
+                        }
+                        break;
+                    
+                    // NEW MYTHIC ABILITIES
+                    case 'absoluteZero':
+                        for (const enemy of currentRoom.enemies) {
+                            enemy.frozen = true;
+                            setTimeout(() => enemy.frozen = false, 8000);
+                            enemy.takeDamage(100);
+                        }
+                        if (currentRoom.boss) {
+                            currentRoom.boss.frozen = true;
+                            setTimeout(() => currentRoom.boss.frozen = false, 8000);
+                            currentRoom.boss.takeDamage(100);
+                        }
+                        for (let i = 0; i < 200; i++) {
+                            particles.push(new Particle(
+                                Math.random() * canvas.width,
+                                Math.random() * canvas.height,
+                                '#00ffff',
+                                (Math.random() - 0.5) * 10,
+                                (Math.random() - 0.5) * 10,
+                                70
+                            ));
+                        }
+                        break;
+                    
+                    case 'soulHarvest2':
+                        for (let i = currentRoom.enemies.length - 1; i >= 0; i--) {
+                            const enemy = currentRoom.enemies[i];
+                            if (enemy.health < enemy.maxHealth * 0.3) {
+                                enemy.health = 0;
+                                for (let j = 0; j < 40; j++) {
+                                    particles.push(new Particle(
+                                        enemy.x, enemy.y, '#8b008b',
+                                        (Math.random() - 0.5) * 18,
+                                        (Math.random() - 0.5) * 18,
+                                        50
+                                    ));
+                                }
+                            }
+                        }
+                        if (currentRoom.boss && currentRoom.boss.health < currentRoom.boss.maxHealth * 0.3) {
+                            currentRoom.boss.takeDamage(currentRoom.boss.maxHealth * 0.5);
+                        }
+                        break;
+                    
+                    case 'supernova':
+                        for (const enemy of currentRoom.enemies) {
+                            enemy.takeDamage(300);
+                        }
+                        if (currentRoom.boss) currentRoom.boss.takeDamage(300);
+                        for (let i = 0; i < 250; i++) {
+                            particles.push(new Particle(
+                                this.x, this.y,
+                                ['#ffffff', '#ffff00', '#ff8800', '#ff0000'][Math.floor(Math.random() * 4)],
+                                (Math.random() - 0.5) * 30,
+                                (Math.random() - 0.5) * 30,
+                                60
+                            ));
+                        }
+                        break;
+                    
+                    case 'angelicBlessing':
+                        this.health = this.maxHealth;
+                        this.invincible = true;
+                        setTimeout(() => this.invincible = false, 6000);
+                        for (let i = 0; i < 200; i++) {
+                            particles.push(new Particle(
+                                this.x, this.y, '#ffffff',
+                                (Math.random() - 0.5) * 15,
+                                -Math.random() * 30,
+                                80
+                            ));
+                        }
+                        break;
+                    
+                    case 'apocalypse':
+                        for (const enemy of currentRoom.enemies) {
+                            enemy.takeDamage(9999);
+                        }
+                        if (currentRoom.boss) currentRoom.boss.takeDamage(500);
+                        for (let i = 0; i < 300; i++) {
+                            particles.push(new Particle(
+                                Math.random() * canvas.width,
+                                Math.random() * canvas.height,
+                                ['#ff0000', '#ff6600', '#ffaa00', '#ffff00'][Math.floor(Math.random() * 4)],
+                                (Math.random() - 0.5) * 25,
+                                (Math.random() - 0.5) * 25,
+                                70
+                            ));
+                        }
+                        break;
+                    
+                    case 'infinitePower':
+                        const savedCooldowns = {
+                            attack: this.attackCooldown,
+                            dash: this.dashCooldown,
+                            ranged: this.rangedCooldown,
+                            special1: this.special1Cooldown,
+                            special2: this.special2Cooldown
+                        };
+                        const resetCooldowns = () => {
+                            this.attackCooldown = 0;
+                            this.dashCooldown = 0;
+                            this.rangedCooldown = 0;
+                            this.special1Cooldown = 0;
+                            this.special2Cooldown = 0;
+                        };
+                        const infinitePowerInterval = setInterval(resetCooldowns, 16);
+                        setTimeout(() => {
+                            clearInterval(infinitePowerInterval);
+                        }, 10000);
+                        break;
+                    
+                    case 'oneShot':
+                        this.damageMultiplier = 99999;
+                        this.oneShotActive = true;
+                        // Reset after one attack
+                        const checkOneShot = setInterval(() => {
+                            if (this.oneShotActive && this.attacking) {
+                                setTimeout(() => {
+                                    this.damageMultiplier = 1;
+                                    this.oneShotActive = false;
+                                    clearInterval(checkOneShot);
+                                }, 100);
+                            }
+                        }, 16);
+                        setTimeout(() => {
+                            this.damageMultiplier = 1;
+                            this.oneShotActive = false;
+                            clearInterval(checkOneShot);
+                        }, 10000);
+                        break;
+                    
+                    case 'omega':
+                        this.invincible = true;
+                        this.damageMultiplier = 20;
+                        this.speed *= 2;
+                        setTimeout(() => {
+                            this.invincible = false;
+                            this.damageMultiplier = 1;
+                            this.speed /= 2;
+                        }, 8000);
+                        break;
                 }
             }
 
@@ -2016,16 +2313,16 @@
                 this.onGround = false;
                 
                 const bossStats = {
-                    'Crimson Knight': { health: 400, speed: 3, color: '#8b0000', damage: 15 },
-                    'Shadow Lord': { health: 350, speed: 4.5, color: '#2a2a2a', damage: 12 },
-                    'Frost Warden': { health: 380, speed: 2.5, color: '#00bfff', damage: 14 },
-                    'Flame Tyrant': { health: 360, speed: 3.5, color: '#ff4500', damage: 16 },
-                    'Stone Golem': { health: 550, speed: 1.5, color: '#696969', damage: 20 },
-                    'Toxic Assassin': { health: 320, speed: 5.5, color: '#228b22', damage: 12 },
-                    'Thunder King': { health: 420, speed: 3.5, color: '#ffd700', damage: 18 },
-                    'Necromancer': { health: 300, speed: 2.5, color: '#4b0082', damage: 14 },
-                    'Blood Reaper': { health: 400, speed: 4, color: '#dc143c', damage: 16 },
-                    'Void Walker': { health: 380, speed: 4.5, color: '#483d8b', damage: 15 }
+                    'Crimson Knight': { health: 150, speed: 1.5, color: '#8b0000', damage: 8 },
+                    'Shadow Lord': { health: 120, speed: 2, color: '#2a2a2a', damage: 6 },
+                    'Frost Warden': { health: 140, speed: 1.2, color: '#00bfff', damage: 7 },
+                    'Flame Tyrant': { health: 130, speed: 1.8, color: '#ff4500', damage: 8 },
+                    'Stone Golem': { health: 200, speed: 0.8, color: '#696969', damage: 10 },
+                    'Toxic Assassin': { health: 110, speed: 2.5, color: '#228b22', damage: 6 },
+                    'Thunder King': { health: 160, speed: 1.8, color: '#ffd700', damage: 9 },
+                    'Necromancer': { health: 100, speed: 1.2, color: '#4b0082', damage: 7 },
+                    'Blood Reaper': { health: 150, speed: 2, color: '#dc143c', damage: 8 },
+                    'Void Walker': { health: 140, speed: 2.2, color: '#483d8b', damage: 7 }
                 };
                 
                 const stats = bossStats[type];
@@ -2110,7 +2407,7 @@
                 if (this.specialCooldown > 0) this.specialCooldown--;
                 
                 this.patternTimer++;
-                if (this.patternTimer > 300) {
+                if (this.patternTimer > 500) {
                     this.patternTimer = 0;
                     this.attackPattern = (this.attackPattern + 1) % 3;
                 }
@@ -2128,28 +2425,31 @@
                             // Pattern 1: Shield bash charge
                             if (this.patternTimer % 120 === 0) {
                                 this.vx = this.facing * this.speed * 3;
-                                if (dist < 80) player.takeDamage(this.baseDamage * 1.5);
+                                if (dist < 80 && this.attackCooldown <= 0) {
+                                    player.takeDamage(this.baseDamage * 0.8);
+                                    this.attackCooldown = 90;  // Cooldown to prevent spam damage
+                                }
                             } else {
                                 this.vx *= 0.95;
                             }
                         } else if (this.attackPattern === 1) {
-                            // Pattern 2: Spinning sword projectiles
-                            if (this.patternTimer % 60 === 0) {
-                                for (let i = 0; i < 8; i++) {
-                                    const angle = (Math.PI * 2 / 8) * i;
-                                    projectiles.push(new Projectile(this.x, this.y, angle, 6, 'enemy'));
+                            // Pattern 2: Spinning sword projectiles (less frequent, fewer projectiles)
+                            if (this.patternTimer % 120 === 0) {  // Changed from 60 to 120
+                                for (let i = 0; i < 4; i++) {  // Changed from 8 to 4
+                                    const angle = (Math.PI * 2 / 4) * i;
+                                    projectiles.push(new Projectile(this.x, this.y, angle, 5, 'enemy'));  // Slower speed
                                 }
                             }
                             if (dist > 150) this.vx = this.facing * this.speed * 0.8;
                             else this.vx *= 0.9;
                         } else {
-                            // Pattern 3: Ground slam waves
-                            if (this.onGround && this.patternTimer % 100 === 0) {
-                                for (let i = 1; i <= 3; i++) {
+                            // Pattern 3: Ground slam waves (less frequent)
+                            if (this.onGround && this.patternTimer % 180 === 0) {  // Changed from 100 to 180
+                                for (let i = 1; i <= 2; i++) {  // Changed from 3 to 2 waves
                                     setTimeout(() => {
-                                        projectiles.push(new Projectile(this.x, this.y, 0, 6 + i, 'enemy'));
-                                        projectiles.push(new Projectile(this.x, this.y, Math.PI, 6 + i, 'enemy'));
-                                    }, i * 200);
+                                        projectiles.push(new Projectile(this.x, this.y, 0, 5 + i, 'enemy'));
+                                        projectiles.push(new Projectile(this.x, this.y, Math.PI, 5 + i, 'enemy'));
+                                    }, i * 300);  // Changed from 200 to 300
                                 }
                             }
                             if (dist < 200) this.vx = -this.facing * this.speed * 0.5;
@@ -2159,11 +2459,12 @@
                         
                     case 'Shadow Lord':
                         if (this.attackPattern === 0) {
-                            // Pattern 1: Teleport behind player
-                            if (this.patternTimer % 150 === 0) {
+                            // Pattern 1: Teleport behind player (less frequent, less damage)
+                            if (this.patternTimer % 240 === 0 && this.attackCooldown <= 0) {  // Changed from 150 to 240
                                 this.x = player.x - player.facing * 100;
                                 this.y = player.y;
-                                player.takeDamage(this.baseDamage);
+                                player.takeDamage(this.baseDamage * 0.7);  // Reduced damage
+                                this.attackCooldown = 120;  // Cooldown
                                 
                                 for (let i = 0; i < 30; i++) {
                                     particles.push(new Particle(
@@ -2175,28 +2476,29 @@
                                 }
                             }
                         } else if (this.attackPattern === 1) {
-                            // Pattern 2: Shadow clones that shoot
-                            if (this.patternTimer === 50 || this.patternTimer === 150 || this.patternTimer === 250) {
+                            // Pattern 2: Shadow clones that shoot (fewer shots, slower)
+                            if (this.patternTimer === 100 || this.patternTimer === 300) {  // Only 2 clone shots instead of 3
                                 const cloneX = Math.random() * canvas.width;
                                 const cloneY = Math.random() * (canvas.height - 200) + 100;
                                 
                                 setTimeout(() => {
                                     const angle = Math.atan2(player.y - cloneY, player.x - cloneX);
-                                    for (let i = -1; i <= 1; i++) {
-                                        projectiles.push(new Projectile(cloneX, cloneY, angle + i * 0.3, 8, 'enemy'));
-                                    }
-                                }, 500);
+                                    projectiles.push(new Projectile(cloneX, cloneY, angle, 6, 'enemy'));  // Only 1 shot, slower
+                                }, 700);  // Longer delay
                             }
                             if (dist > 200) this.vx = this.facing * this.speed;
                             else this.vx *= 0.9;
                         } else {
-                            // Pattern 3: Rapid teleport strikes
-                            if (this.patternTimer % 40 === 0) {
+                            // Pattern 3: Rapid teleport strikes (less frequent, less damage)
+                            if (this.patternTimer % 80 === 0) {  // Changed from 40 to 80
                                 const angle = Math.random() * Math.PI * 2;
                                 this.x = player.x + Math.cos(angle) * 150;
                                 this.y = player.y + Math.sin(angle) * 100;
                             }
-                            if (dist < 70) player.takeDamage(this.baseDamage);
+                            if (dist < 70 && this.attackCooldown <= 0) {
+                                player.takeDamage(this.baseDamage * 0.6);  // Reduced damage
+                                this.attackCooldown = 60;  // Cooldown
+                            }
                         }
                         break;
                         
@@ -2326,104 +2628,576 @@
             }
 
             draw() {
+                // Boss aura effect
+                ctx.save();
+                ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 300) * 0.1;
+                const auraGrad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.width * 1.5);
+                auraGrad.addColorStop(0, this.color);
+                auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = auraGrad;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.width * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(this.facing, 1);
                 
-                // Boss visuals based on type (keeping original designs)
+                // EPIC DETAILED BOSS DESIGNS
                 switch(this.type) {
                     case 'Crimson Knight':
-                        ctx.fillStyle = '#8b0000';
+                        // Metallic red armor with plates
+                        const knightGrad = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
+                        knightGrad.addColorStop(0, '#5a0000');
+                        knightGrad.addColorStop(0.5, '#8b0000');
+                        knightGrad.addColorStop(1, '#5a0000');
+                        ctx.fillStyle = knightGrad;
                         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                        ctx.fillStyle = '#ffd700';
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 6);
-                        ctx.fillRect(-this.width / 2, this.height / 2 - 6, this.width, 6);
                         
-                        // Crown
+                        // Armor plates
+                        ctx.fillStyle = '#6a0000';
+                        ctx.fillRect(-this.width / 2 + 5, -this.height / 2 + 5, this.width - 10, 15);
+                        ctx.fillRect(-this.width / 2 + 5, -this.height / 2 + 25, this.width - 10, 15);
+                        ctx.fillRect(-this.width / 2 + 5, this.height / 2 - 20, this.width - 10, 15);
+                        
+                        // Golden trim
+                        ctx.fillStyle = '#ffd700';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 3);
+                        ctx.fillRect(-this.width / 2, this.height / 2 - 3, this.width, 3);
+                        ctx.fillRect(-this.width / 2, -this.height / 2, 3, this.height);
+                        ctx.fillRect(this.width / 2 - 3, -this.height / 2, 3, this.height);
+                        
+                        // Crown with jewels
                         ctx.fillStyle = '#ffd700';
                         for (let i = -2; i <= 2; i++) {
-                            ctx.fillRect(i * 10 - 3, -this.height / 2 - 8, 6, 12);
+                            ctx.fillRect(i * 10 - 3, -this.height / 2 - 12, 6, 15);
+                            ctx.fillStyle = '#ff0000';
+                            ctx.beginPath();
+                            ctx.arc(i * 10, -this.height / 2 - 7, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.fillStyle = '#ffd700';
                         }
                         
                         // Giant sword
                         ctx.fillStyle = '#c0c0c0';
-                        ctx.fillRect(this.width / 2, -this.height / 2, 8, this.height);
+                        ctx.fillRect(this.width / 2, -this.height / 2 - 5, 10, this.height + 10);
                         ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(this.width / 2 + 2, -this.height / 2, 2, this.height);
+                        ctx.fillRect(this.width / 2 + 3, -this.height / 2 - 5, 3, this.height + 10);
+                        ctx.fillStyle = '#888';
+                        ctx.fillRect(this.width / 2 + 1, -this.height / 2 - 5, 2, this.height + 10);
+                        
+                        // Shield
+                        ctx.fillStyle = '#8b0000';
+                        ctx.beginPath();
+                        ctx.arc(-this.width / 2 - 10, 0, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffd700';
+                        ctx.beginPath();
+                        ctx.arc(-this.width / 2 - 10, 0, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#8b0000';
+                        ctx.beginPath();
+                        ctx.arc(-this.width / 2 - 10, 0, 5, 0, Math.PI * 2);
+                        ctx.fill();
                         break;
                         
                     case 'Shadow Lord':
-                        ctx.fillStyle = '#2a2a2a';
+                        // Dark cloak
+                        ctx.fillStyle = '#1a1a1a';
                         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
                         
+                        // Shadow trails
                         ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 150) * 0.2;
                         ctx.fillStyle = '#000000';
-                        for (let i = 0; i < 3; i++) {
-                            ctx.fillRect(-this.width / 2 - i * 8, -this.height / 2, this.width, this.height);
+                        for (let i = 0; i < 5; i++) {
+                            ctx.fillRect(-this.width / 2 - i * 6, -this.height / 2, this.width, this.height);
                         }
                         ctx.globalAlpha = 1;
                         
+                        // Dark armor
+                        ctx.fillStyle = '#2a2a2a';
+                        ctx.fillRect(-this.width / 2 + 8, -this.height / 2 + 10, this.width - 16, this.height - 20);
+                        
+                        // Glowing red eyes
                         ctx.fillStyle = '#ff0000';
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 10;
                         ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 200) * 0.2;
                         ctx.beginPath();
-                        ctx.arc(-8, -this.height / 2 + 15, 5, 0, Math.PI * 2);
-                        ctx.arc(8, -this.height / 2 + 15, 5, 0, Math.PI * 2);
+                        ctx.arc(-10, -this.height / 2 + 15, 6, 0, Math.PI * 2);
+                        ctx.arc(10, -this.height / 2 + 15, 6, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.globalAlpha = 1;
+                        ctx.shadowBlur = 0;
+                        
+                        // Tattered cloak edges
+                        ctx.fillStyle = '#0a0a0a';
+                        for (let i = 0; i < 6; i++) {
+                            const x = -this.width / 2 + i * 10;
+                            ctx.beginPath();
+                            ctx.moveTo(x, this.height / 2);
+                            ctx.lineTo(x + 5, this.height / 2 + 8);
+                            ctx.lineTo(x + 10, this.height / 2);
+                            ctx.fill();
+                        }
+                        
+                        // Dual shadow blades
+                        ctx.fillStyle = '#4a4a4a';
+                        ctx.globalAlpha = 0.7;
+                        ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 10, 4, 40);
+                        ctx.fillRect(-this.width / 2 - 2, -this.height / 2 + 10, 4, 40);
                         ctx.globalAlpha = 1;
                         break;
                         
                     case 'Frost Warden':
-                        ctx.fillStyle = '#00bfff';
+                        // Icy crystalline body
+                        const frostGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        frostGrad.addColorStop(0, '#e0ffff');
+                        frostGrad.addColorStop(0.5, '#00bfff');
+                        frostGrad.addColorStop(1, '#4682b4');
+                        ctx.fillStyle = frostGrad;
                         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
                         
+                        // Ice crystals on body
                         ctx.fillStyle = '#87ceeb';
-                        for (let i = 0; i < 5; i++) {
-                            const x = (i - 2) * 10;
-                            const y = -this.height / 2 + (i % 2) * 20;
+                        for (let i = 0; i < 8; i++) {
+                            const x = (i - 4) * 6;
+                            const y = -this.height / 2 + (i % 2) * 15 + 10;
                             ctx.beginPath();
                             ctx.moveTo(x, y);
-                            ctx.lineTo(x - 5, y + 10);
-                            ctx.lineTo(x + 5, y + 10);
+                            ctx.lineTo(x - 4, y + 8);
+                            ctx.lineTo(x + 4, y + 8);
                             ctx.fill();
                         }
                         
+                        // Ice spike crown
+                        ctx.fillStyle = '#b0e0e6';
+                        for (let i = -2; i <= 2; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(i * 12, -this.height / 2);
+                            ctx.lineTo(i * 12 - 5, -this.height / 2 - 15);
+                            ctx.lineTo(i * 12 + 5, -this.height / 2 - 15);
+                            ctx.fill();
+                        }
+                        
+                        // Frost aura
                         ctx.globalAlpha = 0.4;
-                        const iceGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.width);
-                        iceGrad.addColorStop(0, '#00ffff');
-                        iceGrad.addColorStop(1, 'rgba(0, 255, 255, 0)');
-                        ctx.fillStyle = iceGrad;
+                        const iceAura = ctx.createRadialGradient(0, 0, 0, 0, 0, this.width * 1.2);
+                        iceAura.addColorStop(0, '#00ffff');
+                        iceAura.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                        ctx.fillStyle = iceAura;
                         ctx.beginPath();
-                        ctx.arc(0, 0, this.width, 0, Math.PI * 2);
+                        ctx.arc(0, 0, this.width * 1.2, 0, Math.PI * 2);
                         ctx.fill();
                         ctx.globalAlpha = 1;
+                        
+                        // Ice staff
+                        ctx.fillStyle = '#add8e6';
+                        ctx.fillRect(this.width / 2 + 5, -this.height / 2 - 10, 6, this.height + 20);
+                        ctx.fillStyle = '#00bfff';
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2 + 8, -this.height / 2 - 15, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#87ceeb';
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2 + 8, -this.height / 2 - 15, 5, 0, Math.PI * 2);
+                        ctx.fill();
                         break;
                         
                     case 'Flame Tyrant':
-                        ctx.fillStyle = '#ff4500';
+                        // Molten lava armor
+                        const lavaGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        lavaGrad.addColorStop(0, '#ff4500');
+                        lavaGrad.addColorStop(0.5, '#ff6347');
+                        lavaGrad.addColorStop(1, '#8b0000');
+                        ctx.fillStyle = lavaGrad;
                         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
                         
+                        // Lava cracks with glow
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 2;
+                        ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 150) * 0.2;
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width / 2, -this.height / 2 + 15);
+                        ctx.lineTo(0, -this.height / 2 + 25);
+                        ctx.lineTo(this.width / 2, -this.height / 2 + 15);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width / 2, this.height / 2 - 20);
+                        ctx.lineTo(0, this.height / 2 - 10);
+                        ctx.lineTo(this.width / 2, this.height / 2 - 20);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                        
+                        // Animated flames
                         ctx.fillStyle = '#ff6600';
-                        for (let i = 0; i < 6; i++) {
-                            const flameX = (i - 2.5) * 10;
-                            const flameHeight = 10 + Math.sin(Date.now() / 100 + i) * 5;
+                        for (let i = 0; i < 8; i++) {
+                            const flameX = (i - 3.5) * 8;
+                            const flameHeight = 12 + Math.sin(Date.now() / 100 + i) * 6;
+                            ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 100 + i) * 0.3;
                             ctx.beginPath();
                             ctx.moveTo(flameX, this.height / 2);
-                            ctx.lineTo(flameX - 5, this.height / 2 - flameHeight);
-                            ctx.lineTo(flameX + 5, this.height / 2 - flameHeight);
+                            ctx.lineTo(flameX - 4, this.height / 2 - flameHeight);
+                            ctx.lineTo(flameX + 4, this.height / 2 - flameHeight);
                             ctx.fill();
                         }
+                        ctx.globalAlpha = 1;
                         
+                        // Demon horns
                         ctx.fillStyle = '#8b0000';
                         ctx.beginPath();
                         ctx.moveTo(-15, -this.height / 2 + 5);
-                        ctx.lineTo(-10, -this.height / 2 - 8);
-                        ctx.lineTo(-5, -this.height / 2 + 5);
+                        ctx.lineTo(-12, -this.height / 2 - 12);
+                        ctx.lineTo(-7, -this.height / 2 + 5);
                         ctx.fill();
                         ctx.beginPath();
-                        ctx.moveTo(5, -this.height / 2 + 5);
-                        ctx.lineTo(10, -this.height / 2 - 8);
+                        ctx.moveTo(7, -this.height / 2 + 5);
+                        ctx.lineTo(12, -this.height / 2 - 12);
                         ctx.lineTo(15, -this.height / 2 + 5);
                         ctx.fill();
+                        
+                        // Flame crown
+                        ctx.fillStyle = '#ff8800';
+                        for (let i = -1; i <= 1; i++) {
+                            ctx.globalAlpha = 0.8;
+                            ctx.beginPath();
+                            ctx.moveTo(i * 10, -this.height / 2 - 2);
+                            ctx.lineTo(i * 10 - 3, -this.height / 2 - 8);
+                            ctx.lineTo(i * 10 + 3, -this.height / 2 - 8);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        break;
+                    
+                    case 'Stone Golem':
+                        // Rocky stone blocks
+                        ctx.fillStyle = '#696969';
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Stone block texture
+                        ctx.fillStyle = '#808080';
+                        ctx.fillRect(-this.width / 2 + 5, -this.height / 2 + 5, this.width / 2 - 10, this.height / 2 - 10);
+                        ctx.fillRect(5, -this.height / 2 + 5, this.width / 2 - 10, this.height / 2 - 10);
+                        ctx.fillRect(-this.width / 2 + 5, 5, this.width / 2 - 10, this.height / 2 - 10);
+                        ctx.fillRect(5, 5, this.width / 2 - 10, this.height / 2 - 10);
+                        
+                        // Cracks
+                        ctx.strokeStyle = '#2a2a2a';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width / 2 + 10, -this.height / 2 + 15);
+                        ctx.lineTo(0, -this.height / 2 + 25);
+                        ctx.lineTo(this.width / 2 - 10, -this.height / 2 + 15);
+                        ctx.stroke();
+                        
+                        // Moss patches
+                        ctx.fillStyle = '#228b22';
+                        ctx.globalAlpha = 0.5;
+                        ctx.fillRect(-this.width / 2, this.height / 2 - 10, 15, 10);
+                        ctx.fillRect(this.width / 2 - 15, this.height / 2 - 10, 15, 10);
+                        ctx.globalAlpha = 1;
+                        
+                        // Glowing core
+                        ctx.fillStyle = '#ff8800';
+                        ctx.shadowColor = '#ff8800';
+                        ctx.shadowBlur = 15;
+                        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        ctx.shadowBlur = 0;
+                        
+                        // Massive fists
+                        ctx.fillStyle = '#5a5a5a';
+                        ctx.fillRect(-this.width / 2 - 12, 10, 15, 18);
+                        ctx.fillRect(this.width / 2 - 3, 10, 15, 18);
+                        break;
+                    
+                    case 'Toxic Assassin':
+                        // Toxic green flowing body
+                        const toxicGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        toxicGrad.addColorStop(0, '#00ff00');
+                        toxicGrad.addColorStop(0.5, '#228b22');
+                        toxicGrad.addColorStop(1, '#006400');
+                        ctx.fillStyle = toxicGrad;
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Poison drips
+                        ctx.fillStyle = '#00ff00';
+                        ctx.globalAlpha = 0.6;
+                        for (let i = 0; i < 6; i++) {
+                            const x = (i - 2.5) * 10;
+                            const dripLen = 5 + Math.sin(Date.now() / 150 + i) * 3;
+                            ctx.fillRect(x - 2, this.height / 2, 4, dripLen);
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Glowing green eyes
+                        ctx.fillStyle = '#00ff00';
+                        ctx.shadowColor = '#00ff00';
+                        ctx.shadowBlur = 12;
+                        ctx.beginPath();
+                        ctx.arc(-8, -this.height / 2 + 15, 5, 0, Math.PI * 2);
+                        ctx.arc(8, -this.height / 2 + 15, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        
+                        // Poisoned daggers
+                        ctx.fillStyle = '#4a4a4a';
+                        ctx.fillRect(this.width / 2, -this.height / 2 + 15, 3, 20);
+                        ctx.fillRect(-this.width / 2 - 3, -this.height / 2 + 15, 3, 20);
+                        ctx.fillStyle = '#00ff00';
+                        ctx.fillRect(this.width / 2, -this.height / 2 + 15, 3, 8);
+                        ctx.fillRect(-this.width / 2 - 3, -this.height / 2 + 15, 3, 8);
+                        
+                        // Toxic aura particles
+                        ctx.fillStyle = '#32cd32';
+                        ctx.globalAlpha = 0.4;
+                        for (let i = 0; i < 4; i++) {
+                            const angle = Date.now() / 500 + i * Math.PI / 2;
+                            const px = Math.cos(angle) * this.width * 0.7;
+                            const py = Math.sin(angle) * this.height * 0.7;
+                            ctx.beginPath();
+                            ctx.arc(px, py, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        break;
+                    
+                    case 'Thunder King':
+                        // Golden electric armor
+                        const thunderGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        thunderGrad.addColorStop(0, '#ffff00');
+                        thunderGrad.addColorStop(0.5, '#ffd700');
+                        thunderGrad.addColorStop(1, '#daa520');
+                        ctx.fillStyle = thunderGrad;
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Lightning bolt patterns
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 3;
+                        ctx.shadowColor = '#ffff00';
+                        ctx.shadowBlur = 10;
+                        ctx.globalAlpha = 0.9;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -this.height / 2);
+                        ctx.lineTo(-5, -this.height / 4);
+                        ctx.lineTo(5, -this.height / 4);
+                        ctx.lineTo(0, 0);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                        ctx.shadowBlur = 0;
+                        
+                        // Thunder crown
+                        ctx.fillStyle = '#ffd700';
+                        for (let i = -2; i <= 2; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(i * 10, -this.height / 2);
+                            ctx.lineTo(i * 10 - 4, -this.height / 2 - 12);
+                            ctx.lineTo(i * 10 + 4, -this.height / 2 - 12);
+                            ctx.lineTo(i * 10 + 2, -this.height / 2);
+                            ctx.fill();
+                        }
+                        
+                        // Electric orbs
+                        ctx.fillStyle = '#ffffff';
+                        ctx.shadowColor = '#ffff00';
+                        ctx.shadowBlur = 15;
+                        ctx.beginPath();
+                        ctx.arc(-this.width / 2 - 8, 0, 6, 0, Math.PI * 2);
+                        ctx.arc(this.width / 2 + 8, 0, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        
+                        // Lightning particles
+                        ctx.globalAlpha = 0.6;
+                        for (let i = 0; i < 6; i++) {
+                            const angle = Date.now() / 400 + i * Math.PI / 3;
+                            const px = Math.cos(angle) * this.width * 0.8;
+                            const py = Math.sin(angle) * this.height * 0.8;
+                            ctx.fillStyle = '#ffff00';
+                            ctx.fillRect(px - 1, py - 1, 2, 2);
+                        }
+                        ctx.globalAlpha = 1;
+                        break;
+                    
+                    case 'Necromancer':
+                        // Dark purple robes
+                        const necroGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        necroGrad.addColorStop(0, '#6a0dad');
+                        necroGrad.addColorStop(0.5, '#4b0082');
+                        necroGrad.addColorStop(1, '#2e0854');
+                        ctx.fillStyle = necroGrad;
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Hood with shadows
+                        ctx.fillStyle = '#1a0033';
+                        ctx.beginPath();
+                        ctx.moveTo(-this.width / 2, -this.height / 2);
+                        ctx.lineTo(0, -this.height / 2 - 10);
+                        ctx.lineTo(this.width / 2, -this.height / 2);
+                        ctx.lineTo(0, -this.height / 2 + 20);
+                        ctx.fill();
+                        
+                        // Skull face
+                        ctx.fillStyle = '#e0e0e0';
+                        ctx.fillRect(-12, -this.height / 2 + 10, 24, 20);
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(-10, -this.height / 2 + 14, 5, 6);
+                        ctx.fillRect(5, -this.height / 2 + 14, 5, 6);
+                        ctx.fillRect(-6, -this.height / 2 + 23, 12, 5);
+                        
+                        // Skull patterns on robes
+                        ctx.fillStyle = '#8b008b';
+                        for (let i = 0; i < 3; i++) {
+                            const y = -this.height / 2 + 35 + i * 12;
+                            ctx.fillRect(-8, y, 6, 6);
+                            ctx.fillRect(2, y, 6, 6);
+                        }
+                        
+                        // Skull staff
+                        ctx.fillStyle = '#654321';
+                        ctx.fillRect(this.width / 2 + 5, -this.height / 2, 4, this.height + 10);
+                        ctx.fillStyle = '#e0e0e0';
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2 + 7, -this.height / 2 - 8, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(this.width / 2 + 4, -this.height / 2 - 10, 2, 3);
+                        ctx.fillRect(this.width / 2 + 9, -this.height / 2 - 10, 2, 3);
+                        
+                        // Purple soul particles
+                        ctx.globalAlpha = 0.6;
+                        for (let i = 0; i < 5; i++) {
+                            const angle = Date.now() / 600 + i * (Math.PI * 2 / 5);
+                            const px = Math.cos(angle) * this.width * 0.6;
+                            const py = Math.sin(angle) * this.height * 0.6;
+                            ctx.fillStyle = '#9370db';
+                            ctx.beginPath();
+                            ctx.arc(px, py, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        break;
+                    
+                    case 'Blood Reaper':
+                        // Crimson dripping armor
+                        const bloodGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        bloodGrad.addColorStop(0, '#ff0000');
+                        bloodGrad.addColorStop(0.5, '#dc143c');
+                        bloodGrad.addColorStop(1, '#8b0000');
+                        ctx.fillStyle = bloodGrad;
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Blood drips
+                        ctx.fillStyle = '#dc143c';
+                        ctx.globalAlpha = 0.8;
+                        for (let i = 0; i < 8; i++) {
+                            const x = (i - 3.5) * 8;
+                            const dripLen = 6 + Math.sin(Date.now() / 120 + i) * 4;
+                            ctx.fillRect(x - 1.5, this.height / 2, 3, dripLen);
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Skull helmet
+                        ctx.fillStyle = '#2a2a2a';
+                        ctx.fillRect(-15, -this.height / 2 + 8, 30, 22);
+                        ctx.fillStyle = '#ff0000';
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 8;
+                        ctx.fillRect(-10, -this.height / 2 + 13, 5, 6);
+                        ctx.fillRect(5, -this.height / 2 + 13, 5, 6);
+                        ctx.shadowBlur = 0;
+                        
+                        // Giant bloody scythe
+                        ctx.strokeStyle = '#4a4a4a';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(this.width / 2 + 5, this.height / 2);
+                        ctx.lineTo(this.width / 2 + 5, -this.height / 2 - 10);
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#c0c0c0';
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2 + 5, -this.height / 2 - 10, 15, 0, Math.PI, true);
+                        ctx.fill();
+                        ctx.fillStyle = '#dc143c';
+                        ctx.globalAlpha = 0.7;
+                        ctx.beginPath();
+                        ctx.arc(this.width / 2 + 5, -this.height / 2 - 10, 15, 0, Math.PI, true);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
+                    
+                    case 'Void Walker':
+                        // Cosmic shifting body
+                        const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.width);
+                        voidGrad.addColorStop(0, '#9370db');
+                        voidGrad.addColorStop(0.5, '#483d8b');
+                        voidGrad.addColorStop(1, '#191970');
+                        ctx.fillStyle = voidGrad;
+                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        
+                        // Stars on body
+                        ctx.fillStyle = '#ffffff';
+                        for (let i = 0; i < 12; i++) {
+                            const x = (Math.sin(i * 2.5) * this.width * 0.3);
+                            const y = (Math.cos(i * 2.5) * this.height * 0.3);
+                            const size = 1 + Math.sin(Date.now() / 200 + i) * 1;
+                            ctx.beginPath();
+                            ctx.arc(x, y, size, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        // Glowing white eyes
+                        ctx.fillStyle = '#ffffff';
+                        ctx.shadowColor = '#ffffff';
+                        ctx.shadowBlur = 15;
+                        ctx.beginPath();
+                        ctx.arc(-8, -this.height / 2 + 15, 6, 0, Math.PI * 2);
+                        ctx.arc(8, -this.height / 2 + 15, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        
+                        // Void tendrils
+                        ctx.strokeStyle = '#4b0082';
+                        ctx.lineWidth = 3;
+                        ctx.globalAlpha = 0.6;
+                        for (let i = 0; i < 4; i++) {
+                            const angle = (i / 4) * Math.PI * 2 + Date.now() / 500;
+                            const x = Math.cos(angle) * this.width * 0.5;
+                            const y = Math.sin(angle) * this.height * 0.5;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(x, y);
+                            ctx.stroke();
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Reality distortion effect
+                        ctx.globalAlpha = 0.2;
+                        ctx.fillStyle = '#9370db';
+                        for (let i = 0; i < 3; i++) {
+                            ctx.fillRect(-this.width / 2 - i * 5, -this.height / 2 - i * 5, 
+                                        this.width + i * 10, this.height + i * 10);
+                        }
+                        ctx.globalAlpha = 1;
+                        
+                        // Purple void particles
+                        ctx.globalAlpha = 0.7;
+                        for (let i = 0; i < 8; i++) {
+                            const angle = Date.now() / 700 + i * (Math.PI * 2 / 8);
+                            const radius = this.width * 0.7 + Math.sin(Date.now() / 300 + i) * 10;
+                            const px = Math.cos(angle) * radius;
+                            const py = Math.sin(angle) * radius;
+                            ctx.fillStyle = '#8b00ff';
+                            ctx.beginPath();
+                            ctx.arc(px, py, 2 + Math.sin(Date.now() / 200 + i), 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
                         break;
                         
                     default:
@@ -2434,23 +3208,70 @@
                 
                 ctx.restore();
                 
-                // Health bar
-                const barWidth = this.width + 20;
-                const barHeight = 8;
-                const barY = this.y - this.height / 2 - 15;
+                // EPIC BOSS HEALTH BAR
+                const barWidth = this.width * 2.5;
+                const barHeight = 14;
+                const barY = this.y - this.height / 2 - 30;
                 
-                ctx.fillStyle = '#222';
+                // Bar shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(this.x - barWidth / 2 + 2, barY + 2, barWidth, barHeight);
+                
+                // Bar background
+                const bgGrad = ctx.createLinearGradient(this.x - barWidth/2, 0, this.x + barWidth/2, 0);
+                bgGrad.addColorStop(0, '#1a1a1a');
+                bgGrad.addColorStop(0.5, '#2a2a2a');
+                bgGrad.addColorStop(1, '#1a1a1a');
+                ctx.fillStyle = bgGrad;
                 ctx.fillRect(this.x - barWidth / 2, barY, barWidth, barHeight);
                 
+                // Health fill with gradient
                 const healthPercent = this.health / this.maxHealth;
-                ctx.fillStyle = healthPercent > 0.3 ? '#ff0000' : '#ff8c00';
+                const healthGrad = ctx.createLinearGradient(this.x - barWidth/2, 0, this.x + barWidth/2, 0);
+                if (healthPercent > 0.5) {
+                    healthGrad.addColorStop(0, '#ff0000');
+                    healthGrad.addColorStop(1, '#ff4444');
+                } else if (healthPercent > 0.25) {
+                    healthGrad.addColorStop(0, '#ff8c00');
+                    healthGrad.addColorStop(1, '#ffaa00');
+                } else {
+                    healthGrad.addColorStop(0, '#ff0000');
+                    healthGrad.addColorStop(1, '#8b0000');
+                }
+                ctx.fillStyle = healthGrad;
                 ctx.fillRect(this.x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+                
+                // Health bar shine effect
+                ctx.globalAlpha = 0.3;
+                const shineGrad = ctx.createLinearGradient(this.x, barY, this.x, barY + barHeight);
+                shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+                shineGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = shineGrad;
+                ctx.fillRect(this.x - barWidth / 2, barY, barWidth * healthPercent, barHeight / 2);
+                ctx.globalAlpha = 1;
+                
+                // Gold border
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x - barWidth / 2, barY, barWidth, barHeight);
+                
+                // Health numbers
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px Courier New';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 3;
+                ctx.fillText(`${Math.floor(this.health)} / ${this.maxHealth}`, this.x, barY + barHeight - 2);
+                ctx.shadowBlur = 0;
                 
                 // Boss name
                 ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 16px Courier New';
+                ctx.font = 'bold 18px Courier New';
                 ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 4;
                 ctx.fillText(this.type, this.x, barY - 10);
+                ctx.shadowBlur = 0;
             }
 
             takeDamage(damage) {
@@ -2770,7 +3591,63 @@
             stormCaller: { name: '⚡ STORM CALLER ⚡', desc: 'Lightning strikes all', rarity: 'mythic', type: 'special', cooldown: 300 },
             timestrike: { name: '⚡ TIME STRIKE ⚡', desc: 'Stop time for 5s', rarity: 'mythic', type: 'special', cooldown: 300 },
             soulReaper: { name: '⚡ SOUL REAPER ⚡', desc: 'Instantly kill all normal enemies', rarity: 'mythic', type: 'special', cooldown: 300 },
-            ragnarok: { name: '⚡ RAGNAROK ⚡', desc: 'Screen-wide explosion', rarity: 'mythic', type: 'special', cooldown: 300 }
+            ragnarok: { name: '⚡ RAGNAROK ⚡', desc: 'Screen-wide explosion', rarity: 'mythic', type: 'special', cooldown: 300 },
+            
+            // MORE COMMON ABILITIES
+            armor: { name: 'Armor', desc: 'Increase defense', rarity: 'common', maxLevel: 8, type: 'passive' },
+            focus: { name: 'Focus', desc: 'Reduce ability cooldowns', rarity: 'common', maxLevel: 5, type: 'passive' },
+            stamina: { name: 'Stamina', desc: 'Increase dash distance', rarity: 'common', maxLevel: 5, type: 'passive' },
+            resilience: { name: 'Resilience', desc: 'Reduce knockback', rarity: 'common', maxLevel: 4, type: 'passive' },
+            
+            // MORE UNCOMMON ABILITIES  
+            tripleShot: { name: 'Triple Shot', desc: 'Throw 3 knives at once', rarity: 'uncommon', maxLevel: 3, type: 'passive' },
+            quickDraw: { name: 'Quick Draw', desc: 'Faster knife throws', rarity: 'uncommon', maxLevel: 5, type: 'passive' },
+            bloodlust: { name: 'Bloodlust', desc: 'Heal more from kills', rarity: 'uncommon', maxLevel: 4, type: 'passive' },
+            swiftStrike: { name: 'Swift Strike', desc: 'Attack speed boost', rarity: 'uncommon', maxLevel: 5, type: 'passive' },
+            fortify: { name: 'Fortify', desc: 'Damage resistance', rarity: 'uncommon', maxLevel: 6, type: 'passive' },
+            fury: { name: 'Fury', desc: 'Damage increases over time', rarity: 'uncommon', maxLevel: 5, type: 'passive' },
+            
+            // MORE RARE ABILITIES
+            fireKnives: { name: 'Fire Knives', desc: 'Knives leave fire trails', rarity: 'rare', maxLevel: 3, type: 'passive' },
+            iceKnives: { name: 'Ice Knives', desc: 'Knives freeze enemies', rarity: 'rare', maxLevel: 3, type: 'passive' },
+            shadowStrike: { name: 'Shadow Strike', desc: 'Teleport short distance on hit', rarity: 'rare', maxLevel: 2, type: 'passive' },
+            vengeance: { name: 'Vengeance', desc: 'Deal more damage when low HP', rarity: 'rare', maxLevel: 4, type: 'passive' },
+            lastStand: { name: 'Last Stand', desc: 'Survive lethal hit once per room', rarity: 'rare', maxLevel: 1, type: 'passive' },
+            phoenixRevival: { name: 'Phoenix Revival', desc: 'Revive with 50% HP once', rarity: 'rare', maxLevel: 1, type: 'passive' },
+            dualWield: { name: 'Dual Wield', desc: 'Attack with both hands', rarity: 'rare', maxLevel: 3, type: 'passive' },
+            bloodFrenzy: { name: 'Blood Frenzy', desc: 'Speed boost on kill', rarity: 'rare', maxLevel: 4, type: 'passive' },
+            necromancy: { name: 'Necromancy', desc: 'Summon undead minions', rarity: 'rare', maxLevel: 3, type: 'passive' },
+            lightningTouch: { name: 'Lightning Touch', desc: 'Chain lightning on hit', rarity: 'rare', maxLevel: 3, type: 'passive' },
+            
+            // MORE EPIC ABILITIES
+            deathAura: { name: 'Death Aura', desc: 'Damage enemies nearby', rarity: 'epic', maxLevel: 4, type: 'passive' },
+            timeShift: { name: 'Time Shift', desc: 'Slow time when dashing', rarity: 'epic', maxLevel: 3, type: 'passive' },
+            explosiveEntry: { name: 'Explosive Entry', desc: 'Dash creates explosion', rarity: 'epic', maxLevel: 3, type: 'passive' },
+            orbitalKnives: { name: 'Orbital Knives', desc: 'Knives orbit around you', rarity: 'epic', maxLevel: 3, type: 'passive' },
+            shadowForm: { name: 'Shadow Form', desc: 'Dodge chance greatly increased', rarity: 'epic', maxLevel: 4, type: 'passive' },
+            criticalStrike: { name: 'Critical Strike', desc: 'Every 5th hit is a crit', rarity: 'epic', maxLevel: 1, type: 'passive' },
+            bloodMagic: { name: 'Blood Magic', desc: 'Convert HP to damage', rarity: 'epic', maxLevel: 3, type: 'passive' },
+            voidBlades: { name: 'Void Blades', desc: 'Attacks teleport enemies', rarity: 'epic', maxLevel: 2, type: 'passive' },
+            
+            // MORE LEGENDARY SPECIAL ABILITIES
+            bladeTornado: { name: 'Blade Tornado', desc: 'Spin 360° sending blades (K)', rarity: 'legendary', type: 'special', cooldown: 250 },
+            dimensionShift: { name: 'Dimension Shift', desc: 'Phase through everything (O)', rarity: 'legendary', type: 'special', cooldown: 200 },
+            vortex: { name: 'Vortex', desc: 'Pull all enemies to you (I)', rarity: 'legendary', type: 'special', cooldown: 280 },
+            blackHole: { name: 'Black Hole', desc: 'Create a damaging black hole (U)', rarity: 'legendary', type: 'special', cooldown: 350 },
+            novaBlast: { name: 'Nova Blast', desc: 'Massive explosion around you (P)', rarity: 'legendary', type: 'special', cooldown: 300 },
+            ghostArmy: { name: 'Ghost Army', desc: 'Summon 5 ghost warriors (Y)', rarity: 'legendary', type: 'special', cooldown: 400 },
+            judgement: { name: 'Judgement', desc: 'Deal 500 damage to all (H)', rarity: 'legendary', type: 'special', cooldown: 450 },
+            resurrection: { name: 'Resurrection', desc: 'Full heal + revive (G)', rarity: 'legendary', type: 'special', cooldown: 600 },
+            
+            // MORE MYTHIC ABILITIES (EXTREMELY OP)
+            absoluteZero: { name: '⚡ ABSOLUTE ZERO ⚡', desc: 'Freeze everything for 8s (1)', rarity: 'mythic', type: 'special', cooldown: 350 },
+            soulHarvest2: { name: '⚡ SOUL HARVEST ⚡', desc: 'Kill all enemies below 30% HP (2)', rarity: 'mythic', type: 'special', cooldown: 300 },
+            supernova: { name: '⚡ SUPERNOVA ⚡', desc: 'Massive AOE explosion (3)', rarity: 'mythic', type: 'special', cooldown: 400 },
+            angelicBlessing: { name: '⚡ ANGELIC BLESSING ⚡', desc: 'Full heal + invincibility 6s (4)', rarity: 'mythic', type: 'special', cooldown: 500 },
+            apocalypse: { name: '⚡ APOCALYPSE ⚡', desc: 'Screen-wide devastation (5)', rarity: 'mythic', type: 'special', cooldown: 450 },
+            infinitePower: { name: '⚡ INFINITE POWER ⚡', desc: 'No cooldowns for 10s (6)', rarity: 'mythic', type: 'special', cooldown: 600 },
+            oneShot: { name: '⚡ ONE SHOT ⚡', desc: 'Next attack kills anything (7)', rarity: 'mythic', type: 'special', cooldown: 350 },
+            omega: { name: '⚡ OMEGA ⚡', desc: 'Become unstoppable for 8s (8)', rarity: 'mythic', type: 'special', cooldown: 500 }
         };
 
         function getRandomUpgrades(count = 3) {
@@ -2922,7 +3799,45 @@
                     player.special1 = upgradeKey;
                 } else if (!player.special2) {
                     player.special2 = upgradeKey;
+                } else {
+                    // Replace special1 if both slots full
+                    player.special1 = upgradeKey;
                 }
+                updateSpecialAbilitiesUI();
+            }
+        }
+        
+        function updateSpecialAbilitiesUI() {
+            const listElement = document.getElementById('specialAbilitiesList');
+            listElement.innerHTML = '';
+            
+            if (player.special1) {
+                const ability1 = upgradeDefinitions[player.special1];
+                const cooldown1 = player.special1Cooldown;
+                const maxCooldown1 = ability1.cooldown || 300;
+                const ready1 = cooldown1 <= 0;
+                
+                const div1 = document.createElement('div');
+                div1.style.marginBottom = '5px';
+                div1.style.color = ready1 ? '#00ff00' : '#ff6666';
+                div1.innerHTML = `[Q] ${ability1.name}${ready1 ? ' ✓' : ' (' + Math.ceil(cooldown1/60) + 's)'}`;
+                listElement.appendChild(div1);
+            }
+            
+            if (player.special2) {
+                const ability2 = upgradeDefinitions[player.special2];
+                const cooldown2 = player.special2Cooldown;
+                const maxCooldown2 = ability2.cooldown || 300;
+                const ready2 = cooldown2 <= 0;
+                
+                const div2 = document.createElement('div');
+                div2.style.color = ready2 ? '#00ff00' : '#ff6666';
+                div2.innerHTML = `[E] ${ability2.name}${ready2 ? ' ✓' : ' (' + Math.ceil(cooldown2/60) + 's)'}`;
+                listElement.appendChild(div2);
+            }
+            
+            if (!player.special1 && !player.special2) {
+                listElement.innerHTML = '<div style="color: #888;">None equipped</div>';
             }
         }
 
@@ -3118,15 +4033,24 @@
                 }
             }
             
-            // Update enemies
-            for (const enemy of currentRoom.enemies) {
-                enemy.update();
-                enemy.draw();
+            // Update enemies (skip if showing upgrade screen)
+            if (!showingUpgrade) {
+                for (const enemy of currentRoom.enemies) {
+                    enemy.update();
+                    enemy.draw();
+                }
+            } else {
+                // Just draw enemies frozen in place
+                for (const enemy of currentRoom.enemies) {
+                    enemy.draw();
+                }
             }
             
-            // Update boss
+            // Update boss (skip if showing upgrade screen)
             if (currentRoom.boss && currentRoom.boss.health > 0) {
-                currentRoom.boss.update();
+                if (!showingUpgrade) {
+                    currentRoom.boss.update();
+                }
                 currentRoom.boss.draw();
             }
             
@@ -3169,6 +4093,9 @@
             document.getElementById('room').textContent = roomNumber;
             const enemyCount = currentRoom.enemies.length + (currentRoom.boss && currentRoom.boss.health > 0 ? 1 : 0);
             document.getElementById('enemies').textContent = enemyCount;
+            
+            // Update special abilities UI
+            updateSpecialAbilitiesUI();
             
             // Mythic mode indicator
             if (mythicMode) {
