@@ -746,6 +746,7 @@
                 this.attackCooldown = 0;
                 this.attackDamage = 25;
                 this.attackRange = 50;
+                this.attackDirection = null; // Direction of current attack
                 
                 // Dash
                 this.dashing = false;
@@ -763,22 +764,28 @@
                     maxHealth: 0, damage: 0, attackSpeed: 0, speed: 0, critChance: 0, critDamage: 0,
                     // Combat
                     multishot: 0, rapidFire: 0, piercing: 0, explosiveKnives: 0, ricochet: 0, magneticKnives: 0,
+                    tripleShot: 0, quickDraw: 0, dualWield: 0, fireKnives: 0, iceKnives: 0,
                     // Defense
                     lifesteal: 0, thorns: 0, bloodArmor: 0, lastStand: 0, ironSkin: 0, evasion: 0,
+                    armor: 0, fortify: 0, bloodlust: 0, phoenixRevival: 0,
                     // Mobility
                     dashAttack: 0, ghostWalk: 0, shadowStep: 0, doubleJump: 0, airDash: 0, swiftness: 0,
+                    focus: 0, stamina: 0, resilience: 0, swiftStrike: 0,
                     // Effects
                     poisonDagger: 0, frozenTouch: 0, chainLightning: 0, vampiricAura: 0, bloodRage: 0,
+                    fury: 0, shadowStrike: 0, vengeance: 0, bloodFrenzy: 0, necromancy: 0, lightningTouch: 0,
                     // Special abilities
                     shadowClone: 0, timeSlowOnKill: 0, berserker: 0, executeThreshold: 0, backstab: 0,
-                    frostNova: 0, knifeStorm: 0, vortex: 0, armorPierce: 0, necromancy: 0, flurry: 0,
-                    // NEW UPGRADES
+                    frostNova: 0, knifeStorm: 0, vortex: 0, armorPierce: 0, flurry: 0,
+                    // Advanced
                     lifeLink: 0, deathMark: 0, voidWalk: 0, soulHarvest: 0, reflection: 0,
                     arcaneShield: 0, regeneration: 0, multiStrike: 0, bladeDance: 0, berserkerRage: 0,
                     assassination: 0, execution: 0, rage: 0, berserk: 0, whirlwind: 0,
                     teleportStrike: 0, shadowBurst: 0, deathWave: 0, criticalMass: 0, bloodShield: 0,
                     phantomStrike: 0, timeWarp: 0, meteorStrike: 0, phaseShift: 0, divineIntervention: 0,
-                    bloodPact: 0, dimensionalRift: 0, soulReaper: 0
+                    bloodPact: 0, dimensionalRift: 0, soulReaper: 0,
+                    deathAura: 0, timeShift: 0, explosiveEntry: 0, orbitalKnives: 0, shadowForm: 0,
+                    criticalStrike: 0, bloodMagic: 0, voidBlades: 0
                 };
                 this.usedLastStand = false;
                 this.bloodRageStacks = 0;
@@ -885,6 +892,53 @@
                                     
                                     // Apply damage
                                     enemy.health -= finalDamage;
+                                    
+                                    // Chain Lightning effect
+                                    if (this.upgrades.chainLightning > 0 || this.upgrades.lightningTouch > 0) {
+                                        const lightningLevel = Math.max(this.upgrades.chainLightning || 0, this.upgrades.lightningTouch || 0);
+                                        const chainCount = 1 + lightningLevel;
+                                        const chainDamage = finalDamage * 0.5;
+                                        
+                                        // Find nearby enemies to chain to
+                                        const chainedEnemies = [enemy];
+                                        for (let chain = 0; chain < chainCount; chain++) {
+                                            let nearest = null;
+                                            let nearestDist = Infinity;
+                                            const lastChained = chainedEnemies[chainedEnemies.length - 1];
+                                            
+                                            for (const otherEnemy of currentRoom.enemies) {
+                                                if (!chainedEnemies.includes(otherEnemy)) {
+                                                    const dist = Math.sqrt(
+                                                        (otherEnemy.x - lastChained.x)**2 + 
+                                                        (otherEnemy.y - lastChained.y)**2
+                                                    );
+                                                    if (dist < 250 && dist < nearestDist) {
+                                                        nearestDist = dist;
+                                                        nearest = otherEnemy;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            if (nearest) {
+                                                chainedEnemies.push(nearest);
+                                                nearest.health -= chainDamage;
+                                                
+                                                // Lightning particles between enemies
+                                                const steps = 10;
+                                                for (let s = 0; s <= steps; s++) {
+                                                    const t = s / steps;
+                                                    particles.push(new Particle(
+                                                        lastChained.x + (nearest.x - lastChained.x) * t,
+                                                        lastChained.y + (nearest.y - lastChained.y) * t,
+                                                        '#ffff00',
+                                                        (Math.random() - 0.5) * 3,
+                                                        (Math.random() - 0.5) * 3,
+                                                        15
+                                                    ));
+                                                }
+                                            }
+                                        }
+                                    }
                                     
                                     // Lifesteal
                                     if (this.upgrades.lifesteal > 0) {
@@ -1078,8 +1132,15 @@
                     }
                     
                     const angle = Math.atan2(dirY, dirX);
-                    const cooldown = Math.max(5, 20 - this.upgrades.rapidFire * 3);
-                    const knifeCount = 1 + this.upgrades.multishot;
+                    
+                    // Cooldown reduction from rapidFire, quickDraw, and focus
+                    let baseCooldown = 20;
+                    baseCooldown -= this.upgrades.rapidFire * 3;
+                    baseCooldown -= (this.upgrades.quickDraw || 0) * 2;
+                    baseCooldown -= (this.upgrades.focus || 0) * 1;
+                    const cooldown = Math.max(3, baseCooldown);
+                    
+                    const knifeCount = 1 + this.upgrades.multishot + (this.upgrades.tripleShot || 0) * 2;
                     const spreadAngle = 0.3;
                     
                     // Spawn knives ahead of player in the direction they're shooting
@@ -1367,7 +1428,7 @@
                                 if (dist > 0 && dist < 300) {
                                     enemy.x += (dx / dist) * 5;
                                     enemy.y += (dy / dist) * 5;
-                                    enemy.takeDamage(15);
+                                    enemy.takeDamage(25); // Increased from 15 to 25
                                 }
                             }
                             if (currentRoom.boss) {
@@ -1377,7 +1438,7 @@
                                 if (dist > 0 && dist < 300) {
                                     currentRoom.boss.x += (dx / dist) * 3;
                                     currentRoom.boss.y += (dy / dist) * 3;
-                                    currentRoom.boss.takeDamage(15);
+                                    currentRoom.boss.takeDamage(25); // Increased from 15 to 25
                                 }
                             }
                             // Black hole particles
@@ -1754,47 +1815,81 @@
                 ctx.fillStyle = '#4a2511';
                 ctx.fillRect(-this.width / 2, 0, this.width, 4);
                 
-                // Weapon (dagger)
+                ctx.restore();
+                
+                // Weapon (dagger) - drawn OUTSIDE scaled context so rotation works correctly
                 if (this.attacking && this.attackDirection !== null) {
                     ctx.save();
+                    ctx.translate(this.x, this.y);
                     ctx.rotate(this.attackDirection);
                     
-                    // Dagger blade
+                    // Slash trail effect (arc showing swing motion)
+                    ctx.strokeStyle = 'rgba(192, 192, 192, 0.3)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(25, 0, 20, -0.3, 0.3);
+                    ctx.stroke();
+                    
+                    // Dagger blade (larger and more visible)
                     ctx.fillStyle = '#c0c0c0';
                     ctx.beginPath();
-                    ctx.moveTo(40, 0);
-                    ctx.lineTo(10, -3);
-                    ctx.lineTo(10, 3);
+                    ctx.moveTo(50, 0);
+                    ctx.lineTo(15, -4);
+                    ctx.lineTo(15, 4);
                     ctx.closePath();
                     ctx.fill();
                     
                     // Blade shine
                     ctx.fillStyle = '#ffffff';
                     ctx.beginPath();
-                    ctx.moveTo(35, 0);
-                    ctx.lineTo(20, -1);
-                    ctx.lineTo(20, 1);
+                    ctx.moveTo(45, 0);
+                    ctx.lineTo(25, -1.5);
+                    ctx.lineTo(25, 1.5);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Blood edge (red tip)
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.moveTo(50, 0);
+                    ctx.lineTo(42, -2);
+                    ctx.lineTo(42, 2);
                     ctx.closePath();
                     ctx.fill();
                     
                     // Handle
                     ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(8, -2, 8, 4);
+                    ctx.fillRect(12, -3, 10, 6);
+                    
+                    // Handle wrap
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(13 + i * 3, -3);
+                        ctx.lineTo(13 + i * 3, 3);
+                        ctx.stroke();
+                    }
                     
                     // Pommel
                     ctx.fillStyle = '#ffd700';
                     ctx.beginPath();
-                    ctx.arc(8, 0, 3, 0, Math.PI * 2);
+                    ctx.arc(12, 0, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Pommel detail
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.beginPath();
+                    ctx.arc(12, 0, 2, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.restore();
                 }
-                
-                ctx.restore();
             }
 
             takeDamage(amount) {
-                if (this.invincible) return;
+                // Invincible during upgrade selection
+                if (this.invincible || showingUpgrade) return;
                 
                 // Evasion
                 if (this.upgrades.evasion > 0 && Math.random() < this.upgrades.evasion * 0.1) {
@@ -1806,9 +1901,15 @@
                     amount *= 0.5;
                 }
                 
-                // Iron Skin
+                // Iron Skin + Armor + Fortify
                 if (this.upgrades.ironSkin > 0) {
                     amount *= (1 - this.upgrades.ironSkin * 0.1);
+                }
+                if (this.upgrades.armor > 0) {
+                    amount *= (1 - (this.upgrades.armor || 0) * 0.08);
+                }
+                if (this.upgrades.fortify > 0) {
+                    amount *= (1 - (this.upgrades.fortify || 0) * 0.07);
                 }
                 
                 // Thorns
@@ -2211,24 +2312,46 @@
                 
                 ctx.restore();
                 
-                // Health bar
+                // Health bar with better visibility
                 const barWidth = this.width + 10;
-                const barHeight = 4;
-                const barY = this.y - this.height / 2 - 10;
+                const barHeight = 5;
+                const barY = this.y - this.height / 2 - 12;
                 
-                ctx.fillStyle = '#222';
+                // Black outline for contrast
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2);
+                
+                // Dark background
+                ctx.fillStyle = '#333';
                 ctx.fillRect(this.x - barWidth / 2, barY, barWidth, barHeight);
                 
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(this.x - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
+                // Health (green to yellow to red based on HP)
+                const healthPercent = this.health / this.maxHealth;
+                if (healthPercent > 0.6) {
+                    ctx.fillStyle = '#00ff00'; // Green
+                } else if (healthPercent > 0.3) {
+                    ctx.fillStyle = '#ffff00'; // Yellow
+                } else {
+                    ctx.fillStyle = '#ff0000'; // Red
+                }
+                ctx.fillRect(this.x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+                
+                // White outline for maximum visibility
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(this.x - barWidth / 2, barY, barWidth, barHeight);
             }
 
             takeDamage(amount) {
-                const baseDamage = player.attackDamage * (1 + player.upgrades.damage * 0.15);
-                const damageMultiplier = player.damageMultiplier * (mythicMode ? 5 : 1);
-                let finalDamage = amount * damageMultiplier;
+                // Use the actual damage amount passed in (for abilities like black hole)
+                let finalDamage = amount;
                 
-                // Critical hit
+                // Apply damage multiplier for mythic mode
+                const damageMultiplier = player.damageMultiplier * (mythicMode ? 5 : 1);
+                finalDamage *= damageMultiplier;
+                
+                // Critical hit chance
                 const critChance = 0.1 + (player.upgrades.critChance * 0.05);
                 if (Math.random() < critChance) {
                     const critDamage = 2 + (player.upgrades.critDamage * 0.3);
@@ -2250,7 +2373,7 @@
                 }
                 
                 // Death Mark bonus
-                if (player.markedEnemies.has(this)) {
+                if (player.markedEnemies && player.markedEnemies.has(this)) {
                     finalDamage *= 1.5;
                 }
                 
@@ -2313,16 +2436,16 @@
                 this.onGround = false;
                 
                 const bossStats = {
-                    'Crimson Knight': { health: 150, speed: 1.5, color: '#8b0000', damage: 8 },
-                    'Shadow Lord': { health: 120, speed: 2, color: '#2a2a2a', damage: 6 },
-                    'Frost Warden': { health: 140, speed: 1.2, color: '#00bfff', damage: 7 },
-                    'Flame Tyrant': { health: 130, speed: 1.8, color: '#ff4500', damage: 8 },
-                    'Stone Golem': { health: 200, speed: 0.8, color: '#696969', damage: 10 },
-                    'Toxic Assassin': { health: 110, speed: 2.5, color: '#228b22', damage: 6 },
-                    'Thunder King': { health: 160, speed: 1.8, color: '#ffd700', damage: 9 },
-                    'Necromancer': { health: 100, speed: 1.2, color: '#4b0082', damage: 7 },
-                    'Blood Reaper': { health: 150, speed: 2, color: '#dc143c', damage: 8 },
-                    'Void Walker': { health: 140, speed: 2.2, color: '#483d8b', damage: 7 }
+                    'Crimson Knight': { health: 200, speed: 1.8, color: '#8b0000', damage: 10 },
+                    'Shadow Lord': { health: 170, speed: 2.3, color: '#2a2a2a', damage: 8 },
+                    'Frost Warden': { health: 190, speed: 1.5, color: '#00bfff', damage: 9 },
+                    'Flame Tyrant': { health: 180, speed: 2.1, color: '#ff4500', damage: 10 },
+                    'Stone Golem': { health: 280, speed: 1, color: '#696969', damage: 13 },
+                    'Toxic Assassin': { health: 160, speed: 2.8, color: '#228b22', damage: 8 },
+                    'Thunder King': { health: 220, speed: 2.1, color: '#ffd700', damage: 11 },
+                    'Necromancer': { health: 150, speed: 1.5, color: '#4b0082', damage: 9 },
+                    'Blood Reaper': { health: 210, speed: 2.3, color: '#dc143c', damage: 10 },
+                    'Void Walker': { health: 200, speed: 2.5, color: '#483d8b', damage: 9 }
                 };
                 
                 const stats = bossStats[type];
@@ -3293,9 +3416,10 @@
 
         // Room class (keeping original castle look)
         class Room {
-            constructor(seed, isBossRoom = false) {
+            constructor(seed, isBossRoom = false, isSafeRoom = false) {
                 this.seed = seed;
                 this.isBossRoom = isBossRoom;
+                this.isSafeRoom = isSafeRoom;
                 this.enemies = [];
                 this.boss = null;
                 this.platforms = [];
@@ -3333,7 +3457,11 @@
                     height: 15
                 });
                 
-                if (this.isBossRoom) {
+                // Skip enemies if this is a safe room
+                if (this.isSafeRoom) {
+                    // No enemies in safe rooms!
+                    this.cleared = true;
+                } else if (this.isBossRoom) {
                     const bossTypes = [
                         'Crimson Knight', 'Shadow Lord', 'Frost Warden', 'Flame Tyrant',
                         'Stone Golem', 'Toxic Assassin', 'Thunder King', 'Necromancer',
@@ -3398,19 +3526,38 @@
             }
 
             draw() {
-                // Background gradient (castle stone walls)
+                // Background gradient (castle stone walls or safe room)
                 const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                gradient.addColorStop(0, '#3a3a3a');
-                gradient.addColorStop(1, '#1a1a1a');
+                if (this.isSafeRoom) {
+                    // Green tint for safe rooms
+                    gradient.addColorStop(0, '#2a4a2a');
+                    gradient.addColorStop(1, '#1a2a1a');
+                } else {
+                    gradient.addColorStop(0, '#3a3a3a');
+                    gradient.addColorStop(1, '#1a1a1a');
+                }
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Safe room indicator
+                if (this.isSafeRoom) {
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = 'bold 32px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = '#00ff00';
+                    ctx.shadowBlur = 20;
+                    ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 300) * 0.3;
+                    ctx.fillText('⭐ SAFE ROOM - CHECKPOINT ⭐', canvas.width / 2, 60);
+                    ctx.globalAlpha = 1;
+                    ctx.shadowBlur = 0;
+                }
                 
                 // Stone wall texture
                 for (let i = 0; i < 20; i++) {
                     for (let j = 0; j < 15; j++) {
                         const x = i * 60 + (j % 2) * 30;
                         const y = j * 50;
-                        ctx.strokeStyle = '#2a2a2a';
+                        ctx.strokeStyle = this.isSafeRoom ? '#3a4a3a' : '#2a2a2a';
                         ctx.lineWidth = 2;
                         ctx.strokeRect(x, y, 60, 50);
                     }
@@ -3747,6 +3894,9 @@
                     applyUpgrade(upgradeKey);
                     upgradeScreen.style.display = 'none';
                     
+                    // Unfreeze enemies now that player has selected an upgrade
+                    showingUpgrade = false;
+                    
                     // Upgrade particles
                     for (let i = 0; i < 50; i++) {
                         particles.push(new Particle(
@@ -3974,15 +4124,22 @@
                 }
             }
             
-            // Update projectiles
+            // Update projectiles (freeze enemy projectiles during upgrade screen)
             for (let i = projectiles.length - 1; i >= 0; i--) {
-                if (!projectiles[i].update()) {
+                const proj = projectiles[i];
+                
+                // Skip updating enemy projectiles if showing upgrade
+                if (showingUpgrade && proj.owner === 'enemy') {
+                    proj.draw();
+                    continue;
+                }
+                
+                if (!proj.update()) {
                     projectiles.splice(i, 1);
                 } else {
-                    projectiles[i].draw();
+                    proj.draw();
                     
                     // Collision detection
-                    const proj = projectiles[i];
                     
                     if (proj.owner === 'player') {
                         // vs enemies
@@ -4065,25 +4222,33 @@
             if (roomCleared && player.x > canvas.width - 60) {
                 roomNumber++;
                 
+                // Determine room type
                 const isBossRoom = (roomNumber % 5 === 0);
-                currentRoom = new Room(roomNumber * 12345, isBossRoom);
+                const isSafeRoom = (roomNumber % 5 === 1) && roomNumber > 1; // Safe room right after boss
+                
+                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom);
                 
                 player.x = 100;
                 player.y = canvas.height - 200;
                 player.vy = 0;
                 player.vx = 0;
-                player.health = Math.min(player.health + 20, player.maxHealth);
+                
+                // Heal more in safe rooms
+                if (isSafeRoom) {
+                    player.health = player.maxHealth; // Full heal in safe room!
+                } else {
+                    player.health = Math.min(player.health + 20, player.maxHealth);
+                }
+                
                 projectiles = [];
                 particles = [];
                 shadowClones = [];
                 
-                // Show upgrade screen
-                if (!isBossRoom) {
+                // Show upgrade screen (not in boss rooms, always in safe rooms)
+                if (isSafeRoom || !isBossRoom) {
                     showingUpgrade = true;
                     showUpgradeScreen();
-                    setTimeout(() => {
-                        showingUpgrade = false;
-                    }, 100);
+                    // Don't automatically unfreeze - wait for player to pick an upgrade
                 }
             }
             
