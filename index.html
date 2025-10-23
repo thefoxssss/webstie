@@ -552,8 +552,8 @@
                 this.jumpPower = 13;
                 this.gravity = 0.6;
                 this.onGround = false;
-                this.health = 100;
-                this.maxHealth = 100;
+                this.health = 150; // Increased for easier gameplay
+                this.maxHealth = 150;
                 this.facing = 1;
                 
                 // Combat
@@ -798,6 +798,81 @@
                                 }, i * 50);
                             }
                             break;
+                            
+                        case 'divineShield':
+                            // Invulnerable for 4 seconds
+                            this.invincible = true;
+                            setTimeout(() => {
+                                this.invincible = false;
+                            }, 4000);
+                            break;
+                            
+                        case 'stormCaller':
+                            // Lightning strikes all enemies
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.takeDamage(100);
+                                for (let i = 0; i < 20; i++) {
+                                    particles.push(new Particle(
+                                        enemy.x, enemy.y, '#ffff00',
+                                        (Math.random() - 0.5) * 10,
+                                        (Math.random() - 0.5) * 10,
+                                        30
+                                    ));
+                                }
+                            }
+                            if (currentRoom.boss) {
+                                currentRoom.boss.takeDamage(100);
+                            }
+                            break;
+                            
+                        case 'timestrike':
+                            // Stop time for 5 seconds
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.frozen = true;
+                                setTimeout(() => enemy.frozen = false, 5000);
+                            }
+                            if (currentRoom.boss) {
+                                currentRoom.boss.frozen = true;
+                                setTimeout(() => currentRoom.boss.frozen = false, 5000);
+                            }
+                            break;
+                            
+                        case 'soulReaper':
+                            // Instantly kill all non-boss enemies
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.health = 0;
+                                for (let i = 0; i < 30; i++) {
+                                    particles.push(new Particle(
+                                        enemy.x, enemy.y, '#8b008b',
+                                        (Math.random() - 0.5) * 15,
+                                        (Math.random() - 0.5) * 15,
+                                        40
+                                    ));
+                                }
+                            }
+                            break;
+                            
+                        case 'ragnarok':
+                            // Screen-wide explosion
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.takeDamage(200);
+                            }
+                            if (currentRoom.boss) {
+                                currentRoom.boss.takeDamage(200);
+                            }
+                            
+                            // Massive explosion effect
+                            for (let i = 0; i < 200; i++) {
+                                particles.push(new Particle(
+                                    Math.random() * canvas.width,
+                                    Math.random() * canvas.height,
+                                    ['#ff0000', '#ff8800', '#ffff00'][Math.floor(Math.random() * 3)],
+                                    (Math.random() - 0.5) * 20,
+                                    (Math.random() - 0.5) * 20,
+                                    50
+                                ));
+                            }
+                            break;
                     }
                 }
             }
@@ -888,6 +963,61 @@
                                     proj.homing = true;
                                     projectiles.push(proj);
                                 }, i * 50);
+                            }
+                            break;
+                        case 'divineShield':
+                            this.invincible = true;
+                            setTimeout(() => this.invincible = false, 4000);
+                            break;
+                        case 'stormCaller':
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.takeDamage(100);
+                                for (let i = 0; i < 20; i++) {
+                                    particles.push(new Particle(
+                                        enemy.x, enemy.y, '#ffff00',
+                                        (Math.random() - 0.5) * 10,
+                                        (Math.random() - 0.5) * 10,
+                                        30
+                                    ));
+                                }
+                            }
+                            if (currentRoom.boss) currentRoom.boss.takeDamage(100);
+                            break;
+                        case 'timestrike':
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.frozen = true;
+                                setTimeout(() => enemy.frozen = false, 5000);
+                            }
+                            if (currentRoom.boss) {
+                                currentRoom.boss.frozen = true;
+                                setTimeout(() => currentRoom.boss.frozen = false, 5000);
+                            }
+                            break;
+                        case 'soulReaper':
+                            for (const enemy of currentRoom.enemies) {
+                                enemy.health = 0;
+                                for (let i = 0; i < 30; i++) {
+                                    particles.push(new Particle(
+                                        enemy.x, enemy.y, '#8b008b',
+                                        (Math.random() - 0.5) * 15,
+                                        (Math.random() - 0.5) * 15,
+                                        40
+                                    ));
+                                }
+                            }
+                            break;
+                        case 'ragnarok':
+                            for (const enemy of currentRoom.enemies) enemy.takeDamage(200);
+                            if (currentRoom.boss) currentRoom.boss.takeDamage(200);
+                            for (let i = 0; i < 200; i++) {
+                                particles.push(new Particle(
+                                    Math.random() * canvas.width,
+                                    Math.random() * canvas.height,
+                                    ['#ff0000', '#ff8800', '#ffff00'][Math.floor(Math.random() * 3)],
+                                    (Math.random() - 0.5) * 20,
+                                    (Math.random() - 0.5) * 20,
+                                    50
+                                ));
                             }
                             break;
                     }
@@ -1137,11 +1267,11 @@
                 
                 // Enemy types: basic (sword), advanced (archer), heavy (tank), assassin (fast), mage (ranged caster)
                 const enemyStats = {
-                    'basic': { health: 50, speed: 2, color: '#808080', damage: 10 },
-                    'advanced': { health: 60, speed: 2.5, color: '#8b4513', damage: 12 },
-                    'heavy': { health: 100, speed: 1, color: '#4a4a4a', damage: 15 },
-                    'assassin': { health: 35, speed: 4, color: '#1a1a1a', damage: 8 },
-                    'mage': { health: 40, speed: 1.5, color: '#4b0082', damage: 10 }
+                    'basic': { health: 35, speed: 2, color: '#808080', damage: 8 },
+                    'advanced': { health: 40, speed: 2.5, color: '#8b4513', damage: 10 },
+                    'heavy': { health: 70, speed: 1, color: '#4a4a4a', damage: 12 },
+                    'assassin': { health: 25, speed: 4, color: '#1a1a1a', damage: 6 },
+                    'mage': { health: 25, speed: 1.5, color: '#4b0082', damage: 6 } // Reduced from 30 HP and 8 damage
                 };
                 
                 const stats = enemyStats[type] || enemyStats['basic'];
@@ -1165,6 +1295,17 @@
             }
 
             update() {
+                // If frozen by Time Stop, skip AI
+                if (this.frozen) {
+                    this.vy += this.gravity;
+                    this.y += this.vy;
+                    if (this.y > canvas.height - 50 - this.height / 2) {
+                        this.y = canvas.height - 50 - this.height / 2;
+                        this.vy = 0;
+                    }
+                    return;
+                }
+                
                 this.vy += this.gravity;
                 this.x += this.vx;
                 this.y += this.vy;
@@ -1291,26 +1432,26 @@
                         break;
                         
                     case 'mage':
-                        // Ranged caster, teleports occasionally
+                        // Ranged caster, teleports occasionally (NERFED)
                         if (dist < 400 && dist > 200) {
                             this.vx = 0;
                             if (this.shootCooldown <= 0) {
-                                this.shootCooldown = 70;
+                                this.shootCooldown = 100; // Increased from 70
                                 const angle = Math.atan2(dy, dx);
-                                // Fire burst of 3 projectiles
-                                for (let i = -1; i <= 1; i++) {
+                                // Fire burst of 2 projectiles (reduced from 3)
+                                for (let i = -0.5; i <= 0.5; i++) {
                                     projectiles.push(new Projectile(
                                         this.x,
                                         this.y,
                                         angle + i * 0.2,
-                                        9,
+                                        8, // Reduced speed from 9
                                         'enemy'
                                     ));
                                 }
                             }
-                        } else if (dist < 200 && this.teleportCooldown <= 0) {
-                            // Teleport away (with bounds checking)
-                            this.teleportCooldown = 150;
+                        } else if (dist < 150 && this.teleportCooldown <= 0) { // Changed from 200 to 150
+                            // Teleport away (with bounds checking) - less frequent
+                            this.teleportCooldown = 200; // Increased from 150
                             const teleAngle = Math.random() * Math.PI * 2;
                             let newX = this.x + Math.cos(teleAngle) * 150;
                             let newY = this.y + Math.sin(teleAngle) * 100;
@@ -1582,18 +1723,18 @@
                 this.facing = -1;
                 this.onGround = false;
                 
-                // Boss stats based on type - MUCH HARDER
+                // Boss stats based on type - EASIER (Further Reduced)
                 const bossStats = {
-                    'Crimson Knight': { health: 800, speed: 4, color: '#8b0000', damage: 25 },
-                    'Shadow Lord': { health: 600, speed: 6, color: '#2a2a2a', damage: 20 },
-                    'Frost Warden': { health: 700, speed: 3, color: '#00bfff', damage: 22 },
-                    'Flame Tyrant': { health: 650, speed: 5, color: '#ff4500', damage: 28 },
-                    'Stone Golem': { health: 1000, speed: 2, color: '#696969', damage: 35 },
-                    'Toxic Assassin': { health: 550, speed: 7, color: '#228b22', damage: 18 },
-                    'Thunder King': { health: 750, speed: 4.5, color: '#ffd700', damage: 30 },
-                    'Necromancer': { health: 500, speed: 3, color: '#4b0082', damage: 20 },
-                    'Blood Reaper': { health: 700, speed: 5, color: '#dc143c', damage: 26 },
-                    'Void Walker': { health: 650, speed: 6, color: '#483d8b', damage: 24 }
+                    'Crimson Knight': { health: 400, speed: 3, color: '#8b0000', damage: 15 },
+                    'Shadow Lord': { health: 350, speed: 4.5, color: '#2a2a2a', damage: 12 },
+                    'Frost Warden': { health: 380, speed: 2.5, color: '#00bfff', damage: 14 },
+                    'Flame Tyrant': { health: 360, speed: 3.5, color: '#ff4500', damage: 16 },
+                    'Stone Golem': { health: 550, speed: 1.5, color: '#696969', damage: 20 },
+                    'Toxic Assassin': { health: 320, speed: 5.5, color: '#228b22', damage: 12 },
+                    'Thunder King': { health: 420, speed: 3.5, color: '#ffd700', damage: 18 },
+                    'Necromancer': { health: 300, speed: 2.5, color: '#4b0082', damage: 14 },
+                    'Blood Reaper': { health: 400, speed: 4, color: '#dc143c', damage: 16 },
+                    'Void Walker': { health: 380, speed: 4.5, color: '#483d8b', damage: 15 }
                 };
                 
                 const stats = bossStats[type];
@@ -1611,6 +1752,17 @@
             }
 
             update() {
+                // If frozen by Time Stop, skip AI
+                if (this.frozen) {
+                    this.vy += this.gravity;
+                    this.y += this.vy;
+                    if (this.y > canvas.height - 50 - this.height / 2) {
+                        this.y = canvas.height - 50 - this.height / 2;
+                        this.vy = 0;
+                    }
+                    return;
+                }
+                
                 this.vy += this.gravity;
                 this.x += this.vx;
                 this.y += this.vy;
@@ -1636,11 +1788,11 @@
                     this.onGround = true;
                 }
                 
-                // Phase transition - gets MUCH harder at 50% HP
+                // Phase transition - gets harder at 50% HP (reduced difficulty)
                 if (this.health < this.maxHealth / 2 && this.phase === 1) {
                     this.phase = 2;
-                    this.speed *= 1.8;
-                    this.baseDamage *= 1.5;
+                    this.speed *= 1.4; // Was 1.8
+                    this.baseDamage *= 1.2; // Was 1.5
                     
                     // Big phase change effect
                     for (let i = 0; i < 80; i++) {
@@ -1664,8 +1816,8 @@
                 if (this.specialCooldown > 0) this.specialCooldown--;
                 
                 // Faster cooldowns in phase 2
-                const attackSpeed = this.phase === 2 ? 0.6 : 1;
-                const specialSpeed = this.phase === 2 ? 0.5 : 1;
+                const attackSpeed = this.phase === 2 ? 0.7 : 1; // Less aggressive in phase 2 (was 0.6)
+                const specialSpeed = this.phase === 2 ? 0.6 : 1; // Less aggressive in phase 2 (was 0.5)
                 
                 // Boss-specific aggressive behaviors
                 switch(this.type) {
@@ -1690,12 +1842,12 @@
                         break;
                         
                     case 'Shadow Lord':
-                        // Teleport frequently and unpredictably
-                        if (this.specialCooldown <= 0 && (dist > 150 || Math.random() < 0.3)) {
-                            this.specialCooldown = Math.floor(60 * specialSpeed);
+                        // Teleport frequently and unpredictably (NERFED)
+                        if (this.specialCooldown <= 0 && dist > 200) { // Only teleport when far away, not randomly
+                            this.specialCooldown = Math.floor(120 * specialSpeed); // Increased from 60 - teleports half as often
                             const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * Math.PI;
-                            let newX = player.x + Math.cos(angle) * 120;
-                            let newY = player.y + Math.sin(angle) * 80;
+                            let newX = player.x + Math.cos(angle) * 150; // Teleport farther away
+                            let newY = player.y + Math.sin(angle) * 100;
                             
                             // Keep within bounds
                             newX = Math.max(60, Math.min(canvas.width - 60, newX));
@@ -1704,8 +1856,7 @@
                             this.x = newX;
                             this.y = newY;
                             
-                            // Teleport attack
-                            if (dist < 100) player.takeDamage(this.baseDamage);
+                            // No damage on teleport anymore
                             
                             for (let i = 0; i < 30; i++) {
                                 particles.push(new Particle(
@@ -1720,7 +1871,7 @@
                         if (dist > 60) {
                             this.vx = this.facing * this.speed;
                         } else if (this.attackCooldown <= 0) {
-                            this.attackCooldown = Math.floor(25 * attackSpeed);
+                            this.attackCooldown = Math.floor(30 * attackSpeed); // Increased from 25
                             if (dist < 75) player.takeDamage(this.baseDamage);
                         }
                         break;
@@ -2398,7 +2549,17 @@
                     this.boss = new Boss(canvas.width / 2, canvas.height - 200, bossType);
                 } else {
                     // Generate enemies on platforms with variety
-                    const enemyCount = Math.min(2 + Math.floor(rand() * 4), this.platforms.length);
+                    // Progressive difficulty - start with fewer enemies
+                    let baseEnemyCount = 2 + Math.floor(rand() * 4);
+                    
+                    // Scale down enemy count for early rooms (chambers 1-3)
+                    if (this.seed < 3 * 12345) { // First 3 rooms
+                        baseEnemyCount = 1 + Math.floor(rand() * 2); // 1-2 enemies
+                    } else if (this.seed < 5 * 12345) { // Rooms 4-5
+                        baseEnemyCount = 2 + Math.floor(rand() * 2); // 2-3 enemies
+                    }
+                    
+                    const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
                     const usedPlatforms = [];
                     
                     const enemyTypes = ['basic', 'advanced', 'heavy', 'assassin', 'mage'];
@@ -2415,14 +2576,32 @@
                             usedPlatforms.push(platformIndex);
                             const platform = this.platforms[platformIndex];
                             
-                            // Varied enemy type selection
+                            // Varied enemy type selection - fewer mages in early rooms
                             const typeRoll = rand();
                             let type;
-                            if (typeRoll < 0.3) type = 'basic';
-                            else if (typeRoll < 0.55) type = 'advanced';
-                            else if (typeRoll < 0.7) type = 'heavy';
-                            else if (typeRoll < 0.85) type = 'assassin';
-                            else type = 'mage';
+                            
+                            // First 3 rooms - mostly basic enemies, no mages
+                            if (this.seed < 3 * 12345) {
+                                if (typeRoll < 0.6) type = 'basic';
+                                else if (typeRoll < 0.9) type = 'advanced';
+                                else type = 'assassin';
+                            }
+                            // Rooms 4-5 - introduce variety, very few mages
+                            else if (this.seed < 5 * 12345) {
+                                if (typeRoll < 0.35) type = 'basic';
+                                else if (typeRoll < 0.6) type = 'advanced';
+                                else if (typeRoll < 0.75) type = 'heavy';
+                                else if (typeRoll < 0.9) type = 'assassin';
+                                else type = 'mage';
+                            }
+                            // Later rooms - full variety
+                            else {
+                                if (typeRoll < 0.3) type = 'basic';
+                                else if (typeRoll < 0.55) type = 'advanced';
+                                else if (typeRoll < 0.7) type = 'heavy';
+                                else if (typeRoll < 0.85) type = 'assassin';
+                                else type = 'mage';
+                            }
                             
                             // Spawn enemy in middle of platform
                             this.enemies.push(new Enemy(
@@ -2582,10 +2761,15 @@
         let showingUpgrade = false;
         let gameOver = false;
         
+        // Secret cheat code system
+        let cheatCode = '';
+        let mythicMode = false;
+        const SECRET_CODE = 'goldengod'; // Type this for mythics only!
+        
         // Checkpoint system
         let checkpoint = {
             room: 1,
-            health: 100,
+            health: 150,
             upgrades: {},
             special1: null,
             special2: null
@@ -2609,6 +2793,7 @@
             
             player = new Player(100, canvas.height - 200);
             player.health = checkpoint.health;
+            player.maxHealth = 150;
             player.upgrades = JSON.parse(JSON.stringify(checkpoint.upgrades));
             player.special1 = checkpoint.special1;
             player.special2 = checkpoint.special2;
@@ -2616,14 +2801,12 @@
             projectiles = [];
             particles = [];
             trails = [];
+            shadowClones = [];
             gameOver = false;
-            gameStarted = true; // Make sure game is started
+            gameStarted = true;
             
             document.getElementById('gameOverScreen').style.display = 'none';
             updateSpecialBinds();
-            
-            // Restart game loop
-            requestAnimationFrame(gameLoop);
         }
 
         function resetGame() {
@@ -2633,13 +2816,14 @@
             projectiles = [];
             particles = [];
             trails = [];
+            shadowClones = [];
             gameOver = false;
-            gameStarted = true; // Make sure game is started
+            gameStarted = true;
             
             // Reset checkpoint
             checkpoint = {
                 room: 1,
-                health: 100,
+                health: 150,
                 upgrades: {},
                 special1: null,
                 special2: null
@@ -2647,9 +2831,6 @@
             
             document.getElementById('gameOverScreen').style.display = 'none';
             updateSpecialBinds();
-            
-            // Restart game loop
-            requestAnimationFrame(gameLoop);
         }
 
         function updateSpecialBinds() {
@@ -2878,12 +3059,30 @@
                 type: "ability",
                 cooldown: 1000
             },
+            divineShield: {
+                name: "Divine Shield",
+                description: "Invulnerable for 4 seconds",
+                maxLevel: 1,
+                icon: "🛡️",
+                rarity: "legendary",
+                type: "ability",
+                cooldown: 800
+            },
+            stormCaller: {
+                name: "Storm Caller",
+                description: "Lightning strikes all enemies",
+                maxLevel: 1,
+                icon: "⚡",
+                rarity: "legendary",
+                type: "ability",
+                cooldown: 750
+            },
             
-            // ACTIVE ABILITIES - Mythic
+            // ACTIVE ABILITIES - Mythic (Repeatable in Golden God mode!)
             godMode: {
                 name: "Ascension",
                 description: "Invincible + 10x damage for 5 seconds",
-                maxLevel: 1,
+                maxLevel: 99,
                 icon: "✨",
                 rarity: "mythic",
                 type: "ability",
@@ -2892,7 +3091,7 @@
             armageddon: {
                 name: "Armageddon",
                 description: "Meteors rain down destroying everything",
-                maxLevel: 1,
+                maxLevel: 99,
                 icon: "☄️",
                 rarity: "mythic",
                 type: "ability",
@@ -2901,22 +3100,113 @@
             infinityEdge: {
                 name: "Infinity Edge",
                 description: "Summon 20 homing blades for 10 seconds",
-                maxLevel: 1,
+                maxLevel: 99,
                 icon: "⚔️",
                 rarity: "mythic",
                 type: "ability",
                 cooldown: 1400
+            },
+            timestrike: {
+                name: "Timestrike",
+                description: "Stop time and attack freely for 5 seconds",
+                maxLevel: 99,
+                icon: "⏱️",
+                rarity: "mythic",
+                type: "ability",
+                cooldown: 1600
+            },
+            soulReaper: {
+                name: "Soul Reaper",
+                description: "Instantly kill all non-boss enemies",
+                maxLevel: 99,
+                icon: "💀",
+                rarity: "mythic",
+                type: "ability",
+                cooldown: 1800
+            },
+            ragnarok: {
+                name: "Ragnarok",
+                description: "Screen-wide explosion of devastation",
+                maxLevel: 99,
+                icon: "💥",
+                rarity: "mythic",
+                type: "ability",
+                cooldown: 2000
             }
         };
 
         function getRandomUpgrades(count = 3) {
+            // Initialize upgrades object if needed
+            if (!player.upgrades) {
+                player.upgrades = {};
+            }
+            
+            // MYTHIC MODE - ONLY mythics, can be repeated!
+            if (mythicMode) {
+                const allMythics = ['godMode', 'armageddon', 'infinityEdge', 'timestrike', 'soulReaper', 'ragnarok'];
+                
+                const mythicUpgrades = allMythics.filter(key => {
+                    const upgrade = upgradeDefinitions[key];
+                    const currentLevel = player.upgrades[key] || 0;
+                    return currentLevel < upgrade.maxLevel;
+                });
+                
+                // If we have mythics available, ONLY show mythics
+                if (mythicUpgrades.length > 0) {
+                    const selected = [];
+                    
+                    // Allow duplicates to fill all 3 slots
+                    for (let i = 0; i < count; i++) {
+                        if (mythicUpgrades.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * mythicUpgrades.length);
+                            selected.push(mythicUpgrades[randomIndex]);
+                        }
+                    }
+                    
+                    return selected;
+                }
+            }
+            
+            // Normal mode - weighted selection with BETTER mythic rates
             const available = Object.keys(upgradeDefinitions).filter(key => {
-                return player.upgrades[key] < upgradeDefinitions[key].maxLevel;
+                const currentLevel = player.upgrades[key] || 0;
+                return currentLevel < upgradeDefinitions[key].maxLevel;
             });
             
-            // Shuffle and take first 'count' items
-            const shuffled = available.sort(() => Math.random() - 0.5);
-            return shuffled.slice(0, Math.min(count, available.length));
+            // Weighted random selection - MUCH better mythic rates
+            const rarityWeights = {
+                common: 30,      // Reduced from 40
+                uncommon: 25,    // Reduced from 30
+                rare: 20,        // Same
+                epic: 18,        // Increased from 15
+                legendary: 15,   // Increased from 10
+                mythic: 20       // MASSIVELY increased from 8!
+            };
+            
+            const weightedPool = [];
+            available.forEach(key => {
+                const upgrade = upgradeDefinitions[key];
+                const weight = rarityWeights[upgrade.rarity] || 20;
+                for (let i = 0; i < weight; i++) {
+                    weightedPool.push(key);
+                }
+            });
+            
+            // Shuffle weighted pool
+            const shuffled = weightedPool.sort(() => Math.random() - 0.5);
+            
+            // Pick unique upgrades
+            const selected = [];
+            const seen = new Set();
+            for (const key of shuffled) {
+                if (!seen.has(key)) {
+                    selected.push(key);
+                    seen.add(key);
+                    if (selected.length >= count) break;
+                }
+            }
+            
+            return selected;
         }
 
         function showUpgradeScreen() {
@@ -2929,7 +3219,7 @@
             
             upgrades.forEach(upgradeKey => {
                 const upgrade = upgradeDefinitions[upgradeKey];
-                const currentLevel = player.upgrades[upgradeKey];
+                const currentLevel = player.upgrades[upgradeKey] || 0;
                 
                 const card = document.createElement('div');
                 card.className = 'upgrade-card';
@@ -2952,6 +3242,10 @@
                 `;
                 
                 card.onclick = () => {
+                    // Initialize if needed
+                    if (!player.upgrades[upgradeKey]) {
+                        player.upgrades[upgradeKey] = 0;
+                    }
                     player.upgrades[upgradeKey]++;
                     
                     // Assign to special slot if it's an ability type
@@ -3003,6 +3297,48 @@
         });
 
         window.addEventListener('keydown', (e) => {
+            // Cheat code detection
+            if (e.key.length === 1) {
+                cheatCode += e.key.toLowerCase();
+                // Keep only last 10 characters
+                if (cheatCode.length > 10) {
+                    cheatCode = cheatCode.substring(cheatCode.length - 10);
+                }
+                
+                // Check if cheat code matches
+                if (cheatCode.endsWith(SECRET_CODE)) {
+                    mythicMode = !mythicMode;
+                    cheatCode = '';
+                    
+                    console.log('MYTHIC MODE:', mythicMode ? 'ACTIVATED' : 'DEACTIVATED');
+                    
+                    // Visual feedback
+                    const message = mythicMode ? '✨ MYTHIC MODE ACTIVATED! ✨' : 'Mythic Mode Deactivated';
+                    const color = mythicMode ? '#ffd700' : '#888';
+                    
+                    for (let i = 0; i < 100; i++) {
+                        particles.push(new Particle(
+                            player.x, player.y, color,
+                            (Math.random() - 0.5) * 20,
+                            (Math.random() - 0.5) * 20,
+                            60
+                        ));
+                    }
+                    
+                    // Show message on screen briefly
+                    ctx.save();
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 48px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                    ctx.shadowBlur = 10;
+                    setTimeout(() => {
+                        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+                    }, 100);
+                    ctx.restore();
+                }
+            }
+            
             if (!gameStarted) {
                 gameStarted = true;
                 document.getElementById('titleScreen').classList.add('fade-out');
@@ -3543,6 +3879,20 @@
             document.getElementById('room').textContent = roomNumber;
             const enemyCount = currentRoom.enemies.length + (currentRoom.boss && currentRoom.boss.health > 0 ? 1 : 0);
             document.getElementById('enemies').textContent = enemyCount;
+            
+            // Draw mythic mode indicator
+            if (mythicMode) {
+                ctx.save();
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 24px Courier New';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+                ctx.shadowBlur = 10;
+                const pulse = 0.8 + Math.sin(Date.now() / 200) * 0.2;
+                ctx.globalAlpha = pulse;
+                ctx.fillText('✨ MYTHIC MODE ✨', canvas.width / 2, 30);
+                ctx.restore();
+            }
             
             // Game over
             if (player.health <= 0 && !gameOver) {
