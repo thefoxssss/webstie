@@ -81,23 +81,26 @@
             position: absolute;
             top: 20px;
             left: 250px;
-            background: rgba(0, 0, 0, 0.9);
-            border: 3px solid #ff00ff;
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #ffd700;
             padding: 15px;
             border-radius: 5px;
             max-height: 80vh;
+            min-width: 400px;
+            max-width: 500px;
             overflow-y: auto;
             display: none;
             z-index: 100;
-            box-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
         }
 
         #mythicPanel h2 {
-            color: #ff00ff;
+            color: #ffd700;
             text-align: center;
             margin-bottom: 15px;
-            font-size: 20px;
-            text-shadow: 0 0 10px #ff00ff;
+            font-size: 18px;
+            text-shadow: 0 0 15px #ffd700;
+            animation: mythicPulse 2s ease-in-out infinite;
         }
 
         .mythic-ability {
@@ -164,32 +167,35 @@
             position: absolute;
             top: 120px;
             left: 20px;
-            background: linear-gradient(135deg, #8b008b, #4b0082);
-            border: 3px solid #ff00ff;
-            padding: 10px 15px;
-            color: #fff;
+            background: linear-gradient(135deg, #daa520, #ffd700);
+            border: 3px solid #ffd700;
+            padding: 12px 18px;
+            color: #000;
             font-size: 14px;
+            font-weight: bold;
             font-family: 'Courier New', monospace;
             cursor: pointer;
             display: none;
             z-index: 10;
             border-radius: 5px;
-            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-            animation: mythicPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            animation: godPulse 2s ease-in-out infinite;
         }
 
-        @keyframes mythicPulse {
+        @keyframes godPulse {
             0%, 100% {
-                box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
             }
             50% {
-                box-shadow: 0 0 25px rgba(255, 0, 255, 0.8);
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
             }
         }
 
         #mythicToggleBtn:hover {
-            background: linear-gradient(135deg, #9932cc, #8b008b);
-            transform: scale(1.05);
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            transform: scale(1.08);
+            box-shadow: 0 0 35px rgba(255, 215, 0, 1);
+        }
         }
 
         .health-bar {
@@ -613,11 +619,22 @@
     </div>
     
     <!-- Mythic Mode Toggle Button -->
-    <button id="mythicToggleBtn">🔮 Mythic Panel</button>
+    <button id="mythicToggleBtn">⚡ GOD PANEL - ALL ABILITIES</button>
     
     <!-- Mythic Mode Ability Panel -->
     <div id="mythicPanel">
-        <h2>✨ MYTHIC ABILITIES ✨</h2>
+        <h2>⚡ GOLDEN GOD PANEL - ALL ABILITIES ⚡</h2>
+        <input type="text" id="abilitySearch" placeholder="🔍 Search abilities..." style="
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-family: 'Courier New', monospace;
+            border-radius: 3px;
+            outline: none;
+        ">
         <div id="mythicAbilityList"></div>
     </div>
     
@@ -7300,26 +7317,93 @@
             const panel = document.getElementById('mythicAbilityList');
             panel.innerHTML = '';
             
-            // Add all mythic abilities only
-            for (const [key, upgrade] of Object.entries(upgradeDefinitions)) {
-                // Only show mythic rarity
-                if (upgrade.rarity !== 'mythic') continue;
+            // Group abilities by rarity
+            const rarityOrder = ['mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common'];
+            const rarityColors = {
+                'mythic': '#ff00ff',
+                'legendary': '#ffd700',
+                'epic': '#a020f0',
+                'rare': '#0080ff',
+                'uncommon': '#00ff00',
+                'common': '#ffffff'
+            };
+            
+            for (const rarity of rarityOrder) {
+                // Get all abilities of this rarity
+                const abilitiesOfRarity = Object.entries(upgradeDefinitions)
+                    .filter(([key, upgrade]) => upgrade.rarity === rarity);
                 
-                const abilityDiv = document.createElement('div');
-                abilityDiv.className = 'mythic-ability';
-                abilityDiv.dataset.ability = key;
+                if (abilitiesOfRarity.length === 0) continue;
                 
-                abilityDiv.innerHTML = `
-                    <span class="mythic-ability-name">${upgrade.name}</span>
-                    <div class="mythic-ability-toggle"></div>
+                // Add rarity header
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'rarity-header';
+                headerDiv.dataset.rarity = rarity;
+                headerDiv.style.cssText = `
+                    margin-top: 15px;
+                    padding: 8px;
+                    background: linear-gradient(135deg, ${rarityColors[rarity]}33, ${rarityColors[rarity]}11);
+                    border-left: 4px solid ${rarityColors[rarity]};
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: ${rarityColors[rarity]};
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    text-shadow: 0 0 10px ${rarityColors[rarity]};
                 `;
+                headerDiv.textContent = `${rarity} (${abilitiesOfRarity.length})`;
+                panel.appendChild(headerDiv);
                 
-                abilityDiv.addEventListener('click', () => {
-                    toggleMythicAbility(key, abilityDiv);
+                // Add all abilities of this rarity
+                for (const [key, upgrade] of abilitiesOfRarity) {
+                    const abilityDiv = document.createElement('div');
+                    abilityDiv.className = 'mythic-ability';
+                    abilityDiv.dataset.ability = key;
+                    abilityDiv.dataset.rarity = rarity;
+                    abilityDiv.dataset.name = upgrade.name.toLowerCase();
+                    abilityDiv.style.borderLeft = `3px solid ${rarityColors[rarity]}`;
+                    
+                    abilityDiv.innerHTML = `
+                        <span class="mythic-ability-name" style="color: ${rarityColors[rarity]};">
+                            ${upgrade.name}
+                            ${upgrade.type === 'special' ? ' ⚡' : ''}
+                        </span>
+                        <div class="mythic-ability-toggle"></div>
+                    `;
+                    
+                    abilityDiv.addEventListener('click', () => {
+                        toggleMythicAbility(key, abilityDiv);
+                    });
+                    
+                    panel.appendChild(abilityDiv);
+                }
+            }
+            
+            // Add search functionality
+            const searchBox = document.getElementById('abilitySearch');
+            searchBox.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const abilities = panel.querySelectorAll('.mythic-ability');
+                const headers = panel.querySelectorAll('.rarity-header');
+                
+                abilities.forEach(ability => {
+                    const abilityName = ability.dataset.name;
+                    if (abilityName.includes(searchTerm)) {
+                        ability.style.display = 'flex';
+                    } else {
+                        ability.style.display = 'none';
+                    }
                 });
                 
-                panel.appendChild(abilityDiv);
-            }
+                // Hide/show headers based on visible abilities
+                headers.forEach(header => {
+                    const rarity = header.dataset.rarity;
+                    const visibleInRarity = Array.from(abilities).some(
+                        a => a.dataset.rarity === rarity && a.style.display !== 'none'
+                    );
+                    header.style.display = visibleInRarity ? 'block' : 'none';
+                });
+            });
         }
         
         function toggleMythicAbility(abilityKey, element) {
@@ -7405,15 +7489,15 @@
                     mythicMode = true;
                     cheatCode = '';
                     
-                    // MYTHIC MODE ACTIVATION!
-                    for (let i = 0; i < 200; i++) {
+                    // GOLDEN GOD MODE ACTIVATION!
+                    for (let i = 0; i < 300; i++) {
                         particles.push(new Particle(
                             Math.random() * canvas.width,
                             Math.random() * canvas.height,
-                            '#ff00ff',
-                            (Math.random() - 0.5) * 20,
-                            (Math.random() - 0.5) * 20,
-                            60
+                            ['#ffd700', '#ffaa00', '#ffed4e'][Math.floor(Math.random() * 3)],
+                            (Math.random() - 0.5) * 25,
+                            (Math.random() - 0.5) * 25,
+                            80
                         ));
                     }
                     
@@ -7423,7 +7507,7 @@
                     // Initialize mythic panel
                     initializeMythicPanel();
                     
-                    console.log('🔮 MYTHIC MODE ACTIVATED! 🔮');
+                    console.log('⚡ GOD MODE ACTIVATED - ALL ABILITIES UNLOCKED! ⚡');
                 }
             }
             
@@ -7745,14 +7829,14 @@
             
             // Mythic mode indicator
             if (mythicMode) {
-                ctx.fillStyle = '#ff00ff';
-                ctx.font = 'bold 24px Courier New';
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 26px Courier New';
                 ctx.textAlign = 'center';
-                ctx.shadowColor = 'rgba(255, 0, 255, 0.8)';
-                ctx.shadowBlur = 10;
-                const pulse = 0.8 + Math.sin(Date.now() / 200) * 0.2;
+                ctx.shadowColor = 'rgba(255, 215, 0, 0.9)';
+                ctx.shadowBlur = 15;
+                const pulse = 0.85 + Math.sin(Date.now() / 200) * 0.15;
                 ctx.globalAlpha = pulse;
-                ctx.fillText('✨ MYTHIC MODE ✨', canvas.width / 2, 30);
+                ctx.fillText('⚡ GOLDEN GOD MODE ⚡', canvas.width / 2, 30);
                 ctx.globalAlpha = 1;
                 ctx.shadowBlur = 0;
             }
