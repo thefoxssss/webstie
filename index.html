@@ -23,12 +23,10 @@ export default function VoxelSandboxWebGame() {
     sceneRef.current = {scene, renderer};
 
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
-    camera.position.set(0, 20, 40);
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.45);
     scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-    sun.castShadow = false;
     scene.add(sun);
 
     const CHUNK_SIZE = 64;
@@ -53,7 +51,7 @@ export default function VoxelSandboxWebGame() {
       opacity: p.opacity ?? 1
     }));
 
-    const instanced = materials.map((mat) => {
+    const instanced = materials.map(mat => {
       const geo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
       const mesh = new THREE.InstancedMesh(geo, mat, CHUNK_SIZE * CHUNK_SIZE * 8);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -64,192 +62,174 @@ export default function VoxelSandboxWebGame() {
     });
 
     function smoothNoise(x, z) {
-      const xi = Math.floor(x);
-      const zi = Math.floor(z);
-      const xf = x - xi;
-      const zf = z - zi;
-      const v00 = Math.sin((xi * 374761393 ^ zi * 668265263) % 1000) * 0.5 + 0.5;
-      const v10 = Math.sin(((xi + 1) * 374761393 ^ zi * 668265263) % 1000) * 0.5 + 0.5;
-      const v01 = Math.sin((xi * 374761393 ^ (zi + 1) * 668265263) % 1000) * 0.5 + 0.5;
-      const v11 = Math.sin(((xi + 1) * 374761393 ^ (zi + 1) * 668265263) % 1000) * 0.5 + 0.5;
-      const lerp = (a, b, t) => a + (b - a) * t;
-      const v0 = lerp(v00, v10, xf);
-      const v1 = lerp(v01, v11, xf);
-      return lerp(v0, v1, zf);
+      const xi = Math.floor(x), zi = Math.floor(z);
+      const xf = x - xi, zf = z - zi;
+      const v00 = Math.sin((xi*374761393 ^ zi*668265263) % 1000)*0.5+0.5;
+      const v10 = Math.sin(((xi+1)*374761393 ^ zi*668265263) % 1000)*0.5+0.5;
+      const v01 = Math.sin((xi*374761393 ^ (zi+1)*668265263) % 1000)*0.5+0.5;
+      const v11 = Math.sin(((xi+1)*374761393 ^ (zi+1)*668265263) % 1000)*0.5+0.5;
+      const lerp = (a,b,t)=>a+(b-a)*t;
+      const v0 = lerp(v00,v10,xf);
+      const v1 = lerp(v01,v11,xf);
+      return lerp(v0,v1,zf);
     }
 
-    function fractalHeight(x, z) {
-      let amp = 1, freq = 0.02, sum = 0, max = 0;
-      for (let o = 0; o < 5; o++) {
-        sum += smoothNoise(x * freq, z * freq) * amp;
-        max += amp;
-        amp *= 0.5;
-        freq *= 2;
-      }
-      return (sum / max) * HEIGHT;
+    function fractalHeight(x,z){
+      let amp=1,freq=0.02,sum=0,max=0;
+      for(let o=0;o<5;o++){sum+=smoothNoise(x*freq,z*freq)*amp;max+=amp;amp*=0.5;freq*=2;}
+      return (sum/max)*HEIGHT;
     }
 
     const voxels = new Map();
-    const setVoxel = (x, y, z, idx) => { if (y < 0 || y >= HEIGHT) return false; const key = `${x},${y},${z}`; if (idx === null) voxels.delete(key); else voxels.set(key, idx); return true; };
-    const getVoxel = (x, y, z) => voxels.get(`${x},${y},${z}`);
+    const setVoxel = (x,y,z,idx)=>{if(y<0||y>=HEIGHT)return false;const key=`${x},${y},${z}`;if(idx===null)voxels.delete(key);else voxels.set(key,idx);return true;};
+    const getVoxel = (x,y,z)=>voxels.get(`${x},${y},${z}`);
 
-    for (let x = -CHUNK_SIZE / 2; x < CHUNK_SIZE / 2; x++) {
-      for (let z = -CHUNK_SIZE / 2; z < CHUNK_SIZE / 2; z++) {
-        const h = Math.floor(fractalHeight(x, z));
-        for (let y = 0; y <= h; y++) {
-          let idx = 1;
-          if (y === h) idx = 0;
-          if (y < 2 && h < 2) idx = 3;
-          if (y > h - 3 && Math.random() < 0.02) idx = 5;
-          setVoxel(x, y, z, idx);
+    for(let x=-CHUNK_SIZE/2;x<CHUNK_SIZE/2;x++){
+      for(let z=-CHUNK_SIZE/2;z<CHUNK_SIZE/2;z++){
+        const h=Math.floor(fractalHeight(x,z));
+        for(let y=0;y<=h;y++){
+          let idx=1;if(y===h)idx=0;if(y<2&&h<2)idx=3;if(y>h-3&&Math.random()<0.02)idx=5;
+          setVoxel(x,y,z,idx);
         }
-        for (let y = h + 1; y <= 6; y++) setVoxel(x, y, z, 4);
+        for(let y=h+1;y<=6;y++)setVoxel(x,y,z,4);
       }
     }
 
-    function rebuildInstances(playerPos) {
-      instanced.forEach(i => i.count = 0);
-      const px = Math.floor(playerPos.x), pz = Math.floor(playerPos.z), radius = RENDER_RADIUS;
-      const dummy = new THREE.Object3D();
-      for (let x = px - radius; x <= px + radius; x++) {
-        for (let z = pz - radius; z <= pz + radius; z++) {
-          for (let y = 0; y < HEIGHT; y++) {
-            const idx = getVoxel(x, y, z);
-            if (idx === undefined) continue;
-            const relx = x - px, relz = z - pz;
-            if (relx * relx + relz * relz > radius * radius) continue;
-            dummy.position.set(x * BLOCK_SIZE, y * BLOCK_SIZE, z * BLOCK_SIZE);
+    function rebuildInstances(playerPos){
+      instanced.forEach(i=>i.count=0);
+      const px=Math.floor(playerPos.x),pz=Math.floor(playerPos.z),radius=RENDER_RADIUS;
+      const dummy=new THREE.Object3D();
+      for(let x=px-radius;x<=px+radius;x++){
+        for(let z=pz-radius;z<=pz+radius;z++){
+          for(let y=0;y<HEIGHT;y++){
+            const idx=getVoxel(x,y,z);if(idx===undefined)continue;
+            const relx=x-px,relz=z-pz;if(relx*relx+relz*relz>radius*radius)continue;
+            dummy.position.set(x*BLOCK_SIZE,y*BLOCK_SIZE,z*BLOCK_SIZE);
             dummy.updateMatrix();
-            const inst = instanced[idx];
-            inst.mesh.setMatrixAt(inst.count, dummy.matrix);
-            inst.count++;
+            const inst=instanced[idx];inst.mesh.setMatrixAt(inst.count,dummy.matrix);inst.count++;
           }
         }
       }
-      instanced.forEach(i => { i.mesh.count = i.count; i.mesh.instanceMatrix.needsUpdate = true; });
+      instanced.forEach(i=>{i.mesh.count=i.count;i.mesh.instanceMatrix.needsUpdate=true;});
     }
 
-    const player = {x: 0, y: 40, z: 0, pitch: 0, yaw: 0, velocity: new THREE.Vector3()};
-    const keys = {};
-    const onKeyDown = e => { keys[e.code] = true; if (e.code === 'KeyP') setPaused(p => !p); };
-    const onKeyUp = e => { keys[e.code] = false; };
-    window.addEventListener('keydown', onKeyDown); window.addEventListener('keyup', onKeyUp);
+    const player={x:0,y:10,z:0,pitch:0,yaw:0,velocity:new THREE.Vector3()};
+    const keys={};
+    const speedFactor = 2;
 
-    // SAFE pointer lock: only attempt if not sandboxed
-    renderer.domElement.addEventListener('click', () => {
-      try { renderer.domElement.requestPointerLock?.(); } catch(e) { console.warn('Pointer lock failed. Running in sandboxed environment?'); }
+    const onKeyDown=e=>{keys[e.code]=true;if(e.code==='KeyP')setPaused(p=>!p);};
+    const onKeyUp=e=>{keys[e.code]=false;};
+    window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);
+
+    renderer.domElement.addEventListener('click',()=>{
+      try{renderer.domElement.requestPointerLock();}catch(e){console.warn('Pointer lock failed');}
     });
 
-    const onPointerMove = e => {
-      if (document.pointerLockElement !== renderer.domElement) return;
-      const sensitivity = 0.002;
-      player.yaw -= e.movementX * sensitivity;
-      player.pitch -= e.movementY * sensitivity;
-      player.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, player.pitch));
+    const onPointerMove=e=>{
+      if(document.pointerLockElement!==renderer.domElement)return;
+      const sensitivity=0.002;
+      player.yaw -= e.movementX*sensitivity;
+      player.pitch -= e.movementY*sensitivity;
+      player.pitch=Math.max(-Math.PI/2+0.1,Math.min(Math.PI/2-0.1,player.pitch));
     };
-    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointermove',onPointerMove);
 
-    const raycaster = new THREE.Raycaster();
-    function worldRaycast() {
-      const dir = new THREE.Vector3();
+    const raycaster=new THREE.Raycaster();
+    function worldRaycast(){
+      const dir=new THREE.Vector3();
       camera.getWorldDirection(dir);
-      raycaster.set(camera.position, dir.normalize());
-      const max = 8, step = 0.2;
-      for (let d = 0; d < max; d += step) {
-        const px = Math.floor((camera.position.x + dir.x * d) / BLOCK_SIZE);
-        const py = Math.floor((camera.position.y + dir.y * d) / BLOCK_SIZE);
-        const pz = Math.floor((camera.position.z + dir.z * d) / BLOCK_SIZE);
-        const idx = getVoxel(px, py, pz);
-        if (idx !== undefined) return {x: px, y: py, z: pz, idx};
+      raycaster.set(camera.position,dir.normalize());
+      const max=8,step=0.2;
+      for(let d=0;d<max;d+=step){
+        const px=Math.floor((camera.position.x+dir.x*d)/BLOCK_SIZE);
+        const py=Math.floor((camera.position.y+dir.y*d)/BLOCK_SIZE);
+        const pz=Math.floor((camera.position.z+dir.z*d)/BLOCK_SIZE);
+        const idx=getVoxel(px,py,pz);
+        if(idx!==undefined)return {x:px,y:py,z:pz,idx};
       }
       return null;
     }
 
-    const onMouseDown = e => {
-      if (document.pointerLockElement !== renderer.domElement) return;
-      const hit = worldRaycast();
-      if (!hit) return;
-      if (e.button === 0) setVoxel(hit.x, hit.y, hit.z, null);
-      else if (e.button === 2) setVoxel(hit.x, hit.y + 1, hit.z, selectedBlock);
+    const onMouseDown=e=>{
+      if(document.pointerLockElement!==renderer.domElement)return;
+      const hit=worldRaycast();
+      if(!hit)return;
+      if(e.button===0)setVoxel(hit.x,hit.y,hit.z,null);
+      else if(e.button===2)setVoxel(hit.x,hit.y+1,hit.z,selectedBlock);
       rebuildInstances(player);
     };
-    renderer.domElement.addEventListener('mousedown', onMouseDown);
-    renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+    renderer.domElement.addEventListener('mousedown',onMouseDown);
+    renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 
-    const onResize = () => {
-      const w = mountRef.current.clientWidth; const h = mountRef.current.clientHeight;
-      camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+    const onResize=()=>{
+      const w=mountRef.current.clientWidth,h=mountRef.current.clientHeight;
+      camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);
     };
-    window.addEventListener('resize', onResize);
+    window.addEventListener('resize',onResize);
 
-    let lastT = performance.now(), frame = 0;
-    function animate(now) {
-      const dt = Math.min(0.05, (now - lastT)/1000);
-      lastT = now;
-      if (!paused) {
-        const daySeconds = 60, t = (now/1000) % daySeconds, theta = (t/daySeconds) * Math.PI * 2;
-        sun.position.set(Math.cos(theta)*50, Math.sin(theta)*50, 0);
-        sun.intensity = Math.max(0.2, Math.sin(theta)*1.2);
-        scene.background = new THREE.Color().setHSL(0.6, 0.7, Math.max(0.15, 0.6*(Math.sin(theta)*0.5+0.5)));
+    let lastT=performance.now(),frame=0;
+    function animate(now){
+      const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+      if(!paused){
+        const daySeconds=60,t=(now/1000)%daySeconds,theta=(t/daySeconds)*Math.PI*2;
+        sun.position.set(Math.cos(theta)*50,Math.sin(theta)*50,0);
+        sun.intensity=Math.max(0.2,Math.sin(theta)*1.2);
+        scene.background=new THREE.Color().setHSL(0.6,0.7,Math.max(0.15,0.6*(Math.sin(theta)*0.5+0.5)));
 
-        const speed = 10;
-        const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
-        const right = new THREE.Vector3(Math.sin(player.yaw - Math.PI/2), 0, Math.cos(player.yaw - Math.PI/2));
-        player.velocity.x *= 0.9; player.velocity.z *= 0.9; player.velocity.y -= 9.8 * dt;
-        if (keys['KeyW']) { player.velocity.x += forward.x*speed*dt; player.velocity.z += forward.z*speed*dt; }
-        if (keys['KeyS']) { player.velocity.x -= forward.x*speed*dt; player.velocity.z -= forward.z*speed*dt; }
-        if (keys['KeyA']) { player.velocity.x += right.x*speed*dt; player.velocity.z += right.z*speed*dt; }
-        if (keys['KeyD']) { player.velocity.x -= right.x*speed*dt; player.velocity.z -= right.z*speed*dt; }
-        if (keys['Space']) player.velocity.y = 6;
+        // Corrected WASD directions (fixed inversion)
+        const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+        const right = new THREE.Vector3(-Math.sin(player.yaw - Math.PI/2), 0, -Math.cos(player.yaw - Math.PI/2));
+
+        player.velocity.x *= 0.7; player.velocity.z *= 0.7; player.velocity.y -= 9.8*dt;
+        if(keys['KeyW']){player.velocity.x += forward.x*speedFactor*dt; player.velocity.z += forward.z*speedFactor*dt;}
+        if(keys['KeyS']){player.velocity.x -= forward.x*speedFactor*dt; player.velocity.z -= forward.z*speedFactor*dt;}
+        if(keys['KeyA']){player.velocity.x -= right.x*speedFactor*dt; player.velocity.z -= right.z*speedFactor*dt;}
+        if(keys['KeyD']){player.velocity.x += right.x*speedFactor*dt; player.velocity.z += right.z*speedFactor*dt;}
+        if(keys['Space'])player.velocity.y=6;
 
         player.x += player.velocity.x; player.y += player.velocity.y*dt; player.z += player.velocity.z;
-        const groundH = (() => {
-          const gx = Math.floor(player.x/BLOCK_SIZE), gz = Math.floor(player.z/BLOCK_SIZE);
-          for (let yy = HEIGHT-1; yy>=0; yy--) if (getVoxel(gx, yy, gz) !== undefined) return (yy+1)*BLOCK_SIZE;
-          return 0;
-        })();
-        if (player.y < groundH + 1.6) { player.y = groundH + 1.6; player.velocity.y = 0; }
+        const groundH=(()=>{const gx=Math.floor(player.x/BLOCK_SIZE),gz=Math.floor(player.z/BLOCK_SIZE);for(let yy=HEIGHT-1;yy>=0;yy--)if(getVoxel(gx,yy,gz)!==undefined)return(yy+1)*BLOCK_SIZE;return 0;})();
+        if(player.y<groundH+1.6){player.y=groundH+1.6;player.velocity.y=0;}
 
-        camera.position.set(player.x*BLOCK_SIZE, player.y*BLOCK_SIZE, player.z*BLOCK_SIZE);
-        camera.rotation.set(player.pitch, player.yaw, 0);
+        camera.position.set(player.x*BLOCK_SIZE,player.y*BLOCK_SIZE,player.z*BLOCK_SIZE);
+        camera.rotation.set(player.pitch,player.yaw,0);
 
-        if (frame % 10 === 0) rebuildInstances(player);
+        if(frame%10===0)rebuildInstances(player);
       }
-      renderer.render(scene, camera);
-      frame++; requestAnimationFrame(animate);
+      renderer.render(scene,camera);frame++;requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
 
-    rebuildInstances(player); setReady(true);
+    rebuildInstances(player);setReady(true);
 
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('resize', onResize);
-      renderer.domElement.removeEventListener('mousedown', onMouseDown);
+    return()=>{
+      window.removeEventListener('keydown',onKeyDown);
+      window.removeEventListener('keyup',onKeyUp);
+      window.removeEventListener('pointermove',onPointerMove);
+      window.removeEventListener('resize',onResize);
+      renderer.domElement.removeEventListener('mousedown',onMouseDown);
       mountRef.current.removeChild(renderer.domElement);
-      scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      scene.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});
     };
-  }, []);
+  },[]);
 
-  const paletteColorHex = i => ['6db34d','8b5a2b','8d8d8d','f2e08c','4da6ff','8b4a1a'][i] ?? 'ffffff';
+  const paletteColorHex=i=>['6db34d','8b5a2b','8d8d8d','f2e08c','4da6ff','8b4a1a'][i]??'ffffff';
 
-  return (
+  return(
     <div className="w-full h-screen flex flex-col bg-black">
       <div ref={mountRef} className="flex-1 relative">
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div style={{width:'6px', height:'6px'}} className="rounded-full bg-white/90"></div>
+          <div style={{width:'6px',height:'6px'}} className="rounded-full bg-white/90"></div>
         </div>
         <div className="absolute left-4 top-4 text-white text-sm bg-black/30 p-2 rounded">Click to lock pointer — WASD to move, mouse to look, LMB mine, RMB place, P pause</div>
         <div className="absolute left-1/2 -translate-x-1/2 bottom-6 flex gap-2">
-          {[0,1,2,3,4,5].map(i => (
-            <button key={i} onClick={() => setSelectedBlock(i)} className={`w-12 h-12 rounded-lg border-2 ${selectedBlock===i?'border-yellow-300':'border-white/30'} flex items-center justify-center bg-white/5`}>
-              <div style={{width:28, height:28, background:`#${paletteColorHex(i)}`}} className="rounded-sm" />
+          {[0,1,2,3,4,5].map(i=>(
+            <button key={i} onClick={()=>setSelectedBlock(i)} className={`w-12 h-12 rounded-lg border-2 ${selectedBlock===i?'border-yellow-300':'border-white/30'} flex items-center justify-center bg-white/5`}>
+              <div style={{width:28,height:28,background:`#${paletteColorHex(i)}`}} className="rounded-sm" />
             </button>
           ))}
         </div>
-        {paused && (
+        {paused&&(
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="bg-black/70 text-white p-6 rounded">PAUSED — Press P to resume</div>
           </div>
