@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tetris Game</title>
+  <title>Tetris Game — Reactive Cinematic Edition</title>
   <style>
     /* =========================
-       Base and theme variables
+       Core variables (reactive)
        ========================= */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      /* Reactive background colors and speed */
+      /* Background palette and speed */
       --bg1: #1a1a2e;
       --bg2: #16213e;
       --bg3: #0f3460;
       --bg-speed: 16s;
 
-      /* Neon accents */
+      /* Accents */
       --accent1: #a855f7;
       --accent2: #06b6d4;
 
@@ -25,23 +25,23 @@
       --board-glow: rgba(168, 85, 247, 0.3);
       --board-inset: rgba(0, 0, 0, 0.5);
 
-      /* Ghost piece visuals */
+      /* Ghost visuals */
       --ghost-border: rgba(255, 255, 255, 0.3);
       --ghost-bg: rgba(255, 255, 255, 0.12);
 
-      /* Reactive states */
+      /* Reactive filter chain */
       --reactive-brightness: 1;
-      --reactive-blur: 0px;
       --reactive-hue: 0deg;
-      --reactive-sat: 100%;
+      --reactive-sat: 105%;
+      --reactive-blur: 0px;
 
-      /* UI scaling for events */
+      /* UI micro-scale feedback */
       --ui-scale: 1;
       --title-glow: rgba(168, 85, 247, 0.5);
     }
 
     /* =========================
-       Background (reactive)
+       Background and overlays
        ========================= */
     body {
       font-family: 'Arial', sans-serif;
@@ -53,14 +53,8 @@
       justify-content: center;
       color: white;
       overflow: hidden;
-
-      /* Reactive filter chain */
-      filter:
-        brightness(var(--reactive-brightness))
-        saturate(var(--reactive-sat))
-        hue-rotate(var(--reactive-hue));
+      filter: brightness(var(--reactive-brightness)) saturate(var(--reactive-sat)) hue-rotate(var(--reactive-hue));
       backdrop-filter: blur(var(--reactive-blur));
-
       animation: bgShift var(--bg-speed) ease infinite;
     }
 
@@ -70,8 +64,51 @@
       100% { background-position: 0% 50%; }
     }
 
+    /* Sparkle overlay */
+    .bg-sparkle {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(1200px 800px at 10% 20%, rgba(255,255,255,0.04), transparent 60%),
+        radial-gradient(1000px 900px at 90% 30%, rgba(255,255,255,0.05), transparent 65%),
+        radial-gradient(900px 700px at 50% 80%, rgba(255,255,255,0.03), transparent 70%);
+      mix-blend-mode: screen;
+      animation: sparkleMove 18s linear infinite;
+      opacity: 0.5;
+    }
+    @keyframes sparkleMove {
+      0% { transform: translate(0,0); }
+      50% { transform: translate(30px,-20px); }
+      100% { transform: translate(0,0); }
+    }
+
+    /* Ripple blast on clears */
+    .bg-ripple {
+      position: fixed; inset: 0; pointer-events: none; z-index: 1;
+      background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%);
+      opacity: 0;
+    }
+    .bg-ripple.active { animation: rippleExpand 0.9s ease-out forwards; }
+    @keyframes rippleExpand {
+      0% { opacity: 0.9; transform: scale(0); }
+      50% { opacity: 0.5; transform: scale(2); }
+      100% { opacity: 0; transform: scale(3); }
+    }
+
+    /* End game cinematic backdrop */
+    .end-game-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 999;
+      background: radial-gradient(circle, rgba(255,0,0,0) 0%, rgba(0,0,0,0) 100%);
+      opacity: 0;
+    }
+    .end-game-bg.active { animation: endFade 2.5s ease-in forwards; }
+    @keyframes endFade {
+      0% { opacity: 0; background: radial-gradient(circle, rgba(255,0,0,0) 0%, rgba(0,0,0,0) 100%); }
+      50% { opacity: 0.8; background: radial-gradient(circle, rgba(255,0,0,0.6) 0%, rgba(0,0,0,0.8) 100%); }
+      100% { opacity: 1; background: radial-gradient(circle, rgba(255,0,0,0.85) 0%, rgba(0,0,0,1) 100%); }
+    }
+
     /* =========================
-       Layout containers
+       Layout and panels
        ========================= */
     .game-container {
       display: flex;
@@ -79,10 +116,9 @@
       padding: 20px;
       position: relative;
       transform: scale(var(--ui-scale));
-      transition: transform 220ms ease;
+      transition: transform 200ms ease;
+      z-index: 10;
     }
-
-    .main-panel { display: flex; flex-direction: column; align-items: center; gap: 15px; }
 
     .side-panel {
       background: rgba(255, 255, 255, 0.05);
@@ -93,11 +129,10 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .side-panel.glow { box-shadow: 0 0 30px rgba(168, 85, 247, 0.9); transform: scale(1.08); }
+    .side-panel.glow { box-shadow: 0 0 30px rgba(168, 85, 247, 0.8); transform: scale(1.06); }
 
-    /* =========================
-       Title and Stats
-       ========================= */
+    .main-panel { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+
     .title {
       font-size: 3rem;
       font-weight: bold;
@@ -121,13 +156,13 @@
       min-width: 100px;
       transition: all 0.25s ease;
       transform-origin: center;
+      border: 2px solid rgba(168, 85, 247, 0.2);
     }
-    .stat-box:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 5px 15px rgba(168, 85, 247, 0.35); }
     .stat-label { font-size: 0.75rem; opacity: 0.7; margin-bottom: 5px; }
     .stat-value { font-size: 1.5rem; font-weight: bold; }
 
     /* =========================
-       Board and cell visuals
+       Board and cells
        ========================= */
     #gameBoard {
       position: relative;
@@ -140,13 +175,13 @@
       gap: 1px;
       padding: 2px;
     }
-
     #gameBoard.shake { animation: shake 0.12s; }
 
     .cell {
       border: 1px solid rgba(255, 255, 255, 0.1);
       transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
       border-radius: 2px;
+      background: #0a0a0a;
     }
 
     .panel-title { font-size: 0.875rem; font-weight: bold; text-align: center; margin-bottom: 10px; opacity: 0.8; }
@@ -161,10 +196,11 @@
       min-height: 80px;
       transition: all 0.3s;
     }
+
     .next-preview { opacity: 0.6; margin-bottom: 10px; min-height: 60px; }
 
     /* =========================
-       Controls
+       Controls and buttons
        ========================= */
     .controls {
       background: rgba(255, 255, 255, 0.05);
@@ -178,9 +214,6 @@
     }
     .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 
-    /* =========================
-       Buttons
-       ========================= */
     .btn {
       background: linear-gradient(45deg, var(--accent1), var(--accent2));
       border: none;
@@ -217,53 +250,6 @@
     .play-again-btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6); }
 
     /* =========================
-       Overlay messages
-       ========================= */
-    .overlay-message {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-weight: bold;
-      pointer-events: none;
-      z-index: 100;
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    .combo-text {
-      font-size: 3.5rem;
-      color: #ffff00;
-      text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
-      animation: comboPopIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    }
-
-    .action-text {
-      font-size: 2.5rem;
-      color: #ff00ff;
-      text-shadow: 0 0 30px #ff00ff;
-      animation: actionPopIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    }
-
-    .perfect-clear {
-      font-size: 2rem;
-      color: #00f0f0;
-      text-shadow: 0 0 40px #00f0f0;
-      animation: perfectClearAnim 2s ease-out;
-    }
-
-    .paused {
-      font-size: 2rem;
-      color: #ffff00;
-      text-shadow: 0 0 15px #ffff00;
-      animation: pulse 1.5s infinite;
-    }
-
-    .game-over { text-align: center; animation: fadeIn 0.5s; }
-    .game-over-title { font-size: 2.5rem; color: #ff0000; text-shadow: 0 0 20px #ff0000; animation: pulse 1s infinite; margin-bottom: 20px; }
-
-    canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
-
-    /* =========================
        Update Log (preserved)
        ========================= */
     .update-log-btn {
@@ -283,12 +269,10 @@
       z-index: 1000;
       box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
     }
-
     .update-log-btn:hover { background: rgba(168, 85, 247, 1); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5); }
 
     .update-log-modal {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(5px);
       display: none;
@@ -297,7 +281,6 @@
       z-index: 2000;
       animation: fadeIn 0.3s;
     }
-
     .update-log-modal.show { display: flex; }
 
     .update-log-content {
@@ -329,83 +312,74 @@
     @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     /* =========================
-       Special animations
+       Overlays and messages
+       ========================= */
+    .overlay-message {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: bold; pointer-events: none; z-index: 100;
+      text-align: center; white-space: nowrap;
+    }
+    .combo-text { font-size: 3.5rem; color: #ffff00; text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00; animation: comboPopIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    .action-text { font-size: 2.5rem; color: #ff00ff; text-shadow: 0 0 30px #ff00ff; animation: actionPopIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    .perfect-clear { font-size: 2rem; color: #00f0f0; text-shadow: 0 0 40px #00f0f0; animation: perfectClearAnim 2s ease-out; }
+    .paused { font-size: 2rem; color: #ffff00; text-shadow: 0 0 15px #ffff00; animation: pulse 1.5s infinite; }
+
+    .game-over { text-align: center; animation: fadeIn 0.5s; }
+    .game-over-title { font-size: 2.5rem; color: #ff0000; text-shadow: 0 0 20px #ff0000; animation: pulse 1s infinite; margin-bottom: 20px; }
+
+    canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+
+    /* =========================
+       Animations (general)
        ========================= */
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    @keyframes shake {
-      0%, 100% { transform: translate(0, 0); }
-      25% { transform: translate(-2px, 2px); }
-      50% { transform: translate(2px, -2px); }
-      75% { transform: translate(-2px, -2px); }
-    }
-    @keyframes comboPopIn {
-      0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; }
-      50% { transform: translate(-50%, -50%) scale(1.3) rotate(10deg); }
-      100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
-    }
-    @keyframes actionPopIn {
-      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-      60% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(1); }
-    }
-    @keyframes perfectClearAnim {
-      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-      30% { transform: translate(-50%, -50%) scale(1.6); opacity: 1; }
-      70% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
-    }
+    @keyframes shake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 75% { transform: translate(-2px, -2px); } }
+    @keyframes comboPopIn { 0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.3) rotate(10deg); } 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; } }
+    @keyframes actionPopIn { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 60% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); } }
+    @keyframes perfectClearAnim { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 30% { transform: translate(-50%, -50%) scale(1.6); opacity: 1; } 70% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Per-cell neon glow/explosion for line clear */
+    /* =========================
+       Line clear per-cell glow/explosion
+       ========================= */
     @keyframes clearLineCell {
       0%   { opacity: 1; transform: scale(1); box-shadow: 0 0 10px var(--cell-color); filter: brightness(1); }
-      25%  { opacity: 1; transform: scale(1.18); box-shadow: 0 0 22px #fff, 0 0 40px var(--cell-color); filter: brightness(1.45) saturate(1.6); }
-      50%  { opacity: 1; transform: scale(1.09); box-shadow: 0 0 30px var(--cell-color), inset 0 0 18px #fff; filter: hue-rotate(90deg) brightness(1.5); }
-      75%  { opacity: 0.75; transform: scale(0.82); box-shadow: 0 0 26px #ff00ff; }
+      25%  { opacity: 1; transform: scale(1.18); box-shadow: 0 0 25px #fff, 0 0 45px var(--cell-color); filter: brightness(1.4) saturate(1.5); }
+      50%  { opacity: 1; transform: scale(1.08); box-shadow: 0 0 35px var(--cell-color), inset 0 0 20px #fff; filter: hue-rotate(90deg) brightness(1.5); }
+      75%  { opacity: 0.75; transform: scale(0.82); box-shadow: 0 0 28px #ff00ff; }
       100% { opacity: 0; transform: scale(0.55); box-shadow: none; filter: brightness(0.4); }
     }
     .clearing { animation: clearLineCell 0.7s ease-out forwards; }
-
-    /* Overlay particle glow (optional background sparkles) */
-    .bg-sparkle {
-      position: fixed; pointer-events: none; inset: 0; z-index: 0;
-      background: radial-gradient(transparent 60%, rgba(255,255,255,0.04));
-      mix-blend-mode: screen; opacity: 0.4;
-    }
   </style>
 </head>
 <body>
-  <!-- Sparkle overlay -->
   <div class="bg-sparkle"></div>
+  <div class="bg-ripple" id="bgRipple"></div>
+  <div class="end-game-bg" id="endGameBg"></div>
 
-  <!-- Update Log Button -->
   <button class="update-log-btn" onclick="toggleUpdateLog()">📋 Update Log</button>
-
-  <!-- Update Log Modal -->
   <div class="update-log-modal" id="updateLogModal">
     <div class="update-log-content">
       <h2>Update Log</h2>
-      <div class="version">Version 2.5.0</div>
-
+      <div class="version">Version 3.0.0</div>
       <div class="update-section">
         <h3>🎮 New Features</h3>
         <ul>
-          <li>Reactive background: pulses, hue-shifts, and speeds up on drops, clears, combos, Tetris, and perfect clears</li>
-          <li>Amplified per-cell neon glow/explosion line-clear animation</li>
-          <li>Enhanced ghost piece visuals</li>
-          <li>Particle bursts synced to hard drops and line clears with stronger physics</li>
+          <li>Reactive background with gradient shifts, sparkles, ripples, hue-rotate, brightness/saturation boosts</li>
+          <li>Per-cell neon glow/explosion line-clear animation</li>
+          <li>End-game cinematic: red/black fade, board shatter, particle burst</li>
+          <li>Ghost piece visibility improved (dashed border + subtle fill)</li>
         </ul>
       </div>
-
       <div class="update-section">
         <h3>✨ Improvements</h3>
         <ul>
-          <li>Preserved DAS system and enhanced wall kicks</li>
-          <li>Stable render loop at 60fps with requestAnimationFrame</li>
-          <li>Cleaner UI with more expressive glassmorphism and subtle micro-animations</li>
+          <li>Preserved DAS movement and enhanced wall kicks</li>
+          <li>Stable render loop at 60fps</li>
+          <li>UI polish and micro-animations on score/level/lines</li>
         </ul>
       </div>
-
       <div class="update-section">
         <h3>🔧 Technical</h3>
         <ul>
@@ -415,13 +389,11 @@
           <li>Pure vanilla JavaScript</li>
         </ul>
       </div>
-
       <button class="close-modal" onclick="toggleUpdateLog()">Close</button>
     </div>
   </div>
 
-  <!-- Game Layout -->
-  <div class="game-container">
+  <div class="game-container" id="gameContainer">
     <div class="side-panel" id="holdPanel">
       <div class="panel-title">HOLD (C)</div>
       <div class="preview-box" id="holdBox"></div>
@@ -475,9 +447,7 @@
   </div>
 
   <script>
-    /* =========================
-       Modal toggles
-       ========================= */
+    /* Modal toggles */
     function toggleUpdateLog() {
       const modal = document.getElementById('updateLogModal');
       modal.classList.toggle('show');
@@ -486,9 +456,7 @@
       if (e.target === this) toggleUpdateLog();
     });
 
-    /* =========================
-       Constants
-       ========================= */
+    /* Constants */
     const BOARD_WIDTH = 10;
     const BOARD_HEIGHT = 20;
     const CELL_SIZE = 30;
@@ -515,9 +483,6 @@
       L: '#f0a000'
     };
 
-    /* =========================
-       Game Class
-       ========================= */
     class TetrisGame {
       constructor() {
         this.board = Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
@@ -552,9 +517,6 @@
         this.gameLoop();
       }
 
-      /* =========================
-         Initialization
-         ========================= */
       initGame() {
         this.nextPieces = [this.getRandomPiece(), this.getRandomPiece(), this.getRandomPiece()];
         this.spawnPiece();
@@ -576,9 +538,6 @@
         return { type, shape: JSON.parse(JSON.stringify(SHAPES[type])) };
       }
 
-      /* =========================
-         Spawning and collision
-         ========================= */
       spawnPiece(piece = null) {
         const newPiece = piece || this.nextPieces.shift();
         if (!piece) this.nextPieces.push(this.getRandomPiece());
@@ -611,9 +570,6 @@
         return false;
       }
 
-      /* =========================
-         Movement and rotation
-         ========================= */
       movePiece(dx, dy) {
         if (!this.currentPiece || this.gameOver || this.isPaused || this.clearingLines.length > 0 || this.dropLock) return false;
 
@@ -635,11 +591,10 @@
         );
         const rotatedPiece = { ...this.currentPiece, shape: rotated };
 
-        // Enhanced wall kicks (kept from original structure, slightly extended)
         const kicks = [
           { x: 0, y: 0 }, { x: -1, y: 0 }, { x: 1, y: 0 },
           { x: 0, y: -1 }, { x: -1, y: -1 }, { x: 1, y: -1 },
-          { x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: -2 }
+          { x: -2, y: 0 }, { x: 2, y: 0 }
         ];
 
         for (let kick of kicks) {
@@ -662,9 +617,6 @@
         this.ghostPos = ghostY;
       }
 
-      /* =========================
-         Drops and locks
-         ========================= */
       hardDrop() {
         if (!this.currentPiece || this.gameOver || this.isPaused || this.clearingLines.length > 0 || this.dropLock) return;
 
@@ -706,9 +658,6 @@
         this.clearLines();
       }
 
-      /* =========================
-         Line clears, scoring, combos
-         ========================= */
       clearLines() {
         const linesToClear = [];
         this.board.forEach((row, y) => { if (row.every(cell => cell !== 0)) linesToClear.push(y); });
@@ -716,7 +665,6 @@
         if (linesToClear.length > 0) {
           this.clearingLines = linesToClear;
 
-          // Apply per-cell clearing animation immediately and particles
           const boardEl = document.getElementById('gameBoard');
           const cells = boardEl.children;
           linesToClear.forEach((lineY) => {
@@ -732,6 +680,11 @@
               this.createParticles(x, lineY, color, 16);
             }
           });
+
+          // Background ripple blast
+          const ripple = document.getElementById('bgRipple');
+          ripple.classList.add('active');
+          setTimeout(() => ripple.classList.remove('active'), 900);
 
           this.shakeBoard();
           this.flashBackground(linesToClear.length === 4 ? 'tetris' : 'clear', linesToClear.length);
@@ -777,7 +730,7 @@
             this.spawnPiece();
             this.render();
             this.updateReactiveBackground();
-          }, 450);
+          }, 460);
         } else {
           this.comboCount = 0;
           this.dropLock = false;
@@ -785,9 +738,6 @@
         }
       }
 
-      /* =========================
-         Hold system
-         ========================= */
       holdPiece() {
         if (!this.canHold || !this.currentPiece || this.gameOver || this.isPaused || this.clearingLines.length > 0 || this.dropLock) return;
 
@@ -809,9 +759,6 @@
         this.flashBackground('hold', 1);
       }
 
-      /* =========================
-         Particles
-         ========================= */
       createParticles(x, y, color, count) {
         for (let i = 0; i < count; i++) {
           this.particles.push({
@@ -854,9 +801,6 @@
         ctx.shadowBlur = 0;
       }
 
-      /* =========================
-         UI feedback
-         ========================= */
       shakeBoard() {
         const board = document.getElementById('gameBoard');
         board.classList.add('shake');
@@ -876,7 +820,7 @@
         const screen = document.getElementById('gameOverScreen');
         screen.style.display = 'block';
         screen.innerHTML = `
-          <div class="game-over">
+          <div class="game-over" style="animation: fadeIn 0.6s;">
             <div class="game-over-title">GAME OVER</div>
             <div style="font-size: 1.5rem; margin-bottom: 20px;">
               Final Score: <span style="color: #00f0f0; font-weight: bold;">${this.score}</span>
@@ -884,17 +828,37 @@
             <button class="btn" onclick="location.reload()">Play Again</button>
           </div>
         `;
+        // End-game cinematic: backdrop and board collapse
+        const endBg = document.getElementById('endGameBg');
+        endBg.classList.add('active');
+
+        const gameContainer = document.getElementById('gameContainer');
+        gameContainer.animate(
+          [
+            { transform: 'scale(1)', filter: 'none' },
+            { transform: 'scale(0.9)', filter: 'blur(1px)' },
+            { transform: 'scale(0.85) rotate(1deg)', filter: 'blur(1.5px)' }
+          ],
+          { duration: 600, easing: 'ease-in', fill: 'forwards' }
+        );
+
+        // Particle burst across the board
+        for (let y = 0; y < BOARD_HEIGHT; y++) {
+          for (let x = 0; x < BOARD_WIDTH; x++) {
+            if (this.board[y][x]) {
+              const color = COLORS[this.board[y][x]];
+              this.createParticles(x, y, color, 10);
+            }
+          }
+        }
+        // Extra flash
         this.flashBackground('gameover', 3);
       }
 
-      /* =========================
-         Controls and DAS
-         ========================= */
       setupControls() {
         document.addEventListener('keydown', (e) => {
           if (this.gameOver) return;
 
-          // Prevent scrolling and browser behaviors
           if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'c', 'C', 'p', 'P'].includes(e.key)) {
             e.preventDefault();
           }
@@ -937,8 +901,12 @@
 
       handleMovement(key) {
         switch(key) {
-          case 'ArrowLeft': if (this.movePiece(-1, 0)) this.flashBackground('move', 1); break;
-          case 'ArrowRight': if (this.movePiece(1, 0)) this.flashBackground('move', 1); break;
+          case 'ArrowLeft':
+            if (this.movePiece(-1, 0)) this.flashBackground('move', 1);
+            break;
+          case 'ArrowRight':
+            if (this.movePiece(1, 0)) this.flashBackground('move', 1);
+            break;
           case 'ArrowDown':
             if (this.movePiece(0, 1)) {
               this.lastFallTime = Date.now();
@@ -948,9 +916,6 @@
         }
       }
 
-      /* =========================
-         Loop, render, display
-         ========================= */
       gameLoop() {
         const now = Date.now();
 
@@ -1011,7 +976,6 @@
               cell.style.backgroundColor = '#0a0a0a';
             }
 
-            // If this row is being cleared, add animation class with per-cell color
             if (this.clearingLines.includes(y) && this.board[y][x]) {
               const type = this.board[y][x];
               const color = COLORS[type];
@@ -1086,32 +1050,21 @@
         document.getElementById('level').textContent = this.level;
         document.getElementById('lines').textContent = this.lines;
 
-        // Stat scaling feedback
+        // Micro feedback on stats
         const scoreEl = document.getElementById('score').parentElement;
         const levelEl = document.getElementById('level').parentElement;
         const linesEl = document.getElementById('lines').parentElement;
 
-        scoreEl.style.transform = 'scale(1.06)';
-        setTimeout(() => scoreEl.style.transform = '', 140);
-
-        levelEl.style.transform = 'scale(1.03)';
-        setTimeout(() => levelEl.style.transform = '', 140);
-
-        linesEl.style.transform = 'scale(1.03)';
-        setTimeout(() => linesEl.style.transform = '', 140);
+        scoreEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 200 });
+        levelEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: 200 });
+        linesEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: 200 });
       }
 
-      /* =========================
-         Reactive background dynamics
-         ========================= */
       updateReactiveBackground(initial = false) {
         const root = document.documentElement;
-
-        // Speed up background shift as level increases
         const speed = Math.max(6, 16 - (this.level - 1) * 1.2);
         root.style.setProperty('--bg-speed', `${speed}s`);
 
-        // Palette shift by level to feel "hotter"
         const intensity = Math.min(1, 0.06 * (this.level - 1));
         const bg1 = this.mixColor('#1a1a2e', '#a855f7', intensity);
         const bg2 = this.mixColor('#16213e', '#06b6d4', intensity * 0.75);
@@ -1120,7 +1073,6 @@
         root.style.setProperty('--bg2', bg2);
         root.style.setProperty('--bg3', bg3);
 
-        // Subtle title glow reactiveness
         const titleGlow = `rgba(168, 85, 247, ${0.4 + Math.min(0.35, intensity)})`;
         root.style.setProperty('--title-glow', titleGlow);
 
@@ -1131,130 +1083,26 @@
         }
       }
 
-      // Amplified background flash: brightness/sat/hue + temporary speed boost
       flashBackground(type, magnitude = 1) {
         const root = document.documentElement;
-
         const originalSpeed = getComputedStyle(root).getPropertyValue('--bg-speed').trim();
         const originalGlow = getComputedStyle(root).getPropertyValue('--board-glow').trim();
 
-        let boostB = 1.25;
-        let boostS = 105;
-        let hue = 0;
-        let blur = '0px';
-        let speedBoost = 0.6;
-        let glow = 'rgba(255,255,255,0.7)';
-        let uiScale = 1;
+        let boostB = 1.25, boostS = 112, hue = 0, blur = '0px', speedBoost = 0.65, glow = originalGlow, uiScale = 1;
 
         switch (type) {
-          case 'drop':
-            boostB = 1.22 + Math.min(0.22, magnitude * 0.02);
-            boostS = 110;
-            hue = 10;
-            blur = '1px';
-            speedBoost = 0.55;
-            glow = 'rgba(168, 85, 247, 0.8)';
-            uiScale = 1.02;
-            break;
-          case 'clear':
-            boostB = 1.38;
-            boostS = 115;
-            hue = 25;
-            blur = '1.5px';
-            speedBoost = 0.45;
-            glow = 'rgba(255,255,255,0.8)';
-            uiScale = 1.03;
-            break;
-          case 'tetris':
-            boostB = 1.6;
-            boostS = 125;
-            hue = 60;
-            blur = '2px';
-            speedBoost = 0.38;
-            glow = 'rgba(255, 0, 255, 0.85)';
-            uiScale = 1.05;
-            break;
-          case 'perfect':
-            boostB = 1.7;
-            boostS = 130;
-            hue = 140;
-            blur = '2.5px';
-            speedBoost = 0.32;
-            glow = 'rgba(0, 240, 240, 0.95)';
-            uiScale = 1.06;
-            break;
-          case 'combo':
-            boostB = 1.25 + Math.min(0.35, magnitude * 0.06);
-            boostS = 110 + Math.min(12, magnitude * 2);
-            hue = 15 + Math.min(60, magnitude * 4);
-            blur = '1.2px';
-            speedBoost = 0.5;
-            glow = 'rgba(255, 255, 0, 0.85)';
-            uiScale = 1.03 + Math.min(0.02, magnitude * 0.004);
-            break;
-          case 'move':
-            boostB = 1.08;
-            boostS = 104;
-            hue = 0;
-            blur = '0px';
-            speedBoost = 0.85;
-            glow = originalGlow;
-            uiScale = 1.0;
-            break;
-          case 'softdrop':
-            boostB = 1.12;
-            boostS = 108;
-            hue = 5;
-            blur = '0.6px';
-            speedBoost = 0.8;
-            glow = originalGlow;
-            uiScale = 1.01;
-            break;
-          case 'rotate':
-            boostB = 1.15;
-            boostS = 110;
-            hue = 12;
-            blur = '0.5px';
-            speedBoost = 0.75;
-            glow = 'rgba(168,85,247,0.75)';
-            uiScale = 1.01;
-            break;
-          case 'hold':
-            boostB = 1.18;
-            boostS = 112;
-            hue = 18;
-            blur = '0.8px';
-            speedBoost = 0.7;
-            glow = 'rgba(168,85,247,0.85)';
-            uiScale = 1.02;
-            break;
-          case 'pause':
-            boostB = 0.95;
-            boostS = 95;
-            hue = 0;
-            blur = '0px';
-            speedBoost = 1.0;
-            glow = originalGlow;
-            uiScale = 1.0;
-            break;
-          case 'resume':
-            boostB = 1.1;
-            boostS = 108;
-            hue = 0;
-            blur = '0px';
-            speedBoost = 0.9;
-            glow = originalGlow;
-            uiScale = 1.0;
-            break;
-          case 'gameover':
-            boostB = 1.2;
-            boostS = 105;
-            hue = -30;
-            blur = '1px';
-            speedBoost = 0.7;
-            glow = 'rgba(255,0,0,0.8)';
-            uiScale = 0.98;
-            break;
+          case 'drop': boostB = 1.22 + Math.min(0.22, magnitude * 0.02); boostS = 115; hue = 10; blur = '1px'; speedBoost = 0.6; glow = 'rgba(168, 85, 247, 0.8)'; uiScale = 1.02; break;
+          case 'clear': boostB = 1.38; boostS = 120; hue = 25; blur = '1.5px'; speedBoost = 0.5; glow = 'rgba(255,255,255,0.8)'; uiScale = 1.03; break;
+          case 'tetris': boostB = 1.6; boostS = 130; hue = 60; blur = '2px'; speedBoost = 0.4; glow = 'rgba(255,0,255,0.85)'; uiScale = 1.05; break;
+          case 'perfect': boostB = 1.7; boostS = 140; hue = 140; blur = '2.5px'; speedBoost = 0.35; glow = 'rgba(0,240,240,0.95)'; uiScale = 1.06; break;
+          case 'combo': boostB = 1.25 + Math.min(0.35, magnitude * 0.06); boostS = 110 + Math.min(12, magnitude * 2); hue = 15 + Math.min(60, magnitude * 4); blur = '1.2px'; speedBoost = 0.5; glow = 'rgba(255,255,0,0.85)'; uiScale = 1.03 + Math.min(0.02, magnitude * 0.004); break;
+          case 'move': boostB = 1.08; boostS = 104; hue = 0; blur = '0px'; speedBoost = 0.85; glow = originalGlow; uiScale = 1.0; break;
+          case 'softdrop': boostB = 1.12; boostS = 108; hue = 5; blur = '0.6px'; speedBoost = 0.8; glow = originalGlow; uiScale = 1.01; break;
+          case 'rotate': boostB = 1.15; boostS = 110; hue = 12; blur = '0.5px'; speedBoost = 0.75; glow = 'rgba(168,85,247,0.75)'; uiScale = 1.01; break;
+          case 'hold': boostB = 1.18; boostS = 112; hue = 18; blur = '0.8px'; speedBoost = 0.7; glow = 'rgba(168,85,247,0.85)'; uiScale = 1.02; break;
+          case 'pause': boostB = 0.95; boostS = 95; hue = 0; blur = '0px'; speedBoost = 1.0; glow = originalGlow; uiScale = 1.0; break;
+          case 'resume': boostB = 1.1; boostS = 108; hue = 0; blur = '0px'; speedBoost = 0.9; glow = originalGlow; uiScale = 1.0; break;
+          case 'gameover': boostB = 1.25; boostS = 105; hue = -30; blur = '1.2px'; speedBoost = 0.7; glow = 'rgba(255,0,0,0.8)'; uiScale = 0.98; break;
         }
 
         root.style.setProperty('--reactive-brightness', boostB.toString());
@@ -1267,7 +1115,6 @@
         root.style.setProperty('--board-glow', glow);
         root.style.setProperty('--ui-scale', uiScale.toString());
 
-        // Reset after flash
         setTimeout(() => {
           root.style.setProperty('--reactive-brightness', '1');
           root.style.setProperty('--reactive-sat', '105%');
@@ -1279,9 +1126,6 @@
         }, 520);
       }
 
-      /* =========================
-         Color utilities
-         ========================= */
       mixColor(hex1, hex2, t) {
         const a = this.hexToRgb(hex1), b = this.hexToRgb(hex2);
         const r = Math.round(a.r + (b.r - a.r) * t);
@@ -1303,9 +1147,6 @@
       }
     }
 
-    /* =========================
-       Boot
-       ========================= */
     window.addEventListener('DOMContentLoaded', () => { new TetrisGame(); });
   </script>
 </body>
