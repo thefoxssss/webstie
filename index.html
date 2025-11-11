@@ -1,240 +1,462 @@
-import React, {useEffect, useRef, useState} from 'react';
-import * as THREE from 'three';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-export default function VoxelSandboxWebGame() {
-  const mountRef = useRef(null);
-  const sceneRef = useRef(null);
-  const [ready, setReady] = useState(false);
-  const [selectedBlock, setSelectedBlock] = useState(1);
-  const [paused, setPaused] = useState(false);
+const BOARD_WIDTH  = 10;
+const BOARD_HEIGHT = 20;
+const CELL_SIZE    = 30;
 
-  useEffect(() => {
-    const width = mountRef.current.clientWidth;
-    const height = mountRef.current.clientHeight;
+const SHAPES = {
+  I: [[1,1,1,1]],
+  O: [[1,1],[1,1]],
+  T: [[0,1,0],[1,1,1]],
+  S: [[0,1,1],[1,1,0]],
+  Z: [[1,1,0],[0,1,1]],
+  J: [[1,0,0],[1,1,1]],
+  L: [[0,0,1],[1,1,1]]
+};
+const COLORS = {
+  I:'#00f0f0', O:'#f0f000', T:'#a000f0',
+  S:'#00f000', Z:'#f00000', J:'#0000f0', L:'#f0a000'
+};
 
-    const renderer = new THREE.WebGLRenderer({antialias: true});
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    mountRef.current.appendChild(renderer.domElement);
+const LINE_SCORE = [0, 100, 300, 500, 800];        // Guideline
+const LOCK_DELAY = 500;                            // ms
+const DAS        = 150;   // delayed-auto-shift
+const ARR        = 30;    // auto-repeat-rate
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
-    sceneRef.current = {scene, renderer};
+const TetrisGame = () => {
+  /* ---------- board & pieces ---------- */
+  const [board, setBoard]       = useState(() => Array(BOARD_HEIGHT).fill().map(_=>Array(BOARD_WIDTH).fill(0)));
+  const [currentPiece, setCurrentPiece] = useState(null);
+  const [currentPos, setCurrentPos]     = useState({x:0,y:0});
+  const [ghostY, setGhostY]     = useState(null);
+  const [nextPiece, setNextPiece]       = useState(null);
+  const [heldPiece, setHeldPiece]       = useState(null);
+  const [canHold, setCanHold]   = useState(true);
 
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
+  /* ---------- game loop ---------- */
+  const [score, setScore]       = useState(0);
+  const [level, setLevel]       = useState(1);
+  const [lines, setLines]       = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [clearingLines, setClearingLines] = useState([]);
+  const [dropAnim, setDropAnim] = useState(null);
+  const [shake, setShake]       = useState(0);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.45);
-    scene.add(ambient);
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-    scene.add(sun);
+  /* ---------- particles / combo ---------- */
+  const [particles, setParticles] = useState([]);
+  const [combo, setCombo]         = useState(0);
+  const [showCombo, setShowCombo] = useState(false);
+  const particleIdRef = useRef(0);
 
-    const CHUNK_SIZE = 64;
-    const HEIGHT = 40;
-    const BLOCK_SIZE = 1;
-    const RENDER_RADIUS = 20;
+  /* ---------- inputs ---------- */
+  const keysRef = useRef({});
 
-    const palette = [
-      {name: 'grass', color: 0x6db34d},
-      {name: 'dirt', color: 0x8b5a2b},
-      {name: 'stone', color: 0x8d8d8d},
-      {name: 'sand', color: 0xf2e08c},
-      {name: 'water', color: 0x4da6ff, transparent: true, opacity: 0.75},
-      {name: 'wood', color: 0x8b4a1a}
-    ];
+  /* ---------- 7-bag ---------- */
+  const bagRef = useRef([]);
+  const refillBag = () => {
+    const t = Object.keys(SHAPES);
+    bagRef.current = [...t].sort(() => Math.random() - 0.5);
+  };
+  const getRandomPiece = () => {
+    if (!bagRef.current.length) refillBag();
+    const type = bagRef.current.pop();
+    return { type, shape: SHAPES[type] };
+  };
 
-    const materials = palette.map(p => new THREE.MeshStandardMaterial({
-      roughness: 0.9,
-      metalness: 0,
-      color: p.color,
-      transparent: !!p.transparent,
-      opacity: p.opacity ?? 1
-    }));
+  /* ---------- spawn ---------- */
+  const spawnPiece = useCallback((forced=null) => {
+    const p = forced || nextPiece || getRandomPiece();
+    if (!forced) setNextPiece(getRandomPiece());
+    const x = Math.floor(BOARD_WIDTH/2) - Math.floor(p.shape[0].length/2);
+    setCurrentPiece(p);
+    setCurrentPos({x,y:0});
+    setCanHold(true);
+    return {piece:p, pos:{x,y:0}};
+  }, [nextPiece]);
 
-    const instanced = materials.map(mat => {
-      const geo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-      const mesh = new THREE.InstancedMesh(geo, mat, CHUNK_SIZE * CHUNK_SIZE * 8);
-      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-      return {mesh, count: 0};
-    });
-
-    function smoothNoise(x, z) {
-      const xi = Math.floor(x), zi = Math.floor(z);
-      const xf = x - xi, zf = z - zi;
-      const v00 = Math.sin((xi*374761393 ^ zi*668265263) % 1000)*0.5+0.5;
-      const v10 = Math.sin(((xi+1)*374761393 ^ zi*668265263) % 1000)*0.5+0.5;
-      const v01 = Math.sin((xi*374761393 ^ (zi+1)*668265263) % 1000)*0.5+0.5;
-      const v11 = Math.sin(((xi+1)*374761393 ^ (zi+1)*668265263) % 1000)*0.5+0.5;
-      const lerp = (a,b,t)=>a+(b-a)*t;
-      const v0 = lerp(v00,v10,xf);
-      const v1 = lerp(v01,v11,xf);
-      return lerp(v0,v1,zf);
-    }
-
-    function fractalHeight(x,z){
-      let amp=1,freq=0.02,sum=0,max=0;
-      for(let o=0;o<5;o++){sum+=smoothNoise(x*freq,z*freq)*amp;max+=amp;amp*=0.5;freq*=2;}
-      return (sum/max)*HEIGHT;
-    }
-
-    const voxels = new Map();
-    const setVoxel = (x,y,z,idx)=>{if(y<0||y>=HEIGHT)return false;const key=`${x},${y},${z}`;if(idx===null)voxels.delete(key);else voxels.set(key,idx);return true;};
-    const getVoxel = (x,y,z)=>voxels.get(`${x},${y},${z}`);
-
-    for(let x=-CHUNK_SIZE/2;x<CHUNK_SIZE/2;x++){
-      for(let z=-CHUNK_SIZE/2;z<CHUNK_SIZE/2;z++){
-        const h=Math.floor(fractalHeight(x,z));
-        for(let y=0;y<=h;y++){
-          let idx=1;if(y===h)idx=0;if(y<2&&h<2)idx=3;if(y>h-3&&Math.random()<0.02)idx=5;
-          setVoxel(x,y,z,idx);
-        }
-        for(let y=h+1;y<=6;y++)setVoxel(x,y,z,4);
+  /* ---------- collision ---------- */
+  const checkCollision = useCallback((piece, pos, tstBoard=board) => {
+    for (let y=0;y<piece.shape.length;y++){
+      for (let x=0;x<piece.shape[y].length;x++){
+        if (!piece.shape[y][x]) continue;
+        const nx = pos.x+x, ny = pos.y+y;
+        if (nx<0||nx>=BOARD_WIDTH||ny>=BOARD_HEIGHT) return true;
+        if (ny>=0&&tstBoard[ny][nx]) return true;
       }
     }
+    return false;
+  }, [board]);
 
-    function rebuildInstances(playerPos){
-      instanced.forEach(i=>i.count=0);
-      const px=Math.floor(playerPos.x),pz=Math.floor(playerPos.z),radius=RENDER_RADIUS;
-      const dummy=new THREE.Object3D();
-      for(let x=px-radius;x<=px+radius;x++){
-        for(let z=pz-radius;z<=pz+radius;z++){
-          for(let y=0;y<HEIGHT;y++){
-            const idx=getVoxel(x,y,z);if(idx===undefined)continue;
-            const relx=x-px,relz=z-pz;if(relx*relx+relz*relz>radius*radius)continue;
-            dummy.position.set(x*BLOCK_SIZE,y*BLOCK_SIZE,z*BLOCK_SIZE);
-            dummy.updateMatrix();
-            const inst=instanced[idx];inst.mesh.setMatrixAt(inst.count,dummy.matrix);inst.count++;
+  /* ---------- ghost ---------- */
+  useEffect(() => {
+    if (!currentPiece) return;
+    let gy = currentPos.y;
+    while(!checkCollision(currentPiece,{x:currentPos.x,y:gy+1})) gy++;
+    setGhostY(gy);
+  }, [currentPiece, currentPos, checkCollision]);
+
+  /* ---------- particles ---------- */
+  const createParticles = (x,y,color) => {
+    const arr = [];
+    for (let i=0;i<8;i++){
+      arr.push({
+        id: particleIdRef.current++,
+        x: x*CELL_SIZE+CELL_SIZE/2,
+        y: y*CELL_SIZE+CELL_SIZE/2,
+        vx: (Math.random()-0.5)*8,
+        vy: (Math.random()-0.5)*8-2,
+        color, life:1
+      });
+    }
+    setParticles(p=>[...p,...arr]);
+  };
+
+  /* ---------- line clear ---------- */
+  const clearLines = useCallback((tstBoard) => {
+    const toClear = [];
+    tstBoard.forEach((r,y)=>{if (r.every(c=>c!==0)) toClear.push(y);});
+    if (!toClear.length) return {cleared:0,delay:false};
+
+    setClearingLines(toClear);
+    toClear.forEach(lineY=>{
+      for (let x=0;x<BOARD_WIDTH;x++) createParticles(x,lineY,COLORS[tstBoard[lineY][x]]);
+    });
+    setShake(10);
+
+    setTimeout(()=>{
+      let nb = tstBoard.filter((_,y)=>!toClear.includes(y));
+      while (nb.length<BOARD_HEIGHT) nb.unshift(Array(BOARD_WIDTH).fill(0));
+      setBoard(nb);
+      setClearingLines([]);
+    },400);
+
+    return {cleared:toClear.length,delay:true};
+  }, []);
+
+  /* ---------- movement ---------- */
+  const movePiece = (dx,dy) => {
+    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return false;
+    const np = {x:currentPos.x+dx, y:currentPos.y+dy};
+    if (!checkCollision(currentPiece,np)){
+      setCurrentPos(np);
+      return true;
+    }
+    return false;
+  };
+
+  const rotatePiece = () => {
+    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
+    const rot = currentPiece.shape[0].map((_,i)=>
+      currentPiece.shape.map(r=>r[i]).reverse());
+    const rp = {...currentPiece, shape:rot};
+
+    const kicks = [{x:0,y:0},{x:-1,y:0},{x:1,y:0},{x:-2,y:0},{x:2,y:0}];
+    for (const k of kicks){
+      const tst = {x:currentPos.x+k.x, y:currentPos.y+k.y};
+      if (!checkCollision(rp,tst)){
+        setCurrentPiece(rp);
+        setCurrentPos(tst);
+        return;
+      }
+    }
+  };
+
+  const hardDrop = () => {
+    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
+    let ny = currentPos.y;
+    while(!checkCollision(currentPiece,{x:currentPos.x,y:ny+1})) ny++;
+    setDropAnim({from:currentPos.y,to:ny,progress:0});
+
+    setTimeout(()=>{
+      setCurrentPos({...currentPos,y:ny});
+      // impact particles
+      for (let y=0;y<currentPiece.shape.length;y++){
+        for (let x=0;x<currentPiece.shape[y].length;x++){
+          if (currentPiece.shape[y][x]) createParticles(currentPos.x+x,ny+y,COLORS[currentPiece.type]);
+        }
+      }
+      // place
+      const nb = board.map(r=>[...r]);
+      for (let y=0;y<currentPiece.shape.length;y++){
+        for (let x=0;x<currentPiece.shape[y].length;x++){
+          if (currentPiece.shape[y][x]){
+            const by = ny+y;
+            if (by>=0) nb[by][currentPos.x+x] = currentPiece.type;
           }
         }
       }
-      instanced.forEach(i=>{i.mesh.count=i.count;i.mesh.instanceMatrix.needsUpdate=true;});
+      const {cleared,delay} = clearLines(nb);
+      if (!delay) setBoard(nb);
+
+      setScore(s=>s + LINE_SCORE[cleared]*level + (ny-currentPos.y)*2);
+      setLines(l=>l+cleared);
+      if (cleared){
+        setCombo(c=>c+1); setShowCombo(true); setTimeout(()=>setShowCombo(false),1000);
+      } else setCombo(0);
+
+      setTimeout(()=>{
+        const sp = spawnPiece();
+        if (checkCollision(sp.piece,sp.pos,nb)) setGameOver(true);
+        setDropAnim(null);
+      }, delay?450:50);
+    },150);
+  };
+
+  const holdPiece = () => {
+    if (!canHold||!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
+    setCanHold(false);
+    if (heldPiece){
+      const tmp = currentPiece;
+      spawnPiece(heldPiece);
+      setHeldPiece(tmp);
+    } else {
+      setHeldPiece(currentPiece);
+      spawnPiece();
     }
+  };
 
-    const player={x:0,y:10,z:0,pitch:0,yaw:0,velocity:new THREE.Vector3()};
-    const keys={};
-    const speedFactor = 2;
+  /* ---------- input handlers ---------- */
+  useEffect(() => {
+    const down = e => keysRef.current[e.key] = true;
+    const up   = e => keysRef.current[e.key] = false;
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown',down); window.removeEventListener('keyup',up); };
+  }, []);
 
-    const onKeyDown=e=>{keys[e.code]=true;if(e.code==='KeyP')setPaused(p=>!p);};
-    const onKeyUp=e=>{keys[e.code]=false;};
-    window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);
-
-    renderer.domElement.addEventListener('click',()=>{
-      try{renderer.domElement.requestPointerLock();}catch(e){console.warn('Pointer lock failed');}
-    });
-
-    const onPointerMove=e=>{
-      if(document.pointerLockElement!==renderer.domElement)return;
-      const sensitivity=0.002;
-      player.yaw -= e.movementX*sensitivity;
-      player.pitch -= e.movementY*sensitivity;
-      player.pitch=Math.max(-Math.PI/2+0.1,Math.min(Math.PI/2-0.1,player.pitch));
-    };
-    window.addEventListener('pointermove',onPointerMove);
-
-    const raycaster=new THREE.Raycaster();
-    function worldRaycast(){
-      const dir=new THREE.Vector3();
-      camera.getWorldDirection(dir);
-      raycaster.set(camera.position,dir.normalize());
-      const max=8,step=0.2;
-      for(let d=0;d<max;d+=step){
-        const px=Math.floor((camera.position.x+dir.x*d)/BLOCK_SIZE);
-        const py=Math.floor((camera.position.y+dir.y*d)/BLOCK_SIZE);
-        const pz=Math.floor((camera.position.z+dir.z*d)/BLOCK_SIZE);
-        const idx=getVoxel(px,py,pz);
-        if(idx!==undefined)return {x:px,y:py,z:pz,idx};
+  useEffect(() => {
+    const handler = e => {
+      if (gameOver) return;
+      if (e.repeat) return;
+      if (e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='ArrowDown') e.preventDefault();
+      switch(e.key){
+        case 'ArrowLeft':
+          movePiece(-1,0);
+          break;
+        case 'ArrowRight':
+          movePiece(1,0);
+          break;
+        case 'ArrowUp':
+          rotatePiece();
+          break;
+        case ' ':
+          hardDrop();
+          break;
+        case 'c':
+        case 'C':
+          holdPiece();
+          break;
+        case 'p':
+        case 'P':
+          setIsPaused(p=>!p);
+          break;
       }
-      return null;
-    }
-
-    const onMouseDown=e=>{
-      if(document.pointerLockElement!==renderer.domElement)return;
-      const hit=worldRaycast();
-      if(!hit)return;
-      if(e.button===0)setVoxel(hit.x,hit.y,hit.z,null);
-      else if(e.button===2)setVoxel(hit.x,hit.y+1,hit.z,selectedBlock);
-      rebuildInstances(player);
     };
-    renderer.domElement.addEventListener('mousedown',onMouseDown);
-    renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+    window.addEventListener('keydown',handler);
+    return () => window.removeEventListener('keydown',handler);
+  }, [movePiece,rotatePiece,hardDrop,holdPiece,gameOver]);
 
-    const onResize=()=>{
-      const w=mountRef.current.clientWidth,h=mountRef.current.clientHeight;
-      camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);
+  /* ---------- DAS / ARR ---------- */
+  useEffect(() => {
+    if (gameOver||isPaused) return;
+    const id = setInterval(()=>{
+      if (keysRef.current['ArrowLeft']){ movePiece(-1,0); }
+      if (keysRef.current['ArrowRight']){ movePiece(1,0); }
+      if (keysRef.current['ArrowDown']){ movePiece(0,1); }
+    },ARR);
+    return () => clearInterval(id);
+  }, [movePiece,gameOver,isPaused]);
+
+  /* ---------- soft-drop DAS starter ---------- */
+  useEffect(() => {
+    if (gameOver||isPaused) return;
+    let t;
+    const start = () => {
+      if (keysRef.current['ArrowDown']) movePiece(0,1);
+      t = setTimeout(start,ARR);
     };
-    window.addEventListener('resize',onResize);
-
-    let lastT=performance.now(),frame=0;
-    function animate(now){
-      const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
-      if(!paused){
-        const daySeconds=60,t=(now/1000)%daySeconds,theta=(t/daySeconds)*Math.PI*2;
-        sun.position.set(Math.cos(theta)*50,Math.sin(theta)*50,0);
-        sun.intensity=Math.max(0.2,Math.sin(theta)*1.2);
-        scene.background=new THREE.Color().setHSL(0.6,0.7,Math.max(0.15,0.6*(Math.sin(theta)*0.5+0.5)));
-
-        // Corrected WASD directions (fixed inversion)
-        const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
-        const right = new THREE.Vector3(-Math.sin(player.yaw - Math.PI/2), 0, -Math.cos(player.yaw - Math.PI/2));
-
-        player.velocity.x *= 0.7; player.velocity.z *= 0.7; player.velocity.y -= 9.8*dt;
-        if(keys['KeyW']){player.velocity.x += forward.x*speedFactor*dt; player.velocity.z += forward.z*speedFactor*dt;}
-        if(keys['KeyS']){player.velocity.x -= forward.x*speedFactor*dt; player.velocity.z -= forward.z*speedFactor*dt;}
-        if(keys['KeyA']){player.velocity.x -= right.x*speedFactor*dt; player.velocity.z -= right.z*speedFactor*dt;}
-        if(keys['KeyD']){player.velocity.x += right.x*speedFactor*dt; player.velocity.z += right.z*speedFactor*dt;}
-        if(keys['Space'])player.velocity.y=6;
-
-        player.x += player.velocity.x; player.y += player.velocity.y*dt; player.z += player.velocity.z;
-        const groundH=(()=>{const gx=Math.floor(player.x/BLOCK_SIZE),gz=Math.floor(player.z/BLOCK_SIZE);for(let yy=HEIGHT-1;yy>=0;yy--)if(getVoxel(gx,yy,gz)!==undefined)return(yy+1)*BLOCK_SIZE;return 0;})();
-        if(player.y<groundH+1.6){player.y=groundH+1.6;player.velocity.y=0;}
-
-        camera.position.set(player.x*BLOCK_SIZE,player.y*BLOCK_SIZE,player.z*BLOCK_SIZE);
-        camera.rotation.set(player.pitch,player.yaw,0);
-
-        if(frame%10===0)rebuildInstances(player);
+    const first = () => {
+      if (keysRef.current['ArrowDown']) {
+        movePiece(0,1);
+        t = setTimeout(start,ARR);
       }
-      renderer.render(scene,camera);frame++;requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
-
-    rebuildInstances(player);setReady(true);
-
-    return()=>{
-      window.removeEventListener('keydown',onKeyDown);
-      window.removeEventListener('keyup',onKeyUp);
-      window.removeEventListener('pointermove',onPointerMove);
-      window.removeEventListener('resize',onResize);
-      renderer.domElement.removeEventListener('mousedown',onMouseDown);
-      mountRef.current.removeChild(renderer.domElement);
-      scene.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});
     };
-  },[]);
+    const down = e => { if (e.key==='ArrowDown'){ t=setTimeout(first,DAS); } };
+    const up   = e => { if (e.key==='ArrowDown'){ clearTimeout(t); } };
+    window.addEventListener('keydown',down);
+    window.addEventListener('keyup',up);
+    return () => { clearTimeout(t); window.removeEventListener('keydown',down); window.removeEventListener('keyup',up); };
+  }, [movePiece,gameOver,isPaused]);
 
-  const paletteColorHex=i=>['6db34d','8b5a2b','8d8d8d','f2e08c','4da6ff','8b4a1a'][i]??'ffffff';
+  /* ---------- gravity + lock ---------- */
+  const [lockTimer,setLockTimer] = useState(0);
+  const gravity = Math.max(50, 500 - (level-1)*40); // ms
 
-  return(
-    <div className="w-full h-screen flex flex-col bg-black">
-      <div ref={mountRef} className="flex-1 relative">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div style={{width:'6px',height:'6px'}} className="rounded-full bg-white/90"></div>
-        </div>
-        <div className="absolute left-4 top-4 text-white text-sm bg-black/30 p-2 rounded">Click to lock pointer — WASD to move, mouse to look, LMB mine, RMB place, P pause</div>
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-6 flex gap-2">
-          {[0,1,2,3,4,5].map(i=>(
-            <button key={i} onClick={()=>setSelectedBlock(i)} className={`w-12 h-12 rounded-lg border-2 ${selectedBlock===i?'border-yellow-300':'border-white/30'} flex items-center justify-center bg-white/5`}>
-              <div style={{width:28,height:28,background:`#${paletteColorHex(i)}`}} className="rounded-sm" />
-            </button>
-          ))}
-        </div>
-        {paused&&(
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-black/70 text-white p-6 rounded">PAUSED — Press P to resume</div>
+  useEffect(() => {
+    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
+    const id = setInterval(()=>{
+      if (!movePiece(0,1)){
+        setLockTimer(t=>t+gravity);
+        if (lockTimer>=LOCK_DELAY){
+          // place
+          const nb = board.map(r=>[...r]);
+          for (let y=0;y<currentPiece.shape.length;y++){
+            for (let x=0;x<currentPiece.shape[y].length;x++){
+              if (currentPiece.shape[y][x]){
+                const by = currentPos.y+y;
+                if (by>=0) nb[by][currentPos.x+x] = currentPiece.type;
+              }
+            }
+          }
+          const {cleared,delay} = clearLines(nb);
+          if (!delay) setBoard(nb);
+          setScore(s=>s + LINE_SCORE[cleared]*level);
+          setLines(l=>l+cleared);
+          if (cleared){ setCombo(c=>c+1); setShowCombo(true); setTimeout(()=>setShowCombo(false),1000); }
+          else setCombo(0);
+          if (Math.floor((lines+cleared)/10) > Math.floor(lines/10)) setLevel(lv=>lv+1);
+
+          setTimeout(()=>{
+            const sp = spawnPiece();
+            if (checkCollision(sp.piece,sp.pos,nb)) setGameOver(true);
+            setLockTimer(0);
+          },delay?450:0);
+        }
+      } else setLockTimer(0);
+    },gravity);
+    return () => clearInterval(id);
+  }, [currentPiece,movePiece,board,currentPos,lockTimer,lines,level,clearingLines,dropAnim,spawnPiece,checkCollision,gameOver,isPaused]);
+
+  /* ---------- init ---------- */
+  useEffect(() => { if (!nextPiece) setNextPiece(getRandomPiece()); },[nextPiece]);
+  useEffect(() => { if (!currentPiece) spawnPiece(); },[currentPiece,spawnPiece]);
+
+  /* ---------- particle anim ---------- */
+  useEffect(() => {
+    const id = setInterval(()=>{
+      setParticles(p=>p.map(q=>({...q,x:q.x+q.vx,y:q.y+q.vy,vy:q.vy+0.3,life:q.life-0.02})).filter(q=>q.life>0));
+    },16);
+    return () => clearInterval(id);
+  }, []);
+
+  /* ---------- render helpers ---------- */
+  const renderPiece = (p,small=false) => {
+    if (!p) return null;
+    const sz = small?20:CELL_SIZE;
+    return (
+      <div style={{display:'inline-block'}}>
+        {p.shape.map((r,y)=>(
+          <div key={y} style={{display:'flex'}}>
+            {r.map((c,x)=>(
+              <div key={x} style={{
+                width:sz,height:sz,
+                backgroundColor:c?COLORS[p.type]:'transparent',
+                border:c?'1px solid rgba(255,255,255,0.3)':'none'
+              }} />
+            ))}
           </div>
-        )}
+        ))}
+      </div>
+    );
+  };
+
+  /* ---------- jsx ---------- */
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+      <div className="flex gap-4">
+        {/* hold */ }
+        <div className="bg-gray-800 p-4 rounded-lg" style={{transition:'transform .2s',transform:heldPiece?'scale(1.05)':'scale(1)'}}>
+          <div className="text-white text-center mb-2"><div className="text-sm mb-2">HOLD (C)</div>
+            <div className="bg-gray-700 p-2 rounded flex items-center justify-center" style={{width:100,height:80}}>
+              {heldPiece&&renderPiece(heldPiece,true)}
+            </div>
+          </div>
+        </div>
+
+        {/* centre */ }
+        <div>
+          <div className="text-white text-2xl font-bold text-center mb-2" style={{textShadow:'0 0 10px rgba(255,255,255,.5)'}}>TETRIS</div>
+          <div className="text-white text-center mb-2">Score:<span className="text-cyan-400 font-bold text-lg ml-1">{score}</span></div>
+          <div className="text-white text-center mb-2">Level:<span className="text-yellow-300 ml-1">{level}</span></div>
+          <div className="text-white text-center mb-2">Lines:<span className="text-green-300 ml-1">{lines}</span></div>
+
+          {/* board */ }
+          <div className="relative" style={{transform:`translate(${shake*(Math.random()-.5)}px,${shake*(Math.random()-.5)}px)`}}>
+            <div className="grid gap-px bg-gray-700 p-1 rounded" style={{gridTemplateColumns:`repeat(${BOARD_WIDTH},${CELL_SIZE}px)`}}>
+              {board.map((row,y)=>row.map((cell,x)=>{
+                let isCur=false,isGhost=false,isDrop=false,color=null,isClear=clearingLines.includes(y);
+                if (currentPiece&&!dropAnim){
+                  for (let py=0;py<currentPiece.shape.length;py++){
+                    for (let px=0;px<currentPiece.shape[py].length;px++){
+                      if (!currentPiece.shape[py][px]) continue;
+                      if (currentPos.x+px===x&&currentPos.y+py===y){ isCur=true; color=COLORS[currentPiece.type]; }
+                      if (ghostY!==null&&currentPos.x+px===x&&ghostY+py===y) isGhost=true;
+                    }
+                  }
+                }
+                if (dropAnim&&currentPiece){
+                  const ay = dropAnim.from+(dropAnim.to-dropAnim.from)*Math.min(dropAnim.progress/150,1);
+                  for (let py=0;py<currentPiece.shape.length;py++){
+                    for (let px=0;px<currentPiece.shape[py].length;px++){
+                      if (currentPiece.shape[py][px]&&currentPos.x+px===x&&Math.floor(ay+py)===y){ isDrop=true; color=COLORS[currentPiece.type]; }
+                    }
+                  }
+                }
+                return (
+                  <div key={`${y}-${x}`} style={{
+                    width:CELL_SIZE,height:CELL_SIZE,
+                    backgroundColor: isDrop||isCur?color : isGhost?'rgba(255,255,255,.25)':cell?COLORS[cell]:'#0a0a0a',
+                    border:(isDrop||isCur||isGhost||cell)?'1px solid rgba(255,255,255,.3)':'1px solid #1a1a1a',
+                    transition:isClear?'all .4s ease-out':'background-color .1s',
+                    opacity:isClear?0:1,transform:isClear?'scale(0) rotate(180deg)':'scale(1) rotate(0deg)',
+                    boxShadow:(isCur||isDrop)?`0 0 10px ${color}`:'none'
+                  }} />
+                );
+              }))}
+            </div>
+
+            {/* particles */ }
+            <svg className="absolute inset-0 pointer-events-none">
+              {particles.map(p=>(
+                <circle key={p.id} cx={p.x} cy={p.y} r={3} fill={p.color} opacity={p.life} style={{filter:'blur(1px)'}} />
+              ))}
+            </svg>
+
+            {/* combo */ }
+            {showCombo&&combo>1&&(
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-yellow-300 font-black text-4xl animate-bounce" style={{textShadow:'0 0 20px #ffff00,0 0 40px #ffff00'}}>{combo}x COMBO!</div>
+              </div>
+            )}
+          </div>
+
+          {gameOver&&(
+            <div className="text-center mt-4 animate-fadeIn">
+              <div className="text-red-500 text-xl font-bold mb-2" style={{textShadow:'0 0 10px #ff0000'}}>GAME OVER</div>
+              <button onClick={()=>window.location.reload()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded transition transform hover:scale-110">Play Again</button>
+            </div>
+          )}
+          {isPaused&&!gameOver&&<div className="text-yellow-400 text-xl font-bold text-center mt-4" style={{textShadow:'0 0 10px #ffff00'}}>PAUSED</div>}
+
+          <div className="text-white text-sm mt-4 text-center space-y-1">
+            <div>← → : Move  ↑ : Rotate</div>
+            <div>↓ : Soft Drop  SPACE : Hard Drop</div>
+            <div>C : Hold  P : Pause</div>
+          </div>
+        </div>
+
+        {/* next */ }
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <div className="text-white text-center mb-2"><div className="text-sm mb-2">NEXT</div>
+            <div className="bg-gray-700 p-2 rounded flex items-center justify-center" style={{width:100,height:80}}>
+              {nextPiece&&renderPiece(nextPiece,true)}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default TetrisGame;
