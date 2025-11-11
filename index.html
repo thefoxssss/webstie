@@ -282,12 +282,232 @@
     }
 
     @keyframes clearLine {
-      0% { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: scale(0) rotate(360deg); }
+      0% { 
+        opacity: 1; 
+        transform: scale(1) rotate(0deg); 
+        filter: brightness(1);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(1.1) rotate(180deg);
+        filter: brightness(2);
+      }
+      100% { 
+        opacity: 0; 
+        transform: scale(0) rotate(360deg); 
+        filter: brightness(0);
+      }
+    }
+
+    .update-log-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(168, 85, 247, 0.8);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(168, 85, 247, 0.5);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+      z-index: 1000;
+      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+    }
+
+    .update-log-btn:hover {
+      background: rgba(168, 85, 247, 1);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
+    }
+
+    .update-log-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: fadeIn 0.3s;
+    }
+
+    .update-log-modal.show {
+      display: flex;
+    }
+
+    .update-log-content {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 3px solid rgba(168, 85, 247, 0.5);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 50px rgba(168, 85, 247, 0.5);
+      animation: slideIn 0.3s;
+    }
+
+    .update-log-content h2 {
+      color: #a855f7;
+      margin-bottom: 10px;
+      font-size: 2rem;
+      text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+    }
+
+    .version {
+      color: #06b6d4;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .update-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      border-left: 4px solid #a855f7;
+    }
+
+    .update-section h3 {
+      color: #06b6d4;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+
+    .update-section ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .update-section li {
+      padding: 5px 0;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.9rem;
+    }
+
+    .update-section li:before {
+      content: "✨ ";
+      color: #a855f7;
+    }
+
+    .close-modal {
+      background: linear-gradient(45deg, #a855f7, #06b6d4);
+      border: none;
+      color: white;
+      padding: 10px 30px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 20px;
+      width: 100%;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+
+    .close-modal:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(168, 85, 247, 0.5);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .play-again-btn {
+      display: inline-block;
+      margin-top: 15px;
+      background: linear-gradient(45deg, #a855f7, #06b6d4);
+      border: none;
+      color: white;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .play-again-btn:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
     }
   </style>
 </head>
 <body>
+  <button class="update-log-btn" onclick="toggleUpdateLog()">📋 Update Log</button>
+
+  <div class="update-log-modal" id="updateLogModal">
+    <div class="update-log-content">
+      <h2>Update Log</h2>
+      <div class="version">Version 2.0.0</div>
+      
+      <div class="update-section">
+        <h3>🎮 New Features</h3>
+        <ul>
+          <li>Added update log modal to track changes</li>
+          <li>Play Again button now available during gameplay</li>
+          <li>Enhanced line clear animations - smoother and brighter</li>
+          <li>Improved particle effects with better physics</li>
+          <li>Ghost piece now more visible and cleaner</li>
+        </ul>
+      </div>
+
+      <div class="update-section">
+        <h3>✨ Improvements</h3>
+        <ul>
+          <li>Removed jittery line clear animations</li>
+          <li>Smoother piece movement with DAS system</li>
+          <li>Better rotation with enhanced wall kicks</li>
+          <li>Optimized rendering for 60fps gameplay</li>
+          <li>Cleaner UI with glassmorphism effects</li>
+        </ul>
+      </div>
+
+      <div class="update-section">
+        <h3>🎨 Visual Enhancements</h3>
+        <ul>
+          <li>Gradient backgrounds with dynamic lighting</li>
+          <li>Glowing effects on active pieces</li>
+          <li>Smooth combo and action text animations</li>
+          <li>Enhanced particle system with blur effects</li>
+          <li>Beautiful color palette across all elements</li>
+        </ul>
+      </div>
+
+      <div class="update-section">
+        <h3>🔧 Technical</h3>
+        <ul>
+          <li>Single HTML file for easy deployment</li>
+          <li>No external dependencies</li>
+          <li>Optimized for GitHub Pages & Cloudflare</li>
+          <li>Mobile responsive design</li>
+          <li>Pure vanilla JavaScript</li>
+        </ul>
+      </div>
+
+      <button class="close-modal" onclick="toggleUpdateLog()">Close</button>
+    </div>
+  </div>
+
   <div class="game-container">
     <div class="side-panel" id="holdPanel">
       <div class="panel-title">HOLD (C)</div>
@@ -320,6 +540,8 @@
 
       <div id="gameOverScreen" style="display: none;"></div>
 
+      <button class="play-again-btn" onclick="location.reload()" style="display: block;">🔄 Play Again</button>
+
       <div class="controls">
         <div style="font-weight: bold; margin-bottom: 10px; color: #a855f7;">CONTROLS</div>
         <div class="controls-grid">
@@ -340,6 +562,18 @@
   </div>
 
   <script>
+    function toggleUpdateLog() {
+      const modal = document.getElementById('updateLogModal');
+      modal.classList.toggle('show');
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('updateLogModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        toggleUpdateLog();
+      }
+    });
+
     const BOARD_WIDTH = 10;
     const BOARD_HEIGHT = 20;
     const CELL_SIZE = 30;
@@ -838,8 +1072,8 @@
               cell.style.backgroundColor = pieceColor;
               cell.style.boxShadow = `0 0 15px ${pieceColor}, inset 0 0 10px ${pieceColor}40`;
             } else if (isGhost && !this.board[y][x]) {
-              cell.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-              cell.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+              cell.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+              cell.style.border = '2px dashed rgba(255, 255, 255, 0.3)';
             } else if (this.board[y][x]) {
               const color = COLORS[this.board[y][x]];
               cell.style.backgroundColor = color;
