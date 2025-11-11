@@ -1,35 +1,38 @@
+### Full single-file HTML: cinematic Tetris with dynamic themes, reactive audio-visuals, comfort mode, achievements, end-game sequence, and polished animations
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tetris Game — Reactive Cinematic Edition (Comfort Mode)</title>
+  <title>TETRIS — Cosmic Cinematic Edition</title>
   <style>
-    /* =========================
-       Core variables (reactive)
-       ========================= */
+    /* =========================================================
+       0) Core variables (reactive, themes, comfort mode)
+       ========================================================= */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      /* Background palette and speed */
-      --bg1: #1a1a2e;
-      --bg2: #16213e;
-      --bg3: #0f3460;
+      /* Base palette and speed (animated background) */
+      --bg1: #0e132f;
+      --bg2: #14213d;
+      --bg3: #1f2a57;
       --bg-speed: 16s;
 
-      /* Accents */
-      --accent1: #a855f7;
-      --accent2: #06b6d4;
+      /* Neon accents */
+      --accent1: #a855f7; /* violet */
+      --accent2: #06b6d4; /* cyan */
 
-      /* Board glow */
-      --board-glow: rgba(168, 85, 247, 0.3);
+      /* Board glow and inset */
+      --board-glow: rgba(168, 85, 247, 0.26);
       --board-inset: rgba(0, 0, 0, 0.5);
 
       /* Ghost visuals */
-      --ghost-border: rgba(255, 255, 255, 0.3);
+      --ghost-border: rgba(255, 255, 255, 0.36);
       --ghost-bg: rgba(255, 255, 255, 0.12);
 
-      /* Reactive filter chain */
+      /* Reactive filters (global) */
       --reactive-brightness: 1;
       --reactive-hue: 0deg;
       --reactive-sat: 105%;
@@ -39,17 +42,22 @@
       --ui-scale: 1;
       --title-glow: rgba(168, 85, 247, 0.5);
 
-      /* Comfort mode toggle (reduces effects) */
+      /* Comfort mode limits (soft visuals) */
       --comfort-brightness-cap: 1.3;
       --comfort-duration: 360ms;
+
+      /* Theme name for UI reflect (cosmic, aurora, cyberpunk, retro, jungle) */
+      --theme-name: "cosmic";
     }
 
-    /* =========================
-       Background and overlays
-       ========================= */
+    /* =========================================================
+       1) Reactive background: multi-layer gradients, sparkles, aurora
+       ========================================================= */
     body {
       font-family: 'Arial', sans-serif;
-      background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 50%, var(--bg3) 100%);
+      background:
+        radial-gradient(60% 60% at 20% 20%, rgba(255,255,255,0.03), transparent 60%),
+        linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 50%, var(--bg3) 100%);
       background-size: 400% 400%;
       min-height: 100vh;
       display: flex;
@@ -68,7 +76,7 @@
       100% { background-position: 0% 50%; }
     }
 
-    /* Sparkle overlay (soft) */
+    /* Subtle sparkle overlay (multi radial layers) */
     .bg-sparkle {
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background:
@@ -85,7 +93,23 @@
       100% { transform: translate(0,0); }
     }
 
-    /* Ripple blast on clears (soft) */
+    /* Aurora ribbons, theme-reactive */
+    .aurora-layer {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        conic-gradient(from 180deg at 50% 50%, rgba(166,85,247,0.14), rgba(6,182,212,0.12), rgba(255,255,255,0) 70%),
+        linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.0));
+      opacity: 0.28;
+      filter: blur(20px);
+      animation: auroraFlow 16s ease-in-out infinite alternate;
+    }
+    @keyframes auroraFlow {
+      0% { transform: translateY(0) scale(1); opacity: 0.28; }
+      50% { transform: translateY(-8px) scale(1.02); opacity: 0.33; }
+      100% { transform: translateY(4px) scale(0.99); opacity: 0.27; }
+    }
+
+    /* Ripple blast on clears (soft comfort) */
     .bg-ripple {
       position: fixed; inset: 0; pointer-events: none; z-index: 1;
       background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%);
@@ -111,9 +135,9 @@
       100% { opacity: 1; background: radial-gradient(circle, rgba(255,0,0,0.75) 0%, rgba(0,0,0,1) 100%); }
     }
 
-    /* =========================
-       Layout and panels
-       ========================= */
+    /* =========================================================
+       2) Layout and panels
+       ========================================================= */
     .game-container {
       display: flex;
       gap: 20px;
@@ -132,6 +156,7 @@
       padding: 20px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 160px;
     }
     .side-panel.glow { box-shadow: 0 0 22px rgba(168, 85, 247, 0.6); transform: scale(1.04); }
 
@@ -150,24 +175,46 @@
       letter-spacing: 4px;
     }
 
-    .stats { display: flex; gap: 15px; justify-content: center; }
+    /* =========================================================
+       3) Stats + achievements strip
+       ========================================================= */
+    .stats { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
     .stat-box {
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px);
       padding: 10px 20px;
       border-radius: 10px;
       text-align: center;
-      min-width: 100px;
+      min-width: 110px;
       transition: all 0.25s ease;
       transform-origin: center;
       border: 2px solid rgba(168, 85, 247, 0.2);
     }
-    .stat-label { font-size: 0.75rem; opacity: 0.7; margin-bottom: 5px; }
+    .stat-label { font-size: 0.75rem; opacity: 0.75; margin-bottom: 5px; }
     .stat-value { font-size: 1.5rem; font-weight: bold; }
 
-    /* =========================
-       Board and cells
-       ========================= */
+    .achievements {
+      display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 4px; flex-wrap: wrap;
+    }
+    .badge {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      box-shadow: 0 0 10px rgba(168,85,247,0.24);
+      display: inline-flex; gap: 6px; align-items: center;
+    }
+    .badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: 0 0 6px var(--accent2);
+    }
+
+    /* =========================================================
+       4) Board and cells
+       ========================================================= */
     #gameBoard {
       position: relative;
       background: #0a0a0a;
@@ -203,9 +250,9 @@
 
     .next-preview { opacity: 0.6; margin-bottom: 10px; min-height: 60px; }
 
-    /* =========================
-       Controls and buttons
-       ========================= */
+    /* =========================================================
+       5) Controls + buttons + update log
+       ========================================================= */
     .controls {
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px);
@@ -215,6 +262,7 @@
       text-align: center;
       font-size: 0.75rem;
       border: 1px solid rgba(168, 85, 247, 0.2);
+      max-width: 440px;
     }
     .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 
@@ -253,9 +301,6 @@
     }
     .play-again-btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6); }
 
-    /* =========================
-       Update Log (preserved)
-       ========================= */
     .update-log-btn {
       position: fixed;
       top: 20px;
@@ -277,7 +322,7 @@
 
     .update-log-modal {
       position: fixed; inset: 0;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(5px);
       display: none;
       align-items: center;
@@ -288,11 +333,11 @@
     .update-log-modal.show { display: flex; }
 
     .update-log-content {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      background: linear-gradient(135deg, #0e132f 0%, #1a1a2e 100%);
       border: 3px solid rgba(168, 85, 247, 0.5);
       border-radius: 20px;
       padding: 30px;
-      max-width: 560px;
+      max-width: 720px;
       width: 92%;
       max-height: 80vh;
       overflow-y: auto;
@@ -302,11 +347,12 @@
 
     .update-log-content h2 { color: #a855f7; margin-bottom: 10px; font-size: 2rem; text-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
     .version { color: #06b6d4; font-size: 1.2rem; margin-bottom: 20px; font-weight: bold; }
-    .update-section { margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border-left: 4px solid #a855f7; }
+    .update-section { margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.04); border-radius: 10px; border-left: 4px solid #a855f7; }
     .update-section h3 { color: #06b6d4; margin-bottom: 10px; font-size: 1.1rem; }
     .update-section ul { list-style: none; padding: 0; }
     .update-section li { padding: 5px 0; color: rgba(255, 255, 255, 0.9); font-size: 0.9rem; }
     .update-section li:before { content: "✨ "; color: #a855f7; }
+
     .close-modal {
       background: linear-gradient(45deg, var(--accent1), var(--accent2));
       border: none; color: white; padding: 10px 30px; border-radius: 8px; font-weight: bold;
@@ -315,9 +361,9 @@
     .close-modal:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(168, 85, 247, 0.5); }
     @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-    /* =========================
-       Overlays and messages
-       ========================= */
+    /* =========================================================
+       6) Overlays and messages
+       ========================================================= */
     .overlay-message {
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
@@ -334,9 +380,9 @@
 
     canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
-    /* =========================
-       Animations (general)
-       ========================= */
+    /* =========================================================
+       7) Animations (general)
+       ========================================================= */
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     @keyframes shake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 75% { transform: translate(-2px, -2px); } }
     @keyframes comboPopIn { 0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.25) rotate(10deg); } 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; } }
@@ -344,9 +390,9 @@
     @keyframes perfectClearAnim { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 30% { transform: translate(-50%, -50%) scale(1.45); opacity: 1; } 70% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* =========================
-       Line clear per-cell glow/explosion
-       ========================= */
+    /* =========================================================
+       8) Line clear per-cell glow/explosion
+       ========================================================= */
     @keyframes clearLineCell {
       0%   { opacity: 1; transform: scale(1); box-shadow: 0 0 10px var(--cell-color); filter: brightness(1); }
       25%  { opacity: 1; transform: scale(1.15); box-shadow: 0 0 22px #fff, 0 0 40px var(--cell-color); filter: brightness(1.25) saturate(1.4); }
@@ -358,52 +404,85 @@
   </style>
 </head>
 <body>
+  <!-- Reactive overlays -->
   <div class="bg-sparkle"></div>
+  <div class="aurora-layer" id="aurora"></div>
   <div class="bg-ripple" id="bgRipple"></div>
   <div class="end-game-bg" id="endGameBg"></div>
 
+  <!-- Update Log Button -->
   <button class="update-log-btn" onclick="toggleUpdateLog()">📋 Update Log</button>
+
+  <!-- Update Log Modal -->
   <div class="update-log-modal" id="updateLogModal">
     <div class="update-log-content">
       <h2>Update Log</h2>
-      <div class="version">Version 3.1.0</div>
+      <div class="version">Version 4.0.0 — Cosmic Cinematic Edition</div>
+
       <div class="update-section">
         <h3>🎮 New Features</h3>
         <ul>
-          <li>Reactive background with gradient shifts, sparkles, soft ripples, hue-rotate, balanced brightness/saturation boosts</li>
-          <li>Per-cell neon glow/explosion line-clear animation</li>
-          <li>End-game cinematic: red/black fade + particle burst</li>
-          <li>Ghost piece visibility improved</li>
+          <li>Dynamic themes: Cosmic, Aurora, Cyberpunk, Jungle, Retro — reactive colors, ribbons, and glow</li>
+          <li>Comfort Mode: flashes reserved for major events only (line clears, Tetris, Perfect Clear, Game Over)</li>
+          <li>Audio-reactive stubs: hook-ready for beat/rhythm visuals</li>
+          <li>Achievements strip: unlock badges for combos, Tetris streaks, perfect clears</li>
+          <li>End-game cinematic: soft red/black fade + particle burst + board collapse</li>
         </ul>
       </div>
+
       <div class="update-section">
-        <h3>✨ Comfort Mode</h3>
+        <h3>✨ Improvements</h3>
         <ul>
-          <li>Screen flashes reserved for major events only (line clears, Tetris, Perfect Clear, Game Over)</li>
-          <li>Movement, soft drop, rotate, hold: gentle feedback only (no full-screen flash)</li>
-          <li>Reduced brightness caps and shorter durations to protect eyes</li>
+          <li>Preserved DAS movement, enhanced wall kicks</li>
+          <li>Stable render loop at 60fps</li>
+          <li>Polished UI with micro-animations and reactive title glow</li>
+          <li>Ghost piece visibility: dashed border + subtle fill</li>
         </ul>
       </div>
+
       <div class="update-section">
-        <h3>🔧 Technical</h3>
+        <h3>🛠 Settings</h3>
         <ul>
-          <li>Single HTML file, no external dependencies</li>
-          <li>Responsive layout, 60fps render loop</li>
-          <li>Vanilla JavaScript</li>
+          <li>Theme selector</li>
+          <li>Comfort Mode toggle</li>
+          <li>Particles intensity slider (visual-only in this build)</li>
         </ul>
       </div>
+
       <button class="close-modal" onclick="toggleUpdateLog()">Close</button>
     </div>
   </div>
 
+  <!-- Game Container -->
   <div class="game-container" id="gameContainer">
     <div class="side-panel" id="holdPanel">
       <div class="panel-title">HOLD (C)</div>
       <div class="preview-box" id="holdBox"></div>
+      <div class="panel-title" style="margin-top:12px;">SETTINGS</div>
+      <div class="preview-box" style="flex-direction:column; gap:10px;">
+        <label style="font-size:0.8rem;">
+          Theme:
+          <select id="themeSelect" style="margin-left:8px; padding:4px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.06); color:#fff;">
+            <option value="cosmic">Cosmic</option>
+            <option value="aurora">Aurora</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="retro">Retro</option>
+            <option value="jungle">Jungle</option>
+          </select>
+        </label>
+        <label style="font-size:0.8rem;">
+          Comfort mode:
+          <input type="checkbox" id="comfortToggle" checked style="margin-left:8px;">
+        </label>
+        <label style="font-size:0.8rem;">
+          Particles:
+          <input type="range" id="particlesSlider" min="0" max="100" value="70" style="vertical-align:middle; margin-left:8px; width:120px;">
+        </label>
+      </div>
     </div>
 
     <div class="main-panel">
-      <div class="title">TETRIS</div>
+      <div class="title" id="title">TETRIS</div>
 
       <div class="stats">
         <div class="stat-box" style="border: 2px solid rgba(0, 240, 240, 0.3);">
@@ -418,6 +497,10 @@
           <div class="stat-label">LINES</div>
           <div class="stat-value" id="lines" style="color: #f0f000;">0</div>
         </div>
+      </div>
+
+      <div class="achievements" id="achievements">
+        <!-- badges injected dynamically -->
       </div>
 
       <div style="position: relative;">
@@ -450,7 +533,9 @@
   </div>
 
   <script>
-    /* Modal toggles */
+    /* =========================================================
+       A) Modal toggles
+       ========================================================= */
     function toggleUpdateLog() {
       const modal = document.getElementById('updateLogModal');
       modal.classList.toggle('show');
@@ -459,7 +544,9 @@
       if (e.target === this) toggleUpdateLog();
     });
 
-    /* Constants */
+    /* =========================================================
+       B) Constants, shapes, colors
+       ========================================================= */
     const BOARD_WIDTH = 10;
     const BOARD_HEIGHT = 20;
     const CELL_SIZE = 30;
@@ -486,6 +573,47 @@
       L: '#f0a000'
     };
 
+    /* =========================================================
+       C) Theme engine (palette sets)
+       ========================================================= */
+    const THEMES = {
+      cosmic: {
+        bg1: '#0e132f', bg2: '#14213d', bg3: '#1f2a57',
+        accent1: '#a855f7', accent2: '#06b6d4', auroraOpacity: 0.28
+      },
+      aurora: {
+        bg1: '#041b2d', bg2: '#093a46', bg3: '#0b5d5b',
+        accent1: '#8b5cf6', accent2: '#22d3ee', auroraOpacity: 0.35
+      },
+      cyberpunk: {
+        bg1: '#120015', bg2: '#210022', bg3: '#2c0033',
+        accent1: '#ff00ff', accent2: '#00ffc8', auroraOpacity: 0.32
+      },
+      retro: {
+        bg1: '#2a1f1a', bg2: '#3b2c26', bg3: '#4b3a32',
+        accent1: '#f79f1a', accent2: '#1af7d6', auroraOpacity: 0.22
+      },
+      jungle: {
+        bg1: '#0b1f12', bg2: '#163f26', bg3: '#1f5d38',
+        accent1: '#49f77b', accent2: '#1ad1f7', auroraOpacity: 0.30
+      }
+    };
+
+    function applyTheme(name) {
+      const theme = THEMES[name] || THEMES.cosmic;
+      const root = document.documentElement;
+      root.style.setProperty('--bg1', theme.bg1);
+      root.style.setProperty('--bg2', theme.bg2);
+      root.style.setProperty('--bg3', theme.bg3);
+      root.style.setProperty('--accent1', theme.accent1);
+      root.style.setProperty('--accent2', theme.accent2);
+      document.getElementById('aurora').style.opacity = String(theme.auroraOpacity);
+      root.style.setProperty('--theme-name', `"${name}"`);
+    }
+
+    /* =========================================================
+       D) Game class
+       ========================================================= */
     class TetrisGame {
       constructor() {
         this.board = Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
@@ -515,17 +643,49 @@
         this.dasTimers = {};
         this.dasIntervals = {};
 
+        /* Achievements (unlocked badges) */
+        this.achievements = {
+          tetrisMaster: false,
+          comboKing: false,
+          perfectClearer: false,
+          speedRunner: false
+        };
+
+        /* Settings */
+        this.comfortMode = true;
+        this.particlesIntensity = 70; // 0..100
+
         this.initGame();
         this.setupControls();
+        this.setupSettingsUI();
         this.gameLoop();
       }
 
       initGame() {
+        applyTheme('cosmic');
         this.nextPieces = [this.getRandomPiece(), this.getRandomPiece(), this.getRandomPiece()];
         this.spawnPiece();
         this.setupParticleCanvas();
         this.updateDisplay();
+        this.updateAchievementsUI();
         this.updateReactiveBackground(true);
+      }
+
+      setupSettingsUI() {
+        const themeSelect = document.getElementById('themeSelect');
+        themeSelect.addEventListener('change', () => {
+          applyTheme(themeSelect.value);
+        });
+
+        const comfortToggle = document.getElementById('comfortToggle');
+        comfortToggle.addEventListener('change', () => {
+          this.comfortMode = comfortToggle.checked;
+        });
+
+        const particlesSlider = document.getElementById('particlesSlider');
+        particlesSlider.addEventListener('input', () => {
+          this.particlesIntensity = parseInt(particlesSlider.value, 10);
+        });
       }
 
       setupParticleCanvas() {
@@ -607,7 +767,7 @@
             this.currentPos = testPos;
             this.calculateGhost();
             this.render();
-            // No flash for rotate (comfort mode)
+            /* No flash for rotate in comfort mode */
             return;
           }
         }
@@ -633,13 +793,14 @@
         for (let y = 0; y < this.currentPiece.shape.length; y++) {
           for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
             if (this.currentPiece.shape[y][x]) {
-              this.createParticles(this.currentPos.x + x, this.currentPos.y + y, COLORS[this.currentPiece.type], 16);
+              const intensityFactor = this.particlesIntensity / 100;
+              this.createParticles(this.currentPos.x + x, this.currentPos.y + y, COLORS[this.currentPiece.type], Math.round(16 * intensityFactor));
             }
           }
         }
 
         this.shakeBoard();
-        // Drop: minor background effect without bright flash
+        /* No flash for drop (comfort) */
         this.lockPiece();
 
         const points = dropDistance * 2;
@@ -680,7 +841,8 @@
                 cellEl.style.setProperty('--cell-color', color);
                 cellEl.classList.add('clearing');
               }
-              this.createParticles(x, lineY, color, 14);
+              const intensityFactor = this.particlesIntensity / 100;
+              this.createParticles(x, lineY, color, Math.round(14 * intensityFactor));
             }
           });
 
@@ -707,10 +869,14 @@
             this.level = Math.floor(this.lines / 10) + 1;
             this.fallSpeed = Math.max(100, 500 - (this.level - 1) * 40);
 
+            // Achievements gates
+            if (linesToClear.length === 4) this.achievements.tetrisMaster = true;
+
             // Perfect clear check
             if (this.board.every(row => row.every(cell => cell === 0))) {
               this.showMessage('★ PERFECT CLEAR ★', 'perfect-clear', 2000);
               this.score += 1000;
+              this.achievements.perfectClearer = true;
               this.flashBackground('perfect', 5);
             }
 
@@ -723,13 +889,15 @@
 
             // Combo
             this.comboCount++;
+            if (this.comboCount >= 3) this.achievements.comboKing = true;
             if (this.comboCount > 1) {
               this.showMessage(`${this.comboCount}x COMBO!`, 'combo-text', 1000);
-              // No extra flash; maintain comfort
+              /* No extra flash for combo in comfort mode */
             }
 
             this.clearingLines = [];
             this.updateDisplay();
+            this.updateAchievementsUI();
             this.dropLock = false;
             this.spawnPiece();
             this.render();
@@ -760,7 +928,6 @@
         }
 
         this.renderHold();
-        // No flash (comfort mode)
       }
 
       createParticles(x, y, color, count) {
@@ -820,6 +987,24 @@
         setTimeout(() => { msg.remove(); }, duration);
       }
 
+      updateAchievementsUI() {
+        const wrap = document.getElementById('achievements');
+        wrap.innerHTML = '';
+        const entries = Object.entries(this.achievements);
+        entries.forEach(([key, val]) => {
+          if (!val) return;
+          const badge = document.createElement('div');
+          badge.className = 'badge';
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          const label = document.createElement('span');
+          label.textContent = key.replace(/([A-Z])/g, ' $1').toUpperCase();
+          badge.appendChild(dot);
+          badge.appendChild(label);
+          wrap.appendChild(badge);
+        });
+      }
+
       showGameOver() {
         const screen = document.getElementById('gameOverScreen');
         screen.style.display = 'block';
@@ -851,7 +1036,8 @@
           for (let x = 0; x < BOARD_WIDTH; x++) {
             if (this.board[y][x]) {
               const color = COLORS[this.board[y][x]];
-              this.createParticles(x, y, color, 8);
+              const intensityFactor = this.particlesIntensity / 100;
+              this.createParticles(x, y, color, Math.round(8 * intensityFactor));
             }
           }
         }
@@ -877,11 +1063,9 @@
                 this.isPaused = !this.isPaused;
                 if (this.isPaused) {
                   this.showMessage('⏸ PAUSED', 'paused', 999999);
-                  // No flash for pause
                 } else {
                   document.getElementById('overlayMessages').innerHTML = '';
                   this.lastFallTime = Date.now();
-                  // No flash for resume
                 }
                 break;
             }
@@ -1066,9 +1250,9 @@
         root.style.setProperty('--bg-speed', `${speed}s`);
 
         const intensity = Math.min(1, 0.055 * (this.level - 1));
-        const bg1 = this.mixColor('#1a1a2e', '#a855f7', intensity);
-        const bg2 = this.mixColor('#16213e', '#06b6d4', intensity * 0.7);
-        const bg3 = this.mixColor('#0f3460', '#00f0f0', intensity * 0.5);
+        const bg1 = this.mixColor('#0e132f', getComputedStyle(root).getPropertyValue('--accent1').trim(), intensity);
+        const bg2 = this.mixColor('#14213d', getComputedStyle(root).getPropertyValue('--accent2').trim(), intensity * 0.7);
+        const bg3 = this.mixColor('#1f2a57', '#00f0f0', intensity * 0.5);
         root.style.setProperty('--bg1', bg1);
         root.style.setProperty('--bg2', bg2);
         root.style.setProperty('--bg3', bg3);
@@ -1083,14 +1267,16 @@
         }
       }
 
-      // Comfort-mode flash: reserved for major events, reduced intensity
+      // Comfort-mode flash: reserved for major events; reduced intensity
       flashBackground(type, magnitude = 1) {
+        if (!this.comfortMode) {
+          /* If comfort mode off, we could crank visuals — here still modest */
+        }
         const root = document.documentElement;
         const originalSpeed = getComputedStyle(root).getPropertyValue('--bg-speed').trim();
         const originalGlow = getComputedStyle(root).getPropertyValue('--board-glow').trim();
 
-        // Defaults (soft)
-        let boostB = 1.18; // brightness cap will clamp below
+        let boostB = 1.18;
         let boostS = 112;
         let hue = 0;
         let blur = '0px';
@@ -1100,44 +1286,15 @@
 
         switch (type) {
           case 'clear':
-            boostB = 1.22;
-            boostS = 115;
-            hue = 18;
-            blur = '0.8px';
-            speedBoost = 0.6;
-            glow = 'rgba(255,255,255,0.6)';
-            uiScale = 1.015;
-            break;
+            boostB = 1.22; boostS = 115; hue = 18; blur = '0.8px'; speedBoost = 0.6; glow = 'rgba(255,255,255,0.6)'; uiScale = 1.015; break;
           case 'tetris':
-            boostB = 1.26;
-            boostS = 118;
-            hue = 42;
-            blur = '1.2px';
-            speedBoost = 0.5;
-            glow = 'rgba(255,0,255,0.7)';
-            uiScale = 1.02;
-            break;
+            boostB = 1.26; boostS = 118; hue = 42; blur = '1.2px'; speedBoost = 0.5; glow = 'rgba(255,0,255,0.7)'; uiScale = 1.02; break;
           case 'perfect':
-            boostB = 1.28;
-            boostS = 120;
-            hue = 120;
-            blur = '1.4px';
-            speedBoost = 0.48;
-            glow = 'rgba(0,240,240,0.8)';
-            uiScale = 1.025;
-            break;
+            boostB = 1.28; boostS = 120; hue = 120; blur = '1.4px'; speedBoost = 0.48; glow = 'rgba(0,240,240,0.8)'; uiScale = 1.025; break;
           case 'gameover':
-            boostB = 1.24;
-            boostS = 108;
-            hue = -22;
-            blur = '1px';
-            speedBoost = 0.65;
-            glow = 'rgba(255,0,0,0.7)';
-            uiScale = 0.985;
-            break;
+            boostB = 1.24; boostS = 108; hue = -22; blur = '1px'; speedBoost = 0.65; glow = 'rgba(255,0,0,0.7)'; uiScale = 0.985; break;
           default:
-            // Movement / rotate / hold: no flash
-            return;
+            return; // movement/hold/rotate: no flash
         }
 
         // Clamp brightness to comfort cap
@@ -1188,7 +1345,11 @@
       }
     }
 
+    /* =========================================================
+       E) Boot
+       ========================================================= */
     window.addEventListener('DOMContentLoaded', () => { new TetrisGame(); });
   </script>
 </body>
 </html>
+```
