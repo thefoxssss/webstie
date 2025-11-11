@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-const BOARD_WIDTH  = 10;
+const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
-const CELL_SIZE    = 30;
+const CELL_SIZE = 30;
 
 const SHAPES = {
   I: [[1,1,1,1]],
@@ -13,347 +13,371 @@ const SHAPES = {
   J: [[1,0,0],[1,1,1]],
   L: [[0,0,1],[1,1,1]]
 };
+
 const COLORS = {
-  I:'#00f0f0', O:'#f0f000', T:'#a000f0',
-  S:'#00f000', Z:'#f00000', J:'#0000f0', L:'#f0a000'
+  I: '#00f0f0',
+  O: '#f0f000',
+  T: '#a000f0',
+  S: '#00f000',
+  Z: '#f00000',
+  J: '#0000f0',
+  L: '#f0a000'
 };
 
-const LINE_SCORE = [0, 100, 300, 500, 800];        // Guideline
-const LOCK_DELAY = 500;                            // ms
-const DAS        = 150;   // delayed-auto-shift
-const ARR        = 30;    // auto-repeat-rate
-
 const TetrisGame = () => {
-  /* ---------- board & pieces ---------- */
-  const [board, setBoard]       = useState(() => Array(BOARD_HEIGHT).fill().map(_=>Array(BOARD_WIDTH).fill(0)));
+  const [board, setBoard] = useState(Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0)));
   const [currentPiece, setCurrentPiece] = useState(null);
-  const [currentPos, setCurrentPos]     = useState({x:0,y:0});
-  const [ghostY, setGhostY]     = useState(null);
-  const [nextPiece, setNextPiece]       = useState(null);
-  const [heldPiece, setHeldPiece]       = useState(null);
-  const [canHold, setCanHold]   = useState(true);
-
-  /* ---------- game loop ---------- */
-  const [score, setScore]       = useState(0);
-  const [level, setLevel]       = useState(1);
-  const [lines, setLines]       = useState(0);
+  const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
+  const [heldPiece, setHeldPiece] = useState(null);
+  const [canHold, setCanHold] = useState(true);
+  const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [nextPiece, setNextPiece] = useState(null);
   const [clearingLines, setClearingLines] = useState([]);
-  const [dropAnim, setDropAnim] = useState(null);
-  const [shake, setShake]       = useState(0);
-
-  /* ---------- particles / combo ---------- */
+  const [dropAnimation, setDropAnimation] = useState(null);
+  const [ghostPos, setGhostPos] = useState(null);
   const [particles, setParticles] = useState([]);
-  const [combo, setCombo]         = useState(0);
+  const [comboCount, setComboCount] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
+
   const particleIdRef = useRef(0);
 
-  /* ---------- inputs ---------- */
-  const keysRef = useRef({});
-
-  /* ---------- 7-bag ---------- */
-  const bagRef = useRef([]);
-  const refillBag = () => {
-    const t = Object.keys(SHAPES);
-    bagRef.current = [...t].sort(() => Math.random() - 0.5);
-  };
-  const getRandomPiece = () => {
-    if (!bagRef.current.length) refillBag();
-    const type = bagRef.current.pop();
+  const getRandomPiece = useCallback(() => {
+    const types = Object.keys(SHAPES);
+    const type = types[Math.floor(Math.random() * types.length)];
     return { type, shape: SHAPES[type] };
-  };
+  }, []);
 
-  /* ---------- spawn ---------- */
-  const spawnPiece = useCallback((forced=null) => {
-    const p = forced || nextPiece || getRandomPiece();
-    if (!forced) setNextPiece(getRandomPiece());
-    const x = Math.floor(BOARD_WIDTH/2) - Math.floor(p.shape[0].length/2);
-    setCurrentPiece(p);
-    setCurrentPos({x,y:0});
+  const spawnPiece = useCallback((piece = null) => {
+    const newPiece = piece || nextPiece || getRandomPiece();
+    if (!piece) setNextPiece(getRandomPiece());
+    const x = Math.floor(BOARD_WIDTH / 2) - Math.floor(newPiece.shape[0].length / 2);
+    setCurrentPiece(newPiece);
+    setCurrentPos({ x, y: 0 });
     setCanHold(true);
-    return {piece:p, pos:{x,y:0}};
-  }, [nextPiece]);
+    return { piece: newPiece, pos: { x, y: 0 } };
+  }, [getRandomPiece, nextPiece]);
 
-  /* ---------- collision ---------- */
-  const checkCollision = useCallback((piece, pos, tstBoard=board) => {
-    for (let y=0;y<piece.shape.length;y++){
-      for (let x=0;x<piece.shape[y].length;x++){
-        if (!piece.shape[y][x]) continue;
-        const nx = pos.x+x, ny = pos.y+y;
-        if (nx<0||nx>=BOARD_WIDTH||ny>=BOARD_HEIGHT) return true;
-        if (ny>=0&&tstBoard[ny][nx]) return true;
+  const checkCollision = useCallback((piece, pos, testBoard = board) => {
+    for (let y = 0; y < piece.shape.length; y++) {
+      for (let x = 0; x < piece.shape[y].length; x++) {
+        if (piece.shape[y][x]) {
+          const newX = pos.x + x;
+          const newY = pos.y + y;
+          if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT) return true;
+          if (newY >= 0 && testBoard[newY][newX]) return true;
+        }
       }
     }
     return false;
   }, [board]);
 
-  /* ---------- ghost ---------- */
-  useEffect(() => {
-    if (!currentPiece) return;
-    let gy = currentPos.y;
-    while(!checkCollision(currentPiece,{x:currentPos.x,y:gy+1})) gy++;
-    setGhostY(gy);
-  }, [currentPiece, currentPos, checkCollision]);
-
-  /* ---------- particles ---------- */
-  const createParticles = (x,y,color) => {
-    const arr = [];
-    for (let i=0;i<8;i++){
-      arr.push({
+  const createParticles = useCallback((x, y, color) => {
+    const newParticles = [];
+    for (let i = 0; i < 8; i++) {
+      newParticles.push({
         id: particleIdRef.current++,
-        x: x*CELL_SIZE+CELL_SIZE/2,
-        y: y*CELL_SIZE+CELL_SIZE/2,
-        vx: (Math.random()-0.5)*8,
-        vy: (Math.random()-0.5)*8-2,
-        color, life:1
+        x: x * CELL_SIZE + CELL_SIZE / 2,
+        y: y * CELL_SIZE + CELL_SIZE / 2,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8 - 2,
+        color,
+        life: 1,
       });
     }
-    setParticles(p=>[...p,...arr]);
-  };
-
-  /* ---------- line clear ---------- */
-  const clearLines = useCallback((tstBoard) => {
-    const toClear = [];
-    tstBoard.forEach((r,y)=>{if (r.every(c=>c!==0)) toClear.push(y);});
-    if (!toClear.length) return {cleared:0,delay:false};
-
-    setClearingLines(toClear);
-    toClear.forEach(lineY=>{
-      for (let x=0;x<BOARD_WIDTH;x++) createParticles(x,lineY,COLORS[tstBoard[lineY][x]]);
-    });
-    setShake(10);
-
-    setTimeout(()=>{
-      let nb = tstBoard.filter((_,y)=>!toClear.includes(y));
-      while (nb.length<BOARD_HEIGHT) nb.unshift(Array(BOARD_WIDTH).fill(0));
-      setBoard(nb);
-      setClearingLines([]);
-    },400);
-
-    return {cleared:toClear.length,delay:true};
+    setParticles(prev => [...prev, ...newParticles]);
   }, []);
 
-  /* ---------- movement ---------- */
-  const movePiece = (dx,dy) => {
-    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return false;
-    const np = {x:currentPos.x+dx, y:currentPos.y+dy};
-    if (!checkCollision(currentPiece,np)){
-      setCurrentPos(np);
+  const clearLines = useCallback((testBoard) => {
+    const linesToClear = [];
+    testBoard.forEach((row, y) => {
+      if (row.every(cell => cell !== 0)) {
+        linesToClear.push(y);
+      }
+    });
+
+    if (linesToClear.length > 0) {
+      setClearingLines(linesToClear);
+      
+      // Create particles for each cleared line
+      linesToClear.forEach(lineY => {
+        for (let x = 0; x < BOARD_WIDTH; x++) {
+          const color = COLORS[testBoard[lineY][x]];
+          createParticles(x, lineY, color);
+        }
+      });
+
+      setTimeout(() => {
+        const newBoard = testBoard.filter((_, y) => !linesToClear.includes(y));
+        while (newBoard.length < BOARD_HEIGHT) {
+          newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+        }
+        setBoard(newBoard);
+        setClearingLines([]);
+      }, 400);
+
+      return { linesCleared: linesToClear.length, delayed: true };
+    }
+
+    return { linesCleared: 0, delayed: false };
+  }, [createParticles]);
+
+  const calculateGhostPosition = useCallback(() => {
+    if (!currentPiece) return null;
+    let ghostY = currentPos.y;
+    while (!checkCollision(currentPiece, { x: currentPos.x, y: ghostY + 1 })) {
+      ghostY++;
+    }
+    return ghostY;
+  }, [currentPiece, currentPos, checkCollision]);
+
+  useEffect(() => {
+    setGhostPos(calculateGhostPosition());
+  }, [calculateGhostPosition]);
+
+  const movePiece = useCallback((dx, dy) => {
+    if (!currentPiece || gameOver || isPaused || clearingLines.length > 0) return false;
+    const newPos = { x: currentPos.x + dx, y: currentPos.y + dy };
+    if (!checkCollision(currentPiece, newPos)) {
+      setCurrentPos(newPos);
       return true;
     }
     return false;
-  };
+  }, [currentPiece, currentPos, checkCollision, gameOver, isPaused, clearingLines]);
 
-  const rotatePiece = () => {
-    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
-    const rot = currentPiece.shape[0].map((_,i)=>
-      currentPiece.shape.map(r=>r[i]).reverse());
-    const rp = {...currentPiece, shape:rot};
-
-    const kicks = [{x:0,y:0},{x:-1,y:0},{x:1,y:0},{x:-2,y:0},{x:2,y:0}];
-    for (const k of kicks){
-      const tst = {x:currentPos.x+k.x, y:currentPos.y+k.y};
-      if (!checkCollision(rp,tst)){
-        setCurrentPiece(rp);
-        setCurrentPos(tst);
-        return;
-      }
+  const rotatePiece = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || clearingLines.length > 0) return;
+    const rotated = currentPiece.shape[0].map((_, i) =>
+      currentPiece.shape.map(row => row[i]).reverse()
+    );
+    const rotatedPiece = { ...currentPiece, shape: rotated };
+    if (!checkCollision(rotatedPiece, currentPos)) {
+      setCurrentPiece(rotatedPiece);
     }
-  };
+  }, [currentPiece, currentPos, checkCollision, gameOver, isPaused, clearingLines]);
 
-  const hardDrop = () => {
-    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
-    let ny = currentPos.y;
-    while(!checkCollision(currentPiece,{x:currentPos.x,y:ny+1})) ny++;
-    setDropAnim({from:currentPos.y,to:ny,progress:0});
-
-    setTimeout(()=>{
-      setCurrentPos({...currentPos,y:ny});
-      // impact particles
-      for (let y=0;y<currentPiece.shape.length;y++){
-        for (let x=0;x<currentPiece.shape[y].length;x++){
-          if (currentPiece.shape[y][x]) createParticles(currentPos.x+x,ny+y,COLORS[currentPiece.type]);
-        }
-      }
-      // place
-      const nb = board.map(r=>[...r]);
-      for (let y=0;y<currentPiece.shape.length;y++){
-        for (let x=0;x<currentPiece.shape[y].length;x++){
-          if (currentPiece.shape[y][x]){
-            const by = ny+y;
-            if (by>=0) nb[by][currentPos.x+x] = currentPiece.type;
+  const hardDrop = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || clearingLines.length > 0) return;
+    
+    let newY = currentPos.y;
+    while (!checkCollision(currentPiece, { x: currentPos.x, y: newY + 1 })) {
+      newY++;
+    }
+    
+    const dropDistance = newY - currentPos.y;
+    setDropAnimation({ from: currentPos.y, to: newY, progress: 0 });
+    
+    setTimeout(() => {
+      setCurrentPos({ x: currentPos.x, y: newY });
+      
+      // Create impact particles
+      for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+          if (currentPiece.shape[y][x]) {
+            createParticles(currentPos.x + x, newY + y, COLORS[currentPiece.type]);
           }
         }
       }
-      const {cleared,delay} = clearLines(nb);
-      if (!delay) setBoard(nb);
+      
+      const newBoard = board.map(row => [...row]);
+      for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+          if (currentPiece.shape[y][x]) {
+            const boardY = newY + y;
+            if (boardY >= 0) {
+              newBoard[boardY][currentPos.x + x] = currentPiece.type;
+            }
+          }
+        }
+      }
+      
+      const { linesCleared, delayed } = clearLines(newBoard);
+      if (!delayed && linesCleared === 0) {
+        setBoard(newBoard);
+      }
+      
+      setScore(s => s + linesCleared * 100 + dropDistance * 2);
+      
+      if (linesCleared > 0) {
+        setComboCount(c => c + 1);
+        setShowCombo(true);
+        setTimeout(() => setShowCombo(false), 1000);
+      } else {
+        setComboCount(0);
+      }
+      
+      setTimeout(() => {
+        const spawned = spawnPiece();
+        if (checkCollision(spawned.piece, spawned.pos, linesCleared > 0 ? newBoard : newBoard)) {
+          setGameOver(true);
+        }
+        setDropAnimation(null);
+      }, delayed ? 450 : 50);
+    }, 150);
+    
+  }, [currentPiece, currentPos, board, checkCollision, clearLines, spawnPiece, gameOver, isPaused, clearingLines, createParticles]);
 
-      setScore(s=>s + LINE_SCORE[cleared]*level + (ny-currentPos.y)*2);
-      setLines(l=>l+cleared);
-      if (cleared){
-        setCombo(c=>c+1); setShowCombo(true); setTimeout(()=>setShowCombo(false),1000);
-      } else setCombo(0);
-
-      setTimeout(()=>{
-        const sp = spawnPiece();
-        if (checkCollision(sp.piece,sp.pos,nb)) setGameOver(true);
-        setDropAnim(null);
-      }, delay?450:50);
-    },150);
-  };
-
-  const holdPiece = () => {
-    if (!canHold||!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
+  const holdPiece = useCallback(() => {
+    if (!canHold || !currentPiece || gameOver || isPaused || clearingLines.length > 0) return;
+    
     setCanHold(false);
-    if (heldPiece){
-      const tmp = currentPiece;
+    if (heldPiece) {
+      const temp = currentPiece;
       spawnPiece(heldPiece);
-      setHeldPiece(tmp);
+      setHeldPiece(temp);
     } else {
       setHeldPiece(currentPiece);
       spawnPiece();
     }
-  };
+  }, [canHold, currentPiece, heldPiece, spawnPiece, gameOver, isPaused, clearingLines]);
 
-  /* ---------- input handlers ---------- */
+  // Particle animation
   useEffect(() => {
-    const down = e => keysRef.current[e.key] = true;
-    const up   = e => keysRef.current[e.key] = false;
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    return () => { window.removeEventListener('keydown',down); window.removeEventListener('keyup',up); };
+    const interval = setInterval(() => {
+      setParticles(prev => {
+        return prev
+          .map(p => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            vy: p.vy + 0.3,
+            life: p.life - 0.02,
+          }))
+          .filter(p => p.life > 0);
+      });
+    }, 16);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    const handler = e => {
+    if (!nextPiece) {
+      setNextPiece(getRandomPiece());
+    }
+    if (!currentPiece) {
+      spawnPiece();
+    }
+  }, [currentPiece, nextPiece, getRandomPiece, spawnPiece]);
+
+  useEffect(() => {
+    if (gameOver || isPaused || !currentPiece || clearingLines.length > 0 || dropAnimation) return;
+    
+    const interval = setInterval(() => {
+      if (!movePiece(0, 1)) {
+        const newBoard = board.map(row => [...row]);
+        for (let y = 0; y < currentPiece.shape.length; y++) {
+          for (let x = 0; x < currentPiece.shape[y].length; x++) {
+            if (currentPiece.shape[y][x]) {
+              const boardY = currentPos.y + y;
+              if (boardY >= 0) {
+                newBoard[boardY][currentPos.x + x] = currentPiece.type;
+              }
+            }
+          }
+        }
+        
+        const { linesCleared, delayed } = clearLines(newBoard);
+        if (!delayed && linesCleared === 0) {
+          setBoard(newBoard);
+        }
+        setScore(s => s + linesCleared * 100);
+        
+        if (linesCleared > 0) {
+          setComboCount(c => c + 1);
+          setShowCombo(true);
+          setTimeout(() => setShowCombo(false), 1000);
+        } else {
+          setComboCount(0);
+        }
+        
+        setTimeout(() => {
+          const spawned = spawnPiece();
+          if (checkCollision(spawned.piece, spawned.pos, newBoard)) {
+            setGameOver(true);
+          }
+        }, delayed ? 450 : 0);
+      }
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, [currentPiece, movePiece, clearLines, spawnPiece, checkCollision, gameOver, isPaused, board, currentPos, clearingLines, dropAnimation]);
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
       if (gameOver) return;
-      if (e.repeat) return;
-      if (e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='ArrowDown') e.preventDefault();
-      switch(e.key){
+      
+      switch(e.key) {
         case 'ArrowLeft':
-          movePiece(-1,0);
+          e.preventDefault();
+          movePiece(-1, 0);
           break;
         case 'ArrowRight':
-          movePiece(1,0);
+          e.preventDefault();
+          movePiece(1, 0);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          movePiece(0, 1);
           break;
         case 'ArrowUp':
+          e.preventDefault();
           rotatePiece();
           break;
         case ' ':
+          e.preventDefault();
           hardDrop();
           break;
         case 'c':
         case 'C':
+          e.preventDefault();
           holdPiece();
           break;
         case 'p':
         case 'P':
-          setIsPaused(p=>!p);
+          e.preventDefault();
+          setIsPaused(p => !p);
           break;
       }
     };
-    window.addEventListener('keydown',handler);
-    return () => window.removeEventListener('keydown',handler);
-  }, [movePiece,rotatePiece,hardDrop,holdPiece,gameOver]);
 
-  /* ---------- DAS / ARR ---------- */
-  useEffect(() => {
-    if (gameOver||isPaused) return;
-    const id = setInterval(()=>{
-      if (keysRef.current['ArrowLeft']){ movePiece(-1,0); }
-      if (keysRef.current['ArrowRight']){ movePiece(1,0); }
-      if (keysRef.current['ArrowDown']){ movePiece(0,1); }
-    },ARR);
-    return () => clearInterval(id);
-  }, [movePiece,gameOver,isPaused]);
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [movePiece, rotatePiece, hardDrop, holdPiece, gameOver]);
 
-  /* ---------- soft-drop DAS starter ---------- */
-  useEffect(() => {
-    if (gameOver||isPaused) return;
-    let t;
-    const start = () => {
-      if (keysRef.current['ArrowDown']) movePiece(0,1);
-      t = setTimeout(start,ARR);
-    };
-    const first = () => {
-      if (keysRef.current['ArrowDown']) {
-        movePiece(0,1);
-        t = setTimeout(start,ARR);
-      }
-    };
-    const down = e => { if (e.key==='ArrowDown'){ t=setTimeout(first,DAS); } };
-    const up   = e => { if (e.key==='ArrowDown'){ clearTimeout(t); } };
-    window.addEventListener('keydown',down);
-    window.addEventListener('keyup',up);
-    return () => { clearTimeout(t); window.removeEventListener('keydown',down); window.removeEventListener('keyup',up); };
-  }, [movePiece,gameOver,isPaused]);
+  const resetGame = () => {
+    setBoard(Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+    setCurrentPiece(null);
+    setHeldPiece(null);
+    setNextPiece(null);
+    setScore(0);
+    setGameOver(false);
+    setIsPaused(false);
+    setCanHold(true);
+    setClearingLines([]);
+    setDropAnimation(null);
+    setParticles([]);
+    setComboCount(0);
+    setShowCombo(false);
+  };
 
-  /* ---------- gravity + lock ---------- */
-  const [lockTimer,setLockTimer] = useState(0);
-  const gravity = Math.max(50, 500 - (level-1)*40); // ms
-
-  useEffect(() => {
-    if (!currentPiece||gameOver||isPaused||clearingLines.length||dropAnim) return;
-    const id = setInterval(()=>{
-      if (!movePiece(0,1)){
-        setLockTimer(t=>t+gravity);
-        if (lockTimer>=LOCK_DELAY){
-          // place
-          const nb = board.map(r=>[...r]);
-          for (let y=0;y<currentPiece.shape.length;y++){
-            for (let x=0;x<currentPiece.shape[y].length;x++){
-              if (currentPiece.shape[y][x]){
-                const by = currentPos.y+y;
-                if (by>=0) nb[by][currentPos.x+x] = currentPiece.type;
-              }
-            }
-          }
-          const {cleared,delay} = clearLines(nb);
-          if (!delay) setBoard(nb);
-          setScore(s=>s + LINE_SCORE[cleared]*level);
-          setLines(l=>l+cleared);
-          if (cleared){ setCombo(c=>c+1); setShowCombo(true); setTimeout(()=>setShowCombo(false),1000); }
-          else setCombo(0);
-          if (Math.floor((lines+cleared)/10) > Math.floor(lines/10)) setLevel(lv=>lv+1);
-
-          setTimeout(()=>{
-            const sp = spawnPiece();
-            if (checkCollision(sp.piece,sp.pos,nb)) setGameOver(true);
-            setLockTimer(0);
-          },delay?450:0);
-        }
-      } else setLockTimer(0);
-    },gravity);
-    return () => clearInterval(id);
-  }, [currentPiece,movePiece,board,currentPos,lockTimer,lines,level,clearingLines,dropAnim,spawnPiece,checkCollision,gameOver,isPaused]);
-
-  /* ---------- init ---------- */
-  useEffect(() => { if (!nextPiece) setNextPiece(getRandomPiece()); },[nextPiece]);
-  useEffect(() => { if (!currentPiece) spawnPiece(); },[currentPiece,spawnPiece]);
-
-  /* ---------- particle anim ---------- */
-  useEffect(() => {
-    const id = setInterval(()=>{
-      setParticles(p=>p.map(q=>({...q,x:q.x+q.vx,y:q.y+q.vy,vy:q.vy+0.3,life:q.life-0.02})).filter(q=>q.life>0));
-    },16);
-    return () => clearInterval(id);
-  }, []);
-
-  /* ---------- render helpers ---------- */
-  const renderPiece = (p,small=false) => {
-    if (!p) return null;
-    const sz = small?20:CELL_SIZE;
+  const renderPiece = (piece, small = false) => {
+    if (!piece) return null;
+    const size = small ? 20 : CELL_SIZE;
     return (
-      <div style={{display:'inline-block'}}>
-        {p.shape.map((r,y)=>(
-          <div key={y} style={{display:'flex'}}>
-            {r.map((c,x)=>(
-              <div key={x} style={{
-                width:sz,height:sz,
-                backgroundColor:c?COLORS[p.type]:'transparent',
-                border:c?'1px solid rgba(255,255,255,0.3)':'none'
-              }} />
+      <div style={{ display: 'inline-block' }}>
+        {piece.shape.map((row, y) => (
+          <div key={y} style={{ display: 'flex' }}>
+            {row.map((cell, x) => (
+              <div
+                key={x}
+                style={{
+                  width: size,
+                  height: size,
+                  backgroundColor: cell ? COLORS[piece.type] : 'transparent',
+                  border: cell ? '1px solid rgba(255,255,255,0.3)' : 'none',
+                  transition: 'all 0.1s ease',
+                }}
+              />
             ))}
           </div>
         ))}
@@ -361,100 +385,178 @@ const TetrisGame = () => {
     );
   };
 
-  /* ---------- jsx ---------- */
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
       <div className="flex gap-4">
-        {/* hold */ }
-        <div className="bg-gray-800 p-4 rounded-lg" style={{transition:'transform .2s',transform:heldPiece?'scale(1.05)':'scale(1)'}}>
-          <div className="text-white text-center mb-2"><div className="text-sm mb-2">HOLD (C)</div>
-            <div className="bg-gray-700 p-2 rounded flex items-center justify-center" style={{width:100,height:80}}>
-              {heldPiece&&renderPiece(heldPiece,true)}
+        <div className="bg-gray-800 p-4 rounded-lg" style={{ transition: 'transform 0.2s', transform: heldPiece ? 'scale(1.05)' : 'scale(1)' }}>
+          <div className="text-white text-center mb-2">
+            <div className="text-sm mb-2">HOLD (C)</div>
+            <div className="bg-gray-700 p-2 rounded" style={{ width: 100, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {heldPiece && renderPiece(heldPiece, true)}
             </div>
           </div>
         </div>
 
-        {/* centre */ }
         <div>
-          <div className="text-white text-2xl font-bold text-center mb-2" style={{textShadow:'0 0 10px rgba(255,255,255,.5)'}}>TETRIS</div>
-          <div className="text-white text-center mb-2">Score:<span className="text-cyan-400 font-bold text-lg ml-1">{score}</span></div>
-          <div className="text-white text-center mb-2">Level:<span className="text-yellow-300 ml-1">{level}</span></div>
-          <div className="text-white text-center mb-2">Lines:<span className="text-green-300 ml-1">{lines}</span></div>
-
-          {/* board */ }
-          <div className="relative" style={{transform:`translate(${shake*(Math.random()-.5)}px,${shake*(Math.random()-.5)}px)`}}>
-            <div className="grid gap-px bg-gray-700 p-1 rounded" style={{gridTemplateColumns:`repeat(${BOARD_WIDTH},${CELL_SIZE}px)`}}>
-              {board.map((row,y)=>row.map((cell,x)=>{
-                let isCur=false,isGhost=false,isDrop=false,color=null,isClear=clearingLines.includes(y);
-                if (currentPiece&&!dropAnim){
-                  for (let py=0;py<currentPiece.shape.length;py++){
-                    for (let px=0;px<currentPiece.shape[py].length;px++){
-                      if (!currentPiece.shape[py][px]) continue;
-                      if (currentPos.x+px===x&&currentPos.y+py===y){ isCur=true; color=COLORS[currentPiece.type]; }
-                      if (ghostY!==null&&currentPos.x+px===x&&ghostY+py===y) isGhost=true;
+          <div className="text-white text-2xl font-bold text-center mb-2" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>TETRIS</div>
+          <div className="text-white text-center mb-2">Score: <span style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#00f0f0' }}>{score}</span></div>
+          
+          <div style={{ position: 'relative' }}>
+            <div 
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${BOARD_WIDTH}, ${CELL_SIZE}px)`,
+                gap: 1,
+                backgroundColor: '#1a1a1a',
+                padding: 2,
+                border: '3px solid #333',
+                position: 'relative',
+              }}
+            >
+              {board.map((row, y) =>
+                row.map((cell, x) => {
+                  let isCurrentPiece = false;
+                  let isGhost = false;
+                  let pieceColor = null;
+                  let isClearing = clearingLines.includes(y);
+                  let isDropping = false;
+                  
+                  if (currentPiece && !dropAnimation) {
+                    for (let py = 0; py < currentPiece.shape.length; py++) {
+                      for (let px = 0; px < currentPiece.shape[py].length; px++) {
+                        if (currentPiece.shape[py][px]) {
+                          if (currentPos.x + px === x && currentPos.y + py === y) {
+                            isCurrentPiece = true;
+                            pieceColor = COLORS[currentPiece.type];
+                          }
+                          if (ghostPos !== null && currentPos.x + px === x && ghostPos + py === y) {
+                            isGhost = true;
+                          }
+                        }
+                      }
                     }
                   }
-                }
-                if (dropAnim&&currentPiece){
-                  const ay = dropAnim.from+(dropAnim.to-dropAnim.from)*Math.min(dropAnim.progress/150,1);
-                  for (let py=0;py<currentPiece.shape.length;py++){
-                    for (let px=0;px<currentPiece.shape[py].length;px++){
-                      if (currentPiece.shape[py][px]&&currentPos.x+px===x&&Math.floor(ay+py)===y){ isDrop=true; color=COLORS[currentPiece.type]; }
+                  
+                  if (dropAnimation && currentPiece) {
+                    const animY = dropAnimation.from + (dropAnimation.to - dropAnimation.from) * Math.min(dropAnimation.progress / 150, 1);
+                    for (let py = 0; py < currentPiece.shape.length; py++) {
+                      for (let px = 0; px < currentPiece.shape[py].length; px++) {
+                        if (currentPiece.shape[py][px] &&
+                            currentPos.x + px === x &&
+                            Math.floor(animY + py) === y) {
+                          isDropping = true;
+                          pieceColor = COLORS[currentPiece.type];
+                        }
+                      }
                     }
                   }
-                }
-                return (
-                  <div key={`${y}-${x}`} style={{
-                    width:CELL_SIZE,height:CELL_SIZE,
-                    backgroundColor: isDrop||isCur?color : isGhost?'rgba(255,255,255,.25)':cell?COLORS[cell]:'#0a0a0a',
-                    border:(isDrop||isCur||isGhost||cell)?'1px solid rgba(255,255,255,.3)':'1px solid #1a1a1a',
-                    transition:isClear?'all .4s ease-out':'background-color .1s',
-                    opacity:isClear?0:1,transform:isClear?'scale(0) rotate(180deg)':'scale(1) rotate(0deg)',
-                    boxShadow:(isCur||isDrop)?`0 0 10px ${color}`:'none'
-                  }} />
-                );
-              }))}
+                  
+                  return (
+                    <div
+                      key={`${y}-${x}`}
+                      style={{
+                        width: CELL_SIZE,
+                        height: CELL_SIZE,
+                        backgroundColor: isDropping || isCurrentPiece ? pieceColor : 
+                                       isGhost ? 'rgba(255,255,255,0.1)' :
+                                       (cell ? COLORS[cell] : '#0a0a0a'),
+                        border: (isDropping || isCurrentPiece || isGhost || cell) ? '1px solid rgba(255,255,255,0.3)' : '1px solid #1a1a1a',
+                        transition: isClearing ? 'all 0.4s ease-out' : 'background-color 0.1s',
+                        opacity: isClearing ? 0 : 1,
+                        transform: isClearing ? 'scale(0) rotate(180deg)' : 'scale(1) rotate(0deg)',
+                        boxShadow: (isCurrentPiece || isDropping) ? `0 0 10px ${pieceColor}` : 'none',
+                      }}
+                    />
+                  );
+                })
+              )}
             </div>
 
-            {/* particles */ }
-            <svg className="absolute inset-0 pointer-events-none">
-              {particles.map(p=>(
-                <circle key={p.id} cx={p.x} cy={p.y} r={3} fill={p.color} opacity={p.life} style={{filter:'blur(1px)'}} />
+            {/* Particles overlay */}
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+              {particles.map(p => (
+                <circle
+                  key={p.id}
+                  cx={p.x}
+                  cy={p.y}
+                  r={3}
+                  fill={p.color}
+                  opacity={p.life}
+                  style={{ filter: 'blur(1px)' }}
+                />
               ))}
             </svg>
 
-            {/* combo */ }
-            {showCombo&&combo>1&&(
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-yellow-300 font-black text-4xl animate-bounce" style={{textShadow:'0 0 20px #ffff00,0 0 40px #ffff00'}}>{combo}x COMBO!</div>
+            {/* Combo text */}
+            {showCombo && comboCount > 1 && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: '3em',
+                fontWeight: 'bold',
+                color: '#ffff00',
+                textShadow: '0 0 20px #ffff00, 0 0 40px #ffff00',
+                animation: 'comboPopIn 0.5s ease-out',
+                pointerEvents: 'none',
+                zIndex: 10,
+              }}>
+                {comboCount}x COMBO!
               </div>
             )}
           </div>
 
-          {gameOver&&(
-            <div className="text-center mt-4 animate-fadeIn">
-              <div className="text-red-500 text-xl font-bold mb-2" style={{textShadow:'0 0 10px #ff0000'}}>GAME OVER</div>
-              <button onClick={()=>window.location.reload()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded transition transform hover:scale-110">Play Again</button>
+          {gameOver && (
+            <div className="text-center mt-4" style={{ animation: 'fadeIn 0.5s' }}>
+              <div className="text-red-500 text-xl font-bold mb-2" style={{ textShadow: '0 0 10px #ff0000' }}>GAME OVER</div>
+              <button
+                onClick={resetGame}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                style={{ transition: 'all 0.3s', transform: 'scale(1)' }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >
+                Play Again
+              </button>
             </div>
           )}
-          {isPaused&&!gameOver&&<div className="text-yellow-400 text-xl font-bold text-center mt-4" style={{textShadow:'0 0 10px #ffff00'}}>PAUSED</div>}
 
-          <div className="text-white text-sm mt-4 text-center space-y-1">
-            <div>← → : Move  ↑ : Rotate</div>
-            <div>↓ : Soft Drop  SPACE : Hard Drop</div>
-            <div>C : Hold  P : Pause</div>
+          {isPaused && !gameOver && (
+            <div className="text-yellow-400 text-xl font-bold text-center mt-4" style={{ textShadow: '0 0 10px #ffff00' }}>PAUSED</div>
+          )}
+
+          <div className="text-white text-sm mt-4 text-center">
+            <div>← → : Move</div>
+            <div>↑ : Rotate</div>
+            <div>↓ : Soft Drop</div>
+            <div>SPACE : Hard Drop</div>
+            <div>C : Hold</div>
+            <div>P : Pause</div>
           </div>
         </div>
 
-        {/* next */ }
         <div className="bg-gray-800 p-4 rounded-lg">
-          <div className="text-white text-center mb-2"><div className="text-sm mb-2">NEXT</div>
-            <div className="bg-gray-700 p-2 rounded flex items-center justify-center" style={{width:100,height:80}}>
-              {nextPiece&&renderPiece(nextPiece,true)}
+          <div className="text-white text-center mb-2">
+            <div className="text-sm mb-2">NEXT</div>
+            <div className="bg-gray-700 p-2 rounded" style={{ width: 100, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {nextPiece && renderPiece(nextPiece, true)}
             </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes comboPopIn {
+          0% { transform: translate(-50%, -50%) scale(0); }
+          50% { transform: translate(-50%, -50%) scale(1.2); }
+          100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
