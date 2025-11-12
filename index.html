@@ -66,6 +66,27 @@
             font-size: 1.1em;
         }
 
+        .proxy-selector {
+            margin-bottom: 20px;
+        }
+
+        .proxy-selector select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(168, 85, 247, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .proxy-selector select option {
+            background: #1e293b;
+            color: white;
+        }
+
         .input-group {
             display: flex;
             gap: 15px;
@@ -145,6 +166,20 @@
             display: block;
         }
 
+        .success {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            border-radius: 10px;
+            color: #bbf7d0;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+        }
+
         .info-box {
             margin-top: 20px;
             padding: 20px;
@@ -162,17 +197,6 @@
         .info-box ul {
             margin-left: 20px;
             line-height: 1.6;
-        }
-
-        .warning {
-            text-align: center;
-            color: #c4b5fd;
-            margin-top: 20px;
-            font-size: 0.9em;
-        }
-
-        .warning p {
-            margin: 5px 0;
         }
 
         .browser-container {
@@ -271,10 +295,20 @@
                 </svg>
                 Web Proxy
             </h1>
-            <p class="subtitle">Browse websites anonymously through a proxy</p>
+            <p class="subtitle">Browse websites through multiple proxy services</p>
         </div>
 
         <div class="input-section">
+            <div class="proxy-selector">
+                <label for="proxySelect">Select Proxy Service:</label>
+                <select id="proxySelect">
+                    <option value="https://corsproxy.io/?">CorsProxy.io</option>
+                    <option value="https://api.allorigins.win/raw?url=">AllOrigins</option>
+                    <option value="https://api.codetabs.com/v1/proxy?quest=">CodeTabs</option>
+                    <option value="direct">Direct URL (No Proxy)</option>
+                </select>
+            </div>
+
             <label for="urlInput">Enter Website URL:</label>
             <div class="input-group">
                 <input 
@@ -289,18 +323,16 @@
                 <button class="btn-newwindow" onclick="loadProxyNewWindow()">Open in New Tab</button>
             </div>
             <div class="error" id="errorMsg"></div>
+            <div class="success" id="successMsg"></div>
             
             <div class="info-box">
-                <h3>💡 Choose Your Method:</h3>
+                <h3>💡 How to Use:</h3>
                 <ul>
+                    <li><strong>Try different proxy services</strong> - If one doesn't work, select another from the dropdown</li>
                     <li><strong>Load in Page:</strong> Shows the site below (may not work for all sites)</li>
-                    <li><strong>Open in New Tab:</strong> Opens the proxied site in a new window (works for more sites)</li>
+                    <li><strong>Open in New Tab:</strong> Opens in a new window (works better for many sites)</li>
+                    <li><strong>Direct URL:</strong> Opens the website without a proxy</li>
                 </ul>
-            </div>
-
-            <div class="warning">
-                <p>⚠️ This proxy uses a public CORS proxy service (corsproxy.io)</p>
-                <p>Some websites may still block access due to security policies</p>
             </div>
         </div>
 
@@ -315,46 +347,53 @@
                 </div>
                 <div class="address-bar" id="addressBar"></div>
             </div>
-            <iframe id="proxyFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+            <iframe id="proxyFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
         </div>
     </div>
 
     <script>
         const urlInput = document.getElementById('urlInput');
+        const proxySelect = document.getElementById('proxySelect');
         const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
         const loading = document.getElementById('loading');
         const browserContainer = document.getElementById('browserContainer');
         const addressBar = document.getElementById('addressBar');
         const proxyFrame = document.getElementById('proxyFrame');
 
-        // Allow Enter key to submit
         urlInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 loadProxyIframe();
             }
         });
 
-        function getProxyUrl(url) {
+        function formatUrl(url) {
             let targetUrl = url.trim();
             
-            // Add https:// if no protocol specified
             if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
                 targetUrl = 'https://' + targetUrl;
             }
 
-            // Validate URL
             new URL(targetUrl);
+            return targetUrl;
+        }
 
-            // Use CORS proxy
-            const corsProxy = 'https://corsproxy.io/?';
-            return corsProxy + encodeURIComponent(targetUrl);
+        function getProxyUrl(url) {
+            const proxyService = proxySelect.value;
+            const targetUrl = formatUrl(url);
+            
+            if (proxyService === 'direct') {
+                return targetUrl;
+            }
+            
+            return proxyService + encodeURIComponent(targetUrl);
         }
 
         function loadProxyIframe() {
             const url = urlInput.value.trim();
             
-            // Hide error and browser
             errorMsg.classList.remove('show');
+            successMsg.classList.remove('show');
             browserContainer.classList.remove('show');
             
             if (!url) {
@@ -362,21 +401,19 @@
                 return;
             }
 
-            // Show loading
             loading.classList.add('show');
 
             try {
                 const proxyUrl = getProxyUrl(url);
-
-                // Set iframe source
+                
                 proxyFrame.src = proxyUrl;
                 addressBar.textContent = url;
 
-                // Show browser after a short delay
                 setTimeout(() => {
                     loading.classList.remove('show');
                     browserContainer.classList.add('show');
-                }, 500);
+                    showSuccess('Website loaded! If it shows an error, try a different proxy service or "Open in New Tab"');
+                }, 800);
 
             } catch (err) {
                 loading.classList.remove('show');
@@ -387,8 +424,8 @@
         function loadProxyNewWindow() {
             const url = urlInput.value.trim();
             
-            // Hide error
             errorMsg.classList.remove('show');
+            successMsg.classList.remove('show');
             
             if (!url) {
                 showError('Please enter a URL');
@@ -397,9 +434,8 @@
 
             try {
                 const proxyUrl = getProxyUrl(url);
-                
-                // Open in new window
                 window.open(proxyUrl, '_blank', 'noopener,noreferrer');
+                showSuccess('Opened in new tab! If blocked, try a different proxy service.');
                 
             } catch (err) {
                 showError('Invalid URL. Please enter a valid website address.');
@@ -407,8 +443,13 @@
         }
 
         function showError(message) {
-            errorMsg.textContent = message;
+            errorMsg.textContent = '❌ ' + message;
             errorMsg.classList.add('show');
+        }
+
+        function showSuccess(message) {
+            successMsg.textContent = '✓ ' + message;
+            successMsg.classList.add('show');
         }
     </script>
 </body>
