@@ -1,124 +1,339 @@
-import { useState } from 'react';
-import { Globe, AlertCircle, Loader2 } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Proxy Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-export default function WebProxy() {
-  const [url, setUrl] = useState('');
-  const [proxyUrl, setProxyUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #581c87 50%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-  const handleSubmit = () => {
-    setError('');
-    setLoading(true);
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-    try {
-      let targetUrl = url.trim();
-      
-      // Add https:// if no protocol specified
-      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-        targetUrl = 'https://' + targetUrl;
-      }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
 
-      // Validate URL
-      new URL(targetUrl);
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
 
-      // Use a CORS proxy service
-      const corsProxy = 'https://corsproxy.io/?';
-      setProxyUrl(corsProxy + encodeURIComponent(targetUrl));
-    } catch (err) {
-      setError('Invalid URL. Please enter a valid website address.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        .globe-icon {
+            width: 50px;
+            height: 50px;
+        }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSubmit();
-    }
-  };
+        .subtitle {
+            color: #c4b5fd;
+            font-size: 1.1em;
+        }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Globe className="w-12 h-12 text-purple-400" />
-            <h1 className="text-4xl font-bold text-white">Web Proxy</h1>
-          </div>
-          <p className="text-purple-200">Browse websites anonymously through a proxy</p>
+        .input-section {
+            max-width: 800px;
+            margin: 0 auto 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        label {
+            display: block;
+            color: white;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(168, 85, 247, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]::placeholder {
+            color: #c4b5fd;
+        }
+
+        input[type="text"]:focus {
+            border-color: #a855f7;
+        }
+
+        button {
+            padding: 15px 30px;
+            background: #7c3aed;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #6d28d9;
+        }
+
+        button:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+        }
+
+        .error {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            border-radius: 10px;
+            color: #fecaca;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .warning {
+            text-align: center;
+            color: #c4b5fd;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .warning p {
+            margin: 5px 0;
+        }
+
+        .browser-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        .browser-container.show {
+            display: block;
+        }
+
+        .browser-header {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .browser-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .browser-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .browser-button.red { background: #ef4444; }
+        .browser-button.yellow { background: #eab308; }
+        .browser-button.green { background: #22c55e; }
+
+        .address-bar {
+            flex: 1;
+            background: #334155;
+            padding: 8px 15px;
+            border-radius: 5px;
+            color: #cbd5e1;
+            font-size: 0.9em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            border-radius: 0 0 10px 10px;
+            background: white;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: white;
+            font-size: 1.1em;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <svg class="globe-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Web Proxy
+            </h1>
+            <p class="subtitle">Browse websites anonymously through a proxy</p>
         </div>
 
-        {/* URL Input */}
-        <div className="max-w-3xl mx-auto mb-8">
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 shadow-2xl">
-            <label className="block text-white font-semibold mb-3">
-              Enter Website URL:
-            </label>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="example.com"
-                className="flex-1 px-4 py-3 rounded-lg bg-white/20 text-white placeholder-purple-200 border-2 border-purple-400/30 focus:border-purple-400 focus:outline-none"
-              />
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !url.trim()}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  'Browse'
-                )}
-              </button>
+        <div class="input-section">
+            <label for="urlInput">Enter Website URL:</label>
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="urlInput" 
+                    placeholder="example.com"
+                    autocomplete="off"
+                >
+                <button onclick="loadProxy()">Browse</button>
             </div>
-
-            {error && (
-              <div className="mt-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-red-200">{error}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 text-center text-purple-200 text-sm">
-            <p className="mb-2">⚠️ Note: This proxy uses a public CORS proxy service.</p>
-            <p>Some websites may not work due to security policies or restrictions.</p>
-          </div>
+            <div class="error" id="errorMsg"></div>
+            <div class="warning">
+                <p>⚠️ Note: This proxy uses a public CORS proxy service.</p>
+                <p>Some websites may not work due to security policies or restrictions.</p>
+            </div>
         </div>
 
-        {/* Iframe Display */}
-        {proxyUrl && (
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-2 shadow-2xl">
-              <div className="bg-slate-800 px-4 py-2 rounded-t flex items-center gap-2 mb-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+        <div class="loading" id="loading">Loading...</div>
+
+        <div class="browser-container" id="browserContainer">
+            <div class="browser-header">
+                <div class="browser-buttons">
+                    <div class="browser-button red"></div>
+                    <div class="browser-button yellow"></div>
+                    <div class="browser-button green"></div>
                 </div>
-                <div className="flex-1 bg-slate-700 rounded px-3 py-1 text-sm text-gray-300 truncate">
-                  {url}
-                </div>
-              </div>
-              <iframe
-                src={proxyUrl}
-                className="w-full h-[600px] rounded-b bg-white"
-                title="Proxied Website"
-                sandbox="allow-same-origin allow-scripts allow-forms"
-              />
+                <div class="address-bar" id="addressBar"></div>
             </div>
-          </div>
-        )}
-      </div>
+            <iframe id="proxyFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        </div>
     </div>
-  );
-}
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const errorMsg = document.getElementById('errorMsg');
+        const loading = document.getElementById('loading');
+        const browserContainer = document.getElementById('browserContainer');
+        const addressBar = document.getElementById('addressBar');
+        const proxyFrame = document.getElementById('proxyFrame');
+
+        // Allow Enter key to submit
+        urlInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loadProxy();
+            }
+        });
+
+        function loadProxy() {
+            const url = urlInput.value.trim();
+            
+            // Hide error and browser
+            errorMsg.classList.remove('show');
+            browserContainer.classList.remove('show');
+            
+            if (!url) {
+                showError('Please enter a URL');
+                return;
+            }
+
+            // Show loading
+            loading.classList.add('show');
+
+            try {
+                let targetUrl = url;
+                
+                // Add https:// if no protocol specified
+                if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                    targetUrl = 'https://' + targetUrl;
+                }
+
+                // Validate URL
+                new URL(targetUrl);
+
+                // Use CORS proxy
+                const corsProxy = 'https://corsproxy.io/?';
+                const proxyUrl = corsProxy + encodeURIComponent(targetUrl);
+
+                // Set iframe source
+                proxyFrame.src = proxyUrl;
+                addressBar.textContent = url;
+
+                // Show browser after a short delay
+                setTimeout(() => {
+                    loading.classList.remove('show');
+                    browserContainer.classList.add('show');
+                }, 500);
+
+            } catch (err) {
+                loading.classList.remove('show');
+                showError('Invalid URL. Please enter a valid website address.');
+            }
+        }
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.classList.add('show');
+        }
+    </script>
+</body>
+</html>
