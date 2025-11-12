@@ -69,6 +69,7 @@
         .input-group {
             display: flex;
             gap: 15px;
+            margin-bottom: 15px;
         }
 
         input[type="text"] {
@@ -91,25 +92,43 @@
             border-color: #a855f7;
         }
 
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
         button {
+            flex: 1;
             padding: 15px 30px;
-            background: #7c3aed;
             color: white;
             border: none;
             border-radius: 10px;
             font-size: 1em;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s;
         }
 
-        button:hover:not(:disabled) {
+        .btn-iframe {
+            background: #7c3aed;
+        }
+
+        .btn-iframe:hover:not(:disabled) {
             background: #6d28d9;
+        }
+
+        .btn-newwindow {
+            background: #059669;
+        }
+
+        .btn-newwindow:hover:not(:disabled) {
+            background: #047857;
         }
 
         button:disabled {
             background: #4b5563;
             cursor: not-allowed;
+            opacity: 0.5;
         }
 
         .error {
@@ -124,6 +143,25 @@
 
         .error.show {
             display: block;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid #3b82f6;
+            border-radius: 10px;
+            color: #bfdbfe;
+        }
+
+        .info-box h3 {
+            margin-bottom: 10px;
+            color: #93c5fd;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.6;
         }
 
         .warning {
@@ -214,7 +252,7 @@
                 font-size: 2em;
             }
 
-            .input-group {
+            .input-group, .button-group {
                 flex-direction: column;
             }
 
@@ -245,12 +283,24 @@
                     placeholder="example.com"
                     autocomplete="off"
                 >
-                <button onclick="loadProxy()">Browse</button>
+            </div>
+            <div class="button-group">
+                <button class="btn-iframe" onclick="loadProxyIframe()">Load in Page</button>
+                <button class="btn-newwindow" onclick="loadProxyNewWindow()">Open in New Tab</button>
             </div>
             <div class="error" id="errorMsg"></div>
+            
+            <div class="info-box">
+                <h3>💡 Choose Your Method:</h3>
+                <ul>
+                    <li><strong>Load in Page:</strong> Shows the site below (may not work for all sites)</li>
+                    <li><strong>Open in New Tab:</strong> Opens the proxied site in a new window (works for more sites)</li>
+                </ul>
+            </div>
+
             <div class="warning">
-                <p>⚠️ Note: This proxy uses a public CORS proxy service.</p>
-                <p>Some websites may not work due to security policies or restrictions.</p>
+                <p>⚠️ This proxy uses a public CORS proxy service (corsproxy.io)</p>
+                <p>Some websites may still block access due to security policies</p>
             </div>
         </div>
 
@@ -280,11 +330,27 @@
         // Allow Enter key to submit
         urlInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                loadProxy();
+                loadProxyIframe();
             }
         });
 
-        function loadProxy() {
+        function getProxyUrl(url) {
+            let targetUrl = url.trim();
+            
+            // Add https:// if no protocol specified
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                targetUrl = 'https://' + targetUrl;
+            }
+
+            // Validate URL
+            new URL(targetUrl);
+
+            // Use CORS proxy
+            const corsProxy = 'https://corsproxy.io/?';
+            return corsProxy + encodeURIComponent(targetUrl);
+        }
+
+        function loadProxyIframe() {
             const url = urlInput.value.trim();
             
             // Hide error and browser
@@ -300,19 +366,7 @@
             loading.classList.add('show');
 
             try {
-                let targetUrl = url;
-                
-                // Add https:// if no protocol specified
-                if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-                    targetUrl = 'https://' + targetUrl;
-                }
-
-                // Validate URL
-                new URL(targetUrl);
-
-                // Use CORS proxy
-                const corsProxy = 'https://corsproxy.io/?';
-                const proxyUrl = corsProxy + encodeURIComponent(targetUrl);
+                const proxyUrl = getProxyUrl(url);
 
                 // Set iframe source
                 proxyFrame.src = proxyUrl;
@@ -326,6 +380,28 @@
 
             } catch (err) {
                 loading.classList.remove('show');
+                showError('Invalid URL. Please enter a valid website address.');
+            }
+        }
+
+        function loadProxyNewWindow() {
+            const url = urlInput.value.trim();
+            
+            // Hide error
+            errorMsg.classList.remove('show');
+            
+            if (!url) {
+                showError('Please enter a URL');
+                return;
+            }
+
+            try {
+                const proxyUrl = getProxyUrl(url);
+                
+                // Open in new window
+                window.open(proxyUrl, '_blank', 'noopener,noreferrer');
+                
+            } catch (err) {
                 showError('Invalid URL. Please enter a valid website address.');
             }
         }
