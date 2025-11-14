@@ -1,537 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Web Proxy</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .main-card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-        }
-
-        .input-section {
-            margin-bottom: 25px;
-        }
-
-        .input-section label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #333;
-        }
-
-        .url-input-wrapper {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        input[type="text"] {
-            flex: 1;
-            padding: 12px 15px;
-            border: 2px solid #667eea;
-            border-radius: 10px;
-            font-size: 16px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        input[type="text"]:focus {
-            border-color: #764ba2;
-        }
-
-        select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #667eea;
-            border-radius: 10px;
-            font-size: 16px;
-            background: white;
-            cursor: pointer;
-            margin-bottom: 15px;
-        }
-
-        .button-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: white;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(56, 239, 125, 0.4);
-        }
-
-        .btn-info {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-        }
-
-        .btn-info:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-        }
-
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .alert {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            display: none;
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        .alert-error {
-            background: #fee;
-            border-left: 4px solid #e74c3c;
-            color: #c0392b;
-        }
-
-        .alert-success {
-            background: #efe;
-            border-left: 4px solid #27ae60;
-            color: #229954;
-        }
-
-        .alert-info {
-            background: #e8f4f8;
-            border-left: 4px solid #3498db;
-            color: #2874a6;
-        }
-
-        .tips {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .tips h3 {
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .tips ul {
-            margin-left: 20px;
-            line-height: 1.8;
-            color: #555;
-        }
-
-        .browser-view {
-            background: white;
-            border-radius: 20px;
-            padding: 10px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            display: none;
-        }
-
-        .browser-view.show {
-            display: block;
-        }
-
-        .browser-chrome {
-            background: #f1f3f4;
-            padding: 10px 15px;
-            border-radius: 10px 10px 0 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .chrome-dots {
-            display: flex;
-            gap: 6px;
-        }
-
-        .chrome-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .dot-red { background: #ff5f56; }
-        .dot-yellow { background: #ffbd2e; }
-        .dot-green { background: #27c93f; }
-
-        .chrome-address {
-            flex: 1;
-            background: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            color: #666;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        iframe {
-            width: 100%;
-            height: 600px;
-            border: none;
-            border-radius: 0 0 10px 10px;
-        }
-
-        .loading-spinner {
-            text-align: center;
-            padding: 40px;
-            display: none;
-        }
-
-        .loading-spinner.show {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8em;
-            }
-
-            .button-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🌐 Universal Web Proxy</h1>
-            <p>Access websites through multiple proxy methods</p>
-        </div>
-
-        <div class="main-card">
-            <div class="input-section">
-                <label for="urlInput">🔗 Enter Website URL:</label>
-                <div class="url-input-wrapper">
-                    <input 
-                        type="text" 
-                        id="urlInput" 
-                        placeholder="example.com or https://example.com"
-                        autocomplete="off"
-                    >
-                </div>
-            </div>
-
-            <div class="input-section">
-                <label for="proxyMethod">🛠️ Select Proxy Method:</label>
-                <select id="proxyMethod">
-                    <option value="corsproxy">CorsProxy (Fast)</option>
-                    <option value="allorigins">AllOrigins (Reliable)</option>
-                    <option value="codetabs">CodeTabs (Alternative)</option>
-                    <option value="thingproxy">ThingProxy (Legacy)</option>
-                    <option value="direct">Direct Access (No Proxy)</option>
-                </select>
-            </div>
-
-            <div class="button-grid">
-                <button class="btn-primary" onclick="loadInFrame()">📱 Load Here</button>
-                <button class="btn-success" onclick="openNewTab()">🚀 New Tab</button>
-                <button class="btn-info" onclick="openNewWindow()">🪟 New Window</button>
-                <button class="btn-warning" onclick="tryAllProxies()">🔄 Auto-Find</button>
-            </div>
-
-            <div class="alert alert-error" id="errorAlert"></div>
-            <div class="alert alert-success" id="successAlert"></div>
-            <div class="alert alert-info" id="infoAlert"></div>
-
-            <div class="tips">
-                <h3>💡 Quick Tips:</h3>
-                <ul>
-                    <li><strong>Load Here:</strong> Shows the website below (fastest but may not work for all sites)</li>
-                    <li><strong>New Tab:</strong> Opens in a new browser tab (works for more sites)</li>
-                    <li><strong>New Window:</strong> Opens in a popup window</li>
-                    <li><strong>Auto-Find:</strong> Automatically tries all proxies until one works</li>
-                    <li><strong>If blocked:</strong> Try different proxy methods or contact your network admin</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="loading-spinner" id="loading">
-            <div class="spinner"></div>
-            <p>Loading website...</p>
-        </div>
-
-        <div class="browser-view" id="browserView">
-            <div class="browser-chrome">
-                <div class="chrome-dots">
-                    <div class="chrome-dot dot-red"></div>
-                    <div class="chrome-dot dot-yellow"></div>
-                    <div class="chrome-dot dot-green"></div>
-                </div>
-                <div class="chrome-address" id="addressBar">about:blank</div>
-            </div>
-            <iframe id="proxyFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"></iframe>
-        </div>
-    </div>
-
-    <script>
-        const proxies = {
-            corsproxy: 'https://corsproxy.io/?',
-            allorigins: 'https://api.allorigins.win/raw?url=',
-            codetabs: 'https://api.codetabs.com/v1/proxy?quest=',
-            thingproxy: 'https://thingproxy.freeboard.io/fetch/',
-            direct: ''
-        };
-
-        function cleanUrl(url) {
-            url = url.trim();
-            if (!url) return null;
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
-            try {
-                new URL(url);
-                return url;
-            } catch {
-                return null;
-            }
-        }
-
-        function getProxyUrl(url, method) {
-            const cleanedUrl = cleanUrl(url);
-            if (!cleanedUrl) return null;
-            
-            const proxyBase = proxies[method];
-            if (method === 'direct') {
-                return cleanedUrl;
-            }
-            return proxyBase + encodeURIComponent(cleanedUrl);
-        }
-
-        function showAlert(type, message) {
-            hideAllAlerts();
-            const alertId = type + 'Alert';
-            const alert = document.getElementById(alertId);
-            alert.textContent = message;
-            alert.classList.add('show');
-        }
-
-        function hideAllAlerts() {
-            document.querySelectorAll('.alert').forEach(a => a.classList.remove('show'));
-        }
-
-        function showLoading() {
-            document.getElementById('loading').classList.add('show');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').classList.remove('show');
-        }
-
-        function loadInFrame() {
-            const url = document.getElementById('urlInput').value;
-            const method = document.getElementById('proxyMethod').value;
-            
-            hideAllAlerts();
-            
-            if (!url) {
-                showAlert('error', '❌ Please enter a URL');
-                return;
-            }
-
-            const proxyUrl = getProxyUrl(url, method);
-            if (!proxyUrl) {
-                showAlert('error', '❌ Invalid URL format');
-                return;
-            }
-
-            showLoading();
-            
-            const iframe = document.getElementById('proxyFrame');
-            const addressBar = document.getElementById('addressBar');
-            const browserView = document.getElementById('browserView');
-
-            iframe.src = proxyUrl;
-            addressBar.textContent = url;
-
-            setTimeout(() => {
-                hideLoading();
-                browserView.classList.add('show');
-                showAlert('success', '✅ Website loaded! If you see an error, try a different proxy method.');
-            }, 1000);
-        }
-
-        function openNewTab() {
-            const url = document.getElementById('urlInput').value;
-            const method = document.getElementById('proxyMethod').value;
-            
-            hideAllAlerts();
-            
-            if (!url) {
-                showAlert('error', '❌ Please enter a URL');
-                return;
-            }
-
-            const proxyUrl = getProxyUrl(url, method);
-            if (!proxyUrl) {
-                showAlert('error', '❌ Invalid URL format');
-                return;
-            }
-
-            window.open(proxyUrl, '_blank');
-            showAlert('success', '✅ Opened in new tab!');
-        }
-
-        function openNewWindow() {
-            const url = document.getElementById('urlInput').value;
-            const method = document.getElementById('proxyMethod').value;
-            
-            hideAllAlerts();
-            
-            if (!url) {
-                showAlert('error', '❌ Please enter a URL');
-                return;
-            }
-
-            const proxyUrl = getProxyUrl(url, method);
-            if (!proxyUrl) {
-                showAlert('error', '❌ Invalid URL format');
-                return;
-            }
-
-            window.open(proxyUrl, '_blank', 'width=1200,height=800,menubar=no,toolbar=no,location=no');
-            showAlert('success', '✅ Opened in new window!');
-        }
-
-        async function tryAllProxies() {
-            const url = document.getElementById('urlInput').value;
-            
-            hideAllAlerts();
-            
-            if (!url) {
-                showAlert('error', '❌ Please enter a URL');
-                return;
-            }
-
-            const cleanedUrl = cleanUrl(url);
-            if (!cleanedUrl) {
-                showAlert('error', '❌ Invalid URL format');
-                return;
-            }
-
-            showAlert('info', '🔍 Trying all proxy methods... Please wait.');
-            showLoading();
-
-            const methods = ['corsproxy', 'allorigins', 'codetabs', 'thingproxy'];
-            
-            for (const method of methods) {
-                const proxyUrl = getProxyUrl(url, method);
-                
-                try {
-                    const response = await fetch(proxyUrl, { method: 'HEAD', mode: 'no-cors' });
-                    
-                    document.getElementById('proxyMethod').value = method;
-                    hideLoading();
-                    showAlert('success', `✅ Found working proxy: ${method}! Opening now...`);
-                    
-                    setTimeout(() => {
-                        window.open(proxyUrl, '_blank');
-                    }, 500);
-                    return;
-                } catch (err) {
-                    continue;
-                }
-            }
-
-            hideLoading();
-            showAlert('error', '❌ None of the proxy methods worked. The site may be blocking all proxy access. Try "Direct Access" or use a VPN.');
-        }
-
-        document.getElementById('urlInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                loadInFrame();
-            }
-        });
-    </script>
-</body>
-</html>
+// proxy.js
+// Minimal authenticated HTTP/HTTPS forward proxy using Node.js builtins.
+// Usage:
+//   PROXY_USER=myuser PROXY_PASS=mypassword PROXY_PORT=3128 node proxy.js
+// Defaults: user=proxy pass=changeme port=3128 host=0.0.0.0
+
+const http = require('http');
+const https = require('https');
+const net = require('net');
+const url = require('url');
+
+const USER = process.env.PROXY_USER || 'proxy';
+const PASS = process.env.PROXY_PASS || 'changeme';
+const PORT = parseInt(process.env.PROXY_PORT || '3128', 10);
+const HOST = process.env.PROXY_HOST || '0.0.0.0';
+const MAX_BODY_SIZE = 50 * 1024 * 1024; // 50MB
+
+function send407(res) {
+  res.writeHead(407, {
+    'Proxy-Authenticate': 'Basic realm="Proxy"',
+    'Content-Type': 'text/plain'
+  });
+  res.end('Proxy authentication required\n');
+}
+
+function parseAuth(header) {
+  if (!header) return null;
+  const parts = header.split(' ');
+  if (parts.length !== 2) return null;
+  if (parts[0].toLowerCase() !== 'basic') return null;
+  try {
+    const decoded = Buffer.from(parts[1], 'base64').toString('utf8');
+    const idx = decoded.indexOf(':');
+    if (idx === -1) return null;
+    return { user: decoded.slice(0, idx), pass: decoded.slice(idx + 1) };
+  } catch (e) {
+    return null;
+  }
+}
+
+function checkAuth(req) {
+  const header = req.headers['proxy-authorization'] || req.headers['authorization'];
+  const creds = parseAuth(header);
+  if (!creds) return false;
+  return creds.user === USER && creds.pass === PASS;
+}
+
+const server = http.createServer();
+
+// Handle normal HTTP requests (absolute-form expected when using a proxy)
+server.on('request', (req, res) => {
+  try {
+    if (!checkAuth(req)) return send407(res);
+
+    const parsed = url.parse(req.url);
+    if (!parsed.hostname) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      return res.end('Bad request: expected absolute-form URL when using this proxy\n');
+    }
+
+    const isHttps = parsed.protocol === 'https:';
+    const targetPort = parsed.port ? parseInt(parsed.port, 10) : (isHttps ? 443 : 80);
+    const requestOptions = {
+      hostname: parsed.hostname,
+      port: targetPort,
+      path: parsed.path,
+      method: req.method,
+      headers: Object.assign({}, req.headers)
+    };
+
+    // Remove hop-by-hop headers
+    delete requestOptions.headers['proxy-authorization'];
+    delete requestOptions.headers['proxy-connection'];
+    delete requestOptions.headers['connection'];
+    delete requestOptions.headers['keep-alive'];
+    delete requestOptions.headers['transfer-encoding'];
+    delete requestOptions.headers['upgrade'];
+
+    const proxyReq = (isHttps ? https : http).request(requestOptions, (proxyRes) => {
+      // forward status and headers
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    });
+
+    proxyReq.on('error', (err) => {
+      if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end('Bad gateway: ' + String(err.message) + '\n');
+    });
+
+    // body streaming with simple guard
+    let received = 0;
+    req.on('data', (chunk) => {
+      received += chunk.length;
+      if (received > MAX_BODY_SIZE) {
+        proxyReq.destroy();
+        req.pause();
+        req.destroy();
+      } else {
+        proxyReq.write(chunk);
+      }
+    });
+    req.on('end', () => proxyReq.end());
+  } catch (e) {
+    res.writeHead(500);
+    res.end('Internal proxy error\n');
+  }
+});
+
+// Handle CONNECT for HTTPS (tunneling)
+server.on('connect', (req, clientSocket, head) => {
+  // For CONNECT, write the 407 directly to the socket if unauthorized
+  if (!checkAuth(req)) {
+    clientSocket.write('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="Proxy"\r\n\r\n');
+    clientSocket.end();
+    return;
+  }
+
+  const [host, portStr] = req.url.split(':');
+  const port = parseInt(portStr || '443', 10);
+
+  const serverSocket = net.connect(port, host, () => {
+    clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+    if (head && head.length) serverSocket.write(head);
+    serverSocket.pipe(clientSocket);
+    clientSocket.pipe(serverSocket);
+  });
+
+  serverSocket.on('error', (err) => {
+    clientSocket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+    clientSocket.end();
+  });
+});
+
+server.on('clientError', (err, socket) => {
+  try { socket.end('HTTP/1.1 400 Bad Request\r\n\r\n'); } catch (_) {}
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`Proxy listening on ${HOST}:${PORT}`);
+  console.log(`Auth -> user: ${USER}`);
+  if (PASS === 'changeme') {
+    console.warn('WARNING: Using default password "changeme". Set PROXY_PASS env var to something strong before exposing publicly.');
+  }
+});
