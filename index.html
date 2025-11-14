@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TETRIS — Cinematic Edition</title>
+  <title>TETRIS — Cinematic Edition (Ultra)</title>
   <style>
     /* Reset and base */
     html, body { height: 100%; margin: 0; padding: 0; }
@@ -15,27 +15,30 @@
       --bg1: #0e132f;
       --bg2: #14213d;
       --bg3: #1f2a57;
-      --bg-speed: 16s;
+      --bg-speed: 12s;
 
       --accent1: #a855f7;
       --accent2: #06b6d4;
 
       --board-glow: rgba(168, 85, 247, 0.26);
-      --board-inset: rgba(0, 0, 0, 0.5);
+      --board-inset: rgba(0, 0, 0, 0.55);
 
       --ghost-border: rgba(255, 255, 255, 0.36);
       --ghost-bg: rgba(255, 255, 255, 0.12);
 
       --reactive-brightness: 1;
       --reactive-hue: 0deg;
-      --reactive-sat: 105%;
+      --reactive-sat: 110%;
       --reactive-blur: 0px;
 
       --ui-scale: 1;
-      --title-glow: rgba(168, 85, 247, 0.5);
+      --title-glow: rgba(168, 85, 247, 0.6);
 
-      --comfort-brightness-cap: 1.3;
-      --comfort-duration: 360ms;
+      --comfort-brightness-cap: 1.35;
+      --comfort-duration: 280ms;
+
+      --overlay-tint: rgba(168,85,247,0.25);
+      --scanline-opacity: 0.07;
     }
 
     /* Background */
@@ -51,8 +54,12 @@
       justify-content: center;
       color: white;
       overflow: hidden;
-      filter: brightness(var(--reactive-brightness)) saturate(var(--reactive-sat)) hue-rotate(var(--reactive-hue));
+      filter:
+        brightness(var(--reactive-brightness))
+        saturate(var(--reactive-sat))
+        hue-rotate(var(--reactive-hue));
       animation: bgShift var(--bg-speed) ease infinite;
+      position: relative;
     }
     @keyframes bgShift {
       0% { background-position: 0% 50%; }
@@ -60,7 +67,7 @@
       100% { background-position: 0% 50%; }
     }
 
-    /* Soft sparkle overlay */
+    /* Visual overlays */
     .bg-sparkle {
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background:
@@ -68,13 +75,22 @@
         radial-gradient(1000px 900px at 90% 30%, rgba(255,255,255,0.04), transparent 65%),
         radial-gradient(900px 700px at 50% 80%, rgba(255,255,255,0.02), transparent 70%);
       mix-blend-mode: screen;
-      animation: sparkleMove 22s linear infinite;
+      animation: sparkleMove 16s linear infinite;
       opacity: 0.35;
     }
     @keyframes sparkleMove {
-      0% { transform: translate(0,0); }
-      50% { transform: translate(24px,-16px); }
-      100% { transform: translate(0,0); }
+      0% { transform: translate(0,0) scale(1); }
+      50% { transform: translate(28px,-18px) scale(1.03); }
+      100% { transform: translate(0,0) scale(1); }
+    }
+
+    /* Scanlines for retro cinematic vibe */
+    .scanlines {
+      position: fixed; inset: 0; pointer-events: none; z-index: 2;
+      background-image: linear-gradient(transparent 95%, rgba(0,0,0,0.35) 98%, transparent 100%);
+      background-size: 100% 3px;
+      opacity: var(--scanline-opacity);
+      mix-blend-mode: multiply;
     }
 
     /* Ripple on clears */
@@ -83,24 +99,27 @@
       background: radial-gradient(circle, rgba(255,255,255,0.22) 0%, transparent 70%);
       opacity: 0;
     }
-    .bg-ripple.active { animation: rippleExpand 0.7s ease-out forwards; }
+    .bg-ripple.active { animation: rippleExpand 0.45s ease-out forwards; }
     @keyframes rippleExpand {
       0% { opacity: 0.5; transform: scale(0); }
-      50% { opacity: 0.25; transform: scale(1.7); }
-      100% { opacity: 0; transform: scale(2.4); }
+      50% { opacity: 0.25; transform: scale(1.9); }
+      100% { opacity: 0; transform: scale(2.6); }
     }
 
-    /* End-game backdrop */
+    /* End-game backdrop — new cinematic vignette + chromatic flicker */
     .end-game-bg {
       position: fixed; inset: 0; pointer-events: none; z-index: 999;
-      background: radial-gradient(circle, rgba(255,0,0,0) 0%, rgba(0,0,0,0) 100%);
+      background:
+        radial-gradient(1200px 800px at 50% 50%, rgba(255,0,64,0.08), rgba(0,0,0,0.9)),
+        radial-gradient(600px 400px at 50% 50%, rgba(255,255,255,0.04), transparent 60%);
       opacity: 0;
     }
-    .end-game-bg.active { animation: endFade 2.0s ease-in forwards; }
-    @keyframes endFade {
-      0% { opacity: 0; background: radial-gradient(circle, rgba(255,0,0,0) 0%, rgba(0,0,0,0) 100%); }
-      50% { opacity: 0.7; background: radial-gradient(circle, rgba(255,0,0,0.45) 0%, rgba(0,0,0,0.8) 100%); }
-      100% { opacity: 1; background: radial-gradient(circle, rgba(255,0,0,0.75) 0%, rgba(0,0,0,1) 100%); }
+    .end-game-bg.active { animation: endCollapse 1.4s ease-in forwards; }
+    @keyframes endCollapse {
+      0% { opacity: 0; filter: none; }
+      30% { opacity: 0.6; filter: saturate(140%) hue-rotate(12deg); }
+      65% { opacity: 0.9; filter: blur(1.2px) contrast(110%) saturate(160%) hue-rotate(-22deg); }
+      100% { opacity: 1; filter: blur(1.6px) contrast(130%) saturate(190%) hue-rotate(-30deg); }
     }
 
     /* UI buttons */
@@ -113,7 +132,7 @@
       font-size: 0.9rem;
       color: white;
       cursor: pointer;
-      transition: all 0.25s ease;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
       z-index: 1000;
       border: none;
     }
@@ -121,23 +140,26 @@
       left: 20px;
       background: rgba(168, 85, 247, 0.85);
       border: 2px solid rgba(168, 85, 247, 0.5);
-      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.45);
       backdrop-filter: blur(8px);
     }
     .settings-btn {
       right: 20px;
       background: rgba(6, 182, 212, 0.85);
       border: 2px solid rgba(6, 182, 212, 0.5);
-      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+      box-shadow: 0 8px 24px rgba(6, 182, 212, 0.45);
       backdrop-filter: blur(8px);
     }
-    .update-log-btn:hover, .settings-btn:hover { transform: translateY(-2px); }
+    .update-log-btn:hover, .settings-btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 12px 36px rgba(255,255,255,0.15);
+    }
 
     /* Modals */
     .modal {
       position: fixed; inset: 0;
       background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(5px);
+      backdrop-filter: blur(6px) saturate(120%);
       display: none;
       align-items: center;
       justify-content: center;
@@ -146,23 +168,28 @@
     .modal.show { display: flex; }
     .modal-content {
       background: linear-gradient(135deg, #0e132f 0%, #1a1a2e 100%);
-      border: 3px solid rgba(168, 85, 247, 0.5);
+      border: 3px solid rgba(168, 85, 247, 0.55);
       border-radius: 20px;
       padding: 24px;
       width: 92%;
       max-width: 560px;
-      box-shadow: 0 10px 40px rgba(168, 85, 247, 0.5);
-      animation: slideIn 0.3s ease;
+      box-shadow: 0 10px 40px rgba(168, 85, 247, 0.55), 0 0 120px var(--overlay-tint) inset;
+      animation: slideIn 0.25s ease, modalPulse 2.6s ease-in-out infinite;
     }
     .modal-content h2 { color: #a855f7; margin-bottom: 10px; font-size: 1.6rem; }
-    .modal-content .close { margin-top: 16px; width: 100%; padding: 10px 20px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; background: linear-gradient(45deg, var(--accent1), var(--accent2)); }
-
-    .modal-settings .modal-content { border-color: rgba(6,182,212,0.5); max-width: 420px; }
-    .modal-settings .modal-content h2 { color: #06b6d4; }
+    .modal-content .close {
+      margin-top: 16px; width: 100%; padding: 10px 20px;
+      border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer;
+      background: linear-gradient(45deg, var(--accent1), var(--accent2));
+      box-shadow: 0 8px 24px rgba(168,85,247,0.45);
+    }
+    .modal-settings .modal-content { border-color: rgba(6,182,212,0.55); max-width: 420px; }
+    .modal-settings .modal-content h2 { color: #22d3ee; }
     .modal-settings label { display: block; margin: 10px 0; font-size: 0.95rem; }
     .modal-settings select, .modal-settings input[type="checkbox"], .modal-settings input[type="range"] { margin-left: 8px; vertical-align: middle; }
 
-    @keyframes slideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideIn { from { transform: translateY(-26px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+    @keyframes modalPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.01); } }
 
     /* Game layout */
     .game-container {
@@ -171,9 +198,10 @@
       padding: 20px;
       position: relative;
       transform: scale(var(--ui-scale));
-      transition: transform 200ms ease;
+      transition: transform 180ms ease, filter 180ms ease;
       z-index: 10;
       margin-top: 40px;
+      will-change: transform;
     }
 
     .side-panel {
@@ -182,7 +210,7 @@
       border: 2px solid rgba(168, 85, 247, 0.3);
       border-radius: 15px;
       padding: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
       min-width: 160px;
     }
 
@@ -196,11 +224,12 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      filter: drop-shadow(0 0 24px var(--title-glow));
-      animation: pulse 2s infinite;
+      filter: drop-shadow(0 0 28px var(--title-glow));
+      animation: titlePulse 2s infinite;
       letter-spacing: 4px;
       user-select: none;
     }
+    @keyframes titlePulse { 0%, 100% { opacity: 1; transform: translateZ(0); } 50% { opacity: 0.82; transform: translateZ(6px); } }
 
     .stats { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
     .stat-box {
@@ -210,7 +239,8 @@
       border-radius: 10px;
       text-align: center;
       min-width: 110px;
-      border: 2px solid rgba(168, 85, 247, 0.2);
+      border: 2px solid rgba(168, 85, 247, 0.22);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     }
     .stat-label { font-size: 0.75rem; opacity: 0.75; margin-bottom: 5px; }
     .stat-value { font-size: 1.5rem; font-weight: bold; }
@@ -221,14 +251,16 @@
       border: 3px solid;
       border-image: linear-gradient(45deg, var(--accent1), var(--accent2)) 1;
       box-shadow: 0 0 40px var(--board-glow), inset 0 0 60px var(--board-inset);
-      transition: transform 0.05s;
+      transition: transform 0.05s, filter 0.05s;
       display: grid;
       gap: 1px;
       padding: 2px;
       width: calc(30px * 10 + 2px * 2 + 1px * 9);
       height: calc(30px * 20 + 2px * 2 + 1px * 19);
+      perspective: 800px;
+      transform-style: preserve-3d;
     }
-    #gameBoard.shake { animation: shake 0.12s; }
+    #gameBoard.shake { animation: shake 0.1s; }
 
     .cell {
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -236,6 +268,20 @@
       background: #0a0a0a;
       width: 30px;
       height: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* neon trails on active piece */
+    .cell.active::after {
+      content: "";
+      position: absolute; inset: -20% -20%;
+      background: radial-gradient(closest-side, rgba(255,255,255,0.35), transparent 70%);
+      mix-blend-mode: screen;
+      animation: trailFade 0.35s ease-out forwards;
+    }
+    @keyframes trailFade {
+      0% { opacity: 0.85; transform: scale(1.1); }
+      100% { opacity: 0; transform: scale(1.3); }
     }
 
     .panel-title { font-size: 0.875rem; font-weight: bold; text-align: center; margin-bottom: 10px; opacity: 0.85; user-select: none; }
@@ -246,8 +292,9 @@
       border-radius: 8px;
       min-height: 80px;
       display: flex; align-items: center; justify-content: center;
+      box-shadow: inset 0 0 24px rgba(255,255,255,0.06);
     }
-    .next-preview { opacity: 0.6; margin-bottom: 10px; min-height: 60px; }
+    .next-preview { opacity: 0.7; margin-bottom: 10px; min-height: 60px; }
 
     .controls {
       background: rgba(255, 255, 255, 0.05);
@@ -260,6 +307,7 @@
       border: 1px solid rgba(168, 85, 247, 0.2);
       max-width: 440px;
       user-select: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     }
     .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 
@@ -273,11 +321,11 @@
       font-weight: bold;
       cursor: pointer;
       transition: all 0.25s ease;
-      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.45);
       text-transform: uppercase;
       letter-spacing: 1px;
     }
-    .btn:hover, .play-again-btn:hover { transform: translateY(-2px) scale(1.04); }
+    .btn:hover, .play-again-btn:hover { transform: translateY(-2px) scale(1.06); }
 
     /* Overlay messages */
     .overlay-message {
@@ -285,38 +333,86 @@
       transform: translate(-50%, -50%);
       font-weight: bold; pointer-events: none; z-index: 100;
       text-align: center; white-space: nowrap;
+      filter: drop-shadow(0 0 12px rgba(255,255,255,0.3));
     }
-    .combo-text { font-size: 3.0rem; color: #ffff00; text-shadow: 0 0 16px #ffff00, 0 0 30px #ffff00; animation: comboPopIn 0.6s cubic-bezier(0.68,-0.55,0.265,1.55); }
-    .action-text { font-size: 2.2rem; color: #ff00ff; text-shadow: 0 0 22px #ff00ff; animation: actionPopIn 0.8s cubic-bezier(0.68,-0.55,0.265,1.55); }
-    .perfect-clear { font-size: 2rem; color: #00f0f0; text-shadow: 0 0 28px #00f0f0; animation: perfectClearAnim 2s ease-out; }
-    .paused { font-size: 2rem; color: #ffff00; text-shadow: 0 0 10px #ffff00; animation: pulse 1.5s infinite; }
+    .combo-text {
+      font-size: 3.0rem; color: #ffff00;
+      text-shadow: 0 0 18px #ffff00, 0 0 36px #ffff00;
+      animation: comboPopIn 0.5s cubic-bezier(0.68,-0.55,0.265,1.55);
+    }
+    .action-text {
+      font-size: 2.4rem; color: #ff00ff;
+      text-shadow: 0 0 26px #ff00ff;
+      animation: actionPopIn 0.6s cubic-bezier(0.68,-0.55,0.265,1.55);
+    }
+    .perfect-clear {
+      font-size: 2.1rem; color: #00f0f0;
+      text-shadow: 0 0 32px #00f0f0;
+      animation: perfectClearAnim 1.6s ease-out;
+    }
+    .paused {
+      font-size: 2rem; color: #ffff00;
+      text-shadow: 0 0 12px #ffff00;
+      animation: pulse 1.2s infinite;
+    }
 
-    .game-over { text-align: center; animation: fadeIn 0.5s; }
-    .game-over-title { font-size: 2.5rem; color: #ff0000; text-shadow: 0 0 18px #ff0000; animation: pulse 1s infinite; margin-bottom: 20px; }
+    .game-over { text-align: center; animation: fadeIn 0.35s; }
+    .game-over-title {
+      font-size: 2.6rem; color: #ff3366;
+      text-shadow: 0 0 22px #ff3366;
+      animation: pulse 0.9s infinite;
+      margin-bottom: 20px;
+    }
 
     canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
     /* Animations */
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    @keyframes shake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 75% { transform: translate(-2px, -2px); } }
-    @keyframes comboPopIn { 0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.22) rotate(10deg); } 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; } }
-    @keyframes actionPopIn { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 60% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); } }
-    @keyframes perfectClearAnim { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 30% { transform: translate(-50%, -50%) scale(1.38); opacity: 1; } 70% { transform: translate(-50%, -50%) scale(1.16); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0) rotate3d(0,0,0,0deg); }
+      25% { transform: translate(-2px, 2px) rotate3d(0,1,0,0.6deg); }
+      50% { transform: translate(2px, -2px) rotate3d(1,0,0,-0.6deg); }
+      75% { transform: translate(-2px, -2px) rotate3d(0,0,1,0.6deg); }
+    }
+    @keyframes comboPopIn {
+      0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.24) rotate(14deg); }
+      100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    }
+    @keyframes actionPopIn {
+      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+      60% { transform: translate(-50%, -50%) scale(1.18); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes perfectClearAnim {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+      30% { transform: translate(-50%, -50%) scale(1.42); opacity: 1; }
+      70% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Line clear animation */
+    /* Line clear animation — tightened timing, brighter bloom */
     @keyframes clearLineCell {
       0%   { opacity: 1; transform: scale(1); box-shadow: 0 0 10px var(--cell-color); filter: brightness(1); }
-      25%  { opacity: 1; transform: scale(1.14); box-shadow: 0 0 22px #fff, 0 0 38px var(--cell-color); filter: brightness(1.22) saturate(1.35); }
-      50%  { opacity: 1; transform: scale(1.06); box-shadow: 0 0 28px var(--cell-color), inset 0 0 16px #fff; filter: hue-rotate(90deg) brightness(1.25); }
-      75%  { opacity: 0.75; transform: scale(0.84); box-shadow: 0 0 22px #ff00ff; }
-      100% { opacity: 0; transform: scale(0.6); box-shadow: none; filter: brightness(0.4); }
+      25%  { opacity: 1; transform: scale(1.18); box-shadow: 0 0 26px #fff, 0 0 42px var(--cell-color); filter: brightness(1.28) saturate(1.45); }
+      50%  { opacity: 1; transform: scale(1.08); box-shadow: 0 0 34px var(--cell-color), inset 0 0 18px #fff; filter: hue-rotate(90deg) brightness(1.3); }
+      75%  { opacity: 0.75; transform: scale(0.86); box-shadow: 0 0 28px #ff00ff; }
+      100% { opacity: 0; transform: scale(0.64); box-shadow: none; filter: brightness(0.45); }
     }
-    .clearing { animation: clearLineCell 0.62s ease-out forwards; }
+    .clearing { animation: clearLineCell 0.48s ease-out forwards; }
+
+    /* Theme specific tints (work across UI + overlays) */
+    body.theme-cosmic { --overlay-tint: rgba(168,85,247,0.28); --scanline-opacity: 0.07; }
+    body.theme-aurora { --overlay-tint: rgba(34,211,238,0.26); --scanline-opacity: 0.06; }
+    body.theme-cyberpunk { --overlay-tint: rgba(255,0,255,0.3); --scanline-opacity: 0.08; }
+    body.theme-retro { --overlay-tint: rgba(255,149,0,0.28); --scanline-opacity: 0.06; }
+    body.theme-jungle { --overlay-tint: rgba(73,247,123,0.26); --scanline-opacity: 0.06; }
   </style>
 </head>
 <body>
   <div class="bg-sparkle"></div>
+  <div class="scanlines"></div>
   <div class="bg-ripple" id="bgRipple"></div>
   <div class="end-game-bg" id="endGameBg"></div>
 
@@ -326,12 +422,12 @@
   <div class="modal" id="updateLogModal">
     <div class="modal-content">
       <h2>Update log</h2>
-      <p style="opacity:.85;margin-bottom:10px;">Version 3.4.0 — Fixed themes + enhanced visuals</p>
+      <p style="opacity:.85;margin-bottom:10px;">Version 4.0.0 — Faster input + ultra animations + theme fixes</p>
       <ul style="list-style:none;padding:0;">
-        <li style="padding:6px 0;">• Fixed theme switching to actually work</li>
-        <li style="padding:6px 0;">• Enhanced all 5 themes with better colors</li>
-        <li style="padding:6px 0;">• Removed random text appearing on screen</li>
-        <li style="padding:6px 0;">• Improved visual polish and animations</li>
+        <li style="padding:6px 0;">• DAS delay reduced, smoother repeats</li>
+        <li style="padding:6px 0;">• Distinct end-game cinematic collapse</li>
+        <li style="padding:6px 0;">• Theme switching polished across overlays</li>
+        <li style="padding:6px 0;">• Neon trails, bloom, scanlines, chroma flicker</li>
       </ul>
       <button class="close" onclick="toggleUpdateLog()">Close</button>
     </div>
@@ -356,7 +452,7 @@
       </label>
       <label>
         Particles:
-        <input type="range" id="particlesSlider" min="0" max="100" value="70" />
+        <input type="range" id="particlesSlider" min="0" max="100" value="80" />
       </label>
       <button class="close" onclick="toggleSettings()">Close</button>
     </div>
@@ -426,8 +522,8 @@
     const BOARD_WIDTH = 10;
     const BOARD_HEIGHT = 20;
     const CELL_SIZE = 30;
-    const DAS_DELAY = 170;
-    const DAS_INTERVAL = 50;
+    const DAS_DELAY = 90;      // Faster input feel
+    const DAS_INTERVAL = 35;   // Faster repeat
 
     const SHAPES = {
       I: [[1,1,1,1]],
@@ -450,58 +546,74 @@
     };
 
     const THEMES = {
-      cosmic: { 
-        bg1: '#0e132f', 
-        bg2: '#14213d', 
-        bg3: '#1f2a57', 
-        accent1: '#a855f7', 
+      cosmic: {
+        bg1: '#0e132f',
+        bg2: '#14213d',
+        bg3: '#1f2a57',
+        accent1: '#a855f7',
         accent2: '#06b6d4',
-        glow: 'rgba(168, 85, 247, 0.5)'
+        glow: 'rgba(168, 85, 247, 0.6)',
+        tint: 'theme-cosmic'
       },
-      aurora: { 
-        bg1: '#041b2d', 
-        bg2: '#0a3a5a', 
-        bg3: '#0f5d7e', 
-        accent1: '#22d3ee', 
+      aurora: {
+        bg1: '#041b2d',
+        bg2: '#0a3a5a',
+        bg3: '#0f5d7e',
+        accent1: '#22d3ee',
         accent2: '#8b5cf6',
-        glow: 'rgba(34, 211, 238, 0.6)'
+        glow: 'rgba(34, 211, 238, 0.6)',
+        tint: 'theme-aurora'
       },
-      cyberpunk: { 
-        bg1: '#120015', 
-        bg2: '#2d0033', 
-        bg3: '#4a0058', 
-        accent1: '#ff00ff', 
+      cyberpunk: {
+        bg1: '#120015',
+        bg2: '#2d0033',
+        bg3: '#4a0058',
+        accent1: '#ff00ff',
         accent2: '#00ffc8',
-        glow: 'rgba(255, 0, 255, 0.7)'
+        glow: 'rgba(255, 0, 255, 0.7)',
+        tint: 'theme-cyberpunk'
       },
-      retro: { 
-        bg1: '#2a1f1a', 
-        bg2: '#4b3a2c', 
-        bg3: '#6b5541', 
-        accent1: '#ff9500', 
+      retro: {
+        bg1: '#2a1f1a',
+        bg2: '#4b3a2c',
+        bg3: '#6b5541',
+        accent1: '#ff9500',
         accent2: '#ff1f7d',
-        glow: 'rgba(255, 149, 0, 0.6)'
+        glow: 'rgba(255, 149, 0, 0.65)',
+        tint: 'theme-retro'
       },
-      jungle: { 
-        bg1: '#0b1f12', 
-        bg2: '#163f26', 
-        bg3: '#1f7a3d', 
-        accent1: '#49f77b', 
+      jungle:
+      {
+        bg1: '#0b1f12',
+        bg2: '#163f26',
+        bg3: '#1f7a3d',
+        accent1: '#49f77b',
         accent2: '#1af7d6',
-        glow: 'rgba(73, 247, 123, 0.6)'
+        glow: 'rgba(73, 247, 123, 0.6)',
+        tint: 'theme-jungle'
       }
     };
 
     function applyTheme(name) {
       const t = THEMES[name] || THEMES.cosmic;
       const root = document.documentElement;
+      const body = document.body;
+
+      // Remove previous tint class
+      Object.values(THEMES).forEach(th => body.classList.remove(th.tint));
+      // Apply tint class for overlays
+      body.classList.add(t.tint);
+
+      // Update CSS variables
       root.style.setProperty('--bg1', t.bg1);
       root.style.setProperty('--bg2', t.bg2);
       root.style.setProperty('--bg3', t.bg3);
       root.style.setProperty('--accent1', t.accent1);
       root.style.setProperty('--accent2', t.accent2);
       root.style.setProperty('--title-glow', t.glow);
-      root.style.setProperty('--board-glow', t.glow.replace('0.6', '0.26'));
+      // Keep board glow subtle based on theme glow
+      const glowThin = t.glow.replace(/0\.\d+/, '0.26');
+      root.style.setProperty('--board-glow', glowThin);
     }
 
     class TetrisGame {
@@ -525,7 +637,7 @@
         this.particles = [];
         this.comboCount = 0;
 
-        this.fallSpeed = 500;
+        this.fallSpeed = 420; // Slightly faster baseline
         this.lastFallTime = Date.now();
         this.dropLock = false;
 
@@ -534,7 +646,7 @@
         this.dasIntervals = {};
 
         this.comfortMode = true;
-        this.particlesIntensity = 70;
+        this.particlesIntensity = 80;
 
         this.initGame();
         this.setupControls();
@@ -559,6 +671,8 @@
         themeSelect.addEventListener('change', () => {
           applyTheme(themeSelect.value);
           this.updateReactiveBackground(true);
+          // quick UI sparkle to acknowledge theme change
+          this.flashBackground('theme', 1);
         });
         comfortToggle.addEventListener('change', () => { this.comfortMode = comfortToggle.checked; });
         particlesSlider.addEventListener('input', () => { this.particlesIntensity = parseInt(particlesSlider.value, 10); });
@@ -660,11 +774,12 @@
         const dropDistance = newY - this.currentPos.y;
         this.currentPos.y = newY;
 
+        // particle burst on each block contact
         for (let y = 0; y < this.currentPiece.shape.length; y++) {
           for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
             if (this.currentPiece.shape[y][x]) {
               const intensityFactor = this.particlesIntensity / 100;
-              this.createParticles(this.currentPos.x + x, this.currentPos.y + y, COLORS[this.currentPiece.type], Math.round(16 * intensityFactor));
+              this.createParticles(this.currentPos.x + x, this.currentPos.y + y, COLORS[this.currentPiece.type], Math.round(20 * intensityFactor), 'impact');
             }
           }
         }
@@ -711,13 +826,14 @@
                 cellEl.classList.add('clearing');
               }
               const intensityFactor = this.particlesIntensity / 100;
-              this.createParticles(x, lineY, color, Math.round(14 * intensityFactor));
+              // add a streak effect for line clear
+              this.createParticles(x, lineY, color, Math.round(18 * intensityFactor), 'line');
             }
           });
 
           const ripple = document.getElementById('bgRipple');
           ripple.classList.add('active');
-          setTimeout(() => ripple.classList.remove('active'), 700);
+          setTimeout(() => ripple.classList.remove('active'), 460);
 
           this.shakeBoard();
           this.flashBackground(linesToClear.length === 4 ? 'tetris' : 'clear', linesToClear.length);
@@ -732,23 +848,25 @@
             this.score += points * this.level;
             this.lines += linesToClear.length;
             this.level = Math.floor(this.lines / 10) + 1;
-            this.fallSpeed = Math.max(100, 500 - (this.level - 1) * 40);
+            this.fallSpeed = Math.max(90, 420 - (this.level - 1) * 40); // overall faster
 
             if (this.board.every(row => row.every(cell => cell === 0))) {
-              this.showMessage('★ PERFECT CLEAR ★', 'perfect-clear', 2000);
+              this.showMessage('★ PERFECT CLEAR ★', 'perfect-clear', 1700);
               this.score += 1000;
               this.flashBackground('perfect', 5);
+              // celebratory confetti blast
+              this.confettiBlast();
             }
 
             let actionText = '';
             if (linesToClear.length === 4) actionText = 'TETRIS!';
             else if (linesToClear.length === 3) actionText = 'TRIPLE!';
             else if (linesToClear.length === 2) actionText = 'DOUBLE!';
-            if (actionText) this.showMessage(actionText, 'action-text', 1500);
+            if (actionText) this.showMessage(actionText, 'action-text', 1200);
 
             this.comboCount++;
             if (this.comboCount > 1) {
-              this.showMessage(`${this.comboCount}x COMBO!`, 'combo-text', 1000);
+              this.showMessage(`${this.comboCount}x COMBO!`, 'combo-text', 900);
             }
 
             this.clearingLines = [];
@@ -757,7 +875,7 @@
             this.spawnPiece();
             this.render();
             this.updateReactiveBackground();
-          }, 430);
+          }, 220); // faster clear cycle
         } else {
           this.comboCount = 0;
           this.dropLock = false;
@@ -780,16 +898,23 @@
         this.renderHold();
       }
 
-      createParticles(x, y, color, count) {
+      createParticles(x, y, color, count, mode = 'default') {
         for (let i = 0; i < count; i++) {
+          // variance per mode
+          const baseSpeed = mode === 'impact' ? 11 : mode === 'line' ? 9 : 8;
+          const spread = mode === 'line' ? 1.2 : 1;
+          const gravity = mode === 'impact' ? 0.42 : 0.36;
+
           this.particles.push({
             x: x * CELL_SIZE + CELL_SIZE / 2 + 2,
             y: y * CELL_SIZE + CELL_SIZE / 2 + 2,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10 - 3.2,
+            vx: (Math.random() - 0.5) * baseSpeed * (mode === 'line' ? 2.0 : 1.0),
+            vy: (Math.random() - 0.5) * baseSpeed * (mode === 'impact' ? 1.4 : 1.0) - (mode === 'impact' ? 3.4 : 2.6),
             color,
             life: 1,
-            size: Math.random() * 3 + 2
+            size: Math.random() * 3 + (mode === 'impact' ? 2.4 : 2),
+            gravity,
+            spread
           });
         }
       }
@@ -801,18 +926,31 @@
         this.particles = this.particles.filter(p => {
           p.x += p.vx;
           p.y += p.vy;
-          p.vy += 0.38;
-          p.vx *= 0.988;
-          p.life -= 0.015;
+          p.vy += p.gravity;
+          p.vx *= 0.985;
+          p.life -= 0.018;
 
           if (p.life > 0) {
-            ctx.globalAlpha = p.life;
+            // chromatic glow layers
+            const alpha = p.life;
+            ctx.globalAlpha = alpha;
+
+            // base glow
             ctx.fillStyle = p.color;
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 14;
             ctx.shadowColor = p.color;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
             ctx.fill();
+
+            // subtle second hue layer
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.shadowBlur = 22;
+            ctx.shadowColor = 'rgba(255,255,255,0.5)';
+            ctx.beginPath();
+            ctx.arc(p.x + 0.5, p.y - 0.5, (p.size * 0.75) * p.life, 0, Math.PI * 2);
+            ctx.fill();
+
             return true;
           }
           return false;
@@ -825,7 +963,13 @@
       shakeBoard() {
         const board = document.getElementById('gameBoard');
         board.classList.add('shake');
-        setTimeout(() => board.classList.remove('shake'), 100);
+        // brief camera tilt via container
+        const container = document.getElementById('gameContainer');
+        container.style.filter = 'drop-shadow(0 6px 18px rgba(255,255,255,0.15))';
+        setTimeout(() => {
+          board.classList.remove('shake');
+          container.style.filter = 'none';
+        }, 110);
       }
 
       showMessage(text, className, duration) {
@@ -851,24 +995,32 @@
         `;
         const endBg = document.getElementById('endGameBg');
         endBg.classList.add('active');
+
         const gameContainer = document.getElementById('gameContainer');
+        // cinematic collapse + chromatic flicker
         gameContainer.animate(
           [
             { transform: 'scale(1)', filter: 'none' },
-            { transform: 'scale(0.95)', filter: 'blur(0.6px)' },
-            { transform: 'scale(0.92) rotate(0.6deg)', filter: 'blur(1px)' }
+            { transform: 'scale(0.97) rotate(0.4deg)', filter: 'blur(0.5px) contrast(110%)' },
+            { transform: 'scale(0.94) rotate(0.8deg)', filter: 'blur(0.8px) contrast(120%) saturate(130%)' },
+            { transform: 'scale(0.92) rotate(0.6deg)', filter: 'blur(1.2px) contrast(135%) saturate(150%)' }
           ],
-          { duration: 500, easing: 'ease-in', fill: 'forwards' }
+          { duration: 620, easing: 'ease-in', fill: 'forwards' }
         );
+
+        // cell glitter out
         for (let y = 0; y < BOARD_HEIGHT; y++) {
           for (let x = 0; x < BOARD_WIDTH; x++) {
             if (this.board[y][x]) {
               const color = COLORS[this.board[y][x]];
               const intensityFactor = this.particlesIntensity / 100;
-              this.createParticles(x, y, color, Math.round(8 * intensityFactor));
+              this.createParticles(x, y, color, Math.round(10 * intensityFactor), 'impact');
             }
           }
         }
+
+        // glitch flicker message
+        this.showMessage('✖ SESSION ENDED ✖', 'action-text', 1200);
         this.flashBackground('gameover', 3);
       }
 
@@ -964,6 +1116,7 @@
             if (isCurrentPiece) {
               cell.style.backgroundColor = pieceColor;
               cell.style.boxShadow = `0 0 12px ${pieceColor}, inset 0 0 8px ${pieceColor}40`;
+              cell.classList.add('active');
             } else if (isGhost && !this.board[y][x]) {
               cell.style.backgroundColor = 'var(--ghost-bg)';
               cell.style.border = `2px dashed var(--ghost-border)`;
@@ -1005,8 +1158,8 @@
         this.nextPieces.slice(0, 3).forEach((piece, i) => {
           const box = document.createElement('div');
           box.className = 'preview-box next-preview';
-          box.style.opacity = (1 - (i * 0.25)).toString();
-          box.style.transform = 'scale(' + (1 - (i * 0.1)) + ')';
+          box.style.opacity = (1 - (i * 0.22)).toString();
+          box.style.transform = 'scale(' + (1 - (i * 0.08)) + ')';
           const preview = this.createPiecePreview(piece, 20);
           box.appendChild(preview);
           container.appendChild(box);
@@ -1043,31 +1196,31 @@
         const levelEl = document.getElementById('level').parentElement;
         const linesEl = document.getElementById('lines').parentElement;
 
-        scoreEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }, { transform: 'scale(1)' }], { duration: 170 });
-        levelEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.02)' }, { transform: 'scale(1)' }], { duration: 170 });
-        linesEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.02)' }, { transform: 'scale(1)' }], { duration: 170 });
+        scoreEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 140 });
+        levelEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: 140 });
+        linesEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: 140 });
       }
 
       updateReactiveBackground(initial = false) {
         const root = document.documentElement;
-        const speed = Math.max(7.5, 16 - (this.level - 1) * 1.1);
+        const speed = Math.max(6.5, 12 - (this.level - 1) * 1.1);
         root.style.setProperty('--bg-speed', `${speed}s`);
 
         const accent1 = getComputedStyle(root).getPropertyValue('--accent1').trim();
         const accent2 = getComputedStyle(root).getPropertyValue('--accent2').trim();
 
-        const intensity = Math.min(1, 0.055 * (this.level - 1));
+        const intensity = Math.min(1, 0.065 * (this.level - 1));
         const bg1 = this.mixColor(getComputedStyle(root).getPropertyValue('--bg1').trim(), accent1, intensity);
         const bg2 = this.mixColor(getComputedStyle(root).getPropertyValue('--bg2').trim(), accent2, intensity * 0.7);
         const bg3 = this.mixColor(getComputedStyle(root).getPropertyValue('--bg3').trim(), accent1, intensity * 0.5);
-        
+
         root.style.setProperty('--bg1', bg1);
         root.style.setProperty('--bg2', bg2);
         root.style.setProperty('--bg3', bg3);
 
         if (initial) {
           root.style.setProperty('--reactive-brightness', '1');
-          root.style.setProperty('--reactive-sat', '105%');
+          root.style.setProperty('--reactive-sat', '110%');
           root.style.setProperty('--reactive-hue', '0deg');
         }
       }
@@ -1077,8 +1230,8 @@
         const originalSpeed = getComputedStyle(root).getPropertyValue('--bg-speed').trim();
         const originalGlow = getComputedStyle(root).getPropertyValue('--board-glow').trim();
 
-        let boostB = 1.18;
-        let boostS = 112;
+        let boostB = 1.2;
+        let boostS = 118;
         let hue = 0;
         let blur = '0px';
         let speedBoost = 0.7;
@@ -1086,15 +1239,16 @@
         let uiScale = 1;
 
         switch (type) {
-          case 'clear':   boostB = 1.22; boostS = 115; hue = 18;  blur = '0.8px'; speedBoost = 0.6; glow = 'rgba(255,255,255,0.6)'; uiScale = 1.012; break;
-          case 'tetris':  boostB = 1.26; boostS = 118; hue = 42;  blur = '1.2px'; speedBoost = 0.5; glow = 'rgba(255,0,255,0.7)'; uiScale = 1.018; break;
-          case 'perfect': boostB = 1.28; boostS = 120; hue = 120; blur = '1.4px'; speedBoost = 0.48; glow = 'rgba(0,240,240,0.8)'; uiScale = 1.02;  break;
-          case 'gameover':boostB = 1.24; boostS = 108; hue = -22; blur = '1px';   speedBoost = 0.65; glow = 'rgba(255,0,0,0.7)'; uiScale = 0.985; break;
+          case 'clear':   boostB = 1.24; boostS = 120; hue = 18;  blur = '0.9px'; speedBoost = 0.55; glow = 'rgba(255,255,255,0.65)'; uiScale = 1.012; break;
+          case 'tetris':  boostB = 1.28; boostS = 122; hue = 42;  blur = '1.3px'; speedBoost = 0.45; glow = 'rgba(255,0,255,0.75)'; uiScale = 1.018; break;
+          case 'perfect': boostB = 1.32; boostS = 125; hue = 120; blur = '1.5px'; speedBoost = 0.42; glow = 'rgba(0,240,240,0.85)'; uiScale = 1.02;  break;
+          case 'gameover':boostB = 1.26; boostS = 110; hue = -22; blur = '1.1px'; speedBoost = 0.62; glow = 'rgba(255,64,96,0.8)'; uiScale = 0.985; break;
+          case 'theme':   boostB = 1.18; boostS = 116; hue = 8;   blur = '0.6px'; speedBoost = 0.7; glow = originalGlow; uiScale = 1.006; break;
           default: return;
         }
 
         if (this.comfortMode) {
-          const cap = parseFloat(getComputedStyle(root).getPropertyValue('--comfort-brightness-cap')) || 1.3;
+          const cap = parseFloat(getComputedStyle(root).getPropertyValue('--comfort-brightness-cap')) || 1.35;
           boostB = Math.min(boostB, cap);
         }
 
@@ -1108,17 +1262,27 @@
         root.style.setProperty('--board-glow', glow);
         root.style.setProperty('--ui-scale', uiScale.toString());
 
-        const duration = parseFloat(getComputedStyle(root).getPropertyValue('--comfort-duration')) || 360;
+        const duration = parseFloat(getComputedStyle(root).getPropertyValue('--comfort-duration')) || 280;
 
         setTimeout(() => {
           root.style.setProperty('--reactive-brightness', '1');
-          root.style.setProperty('--reactive-sat', '105%');
+          root.style.setProperty('--reactive-sat', '110%');
           root.style.setProperty('--reactive-hue', '0deg');
           root.style.setProperty('--reactive-blur', '0px');
           root.style.setProperty('--bg-speed', originalSpeed);
           root.style.setProperty('--board-glow', originalGlow);
           root.style.setProperty('--ui-scale', '1');
         }, duration);
+      }
+
+      confettiBlast() {
+        const colors = ['#ff0066','#00ccff','#ffee00','#66ff99','#ff8800','#cc66ff'];
+        for (let i = 0; i < 80; i++) {
+          const x = Math.floor(Math.random() * BOARD_WIDTH);
+          const y = Math.floor(Math.random() * BOARD_HEIGHT);
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          this.createParticles(x, y, color, 4, 'impact');
+        }
       }
 
       mixColor(color1, color2, t) {
@@ -1151,6 +1315,9 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       window.game = new TetrisGame();
+      // Initialize theme class on body
+      document.body.classList.add(THEMES['cosmic'].tint);
+
       document.getElementById('updateLogModal').addEventListener('click', (e) => { if (e.target.id === 'updateLogModal') toggleUpdateLog(); });
       document.getElementById('settingsModal').addEventListener('click', (e) => { if (e.target.id === 'settingsModal') toggleSettings(); });
     });
