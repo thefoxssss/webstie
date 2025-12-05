@@ -3,64 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Proto: Spike Mode</title>
+    <title>Valorant Proto: Agent Select</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #0f1923; color: white; user-select: none; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
         
-        /* TOP HUD */
-        #top-hud { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; background: rgba(15, 25, 35, 0.85); padding: 5px 60px; border-bottom: 4px solid #ff4655; clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%); transition: border-color 0.5s; }
-        #timer { font-size: 32px; font-weight: bold; }
-        #round-state { font-size: 14px; color: #ff4655; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-        
-        /* SPIKE STATUS */
-        #spike-hud { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); text-align: center; display: none; }
-        .spike-icon { font-size: 40px; margin-bottom: 5px; text-shadow: 0 0 10px #ff4655; }
-        #plant-bar-container { width: 300px; height: 10px; background: #333; border: 2px solid white; border-radius: 5px; overflow: hidden; display: none; margin: 0 auto; }
+        /* --- TOP HUD --- */
+        #top-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+        .score-board { display: flex; align-items: center; background: rgba(15, 25, 35, 0.9); padding: 5px 20px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; border: 1px solid #444; border-top: none; }
+        #timer { font-size: 36px; font-weight: 800; margin: 0 20px; color: white; }
+        .team-score { font-size: 32px; font-weight: bold; width: 40px; text-align: center; }
+        .score-ally { color: #00ffaa; }
+        .score-enemy { color: #ff4655; }
+        #round-state { margin-top: 5px; font-size: 12px; color: #ff4655; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; background: rgba(0,0,0,0.5); padding: 2px 10px; border-radius: 4px; }
+
+        /* --- SPIKE STATUS --- */
+        #spike-hud { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); text-align: center; display: none; }
+        .spike-icon { font-size: 40px; margin-bottom: 5px; text-shadow: 0 0 10px #ff4655; animation: pulse 1s infinite; }
+        #plant-bar-container { width: 300px; height: 8px; background: #222; border: 2px solid white; border-radius: 4px; overflow: hidden; display: none; margin: 0 auto; box-shadow: 0 0 10px black; }
         #plant-bar { height: 100%; width: 0%; background: #00ffaa; transition: width 0.1s linear; }
-        
-        /* ALERTS */
-        #alert-msg { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 900; text-shadow: 0 0 20px black; opacity: 0; transition: opacity 0.5s; text-align: center; white-space: nowrap; font-style: italic; }
-        
-        /* CROSSHAIR */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* --- CROSSHAIR --- */
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         .ch-h { position: absolute; width: 14px; height: 2px; background: #00ffaa; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 2px black; }
         .ch-v { position: absolute; width: 2px; height: 14px; background: #00ffaa; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 2px black; }
 
-        /* BOTTOM HUD */
-        #hud-bottom { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 40px; align-items: flex-end; }
-        .hud-val { font-size: 48px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        .hud-lbl { font-size: 12px; color: #ccc; letter-spacing: 1px; text-transform: uppercase; }
-        #health-val { color: #ff4655; }
-        
-        /* MENUS */
+        /* --- BOTTOM HUD --- */
+        #bottom-hud { position: absolute; bottom: 10px; left: 0; width: 100%; height: 100px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 40px; box-sizing: border-box; }
+        .hud-left { display: flex; align-items: center; color: white; transform: skewX(-15deg); background: rgba(15, 25, 35, 0.8); padding: 5px 30px; border-left: 4px solid #00ffaa; border-radius: 5px; box-shadow: 5px 5px 0px rgba(0,0,0,0.3); }
+        .health-content { transform: skewX(15deg); display: flex; flex-direction: column; align-items: flex-start; }
+        .hp-text-row { display: flex; align-items: baseline; }
+        #health-val { font-size: 48px; font-weight: 800; line-height: 1; margin-right: 5px; }
+        .hp-label { font-size: 14px; font-weight: 600; color: #ccc; }
+        .health-bar-bg { width: 150px; height: 8px; background: #333; margin-top: 5px; position: relative; }
+        .health-bar-fill { width: 100%; height: 100%; background: #00ffaa; box-shadow: 0 0 5px #00ffaa; }
+        .hud-center { display: flex; gap: 8px; margin-bottom: 10px; }
+        .ability-box { width: 50px; height: 50px; background: rgba(0,0,0,0.6); border: 1px solid #555; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 2px; }
+        .ability-key { position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; }
+        .ability-icon { font-size: 20px; filter: drop-shadow(0 0 2px black); }
+        .ult-box { width: 70px; height: 70px; border-color: #ffeb3b; background: rgba(255, 235, 59, 0.1); margin-top: -20px; }
+        .hud-right { display: flex; align-items: center; color: white; transform: skewX(15deg); background: rgba(15, 25, 35, 0.8); padding: 5px 30px; border-right: 4px solid #ff4655; border-radius: 5px; box-shadow: -5px 5px 0px rgba(0,0,0,0.3); }
+        .ammo-content { transform: skewX(-15deg); display: flex; flex-direction: column; align-items: flex-end; }
+        .ammo-text-row { display: flex; align-items: baseline; }
+        #ammo-val { font-size: 48px; font-weight: 800; line-height: 1; }
+        .ammo-reserve { font-size: 24px; color: #aaa; margin-left: 5px; }
+        .ammo-icon { height: 15px; width: 100px; background: repeating-linear-gradient(90deg, #fff, #fff 2px, transparent 2px, transparent 4px); margin-top: 5px; opacity: 0.5; }
+
+        /* ALERTS */
+        #alert-msg { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 900; text-shadow: 0 0 20px black; opacity: 0; transition: opacity 0.5s; text-align: center; white-space: nowrap; font-style: italic; color: #ff4655; }
+
+        /* MENUS COMMON */
         .menu-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0f1923; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
         .val-btn { padding: 15px 40px; font-size: 18px; background: #ff4655; color: white; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.2s; margin: 10px; }
         .val-btn:hover { background: #d13644; }
         .val-input { padding: 12px; font-size: 16px; background: #333; border: 1px solid #555; color: white; margin: 5px; text-align: center; width: 250px; }
 
-        /* LOBBY */
-        #browser-screen { display: flex; }
+        /* LOBBY & AGENT SELECT */
         #room-list { width: 500px; height: 300px; background: rgba(0,0,0,0.3); border: 1px solid #444; overflow-y: auto; margin: 20px; padding: 10px; }
         .room-item { background: #1f2b35; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #ff4655; }
         .room-item:hover { background: #2a3b47; }
-        
-        /* WAITING ROOM */
-        #waiting-screen { display: none; }
         .team-container { display: flex; gap: 50px; margin: 20px; }
         .team-column { width: 300px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; min-height: 200px; }
         .team-header { text-align: center; font-weight: bold; margin-bottom: 10px; padding: 5px; text-transform: uppercase; letter-spacing: 2px; }
         .defenders-header { color: #00ffaa; border-bottom: 2px solid #00ffaa; }
         .attackers-header { color: #ff4655; border-bottom: 2px solid #ff4655; }
-        
-        .player-row { display: flex; align-items: center; background: #2a3b47; margin-bottom: 5px; padding: 5px 10px; border-radius: 3px; }
+        .player-row { display: flex; align-items: center; background: #2a3b47; margin-bottom: 5px; padding: 5px 10px; border-radius: 3px; border-left: 3px solid transparent; }
         .player-row.me { border: 1px solid #ffeb3b; }
+        .player-row.locked { border-left-color: #00ffaa; background: #2e4a3d; }
         .p-icon { font-size: 20px; margin-right: 10px; }
         .p-name { flex-grow: 1; font-size: 14px; }
-
-        .agent-select-mini { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; max-width: 600px; }
-        .agent-opt { opacity: 0.5; cursor: pointer; border: 2px solid transparent; padding: 5px 10px; background: #333; }
-        .agent-opt.selected { opacity: 1; border-color: #00ffaa; background: #444; }
+        
+        /* AGENT SELECT SCREEN */
+        #agent-select-screen { background: #0f1923; }
+        #select-timer { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: white; }
+        .agent-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 800px; margin-bottom: 30px; }
+        .agent-card { width: 80px; height: 120px; background: #1f2b35; border: 2px solid #333; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; position: relative; }
+        .agent-card:hover { border-color: #999; transform: translateY(-5px); }
+        .agent-card.selected { border-color: #00ffaa; background: #2a3b47; box-shadow: 0 0 15px rgba(0,255,170,0.3); }
+        .agent-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+        .agent-card-icon { font-size: 40px; margin-bottom: 10px; }
+        .agent-card-name { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        #lock-btn { width: 300px; background: #00ffaa; color: #0f1923; margin-top: 20px; font-size: 24px; padding: 20px; box-shadow: 0 0 20px rgba(0,255,170,0.5); }
+        #lock-btn:disabled { background: #333; color: #888; box-shadow: none; cursor: default; }
 
         #status-msg { margin-top: 20px; color: #888; font-size: 14px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; text-align: center; max-width: 80%; }
         h1 { color:#ff4655; margin:0; font-size:60px; font-style:italic; margin-bottom: 10px; }
@@ -85,7 +110,11 @@
 
     <div id="ui-layer">
         <div id="top-hud">
-            <div id="timer">0:30</div>
+            <div class="score-board">
+                <div class="team-score score-ally">0</div>
+                <div id="timer">0:30</div>
+                <div class="team-score score-enemy">0</div>
+            </div>
             <div id="round-state">BUY PHASE</div>
         </div>
         
@@ -97,16 +126,32 @@
 
         <div id="alert-msg">MATCH START</div>
         <div id="crosshair"><div class="ch-h"></div><div class="ch-v"></div></div>
-        <div id="hud-bottom">
-            <div><div class="hud-val" id="health-val">100</div><div class="hud-lbl">Health</div></div>
-            <div><div class="hud-val" id="ammo-val">25</div><div class="hud-lbl">Ammo</div></div>
+        
+        <div id="bottom-hud">
+            <div class="hud-left">
+                <div class="health-content">
+                    <div class="hp-text-row"><div id="health-val">100</div><div class="hp-label">HP</div></div>
+                    <div class="health-bar-bg"><div class="health-bar-fill"></div></div>
+                </div>
+            </div>
+            <div class="hud-center">
+                <div class="ability-box"><div class="ability-key">C</div><div class="ability-icon" id="icon-c">🌀</div></div>
+                <div class="ability-box"><div class="ability-key">Q</div><div class="ability-icon" id="icon-q">🌫️</div></div>
+                <div class="ability-box"><div class="ability-key">E</div><div class="ability-icon" id="icon-e">🔥</div></div>
+                <div class="ability-box ult-box"><div class="ability-key">X</div><div class="ability-icon" id="icon-x">☠️</div></div>
+            </div>
+            <div class="hud-right">
+                <div class="ammo-content">
+                    <div class="ammo-text-row"><div id="ammo-val">25</div><div class="ammo-reserve">75</div></div>
+                    <div class="ammo-icon"></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 1. BROWSER SCREEN -->
     <div id="browser-screen" class="menu-overlay">
         <h1>VALORANT<span style="color:white; font-size:30px;">PROTO</span></h1>
-        
         <div style="display:flex; flex-direction:row; gap: 40px; align-items: flex-start;">
             <div style="display:flex; flex-direction:column; align-items:center; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px;">
                 <h2>Create Match</h2>
@@ -114,12 +159,9 @@
                 <input type="text" id="player-name-input" class="val-input" placeholder="Your Username" value="Player 1">
                 <button class="val-btn" onclick="createRoom()">Create Room</button>
             </div>
-
             <div style="display:flex; flex-direction:column; align-items:center;">
                 <h2>Lobby List</h2>
-                <div id="room-list">
-                    <div style="text-align:center; padding:20px; color:#888;">Loading rooms...</div>
-                </div>
+                <div id="room-list"><div style="text-align:center; padding:20px; color:#888;">Loading rooms...</div></div>
                 <button class="val-btn" style="background:#444;" onclick="fetchRooms()">Refresh List</button>
             </div>
         </div>
@@ -127,10 +169,9 @@
     </div>
 
     <!-- 2. WAITING ROOM SCREEN -->
-    <div id="waiting-screen" class="menu-overlay">
+    <div id="waiting-screen" class="menu-overlay" style="display:none;">
         <h1 id="lobby-title">LOBBY</h1>
         <h2 style="color:#00ffaa;" id="lobby-status">WAITING FOR PLAYERS...</h2>
-
         <div class="team-container">
             <div class="team-column">
                 <div class="team-header attackers-header">ATTACKERS</div>
@@ -143,21 +184,38 @@
                 <button class="val-btn" style="font-size:12px; padding:5px 10px; width:100%;" onclick="switchTeam('defend')">Join Defenders</button>
             </div>
         </div>
+        <button id="host-start-btn" class="val-btn" style="display:none;" onclick="enterAgentSelect()">ENTER AGENT SELECT</button>
+        <div id="client-wait-msg" style="color:#888; margin-top:20px;">Waiting for Host...</div>
+    </div>
 
-        <div style="margin-bottom: 5px; color: #ccc;">SELECT AGENT</div>
-        <div class="agent-select-mini">
-            <div class="agent-opt selected" onclick="selectAgentInLobby('jett', this)">💨 Jett</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('phoenix', this)">🔥 Phoenix</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('sage', this)">🧊 Sage</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('reyna', this)">👁️ Reyna</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('sova', this)">🏹 Sova</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('brim', this)">☁️ Brim</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('omen', this)">👻 Omen</div>
-            <div class="agent-opt" onclick="selectAgentInLobby('cypher', this)">🕵️ Cypher</div>
+    <!-- 3. AGENT SELECT SCREEN -->
+    <div id="agent-select-screen" class="menu-overlay" style="display:none;">
+        <div id="select-timer">60</div>
+        <h2 style="margin-bottom:40px;">SELECT AGENT</h2>
+        
+        <div class="agent-grid">
+            <div class="agent-card" onclick="pickAgent('jett', this)"><div class="agent-card-icon">💨</div><div class="agent-card-name">Jett</div></div>
+            <div class="agent-card" onclick="pickAgent('phoenix', this)"><div class="agent-card-icon">🔥</div><div class="agent-card-name">Phoenix</div></div>
+            <div class="agent-card" onclick="pickAgent('sage', this)"><div class="agent-card-icon">🧊</div><div class="agent-card-name">Sage</div></div>
+            <div class="agent-card" onclick="pickAgent('reyna', this)"><div class="agent-card-icon">👁️</div><div class="agent-card-name">Reyna</div></div>
+            <div class="agent-card" onclick="pickAgent('sova', this)"><div class="agent-card-icon">🏹</div><div class="agent-card-name">Sova</div></div>
+            <div class="agent-card" onclick="pickAgent('brim', this)"><div class="agent-card-icon">☁️</div><div class="agent-card-name">Brim</div></div>
+            <div class="agent-card" onclick="pickAgent('omen', this)"><div class="agent-card-icon">👻</div><div class="agent-card-name">Omen</div></div>
+            <div class="agent-card" onclick="pickAgent('cypher', this)"><div class="agent-card-icon">🕵️</div><div class="agent-card-name">Cypher</div></div>
         </div>
 
-        <button id="host-start-btn" class="val-btn" style="display:none;" onclick="hostStartGame()">START MATCH</button>
-        <div id="client-wait-msg" style="color:#888; margin-top:20px;">Waiting for Host to start...</div>
+        <button id="lock-btn" class="val-btn" onclick="lockInAgent()" disabled>LOCK IN</button>
+        
+        <div style="margin-top:20px; display:flex; gap:20px;">
+            <div style="text-align:center;">
+                <div style="color:#ff4655; font-weight:bold; margin-bottom:10px;">ATTACKERS</div>
+                <div id="select-attack-list" style="display:flex; gap:5px;"></div>
+            </div>
+            <div style="text-align:center;">
+                <div style="color:#00ffaa; font-weight:bold; margin-bottom:10px;">DEFENDERS</div>
+                <div id="select-defend-list" style="display:flex; gap:5px;"></div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -183,25 +241,40 @@
         
         let currentLobbyId = null;
         let isHost = false;
-        let selectedAgent = 'jett';
+        let selectedAgent = null;
+        let isLockedIn = false;
         let myTeam = 'attack';
         let myUsername = 'Player';
         let remotePlayers = {}; 
         let isPlaying = false;
         
         // Match State
+        let lobbyStatus = 'waiting'; // waiting, agent_select, playing
         let gamePhase = 'waiting';
         let phaseEndTime = 0;
         let spikeState = { state: 'spawned', carrier: null, pos: null, plantTime: 0 }; 
         let barriers = []; 
         let spikeMesh = null;
-
-        // Interaction State
+        
+        let bullets = [];
         let isHoldingKey = false;
         let interactionProgress = 0;
-        let currentAction = null; // 'plant', 'defuse'
+        let currentAction = null; 
 
         const statusEl = document.getElementById('status-msg');
+
+        // Agent Data
+        const agentAbilities = {
+            'jett': { c:'☁️', q:'🎈', e:'💨', x:'🔪' },
+            'phoenix': { c:'🔥', q:'💫', e:'👐', x:'🔁' },
+            'sage': { c:'🚧', q:'❄️', e:'🩹', x:'👼' },
+            'reyna': { c:'👁️', q:'👻', e:'🛡️', x:'😈' },
+            'sova': { c:'🦉', q:'⚡', e:'🏹', x:'🌩️' },
+            'brim': { c:'💊', q:'🔥', e:'☁️', x:'🛰️' },
+            'omen': { c:'👣', q:'🌑', e:'💨', x:'🗺️' },
+            'cypher': { c:'🕸️', q:'🗑️', e:'📷', x:'👒' }
+        };
+        const agentsConfig = { 'jett': { color: 0xaaccff }, 'phoenix': { color: 0xffaa00 }, 'sage': { color: 0x00ffaa }, 'reyna': { color: 0xaa00aa }, 'sova': { color: 0x00aaff }, 'brim': { color: 0xff8800 }, 'omen': { color: 0x4444aa }, 'cypher': { color: 0xeeeeee } };
 
         // --- INIT ---
         async function initFirebase() {
@@ -236,8 +309,8 @@
             const ref = doc(collection(db, "lobbies"));
             await setDoc(ref, {
                 name, hostId: userId, status: 'waiting',
-                players: [{ uid: mySessionId, name: myUsername, agent: selectedAgent, team: myTeam, isHost: true }],
-                spike: { state: 'spawned', carrier: null, pos: null } // Initial spike state
+                players: [{ uid: mySessionId, name: myUsername, agent: null, team: myTeam, isHost: true, locked: false }],
+                spike: { state: 'spawned', carrier: null, pos: null }
             });
             enterLobby(ref.id, true);
         };
@@ -247,16 +320,49 @@
             myUsername = document.getElementById('player-name-input').value || "Guest";
             myTeam = 'attack';
             const ref = doc(db, "lobbies", rid);
-            await updateDoc(ref, { players: arrayUnion({ uid: mySessionId, name: myUsername, agent: selectedAgent, team: myTeam, isHost: false }) });
+            await updateDoc(ref, { players: arrayUnion({ uid: mySessionId, name: myUsername, agent: null, team: myTeam, isHost: false, locked: false }) });
             enterLobby(rid, false);
         };
 
         window.switchTeam = (t) => { myTeam = t; updateMyPlayerData(); };
-        window.selectAgentInLobby = (a, el) => {
-            selectedAgent = a;
-            document.querySelectorAll('.agent-opt').forEach(e => e.classList.remove('selected'));
+
+        // --- AGENT SELECT LOGIC ---
+        window.enterAgentSelect = async () => {
+            if(!currentLobbyId || !isHost) return;
+            const ref = doc(db, "lobbies", currentLobbyId);
+            await updateDoc(ref, { 
+                status: 'agent_select',
+                selectEndTime: Date.now() + 60000 
+            });
+        };
+
+        window.pickAgent = (agent, el) => {
+            if(isLockedIn) return;
+            selectedAgent = agent;
+            document.querySelectorAll('.agent-card').forEach(e => e.classList.remove('selected'));
             el.classList.add('selected');
-            updateMyPlayerData();
+            document.getElementById('lock-btn').disabled = false;
+            // Optionally update draft pick in DB so team sees hover
+        };
+
+        window.lockInAgent = async () => {
+            if(!selectedAgent || !currentLobbyId) return;
+            isLockedIn = true;
+            document.getElementById('lock-btn').innerText = "LOCKED";
+            document.getElementById('lock-btn').disabled = true;
+            
+            // Update DB
+            const ref = doc(db, "lobbies", currentLobbyId);
+            const snap = await getDoc(ref);
+            if(!snap.exists()) return;
+            let p = snap.data().players;
+            const idx = p.findIndex(x => x.uid === mySessionId);
+            if(idx >= 0) { 
+                p[idx].agent = selectedAgent; 
+                p[idx].team = myTeam; 
+                p[idx].locked = true;
+                await updateDoc(ref, { players: p }); 
+            }
         };
 
         async function updateMyPlayerData() {
@@ -266,14 +372,17 @@
             if(!snap.exists()) return;
             let p = snap.data().players;
             const idx = p.findIndex(x => x.uid === mySessionId);
-            if(idx >= 0) { p[idx].agent = selectedAgent; p[idx].team = myTeam; await updateDoc(ref, { players: p }); }
+            if(idx >= 0) { 
+                p[idx].team = myTeam; 
+                await updateDoc(ref, { players: p }); 
+            }
         }
 
         window.hostStartGame = async () => {
             if(!currentLobbyId || !isHost) return;
             const ref = doc(db, "lobbies", currentLobbyId);
             const snap = await getDoc(ref);
-            // Assign spike to random attacker
+            // Spike assign
             const players = snap.data().players;
             const attackers = players.filter(p => p.team === 'attack');
             let spikeCarrier = null;
@@ -298,36 +407,83 @@
                 if(!snap.exists()) return;
                 const d = snap.data();
                 
-                // Player List
-                const atk = document.getElementById('team-attack-list');
-                const def = document.getElementById('team-defend-list');
-                atk.innerHTML = ""; def.innerHTML = "";
-                const icons = { 'jett': '💨', 'phoenix': '🔥', 'sage': '🧊', 'reyna': '👁️', 'sova': '🏹', 'brim': '☁️', 'omen': '👻', 'cypher': '🕵️' };
-                d.players.forEach(p => {
-                    const html = `<div class='player-row ${p.uid===mySessionId?"me":""}'><span class='p-icon'>${icons[p.agent]}</span><span class='p-name'>${p.name}</span></div>`;
-                    if(p.team === 'attack') atk.innerHTML += html; else def.innerHTML += html;
-                });
+                // --- HANDLE SCREENS ---
+                if (d.status === 'agent_select' && lobbyStatus !== 'agent_select') {
+                    lobbyStatus = 'agent_select';
+                    document.getElementById('waiting-screen').style.display = 'none';
+                    document.getElementById('agent-select-screen').style.display = 'block';
+                }
 
-                // Game Logic
-                if(d.status === 'playing') {
-                    if(!isPlaying) { launchGame(); }
-                    
-                    // Phase Sync
+                if (d.status === 'playing') {
+                    if (!isPlaying) launchGame();
+                    // Phase & Spike sync
                     if(d.gamePhase !== gamePhase) {
                         gamePhase = d.gamePhase;
                         phaseEndTime = d.phaseEndTime;
                         handlePhaseChange();
                     }
-                    
-                    // Spike Sync
                     if(d.spike) handleSpikeUpdate(d.spike);
+                }
+
+                // --- UI UPDATES ---
+                if (lobbyStatus === 'waiting') {
+                    renderLobbyPlayers(d.players || []);
+                } else if (lobbyStatus === 'agent_select') {
+                    renderAgentSelectStatus(d.players || [], d.selectEndTime);
+                    // Host Auto-Start Check
+                    if (isHost && !isPlaying) {
+                        const allLocked = d.players.every(p => p.locked);
+                        const timeOut = Date.now() > d.selectEndTime;
+                        if (allLocked || timeOut) {
+                            window.hostStartGame();
+                        }
+                    }
                 }
             });
         }
 
+        function renderLobbyPlayers(players) {
+            const atk = document.getElementById('team-attack-list');
+            const def = document.getElementById('team-defend-list');
+            atk.innerHTML = ""; def.innerHTML = "";
+            players.forEach(p => {
+                const html = `<div class='player-row ${p.uid===mySessionId?"me":""}'><span class='p-name'>${p.name}</span></div>`;
+                if(p.team === 'attack') atk.innerHTML += html; else def.innerHTML += html;
+            });
+        }
+
+        function renderAgentSelectStatus(players, endTime) {
+            const atk = document.getElementById('select-attack-list');
+            const def = document.getElementById('select-defend-list');
+            atk.innerHTML = ""; def.innerHTML = "";
+            
+            // Timer
+            const timeLeft = Math.max(0, Math.ceil((endTime - Date.now())/1000));
+            document.getElementById('select-timer').innerText = timeLeft;
+
+            const icons = { 'jett': '💨', 'phoenix': '🔥', 'sage': '🧊', 'reyna': '👁️', 'sova': '🏹', 'brim': '☁️', 'omen': '👻', 'cypher': '🕵️' };
+
+            players.forEach(p => {
+                const icon = p.agent && p.locked ? icons[p.agent] : '❓';
+                const style = p.locked ? "border:2px solid #00ffaa; opacity:1;" : "border:1px solid #555; opacity:0.5;";
+                const html = `<div style="width:40px; height:40px; background:#222; display:flex; align-items:center; justify-content:center; font-size:20px; ${style}">${icon}</div>`;
+                if(p.team === 'attack') atk.innerHTML += html; else def.innerHTML += html;
+            });
+        }
+
         function launchGame() {
+            document.getElementById('agent-select-screen').style.display = 'none';
             document.getElementById('waiting-screen').style.display = 'none';
             document.getElementById('ui-layer').style.display = 'block';
+            
+            // Set Ability Icons
+            if (agentAbilities[selectedAgent]) {
+                document.getElementById('icon-c').innerText = agentAbilities[selectedAgent].c;
+                document.getElementById('icon-q').innerText = agentAbilities[selectedAgent].q;
+                document.getElementById('icon-e').innerText = agentAbilities[selectedAgent].e;
+                document.getElementById('icon-x').innerText = agentAbilities[selectedAgent].x;
+            }
+
             isPlaying = true;
             create3DScene();
             initGameMultiplayer();
@@ -349,7 +505,6 @@
             } else if(gamePhase === 'planted') {
                 st.innerText = "SPIKE PLANTED"; st.style.color = "#ff0000";
                 msg.innerText = "SPIKE PLANTED"; msg.style.color = "#ff0000"; msg.style.opacity = 1; setTimeout(()=>msg.style.opacity=0, 3000);
-                // Timer now counts UP to detonation (45s)
             } else if(gamePhase === 'defused') {
                 msg.innerText = "DEFENDERS WIN"; msg.style.color = "#00ffaa"; msg.style.opacity = 1;
                 isPlaying = false; setTimeout(()=>location.reload(), 5000);
@@ -361,8 +516,6 @@
 
         function handleSpikeUpdate(newSpike) {
             spikeState = newSpike;
-            
-            // UI Logic
             const hud = document.getElementById('spike-hud');
             const txt = document.getElementById('spike-msg');
             
@@ -374,16 +527,12 @@
                 hud.style.display = 'block';
                 txt.innerText = "⚠️ SPIKE PLANTED ⚠️";
                 txt.style.color = "#ff4655";
-                
-                // Show physical spike
                 if(!spikeMesh && scene) {
                     const geo = new THREE.CylinderGeometry(0.2, 0.4, 0.8, 16);
                     const mat = new THREE.MeshStandardMaterial({color:0xff0000, emissive:0xff0000, emissiveIntensity:0.5});
                     spikeMesh = new THREE.Mesh(geo, mat);
                     spikeMesh.position.set(spikeState.pos.x, spikeState.pos.y, spikeState.pos.z);
                     scene.add(spikeMesh);
-                    
-                    // Add light
                     const light = new THREE.PointLight(0xff0000, 1, 10);
                     light.position.set(spikeState.pos.x, spikeState.pos.y+1, spikeState.pos.z);
                     scene.add(light);
@@ -393,7 +542,6 @@
             }
         }
 
-        // --- GAMEPLAY ACTIONS ---
         function checkActions() {
             if (!isPlaying || !camera) return;
             const hud = document.getElementById('spike-hud');
@@ -403,63 +551,40 @@
             
             const pos = camera.position;
             
-            // ATTACKER: Plant
             if (myTeam === 'attack' && spikeState.carrier === mySessionId && gamePhase === 'action') {
-                // Check if in Site A or B (Simple box check)
                 const inSiteA = (pos.x < -20 && pos.x > -40 && pos.z > -10 && pos.z < 10);
                 const inSiteB = (pos.x > 20 && pos.x < 40 && pos.z > -10 && pos.z < 10);
-                
                 if (inSiteA || inSiteB) {
                     hud.style.display = 'block';
                     txt.innerText = "HOLD [4] TO PLANT";
-                    
                     if (isHoldingKey) {
                         currentAction = 'plant';
                         barCont.style.display = 'block';
-                        interactionProgress += 0.016; // Approx 1 frame
-                        bar.style.width = (interactionProgress / 4) * 100 + "%"; // 4 seconds
-                        
-                        if (interactionProgress >= 4) {
-                            completePlant(pos);
-                            interactionProgress = 0;
-                            isHoldingKey = false;
-                        }
-                    } else {
-                        barCont.style.display = 'none';
-                        interactionProgress = 0;
-                    }
-                    return; // Exit so we don't clear UI
+                        interactionProgress += 0.016; 
+                        bar.style.width = (interactionProgress / 4) * 100 + "%"; 
+                        if (interactionProgress >= 4) { completePlant(pos); interactionProgress = 0; isHoldingKey = false; }
+                    } else { barCont.style.display = 'none'; interactionProgress = 0; }
+                    return;
                 }
             }
 
-            // DEFENDER: Defuse
             if (myTeam === 'defend' && spikeState.state === 'planted') {
                 const dist = pos.distanceTo(new THREE.Vector3(spikeState.pos.x, spikeState.pos.y, spikeState.pos.z));
                 if (dist < 3) {
                     hud.style.display = 'block';
                     txt.innerText = "HOLD [4] TO DEFUSE";
-                    
                     if (isHoldingKey) {
                         currentAction = 'defuse';
                         barCont.style.display = 'block';
                         bar.style.backgroundColor = "#00aaff";
                         interactionProgress += 0.016;
-                        bar.style.width = (interactionProgress / 7) * 100 + "%"; // 7 seconds
-                        
-                        if (interactionProgress >= 7) {
-                            completeDefuse();
-                            interactionProgress = 0;
-                            isHoldingKey = false;
-                        }
-                    } else {
-                        barCont.style.display = 'none';
-                        interactionProgress = 0;
-                    }
+                        bar.style.width = (interactionProgress / 7) * 100 + "%"; 
+                        if (interactionProgress >= 7) { completeDefuse(); interactionProgress = 0; isHoldingKey = false; }
+                    } else { barCont.style.display = 'none'; interactionProgress = 0; }
                     return;
                 }
             }
             
-            // Reset if nothing happening
             if (spikeState.carrier !== mySessionId && spikeState.state !== 'planted') {
                 hud.style.display = 'none';
             }
@@ -469,7 +594,7 @@
             const ref = doc(db, "lobbies", currentLobbyId);
             await updateDoc(ref, {
                 gamePhase: 'planted',
-                phaseEndTime: Date.now() + 45000, // 45s timer
+                phaseEndTime: Date.now() + 45000, 
                 spike: { state: 'planted', carrier: null, pos: {x:pos.x, y:0.4, z:pos.z}, plantTime: Date.now() }
             });
         }
@@ -479,29 +604,58 @@
             await updateDoc(ref, { gamePhase: 'defused' });
         }
 
-        // --- 3D ENGINE ---
+        function shoot() {
+            if (!isPlaying || !controls.isLocked) return;
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(walls);
+            let targetPoint;
+            if (intersects.length > 0) targetPoint = intersects[0].point;
+            else targetPoint = raycaster.ray.direction.clone().multiplyScalar(100).add(raycaster.ray.origin);
+            const gunPos = camera.position.clone().add(new THREE.Vector3(0.2, -0.2, -0.4).applyQuaternion(camera.quaternion));
+            const material = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 1 });
+            const points = [gunPos, targetPoint];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geometry, material);
+            scene.add(line);
+            bullets.push({ mesh: line, time: Date.now() });
+        }
+
         const MOVEMENT_SPEED = 10.0;
         const JUMP_FORCE = 12.0;
         const GRAVITY = 30.0;
         const PLAYER_HEIGHT = 1.6;
         const PLAYER_RADIUS = 0.5;
 
-        const agentsConfig = { 'jett': { color: 0xaaccff }, 'phoenix': { color: 0xffaa00 }, 'sage': { color: 0x00ffaa }, 'reyna': { color: 0xaa00aa }, 'sova': { color: 0x00aaff }, 'brim': { color: 0xff8800 }, 'omen': { color: 0x4444aa }, 'cypher': { color: 0xeeeeee } };
+        let camera, scene, renderer, controls;
+        let walls = [];
 
         function create3DScene() {
-            scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 10, 80);
+            scene = new THREE.Scene(); 
+            scene.background = new THREE.Color(0x505050); 
+            scene.fog = new THREE.Fog(0x505050, 10, 80);
+            
             camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
             scene.add(new THREE.AmbientLight(0xffffff, 0.6));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(50, 100, -50); dirLight.castShadow = true; scene.add(dirLight);
             controls = new PointerLockControls(camera, document.body);
+            
+            const grid = new THREE.GridHelper(200, 50, 0x000000, 0x333333);
+            scene.add(grid);
+
             createMap();
-            // Gun
             const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.5), new THREE.MeshStandardMaterial({color:0x333333})); gun.position.set(0.2, -0.2, -0.4); camera.add(gun); scene.add(camera);
-            // Spawn
+            
             if (myTeam === 'attack') { camera.position.set(0, 2, 40); camera.lookAt(0, 2, 0); } else { camera.position.set(0, 2, -40); camera.lookAt(0, 2, 0); }
-            document.addEventListener('click', () => { if(isPlaying) controls.lock(); });
+            
+            document.addEventListener('mousedown', (e) => { 
+                if(isPlaying) {
+                    if (!controls.isLocked) controls.lock();
+                    else if (e.button === 0) shoot(); 
+                }
+            });
             animate();
         }
 
@@ -514,15 +668,10 @@
         function createMap() {
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x444444 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
             const C_WALL = 0xd6cba8, C_BOX = 0x2e4a3d, C_SITE = 0x888888, C_BARRIER = 0x00aaff;
-            // Site A
             createBox(-30, 0, 0, 20, 1, 20, C_SITE); createBox(-30, 0, 0, 4, 3, 4, C_BOX); createBox(-40, 0, 0, 1, 6, 30, C_WALL); createBox(-20, 0, -15, 10, 6, 1, C_WALL);
-            // Site B
             createBox(30, 0, 0, 20, 1, 20, C_SITE); createBox(30, 0, 0, 4, 3, 4, C_BOX); createBox(40, 0, 0, 1, 6, 30, C_WALL); createBox(30, 0, 15, 8, 4, 8, C_WALL);
-            // Mid
             createBox(0, 0, 0, 10, 6, 10, C_WALL);
-            // Spawns
-            createBox(0, 0, 45, 60, 4, 1, C_WALL); createBox(0, 0, -45, 60, 4, 1, C_WALL);
-            // Barriers
+            createBox(0, 0, 50, 60, 6, 1, C_WALL); createBox(0, 0, -50, 60, 6, 1, C_WALL); createBox(30, 0, 40, 1, 6, 20, C_WALL); createBox(-30, 0, 40, 1, 6, 20, C_WALL); createBox(30, 0, -40, 1, 6, 20, C_WALL); createBox(-30, 0, -40, 1, 6, 20, C_WALL);
             createBox(-30, 0, 12, 10, 6, 1, C_BARRIER, true); createBox(30, 0, 12, 10, 6, 1, C_BARRIER, true); createBox(0, 0, 10, 15, 6, 1, C_BARRIER, true);
         }
 
@@ -571,22 +720,20 @@
             requestAnimationFrame(animate);
             if (!isPlaying) return;
 
-            // Timer & Game State
             const timeEl = document.getElementById('timer');
             if (gamePhase === 'buy' || gamePhase === 'action' || gamePhase === 'planted') {
                 let timeLeft = 0;
-                if(gamePhase === 'planted') timeLeft = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000)); // Countdown to boom
-                else if(gamePhase === 'buy') timeLeft = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000)); // Countdown to action
-                else if(gamePhase === 'action') timeLeft = 100; // Static for prototype
-                
+                if(gamePhase === 'planted') timeLeft = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
+                else if(gamePhase === 'buy') timeLeft = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
+                else if(gamePhase === 'action') timeLeft = 100;
                 timeEl.innerText = `0:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
-                
-                // Triggers
                 if (isHost && gamePhase === 'buy' && timeLeft <= 0) updateDoc(doc(db,"lobbies",currentLobbyId), { gamePhase: 'action' });
                 if (isHost && gamePhase === 'planted' && timeLeft <= 0) updateDoc(doc(db,"lobbies",currentLobbyId), { gamePhase: 'detonated' });
             }
 
             checkActions();
+            
+            bullets.forEach((b, i) => { if (Date.now() - b.time > 100) { scene.remove(b.mesh); bullets.splice(i, 1); } });
 
             if (!controls.isLocked) return;
             const time = performance.now(); const delta = (time - prevTime) / 1000; prevTime = time;
