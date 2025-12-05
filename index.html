@@ -90,6 +90,15 @@
         #lock-btn { width: 300px; background: #00ffaa; color: #0f1923; margin-top: 20px; font-size: 24px; padding: 20px; box-shadow: 0 0 20px rgba(0,255,170,0.5); }
         #lock-btn:disabled { background: #333; color: #888; box-shadow: none; cursor: default; }
 
+        /* PATCH NOTES MODAL */
+        #patch-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #1f2b35; border: 2px solid #ff4655; padding: 20px; z-index: 200; box-shadow: 0 0 20px black; }
+        #patch-modal h2 { margin-top: 0; color: #ff4655; border-bottom: 1px solid #444; padding-bottom: 10px; font-style: italic; }
+        #patch-modal ul { list-style: none; padding: 0; color: #ccc; }
+        #patch-modal li { margin-bottom: 8px; display: flex; align-items: center; font-size: 14px; }
+        #patch-modal li::before { content: "•"; color: #00ffaa; font-weight: bold; margin-right: 10px; }
+        .close-patch-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #888; font-size: 20px; cursor: pointer; }
+        .close-patch-btn:hover { color: white; }
+
         #status-msg { margin-top: 20px; color: #888; font-size: 14px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; text-align: center; max-width: 80%; }
         h1 { color:#ff4655; margin:0; font-size:60px; font-style:italic; margin-bottom: 10px; }
         h2 { color: white; text-transform: uppercase; letter-spacing: 2px; font-size: 24px; margin-bottom: 20px; }
@@ -169,6 +178,25 @@
             </div>
         </div>
         <div id="status-msg">Connecting to Firebase...</div>
+        
+        <!-- PATCH BUTTON -->
+        <div style="position: absolute; bottom: 20px; right: 20px; text-align: right;">
+            <div style="color: #666; font-size: 12px; margin-bottom:5px;">VERSION 0.8.2 BETA</div>
+            <button class="val-btn" style="padding: 10px 20px; font-size: 14px; background: #2a3b47; border: 1px solid #444;" onclick="togglePatchNotes()">📝 PATCH NOTES</button>
+        </div>
+    </div>
+
+    <!-- PATCH MODAL -->
+    <div id="patch-modal">
+        <button class="close-patch-btn" onclick="togglePatchNotes()">×</button>
+        <h2>PATCH 0.8.2 NOTES</h2>
+        <ul>
+            <li><strong>CRITICAL FIX:</strong> Fixed "Grey Screen" crash caused by code duplication.</li>
+            <li><strong>GAMEPLAY:</strong> Added full Agent Select Screen & Locking Phase.</li>
+            <li><strong>MECHANICS:</strong> Implemented Spike Planting, Defusing, and Victory Conditions.</li>
+            <li><strong>VISUALS:</strong> Added Bullet Tracers and removed debug floor colors.</li>
+            <li><strong>UI:</strong> Updated HUD with health bars, ability icons, and ammo counters.</li>
+        </ul>
     </div>
 
     <!-- 2. WAITING ROOM SCREEN -->
@@ -290,6 +318,12 @@
             } catch(e) { console.error(e); statusEl.innerText="Offline: "+e.message; statusEl.style.color="#ff4655"; }
         }
         initFirebase();
+
+        // --- PATCH NOTES ---
+        window.togglePatchNotes = () => {
+            const el = document.getElementById('patch-modal');
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        };
 
         // --- LOBBY UI ---
         window.fetchRooms = async () => {
@@ -641,8 +675,12 @@
             
             camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true;
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7)); 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(50, 100, -50); dirLight.castShadow = true; scene.add(dirLight);
             controls = new PointerLockControls(camera, document.body);
             
