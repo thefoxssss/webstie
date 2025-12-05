@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Proto: Agent Select</title>
+    <title>Valorant Proto: Full Game</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #0f1923; color: white; user-select: none; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
@@ -31,6 +31,7 @@
 
         /* --- BOTTOM HUD --- */
         #bottom-hud { position: absolute; bottom: 10px; left: 0; width: 100%; height: 100px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 40px; box-sizing: border-box; }
+        
         .hud-left { display: flex; align-items: center; color: white; transform: skewX(-15deg); background: rgba(15, 25, 35, 0.8); padding: 5px 30px; border-left: 4px solid #00ffaa; border-radius: 5px; box-shadow: 5px 5px 0px rgba(0,0,0,0.3); }
         .health-content { transform: skewX(15deg); display: flex; flex-direction: column; align-items: flex-start; }
         .hp-text-row { display: flex; align-items: baseline; }
@@ -38,11 +39,13 @@
         .hp-label { font-size: 14px; font-weight: 600; color: #ccc; }
         .health-bar-bg { width: 150px; height: 8px; background: #333; margin-top: 5px; position: relative; }
         .health-bar-fill { width: 100%; height: 100%; background: #00ffaa; box-shadow: 0 0 5px #00ffaa; }
+
         .hud-center { display: flex; gap: 8px; margin-bottom: 10px; }
         .ability-box { width: 50px; height: 50px; background: rgba(0,0,0,0.6); border: 1px solid #555; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 2px; }
         .ability-key { position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; }
         .ability-icon { font-size: 20px; filter: drop-shadow(0 0 2px black); }
         .ult-box { width: 70px; height: 70px; border-color: #ffeb3b; background: rgba(255, 235, 59, 0.1); margin-top: -20px; }
+        
         .hud-right { display: flex; align-items: center; color: white; transform: skewX(15deg); background: rgba(15, 25, 35, 0.8); padding: 5px 30px; border-right: 4px solid #ff4655; border-radius: 5px; box-shadow: -5px 5px 0px rgba(0,0,0,0.3); }
         .ammo-content { transform: skewX(-15deg); display: flex; flex-direction: column; align-items: flex-end; }
         .ammo-text-row { display: flex; align-items: baseline; }
@@ -621,6 +624,7 @@
             bullets.push({ mesh: line, time: Date.now() });
         }
 
+        // --- 3D ENGINE ---
         const MOVEMENT_SPEED = 10.0;
         const JUMP_FORCE = 12.0;
         const GRAVITY = 30.0;
@@ -632,8 +636,8 @@
 
         function create3DScene() {
             scene = new THREE.Scene(); 
-            scene.background = new THREE.Color(0x505050); 
-            scene.fog = new THREE.Fog(0x505050, 10, 80);
+            scene.background = new THREE.Color(0x808080); 
+            scene.fog = new THREE.Fog(0x808080, 10, 80);
             
             camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true;
@@ -648,7 +652,13 @@
             createMap();
             const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.5), new THREE.MeshStandardMaterial({color:0x333333})); gun.position.set(0.2, -0.2, -0.4); camera.add(gun); scene.add(camera);
             
-            if (myTeam === 'attack') { camera.position.set(0, 2, 40); camera.lookAt(0, 2, 0); } else { camera.position.set(0, 2, -40); camera.lookAt(0, 2, 0); }
+            if (myTeam === 'attack') { 
+                camera.position.set(0, 2, 40); 
+                camera.rotation.y = Math.PI; 
+            } else { 
+                camera.position.set(0, 2, -40); 
+                camera.rotation.y = 0; 
+            }
             
             document.addEventListener('mousedown', (e) => { 
                 if(isPlaying) {
