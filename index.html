@@ -150,6 +150,9 @@
 
         // --- SYSTEM VARIABLES ---
         let db, auth, userId;
+        // Generate a random session ID for THIS tab so multiple tabs don't conflict
+        const mySessionId = 'sess_' + Math.random().toString(36).substr(2, 9);
+        
         let currentLobbyId = null;
         let isHost = false;
         let selectedAgent = 'jett';
@@ -235,7 +238,8 @@
                 status: 'waiting',
                 createdAt: Date.now(),
                 players: [{
-                    uid: userId,
+                    uid: mySessionId, // Use Session ID for player entry
+                    authId: userId,   // Keep auth ID for checks
                     name: myUsername,
                     agent: selectedAgent,
                     isHost: true
@@ -255,7 +259,8 @@
             // Add self to players array
             await updateDoc(roomRef, {
                 players: arrayUnion({
-                    uid: userId,
+                    uid: mySessionId,
+                    authId: userId,
                     name: myUsername,
                     agent: selectedAgent,
                     isHost: false
@@ -269,11 +274,6 @@
             selectedAgent = agent;
             document.querySelectorAll('.agent-opt').forEach(e => e.classList.remove('selected'));
             el.classList.add('selected');
-            
-            // If currently in a lobby, verify we update our choice in DB? 
-            // Simplified: Just local for now, update on start. 
-            // Ideally: updateDoc with modified player array (complex).
-            // For prototype: We just use this value when the game starts or when we join.
         };
 
         window.hostStartGame = async () => {
@@ -319,9 +319,10 @@
             container.innerHTML = "";
             
             players.forEach(p => {
+                // Check using session ID for "me"
                 const el = document.createElement('div');
-                el.className = `player-slot ${p.isHost ? 'host' : ''} ${p.uid === userId ? 'me' : ''}`;
-                // Simple Icons based on agent
+                el.className = `player-slot ${p.isHost ? 'host' : ''} ${p.uid === mySessionId ? 'me' : ''}`;
+                
                 let icon = '❓';
                 if (p.agent === 'jett') icon = '💨';
                 if (p.agent === 'phoenix') icon = '🔥';
@@ -448,7 +449,9 @@
                 snapshot.docChanges().forEach((change) => {
                     const data = change.doc.data();
                     const pid = change.doc.id;
-                    if (pid === userId) return; 
+                    
+                    // Filter out SELF by Session ID
+                    if (pid === mySessionId) return; 
 
                     if (change.type === "added" || change.type === "modified") {
                         updateRemotePlayer(pid, data);
@@ -462,13 +465,14 @@
             setInterval(broadcastPosition, 50); // Faster updates
             
             window.addEventListener('beforeunload', () => {
-               deleteDoc(doc(db, 'valorant_game_data', userId));
+               deleteDoc(doc(db, 'valorant_game_data', mySessionId));
             });
         }
 
         function broadcastPosition() {
             if (!isPlaying || !userId) return;
-            const myDoc = doc(db, 'valorant_game_data', userId);
+            // Write to a doc named after SESSION ID, not User ID
+            const myDoc = doc(db, 'valorant_game_data', mySessionId);
             const dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
             const yaw = Math.atan2(dir.x, dir.z);
