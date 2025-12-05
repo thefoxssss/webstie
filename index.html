@@ -31,7 +31,7 @@
         #lobby-input { padding: 10px; font-size: 16px; width: 200px; text-align: center; margin-bottom: 20px; background: #333; color: white; border: 1px solid #555; }
         #start-btn { padding: 15px 50px; font-size: 20px; background: #ff4655; color: white; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; }
         
-        #status-msg { margin-top: 10px; color: #888; font-size: 12px; }
+        #status-msg { margin-top: 20px; color: #888; font-size: 14px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; text-align: center; max-width: 80%; }
 
         /* ALERTS */
         #alert-msg { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 40px; font-weight: bold; text-shadow: 0 0 10px black; opacity: 0; transition: opacity 0.5s; }
@@ -79,7 +79,7 @@
             <div class="agent-card" onclick="selectAgent('sage')"><div>🧊</div><div>Sage</div></div>
         </div>
         <button id="start-btn" onclick="startGame()">Enter Game</button>
-        <div id="status-msg">Checking Config...</div>
+        <div id="status-msg">Connecting to Firebase...</div>
     </div>
 
     <script type="module">
@@ -90,6 +90,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
         // --- FIREBASE CONFIGURATION ---
+        // This MUST be the AIza... key from "Project Settings > General"
         const firebaseConfig = {
             apiKey: "AIzaSyCx72zwsJ-IaVH1N7AnX9lDHgL10eDuNKY",
             authDomain: "valorant-48fd8.firebaseapp.com",
@@ -106,43 +107,51 @@
         let lobbyId = "default";
         let isMultiplayer = false;
 
-        // Initialize Firebase if keys are present
+        // Initialize Firebase
         const statusEl = document.getElementById('status-msg');
-        if (firebaseConfig.apiKey && firebaseConfig.apiKey.length > 0) {
+        
+        async function initFirebase() {
             try {
+                if (!firebaseConfig.apiKey) throw new Error("No API Key found");
+                
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Attempt Anonymous Sign-In
-                signInAnonymously(auth).then(() => {
-                    statusEl.innerText = "Online: Connected to Firebase";
-                    statusEl.style.color = "#00ffaa";
-                    isMultiplayer = true;
-                }).catch((e) => {
-                    // Suppress known config errors and degrade gracefully to offline mode
-                    if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed' || e.code === 'auth/admin-restricted-operation') {
-                        statusEl.innerText = "Offline Mode (Auth Not Configured)";
-                        console.warn("Firebase Auth is not enabled in Console. Running in Singleplayer.");
-                    } else {
-                        statusEl.innerText = "Offline: Connection Failed";
-                        console.warn("Auth Error:", e.message);
+                statusEl.innerText = "Attempting Login...";
+                
+                // Auth Listener
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isMultiplayer = true;
+                        statusEl.innerText = "ONLINE: Connected as " + user.uid.substring(0,5) + "...";
+                        statusEl.style.color = "#00ffaa";
                     }
-                    statusEl.style.color = "#ff4655";
-                    // Fallback to offline mode is automatic since isMultiplayer remains false
                 });
 
-                onAuthStateChanged(auth, (user) => {
-                    if (user) userId = user.uid;
-                });
+                // Trigger Login
+                await signInAnonymously(auth);
+                
             } catch (e) {
-                console.warn("Firebase Init Failed:", e);
-                statusEl.innerText = "Offline Mode (Config Error)";
+                console.error("Firebase Error Details:", e);
+                isMultiplayer = false;
+                statusEl.style.color = "#ff4655";
+                
+                // Friendly Error Messages
+                if (e.code === 'auth/configuration-not-found') {
+                    statusEl.innerText = "OFFLINE: Enable 'Anonymous' in Firebase Console > Authentication.";
+                } else if (e.code === 'auth/unauthorized-domain') {
+                    statusEl.innerText = "OFFLINE: Add this domain to Firebase Console > Auth > Settings > Authorized Domains.";
+                } else if (e.code === 'auth/api-key-not-valid-please-pass-a-valid-api-key') {
+                    statusEl.innerText = "OFFLINE: Invalid API Key. Check Project Settings.";
+                } else {
+                    statusEl.innerText = "OFFLINE: " + e.message;
+                }
             }
-        } else {
-            statusEl.innerText = "Offline Mode (No Config Provided)";
-            console.log("No Firebase config found. Running in offline mode.");
         }
+
+        initFirebase();
 
         // --- GAME CONSTANTS ---
         const MOVEMENT_SPEED = 10.0;
@@ -307,6 +316,13 @@
                         removeRemotePlayer(pid);
                     }
                 });
+            }, (error) => {
+                // HANDLE FIRESTORE CONNECTION ERRORS (Like Database Not Created)
+                console.error("Firestore Sync Error:", error);
+                if (error.code === 'not-found' || error.message.includes("does not exist")) {
+                    alert("⚠️ FIREBASE SETUP REQUIRED ⚠️\n\nThe game works, but Multiplayer is OFFLINE because you need to create the database.\n\nGO TO: Firebase Console -> Build -> Firestore Database -> Click 'Create Database'.\n\n(Select 'Start in Test Mode' for now).");
+                    isMultiplayer = false; 
+                }
             });
 
             // 2. Broadcast loop
@@ -334,7 +350,9 @@
                 yaw: yaw,
                 agent: selectedAgent,
                 lastUpdate: Date.now()
-            }, { merge: true });
+            }, { merge: true }).catch(err => {
+                // Silent fail for broadcast errors
+            });
         }
 
         function updateRemotePlayer(id, data) {
