@@ -3,777 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Proto: Stable</title>
+    <title>Authentic Chrome Dino Clone</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #0f1923; color: white; user-select: none; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
-        
-        /* HUD */
-        #top-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
-        .score-board { display: flex; align-items: center; background: rgba(15, 25, 35, 0.9); padding: 5px 20px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; border: 1px solid #444; border-top: none; }
-        #timer { font-size: 36px; font-weight: 800; margin: 0 20px; color: white; }
-        .team-score { font-size: 32px; font-weight: bold; width: 40px; text-align: center; }
-        .score-ally { color: #00ffaa; }
-        .score-enemy { color: #ff4655; }
-        #round-state { margin-top: 5px; font-size: 12px; color: #ff4655; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; background: rgba(0,0,0,0.5); padding: 2px 10px; border-radius: 4px; }
-
-        /* SPIKE & PLANTING */
-        #spike-hud { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); text-align: center; display: none; }
-        .spike-icon { font-size: 40px; margin-bottom: 5px; text-shadow: 0 0 10px #ff4655; animation: pulse 1s infinite; }
-        #plant-bar-container { width: 300px; height: 8px; background: #222; border: 2px solid white; border-radius: 4px; overflow: hidden; display: none; margin: 0 auto; box-shadow: 0 0 10px black; }
-        #plant-bar { height: 100%; width: 0%; background: #00ffaa; transition: width 0.1s linear; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-        /* CROSSHAIR & ALERTS */
-        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        .ch-h { position: absolute; width: 14px; height: 2px; background: #00ffaa; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 2px black; }
-        .ch-v { position: absolute; width: 2px; height: 14px; background: #00ffaa; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 2px black; }
-        #alert-msg { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 900; text-shadow: 0 0 20px black; opacity: 0; transition: opacity 0.5s; text-align: center; white-space: nowrap; font-style: italic; color: #ff4655; }
-        #flash-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:white; opacity:0; pointer-events:none; transition: opacity 0.1s; z-index: 999; }
-
-        /* BOTTOM HUD */
-        #bottom-hud { position: absolute; bottom: 10px; left: 0; width: 100%; height: 100px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 40px; box-sizing: border-box; }
-        .hud-left { display: flex; align-items: center; color: white; transform: skewX(-15deg); background: rgba(15, 25, 35, 0.8); padding: 5px 30px; border-left: 4px solid #00ffaa; border-radius: 5px; box-shadow: 5px 5px 0px rgba(0,0,0,0.3); }
-        .health-content { transform: skewX(15deg); display: flex; flex-direction: column; align-items: flex-start; }
-        .hp-text-row { display: flex; align-items: baseline; }
-        #health-val { font-size: 48px; font-weight: 800; line-height: 1; margin-right: 5px; }
-        .hp-label { font-size: 14px; font-weight: 600; color: #ccc; }
-        .health-bar-bg { width: 150px; height: 8px; background: #333; margin-top: 5px; position: relative; overflow: hidden; /* Fix overflow */ }
-        .health-bar-fill { width: 100%; height: 100%; background: #00ffaa; box-shadow: 0 0 5px #00ffaa; transition: width 0.2s; }
-        .hud-center { display: flex; gap: 8px; margin-bottom: 10px; }
-        .ability-box { width: 50px; height: 50px; background: rgba(0,0,0,0.6); border: 1px solid #555; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 2px; }
-        .ability-key { position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .ability-icon { font-size: 20px; filter: drop-shadow(0 0 2px black); }
-        .ult-box { width: 70px; height: 70px; border-color: #ffeb3b; background: rgba(255, 235, 59, 0.1); margin-top: -20px; }
-        .hud-right { display: flex; align-items: center; color: white; transform: skewX(15deg); background: rgba(15, 25, 35, 0.8); padding: 5px 30px; border-right: 4px solid #ff4655; border-radius: 5px; box-shadow: -5px 5px 0px rgba(0,0,0,0.3); }
-        .ammo-content { transform: skewX(-15deg); display: flex; flex-direction: column; align-items: flex-end; }
-        .ammo-text-row { display: flex; align-items: baseline; }
-        #ammo-val { font-size: 48px; font-weight: 800; line-height: 1; }
-        .ammo-reserve { font-size: 24px; color: #aaa; margin-left: 5px; }
-        .ammo-icon { height: 15px; width: 100px; background: repeating-linear-gradient(90deg, #fff, #fff 2px, transparent 2px, transparent 4px); margin-top: 5px; opacity: 0.5; }
-        #gun-name { font-size: 12px; color: #aaa; margin-top: 2px; text-transform: uppercase; }
-
-        /* BUY MENU */
-        #buy-menu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 900px; height: 600px; background: rgba(15, 25, 35, 0.98); border: 2px solid #555; pointer-events: auto; z-index: 500; padding: 20px; flex-direction: column; box-shadow: 0 0 50px black; }
-        #buy-menu h2 { color: #ff4655; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; font-style: italic; font-size: 32px; }
-        .buy-grid { display: flex; gap: 20px; margin-top: 20px; height: 100%; }
-        .buy-category { flex: 1; background: rgba(0,0,0,0.2); padding: 10px; display:flex; flex-direction:column; gap:10px; }
-        .buy-cat-title { color:#aaa; margin-bottom:10px; font-weight:bold; text-transform:uppercase; border-bottom:1px solid #444; }
-        .buy-item { background: #2a3b47; padding: 15px; cursor: pointer; border: 1px solid #444; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; }
-        .buy-item:hover { background: #fff; color: #0f1923; border-color: #fff; }
-        .buy-item-name { font-weight: bold; text-transform: uppercase; }
-        .buy-item-cost { font-weight: bold; }
-        .close-buy-hint { position: absolute; bottom: 20px; right: 20px; color: #888; font-size: 12px; }
-
-        /* MENUS */
-        .menu-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0f1923; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
-        .val-btn { padding: 15px 40px; font-size: 18px; background: #ff4655; color: white; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.2s; margin: 10px; }
-        .val-btn:hover { background: #d13644; }
-        .val-btn:disabled { background: #555; color: #aaa; cursor: not-allowed; }
-        .val-input { padding: 12px; font-size: 16px; background: #333; border: 1px solid #555; color: white; margin: 5px; text-align: center; width: 250px; }
-        #room-list { width: 500px; height: 300px; background: rgba(0,0,0,0.3); border: 1px solid #444; overflow-y: auto; margin: 20px; padding: 10px; }
-        .room-item { background: #1f2b35; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #ff4655; }
-        .room-item:hover { background: #2a3b47; }
-        .team-container { display: flex; gap: 50px; margin: 20px; }
-        .team-column { width: 300px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; min-height: 200px; }
-        .team-header { text-align: center; font-weight: bold; margin-bottom: 10px; padding: 5px; text-transform: uppercase; letter-spacing: 2px; }
-        .defenders-header { color: #00ffaa; border-bottom: 2px solid #00ffaa; }
-        .attackers-header { color: #ff4655; border-bottom: 2px solid #ff4655; }
-        .player-row { display: flex; align-items: center; background: #2a3b47; margin-bottom: 5px; padding: 5px 10px; border-radius: 3px; border-left: 3px solid transparent; }
-        .player-row.me { border: 1px solid #ffeb3b; }
-        .player-row.locked { border-left-color: #00ffaa; background: #2e4a3d; }
-        .p-icon { font-size: 20px; margin-right: 10px; }
-        .p-name { flex-grow: 1; font-size: 14px; }
-        
-        /* AGENT SELECT */
-        #agent-select-screen { background: #0f1923; }
-        #select-timer { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: white; }
-        .agent-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 800px; margin-bottom: 30px; }
-        .agent-card { width: 80px; height: 120px; background: #1f2b35; border: 2px solid #333; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; position: relative; }
-        .agent-card:hover { border-color: #999; transform: translateY(-5px); }
-        .agent-card.selected { border-color: #00ffaa; background: #2a3b47; box-shadow: 0 0 15px rgba(0,255,170,0.3); }
-        .agent-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
-        .agent-card-icon { font-size: 40px; margin-bottom: 10px; }
-        .agent-card-name { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        #lock-btn { width: 300px; background: #00ffaa; color: #0f1923; margin-top: 20px; font-size: 24px; padding: 20px; box-shadow: 0 0 20px rgba(0,255,170,0.5); }
-        #lock-btn:disabled { background: #333; color: #888; box-shadow: none; cursor: default; }
-
-        /* PATCH NOTES */
-        #patch-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #1f2b35; border: 2px solid #ff4655; padding: 20px; z-index: 200; box-shadow: 0 0 20px black; }
-        #patch-modal h2 { margin-top: 0; color: #ff4655; border-bottom: 1px solid #444; padding-bottom: 10px; font-style: italic; }
-        #patch-modal ul { list-style: none; padding: 0; color: #ccc; }
-        #patch-modal li { margin-bottom: 8px; display: flex; align-items: center; font-size: 14px; }
-        #patch-modal li::before { content: "•"; color: #00ffaa; font-weight: bold; margin-right: 10px; }
-        .close-patch-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #888; font-size: 20px; cursor: pointer; }
-        .close-patch-btn:hover { color: white; }
-
-        #status-msg { margin-top: 20px; color: #888; font-size: 14px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; text-align: center; max-width: 80%; }
-        h1 { color:#ff4655; margin:0; font-size:60px; font-style:italic; margin-bottom: 10px; }
-        h2 { color: white; text-transform: uppercase; letter-spacing: 2px; font-size: 24px; margin-bottom: 20px; }
-        
-        #error-display { color: #ff4655; font-weight: bold; margin-top: 10px; font-size: 14px; display: none; }
-    </style>
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
-            }
+        @font-face {
+            font-family: 'PressStart2P';
+            src: url('https://fonts.gstatic.com/s/pressstart2p/v15/e3t4euO8T-267oIAQAu6jDQyK3nVivM.woff2') format('woff2');
         }
-    </script>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f7f7f7;
+            font-family: 'PressStart2P', monospace;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 150px;
+            border-bottom: 2px solid #535353;
+            overflow: hidden;
+        }
+        canvas { display: block; }
+        #score-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #535353;
+        }
+        #game-over-overlay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        #game-over-overlay img {
+            display: block;
+            margin: 0 auto 15px auto;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-    <div id="canvas-container"></div>
-
-    <div id="ui-layer">
-        <div id="flash-overlay"></div>
-        <div id="top-hud">
-            <div class="score-board">
-                <div class="team-score score-ally">0</div>
-                <div id="timer">0:30</div>
-                <div class="team-score score-enemy">0</div>
-            </div>
-            <div id="round-state">BUY PHASE</div>
-        </div>
-        
-        <div id="spike-hud">
-            <div class="spike-icon">☢️</div>
-            <div style="font-weight:bold; color:white; font-size:18px; margin-bottom:5px;" id="spike-msg">CARRYING SPIKE</div>
-            <div id="plant-bar-container"><div id="plant-bar"></div></div>
-        </div>
-
-        <div id="alert-msg">MATCH START</div>
-        <div id="crosshair"><div class="ch-h"></div><div class="ch-v"></div></div>
-        
-        <!-- BUY MENU -->
-        <div id="buy-menu">
-            <h2>BUY MENU</h2>
-            <div class="buy-grid">
-                <div class="buy-category">
-                    <div class="buy-cat-title">GUNS</div>
-                    <div class="buy-item" onclick="window.buyItem('classic')">
-                        <span class="buy-item-name">Classic</span>
-                        <span class="buy-item-cost">0</span>
-                    </div>
-                    <div class="buy-item" onclick="window.buyItem('vandal')">
-                        <span class="buy-item-name">Vandal</span>
-                        <span class="buy-item-cost">2900</span>
-                    </div>
-                    <div class="buy-item" onclick="window.buyItem('operator')">
-                        <span class="buy-item-name">Operator</span>
-                        <span class="buy-item-cost">4700</span>
-                    </div>
-                </div>
-                <div class="buy-category">
-                    <div class="buy-cat-title">ARMOR</div>
-                    <div class="buy-item" onclick="window.buyItem('light_shield')">
-                        <span class="buy-item-name">Light Shield</span>
-                        <span class="buy-item-cost">400</span>
-                    </div>
-                    <div class="buy-item" onclick="window.buyItem('heavy_shield')">
-                        <span class="buy-item-name">Heavy Shield</span>
-                        <span class="buy-item-cost">1000</span>
-                    </div>
-                </div>
-                <div class="buy-category">
-                    <div class="buy-cat-title">ABILITIES</div>
-                    <div class="buy-item" onclick="window.buyItem('ability_c')">
-                        <span class="buy-item-name">Ability C</span>
-                        <span class="buy-item-cost">200</span>
-                    </div>
-                    <div class="buy-item" onclick="window.buyItem('ability_q')">
-                        <span class="buy-item-name">Ability Q</span>
-                        <span class="buy-item-cost">200</span>
-                    </div>
-                </div>
-            </div>
-            <div class="close-buy-hint">Press <b>B</b> to close</div>
-        </div>
-
-        <div id="bottom-hud">
-            <div class="hud-left">
-                <div class="health-content">
-                    <div class="hp-text-row"><div id="health-val">100</div><div class="hp-label">HP</div></div>
-                    <div class="health-bar-bg"><div class="health-bar-fill" id="hp-bar-fill"></div></div>
-                </div>
-            </div>
-            <div class="hud-center">
-                <div class="ability-box"><div class="ability-key">C</div><div class="ability-icon" id="icon-c">🌀</div></div>
-                <div class="ability-box"><div class="ability-key">Q</div><div class="ability-icon" id="icon-q">🌫️</div></div>
-                <div class="ability-box"><div class="ability-key">E</div><div class="ability-icon" id="icon-e">🔥</div></div>
-                <div class="ability-box ult-box"><div class="ability-key">X</div><div class="ability-icon" id="icon-x">☠️</div></div>
-            </div>
-            <div class="hud-right">
-                <div class="ammo-content">
-                    <div class="ammo-text-row"><div id="ammo-val">25</div><div class="ammo-reserve">75</div></div>
-                    <div id="gun-name">Classic</div>
-                    <div class="ammo-icon"></div>
-                </div>
-            </div>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="150"></canvas>
+        <div id="score-container">HI <span id="hi-score">00000</span> <span id="curr-score">00000</span></div>
+        <div id="game-over-overlay">
+             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAI0AAAAQCAMAAAD7f07LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAbUlEQVRYOe3WwQmAQBBDwQxL0X+zpF9XF7Ew786D525v7+f9Odtz89z985g2tG3aXF5+bdrQdmlL26XNaWvbpc1pa9ulzWlr26XNaWvbpc1pa9ulzWlr26XNaWvbpc1pa9ulzWlr2+X39R61eX97l/vH9wAAAABJRU5ErkJggg==" alt="Game Over">
+             <img id="restart-button" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAMAAADW3miqAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAR0lEQVQ4y7XU0QoAIAgDwP7/jydHREsb02G9Cg760qY594lK06dM05R2872Z72t9W+9r0wRjDMaY8ooxxnzM+aK8Yoz5mF8gLwX380mF1AAAAABJRU5ErkJggg==" alt="Restart">
         </div>
     </div>
 
-    <!-- SCREENS -->
-    <div id="browser-screen" class="menu-overlay">
-        <h1>VALORANT<span style="color:white; font-size:30px;">PROTO</span></h1>
-        <div style="display:flex; flex-direction:row; gap: 40px; align-items: flex-start;">
-            <div style="display:flex; flex-direction:column; align-items:center; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px;">
-                <h2>Create Match</h2>
-                <input type="text" id="create-room-name" class="val-input" placeholder="Room Name" value="Ascent Standard">
-                <input type="text" id="player-name-input" class="val-input" placeholder="Your Username" value="Player 1">
-                <button id="create-btn" class="val-btn" onclick="createRoom()">Create Room</button>
-                <div id="error-display"></div>
-            </div>
-            <div style="display:flex; flex-direction:column; align-items:center;">
-                <h2>Lobby List</h2>
-                <div id="room-list"><div style="text-align:center; padding:20px; color:#888;">Loading rooms...</div></div>
-                <button class="val-btn" style="background:#444;" onclick="fetchRooms()">Refresh List</button>
-            </div>
-        </div>
-        <div id="status-msg">Connecting to Firebase...</div>
-        <div style="position: absolute; bottom: 20px; right: 20px; text-align: right;">
-            <div style="color: #666; font-size: 12px; margin-bottom:5px;">VERSION 1.0.7 FIXED</div>
-            <button class="val-btn" style="padding: 10px 20px; font-size: 14px; background: #2a3b47; border: 1px solid #444;" onclick="togglePatchNotes()">📝 PATCH NOTES</button>
-        </div>
-    </div>
+<script>
+/* --- ASSETS (BASE64 ENCODED) --- */
+// Using individual images instead of a spritesheet for easier code reading in this format.
+const ASSETS = {
+    dinoRun1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAqCAMAAADfRPm9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAeklEQVQ4y6XUWQqAMAhFUX3e/8q9lQhFScZ9Fw9+NKNtiL+0L4WwFMIyCIsgLIGwfEKLhM0TNoFw2oT9IHwm4VwIm0s4D8LyCGdFeA7CGRI+g3AWhOchPBfhNQivRThFwnkSXoOwFMLaEpaWsLaEpSWsLWFpCWtL+ABkK2F75l+7AAAAAElFTkSuQmCC',
+    dinoRun2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAqCAMAAADfRPm9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAfUlEQVQ4y63VSQqAMBBEUf/9D9xbkVARkrhvE6b1k5gH4i/sS95b3lsCbyO8NfA2w1sBbzO8FfA2w1sB72t4S+HthLcE3iZ4K+DdBG8pvI/hbYF3I7yt8D6G9xG8VfBWhrcS3ip4q+CtgreX8FbBWwVvFbxV8FbB+wBkr4LtnZ31AAAAAElFTkSuQmCC',
+    dinoJump: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAqCAMAAADfRPm9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAc0lEQVQ4y6XUsQqAMBBEUf/9/393KyISwU3cfYVp9hSjDeIf7EshrIWwDsI6CGsg7JywdcJuEGZNmAfhMgmzISyHsAjCtQjLIDyF8FSECxD2h7AYwrUIjyBcivA0wrUI1yJci3AtwrUI1yI8g7AH4R1ke1Z75h+rAAAAAElFTkSuQmCC',
+    dinoDead: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAqCAMAAADfRPm9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAfUlEQVQ4y63VSQqAMBBEUf/9D9xbkVARkrhvE6b1k5gH4i/sS95b3lsCbyO8NfA2w1sBbzO8FfA2w1sB72t4S+HthLcE3iZ4K+DdBG8pvI/hbYF3I7yt8D6G9xG8VfBWhrcS3ip4q+CtgreX8FbBWwVvFbxV8FbB+wBkr4LtnZ31AAAAAElFTkSuQmCC', // Same as run2 in original
+    dinoDuck1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADcAAAAWCAMAAABFmuQhAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAZklEQVQ4y7XRSQqAMBBF0f3/f+C+ioSKkMT9NuHhN4nZCP5hX5JwX5JwX5JwX5JwX5JwX3Jzcx45F2c1F2eRc704i5yLs8jNxVnkXJwHzs154Nycf84jJ5yccMJ55ISTcx45F+cDWx5Ge+afg48AAAAASUVORK5CYII=',
+    dinoDuck2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADcAAAAWCAMAAABFmuQhAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAaElEQVQ4y7XRyQqAMBBEUf//D9xbkVARkrhvE8LDb4zZCP5hX5Jwb3Jz9044F2cxF2cxFx+ccC7OIufiLHJzcxY5F2eRc3EeODfnH+fkXJwHzs1Z5Nycf84jJ5yccMJ55ISTcx45F+cDKN5Ge+afY5wAAAAASUVORK5CYII=',
+    cactusSmall: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAdCAMAAAB+E9XWAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2NgwAIYCQmQ5XFJI6vHJo2sHps0kglGTRq1lBqak0bB4CMAjO0A68VbXloAAAAASUVORK5CYII=',
+    cactusLarge: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB0AAAAqCAMAAABxYk/cAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAQElEQVQ4y6XSMQqAMAwEwPj/j5dLiYogxN0mXHpzRrbBf2lfyqFUlEop1VIqSkWplFI9S8+5j+Zcet6S3N5yAZv3A5u4e+2ZAAAAAElFTkSuQmCC',
+    bird1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAXCAMAAABhA61KAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAU0lEQVQ4y63SCwoAMAiDYe//v90pBLqW+d4N34L4wz9J/yT9k/RP0j9J/yT9c3J3cxcXDzd3Fxd3N2cXDzd3Fxd3NxcXDzc3cRcXdzdnFxe7NzcDeQW29iV3AAAAAElFTkSuQmCC',
+    bird2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAXCAMAAABhA61KAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAWUlEQVQ4y6XS0QrAMAhDUX3e//93hxDoWua9G9FHC9uE+MM/Sf8k/ZP0T9L/uLq7uIqLq5uzuImLi6u4qYubm6iLi6uLqLuJi5uou4ubqIubiLqbuIqbi2cDdwV77b7UAAAAAElFTkSuQmCC',
+    ground: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAMACAMAAACsB6g6AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAADUExURVVVVarKlgAAAANfSVEAAAAwdFJOUwA8nL94AAAACXBIWXMAAAsTAAALEwEAmpwYAAAASElEQVR4yu3SMQoAMQxDwbz/j9/7Wjp0C9l5d2Xp1wIAgP8RdwDoETcAcCJuAOBA3ADAgLgBgANxAwAD4gYADsQNAAxe4gawuQDnO4x2wAAAAABJRU5ErkJggg==',
+};
 
-    <div id="patch-modal">
-        <button class="close-patch-btn" onclick="togglePatchNotes()">×</button>
-        <h2>PATCH 1.0.7 FIXED</h2>
-        <ul>
-            <li><strong>CRITICAL:</strong> Switched to secure Environment Auth to fix "Create Room" crash.</li>
-            <li><strong>UI:</strong> Added specific Error Reporting for connection issues.</li>
-            <li><strong>DB:</strong> Enforced secure path structure for all writes.</li>
-        </ul>
-    </div>
+// Load images
+const images = {};
+let assetsLoaded = 0;
+const totalAssets = Object.keys(ASSETS).length;
 
-    <div id="waiting-screen" class="menu-overlay" style="display:none;">
-        <h1 id="lobby-title">LOBBY</h1>
-        <h2 style="color:#00ffaa;" id="lobby-status">WAITING FOR PLAYERS...</h2>
-        <div class="team-container">
-            <div class="team-column">
-                <div class="team-header attackers-header">ATTACKERS</div>
-                <div id="team-attack-list"></div>
-                <button class="val-btn" style="font-size:12px; padding:5px 10px; width:100%;" onclick="switchTeam('attack')">Join Attackers</button>
-            </div>
-            <div class="team-column">
-                <div class="team-header defenders-header">DEFENDERS</div>
-                <div id="team-defend-list"></div>
-                <button class="val-btn" style="font-size:12px; padding:5px 10px; width:100%;" onclick="switchTeam('defend')">Join Defenders</button>
-            </div>
-        </div>
-        <button id="host-start-btn" class="val-btn" style="display:none;" onclick="enterAgentSelect()">ENTER AGENT SELECT</button>
-        <div id="client-wait-msg" style="color:#888; margin-top:20px;">Waiting for Host...</div>
-    </div>
-
-    <div id="agent-select-screen" class="menu-overlay" style="display:none;">
-        <div id="select-timer">60</div>
-        <h2 style="margin-bottom:40px;">SELECT AGENT</h2>
-        <div class="agent-grid">
-            <div class="agent-card" onclick="pickAgent('jett', this)"><div class="agent-card-icon">💨</div><div class="agent-card-name">Jett</div></div>
-            <div class="agent-card" onclick="pickAgent('phoenix', this)"><div class="agent-card-icon">🔥</div><div class="agent-card-name">Phoenix</div></div>
-            <div class="agent-card" onclick="pickAgent('sage', this)"><div class="agent-card-icon">🧊</div><div class="agent-card-name">Sage</div></div>
-            <div class="agent-card" onclick="pickAgent('reyna', this)"><div class="agent-card-icon">👁️</div><div class="agent-card-name">Reyna</div></div>
-            <div class="agent-card" onclick="pickAgent('sova', this)"><div class="agent-card-icon">🏹</div><div class="agent-card-name">Sova</div></div>
-            <div class="agent-card" onclick="pickAgent('brim', this)"><div class="agent-card-icon">☁️</div><div class="agent-card-name">Brim</div></div>
-            <div class="agent-card" onclick="pickAgent('omen', this)"><div class="agent-card-icon">👻</div><div class="agent-card-name">Omen</div></div>
-            <div class="agent-card" onclick="pickAgent('cypher', this)"><div class="agent-card-icon">🕵️</div><div class="agent-card-name">Cypher</div></div>
-        </div>
-        <button id="lock-btn" class="val-btn" onclick="lockInAgent()" disabled>LOCK IN</button>
-        <div style="margin-top:20px; display:flex; gap:20px;">
-            <div style="text-align:center;"><div style="color:#ff4655; font-weight:bold; margin-bottom:10px;">ATTACKERS</div><div id="select-attack-list" style="display:flex; gap:5px;"></div></div>
-            <div style="text-align:center;"><div style="color:#00ffaa; font-weight:bold; margin-bottom:10px;">DEFENDERS</div><div id="select-defend-list" style="display:flex; gap:5px;"></div></div>
-        </div>
-    </div>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-        import { initializeApp } from 'firebase/app';
-        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, query, where, getDocs, arrayUnion, deleteDoc, signInWithCustomToken } from 'firebase/firestore';
-        // Note: signInWithCustomToken must be imported from 'firebase/auth' not 'firebase/firestore'
-        // Fixing imports below
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken as authSignInWithCustomToken } from 'firebase/auth';
-
-        // --- 1. CONSTANTS & VARIABLES ---
-        const MOVEMENT_SPEED = 10.0;
-        const JUMP_FORCE = 12.0;
-        const GRAVITY = 30.0;
-        const PLAYER_HEIGHT = 1.6;
-        const PLAYER_RADIUS = 0.5;
-        
-        const playerBox = new THREE.Box3();
-        const keys = { w:0, a:0, s:0, d:0, space:0 };
-        
-        let bullets = [];
-        let walls = [];
-        let barriers = [];
-        let smokeMeshes = [];
-        let spikeMesh = null;
-        let camera, scene, renderer, controls;
-
-        // --- CRITICAL FIX: USE ENVIRONMENT CONFIG ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // ---------------------------------------------
-
-        let db, auth, userId;
-        const mySessionId = 'sess_' + Math.random().toString(36).substr(2, 9);
-        
-        // --- HELPER FOR STRICT PATHS ---
-        function getCollectionRef(name) {
-            return collection(db, 'artifacts', appId, 'public', 'data', name);
-        }
-        function getDocRef(colName, docId) {
-            return doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
-        }
-        // ------------------------------
-
-        let currentLobbyId = null, isHost = false, selectedAgent = null, isLockedIn = false;
-        let myTeam = 'attack', myUsername = 'Player', remotePlayers = {}, isPlaying = false;
-        let lobbyStatus = 'waiting', gamePhase = 'waiting', phaseEndTime = 0;
-        let spikeState = { state: 'spawned', carrier: null, pos: null, plantTime: 0 }; 
-        let isHoldingKey = false, interactionProgress = 0, currentAction = null; 
-        let isBuyMenuOpen = false;
-        let myHealth = 100;
-        let currentGun = 'classic'; 
-        let currentAmmo = 25;
-        let networkDisabled = false; 
-        let lastPhaseUpdate = 0; 
-        const statusEl = document.getElementById('status-msg');
-
-        const agentAbilities = {
-            'jett': { c:'☁️', q:'🎈', e:'💨', x:'🔪' },
-            'phoenix': { c:'🔥', q:'💫', e:'👐', x:'🔁' },
-            'sage': { c:'🚧', q:'❄️', e:'🩹', x:'👼' },
-            'reyna': { c:'👁️', q:'👻', e:'🛡️', x:'😈' },
-            'sova': { c:'🦉', q:'⚡', e:'🏹', x:'🌩️' },
-            'brim': { c:'💊', q:'🔥', e:'☁️', x:'🛰️' },
-            'omen': { c:'👣', q:'🌑', e:'💨', x:'🗺️' },
-            'cypher': { c:'🕸️', q:'🗑️', e:'📷', x:'👒' }
+function preloadAssets(callback) {
+    for (let key in ASSETS) {
+        const img = new Image();
+        img.onload = () => {
+            assetsLoaded++;
+            if (assetsLoaded === totalAssets) callback();
         };
-        const agentsConfig = { 'jett': { color: 0xaaccff }, 'phoenix': { color: 0xffaa00 }, 'sage': { color: 0x00ffaa }, 'reyna': { color: 0xaa00aa }, 'sova': { color: 0x00aaff }, 'brim': { color: 0xff8800 }, 'omen': { color: 0x4444aa }, 'cypher': { color: 0xeeeeee } };
+        img.src = ASSETS[key];
+        images[key] = img;
+    }
+}
 
-        // --- 2. FUNCTIONS ---
-        function checkCollision(position) {
-            const min = new THREE.Vector3(position.x - PLAYER_RADIUS, position.y - 1.5, position.z - PLAYER_RADIUS);
-            const max = new THREE.Vector3(position.x + PLAYER_RADIUS, position.y + 0.5, position.z + PLAYER_RADIUS);
-            playerBox.set(min, max);
-            for (const wall of walls) {
-                const wallBox = new THREE.Box3().setFromObject(wall);
-                if (playerBox.intersectsBox(wallBox)) return true;
-            }
-            return false;
-        }
+/* --- GAME LOGIC --- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('curr-score');
+const hiScoreEl = document.getElementById('hi-score');
+const gameOverEl = document.getElementById('game-over-overlay');
+const restartBtn = document.getElementById('restart-button');
 
-        // --- MULTIPLAYER CORE ---
-        function initGameMultiplayer() {
-            const q = query(getCollectionRef('valorant_game_data'), where("lobbyId", "==", currentLobbyId));
-            onSnapshot(q, (snap) => {
-                snap.docChanges().forEach((ch) => {
-                    const d = ch.doc.data(); const id = ch.doc.id;
-                    if (id === mySessionId) return;
-                    if (ch.type === "added" || ch.type === "modified") updateRemotePlayer(id, d);
-                    if (ch.type === "removed") removeRemotePlayer(id);
-                });
-            });
-            // VERY SLOW UPDATE TO SAVE QUOTA (1000ms)
-            setInterval(broadcastPosition, 1000); 
-            window.addEventListener('beforeunload', () => { deleteDoc(getDocRef('valorant_game_data', mySessionId)); });
-        }
+// Constants related to canvas size 600x150
+const GRAVITY = 0.6;
+const JUMP_STRENGTH = -10; 
+const GROUND_Y = 130; // Slightly higher than bottom
+const BASE_SPEED = 5;
+let gameSpeed = BASE_SPEED;
+let score = 0;
+let highScore = localStorage.getItem('dinoHighScore') || 0;
+hiScoreEl.innerText = String(highScore).padStart(5, '0');
 
-        function updateRemotePlayer(id, data) {
-            if (!remotePlayers[id]) {
-                const geo = new THREE.CapsuleGeometry(0.5, 1.6, 4, 8);
-                const color = agentsConfig[data.agent]?.color || 0xffffff;
-                const mat = new THREE.MeshStandardMaterial({ color: color });
-                const mesh = new THREE.Mesh(geo, mat);
-                scene.add(mesh);
-                remotePlayers[id] = { mesh: mesh };
-            }
-            const p = remotePlayers[id];
-            if (p.mesh) {
-                p.mesh.position.set(data.x, data.y, data.z);
-            }
-        }
+let frame = 0;
+let isGameOver = false;
+let obstacles = [];
+let clouds = [];
+let groundX = 0;
 
-        function removeRemotePlayer(id) {
-            if (remotePlayers[id]) {
-                scene.remove(remotePlayers[id].mesh);
-                delete remotePlayers[id];
-            }
-        }
+const keys = {};
 
-        function checkActions() {
-            if (!isPlaying || !camera) return;
-            
-            // Spike Planting Logic
-            if (myTeam === 'attack' && spikeState.carrier === mySessionId && gamePhase === 'action') {
-                const pos = camera.position;
-                const distA = pos.distanceTo(new THREE.Vector3(30, 0, -10));
-                const distB = pos.distanceTo(new THREE.Vector3(-30, 0, -10));
-                const inSite = (distA < 12 || distB < 12);
-                
-                const plantBar = document.getElementById('plant-bar');
-                const plantContainer = document.getElementById('plant-bar-container');
-                const msg = document.getElementById('spike-msg');
+// Dino Entity
+const dino = {
+    x: 50,
+    y: GROUND_Y,
+    width: 40, // Adjusted for sprites
+    height: 43,
+    dy: 0,
+    grounded: false,
+    ducking: false,
+    animTimer: 0,
+    state: 'RUN', // RUN, JUMP, DUCK, DEAD
 
-                if (inSite) {
-                    if (isHoldingKey) {
-                        interactionProgress += 1; 
-                        plantContainer.style.display = 'block';
-                        plantBar.style.width = Math.min(100, interactionProgress) + '%';
-                        msg.innerText = "PLANTING SPIKE...";
-                        
-                        if (interactionProgress >= 100) {
-                            plantSpike(pos);
-                            interactionProgress = 0;
-                            isHoldingKey = false;
-                        }
-                    } else {
-                        interactionProgress = 0;
-                        plantContainer.style.display = 'none';
-                        msg.innerText = "HOLD 4 TO PLANT";
-                    }
-                } else {
-                    plantContainer.style.display = 'none';
-                    msg.innerText = "CARRYING SPIKE";
+    update: function() {
+        this.animTimer++;
+
+        // State management
+        if (this.grounded) {
+            if (keys['ArrowDown']) {
+                this.ducking = true;
+                this.state = 'DUCK';
+                this.height = 25; // Ducking height
+                this.width = 55;
+            } else {
+                this.ducking = false;
+                this.state = 'RUN';
+                this.height = 43; // Standing height
+                this.width = 40;
+                if (keys['Space'] || keys['ArrowUp']) {
+                    this.dy = JUMP_STRENGTH;
+                    this.grounded = false;
+                    this.state = 'JUMP';
                 }
             }
+        } else {
+            this.state = 'JUMP';
+            // Fast fall if holding down while jumping
+            if(keys['ArrowDown']) this.dy += GRAVITY * 0.8;
         }
 
-        async function plantSpike(pos) {
-            if (!currentLobbyId) return;
-             await updateDoc(getDocRef('lobbies', currentLobbyId), {
-                gamePhase: 'planted',
-                phaseEndTime: Date.now() + 45000, 
-                "spike.state": 'planted',
-                "spike.pos": { x: pos.x, y: 0.5, z: pos.z },
-                "spike.carrier": null
-            });
+        this.y += this.dy;
+
+        // Gravity & Floor collision
+        if (this.y + this.height < GROUND_Y) {
+            this.dy += GRAVITY;
+            this.grounded = false;
+        } else {
+            this.dy = 0;
+            this.grounded = true;
+            this.y = GROUND_Y - this.height;
         }
-        // ------------------------------
+    },
 
-        // --- AUTH INIT ---
-        async function initFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig); 
-                db = getFirestore(app); 
-                auth = getAuth(app);
-                
-                // Auth Listener
-                onAuthStateChanged(auth, (user) => { 
-                    if(user) { 
-                        userId = user.uid; 
-                        statusEl.innerText="Online"; 
-                        statusEl.style.color="#00ffaa"; 
-                        fetchRooms(); 
-                    }
-                });
+    draw: function() {
+        let sprite;
+        // Animation frame toggle
+        const isFrame1 = Math.floor(this.animTimer / 5) % 2 === 0;
 
-                // Prioritize Custom Token if available (Environment Specific)
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                     await authSignInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                     await signInAnonymously(auth);
-                }
-            } catch(e) { 
-                console.error(e); 
-                statusEl.innerText="Offline: "+e.message; 
-                statusEl.style.color="#ff4655"; 
-            }
+        if (isGameOver) {
+            sprite = images.dinoDead; // Using duck1 as dead texture overlap
+        } else if (this.state === 'JUMP') {
+            sprite = images.dinoJump;
+        } else if (this.state === 'DUCK') {
+            sprite = isFrame1 ? images.dinoDuck1 : images.dinoDuck2;
+        } else {
+            sprite = isFrame1 ? images.dinoRun1 : images.dinoRun2;
         }
-        initFirebase();
+        // Adjust Y draw position based on current sprite height
+        ctx.drawImage(sprite, this.x, this.y, this.width, this.height);
+    }
+};
 
-        window.togglePatchNotes = () => { const el = document.getElementById('patch-modal'); el.style.display = el.style.display === 'block' ? 'none' : 'block'; };
+
+class Obstacle {
+    constructor(type) {
+        this.type = type;
+        this.x = canvas.width + Math.random() * 100;
+        this.frame = 0;
         
-        document.addEventListener('keydown', (e) => { 
-            if(e.code==='KeyW')keys.w=1; if(e.code==='KeyA')keys.a=1; if(e.code==='KeyS')keys.s=1; if(e.code==='KeyD')keys.d=1; if(e.code==='Space')keys.space=1; if(e.code==='Digit4') isHoldingKey=true; 
-            if (e.code === 'KeyB' && isPlaying && gamePhase === 'buy') toggleBuyMenu();
-            if (isPlaying && !isBuyMenuOpen) {
-                if (e.code === 'KeyE') useAbility('e');
-                if (e.code === 'KeyQ') useAbility('q');
-                if (e.code === 'KeyC') useAbility('c');
-            }
-        });
-        document.addEventListener('keyup', (e) => { if(e.code==='KeyW')keys.w=0; if(e.code==='KeyA')keys.a=0; if(e.code==='KeyS')keys.s=0; if(e.code==='KeyD')keys.d=0; if(e.code==='Space')keys.space=0; if(e.code==='Digit4') isHoldingKey=false; });
-
-        function toggleBuyMenu() {
-            isBuyMenuOpen = !isBuyMenuOpen;
-            const menu = document.getElementById('buy-menu');
-            if (isBuyMenuOpen) { menu.style.display = 'flex'; document.exitPointerLock(); } 
-            else { menu.style.display = 'none'; controls.lock(); }
+        if (type === 'cactusSmall') {
+            this.image = images.cactusSmall;
+            this.width = this.image.width; 
+            this.height = this.image.height;
+            this.y = GROUND_Y - this.height;
+        } else if (type === 'cactusLarge') {
+            this.image = images.cactusLarge;
+            // Add some variation to large cactus groups
+            this.width = this.image.width * (1 + Math.random() * 0.5);
+            this.height = this.image.height * (0.9 + Math.random() * 0.2);
+            this.y = GROUND_Y - this.height;
+        } else if (type === 'bird') {
+            this.image = images.bird1;
+            this.width = 46;
+            this.height = 24;
+            // Bird heights: High (must duck), Mid (duck or jump), Low (must jump)
+            const heights = [GROUND_Y - 50, GROUND_Y - 35, GROUND_Y - 20];
+            this.y = heights[Math.floor(Math.random() * heights.length)];
         }
+    }
+
+    update() {
+        this.x -= gameSpeed;
+        this.frame++;
+    }
+
+    draw() {
+        if (this.type === 'bird') {
+            let sprite = (Math.floor(this.frame / 10) % 2 === 0) ? images.bird1 : images.bird2;
+            ctx.drawImage(sprite, this.x, this.y, this.width, this.height);
+        } else {
+            // Draw cactus, potentially stretching width for groups
+             ctx.drawImage(this.image, 0,0, this.image.width, this.image.height, this.x, this.y, this.width, this.height);
+        }
+    }
+}
+
+// Input
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+restartBtn.addEventListener('click', resetGame);
+window.addEventListener('keydown', e => {
+     if(isGameOver && e.code === 'Space') resetGame();
+});
+
+// Main Loop
+function animate() {
+    if (isGameOver) return;
+    requestAnimationFrame(animate);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
+
+    // --- Environment ---
+    // Ground Scrolling
+    groundX -= gameSpeed;
+    if (groundX <= -canvas.width) groundX = 0;
+    ctx.drawImage(images.ground, groundX, GROUND_Y - 10, canvas.width, 12);
+    ctx.drawImage(images.ground, groundX + canvas.width, GROUND_Y - 10, canvas.width, 12);
+
+    // --- Obstacles Spawning ---
+    if (frame % 100 === 0 && Math.random() > 0.4) {
+        let type = 'cactusSmall';
+        const rand = Math.random();
+        if (score > 400 && rand > 0.7) type = 'bird';
+        else if (score > 200 && rand > 0.5) type = 'cactusLarge';
         
-        window.buyItem = (item) => {
-            const hpFill = document.getElementById('hp-bar-fill');
-            if (item === 'light_shield') { myHealth = 125; document.getElementById('health-val').innerText = "125"; hpFill.style.width="125%"; }
-            if (item === 'heavy_shield') { myHealth = 150; document.getElementById('health-val').innerText = "150"; hpFill.style.width="150%"; }
-            if (item === 'classic') { currentGun = 'classic'; document.getElementById('gun-name').innerText = "CLASSIC"; }
-            if (item === 'vandal') { currentGun = 'vandal'; document.getElementById('gun-name').innerText = "VANDAL"; }
-            if (item === 'operator') { currentGun = 'operator'; document.getElementById('gun-name').innerText = "OPERATOR"; }
-        };
+        obstacles.push(new Obstacle(type));
+    }
 
-        function useAbility(key) {
-            if (!selectedAgent) return;
-            if (selectedAgent === 'jett' && key === 'e') { const dashDir = new THREE.Vector3(); camera.getWorldDirection(dashDir); camera.position.add(dashDir.multiplyScalar(5)); }
-            if (selectedAgent === 'phoenix' && key === 'q') { const flash = document.getElementById('flash-overlay'); flash.style.opacity = 1; setTimeout(() => flash.style.opacity = 0, 1500); }
-            if (selectedAgent === 'sage' && key === 'e') { myHealth = 100; document.getElementById('health-val').innerText = "100"; document.getElementById('hp-bar-fill').style.width="100%"; }
-            if ((selectedAgent === 'brim' || selectedAgent === 'omen') && key === 'e') {
-                const smokeGeo = new THREE.SphereGeometry(2, 16, 16); const smokeMat = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
-                const smoke = new THREE.Mesh(smokeGeo, smokeMat); const dropPos = camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(10));
-                smoke.position.set(dropPos.x, 1, dropPos.z); scene.add(smoke); smokeMeshes.push({ mesh: smoke, time: Date.now() });
-            }
+    // --- Update & Draw Obstacles ---
+    for (let i = 0; i < obstacles.length; i++) {
+        let obs = obstacles[i];
+        obs.update();
+        obs.draw();
+
+        // Hitbox reduction for fairer collisions
+        let hitboxX = dino.x + 5;
+        let hitboxW = dino.width - 10;
+        let hitboxY = dino.y + 5;
+        let hitboxH = dino.height - 10;
+
+        if (
+            hitboxX < obs.x + obs.width - 5 &&
+            hitboxX + hitboxW > obs.x + 5 &&
+            hitboxY < obs.y + obs.height - 5 &&
+            hitboxY + hitboxH > obs.y + 5
+        ) {
+            gameOver();
         }
 
-        window.fetchRooms = async () => { 
-            if(!db) return; 
-            const q = query(getCollectionRef('lobbies'), where("status", "==", "waiting")); 
-            const snap = await getDocs(q); 
-            const list = document.getElementById('room-list'); 
-            list.innerHTML = ""; 
-            if(snap.empty) list.innerHTML = "<div style='text-align:center; color:#888; padding:20px;'>No rooms found.</div>"; 
-            snap.forEach(d => { list.innerHTML += `<div class='room-item'><div><div class='room-name'>${d.data().name}</div></div><button class='join-btn' onclick="joinRoom('${d.id}')">JOIN</button></div>`; }); 
-        };
-        
-        window.createRoom = async () => { 
-            const btn = document.getElementById('create-btn');
-            const errDisplay = document.getElementById('error-display');
-            errDisplay.style.display = 'none';
-            
-            if(!userId) {
-                errDisplay.innerText = "Error: Not connected to server.";
-                errDisplay.style.display = 'block';
-                return;
-            }
-
-            try {
-                btn.disabled = true; btn.innerText = "Creating...";
-                const name = document.getElementById('create-room-name').value; 
-                myUsername = document.getElementById('player-name-input').value || "Host"; 
-                myTeam = 'defend'; 
-                const ref = doc(getCollectionRef('lobbies')); // Auto ID
-                await setDoc(ref, { name, hostId: userId, status: 'waiting', players: [{ uid: mySessionId, name: myUsername, agent: null, team: myTeam, isHost: true, locked: false }], spike: { state: 'spawned', carrier: null, pos: null } }); 
-                enterLobby(ref.id, true); 
-            } catch (e) {
-                console.error("Create Room Failed:", e);
-                btn.disabled = false; btn.innerText = "Create Room";
-                errDisplay.innerText = "Failed: " + e.message;
-                errDisplay.style.display = 'block';
-            }
-        };
-        
-        window.joinRoom = async (rid) => { 
-            if(!userId) return; 
-            myUsername = document.getElementById('player-name-input').value || "Guest"; 
-            myTeam = 'attack'; 
-            const ref = getDocRef('lobbies', rid); 
-            await updateDoc(ref, { players: arrayUnion({ uid: mySessionId, name: myUsername, agent: null, team: myTeam, isHost: false, locked: false }) }); 
-            enterLobby(rid, false); 
-        };
-        
-        window.switchTeam = (t) => { myTeam = t; updateMyPlayerData(); };
-        window.enterAgentSelect = async () => { if(!currentLobbyId || !isHost) return; await updateDoc(getDocRef('lobbies', currentLobbyId), { status: 'agent_select', selectEndTime: Date.now() + 60000 }); };
-        window.pickAgent = (a, el) => { if(isLockedIn) return; selectedAgent = a; document.querySelectorAll('.agent-card').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); document.getElementById('lock-btn').disabled = false; };
-        window.lockInAgent = async () => { if(!selectedAgent || !currentLobbyId) return; isLockedIn = true; document.getElementById('lock-btn').innerText = "LOCKED"; document.getElementById('lock-btn').disabled = true; const ref = getDocRef('lobbies', currentLobbyId); const snap = await getDoc(ref); if(!snap.exists()) return; let p = snap.data().players; const idx = p.findIndex(x => x.uid === mySessionId); if(idx >= 0) { p[idx].agent = selectedAgent; p[idx].team = myTeam; p[idx].locked = true; await updateDoc(ref, { players: p }); } };
-        async function updateMyPlayerData() { if(!currentLobbyId) return; const ref = getDocRef('lobbies', currentLobbyId); const snap = await getDoc(ref); if(!snap.exists()) return; let p = snap.data().players; const idx = p.findIndex(x => x.uid === mySessionId); if(idx >= 0) { p[idx].team = myTeam; await updateDoc(ref, { players: p }); } }
-        window.hostStartGame = async () => { if(!currentLobbyId || !isHost) return; const ref = getDocRef('lobbies', currentLobbyId); const snap = await getDoc(ref); const players = snap.data().players; const attackers = players.filter(p => p.team === 'attack'); let spikeCarrier = null; if(attackers.length > 0) spikeCarrier = attackers[Math.floor(Math.random() * attackers.length)].uid; await updateDoc(ref, { status: 'playing', gamePhase: 'buy', phaseEndTime: Date.now() + 30000, spike: { state: 'carried', carrier: spikeCarrier, pos: null } }); };
-
-        function enterLobby(rid, h) {
-            currentLobbyId = rid; isHost = h;
-            document.getElementById('browser-screen').style.display = 'none'; document.getElementById('waiting-screen').style.display = 'block';
-            document.getElementById('host-start-btn').style.display = isHost ? 'block' : 'none'; document.getElementById('client-wait-msg').style.display = isHost ? 'none' : 'block';
-            onSnapshot(getDocRef('lobbies', rid), (snap) => {
-                if(!snap.exists()) return;
-                const d = snap.data();
-                if (d.status === 'agent_select' && lobbyStatus !== 'agent_select') { lobbyStatus = 'agent_select'; document.getElementById('waiting-screen').style.display = 'none'; document.getElementById('agent-select-screen').style.display = 'block'; }
-                if (d.status === 'playing') { if (!isPlaying) launchGame(); if(d.gamePhase !== gamePhase) { gamePhase = d.gamePhase; phaseEndTime = d.phaseEndTime; handlePhaseChange(); } if(d.spike) handleSpikeUpdate(d.spike); }
-                if (lobbyStatus === 'waiting') renderLobbyPlayers(d.players || []);
-                else if (lobbyStatus === 'agent_select') { renderAgentSelectStatus(d.players || [], d.selectEndTime); if (isHost && !isPlaying) { const allLocked = d.players.every(p => p.locked); const timeOut = Date.now() > d.selectEndTime; if (allLocked || timeOut) window.hostStartGame(); } }
-            });
+        if (obs.x + obs.width < 0) {
+            obstacles.splice(i, 1); i--;
         }
-        function renderLobbyPlayers(players) { const atk = document.getElementById('team-attack-list'); const def = document.getElementById('team-defend-list'); atk.innerHTML = ""; def.innerHTML = ""; players.forEach(p => { const html = `<div class='player-row ${p.uid===mySessionId?"me":""}'><span class='p-name'>${p.name}</span></div>`; if(p.team === 'attack') atk.innerHTML += html; else def.innerHTML += html; }); }
-        function renderAgentSelectStatus(players, endTime) { const atk = document.getElementById('select-attack-list'); const def = document.getElementById('select-defend-list'); atk.innerHTML = ""; def.innerHTML = ""; const timeLeft = Math.max(0, Math.ceil((endTime - Date.now())/1000)); document.getElementById('select-timer').innerText = timeLeft; const icons = { 'jett': '💨', 'phoenix': '🔥', 'sage': '🧊', 'reyna': '👁️', 'sova': '🏹', 'brim': '☁️', 'omen': '👻', 'cypher': '🕵️' }; players.forEach(p => { const icon = p.agent && p.locked ? icons[p.agent] : '❓'; const style = p.locked ? "border:2px solid #00ffaa; opacity:1;" : "border:1px solid #555; opacity:0.5;"; const html = `<div style="width:40px; height:40px; background:#222; display:flex; align-items:center; justify-content:center; font-size:20px; ${style}">${icon}</div>`; if(p.team === 'attack') atk.innerHTML += html; else def.innerHTML += html; }); }
-        function launchGame() {
-            document.getElementById('agent-select-screen').style.display = 'none'; document.getElementById('waiting-screen').style.display = 'none'; document.getElementById('ui-layer').style.display = 'block';
-            if (agentAbilities[selectedAgent]) { document.getElementById('icon-c').innerText = agentAbilities[selectedAgent].c; document.getElementById('icon-q').innerText = agentAbilities[selectedAgent].q; document.getElementById('icon-e').innerText = agentAbilities[selectedAgent].e; document.getElementById('icon-x').innerText = agentAbilities[selectedAgent].x; }
-            isPlaying = true; create3DScene(); initGameMultiplayer(); handlePhaseChange();
-        }
-        function handlePhaseChange() {
-            const st = document.getElementById('round-state'); const msg = document.getElementById('alert-msg');
-            if(gamePhase === 'buy') { st.innerText = "BUY PHASE"; st.style.color = "#fff"; msg.innerText = "BUY PHASE"; msg.style.opacity = 1; setTimeout(()=>msg.style.opacity=0, 2000); }
-            else if(gamePhase === 'action') { st.innerText = "ACTION"; st.style.color = "#ff4655"; msg.innerText = "BARRIERS DOWN"; msg.style.opacity = 1; setTimeout(()=>msg.style.opacity=0, 2000); barriers.forEach(b => { scene.remove(b); walls = walls.filter(w=>w!==b); }); barriers = []; document.getElementById('buy-menu').style.display = 'none'; isBuyMenuOpen = false; if(controls) controls.lock(); }
-            else if(gamePhase === 'planted') { st.innerText = "SPIKE PLANTED"; st.style.color = "#ff0000"; msg.innerText = "SPIKE PLANTED"; msg.style.color = "#ff0000"; msg.style.opacity = 1; setTimeout(()=>msg.style.opacity=0, 3000); }
-            else if(gamePhase === 'defused') { msg.innerText = "DEFENDERS WIN"; msg.style.color = "#00ffaa"; msg.style.opacity = 1; isPlaying = false; setTimeout(()=>location.reload(), 5000); }
-            else if(gamePhase === 'detonated') { msg.innerText = "ATTACKERS WIN"; msg.style.color = "#ff4655"; msg.style.opacity = 1; isPlaying = false; setTimeout(()=>location.reload(), 5000); }
-        }
-        function handleSpikeUpdate(newSpike) {
-            spikeState = newSpike; const hud = document.getElementById('spike-hud'); const txt = document.getElementById('spike-msg');
-            if (spikeState.carrier === mySessionId) { hud.style.display = 'block'; txt.innerText = "YOU HAVE THE SPIKE"; txt.style.color = "#ffffff"; }
-            else if (spikeState.state === 'planted') {
-                hud.style.display = 'block'; txt.innerText = "⚠️ SPIKE PLANTED ⚠️"; txt.style.color = "#ff4655";
-                if(!spikeMesh && scene && spikeState.pos) { 
-                    const geo = new THREE.CylinderGeometry(0.2, 0.4, 0.8, 16); 
-                    const mat = new THREE.MeshStandardMaterial({color:0xff0000, emissive:0xff0000, emissiveIntensity:0.5}); 
-                    spikeMesh = new THREE.Mesh(geo, mat); 
-                    spikeMesh.position.set(spikeState.pos.x, spikeState.pos.y, spikeState.pos.z); 
-                    scene.add(spikeMesh); 
-                    const light = new THREE.PointLight(0xff0000, 1, 10); 
-                    light.position.set(spikeState.pos.x, spikeState.pos.y+1, spikeState.pos.z); 
-                    scene.add(light); 
-                } else if (spikeMesh && spikeState.pos) {
-                    spikeMesh.position.set(spikeState.pos.x, spikeState.pos.y, spikeState.pos.z);
-                }
-            } else { hud.style.display = 'none'; }
-        }
+    }
 
-        let lastBroadcastPos = new THREE.Vector3();
-        let lastBroadcastYaw = 0;
+    // --- Dino ---
+    dino.update();
+    dino.draw();
 
-        function broadcastPosition() {
-            if (!isPlaying || !userId || networkDisabled) return;
-            
-            const dist = camera.position.distanceTo(lastBroadcastPos);
-            const dir = new THREE.Vector3(); 
-            camera.getWorldDirection(dir);
-            const currentYaw = Math.atan2(dir.x, dir.z);
-            const rot = Math.abs(lastBroadcastYaw - currentYaw);
+    // --- Score & Speed ---
+    if (frame % 6 === 0) score++;
+    scoreEl.innerText = String(score).padStart(5, '0');
+    if (frame % 500 === 0) gameSpeed += 0.5;
+}
 
-            if (dist < 0.5 && rot < 0.5) return;
 
-            lastBroadcastPos.copy(camera.position);
-            lastBroadcastYaw = currentYaw;
+function gameOver() {
+    isGameOver = true;
+    dino.draw(); // Draw dead dino frame
+    gameOverEl.style.display = 'block';
+    if (score > highScore) {
+        highScore = score;
+        hiScoreEl.innerText = String(highScore).padStart(5, '0');
+        localStorage.setItem('dinoHighScore', highScore);
+    }
+}
 
-            setDoc(getDocRef('valorant_game_data', mySessionId), {
-                lobbyId: currentLobbyId, 
-                x: parseFloat(camera.position.x.toFixed(2)), 
-                y: parseFloat(camera.position.y.toFixed(2)), 
-                z: parseFloat(camera.position.z.toFixed(2)), 
-                yaw: parseFloat(currentYaw.toFixed(2)),
-                agent: selectedAgent, 
-                team: myTeam, 
-                lastUpdate: Date.now()
-            }, { merge: true }).catch(e => {
-                if (e.code === 'resource-exhausted') {
-                      console.warn("Daily Quota Exceeded. Disabling network.");
-                      networkDisabled = true;
-                      document.getElementById('status-msg').innerText = "OFFLINE: Server Limit Reached";
-                      document.getElementById('status-msg').style.color = "orange";
-                }
-            });
-        }
+function resetGame() {
+    isGameOver = false;
+    gameOverEl.style.display = 'none';
+    obstacles = [];
+    score = 0;
+    gameSpeed = BASE_SPEED;
+    frame = 0;
+    dino.y = GROUND_Y - dino.height;
+    dino.dy = 0;
+    dino.state = 'RUN';
+    animate();
+}
 
-        function shoot() {
-            if (!isPlaying || !controls.isLocked) return;
-            if (currentAmmo <= 0) return; 
-            
-            currentAmmo--;
-            document.getElementById('ammo-val').innerText = currentAmmo;
-
-            const raycaster = new THREE.Raycaster(); raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects(walls);
-            let targetPoint; if (intersects.length > 0) targetPoint = intersects[0].point; else targetPoint = raycaster.ray.direction.clone().multiplyScalar(100).add(raycaster.ray.origin);
-            const gunPos = camera.position.clone().add(new THREE.Vector3(0.2, -0.2, -0.4).applyQuaternion(camera.quaternion));
-            let color = 0xffff00; if (currentGun === 'vandal') color = 0xff0000; if (currentGun === 'operator') color = 0x00aaff;
-            const material = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 1 });
-            const points = [gunPos, targetPoint]; const geometry = new THREE.BufferGeometry().setFromPoints(points); const line = new THREE.Line(geometry, material);
-            scene.add(line); bullets.push({ mesh: line, time: Date.now() });
-        }
-
-        function create3DScene() {
-            scene = new THREE.Scene(); scene.background = new THREE.Color(0x808080); scene.fog = new THREE.Fog(0x808080, 10, 80);
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true;
-            const container = document.getElementById('canvas-container'); container.innerHTML = ''; container.appendChild(renderer.domElement);
-            scene.add(new THREE.AmbientLight(0xffffff, 1.0)); const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(50, 100, -50); dirLight.castShadow = true; scene.add(dirLight);
-            controls = new PointerLockControls(camera, document.body);
-            scene.add(new THREE.GridHelper(200, 50, 0x000000, 0x333333));
-            createMap();
-            const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.5), new THREE.MeshStandardMaterial({color:0x333333})); gun.position.set(0.2, -0.2, -0.4); camera.add(gun); scene.add(camera);
-            if (myTeam === 'attack') { camera.position.set(0, 2, 50); camera.lookAt(0, 2, 0); } else { camera.position.set(0, 2, -50); camera.lookAt(0, 2, 0); }
-            document.addEventListener('mousedown', (e) => { if(isPlaying) { if (!controls.isLocked && !isBuyMenuOpen) controls.lock(); else if (e.button === 0 && !isBuyMenuOpen) shoot(); } });
-            animate();
-        }
-
-        function createBox(x, y, z, w, h, d, color, isBarrier=false) {
-            const geo = new THREE.BoxGeometry(w, h, d); const mat = new THREE.MeshStandardMaterial({ color: color, transparent: isBarrier, opacity: isBarrier ? 0.5 : 1.0 });
-            const mesh = new THREE.Mesh(geo, mat); mesh.position.set(x, y + h/2, z); mesh.castShadow = !isBarrier; mesh.receiveShadow = !isBarrier; mesh.geometry.computeBoundingBox();
-            scene.add(mesh); walls.push(mesh); if (isBarrier) barriers.push(mesh);
-        }
-
-        // --- ASCENT MAP (COMPACT) ---
-        function createMap() {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x666666, side: THREE.DoubleSide })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            const C_WALL = 0xd6cba8, C_BOX = 0x2e4a3d, C_BARRIER = 0x00aaff;
-            
-            // Boundaries
-            createBox(0, 0, -60, 120, 15, 2, C_WALL); createBox(0, 0, 60, 120, 15, 2, C_WALL); createBox(-60, 0, 0, 2, 15, 120, C_WALL); createBox(60, 0, 0, 2, 15, 120, C_WALL);
-            // Plant Zones
-            const zoneA = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.3 })); zoneA.rotation.x = -Math.PI/2; zoneA.position.set(30, 0.1, -10); scene.add(zoneA);
-            const zoneB = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 })); zoneB.rotation.x = -Math.PI/2; zoneB.position.set(-30, 0.1, -10); scene.add(zoneB);
-            // Mid
-            createBox(0, 0, 0, 15, 6, 15, C_WALL); createBox(15, 0, 0, 15, 3, 5, C_WALL); createBox(-10, 0, 0, 8, 6, 8, C_WALL);
-            // Site A
-            createBox(40, 0, 25, 5, 6, 20, C_WALL); createBox(50, 0, 25, 2, 6, 20, C_WALL); createBox(45, 6, 25, 10, 1, 20, C_WALL); createBox(30, 0, -10, 6, 5, 6, C_BOX); createBox(30, 0, -25, 15, 4, 6, C_WALL);
-            // Site B
-            createBox(-40, 0, 25, 5, 6, 25, C_WALL); createBox(-50, 0, 25, 2, 6, 25, C_WALL); createBox(-45, 6, 25, 15, 1, 25, C_WALL); createBox(-30, 0, -10, 6, 5, 6, C_BOX); createBox(-30, 0, 0, 2, 4, 2, C_WALL);
-            // Spawn Markers
-            createBox(0, 0, 50, 20, 0.1, 5, 0x550000); createBox(0, 0, -50, 20, 0.1, 5, 0x000055);
-            // Barriers
-            createBox(45, 0, 10, 15, 6, 1, C_BARRIER, true); createBox(-45, 0, 10, 15, 6, 1, C_BARRIER, true); createBox(0, 0, 8, 15, 6, 1, C_BARRIER, true);
-        }
-
-        let prevTime = performance.now(); let velocityY = 0;
-        function animate() {
-            requestAnimationFrame(animate); if (!isPlaying) return;
-            const timeEl = document.getElementById('timer');
-            if (gamePhase === 'buy' || gamePhase === 'action' || gamePhase === 'planted') {
-                let timeLeft = 0;
-                if(gamePhase === 'planted') timeLeft = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
-                else if(gamePhase === 'buy') timeLeft = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
-                else if(gamePhase === 'action') timeLeft = 100;
-                timeEl.innerText = `0:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
-
-                if (isHost && timeLeft <= 0 && (Date.now() - lastPhaseUpdate > 5000)) {
-                     lastPhaseUpdate = Date.now();
-                     if (gamePhase === 'buy') updateDoc(getDocRef('lobbies', currentLobbyId), { gamePhase: 'action' });
-                     else if (gamePhase === 'planted') updateDoc(getDocRef('lobbies', currentLobbyId), { gamePhase: 'detonated' });
-                }
-            }
-            checkActions();
-            
-            for (let i = smokeMeshes.length - 1; i >= 0; i--) {
-                const s = smokeMeshes[i];
-                if(Date.now() - s.time > 10000) { scene.remove(s.mesh); smokeMeshes.splice(i, 1); }
-            }
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const b = bullets[i];
-                if (Date.now() - b.time > 100) { scene.remove(b.mesh); bullets.splice(i, 1); }
-            }
-
-            if (!controls.isLocked && !isBuyMenuOpen) return;
-            
-            const time = performance.now(); const delta = (time - prevTime) / 1000; prevTime = time;
-            if (!isBuyMenuOpen) {
-                const moveSpeed = MOVEMENT_SPEED * delta;
-                const camDir = new THREE.Vector3(); camera.getWorldDirection(camDir); camDir.y = 0; camDir.normalize();
-                const camRight = new THREE.Vector3(); camRight.crossVectors(camDir, new THREE.Vector3(0, 1, 0)); camRight.normalize();
-                const moveVec = new THREE.Vector3(0, 0, 0);
-                if (keys.w) moveVec.add(camDir); if (keys.s) moveVec.sub(camDir); if (keys.d) moveVec.add(camRight); if (keys.a) moveVec.sub(camRight);
-                if (moveVec.length() > 0) moveVec.normalize().multiplyScalar(moveSpeed);
-                const candidatePos = camera.position.clone(); candidatePos.x += moveVec.x; if (!checkCollision(candidatePos)) camera.position.x += moveVec.x;
-                candidatePos.copy(camera.position); candidatePos.z += moveVec.z; if (!checkCollision(candidatePos)) camera.position.z += moveVec.z;
-                if (keys.space && camera.position.y <= PLAYER_HEIGHT + 0.1) velocityY = JUMP_FORCE;
-                velocityY -= GRAVITY * delta; camera.position.y += velocityY * delta;
-                if (camera.position.y < PLAYER_HEIGHT) { camera.position.y = PLAYER_HEIGHT; velocityY = 0; }
-            }
-            renderer.render(scene, camera);
-        }
-        window.addEventListener('resize', () => { if(camera) { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }});
-    </script>
+// Start game only after assets load
+preloadAssets(() => {
+    dino.y = GROUND_Y - dino.height;
+    animate();
+});
+</script>
 </body>
 </html>
