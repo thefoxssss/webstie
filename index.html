@@ -2,364 +2,138 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dino Game - 100% Working Copy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenSpace | Focus Dashboard</title>
     <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+        }
+
         body {
             margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #f7f7f7;
-            font-family: 'Courier New', Courier, monospace;
-            overflow: hidden;
-            transition: background-color 1s;
-        }
-        
-        /* Night Mode Styles */
-        body.night {
-            background-color: #202124;
-        }
-        body.night #gameTitle {
-            color: #acacac;
-        }
-        body.night .score {
-            color: #acacac;
+            color: var(--text);
         }
 
-        #gameContainer {
-            position: relative;
-            width: 800px;
-            height: 250px;
-        }
-
-        canvas {
-            border-bottom: 2px solid #535353;
-            display: block;
-        }
-
-        .score {
-            position: absolute;
-            top: 10px;
-            right: 0;
-            font-size: 20px;
-            color: #535353;
-            font-weight: bold;
-        }
-
-        #gameOverMsg {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .dashboard {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            width: 80%;
+            max-width: 800px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             text-align: center;
-            display: none;
         }
 
-        h1 { margin: 0; color: #535353; font-size: 30px; }
-        p { margin: 10px 0; color: #757575; font-size: 16px; cursor: pointer; }
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1/3fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-focus {
+            margin-top: 30px;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            background: #fff;
+            color: #764ba2;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+
+        .btn-focus:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 20px rgba(255,255,255,0.4);
+        }
+
+        #clock {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
 
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="250"></canvas>
-        <div class="score">HI <span id="highScore">00000</span> <span id="currScore">00000</span></div>
-        <div id="gameOverMsg">
-            <h1>GAME OVER</h1>
-            <p>Press SPACE to restart</p>
+    <div class="dashboard">
+        <header>
+            <h1>ZEN<span style="font-weight: 300;">SPACE</span></h1>
+            <p id="date-string">Tuesday, January 6, 2026</p>
+        </header>
+
+        <div id="clock">12:00:00</div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Tasks</h3>
+                <p>12 Pending</p>
+            </div>
+            <div class="stat-card">
+                <h3>Focus</h3>
+                <p>4.5 Hours</p>
+            </div>
+            <div class="stat-card">
+                <h3>Energy</h3>
+                <p>High</p>
+            </div>
         </div>
+
+        <button class="btn-focus" onclick="toggleFocus()">Start Focus Session</button>
     </div>
 
-<script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Game Variables
-    let gameSpeed = 6;
-    let score = 0;
-    let highScore = localStorage.getItem('dinoHighScore') || 0;
-    let frame = 0;
-    let isGameOver = false;
-    let obstacles = [];
-    let keys = {};
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour12: false });
+            document.getElementById('clock').textContent = timeString;
+        }
 
-    // Constants
-    const GROUND_Y = 220;
-    const GRAVITY = 0.6;
-    const JUMP_FORCE = -11;
-
-    // --- DRAWING FUNCTIONS (Procedural Graphics) ---
-    // These functions draw the sprites using code so no images are needed.
-
-    function drawDino(x, y, w, h, state, frame) {
-        ctx.fillStyle = '#535353';
-        
-        if (state === 'duck') {
-            // DUCK SHAPE
-            ctx.fillRect(x, y, w, h); // Body
-            ctx.fillRect(x + w, y + 5, 20, 15); // Head (Forward)
-            
-            // Legs
-            if (Math.floor(frame / 5) % 2 === 0) {
-                ctx.fillRect(x + 10, y + h, 10, 5); // Foot 1
+        function toggleFocus() {
+            const btn = document.querySelector('.btn-focus');
+            if (btn.textContent === 'Start Focus Session') {
+                btn.textContent = 'End Session';
+                btn.style.background = '#ff4b2b';
+                btn.style.color = '#fff';
             } else {
-                ctx.fillRect(x + 30, y + h, 10, 5); // Foot 2
-            }
-            // Eye
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(x + w + 12, y + 8, 3, 3);
-
-        } else {
-            // RUN/STAND SHAPE
-            ctx.fillRect(x, y, w - 10, h - 15); // Main Body
-            ctx.fillRect(x + w - 20, y - 10, 20, 25); // Head (Up)
-            ctx.fillRect(x + w, y, 10, 5); // Snout
-            ctx.fillRect(x - 5, y + 5, 5, 15); // Tail
-
-            // Eye
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(x + w - 10, y - 5, 4, 4); 
-
-            // Legs Animation
-            ctx.fillStyle = '#535353';
-            if (state === 'jump') {
-                ctx.fillRect(x + 5, y + h - 15, 8, 10);
-                ctx.fillRect(x + 20, y + h - 15, 8, 10);
-            } else {
-                // Run Animation
-                if (Math.floor(frame / 5) % 2 === 0) {
-                    ctx.fillRect(x + 5, y + h - 15, 8, 15); // Left Down
-                    ctx.fillRect(x + 20, y + h - 20, 8, 8); // Right Up
-                } else {
-                    ctx.fillRect(x + 5, y + h - 20, 8, 8); // Left Up
-                    ctx.fillRect(x + 20, y + h - 15, 8, 15); // Right Down
-                }
-            }
-        }
-    }
-
-    function drawCactus(x, y, width, height) {
-        ctx.fillStyle = '#535353';
-        // Main stem
-        ctx.fillRect(x + width/3, y, width/3, height); 
-        // Left arm
-        ctx.fillRect(x, y + height/3, width/3, height/4);
-        ctx.fillRect(x, y + height/3 - 5, width/4, 5);
-        // Right arm
-        ctx.fillRect(x + width*0.66, y + height/2, width/3, height/5);
-        ctx.fillRect(x + width*0.75, y + height/2 - 5, width/4, 5);
-    }
-
-    function drawBird(x, y, frame) {
-        ctx.fillStyle = '#535353';
-        // Body
-        ctx.fillRect(x, y + 10, 40, 15);
-        // Head
-        ctx.fillRect(x - 10, y + 5, 15, 15);
-        // Beak
-        ctx.fillRect(x - 15, y + 10, 5, 5);
-        
-        // Wings Flapping
-        if (Math.floor(frame / 10) % 2 === 0) {
-            // Wing Up
-            ctx.fillRect(x + 10, y - 10, 20, 20);
-            ctx.fillRect(x + 15, y - 15, 10, 5);
-        } else {
-            // Wing Down
-            ctx.fillRect(x + 10, y + 10, 20, 20);
-            ctx.fillRect(x + 15, y + 25, 10, 5);
-        }
-    }
-
-    // --- GAME LOGIC ---
-
-    const dino = {
-        x: 50,
-        y: GROUND_Y,
-        w: 40,
-        h: 50,
-        dy: 0,
-        state: 'run', // run, jump, duck
-        
-        update: function() {
-            // Jump
-            if (keys['Space'] || keys['ArrowUp']) {
-                if (this.state !== 'jump') {
-                    this.dy = JUMP_FORCE;
-                    this.state = 'jump';
-                }
-            }
-
-            // Duck
-            if ((keys['ShiftLeft'] || keys['ArrowDown']) && this.state !== 'jump') {
-                this.state = 'duck';
-                this.h = 30; // Shrink hitbox
-                this.w = 55; // Widen body
-                this.y = GROUND_Y - 30; // Adjust position
-            } else if (this.state === 'duck') {
-                this.state = 'run';
-                this.h = 50;
-                this.w = 40;
-                this.y = GROUND_Y - 50;
-            }
-
-            // Gravity
-            this.y += this.dy;
-            
-            if (this.y < GROUND_Y - this.h) {
-                this.dy += GRAVITY;
-                // Fast fall
-                if (keys['ArrowDown']) this.dy += 0.5;
-            } else {
-                this.dy = 0;
-                this.y = GROUND_Y - this.h;
-                if (this.state === 'jump') this.state = 'run';
-            }
-        },
-
-        draw: function() {
-            drawDino(this.x, this.y, this.w, this.h, this.state, frame);
-        }
-    };
-
-    function spawnObstacle() {
-        // Difficulty Logic
-        let type = 'cactus';
-        // Spawn birds only after 300 points
-        if (score > 300 && Math.random() < 0.3) {
-            type = 'bird';
-        }
-
-        let obstacle = {
-            type: type,
-            x: canvas.width,
-            markedForDeletion: false
-        };
-
-        if (type === 'cactus') {
-            obstacle.w = 20 + Math.random() * 20;
-            obstacle.h = 40 + Math.random() * 30;
-            obstacle.y = GROUND_Y - obstacle.h;
-        } else {
-            obstacle.w = 40;
-            obstacle.h = 30;
-            // Bird heights: Ground level, Mid (duckable), High
-            let heights = [GROUND_Y - 40, GROUND_Y - 70, GROUND_Y - 100];
-            obstacle.y = heights[Math.floor(Math.random() * heights.length)];
-        }
-
-        obstacles.push(obstacle);
-    }
-
-    function animate() {
-        if (isGameOver) return;
-        
-        requestAnimationFrame(animate);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        frame++;
-        
-        // Speed up
-        gameSpeed += 0.002;
-
-        // Ground Line
-        ctx.beginPath();
-        ctx.moveTo(0, GROUND_Y);
-        ctx.lineTo(canvas.width, GROUND_Y);
-        ctx.stroke();
-
-        // Spawn
-        if (frame % Math.floor(1000/gameSpeed) === 0 || 
-           (Math.random() < 0.01 && obstacles.length < 2 && frame > 50)) {
-            // Ensure gap
-            if (obstacles.length === 0 || canvas.width - obstacles[obstacles.length-1].x > 300) {
-                spawnObstacle();
+                btn.textContent = 'Start Focus Session';
+                btn.style.background = '#fff';
+                btn.style.color = '#764ba2';
             }
         }
 
-        // Obstacles
-        obstacles.forEach(obs => {
-            obs.x -= gameSpeed;
-            if (obs.type === 'cactus') {
-                drawCactus(obs.x, obs.y, obs.w, obs.h);
-            } else {
-                drawBird(obs.x, obs.y, frame);
-            }
-
-            // Collision (AABB)
-            // Smaller hitbox for forgiveness
-            let padding = 8; 
-            if (
-                dino.x < obs.x + obs.w - padding &&
-                dino.x + dino.w - padding > obs.x &&
-                dino.y < obs.y + obs.h - padding &&
-                dino.y + dino.h - padding > obs.y
-            ) {
-                // Check if ducking avoids high bird
-                gameOver();
-            }
-
-            if (obs.x + obs.w < 0) obs.markedForDeletion = true;
-        });
-
-        obstacles = obstacles.filter(o => !o.markedForDeletion);
-
-        dino.update();
-        dino.draw();
-
-        // Score
-        if (frame % 5 === 0) {
-            score++;
-            document.getElementById('currScore').innerText = String(score).padStart(5, '0');
-            
-            // Night Mode at every 1000 points
-            if (Math.floor(score / 1000) % 2 === 1) {
-                document.body.classList.add('night');
-                ctx.fillStyle = '#acacac'; // Change draw color if you want complete night mode
-            } else {
-                document.body.classList.remove('night');
-            }
-        }
-    }
-
-    function gameOver() {
-        isGameOver = true;
-        document.getElementById('gameOverMsg').style.display = 'block';
-        if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('dinoHighScore', highScore);
-            document.getElementById('highScore').innerText = String(highScore).padStart(5, '0');
-        }
-    }
-
-    function resetGame() {
-        if (!isGameOver) return;
-        isGameOver = false;
-        document.getElementById('gameOverMsg').style.display = 'none';
-        obstacles = [];
-        score = 0;
-        frame = 0;
-        gameSpeed = 6;
-        dino.y = GROUND_Y - dino.h;
-        dino.dy = 0;
-        dino.state = 'run';
-        document.body.classList.remove('night');
-        animate();
-    }
-
-    // Controls
-    window.addEventListener('keydown', e => {
-        keys[e.code] = true;
-        if (e.code === 'Space' && isGameOver) resetGame();
-    });
-    window.addEventListener('keyup', e => keys[e.code] = false);
-
-    // Initial High Score Load
-    document.getElementById('highScore').innerText = String(highScore).padStart(5, '0');
-
-    // Start
-    animate();
-
-</script>
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
 </body>
 </html>
