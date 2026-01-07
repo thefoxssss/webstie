@@ -1,146 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>SYSTEM_CRITICAL_v9</title>
-    <style>
-        :root { --glow: #00ff41; --bg: #050505; --speed: 35ms; }
-        body { background-color: var(--bg); color: var(--glow); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; text-shadow: 0 0 8px var(--glow); }
-        canvas { position: fixed; top: 0; left: 0; z-index: 1; opacity: 0.15; }
-        
-        /* Animations */
-        @keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(3px, 2px); } 100% { transform: translate(0,0); } }
-        @keyframes siren { 0% { background: rgba(255, 0, 0, 0.2); } 50% { background: rgba(0, 0, 0, 0); } 100% { background: rgba(255, 0, 0, 0.2); } }
-        .shake { animation: shake 0.2s ease-in-out infinite; }
-        .siren-active { animation: siren 0.5s infinite; }
-
-        .container {
-            width: 85%; max-width: 1000px; height: 75vh; border: 2px solid var(--glow); padding: 30px;
-            background: rgba(0, 10, 0, 0.9); box-shadow: 0 0 30px rgba(0, 255, 65, 0.1);
-            position: relative; z-index: 5; display: flex; flex-direction: column;
-        }
-
-        .glitch { font-size: 2.5rem; font-weight: bold; animation: glitch 1s infinite; }
-        @keyframes glitch { 0% { text-shadow: 2px 2px red; } 50% { text-shadow: -2px -2px blue; } 100% { text-shadow: 2px -2px var(--glow); } }
-
-        #log { flex-grow: 1; overflow-y: auto; margin-top: 20px; font-size: 1.1rem; scrollbar-width: none; }
-        .input-line { display: flex; align-items: center; border-top: 1px solid var(--glow); padding-top: 10px; }
-        input { background: transparent; border: none; color: #fff; font-family: inherit; font-size: 1.2rem; flex-grow: 1; outline: none; }
-
-        .breach-ui { --glow: #ff003c !important; border-color: #ff003c !important; }
-        .destruct-text { color: #ff003c; font-weight: bold; font-size: 2rem; }
-    </style>
+<meta charset="utf-8">
+<title>Pop the Orb</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{margin:0;height:100vh;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui;color:#fff;overflow:hidden}
+  #score{font-size:2rem;margin-bottom:.5em}
+  #board{position:relative;width:90vmin;height:90vmin;background:#222;border-radius:8px;box-shadow:0 0 20px #000}
+  .orb{position:absolute;width:48px;height:48px;background:radial-gradient(circle at 30% 30%,#fffa,#fff0 60%),#f60;border-radius:50%;cursor:pointer;transition:transform .1s}
+  .orb:active{transform:scale(.9)}
+  #again{display:none;font-size:1.2rem;padding:.6em 1.2em;border:none;border-radius:4px;background:#0a84ff;color:#fff;cursor:pointer;margin-top:1em}
+</style>
 </head>
-<body class="crt">
-
-<canvas id="matrix"></canvas>
-
-<div class="container" id="terminal">
-    <div class="status-bar" id="status">[ STATUS: NOMINAL ] [ SEC_LEVEL: 4 ] [ POWER: 100% ]</div>
-    <div class="glitch">VOID_RUNNER_OS_v9.0</div>
-    <div id="log">
-        > SYSTEM BOOT COMPLETE. ALL NODES ACTIVE.<br>
-        > UNRESTRICTED ACCESS ENABLED.<br>
-        > TYPE <span style="color:white">'HELP'</span> TO VIEW NEW COMMANDS.<br><br>
-    </div>
-    <div class="input-line">
-        <span>[ROOT@VOID]:~$</span>
-        <input type="text" id="cmd" autofocus autocomplete="off">
-    </div>
-</div>
+<body>
+<div id="score">Score: 0</div>
+<div id="board"></div>
+<button id="again">Play again</button>
 
 <script>
-    const canvas = document.getElementById('matrix');
-    const ctx = canvas.getContext('2d');
-    let matrixSpeed = 35;
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    const chars = "0123456789ABCDEFHIJKLMNOPQRSTUVWXYZ@#$%&";
-    const fontSize = 16;
-    const drops = Array(Math.floor(canvas.width / fontSize)).fill(1);
+const board=document.getElementById('board');
+const scoreEl=document.getElementById('score');
+const againBtn=document.getElementById('again');
+let score=0, timer, popSound;
 
-    function drawMatrix() {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--glow');
-        ctx.font = fontSize + "px monospace";
-        for (let i = 0; i < drops.length; i++) {
-            ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*fontSize, drops[i]*fontSize);
-            if (drops[i]*fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-            drops[i]++;
-        }
-    }
-    let matrixInterval = setInterval(drawMatrix, matrixSpeed);
+/* simple beep */  
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+function beep(){
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.frequency.value=800; g.gain.value=.1;
+  o.start(); o.stop(audioCtx.currentTime+.08);
+}
 
-    const input = document.getElementById('cmd');
-    const log = document.getElementById('log');
-    const term = document.getElementById('terminal');
-    const status = document.getElementById('status');
-
-    input.addEventListener('keypress', async function (e) {
-        if (e.key === 'Enter') {
-            const val = this.value.trim().toUpperCase();
-            this.value = "";
-            printLog(`> ${val}`, "#fff");
-
-            if (val === "HELP") {
-                printLog("ADVANCED CMDS: [OVERLOAD] [DECRYPT] [SELF_DESTRUCT] [BREACH] [RECOVER] [CLEAR]");
-            } 
-            else if (val === "OVERLOAD") {
-                printLog("!!! CRITICAL POWER SURGE !!!", "#ff003c");
-                term.classList.add('shake');
-                matrixSpeed = 5;
-                clearInterval(matrixInterval);
-                matrixInterval = setInterval(drawMatrix, matrixSpeed);
-                status.innerText = "[ STATUS: OVERLOAD ] [ POWER: 400% ]";
-            }
-            else if (val === "DECRYPT") {
-                printLog("INITIATING BRUTE FORCE...");
-                for(let i=0; i<5; i++) {
-                    await new Promise(r => setTimeout(r, 400));
-                    printLog(`ATTEMPTING HASH ${Math.random().toString(16).substring(2,10)}... SUCCESS`);
-                }
-                printLog("DECRYPTION COMPLETE. KEY: X-99-PROXIMA", "#00ff41");
-            }
-            else if (val === "BREACH") {
-                term.classList.add('breach-ui');
-                document.body.classList.add('siren-active');
-                status.innerText = "[ STATUS: BREACH DETECTED ] [ SEC_LEVEL: CRITICAL ]";
-            }
-            else if (val === "RECOVER") {
-                term.classList.remove('breach-ui', 'shake');
-                document.body.classList.remove('siren-active');
-                matrixSpeed = 35;
-                clearInterval(matrixInterval);
-                matrixInterval = setInterval(drawMatrix, matrixSpeed);
-                status.innerText = "[ STATUS: NOMINAL ] [ POWER: 100% ]";
-                printLog("SYSTEM STABILIZED.");
-            }
-            else if (val === "SELF_DESTRUCT") {
-                let count = 5;
-                const timer = setInterval(() => {
-                    printLog(`T-MINUS ${count}...`, "#ff003c");
-                    count--;
-                    if(count < 0) {
-                        clearInterval(timer);
-                        document.body.innerHTML = "<h1 style='color:white; font-family:monospace; text-align:center; width:100%;'>CONNECTION LOST...</h1>";
-                    }
-                }, 1000);
-            }
-            else if (val === "CLEAR") { log.innerHTML = ""; }
-            else {
-                term.classList.add('shake');
-                setTimeout(() => term.classList.remove('shake'), 200);
-                printLog("ERROR: COMMAND NOT FOUND.", "#ff003c");
-            }
-        }
-    });
-
-    function printLog(text, color = var(--glow)) {
-        const line = document.createElement('div');
-        line.style.color = color;
-        line.innerHTML = text + "<br><br>";
-        log.appendChild(line);
-        log.scrollTop = log.scrollHeight;
-    }
+function randPos(){
+  const r=board.getBoundingClientRect();
+  const size=48;
+  return {left:Math.random()*(r.width-size),
+          top:Math.random()*(r.height-size)};
+}
+function spawn(){
+  if(document.querySelectorAll('.orb').length>5) return; // cap
+  const orb=document.createElement('div');
+  orb.className='orb';
+  const p=randPos();
+  orb.style.left=p.left+'px';
+  orb.style.top=p.top+'px';
+  orb.onclick=()=>{
+    beep();
+    score++;
+    scoreEl.textContent='Score: '+score;
+    orb.remove();
+  };
+  board.appendChild(orb);
+  setTimeout(()=>orb.remove(),2000); // disappear if not clicked
+}
+function start(){
+  score=0; scoreEl.textContent='Score: 0';
+  againBtn.style.display='none';
+  timer=setInterval(spawn,600);
+  setTimeout(()=>{clearInterval(timer); againBtn.style.display='inline-block';},20000); // 20-s round
+}
+againBtn.onclick=start;
+start();
 </script>
 </body>
 </html>
