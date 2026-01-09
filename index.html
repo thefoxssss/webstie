@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>GOONER TERMINAL</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<!-- FIREBASE SCRIPTS (Required for Multiplayer) -->
+<!-- FIREBASE SCRIPTS (Version 8 Compat - Most Stable for simple HTML) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -394,7 +394,7 @@
 <body>
 
 <!-- Hidden Easter Eggs -->
-<div class="version-tag">SYS.V.21.0 // CONNECTED</div>
+<div class="version-tag">SYS.V.22.0 // DEBUG_MODE</div>
 <div id="glitchContainer"></div>
 
 <!-- Top Right Menu -->
@@ -475,7 +475,9 @@
             <input type="text" id="joinRoomCode" class="ttt-input" placeholder="ENTER 4-DIGIT CODE" maxlength="4">
             <button class="ttt-btn" id="btnJoinRoom">JOIN ROOM</button>
         </div>
-        <p style="font-size:10px; opacity:0.6; max-width:300px; text-align:center;">STATUS: <span id="authStatus">DISCONNECTED</span></p>
+        <div style="font-size:10px; max-width:320px; text-align:center; line-height:1.5;">
+            STATUS: <span id="authStatus" style="color:yellow;">INITIALIZING...</span>
+        </div>
     </div>
 
     <!-- View: Lobby/Game -->
@@ -882,10 +884,10 @@
     });
 
     /* --------------------------------------------------------
-       MULTIPLAYER TIC TAC TOE
+       MULTIPLAYER TIC TAC TOE (With Error Reporting)
     -------------------------------------------------------- */
     
-    // --- CONFIGURED FIREBASE ---
+    // --- USER CONFIGURED FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyA7aPTCswKKsOAo9bIa64Td9iqVDkHro-M",
       authDomain: "tic-toe-84c69.firebaseapp.com",
@@ -923,15 +925,24 @@
         document.getElementById('tttMenu').style.display = 'flex';
         document.getElementById('tttGame').style.display = 'none';
         
-        // Auth
-        auth.signInAnonymously().then(userCred => {
-            myUid = userCred.user.uid;
-            document.getElementById('authStatus').innerText = "ONLINE";
-            document.getElementById('authStatus').style.color = "#0f0";
-        }).catch(err => {
-            console.error("Auth Error", err);
-            document.getElementById('authStatus').innerText = "AUTH ERROR";
-        });
+        // Auth Logic with detailed error reporting
+        auth.signInAnonymously()
+            .then(userCred => {
+                myUid = userCred.user.uid;
+                document.getElementById('authStatus').innerText = "ONLINE";
+                document.getElementById('authStatus').style.color = "#0f0";
+            })
+            .catch(err => {
+                console.error("Auth Error Full:", err);
+                let msg = "AUTH ERROR";
+                // Common Errors mapping
+                if (err.code === 'auth/operation-not-allowed') msg = "ENABLE ANON AUTH IN FIREBASE";
+                else if (err.code === 'auth/unauthorized-domain') msg = "DOMAIN NOT AUTHORIZED IN FIREBASE";
+                else if (err.message) msg = err.message;
+                
+                document.getElementById('authStatus').innerText = msg;
+                document.getElementById('authStatus').style.color = "#f00";
+            });
     }
     
     function cleanupTTT() {
@@ -942,7 +953,7 @@
 
     // CREATE ROOM
     document.getElementById('btnCreateRoom').addEventListener('click', async () => {
-        if(!myUid) return;
+        if(!myUid) return alert("Must be ONLINE to play");
         const code = Math.floor(1000 + Math.random() * 9000).toString();
         
         await db.collection('ttt_rooms').doc(code).set({
@@ -960,7 +971,7 @@
 
     // JOIN ROOM
     document.getElementById('btnJoinRoom').addEventListener('click', async () => {
-        if(!myUid) return;
+        if(!myUid) return alert("Must be ONLINE to play");
         const code = document.getElementById('joinRoomCode').value;
         if(code.length !== 4) return alert("Invalid Code");
 
