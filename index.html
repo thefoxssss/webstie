@@ -394,7 +394,7 @@
 <body>
 
 <!-- Hidden Easter Eggs -->
-<div class="version-tag">SYS.V.22.0 // DEBUG_MODE</div>
+<div class="version-tag">SYS.V.23.0 // LOGGING</div>
 <div id="glitchContainer"></div>
 
 <!-- Top Right Menu -->
@@ -953,20 +953,25 @@
 
     // CREATE ROOM
     document.getElementById('btnCreateRoom').addEventListener('click', async () => {
-        if(!myUid) return alert("Must be ONLINE to play");
+        if(!myUid) return alert("Must be ONLINE to play. Check Status.");
         const code = Math.floor(1000 + Math.random() * 9000).toString();
         
-        await db.collection('ttt_rooms').doc(code).set({
-            board: Array(9).fill(null),
-            turn: 'X',
-            playerX: myUid,
-            playerO: null,
-            status: 'waiting',
-            winner: null
-        });
-        
-        mySide = 'X';
-        joinLobby(code);
+        try {
+            await db.collection('ttt_rooms').doc(code).set({
+                board: Array(9).fill(null),
+                turn: 'X',
+                playerX: myUid,
+                playerO: null,
+                status: 'waiting',
+                winner: null
+            });
+            
+            mySide = 'X';
+            joinLobby(code);
+        } catch (e) {
+            console.error(e);
+            alert("Error creating room: " + e.message + "\n\nCheck Firestore Rules (Test Mode required).");
+        }
     });
 
     // JOIN ROOM
@@ -975,20 +980,25 @@
         const code = document.getElementById('joinRoomCode').value;
         if(code.length !== 4) return alert("Invalid Code");
 
-        const docRef = db.collection('ttt_rooms').doc(code);
-        const doc = await docRef.get();
-        
-        if(!doc.exists) return alert("Room not found");
-        const data = doc.data();
-        
-        if(data.playerO && data.playerO !== myUid) return alert("Room full");
-        
-        if(!data.playerO) {
-            await docRef.update({ playerO: myUid, status: 'playing' });
+        try {
+            const docRef = db.collection('ttt_rooms').doc(code);
+            const doc = await docRef.get();
+            
+            if(!doc.exists) return alert("Room not found");
+            const data = doc.data();
+            
+            if(data.playerO && data.playerO !== myUid) return alert("Room full");
+            
+            if(!data.playerO) {
+                await docRef.update({ playerO: myUid, status: 'playing' });
+            }
+            
+            mySide = 'O';
+            joinLobby(code);
+        } catch(e) {
+            console.error(e);
+            alert("Error joining room: " + e.message);
         }
-        
-        mySide = 'O';
-        joinLobby(code);
     });
 
     // LOBBY LOGIC
