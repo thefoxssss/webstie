@@ -1,697 +1,1121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chrome Dino Game</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>GOONER TERMINAL</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<!-- FIREBASE SCRIPTS (Required for Multiplayer) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-        body {
-            font-family: 'Courier New', monospace;
-            background-color: #f7f7f7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
+<style>
+    :root {
+        --bg: #050505;
+        --scanline: rgba(18, 16, 16, 0.5);
+        --accent: #ff0606;
+        --accent-dim: rgba(255, 6, 6, 0.2);
+        --accent-glow: rgba(255, 6, 6, 0.6);
+        --text: #ff3333;
+        --crt-flicker: 0.03;
+    }
 
-        .container {
-            text-align: center;
-            position: relative;
-        }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    html, body {
+        height: 100%;
+        margin: 0;
+        background-color: var(--bg);
+        font-family: "Press Start 2P", monospace;
+        overflow: hidden;
+        color: var(--accent);
+    }
 
-        .game-container {
-            position: relative;
-            margin: 20px auto;
-        }
+    /* CRT Scanline Effect */
+    body::before {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        z-index: 99999;
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+        animation: flicker 0.15s infinite;
+    }
+    
+    /* Vignette */
+    body::after {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.8) 100%);
+        z-index: 99999;
+        pointer-events: none;
+    }
 
-        canvas {
-            background-color: #ffffff;
-            border: 2px solid #535353;
-            display: block;
-        }
+    @keyframes flicker {
+        0% { opacity: 0.95; }
+        50% { opacity: 0.85; }
+        100% { opacity: 0.98; }
+    }
 
-        .game-over {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-        }
+    /* Main Layout */
+    .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 10;
+        padding: 20px;
+        width: 100%;
+    }
 
-        .game-over h2 {
-            color: #535353;
-            margin-bottom: 10px;
-            font-size: 24px;
-        }
+    /* Top Right Menu */
+    .top-menu {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+    }
 
-        .game-over p {
-            color: #535353;
-            margin-bottom: 15px;
-        }
+    .menu-btn {
+        background-color: rgba(0, 0, 0, 0.9);
+        color: var(--accent);
+        padding: 12px 20px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 12px;
+        border: 2px solid var(--accent);
+        cursor: pointer;
+        text-transform: uppercase;
+        box-shadow: 0 0 10px var(--accent-dim);
+        transition: 0.2s;
+    }
 
-        .restart-btn {
-            background-color: #535353;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-        }
+    .menu-btn:hover {
+        background-color: var(--accent-dim);
+        box-shadow: 0 0 15px var(--accent-glow);
+    }
 
-        .restart-btn:hover {
-            background-color: #404040;
-        }
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background-color: #000;
+        min-width: 180px;
+        border: 2px solid var(--accent);
+        border-top: none;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        z-index: 2001;
+    }
 
-        .controls {
-            margin-top: 15px;
-            color: #535353;
-            font-size: 14px;
-        }
+    .dropdown-content.show {
+        display: block;
+    }
 
-        .score-container {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 20px;
-            font-weight: bold;
-            color: #535353;
-        }
+    .dropdown-content button {
+        background: transparent;
+        color: var(--accent);
+        padding: 15px;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        border-bottom: 1px solid rgba(255, 6, 6, 0.2);
+        font-family: "Press Start 2P", monospace;
+        font-size: 10px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
 
-        .high-score-container {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 20px;
-            font-weight: bold;
-            color: #535353;
-        }
+    .dropdown-content button:hover {
+        background-color: var(--accent);
+        color: #000;
+    }
 
-        .instructions {
-            color: #535353;
-            margin-top: 10px;
-            font-size: 14px;
-        }
+    .dropdown-content button:last-child {
+        border-bottom: none;
+    }
 
-        .dino-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
+    /* The Big Button */
+    .gooner-btn {
+        font-size: clamp(24px, 8vw, 72px);
+        color: var(--accent);
+        cursor: pointer;
+        padding: 30px 40px;
+        border: 4px solid var(--accent);
+        background: rgba(0, 0, 0, 0.8);
+        box-shadow: 0 0 15px var(--accent-dim), inset 0 0 20px var(--accent-dim);
+        text-shadow: 0 0 10px var(--accent);
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 40px;
+        text-transform: uppercase;
+        z-index: 20;
+    }
 
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #535353;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    .gooner-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px var(--accent-glow), inset 0 0 30px var(--accent-glow);
+        background: var(--accent);
+        color: #000;
+        text-shadow: none;
+    }
+    
+    .gooner-btn:active {
+        transform: scale(0.95);
+    }
 
-        .offline-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            display: none;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-            z-index: 10;
-        }
+    .subtitle {
+        color: var(--accent);
+        font-size: 10px;
+        opacity: 0.7;
+        margin-top: -20px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-align: center;
+    }
 
-        .offline-message h2 {
-            color: #535353;
-            margin-bottom: 15px;
-        }
+    /* Overlays (General) */
+    .overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        overflow: hidden;
+    }
+    
+    .overlay.active {
+        display: flex;
+    }
 
-        .offline-message p {
-            color: #535353;
-            margin-bottom: 20px;
-            max-width: 300px;
-            line-height: 1.5;
-        }
+    .overlay h1 {
+        font-size: clamp(20px, 5vw, 40px);
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 0px #4a0000;
+        text-align: center;
+    }
 
-        .start-btn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-        }
+    .close-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: transparent;
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        padding: 8px 12px;
+        font-family: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 1001;
+        transition: 0.2s;
+    }
+    
+    .close-btn:hover {
+        background: var(--accent);
+        color: #000;
+    }
 
-        .start-btn:hover {
-            background-color: #3367d6;
-        }
-    </style>
+    /* Game Canvas Styles */
+    canvas {
+        border: 4px solid var(--accent);
+        background: #000; /* Deep black for contrast */
+        box-shadow: 0 0 20px rgba(255, 6, 6, 0.2);
+        max-width: 95vw;
+        max-height: 70vh;
+        image-rendering: pixelated;
+    }
+
+    /* Mobile Controls */
+    .touch-controls {
+        display: none; /* hidden by default */
+        margin-top: 20px;
+        gap: 10px;
+        user-select: none;
+    }
+    
+    .touch-controls.active {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-gap: 10px;
+    }
+
+    .touch-btn {
+        width: 50px;
+        height: 50px;
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: rgba(255, 6, 6, 0.1);
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    
+    .touch-btn:active {
+        background: var(--accent);
+        color: #000;
+    }
+
+    .mobile-hint {
+        display: none;
+        font-size: 10px;
+        color: #ff8888;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .mobile-hint.active { display: block; }
+
+    /* Secret Visuals */
+    .glitch-text {
+        position: fixed;
+        font-size: 10px;
+        opacity: 0.4;
+        pointer-events: none;
+    }
+    
+    .version-tag {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        font-size: 10px;
+        color: rgba(255, 6, 6, 0.4);
+        z-index: 1002;
+    }
+
+    /* --- TIC TAC TOE STYLES --- */
+    .ttt-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .ttt-menu-box {
+        background: rgba(20,0,0,0.8);
+        border: 2px solid var(--accent);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+        min-width: 300px;
+    }
+
+    .ttt-input {
+        background: transparent;
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        padding: 10px;
+        font-family: inherit;
+        text-align: center;
+        text-transform: uppercase;
+        font-size: 16px;
+    }
+
+    .ttt-btn {
+        background: var(--accent);
+        color: black;
+        border: none;
+        padding: 12px;
+        font-family: inherit;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .ttt-btn:hover {
+        opacity: 0.8;
+    }
+
+    .ttt-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+        background: var(--accent);
+        border: 5px solid var(--accent);
+        margin-top: 10px;
+    }
+
+    .ttt-cell {
+        width: 80px;
+        height: 80px;
+        background: black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .ttt-cell:active {
+        background: #110000;
+    }
+
+    .ttt-status {
+        font-size: 12px;
+        margin-bottom: 10px;
+        text-align: center;
+        min-height: 20px;
+    }
+
+    .ttt-room-code {
+        font-size: 24px;
+        letter-spacing: 5px;
+        margin: 10px 0;
+        color: #fff;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #500; }
+    ::-webkit-scrollbar-thumb:hover { background: #f00; }
+
+    @media (max-width: 768px) {
+        h1 { font-size: 24px; }
+    }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">
-            <svg class="dino-icon" viewBox="0 0 24 24" fill="#535353">
-                <path d="M6,18c0,1.1 0.9,2 2,2h8c1.1,0 2,-0.9 2,-2v-2h-12v2zM13,9h-2v5h2v-5zM10,4c-0.6,0 -1,0.4 -1,1v1h6v-1c0,-0.6 -0.4,-1 -1,-1h-4z"/>
-            </svg>
-            Dino Game
-        </div>
-        
-        <div class="offline-message" id="offlineMessage">
-            <h2>No Internet</h2>
-            <p>Try:</p>
-            <p>• Checking the network cables, modem, and router</p>
-            <p>• Reconnecting to Wi-Fi</p>
-            <p>• Running Windows Network Diagnostics</p>
-            <p>In the meantime, play this dinosaur game!</p>
-            <button class="start-btn" id="startBtn">PLAY OFFLINE GAME</button>
-        </div>
-        
-        <div class="game-container">
-            <canvas id="gameCanvas" width="800" height="200"></canvas>
-            <div class="score-container">
-                Score: <span id="score">00000</span>
-            </div>
-            <div class="high-score-container">
-                Hi: <span id="highScore">00000</span>
-            </div>
-            <div class="game-over" id="gameOver">
-                <h2>GAME OVER</h2>
-                <p>Your score: <span id="finalScore">00000</span></p>
-                <p>High score: <span id="finalHighScore">00000</span></p>
-                <button class="restart-btn" id="restartBtn">RESTART</button>
-            </div>
-        </div>
-        
-        <div class="controls">
-            Press SPACE or UP ARROW to jump, DOWN ARROW to duck
-        </div>
-        <div class="instructions">
-            The dinosaur runs automatically. Avoid obstacles!
-        </div>
+
+<!-- Hidden Easter Eggs -->
+<div class="version-tag">SYS.V.21.0 // CONNECTED</div>
+<div id="glitchContainer"></div>
+
+<!-- Top Right Menu -->
+<div class="top-menu">
+    <button class="menu-btn" id="menuToggle">GAMES ▼</button>
+    <div class="dropdown-content" id="menuDropdown">
+        <button data-game-trigger="pong">PONG</button>
+        <button data-game-trigger="snake">SNAKE</button>
+        <button data-game-trigger="runner">RUNNER</button>
+        <button data-game-trigger="ttt" style="border-top: 2px solid var(--accent);">TIC TAC TOE (ONLINE)</button>
+    </div>
+</div>
+
+<!-- Main UI -->
+<div class="wrap">
+    <div class="gooner-btn" id="mainBtn">GOONER</div>
+    <div class="subtitle">SELECT GAME FROM MENU ↗</div>
+</div>
+
+<!-- ==================== OVERLAYS ==================== -->
+
+<!-- 1. PONG -->
+<div class="overlay" id="overlayPong">
+    <button class="close-btn" data-close="overlayPong">ABORT</button>
+    <h1>PONG</h1>
+    <div style="margin-bottom:10px; font-size:12px;" id="pongScore">0 : 0</div>
+    <canvas id="pongCanvas" width="800" height="600"></canvas>
+    
+    <!-- Difficulty -->
+    <div style="margin-top:10px;">
+        <button class="close-btn" style="position:static; display:inline-block;" onclick="setPongDiff('easy')">EASY</button>
+        <button class="close-btn" style="position:static; display:inline-block;" onclick="setPongDiff('hard')">HARD</button>
     </div>
 
-    <script>
-        // Game variables
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const highScoreElement = document.getElementById('highScore');
-        const gameOverElement = document.getElementById('gameOver');
-        const finalScoreElement = document.getElementById('finalScore');
-        const finalHighScoreElement = document.getElementById('finalHighScore');
-        const restartBtn = document.getElementById('restartBtn');
-        const startBtn = document.getElementById('startBtn');
-        const offlineMessage = document.getElementById('offlineMessage');
+    <div class="mobile-hint" id="pongHint">TAP ARROWS TO MOVE</div>
+    <div class="touch-controls" id="pongControls">
+        <div></div>
+        <div class="touch-btn" data-key="up">▲</div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div class="touch-btn" data-key="down">▼</div>
+        <div></div>
+    </div>
+</div>
 
-        // Game constants
-        const GRAVITY = 0.7;
-        const JUMP_FORCE = -15;
-        const DINO_WIDTH = 40;
-        const DINO_HEIGHT = 43;
-        const GROUND_HEIGHT = 10;
-        const GROUND_Y = canvas.height - GROUND_HEIGHT;
-        const GAME_SPEED_INITIAL = 5;
-        const CACTUS_WIDTH_MIN = 10;
-        const CACTUS_WIDTH_MAX = 25;
-        const CACTUS_HEIGHT_MIN = 20;
-        const CACTUS_HEIGHT_MAX = 40;
-        const BIRD_WIDTH = 40;
-        const BIRD_HEIGHT = 25;
+<!-- 2. SNAKE -->
+<div class="overlay" id="overlaySnake">
+    <button class="close-btn" data-close="overlaySnake">ABORT</button>
+    <h1>SNAKE</h1>
+    <div style="margin-bottom:10px; font-size:12px;">SCORE: <span id="snakeScoreVal">0</span></div>
+    <canvas id="snakeCanvas" width="600" height="400"></canvas>
+    <div class="mobile-hint active" id="snakeHint">USE ARROW KEYS OR WASD</div>
+</div>
 
-        // Game state
-        let game = {
-            running: false,
-            speed: GAME_SPEED_INITIAL,
-            score: 0,
-            highScore: localStorage.getItem('dinoHighScore') || 0,
-            frames: 0,
-            gameOver: false
-        };
+<!-- 3. RUNNER (GOODBOY) -->
+<div class="overlay" id="overlayRunner">
+    <button class="close-btn" data-close="overlayRunner">ABORT</button>
+    <h1>RUNNER</h1>
+    <div style="margin-bottom:10px; font-size:12px;" id="runnerScoreBoard">SCORE: 0</div>
+    <canvas id="runnerCanvas" width="800" height="400"></canvas>
+    <div class="mobile-hint active" style="margin-top:10px;">TAP TO JUMP / SWIPE TO SWITCH LANES</div>
+</div>
 
-        // Dino object
-        const dino = {
-            x: 50,
-            y: GROUND_Y - DINO_HEIGHT,
-            width: DINO_WIDTH,
-            height: DINO_HEIGHT,
-            velocityY: 0,
-            jumping: false,
-            ducking: false,
-            normalHeight: DINO_HEIGHT,
-            duckHeight: DINO_HEIGHT * 0.6
-        };
+<!-- 4. TIC TAC TOE (MULTIPLAYER) -->
+<div class="overlay" id="overlayTTT">
+    <button class="close-btn" data-close="overlayTTT">DISCONNECT</button>
+    <h1>TIC TAC TOE</h1>
+    
+    <!-- View: Menu -->
+    <div id="tttMenu" class="ttt-container">
+        <div class="ttt-menu-box">
+            <p>MULTIPLAYER LOBBY</p>
+            <button class="ttt-btn" id="btnCreateRoom">CREATE ROOM</button>
+            <p>- OR -</p>
+            <input type="text" id="joinRoomCode" class="ttt-input" placeholder="ENTER 4-DIGIT CODE" maxlength="4">
+            <button class="ttt-btn" id="btnJoinRoom">JOIN ROOM</button>
+        </div>
+        <p style="font-size:10px; opacity:0.6; max-width:300px; text-align:center;">STATUS: <span id="authStatus">DISCONNECTED</span></p>
+    </div>
 
-        // Ground object
-        const ground = {
-            x: 0,
-            y: GROUND_Y,
-            width: canvas.width,
-            height: GROUND_HEIGHT
-        };
+    <!-- View: Lobby/Game -->
+    <div id="tttGame" class="ttt-container" style="display:none;">
+        <div class="ttt-status" id="tttStatus">WAITING FOR OPPONENT...</div>
+        <div class="ttt-room-code" id="displayRoomCode">????</div>
+        
+        <div class="ttt-grid" id="tttGrid">
+            <!-- Cells generated by JS -->
+            <div class="ttt-cell" data-idx="0"></div>
+            <div class="ttt-cell" data-idx="1"></div>
+            <div class="ttt-cell" data-idx="2"></div>
+            <div class="ttt-cell" data-idx="3"></div>
+            <div class="ttt-cell" data-idx="4"></div>
+            <div class="ttt-cell" data-idx="5"></div>
+            <div class="ttt-cell" data-idx="6"></div>
+            <div class="ttt-cell" data-idx="7"></div>
+            <div class="ttt-cell" data-idx="8"></div>
+        </div>
+        
+        <button class="ttt-btn" id="tttReset" style="display:none; margin-top:20px;">PLAY AGAIN</button>
+    </div>
+</div>
 
-        // Arrays for obstacles
-        let cacti = [];
-        let birds = [];
-        let clouds = [];
 
-        // Initialize clouds
-        for (let i = 0; i < 5; i++) {
-            clouds.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * 60 + 20,
-                width: Math.random() * 40 + 20,
-                height: Math.random() * 10 + 5,
-                speed: Math.random() * 0.5 + 0.5
-            });
+<!-- Generic Game Over Modal -->
+<div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:2000;">
+    <h1 style="color:red; font-size:40px;">GAME OVER</h1>
+    <p id="gameOverText" style="margin-bottom:20px; color:#fff;">SCORE: 0</p>
+    <button class="gooner-btn" style="font-size:20px; padding:15px;" id="btnRestart">RESTART</button>
+    <button class="close-btn" style="position:static; margin-top:20px;" id="btnExitGame">EXIT</button>
+</div>
+
+<script>
+    /* --------------------------------------------------------
+       CORE SYSTEM & VISUALS
+    -------------------------------------------------------- */
+    const mainBtn = document.getElementById('mainBtn');
+    let currentGame = null; 
+
+    // Sound Synth
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(freq=440, type='square', dur=0.1) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+    }
+
+    /* --- MENU LOGIC --- */
+    const menuToggle = document.getElementById('menuToggle');
+    const menuDropdown = document.getElementById('menuDropdown');
+
+    menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.toggle('show');
+        beep(600, 'sine', 0.1);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) {
+            menuDropdown.classList.remove('show');
+        }
+    });
+
+    document.querySelectorAll('[data-game-trigger]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const game = btn.dataset.gameTrigger;
+            menuDropdown.classList.remove('show'); 
+            if (game === 'pong') launchOverlay('overlayPong', initPong);
+            else if (game === 'snake') launchOverlay('overlaySnake', initSnake);
+            else if (game === 'runner') launchOverlay('overlayRunner', initRunner);
+            else if (game === 'ttt') launchOverlay('overlayTTT', initTTT);
+        });
+    });
+
+    // Button Click Effect
+    mainBtn.addEventListener('click', () => {
+        beep(100, 'sawtooth', 0.3);
+        const stamps = ['GOON', 'CODE', 'HACK', 'SYS'];
+        const el = document.createElement('div');
+        el.className = 'glitch-text';
+        el.textContent = stamps[Math.floor(Math.random()*stamps.length)];
+        el.style.left = Math.random() * window.innerWidth + 'px';
+        el.style.top = Math.random() * window.innerHeight + 'px';
+        el.style.color = '#ff0000';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2000);
+        document.body.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
+        setTimeout(() => document.body.style.transform = 'none', 50);
+    });
+
+    // Close Handler
+    document.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.close;
+            document.getElementById(id).classList.remove('active');
+            stopAllGames();
+            beep(200, 'square', 0.1);
+        });
+    });
+
+    function launchOverlay(id, initFunc) {
+        stopAllGames();
+        document.getElementById(id).classList.add('active');
+        if (initFunc) initFunc();
+    }
+
+    function stopAllGames() {
+        stopPong();
+        stopSnake();
+        stopRunner();
+        cleanupTTT();
+        currentGame = null;
+    }
+
+    /* --------------------------------------------------------
+       PONG
+    -------------------------------------------------------- */
+    let pongAnim, pongCtx, pongCanvas;
+    let ball = {x:400, y:300, dx:5, dy:5, r:8};
+    let p1 = {y:250, h:80}, p2 = {y:250, h:80};
+    let pScore=0, aiScore=0;
+    let pongDiff = 0.08;
+
+    function initPong() {
+        currentGame = 'pong';
+        pongCanvas = document.getElementById('pongCanvas');
+        pongCtx = pongCanvas.getContext('2d');
+        pScore = 0; aiScore = 0;
+        resetBall();
+        loopPong();
+    }
+
+    function setPongDiff(level) {
+        pongDiff = level === 'hard' ? 0.15 : 0.08;
+        resetBall();
+    }
+
+    function stopPong() { cancelAnimationFrame(pongAnim); }
+
+    function resetBall() {
+        ball.x = pongCanvas.width/2;
+        ball.y = pongCanvas.height/2;
+        ball.dx = (Math.random() > 0.5 ? 6 : -6);
+        ball.dy = (Math.random() * 8 - 4);
+    }
+
+    function loopPong() {
+        if (currentGame !== 'pong') return;
+        pongCtx.fillStyle = 'rgba(0,0,0,0.2)';
+        pongCtx.fillRect(0, 0, pongCanvas.width, pongCanvas.height);
+        pongCtx.fillStyle = '#ff0606';
+        pongCtx.fillRect(20, p1.y, 10, p1.h);
+        pongCtx.fillRect(pongCanvas.width-30, p2.y, 10, p2.h);
+        pongCtx.beginPath();
+        pongCtx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+        pongCtx.fill();
+
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        if(ball.y < 0 || ball.y > pongCanvas.height) { ball.dy *= -1; beep(300); }
+
+        if(ball.x < 30 && ball.y > p1.y && ball.y < p1.y + p1.h) {
+            ball.dx = Math.abs(ball.dx) + 0.5;
+            beep(600);
+        }
+        if(ball.x > pongCanvas.width-30 && ball.y > p2.y && ball.y < p2.y + p2.h) {
+            ball.dx = -(Math.abs(ball.dx) + 0.5);
+            beep(600);
         }
 
-        // Draw functions
-        function drawDino() {
-            ctx.fillStyle = '#535353';
+        if(ball.x < 0) { aiScore++; resetBall(); beep(100, 'sawtooth', 0.5); }
+        if(ball.x > pongCanvas.width) { pScore++; resetBall(); beep(800, 'square', 0.2); }
+
+        document.getElementById('pongScore').innerText = `${pScore} : ${aiScore}`;
+
+        let target = ball.y - p2.h/2;
+        p2.y += (target - p2.y) * pongDiff;
+        pongAnim = requestAnimationFrame(loopPong);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(currentGame !== 'pong') return;
+        if(e.key === 'ArrowUp' || e.key === 'w') p1.y -= 25;
+        if(e.key === 'ArrowDown' || e.key === 's') p1.y += 25;
+        p1.y = Math.max(0, Math.min(pongCanvas.height-p1.h, p1.y));
+    });
+
+    document.querySelectorAll('#pongControls .touch-btn').forEach(b => {
+        b.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if(currentGame !== 'pong') return;
+            const key = b.dataset.key;
+            if(key === 'up') p1.y -= 40;
+            if(key === 'down') p1.y += 40;
+        });
+    });
+
+    /* --------------------------------------------------------
+       SNAKE
+    -------------------------------------------------------- */
+    let snakeAnim, snakeCtx, snakeCanvas;
+    let snake = [], food = {}, sDir = 'RIGHT';
+    let lastProcessedDir = 'RIGHT'; 
+    let sScore = 0;
+    
+    function initSnake() {
+        currentGame = 'snake';
+        snakeCanvas = document.getElementById('snakeCanvas');
+        snakeCtx = snakeCanvas.getContext('2d');
+        snake = [{x:10, y:10}, {x:9, y:10}, {x:8, y:10}];
+        sDir = 'RIGHT';
+        lastProcessedDir = 'RIGHT';
+        sScore = 0;
+        placeFood();
+        loopSnake();
+    }
+    
+    function stopSnake() { clearTimeout(snakeAnim); }
+
+    function placeFood() {
+        food = {
+            x: Math.floor(Math.random() * (snakeCanvas.width/20)),
+            y: Math.floor(Math.random() * (snakeCanvas.height/20))
+        };
+    }
+
+    function loopSnake() {
+        if (currentGame !== 'snake') return;
+
+        const head = {x: snake[0].x, y: snake[0].y};
+        if(sDir === 'RIGHT') head.x++;
+        if(sDir === 'LEFT') head.x--;
+        if(sDir === 'UP') head.y--;
+        if(sDir === 'DOWN') head.y++;
+
+        lastProcessedDir = sDir; 
+
+        if(head.x < 0 || head.x >= snakeCanvas.width/20 || head.y < 0 || head.y >= snakeCanvas.height/20 || snake.some(s => s.x === head.x && s.y === head.y)) {
+            triggerGameOver('snake', sScore);
+            return;
+        }
+
+        snake.unshift(head);
+
+        if(head.x === food.x && head.y === food.y) {
+            sScore += 10;
+            document.getElementById('snakeScoreVal').innerText = sScore;
+            placeFood();
+            beep(600, 'square', 0.05);
+        } else {
+            snake.pop();
+        }
+
+        snakeCtx.fillStyle = '#000';
+        snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+        snakeCtx.fillStyle = '#ff0606';
+        snake.forEach(s => { snakeCtx.fillRect(s.x*20, s.y*20, 18, 18); });
+        snakeCtx.fillStyle = '#fff';
+        snakeCtx.fillRect(food.x*20, food.y*20, 18, 18);
+
+        snakeAnim = setTimeout(loopSnake, 100);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(currentGame !== 'snake') return;
+        const k = e.key.toLowerCase();
+        if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+
+        if((k === 'arrowup' || k === 'w') && lastProcessedDir !== 'DOWN') sDir = 'UP';
+        if((k === 'arrowdown' || k === 's') && lastProcessedDir !== 'UP') sDir = 'DOWN';
+        if((k === 'arrowleft' || k === 'a') && lastProcessedDir !== 'RIGHT') sDir = 'LEFT';
+        if((k === 'arrowright' || k === 'd') && lastProcessedDir !== 'LEFT') sDir = 'RIGHT';
+    });
+
+    /* --------------------------------------------------------
+       RUNNER (GOODBOY)
+    -------------------------------------------------------- */
+    let runAnim, runCtx, runCanvas;
+    let runner = { lane: 1, y: 0, jumping: false, jumpH: 0 };
+    let obstacles = [];
+    let rScore = 0;
+    let runFrame = 0;
+    let touchStartX = 0;
+
+    function initRunner() {
+        currentGame = 'runner';
+        runCanvas = document.getElementById('runnerCanvas');
+        runCtx = runCanvas.getContext('2d');
+        runner = { lane: 1, y: 0, jumping: false, jumpH: 0 };
+        obstacles = [];
+        rScore = 0;
+        loopRunner();
+    }
+    
+    function stopRunner() { cancelAnimationFrame(runAnim); }
+
+    function loopRunner() {
+        if(currentGame !== 'runner') return;
+        runFrame++;
+
+        if(runFrame % 100 === 0) {
+            obstacles.push({lane: Math.floor(Math.random()*3), z: 100});
+        }
+
+        runCtx.fillStyle = '#0a0000';
+        runCtx.fillRect(0,0, runCanvas.width, runCanvas.height);
+        
+        runCtx.strokeStyle = '#300';
+        runCtx.lineWidth = 2;
+        const cx = runCanvas.width/2;
+        const cy = runCanvas.height/2;
+        
+        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(0, runCanvas.height); runCtx.stroke();
+        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(runCanvas.width, runCanvas.height); runCtx.stroke();
+        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(runCanvas.width*0.33, runCanvas.height); runCtx.stroke();
+        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(runCanvas.width*0.66, runCanvas.height); runCtx.stroke();
+
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let o = obstacles[i];
+            o.z -= 1.5;
+            if(o.z <= 0) {
+                obstacles.splice(i, 1);
+                rScore++;
+                document.getElementById('runnerScoreBoard').innerText = 'SCORE: ' + rScore;
+                beep(800, 'sine', 0.05);
+            }
             
-            if (dino.ducking) {
-                // Draw ducking dino
-                ctx.fillRect(dino.x, dino.y + (dino.normalHeight - dino.duckHeight), dino.width, dino.duckHeight);
+            const scale = 100 / (o.z + 10);
+            const ow = 50 * scale;
+            const oh = 50 * scale;
+            const ox = cx + (o.lane - 1) * (runCanvas.width*0.5 * scale) - ow/2;
+            const oy = runCanvas.height - (runCanvas.height*0.5 * scale) - oh;
+
+            runCtx.fillStyle = '#ff0000';
+            runCtx.fillRect(ox, oy, ow, oh);
+            runCtx.strokeStyle = '#fff';
+            runCtx.strokeRect(ox, oy, ow, oh);
+
+            if(o.z < 10 && o.z > 0 && o.lane === runner.lane && runner.jumpH < 10) {
+                triggerGameOver('runner', rScore);
+            }
+        }
+
+        if(runner.jumping) {
+            runner.jumpH += 2;
+            if(runner.jumpH > 40) runner.jumping = false;
+        } else if(runner.jumpH > 0) {
+            runner.jumpH -= 2;
+        }
+
+        const pScale = 1;
+        const pw = 60; 
+        const ph = 80;
+        const px = cx + (runner.lane - 1) * 200 - pw/2;
+        const py = runCanvas.height - 100 - runner.jumpH - ph;
+
+        runCtx.fillStyle = '#00ff00';
+        runCtx.fillRect(px, py, pw, ph);
+        
+        if(runFrame % 10 < 5) {
+             runCtx.fillRect(px-10, py+20, 10, 40); // left arm
+             runCtx.fillRect(px+pw, py+20, 10, 40); // right arm
+        }
+
+        runAnim = requestAnimationFrame(loopRunner);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(currentGame !== 'runner') return;
+        if((e.key === 'ArrowLeft' || e.key === 'a') && runner.lane > 0) runner.lane--;
+        if((e.key === 'ArrowRight' || e.key === 'd') && runner.lane < 2) runner.lane++;
+        if((e.key === ' ' || e.key === 'w' || e.key === 'ArrowUp') && runner.jumpH === 0) runner.jumping = true;
+    });
+
+    // RUNNER TOUCH CONTROLS
+    const rCanvas = document.getElementById('runnerCanvas');
+    rCanvas.addEventListener('touchstart', (e) => {
+        if(currentGame !== 'runner') return;
+        e.preventDefault();
+        touchStartX = e.touches[0].clientX;
+        if(runner.jumpH === 0) runner.jumping = true; 
+    });
+
+    rCanvas.addEventListener('touchend', (e) => {
+        if(currentGame !== 'runner') return;
+        e.preventDefault();
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = touchEndX - touchStartX;
+
+        if (Math.abs(diff) > 30) { 
+            if (diff > 0 && runner.lane < 2) runner.lane++; 
+            else if (diff < 0 && runner.lane > 0) runner.lane--; 
+        }
+    });
+
+    /* --------------------------------------------------------
+       MULTIPLAYER TIC TAC TOE
+    -------------------------------------------------------- */
+    
+    // --- CONFIGURED FIREBASE ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7aPTCswKKsOAo9bIa64Td9iqVDkHro-M",
+      authDomain: "tic-toe-84c69.firebaseapp.com",
+      projectId: "tic-toe-84c69",
+      storageBucket: "tic-toe-84c69.firebasestorage.app",
+      messagingSenderId: "494287629910",
+      appId: "1:494287629910:web:5415f478e9e0a06b69d5f7",
+      measurementId: "G-WWVVCLKN3Z"
+    };
+    
+    // Firebase Init
+    let db, auth;
+    let myUid = null;
+    let currentRoom = null;
+    let roomUnsub = null;
+    let mySide = null; // 'X' or 'O'
+
+    // Attempt init
+    try {
+        if(firebaseConfig.apiKey) {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+        }
+    } catch(e) { console.error("Firebase Init Error:", e); }
+
+    function initTTT() {
+        currentGame = 'ttt';
+        if(!db) {
+            alert("Firebase not configured! Check code.");
+            return;
+        }
+        
+        // Show Menu, Hide Game
+        document.getElementById('tttMenu').style.display = 'flex';
+        document.getElementById('tttGame').style.display = 'none';
+        
+        // Auth
+        auth.signInAnonymously().then(userCred => {
+            myUid = userCred.user.uid;
+            document.getElementById('authStatus').innerText = "ONLINE";
+            document.getElementById('authStatus').style.color = "#0f0";
+        }).catch(err => {
+            console.error("Auth Error", err);
+            document.getElementById('authStatus').innerText = "AUTH ERROR";
+        });
+    }
+    
+    function cleanupTTT() {
+        if(roomUnsub) roomUnsub();
+        currentRoom = null;
+        mySide = null;
+    }
+
+    // CREATE ROOM
+    document.getElementById('btnCreateRoom').addEventListener('click', async () => {
+        if(!myUid) return;
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        
+        await db.collection('ttt_rooms').doc(code).set({
+            board: Array(9).fill(null),
+            turn: 'X',
+            playerX: myUid,
+            playerO: null,
+            status: 'waiting',
+            winner: null
+        });
+        
+        mySide = 'X';
+        joinLobby(code);
+    });
+
+    // JOIN ROOM
+    document.getElementById('btnJoinRoom').addEventListener('click', async () => {
+        if(!myUid) return;
+        const code = document.getElementById('joinRoomCode').value;
+        if(code.length !== 4) return alert("Invalid Code");
+
+        const docRef = db.collection('ttt_rooms').doc(code);
+        const doc = await docRef.get();
+        
+        if(!doc.exists) return alert("Room not found");
+        const data = doc.data();
+        
+        if(data.playerO && data.playerO !== myUid) return alert("Room full");
+        
+        if(!data.playerO) {
+            await docRef.update({ playerO: myUid, status: 'playing' });
+        }
+        
+        mySide = 'O';
+        joinLobby(code);
+    });
+
+    // LOBBY LOGIC
+    function joinLobby(code) {
+        currentRoom = code;
+        document.getElementById('tttMenu').style.display = 'none';
+        document.getElementById('tttGame').style.display = 'flex';
+        document.getElementById('displayRoomCode').innerText = "CODE: " + code;
+        document.getElementById('tttStatus').innerText = "WAITING...";
+
+        // Realtime Listener
+        roomUnsub = db.collection('ttt_rooms').doc(code).onSnapshot(snap => {
+            if(!snap.exists) return;
+            const data = snap.data();
+            renderTTT(data);
+        });
+    }
+
+    function renderTTT(data) {
+        const grid = document.getElementById('tttGrid');
+        const cells = grid.children;
+        const status = document.getElementById('tttStatus');
+        
+        // Update Board
+        data.board.forEach((val, i) => {
+            cells[i].innerText = val || '';
+            cells[i].style.color = val === 'X' ? '#ff0606' : '#ffffff';
+        });
+
+        // Update Status
+        if(data.status === 'waiting') {
+            status.innerText = "WAITING FOR OPPONENT... (SHARE CODE)";
+        } else if(data.status === 'playing') {
+            if(data.turn === mySide) status.innerText = "YOUR TURN (" + mySide + ")";
+            else status.innerText = "OPPONENT'S TURN";
+        } else if(data.status === 'finished') {
+            if(data.winner === 'draw') status.innerText = "DRAW GAME!";
+            else if(data.winner === mySide) status.innerText = "YOU WIN!";
+            else status.innerText = "YOU LOSE.";
+            document.getElementById('tttReset').style.display = 'block';
+        }
+    }
+
+    // CLICK CELL
+    document.getElementById('tttGrid').addEventListener('click', async (e) => {
+        if(!e.target.classList.contains('ttt-cell')) return;
+        if(!currentRoom || !mySide) return;
+        
+        const idx = parseInt(e.target.dataset.idx);
+        const docRef = db.collection('ttt_rooms').doc(currentRoom);
+        
+        // Transaction to prevent race conditions
+        try {
+            await db.runTransaction(async (t) => {
+                const doc = await t.get(docRef);
+                const data = doc.data();
+
+                if(data.status !== 'playing') throw "Game not active";
+                if(data.turn !== mySide) throw "Not your turn";
+                if(data.board[idx] !== null) throw "Cell taken";
+
+                const newBoard = [...data.board];
+                newBoard[idx] = mySide;
+
+                // Check Win
+                let winner = null;
+                const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
                 
-                // Draw tail
-                ctx.fillRect(dino.x + dino.width, dino.y + (dino.normalHeight - dino.duckHeight) + 10, 10, 5);
-                
-                // Draw legs (ducking position)
-                ctx.fillRect(dino.x + 5, dino.y + dino.normalHeight - 5, 8, 5);
-                ctx.fillRect(dino.x + 20, dino.y + dino.normalHeight - 5, 8, 5);
-                
-                // Draw eye
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(dino.x + 25, dino.y + (dino.normalHeight - dino.duckHeight) + 10, 8, 8);
-                ctx.fillStyle = '#535353';
-                ctx.fillRect(dino.x + 28, dino.y + (dino.normalHeight - dino.duckHeight) + 13, 3, 3);
-            } else {
-                // Draw standing/running dino
-                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
-                
-                // Draw tail
-                if (game.frames % 20 < 10) {
-                    ctx.fillRect(dino.x + dino.width, dino.y + 20, 10, 5);
-                } else {
-                    ctx.fillRect(dino.x + dino.width, dino.y + 25, 10, 5);
-                }
-                
-                // Draw legs (running animation)
-                if (game.running && !dino.jumping) {
-                    if (game.frames % 20 < 10) {
-                        ctx.fillRect(dino.x + 5, dino.y + dino.height, 8, -10);
-                        ctx.fillRect(dino.x + 20, dino.y + dino.height, 8, -5);
-                    } else {
-                        ctx.fillRect(dino.x + 5, dino.y + dino.height, 8, -5);
-                        ctx.fillRect(dino.x + 20, dino.y + dino.height, 8, -10);
+                wins.forEach(c => {
+                    if(newBoard[c[0]] && newBoard[c[0]] === newBoard[c[1]] && newBoard[c[0]] === newBoard[c[2]]) {
+                        winner = newBoard[c[0]];
                     }
-                } else {
-                    // Draw standing legs
-                    ctx.fillRect(dino.x + 5, dino.y + dino.height, 8, -5);
-                    ctx.fillRect(dino.x + 20, dino.y + dino.height, 8, -5);
-                }
-                
-                // Draw eye
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(dino.x + 25, dino.y + 10, 8, 8);
-                ctx.fillStyle = '#535353';
-                ctx.fillRect(dino.x + 28, dino.y + 13, 3, 3);
-            }
-        }
+                });
 
-        function drawGround() {
-            ctx.fillStyle = '#535353';
-            ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
-            
-            // Draw ground pattern
-            ctx.fillStyle = '#ffffff';
-            for (let i = 0; i < canvas.width; i += 40) {
-                if ((i + game.frames * game.speed) % 80 < 40) {
-                    ctx.fillRect((i + game.frames * game.speed) % canvas.width, ground.y, 20, 2);
-                }
-            }
-        }
+                let status = 'playing';
+                let nextTurn = mySide === 'X' ? 'O' : 'X';
 
-        function drawCacti() {
-            ctx.fillStyle = '#535353';
-            cacti.forEach(cactus => {
-                ctx.fillRect(cactus.x, cactus.y, cactus.width, cactus.height);
-                
-                // Add some cactus details
-                if (cactus.height > 25) {
-                    ctx.fillRect(cactus.x - 5, cactus.y + 15, 5, 10);
-                    ctx.fillRect(cactus.x + cactus.width, cactus.y + 15, 5, 10);
+                if(winner) {
+                    status = 'finished';
+                } else if(!newBoard.includes(null)) {
+                    status = 'finished';
+                    winner = 'draw';
                 }
+
+                t.update(docRef, {
+                    board: newBoard,
+                    turn: nextTurn,
+                    status: status,
+                    winner: winner
+                });
             });
+            beep(600, 'square', 0.1);
+        } catch(err) {
+            console.log("Move failed:", err);
+            beep(200, 'sawtooth', 0.2); // Error beep
         }
+    });
 
-        function drawBirds() {
-            ctx.fillStyle = '#535353';
-            birds.forEach(bird => {
-                // Draw bird body
-                ctx.fillRect(bird.x, bird.y, BIRD_WIDTH, BIRD_HEIGHT);
-                
-                // Draw bird wings (flapping animation)
-                if (game.frames % 10 < 5) {
-                    ctx.fillRect(bird.x - 5, bird.y + 5, 10, 8);
-                    ctx.fillRect(bird.x + BIRD_WIDTH - 5, bird.y + 5, 10, 8);
-                } else {
-                    ctx.fillRect(bird.x - 5, bird.y + 10, 10, 8);
-                    ctx.fillRect(bird.x + BIRD_WIDTH - 5, bird.y + 10, 10, 8);
-                }
-                
-                // Draw bird beak
-                ctx.fillRect(bird.x + BIRD_WIDTH, bird.y + 10, 10, 5);
-            });
-        }
-
-        function drawClouds() {
-            ctx.fillStyle = '#f0f0f0';
-            clouds.forEach(cloud => {
-                ctx.fillRect(cloud.x, cloud.y, cloud.width, cloud.height);
-                ctx.fillRect(cloud.x - 10, cloud.y + 3, cloud.width + 20, cloud.height - 6);
-            });
-        }
-
-        function drawScore() {
-            scoreElement.textContent = String(game.score).padStart(5, '0');
-            highScoreElement.textContent = String(game.highScore).padStart(5, '0');
-        }
-
-        // Game logic functions
-        function updateDino() {
-            // Apply gravity
-            dino.velocityY += GRAVITY;
-            dino.y += dino.velocityY;
-            
-            // Check if dino hits the ground
-            if (dino.y > GROUND_Y - dino.height) {
-                dino.y = GROUND_Y - dino.height;
-                dino.velocityY = 0;
-                dino.jumping = false;
-            }
-            
-            // Update dino height based on ducking state
-            if (dino.ducking) {
-                dino.height = dino.duckHeight;
-            } else {
-                dino.height = dino.normalHeight;
-            }
-        }
-
-        function updateObstacles() {
-            // Update cacti
-            cacti.forEach((cactus, index) => {
-                cactus.x -= game.speed;
-                
-                // Remove cacti that are off screen
-                if (cactus.x + cactus.width < 0) {
-                    cacti.splice(index, 1);
-                }
-            });
-            
-            // Update birds
-            birds.forEach((bird, index) => {
-                bird.x -= game.speed;
-                
-                // Remove birds that are off screen
-                if (bird.x + BIRD_WIDTH < 0) {
-                    birds.splice(index, 1);
-                }
-            });
-            
-            // Update clouds
-            clouds.forEach(cloud => {
-                cloud.x -= cloud.speed;
-                if (cloud.x + cloud.width < 0) {
-                    cloud.x = canvas.width;
-                    cloud.y = Math.random() * 60 + 20;
-                }
-            });
-            
-            // Generate new obstacles
-            if (game.frames % 100 === 0) {
-                // Decide what type of obstacle to create
-                const obstacleType = Math.random();
-                
-                if (obstacleType < 0.7) {
-                    // Create cactus
-                    const cactusHeight = Math.random() * (CACTUS_HEIGHT_MAX - CACTUS_HEIGHT_MIN) + CACTUS_HEIGHT_MIN;
-                    cacti.push({
-                        x: canvas.width,
-                        y: GROUND_Y - cactusHeight,
-                        width: Math.random() * (CACTUS_WIDTH_MAX - CACTUS_WIDTH_MIN) + CACTUS_WIDTH_MIN,
-                        height: cactusHeight
-                    });
-                } else {
-                    // Create bird
-                    const birdY = GROUND_Y - BIRD_HEIGHT - Math.random() * 50;
-                    birds.push({
-                        x: canvas.width,
-                        y: birdY,
-                        width: BIRD_WIDTH,
-                        height: BIRD_HEIGHT
-                    });
-                }
-            }
-        }
-
-        function checkCollisions() {
-            // Dino collision box
-            const dinoBox = {
-                x: dino.x + 5,
-                y: dino.y + 5,
-                width: dino.width - 10,
-                height: dino.height - 10
-            };
-            
-            // Check collision with cacti
-            for (let cactus of cacti) {
-                const cactusBox = {
-                    x: cactus.x,
-                    y: cactus.y,
-                    width: cactus.width,
-                    height: cactus.height
-                };
-                
-                if (isColliding(dinoBox, cactusBox)) {
-                    return true;
-                }
-            }
-            
-            // Check collision with birds
-            for (let bird of birds) {
-                const birdBox = {
-                    x: bird.x,
-                    y: bird.y,
-                    width: bird.width,
-                    height: bird.height
-                };
-                
-                if (isColliding(dinoBox, birdBox)) {
-                    return true;
-                }
-            }
-            
-            return false;
-        }
-
-        function isColliding(rect1, rect2) {
-            return rect1.x < rect2.x + rect2.width &&
-                   rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height &&
-                   rect1.y + rect1.height > rect2.y;
-        }
-
-        function updateScore() {
-            game.score++;
-            
-            // Increase game speed gradually
-            if (game.score % 100 === 0) {
-                game.speed += 0.5;
-            }
-            
-            // Update high score
-            if (game.score > game.highScore) {
-                game.highScore = game.score;
-                localStorage.setItem('dinoHighScore', game.highScore);
-            }
-        }
-
-        function resetGame() {
-            game.running = true;
-            game.gameOver = false;
-            game.score = 0;
-            game.speed = GAME_SPEED_INITIAL;
-            game.frames = 0;
-            
-            dino.y = GROUND_Y - DINO_HEIGHT;
-            dino.velocityY = 0;
-            dino.jumping = false;
-            dino.ducking = false;
-            dino.height = DINO_HEIGHT;
-            
-            cacti = [];
-            birds = [];
-            
-            gameOverElement.style.display = 'none';
-            offlineMessage.style.display = 'none';
-        }
-
-        function gameOver() {
-            game.running = false;
-            game.gameOver = true;
-            
-            finalScoreElement.textContent = String(game.score).padStart(5, '0');
-            finalHighScoreElement.textContent = String(game.highScore).padStart(5, '0');
-            gameOverElement.style.display = 'block';
-        }
-
-        // Game loop
-        function gameLoop() {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (game.running) {
-                // Update game state
-                updateDino();
-                updateObstacles();
-                
-                // Check for collisions
-                if (checkCollisions()) {
-                    gameOver();
-                }
-                
-                // Update score
-                updateScore();
-                
-                // Increment frame counter
-                game.frames++;
-            }
-            
-            // Draw everything
-            drawClouds();
-            drawGround();
-            drawCacti();
-            drawBirds();
-            drawDino();
-            drawScore();
-            
-            // Continue game loop
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Event listeners
-        document.addEventListener('keydown', (e) => {
-            if (!game.running && !game.gameOver) {
-                if (e.code === 'Space' || e.code === 'ArrowUp') {
-                    startGame();
-                }
-                return;
-            }
-            
-            if (game.gameOver && (e.code === 'Space' || e.code === 'ArrowUp')) {
-                resetGame();
-                return;
-            }
-            
-            if (game.running) {
-                switch(e.code) {
-                    case 'Space':
-                    case 'ArrowUp':
-                        if (!dino.jumping) {
-                            dino.velocityY = JUMP_FORCE;
-                            dino.jumping = true;
-                            dino.ducking = false;
-                        }
-                        e.preventDefault();
-                        break;
-                    case 'ArrowDown':
-                        if (!dino.jumping) {
-                            dino.ducking = true;
-                        }
-                        e.preventDefault();
-                        break;
-                }
-            }
+    // PLAY AGAIN
+    document.getElementById('tttReset').addEventListener('click', async () => {
+        await db.collection('ttt_rooms').doc(currentRoom).update({
+            board: Array(9).fill(null),
+            turn: 'X',
+            status: 'playing',
+            winner: null
         });
+        document.getElementById('tttReset').style.display = 'none';
+    });
 
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'ArrowDown') {
-                dino.ducking = false;
-            }
-        });
 
-        // Touch/click controls for mobile
-        canvas.addEventListener('click', () => {
-            if (!game.running && !game.gameOver) {
-                startGame();
-                return;
-            }
-            
-            if (game.gameOver) {
-                resetGame();
-                return;
-            }
-            
-            if (game.running && !dino.jumping) {
-                dino.velocityY = JUMP_FORCE;
-                dino.jumping = true;
-                dino.ducking = false;
-            }
-        });
+    /* --------------------------------------------------------
+       GAME OVER MODAL
+    -------------------------------------------------------- */
+    const modalGO = document.getElementById('modalGameOver');
+    const btnRestart = document.getElementById('btnRestart');
+    const btnExit = document.getElementById('btnExitGame');
+    let lastGameType = '';
 
-        // Button event listeners
-        restartBtn.addEventListener('click', () => {
-            resetGame();
-        });
+    function triggerGameOver(game, score) {
+        stopAllGames();
+        lastGameType = game;
+        document.getElementById('gameOverText').innerText = 'SCORE: ' + score;
+        modalGO.classList.add('active');
+        beep(100, 'sawtooth', 0.5);
+    }
 
-        startBtn.addEventListener('click', () => {
-            startGame();
-        });
+    btnRestart.addEventListener('click', () => {
+        modalGO.classList.remove('active');
+        if(lastGameType === 'snake') initSnake();
+        if(lastGameType === 'runner') initRunner();
+        if(lastGameType === 'pong') initPong();
+    });
 
-        function startGame() {
-            resetGame();
-            offlineMessage.style.display = 'none';
-        }
+    btnExit.addEventListener('click', () => {
+        modalGO.classList.remove('active');
+        document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+    });
 
-        // Initialize the game
-        function init() {
-            // Show offline message at start
-            offlineMessage.style.display = 'block';
-            
-            // Start game loop
-            gameLoop();
-            
-            // Draw initial state
-            drawClouds();
-            drawGround();
-            drawDino();
-            drawScore();
-        }
-
-        // Start the game
-        init();
-    </script>
+</script>
 </body>
 </html>
