@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V19 [MONKEY UPDATE]</title>
+<title>GOONER TERMINAL V20 [FIXED]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -16,7 +16,7 @@
         --scanline-opacity: 0.5;
         --glow-strength: 10px;
         --font-main: "Press Start 2P", monospace;
-        --font-type: "Roboto Mono", monospace; /* Better font for typing */
+        --font-type: "Roboto Mono", monospace;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; cursor: default; user-select: none; }
@@ -159,7 +159,8 @@
     }
     .bj-card.mini { width: 30px; height: 42px; font-size: 8px; border: 1px solid var(--accent); }
     .bj-card.hidden { background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent-dim) 5px, var(--accent-dim) 10px); color: transparent; }
-    
+    .bj-card.hidden > div { display: none; }
+
     /* V8 Deck Style */
     .bj-deck-container { width: 60px; height: 84px; border: 2px dashed var(--accent-dim); display: flex; justify-content: center; align-items: center; cursor: pointer; margin: 5px; position: relative; transition: transform 0.1s; }
     .bj-deck-container:active { transform: scale(0.95); }
@@ -768,10 +769,97 @@
     window.bjSelect=(m)=>{bjMode=m;document.getElementById('bjMode').style.display='none';if(m==='solo'){document.getElementById('bjTable').style.display='flex';document.getElementById('bjHostLabel').innerText="DEALER";document.querySelector('.bj-pot-display').style.display='none';document.getElementById('bjSide').innerHTML='';startSoloBetting();}else{document.querySelector('.bj-pot-display').style.display='block';document.getElementById('bjNetMenu').style.display='flex';}beep(400,'square',0.1);};
     function updBJ(){document.getElementById('bjBetVal').innerText=bjCurrentBet;document.getElementById('globalBank').innerText=myMoney;saveStats();}
 
-    function startSoloBetting(){bjPlayerHand=[];bjDealerHand=[];bjCurrentBet=0;document.getElementById('bjPlayerHand').innerHTML='';document.getElementById('bjDealerHand').innerHTML='';document.getElementById('bjPlayerScore').innerText='';document.getElementById('bjDealerScore').innerText='';document.getElementById('bjMessage').innerText='PLACE BET & CLICK DECK';document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='visible';document.querySelector('#bjDeck div:last-child').innerText="DEAL";updBJ();}
-    async function startSoloRound(){if(bjCurrentBet<=0)return beep(200,'sawtooth',0.5);document.getElementById('bjBetBtns').style.visibility='hidden';bjDeck=createDeck();bjPlayerHand=[bjDeck.pop(),bjDeck.pop()];bjDealerHand=[bjDeck.pop(),bjDeck.pop()];renderHand(bjPlayerHand,'bjPlayerHand');renderScore('bjPlayerScore',bjPlayerHand);const dDiv=document.getElementById('bjDealerHand');dDiv.innerHTML='';renderCard(bjDealerHand[0],dDiv);renderCard(bjDealerHand[1],dDiv,true);document.getElementById('bjDealerScore').innerText='';document.getElementById('bjGameBtns').style.display='flex';document.getElementById('bjMessage').innerText="YOUR TURN";if(calcHand(bjPlayerHand)===21)endSolo();}
-    async function endSolo(){document.getElementById('bjGameBtns').style.display='none';const dDiv=document.getElementById('bjDealerHand');dDiv.innerHTML='';renderCard(bjDealerHand[0],dDiv);renderCard(bjDealerHand[1],dDiv);let ps=calcHand(bjPlayerHand),ds=calcHand(bjDealerHand);renderScore('bjDealerScore',bjDealerHand);if(ps>21)finishSolo("YOU BUST!",0);else{while(ds<17){await new Promise(r=>setTimeout(r,600));let c=bjDeck.pop();bjDealerHand.push(c);renderCard(c,dDiv);ds=calcHand(bjDealerHand);renderScore('bjDealerScore',bjDealerHand);}if(ds>21)finishSolo("DEALER BUST! YOU WIN",bjCurrentBet*2);else if(ps>ds)finishSolo("YOU WIN!",bjCurrentBet*2);else if(ps<ds)finishSolo("YOU LOSE",0);else finishSolo("PUSH",bjCurrentBet);}}
-    function finishSolo(msg,win){document.getElementById('bjMessage').innerText=msg;myMoney+=win;updBJ();bjCurrentBet=0;document.querySelector('#bjDeck div:last-child').innerText="AGAIN";if(win===0&&myMoney<=0)setTimeout(()=>window.showGameOver('blackjack',0),1500);else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500);}
+    function startSoloBetting(){
+        bjPlayerHand=[]; bjDealerHand=[]; bjCurrentBet=0;
+        document.getElementById('bjPlayerHand').innerHTML=''; 
+        document.getElementById('bjDealerHand').innerHTML='';
+        document.getElementById('bjPlayerScore').innerText=''; 
+        document.getElementById('bjDealerScore').innerText='';
+        document.getElementById('bjMessage').innerText='PLACE BET & CLICK DECK';
+        document.getElementById('bjGameBtns').style.display='none';
+        document.getElementById('bjBetBtns').style.visibility='visible';
+        document.querySelector('#bjDeck div:last-child').innerText="DEAL";
+        updBJ();
+    }
+
+    async function startSoloRound(){
+        if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5);
+        document.getElementById('bjBetBtns').style.visibility='hidden';
+        bjDeck=createDeck();
+        bjPlayerHand=[bjDeck.pop(),bjDeck.pop()];
+        bjDealerHand=[bjDeck.pop(),bjDeck.pop()];
+        
+        renderHand(bjPlayerHand,'bjPlayerHand');
+        renderScore('bjPlayerScore',bjPlayerHand);
+        
+        // Dealer Render (Card 2 is HIDDEN)
+        const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML='';
+        renderNewCard(bjDealerHand[0], 'bjDealerHand');
+        renderNewCard(bjDealerHand[1], 'bjDealerHand', true); // TRUE = Hidden
+        
+        document.getElementById('bjDealerScore').innerText=''; // Hide dealer score
+        document.getElementById('bjGameBtns').style.display='flex';
+        document.getElementById('bjMessage').innerText="YOUR TURN";
+        
+        if(calcHand(bjPlayerHand)===21) endSolo();
+    }
+
+    function soloHit() {
+        const c = bjDeck.pop();
+        bjPlayerHand.push(c);
+        renderNewCard(c, 'bjPlayerHand');
+        renderScore('bjPlayerScore', bjPlayerHand);
+        if(calcHand(bjPlayerHand) > 21) endSolo();
+    }
+
+    async function soloStand() {
+        document.getElementById('bjGameBtns').style.display='none';
+        
+        // Reveal Dealer Card
+        const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML='';
+        renderNewCard(bjDealerHand[0], 'bjDealerHand');
+        renderNewCard(bjDealerHand[1], 'bjDealerHand'); // Not hidden
+        renderScore('bjDealerScore', bjDealerHand);
+        
+        // Dealer hits
+        while(calcHand(bjDealerHand) < 17) {
+            await new Promise(r=>setTimeout(r, 600));
+            let c = bjDeck.pop();
+            bjDealerHand.push(c);
+            renderNewCard(c, 'bjDealerHand');
+            renderScore('bjDealerScore', bjDealerHand);
+        }
+        endSolo();
+    }
+
+    async function endSolo(){
+        document.getElementById('bjGameBtns').style.display='none';
+        // Ensure dealer hidden card is shown if bust/instant win
+        const dDiv=document.getElementById('bjDealerHand');
+        if(dDiv.querySelector('.hidden')) {
+             dDiv.innerHTML='';
+             bjDealerHand.forEach(c => renderNewCard(c, 'bjDealerHand'));
+             renderScore('bjDealerScore', bjDealerHand);
+        }
+
+        let ps=calcHand(bjPlayerHand), ds=calcHand(bjDealerHand);
+        let msg="", win=0;
+        
+        if(ps > 21) { msg="YOU BUST!"; win=0; }
+        else if(ds > 21) { msg="DEALER BUST! YOU WIN"; win=bjCurrentBet*2; }
+        else if(ps > ds) { msg="YOU WIN!"; win=bjCurrentBet*2; }
+        else if(ps < ds) { msg="YOU LOSE"; win=0; }
+        else { msg="PUSH"; win=bjCurrentBet; }
+
+        document.getElementById('bjMessage').innerText=msg;
+        myMoney+=win;
+        updBJ();
+        bjCurrentBet=0;
+        document.querySelector('#bjDeck div:last-child').innerText="AGAIN";
+        
+        if(win===0 && myMoney<=0) setTimeout(()=>window.showGameOver('blackjack',0),1500);
+        else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500);
+    }
 
     function getBJRef(c){return doc(db,'gooner_terminal_rooms','bj_'+c);}
     document.getElementById('btnCreateBJ').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();const seats=[{uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false},null,null,null];await setDoc(getBJRef(c),{seats:seats,deck:[],phase:'lobby',activeSeat:0,pot:0});joinBJ(c,0);};
@@ -781,8 +869,8 @@
         if(d.phase==='lobby'){document.getElementById('bjLobby').style.display='flex';document.getElementById('bjTable').style.display='none';document.getElementById('bjPList').innerHTML=d.seats.map((s,i)=>s?`<div>${s.name} ${i===0?'(HOST)':''}</div>`:'').join('');if(bjMySeatIdx===0){document.getElementById('bjStartBtn').style.display='block';document.getElementById('bjWait').innerText="CLICK START";}else{document.getElementById('bjStartBtn').style.display='none';document.getElementById('bjWait').innerText="WAITING FOR HOST...";}return;}
         document.getElementById('bjLobby').style.display='none';document.getElementById('bjTable').style.display='flex';document.getElementById('bjPot').innerText=d.pot||0;document.getElementById('bjHostLabel').innerText="HOST (P1)";
         const sideDiv=document.getElementById('bjSide');sideDiv.innerHTML='';d.seats.forEach((s,i)=>{if(i===0||i===bjMySeatIdx||!s)return;const div=document.createElement('div');div.className='bj-small-seat';if(d.activeSeat===i&&d.phase==='playing')div.classList.add('active-seat');div.innerHTML=`<div style="font-size:8px">${s.name}</div><div class="bj-small-hand"></div>`;const hd=div.querySelector('.bj-small-hand');s.hand.forEach(c=>{const cd=document.createElement('div');cd.className='bj-card mini';cd.innerHTML=`<div>${c.v}</div><div>${c.s}</div>`;cd.style.color=['♥','♦'].includes(c.s)?'red':'inherit';hd.appendChild(cd);});sideDiv.appendChild(div);});
-        const host=d.seats[0];const dDiv=document.getElementById('bjDealerHand');if(dDiv.childElementCount!==host.hand.length){dDiv.innerHTML='';host.hand.forEach(c=>renderCard(c,dDiv,c.h));}document.getElementById('bjDealerScore').innerText=(!host.hand[1]||!host.hand[1].h)?calcHand(host.hand):'';
-        const me=d.seats[bjMySeatIdx];if(me){const pDiv=document.getElementById('bjPlayerHand');if(pDiv.childElementCount!==me.hand.length){pDiv.innerHTML='';me.hand.forEach(c=>renderCard(c,pDiv));renderScore('bjPlayerScore',me.hand);}}
+        const host=d.seats[0];const dDiv=document.getElementById('bjDealerHand');if(dDiv.childElementCount!==host.hand.length){dDiv.innerHTML='';host.hand.forEach(c=>renderNewCard(c,'bjDealerHand',c.h));}document.getElementById('bjDealerScore').innerText=(!host.hand[1]||!host.hand[1].h)?calcHand(host.hand):'';
+        const me=d.seats[bjMySeatIdx];if(me){const pDiv=document.getElementById('bjPlayerHand');if(pDiv.childElementCount!==me.hand.length){pDiv.innerHTML='';me.hand.forEach(c=>renderNewCard(c,'bjPlayerHand'));renderScore('bjPlayerScore',me.hand);}}
         const deckLabel=document.querySelector('#bjDeck div:last-child');
         if(d.phase==='betting'){if(!me.ready){document.getElementById('bjBetBtns').style.visibility='visible';document.getElementById('bjMessage').innerText="BET & LOCK IN";deckLabel.innerText="LOCK";}else{document.getElementById('bjBetBtns').style.visibility='hidden';document.getElementById('bjMessage').innerText="WAITING...";deckLabel.innerText="WAIT";if(bjMySeatIdx===0&&d.seats.every((s,i)=>i===0||!s||s.ready)){document.getElementById('bjMessage').innerText="ALL READY";deckLabel.innerText="DEAL";}}}
         else if(d.phase==='playing'){document.getElementById('bjBetBtns').style.visibility='hidden';deckLabel.innerText="PLAY";if(d.activeSeat===bjMySeatIdx){document.getElementById('bjGameBtns').style.display='flex';document.getElementById('bjMessage').innerText="YOUR TURN";}else{document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjMessage').innerText="OPPONENT TURN";}}
@@ -790,8 +878,50 @@
         bjLastPhase=d.phase;
     }
     document.getElementById('bjStartBtn').onclick=async()=>{await updateDoc(getBJRef(bjRoomCode),{phase:'betting'});};
-    document.getElementById('bjDeck').onclick=async()=>{if(currentGame!=='blackjack')return; if(bjMode==='solo'){ if(document.getElementById('bjMessage').innerText.includes('PLACE')) startSoloRound(); return; } const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data();if(d.phase==='betting'){if(!d.seats[bjMySeatIdx].ready){if(bjCurrentBet<=0)return beep(200,'sawtooth',0.5);myMoney-=bjCurrentBet;updBJ();const ns=[...d.seats];ns[bjMySeatIdx].bet=bjCurrentBet;ns[bjMySeatIdx].ready=true;ns[bjMySeatIdx].status='playing';await updateDoc(ref,{seats:ns,pot:d.pot+bjCurrentBet});}else if(bjMySeatIdx===0){if(d.seats.some((s,i)=>i>0&&s&&!s.ready))return;const deck=createDeck();const ns=[...d.seats];ns.forEach(s=>{if(s){s.hand=[deck.pop(),deck.pop()];if(s.uid===myUid)s.hand[1].h=true;}});await updateDoc(ref,{seats:ns,deck:deck,phase:'playing',activeSeat:0});}}else if(d.phase==='resolution'&&bjMySeatIdx===0){const ns=d.seats.map(s=>{if(!s)return null;return{...s,hand:[],bet:0,ready:false,status:'waiting'};});await updateDoc(ref,{seats:ns,pot:0,phase:'betting'});}};
-    document.getElementById('bjHit').onclick=()=>doNetAct('hit');document.getElementById('bjStand').onclick=()=>doNetAct('stand');
+    
+    // --- DECK CLICK HANDLER (SOLO FIX) ---
+    document.getElementById('bjDeck').onclick=async()=>{
+        if(currentGame!=='blackjack') return; 
+        
+        // CHECK MODE
+        if(bjMode==='solo'){ 
+            // If message says PLACE BET, start round
+            if(document.getElementById('bjMessage').innerText.includes('PLACE')) {
+                startSoloRound(); 
+            }
+            return; 
+        } 
+        
+        // PVP LOGIC
+        const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data();
+        if(d.phase==='betting'){
+            if(!d.seats[bjMySeatIdx].ready){
+                if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5);
+                myMoney-=bjCurrentBet;updBJ();
+                const ns=[...d.seats];ns[bjMySeatIdx].bet=bjCurrentBet;ns[bjMySeatIdx].ready=true;ns[bjMySeatIdx].status='playing';
+                await updateDoc(ref,{seats:ns,pot:d.pot+bjCurrentBet});
+            } else if(bjMySeatIdx===0){
+                if(d.seats.some((s,i)=>i>0&&s&&!s.ready)) return;
+                const deck=createDeck();const ns=[...d.seats];
+                ns.forEach(s=>{if(s){s.hand=[deck.pop(),deck.pop()];if(s.uid===myUid)s.hand[1].h=true;}});
+                await updateDoc(ref,{seats:ns,deck:deck,phase:'playing',activeSeat:0});
+            }
+        } else if(d.phase==='resolution'&&bjMySeatIdx===0){
+            const ns=d.seats.map(s=>{if(!s)return null;return{...s,hand:[],bet:0,ready:false,status:'waiting'};});
+            await updateDoc(ref,{seats:ns,pot:0,phase:'betting'});
+        }
+    };
+
+    // --- HIT / STAND BUTTON HANDLERS (SOLO FIX) ---
+    document.getElementById('bjHit').onclick=()=>{
+        if (bjMode === 'solo') soloHit();
+        else doNetAct('hit');
+    };
+    document.getElementById('bjStand').onclick=()=>{
+        if (bjMode === 'solo') soloStand();
+        else doNetAct('stand');
+    };
+
     async function doNetAct(act){const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data();if(d.activeSeat!==bjMySeatIdx)return;const deck=[...d.deck],ns=[...d.seats],me=ns[bjMySeatIdx];if(act==='hit'){me.hand.push(deck.pop());if(calcHand(me.hand)>21){me.status='bust';passTurn(ref,d.activeSeat,ns,deck);}else await updateDoc(ref,{seats:ns,deck:deck});}else{me.status='stand';passTurn(ref,d.activeSeat,ns,deck);}}
     async function passTurn(ref,curr,seats,deck){let next=curr+1;while(next<4&&seats[next]===null)next++;if(next>=4){seats[0].hand[1].h=false;let best=0;seats.forEach(s=>{if(s&&s.status!=='bust'){const sc=calcHand(s.hand);if(sc>best)best=sc;}});seats.forEach(s=>{if(!s||s.status==='bust')return;const sc=calcHand(s.hand);s.status=(sc===best&&best>0)?'win':'lose';});await updateDoc(ref,{seats:seats,deck:deck,phase:'resolution',activeSeat:-1});}else await updateDoc(ref,{seats:seats,deck:deck,activeSeat:next});}
     document.querySelectorAll('.bj-chip').forEach(c=>{c.onclick=()=>{if(currentGame!=='blackjack')return;const v=parseInt(c.dataset.v)||0;if(c.id==='bjClear')bjCurrentBet=0;else if(c.id==='bjAllIn')bjCurrentBet=myMoney;else if(myMoney>=bjCurrentBet+v)bjCurrentBet+=v;updBJ();}});
@@ -808,7 +938,23 @@
     /* UTILS */
     function createDeck(){let d=[];for(let s of suits)for(let v of values)d.push({s,v,h:false});return d.sort(()=>Math.random()-.5);}
     function calcHand(h){let s=0,a=0;h.forEach(c=>{if(c.h)return;if(['J','Q','K'].includes(c.v))s+=10;else if(c.v==='A'){s+=11;a++;}else s+=parseInt(c.v);});while(s>21&&a>0){s-=10;a--;}return s;}
-    function renderCard(c,el,hidden=false){const d=document.createElement('div');d.className='bj-card'+(hidden?' hidden':'');if(!hidden){d.innerHTML=`<div>${c.v}</div><div>${c.s}</div><div>${c.v}</div>`;d.style.color=['♥','♦'].includes(c.s)?'red':'inherit';}el.appendChild(d);}
+    
+    // RENDER NEW CARD (V8 STYLE RESTORED)
+    function renderNewCard(c, elId, hidden=false){
+        const d=document.createElement('div');
+        d.className='bj-card' + (hidden ? ' hidden' : '');
+        // If hidden, the contents are hidden by CSS rule above
+        d.innerHTML=`<div>${c.v}</div><div>${c.s}</div><div>${c.v}</div>`;
+        d.style.color=['♥','♦'].includes(c.s)?'red':'inherit';
+        document.getElementById(elId).appendChild(d);
+    }
+    
+    // Helper to render whole hand
+    function renderHand(hand, elId) {
+        document.getElementById(elId).innerHTML = '';
+        hand.forEach(c => renderNewCard(c, elId, c.h));
+    }
+
     function renderScore(id,h){document.getElementById(id).innerText=calcHand(h);}
     
     window.showGameOver=(g,s)=>{
