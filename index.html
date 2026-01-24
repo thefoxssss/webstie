@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V3.1 (VISUAL RESTORE)</title>
+<title>GOONER TERMINAL V3.2 (GOLD)</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
@@ -28,7 +28,7 @@
         user-select: none;
     }
 
-    /* CRT Scanline Effect */
+    /* CRT Effects */
     body::before {
         content: " ";
         display: block;
@@ -40,7 +40,6 @@
         pointer-events: none;
         animation: flicker 0.15s infinite;
     }
-    
     body::after {
         content: " ";
         display: block;
@@ -50,494 +49,149 @@
         z-index: 99999;
         pointer-events: none;
     }
+    @keyframes flicker { 0% { opacity: 0.95; } 50% { opacity: 0.85; } 100% { opacity: 0.98; } }
 
-    @keyframes flicker {
-        0% { opacity: 0.95; }
-        50% { opacity: 0.85; }
-        100% { opacity: 0.98; }
-    }
-
-    /* Main Layout */
+    /* UI Layout */
     .wrap {
         height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        position: relative;
-        z-index: 10;
-        padding: 20px;
-        width: 100%;
     }
-
-    /* Top Right Menu */
-    .top-menu {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 2000;
-    }
-
+    .top-menu { position: fixed; top: 20px; right: 20px; z-index: 2000; }
     .menu-btn {
-        background-color: rgba(0, 0, 0, 0.9);
-        color: var(--accent);
-        padding: 12px 20px;
-        font-family: "Press Start 2P", monospace;
-        font-size: 12px;
-        border: 2px solid var(--accent);
-        cursor: pointer;
-        text-transform: uppercase;
-        box-shadow: 0 0 10px var(--accent-dim);
-        transition: 0.2s;
+        background: rgba(0, 0, 0, 0.9); color: var(--accent); padding: 12px 20px;
+        font-family: "Press Start 2P", monospace; font-size: 12px; border: 2px solid var(--accent);
+        cursor: pointer; box-shadow: 0 0 10px var(--accent-dim);
     }
-
-    .menu-btn:hover {
-        background-color: var(--accent-dim);
-        box-shadow: 0 0 15px var(--accent-glow);
-    }
-
+    .menu-btn:hover { background: var(--accent-dim); box-shadow: 0 0 15px var(--accent-glow); }
+    
     .dropdown-content {
-        display: none;
-        position: absolute;
-        right: 0;
-        top: 100%;
-        background-color: #000;
-        min-width: 200px;
-        border: 2px solid var(--accent);
-        border-top: none;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        display: none; position: absolute; right: 0; top: 100%; background: #000;
+        min-width: 200px; border: 2px solid var(--accent); border-top: none;
         z-index: 2001;
     }
-
     .dropdown-content.show { display: block; }
-
     .dropdown-content button {
-        background: transparent;
-        color: var(--accent);
-        padding: 15px;
-        display: block;
-        width: 100%;
-        text-align: left;
-        border: none;
-        border-bottom: 1px solid rgba(255, 6, 6, 0.2);
-        font-family: "Press Start 2P", monospace;
-        font-size: 10px;
-        cursor: pointer;
-        transition: 0.2s;
+        background: transparent; color: var(--accent); padding: 15px; width: 100%;
+        text-align: left; border: none; border-bottom: 1px solid rgba(255, 0, 0, 0.2);
+        font-family: inherit; font-size: 10px; cursor: pointer;
     }
+    .dropdown-content button:hover { background: var(--accent); color: #000; }
 
-    .dropdown-content button:hover {
-        background-color: var(--accent);
-        color: #000;
-    }
-
-    /* The Big Button */
     .gooner-btn {
-        font-size: clamp(24px, 8vw, 72px);
-        color: var(--accent);
-        cursor: pointer;
-        padding: 30px 40px;
-        border: 4px solid var(--accent);
-        background: rgba(0, 0, 0, 0.8);
-        box-shadow: 0 0 15px var(--accent-dim), inset 0 0 20px var(--accent-dim);
-        text-shadow: 0 0 10px var(--accent);
-        transition: all 0.2s ease;
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 40px;
-        text-transform: uppercase;
-        z-index: 20;
+        font-size: clamp(24px, 8vw, 72px); color: var(--accent); cursor: pointer;
+        padding: 30px 40px; border: 4px solid var(--accent); background: rgba(0,0,0,0.8);
+        box-shadow: 0 0 15px var(--accent-dim); text-shadow: 0 0 10px var(--accent);
+        transition: all 0.2s ease; margin-bottom: 40px;
     }
+    .gooner-btn:hover { transform: scale(1.05); background: var(--accent); color: #000; }
+    .subtitle { color: var(--accent); font-size: 10px; opacity: 0.7; margin-top: -20px; letter-spacing: 2px; }
 
-    .gooner-btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 0 30px var(--accent-glow), inset 0 0 30px var(--accent-glow);
-        background: var(--accent);
-        color: #000;
-        text-shadow: none;
-    }
-    
-    .gooner-btn:active { transform: scale(0.95); }
-
-    .subtitle {
-        color: var(--accent);
-        font-size: 10px;
-        opacity: 0.7;
-        margin-top: -20px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        text-align: center;
-    }
-
-    /* Overlays (General) */
     .overlay {
-        position: fixed;
-        inset: 0;
-        background: #000;
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        overflow: hidden;
+        position: fixed; inset: 0; background: #000; display: none;
+        flex-direction: column; align-items: center; justify-content: center; z-index: 1000;
     }
-    
     .overlay.active { display: flex; }
-
-    .overlay h1 {
-        font-size: clamp(20px, 5vw, 40px);
-        margin-bottom: 20px;
-        text-shadow: 2px 2px 0px #4a0000;
-        text-align: center;
-    }
-
     .close-btn {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: transparent;
-        border: 2px solid var(--accent);
-        color: var(--accent);
-        padding: 8px 12px;
-        font-family: inherit;
-        font-size: 12px;
-        cursor: pointer;
-        z-index: 1001;
-        transition: 0.2s;
+        position: absolute; top: 20px; right: 20px; background: transparent;
+        border: 2px solid var(--accent); color: var(--accent); padding: 8px 12px;
+        font-family: inherit; font-size: 12px; cursor: pointer; z-index: 1001;
     }
-    
     .close-btn:hover { background: var(--accent); color: #000; }
 
-    /* Game Canvas Styles */
-    canvas {
-        border: 4px solid var(--accent);
-        background: #000;
-        box-shadow: 0 0 20px rgba(255, 6, 6, 0.2);
-        max-width: 95vw;
-        max-height: 70vh;
-        image-rendering: pixelated;
-    }
-
-    /* Mobile Controls */
-    .touch-controls {
-        display: none;
-        margin-top: 20px;
-        gap: 10px;
-        user-select: none;
-    }
+    canvas { border: 4px solid var(--accent); background: #000; max-width: 95vw; max-height: 70vh; }
     
-    .touch-controls.active {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-gap: 10px;
-    }
-
+    .touch-controls { display: none; margin-top: 20px; gap: 10px; }
+    .touch-controls.active { display: grid; grid-template-columns: repeat(3, 1fr); }
     .touch-btn {
-        width: 50px;
-        height: 50px;
-        border: 2px solid var(--accent);
-        color: var(--accent);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        background: rgba(255, 6, 6, 0.1);
-        border-radius: 8px;
-        cursor: pointer;
+        width: 50px; height: 50px; border: 2px solid var(--accent); color: var(--accent);
+        display: flex; align-items: center; justify-content: center; font-size: 20px;
+        background: rgba(255, 6, 6, 0.1); border-radius: 8px;
     }
-    
-    .touch-btn:active { background: var(--accent); color: #000; }
+    @media (pointer: coarse) { .touch-controls.active { display: grid; } }
 
-    .mobile-hint {
-        display: none;
-        font-size: 10px;
-        color: #ff8888;
-        margin-bottom: 10px;
-        text-align: center;
-    }
-    
-    .mobile-hint.active { display: block; }
-    
-    /* Media Query to show touch controls on mobile */
-    @media (pointer: coarse) {
-        .touch-controls.active { display: grid; }
-        .mobile-hint.active { display: block; }
-    }
-
-    /* Secret Visuals */
-    .glitch-text {
-        position: fixed;
-        font-size: 14px;
-        opacity: 0.8;
-        pointer-events: none;
-        font-weight: bold;
-        z-index: 5;
-    }
-    
-    .version-tag {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        font-size: 10px;
-        color: rgba(255, 6, 6, 0.4);
-        z-index: 1002;
-    }
-
-    /* --- COMMON MENU BOX --- */
     .menu-box {
-        background: rgba(20,0,0,0.8);
-        border: 2px solid var(--accent);
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-        min-width: 300px;
+        background: rgba(20,0,0,0.9); border: 2px solid var(--accent); padding: 20px;
+        display: flex; flex-direction: column; gap: 15px; text-align: center; min-width: 300px;
     }
-
-    .term-input {
-        background: transparent;
-        border: 2px solid var(--accent);
-        color: var(--accent);
-        padding: 10px;
-        font-family: inherit;
-        text-align: center;
-        text-transform: uppercase;
-        font-size: 16px;
-    }
-
-    .term-btn {
-        background: var(--accent);
-        color: black;
-        border: none;
-        padding: 12px;
-        font-family: inherit;
-        cursor: pointer;
-        font-weight: bold;
-    }
-
+    .term-input { background: transparent; border: 2px solid var(--accent); color: var(--accent); padding: 10px; font-family: inherit; text-align: center; font-size: 16px; }
+    .term-btn { background: var(--accent); color: #000; border: none; padding: 12px; font-family: inherit; cursor: pointer; font-weight: bold; }
     .term-btn:hover { opacity: 0.8; }
-    .term-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    /* --- TIC TAC TOE STYLES --- */
-    .ttt-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-    }
+    /* TIC TAC TOE */
+    .ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; background: var(--accent); border: 5px solid var(--accent); margin-top: 10px; }
+    .ttt-cell { width: 80px; height: 80px; background: #000; display: flex; align-items: center; justify-content: center; font-size: 40px; cursor: pointer; }
 
-    .ttt-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 5px;
-        background: var(--accent);
-        border: 5px solid var(--accent);
-        margin-top: 10px;
-    }
-
-    .ttt-cell {
-        width: 80px;
-        height: 80px;
-        background: black;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 40px;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .ttt-cell:active { background: #110000; }
-    .ttt-status { font-size: 12px; margin-bottom: 10px; text-align: center; min-height: 20px; }
-    .ttt-room-code { font-size: 24px; letter-spacing: 5px; margin: 10px 0; color: #fff; }
-
-    /* --- BLACKJACK STYLES V3 (ROUND TABLE) --- */
+    /* BLACKJACK V3.2 (ROUND TABLE) */
     .bj-container {
-        position: relative;
-        width: 100%;
-        height: 80vh; /* Takes most of the overlay */
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-end; /* Self is always at bottom */
+        position: relative; width: 100%; height: 85vh;
+        display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
     }
-
     .bj-round-table {
-        position: relative;
-        width: 100%;
-        max-width: 800px;
-        height: 100%;
+        position: relative; width: 100%; max-width: 900px; height: 100%;
         border-top: 2px dashed rgba(255, 6, 6, 0.3);
-        border-radius: 50% 50% 0 0; /* Semi circle look hint */
-        display: flex;
-        justify-content: center;
+        border-radius: 50% 50% 0 0; display: flex; justify-content: center;
     }
     
-    /* Dealer Zone (Top Center) */
-    .bj-dealer-zone {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        z-index: 10;
-    }
+    /* Dealer */
+    .bj-dealer-zone { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
 
-    /* Player Seats */
-    .bj-seat {
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 140px;
-        transition: all 0.5s ease;
-    }
+    /* Seats */
+    .bj-seat { position: absolute; display: flex; flex-direction: column; align-items: center; width: 140px; transition: 0.5s; }
+    .bj-seat-label { background: #000; color: var(--accent); font-size: 10px; padding: 2px 5px; border: 1px solid var(--accent-dim); margin-bottom: 4px; }
+    .bj-seat.active-turn .bj-seat-label { background: var(--accent); color: #000; }
+    .bj-seat-status { font-size: 10px; color: #ffcc00; margin-top: 4px; min-height: 14px; text-shadow: 1px 1px #000; }
 
-    .bj-seat-label {
-        background: #000;
-        color: var(--accent);
-        font-size: 10px;
-        padding: 2px 5px;
-        margin-bottom: 5px;
-        border: 1px solid var(--accent-dim);
-    }
-    
-    .bj-seat.active-turn .bj-seat-label {
-        background: var(--accent);
-        color: #000;
-        box-shadow: 0 0 10px var(--accent);
-    }
-    
-    .bj-seat-status {
-        font-size: 9px;
-        color: #ffff00;
-        margin-top: 2px;
-        min-height: 12px;
-    }
+    /* Seat Positions */
+    .bj-my-seat { bottom: 140px; left: 50%; transform: translateX(-50%); z-index: 20; }
+    .seat-pos-1 { top: 120px; left: 8%; transform: scale(0.9); }
+    .seat-pos-2 { top: 120px; right: 8%; transform: scale(0.9); }
+    .seat-pos-3 { top: 70px; left: 50%; transform: translateX(-50%) scale(0.9); }
 
-    /* Positions */
-    .bj-my-seat {
-        bottom: 130px; 
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 20;
-    }
-
-    /* Enemy Seat positions - Scaled slightly to fit 60x84 cards */
-    .seat-pos-1 { top: 120px; left: 5%; transform: scale(0.85); } /* Left */
-    .seat-pos-2 { top: 120px; right: 5%; transform: scale(0.85); } /* Right */
-    .seat-pos-3 { top: 60px; left: 50%; transform: translateX(-50%) scale(0.85); } /* Center Top */
-
-    .bj-hand {
-        display: flex;
-        gap: 5px;
-        justify-content: center;
-        min-height: 84px;
-    }
-
-    /* Cards - RESTORED TO V2 STYLE */
-    @keyframes flyIn {
-        0% { transform: translateY(-200px) scale(0.5); opacity: 0; }
-        100% { transform: translateY(0) scale(1); opacity: 1; }
-    }
-
+    /* Cards - PIXEL STYLE V2 */
+    .bj-hand { display: flex; gap: 5px; justify-content: center; min-height: 84px; }
     .bj-card {
-        width: 60px;  /* RESTORED */
-        height: 84px; /* RESTORED */
+        width: 60px; height: 84px;
         border: 2px solid var(--accent);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 5px;
-        font-size: 14px; /* RESTORED */
-        background: #000;
-        box-shadow: 2px 2px 0px var(--accent-dim);
-        user-select: none;
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 4px; font-size: 14px; background: #000;
+        box-shadow: 2px 2px 0px var(--accent-dim); user-select: none;
         animation: flyIn 0.3s ease-out forwards;
-        position: relative;
     }
-    
     .bj-card.hidden {
-        /* RESTORED V2 HIDDEN STYLE */
-        background: repeating-linear-gradient(
-            45deg,
-            #000,
-            #000 5px,
-            var(--accent-dim) 5px,
-            var(--accent-dim) 10px
-        );
-        justify-content: center;
-        align-items: center;
+        background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 10px);
+        justify-content: center; align-items: center;
     }
+    @keyframes flyIn { 0% { transform: translateY(-50px) scale(0.8); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
 
-    /* Controls Bar at Bottom */
+    /* HUD */
     .bj-hud {
-        position: fixed;
-        bottom: 0;
-        left: 0; 
-        width: 100%;
-        background: #000;
-        border-top: 2px solid var(--accent);
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        z-index: 100;
+        position: fixed; bottom: 0; left: 0; width: 100%; background: #000;
+        border-top: 2px solid var(--accent); padding: 15px;
+        display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 100;
     }
-    
-    .bj-info-bar {
-        display: flex;
-        gap: 20px;
-        font-size: 12px;
-        margin-bottom: 5px;
-    }
-    
-    .bj-actions {
-        display: flex;
-        gap: 10px;
-    }
-
-    .bj-chip-rack {
-        display: flex;
-        gap: 10px;
-    }
+    .bj-info-bar { display: flex; gap: 20px; font-size: 12px; color: #fff; }
+    .bj-actions, .bj-chip-rack { display: flex; gap: 10px; }
     .bj-chip {
-        width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent);
+        width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--accent);
         display: flex; align-items: center; justify-content: center; font-size: 10px;
-        cursor: pointer; background: #000; color: var(--accent); transition: transform 0.1s;
+        cursor: pointer; background: #000; color: var(--accent);
     }
-    .bj-chip:active { transform: scale(0.9); }
-    .bj-chip.selected { background: var(--accent); color: #000; }
+    .bj-chip:active { transform: scale(0.9); background: var(--accent); color: #000; }
 
-    /* Falling Cards Animation */
+    /* Falling Cards */
     .falling-card {
-        position: fixed;
-        width: 40px; height: 56px;
+        position: fixed; width: 40px; height: 56px;
         background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 8px);
-        border: 2px solid var(--accent);
-        z-index: 9998;
-        pointer-events: none;
-        top: -60px;
+        border: 2px solid var(--accent); z-index: 9999; pointer-events: none;
     }
-    @keyframes fall {
-        0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
-        100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
-    }
-
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #111; }
-    ::-webkit-scrollbar-thumb { background: #500; }
-    ::-webkit-scrollbar-thumb:hover { background: #f00; }
 </style>
 </head>
 <body>
 
-<div class="version-tag">SYS.V.25.4 // VISUAL_RESTORED</div>
-<div id="glitchContainer"></div>
+<div class="version-tag">SYS.V.3.2 // GOLD_EDITION</div>
 
 <div class="top-menu">
     <button class="menu-btn" id="menuToggle">GAMES ▼</button>
@@ -561,10 +215,9 @@
     <div style="margin-bottom:10px; font-size:12px;" id="pongScore">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
     <div style="margin-top:10px;">
-        <button class="close-btn" style="position:static; display:inline-block;" onclick="window.setPongDiff('easy')">EASY</button>
-        <button class="close-btn" style="position:static; display:inline-block;" onclick="window.setPongDiff('hard')">HARD</button>
+        <button class="close-btn" style="position:static;" onclick="window.setPongDiff('easy')">EASY</button>
+        <button class="close-btn" style="position:static;" onclick="window.setPongDiff('hard')">HARD</button>
     </div>
-    <div class="mobile-hint" id="pongHint">TAP ARROWS TO MOVE</div>
     <div class="touch-controls" id="pongControls">
         <div></div><div class="touch-btn" data-key="up">▲</div><div></div><div></div><div></div><div></div><div></div><div class="touch-btn" data-key="down">▼</div><div></div>
     </div>
@@ -573,7 +226,7 @@
 <div class="overlay" id="overlaySnake">
     <button class="close-btn" data-close="overlaySnake">ABORT</button>
     <h1>SNAKE</h1>
-    <div style="margin-bottom:10px; font-size:12px;">SCORE: <span id="snakeScoreVal">0</span></div>
+    <div style="margin-bottom:10px;">SCORE: <span id="snakeScoreVal">0</span></div>
     <canvas id="snakeCanvas" width="600" height="400"></canvas>
     <div class="touch-controls active" id="snakeControls" style="margin-top:20px;">
         <div></div><div class="touch-btn" data-snake-key="up">▲</div><div></div><div class="touch-btn" data-snake-key="left">◀</div><div class="touch-btn" data-snake-key="down">▼</div><div class="touch-btn" data-snake-key="right">▶</div>
@@ -583,9 +236,9 @@
 <div class="overlay" id="overlayRunner">
     <button class="close-btn" data-close="overlayRunner">ABORT</button>
     <h1>RUNNER</h1>
-    <div style="margin-bottom:10px; font-size:12px;" id="runnerScoreBoard">SCORE: 0</div>
+    <div style="margin-bottom:10px;" id="runnerScoreBoard">SCORE: 0</div>
     <canvas id="runnerCanvas" width="800" height="400"></canvas>
-    <div class="mobile-hint active" style="margin-top:10px;">TAP TO JUMP / SWIPE TO SWITCH LANES</div>
+    <div class="mobile-hint active" style="margin-top:10px;">TAP / SWIPE</div>
 </div>
 
 <div class="overlay" id="overlayTTT">
@@ -596,21 +249,19 @@
             <p>MULTIPLAYER LOBBY</p>
             <button class="term-btn" id="btnCreateRoom">CREATE ROOM</button>
             <p>- OR -</p>
-            <input type="text" id="joinRoomCode" class="term-input" placeholder="4-DIGIT CODE" maxlength="4">
+            <input type="text" id="joinRoomCode" class="term-input" placeholder="CODE" maxlength="4">
             <button class="term-btn" id="btnJoinRoom">JOIN ROOM</button>
         </div>
-        <div style="font-size:10px; max-width:320px; text-align:center; line-height:1.5;">
-            STATUS: <span id="authStatus" style="color:yellow;">CONNECTING...</span>
-        </div>
+        <div style="font-size:10px; margin-top:10px;">STATUS: <span id="authStatus" style="color:yellow;">CONNECTING...</span></div>
     </div>
     <div id="tttGame" class="ttt-container" style="display:none;">
         <div class="ttt-status" id="tttStatus">WAITING...</div>
-        <div class="ttt-room-code" id="displayRoomCode">????</div>
         <div class="ttt-grid" id="tttGrid">
             <div class="ttt-cell" data-idx="0"></div><div class="ttt-cell" data-idx="1"></div><div class="ttt-cell" data-idx="2"></div>
             <div class="ttt-cell" data-idx="3"></div><div class="ttt-cell" data-idx="4"></div><div class="ttt-cell" data-idx="5"></div>
             <div class="ttt-cell" data-idx="6"></div><div class="ttt-cell" data-idx="7"></div><div class="ttt-cell" data-idx="8"></div>
         </div>
+        <div style="font-size:20px; letter-spacing:5px;" id="displayRoomCode"></div>
     </div>
 </div>
 
@@ -618,7 +269,7 @@
     <button class="close-btn" data-close="overlayBlackjack">ABORT</button>
     
     <div id="bjLobbyContainer" style="display:flex; flex-direction:column; align-items:center; width:100%; max-width:400px;">
-        <h1 style="margin-bottom:10px;">NET RUN</h1>
+        <h1 style="margin-bottom:20px;">NET RUN</h1>
         
         <div id="bjMainMenu" class="menu-box">
             <button class="term-btn" onclick="window.showBjCreate()">CREATE TABLE</button>
@@ -641,8 +292,7 @@
         
         <div id="bjWaiting" class="menu-box" style="display:none;">
             <p>CODE: <span id="bjWaitCode" style="color:#fff; font-size:20px;"></span></p>
-            <p id="bjWaitCount" style="font-size:12px; color:yellow;">WAITING FOR PLAYERS...</p>
-            <p id="bjHostMsg" style="font-size:10px; display:none;">YOU ARE HOST. GAME STARTS WHEN FULL.</p>
+            <p id="bjWaitCount" style="color:yellow;">WAITING FOR PLAYERS...</p>
         </div>
     </div>
 
@@ -663,7 +313,6 @@
                     <div class="bj-hand" id="bjMyHand"></div>
                     <div class="bj-seat-status" id="bjMyStatus"></div>
                 </div>
-
             </div>
         </div>
 
@@ -671,7 +320,7 @@
             <div class="bj-info-bar">
                 <span>BANK: $<span id="bjBank">1000</span></span>
                 <span>BET: $<span id="bjBetAmount">0</span></span>
-                <span id="bjGamePhaseMsg" style="color:yellow;">PLACE BET & READY</span>
+                <span id="bjGamePhaseMsg" style="color:yellow;">PLACE BET</span>
             </div>
 
             <div id="bjBetControls" class="bj-actions">
@@ -681,7 +330,7 @@
                     <div class="bj-chip" onclick="window.bjAddBet(100)">100</div>
                     <div class="bj-chip" style="color:red; border-color:red;" onclick="window.bjClearBet()">CLR</div>
                 </div>
-                <button class="term-btn" style="padding:10px 20px; font-size:12px;" onclick="window.bjToggleReady()">READY</button>
+                <button class="term-btn" style="font-size:10px;" onclick="window.bjToggleReady()">READY</button>
             </div>
 
             <div id="bjActionControls" class="bj-actions" style="display:none;">
@@ -693,10 +342,10 @@
 </div>
 
 <div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:2000;">
-    <h1 style="color:red; font-size:40px;">GAME OVER</h1>
-    <p id="gameOverText" style="margin-bottom:20px; color:#fff;">SCORE: 0</p>
-    <button class="gooner-btn" style="font-size:20px; padding:15px;" id="btnRestart">RESTART</button>
-    <button class="close-btn" style="position:static; margin-top:20px;" id="btnExitGame">EXIT</button>
+    <h1 style="color:red;">GAME OVER</h1>
+    <p id="gameOverText" style="color:#fff; margin-bottom:20px;">SCORE: 0</p>
+    <button class="gooner-btn" id="btnRestart" style="font-size:20px;">RESTART</button>
+    <button class="close-btn" id="btnExitGame" style="position:static; margin-top:20px;">EXIT</button>
 </div>
 
 <script type="module">
@@ -717,82 +366,64 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    
-    /* --- CORE & AUDIO --- */
+
+    // Audio
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function beep(freq=440, type='square', dur=0.1) {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + dur);
+        if(audioCtx.state==='suspended') audioCtx.resume();
+        const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+        osc.type=type; osc.frequency.value=freq; g.gain.value=0.05;
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime+dur);
     }
 
-    let myUid = null;
+    let myUid = "local_player"; // Default for solo
     let currentGame = null;
+    let isSoloMode = false;
 
-    /* --- AUTH --- */
-    signInAnonymously(auth).catch(console.error);
-    onAuthStateChanged(auth, u => { if(u) { myUid = u.uid; document.getElementById('authStatus').innerText = "ONLINE"; document.getElementById('authStatus').style.color="#0f0"; } });
+    // Auth
+    signInAnonymously(auth).catch(e=>console.log("Offline Mode Possible"));
+    onAuthStateChanged(auth, u => { if(u){ myUid=u.uid; document.getElementById('authStatus').innerText="ONLINE"; document.getElementById('authStatus').style.color="#0f0"; }});
 
-    /* --- MENU LOGIC --- */
+    // Menu
     const menuToggle = document.getElementById('menuToggle');
     const menuDropdown = document.getElementById('menuDropdown');
-    menuToggle.addEventListener('click', (e) => { e.stopPropagation(); menuDropdown.classList.toggle('show'); beep(600); });
-    document.addEventListener('click', (e) => { if(!menuToggle.contains(e.target)) menuDropdown.classList.remove('show'); });
-
+    menuToggle.onclick = (e) => { e.stopPropagation(); menuDropdown.classList.toggle('show'); beep(600); };
+    document.onclick = (e) => { if(!menuToggle.contains(e.target)) menuDropdown.classList.remove('show'); };
+    
     document.querySelectorAll('[data-game-trigger]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.onclick = () => {
             menuDropdown.classList.remove('show');
-            const g = btn.dataset.gameTrigger;
             stopAllGames();
+            const g = btn.dataset.gameTrigger;
             if(g==='pong') launchOverlay('overlayPong', initPong);
             if(g==='snake') launchOverlay('overlaySnake', initSnake);
             if(g==='runner') launchOverlay('overlayRunner', initRunner);
             if(g==='ttt') launchOverlay('overlayTTT', initTTT);
             if(g==='blackjack') launchOverlay('overlayBlackjack', initBlackjack);
-        });
+        };
     });
-
-    document.getElementById('mainBtn').onclick = () => {
-        beep(100,'sawtooth',0.3);
-        const el = document.createElement('div'); el.className='glitch-text'; el.innerText="SYSTEM_OVERRIDE";
-        el.style.left=Math.random()*window.innerWidth+'px'; el.style.top=Math.random()*window.innerHeight+'px';
-        document.body.appendChild(el); setTimeout(()=>el.remove(),1000);
-    };
 
     document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => {
         document.getElementById(b.dataset.close).classList.remove('active');
         stopAllGames();
     });
 
-    function launchOverlay(id, func) {
-        document.getElementById(id).classList.add('active');
-        if(func) func();
-    }
-    
+    function launchOverlay(id, func) { document.getElementById(id).classList.add('active'); if(func) func(); }
     function stopAllGames() {
         if(pongAnim) cancelAnimationFrame(pongAnim);
         if(snakeAnim) clearTimeout(snakeAnim);
         if(runAnim) cancelAnimationFrame(runAnim);
         if(tttUnsub) tttUnsub();
         if(bjUnsub) bjUnsub();
+        if(bjSoloTimer) clearTimeout(bjSoloTimer);
         currentGame = null;
     }
 
-    /* --- PONG/SNAKE/RUNNER (Condensed) --- */
+    // --- PONG, SNAKE, RUNNER (Condensed) ---
     let pongAnim, pongCtx, ball, p1, p2, pScore, aiScore, pongDiff;
     window.setPongDiff = (d) => { pongDiff = d==='hard'?0.15:0.08; resetBall(); };
-    function initPong() { 
-        currentGame='pong'; const c=document.getElementById('pongCanvas'); pongCtx=c.getContext('2d');
-        p1={y:250,h:80}; p2={y:250,h:80}; pScore=0; aiScore=0; pongDiff=0.08; resetBall(); loopPong();
-    }
+    function initPong() { currentGame='pong'; pongCtx=document.getElementById('pongCanvas').getContext('2d'); p1={y:250,h:80}; p2={y:250,h:80}; pScore=0; aiScore=0; pongDiff=0.08; resetBall(); loopPong(); }
     function resetBall(){ ball={x:400,y:300,dx:Math.random()>.5?6:-6,dy:Math.random()*8-4}; }
     function loopPong(){
         if(currentGame!=='pong') return;
@@ -801,7 +432,7 @@
         pongCtx.beginPath(); pongCtx.arc(ball.x,ball.y,8,0,Math.PI*2); pongCtx.fill();
         ball.x+=ball.dx; ball.y+=ball.dy;
         if(ball.y<0||ball.y>600) ball.dy*=-1;
-        if((ball.x<30 && ball.y>p1.y && ball.y<p1.y+p1.h) || (ball.x>770 && ball.y>p2.y && ball.y<p2.y+p2.h)) { ball.dx=-(ball.dx*1.05); beep(600); }
+        if((ball.x<30&&ball.y>p1.y&&ball.y<p1.y+p1.h)||(ball.x>770&&ball.y>p2.y&&ball.y<p2.y+p2.h)) { ball.dx=-(ball.dx*1.05); beep(600); }
         if(ball.x<0){ aiScore++; resetBall(); } if(ball.x>800){ pScore++; resetBall(); }
         document.getElementById('pongScore').innerText=`${pScore} : ${aiScore}`;
         p2.y+=(ball.y-p2.h/2-p2.y)*pongDiff;
@@ -847,10 +478,329 @@
         runCtx.fillStyle='#0f0'; runCtx.fillRect(px,py,60,80);
         runAnim=requestAnimationFrame(loopRunner);
     }
-    document.addEventListener('keydown',e=>{ if(currentGame==='runner'){ if(e.key.includes('Left')&&runner.l>0)runner.l--; if(e.key.includes('Right')&&runner.l<2)runner.l++; if(e.key===' '&&!runner.j)runner.j=1; }});
     document.getElementById('runnerCanvas').onclick=()=>{if(currentGame==='runner')runner.j=1;};
 
-    /* --- TIC TAC TOE --- */
+    /* --- BLACKJACK V3.2 (SOLO + MULTI) --- */
+    let bjRoomId=null, bjUnsub=null, bjPlayerState={money:1000,bet:0,ready:false}, bjIsHost=false, bjSoloTimer=null;
+    let bjSoloData = null; // Stores local state for Solo
+
+    function initBlackjack() {
+        currentGame = 'blackjack'; isSoloMode = false;
+        bjPlayerState = { money: 1000, bet: 0, ready: false };
+        document.getElementById('bjLobbyContainer').style.display = 'flex';
+        document.getElementById('bjGameInterface').style.display = 'none';
+        document.getElementById('bjMainMenu').style.display = 'flex';
+        document.getElementById('bjCreateMenu').style.display = 'none';
+        document.getElementById('bjWaiting').style.display = 'none';
+    }
+
+    // -- MENU ACTIONS --
+    window.showBjCreate = () => { document.getElementById('bjMainMenu').style.display='none'; document.getElementById('bjCreateMenu').style.display='flex'; };
+    window.backToBjMain = () => { document.getElementById('bjCreateMenu').style.display='none'; document.getElementById('bjMainMenu').style.display='flex'; };
+
+    // -- SOLO MODE START --
+    window.startBjSolo = () => {
+        isSoloMode = true;
+        myUid = "PLAYER_1"; // Mock ID
+        // Create Mock Data
+        bjSoloData = {
+            state: 'betting',
+            maxPlayers: 1,
+            turnIndex: -1,
+            deck: [],
+            dealerHand: [],
+            players: [{ uid: "PLAYER_1", seat: 0, hand: [], bet: 0, ready: false, status: 'waiting', score: 0 }]
+        };
+        document.getElementById('bjLobbyContainer').style.display='none';
+        document.getElementById('bjGameInterface').style.display='flex';
+        renderBjState(bjSoloData);
+    };
+
+    // -- MULTIPLAYER ACTIONS --
+    window.doCreateBj = async (n) => {
+        if(!myUid||myUid==="local_player") return alert("Offline");
+        const code = Math.floor(1000+Math.random()*9000).toString();
+        bjIsHost=true; 
+        await setDoc(doc(db,'bj_tables',code), {
+            host: myUid, maxPlayers: n, state: 'lobby', turnIndex: -1, deck: [], dealerHand: [],
+            players: [{ uid: myUid, seat: 0, hand: [], bet: 0, ready: false, status: 'waiting', score: 0 }]
+        });
+        enterBjRoom(code);
+    };
+
+    window.joinBjTable = async () => {
+        const code = document.getElementById('bjJoinInput').value;
+        const ref = doc(db,'bj_tables',code);
+        const snap = await getDoc(ref);
+        if(!snap.exists()) return alert("Invalid Code");
+        const d = snap.data();
+        if(d.state!=='lobby') return alert("Game in progress");
+        if(d.players.length>=d.maxPlayers) return alert("Full");
+        
+        const newP = [...d.players, { uid: myUid, seat: d.players.length, hand: [], bet: 0, ready: false, status: 'waiting', score: 0 }];
+        await updateDoc(ref, { players: newP });
+        bjIsHost=false;
+        enterBjRoom(code);
+    };
+
+    function enterBjRoom(code) {
+        bjRoomId = code;
+        document.getElementById('bjCreateMenu').style.display='none';
+        document.getElementById('bjMainMenu').style.display='none';
+        document.getElementById('bjWaiting').style.display='flex';
+        document.getElementById('bjWaitCode').innerText=code;
+        bjUnsub = onSnapshot(doc(db,'bj_tables',code), s => {
+            const data = s.data();
+            renderBjState(data);
+        });
+    }
+
+    // -- SHARED RENDERER (SOLO & MULTI) --
+    function renderBjState(data) {
+        if(data.state==='lobby') {
+            document.getElementById('bjWaitCount').innerText=`PLAYERS: ${data.players.length} / ${data.maxPlayers}`;
+            if(data.players.length===data.maxPlayers && bjIsHost && !isSoloMode) updateDoc(doc(db,'bj_tables',bjRoomId),{state:'betting'});
+            return;
+        }
+
+        // Setup Game View
+        document.getElementById('bjLobbyContainer').style.display='none';
+        document.getElementById('bjGameInterface').style.display='flex';
+
+        // 1. Dealer
+        const dDiv = document.getElementById('bjDealerHand');
+        dDiv.innerHTML = '';
+        data.dealerHand.forEach((c,i) => {
+            const hidden = (i===1 && data.state!=='finished');
+            renderCard(c, dDiv, hidden);
+        });
+        document.getElementById('bjDealerScore').innerText = (data.state==='finished') ? calcHand(data.dealerHand) : '';
+
+        // 2. Players
+        const oppDiv = document.getElementById('bjOpponentContainer');
+        oppDiv.innerHTML = '';
+        const me = data.players.find(p => p.uid === myUid);
+        
+        data.players.forEach((p, idx) => {
+            if(p.uid === myUid) {
+                // ME
+                const myH = document.getElementById('bjMyHand');
+                if(myH.childElementCount !== p.hand.length) { myH.innerHTML=''; p.hand.forEach(c=>renderCard(c,myH)); }
+                
+                let st = "";
+                if(data.state==='betting') st = p.ready ? "READY" : "BETTING...";
+                else st = (data.turnIndex===p.seat && data.state==='playing') ? "YOUR TURN!" : p.status;
+                
+                document.getElementById('bjMyStatus').innerText = `${st} ($${p.bet})`;
+                document.getElementById('bjBetAmount').innerText = p.bet;
+                
+                // Controls
+                const betC = document.getElementById('bjBetControls');
+                const actC = document.getElementById('bjActionControls');
+                const msg = document.getElementById('bjGamePhaseMsg');
+
+                if(data.state==='betting') {
+                    betC.style.display = p.ready ? 'none' : 'flex';
+                    actC.style.display = 'none';
+                    msg.innerText = p.ready ? "WAITING..." : "PLACE BET";
+                } else if(data.state==='playing') {
+                    betC.style.display='none';
+                    if(data.turnIndex===p.seat && !['bust','stand'].includes(p.status)) {
+                        actC.style.display='flex';
+                        msg.innerText = "YOUR TURN >>>";
+                    } else {
+                        actC.style.display='none';
+                        msg.innerText = "WAITING...";
+                    }
+                } else if(data.state==='finished') {
+                    betC.style.display='none'; actC.style.display='none';
+                    const dS = calcHand(data.dealerHand);
+                    if(p.score>21) msg.innerText="BUST!";
+                    else if(dS>21 || p.score>dS) msg.innerText="WIN!";
+                    else if(p.score===dS) msg.innerText="PUSH";
+                    else msg.innerText="LOSE";
+                    
+                    if(bjIsHost || isSoloMode) {
+                        if(!bjSoloTimer) bjSoloTimer = setTimeout(()=>resetGame(data), 4000);
+                    }
+                }
+            } else {
+                // OPPONENT
+                let rIdx = (idx - me.seat + data.maxPlayers) % data.maxPlayers;
+                const d = document.createElement('div');
+                d.className = `bj-seat seat-pos-${rIdx}`;
+                if(data.state==='playing' && data.turnIndex===p.seat) d.classList.add('active-turn');
+                
+                let h = `<div class="bj-seat-label">P${idx+1}</div><div class="bj-hand">`;
+                if(data.state==='betting') h += `<div style="font-size:10px; color:#555;">${p.ready?"[READY]":"[...]"}</div>`;
+                else p.hand.forEach(c => {
+                    const col = ['♥','♦'].includes(c.suit)?'red':'inherit';
+                    h += `<div class="bj-card" style="width:40px; height:56px; font-size:10px; color:${col};"><div>${c.val}</div><div>${c.suit}</div><div>${c.val}</div></div>`;
+                });
+                h += `</div><div class="bj-seat-status">${p.status}</div>`;
+                d.innerHTML = h;
+                oppDiv.appendChild(d);
+            }
+        });
+
+        // Loop Triggers
+        if(isSoloMode) soloGameLoop(data);
+        else if(bjIsHost) hostGameLoop(data);
+    }
+
+    // --- LOGIC: HOST (MULTI) ---
+    async function hostGameLoop(data) {
+        const ref = doc(db,'bj_tables',bjRoomId);
+        // Start Game
+        if(data.state==='betting' && data.players.every(p=>p.ready)) {
+            const deck=createDeck();
+            const dH=[deck.pop(),deck.pop()];
+            const pNew=data.players.map(p=>({...p, hand:[deck.pop(),deck.pop()], status:'playing', score:0}));
+            pNew.forEach(p=>p.score=calcHand(p.hand));
+            await updateDoc(ref, { state:'playing', deck, dealerHand:dH, players:pNew, turnIndex:0 });
+        }
+        // Turns
+        if(data.state==='playing') {
+            const cur = data.players[data.turnIndex];
+            if(cur.score>21 && cur.status!=='bust') { 
+                // Auto Bust update (safety)
+                const pUp = [...data.players]; pUp[data.turnIndex].status='bust';
+                await updateDoc(ref, { players: pUp });
+            }
+            if(['bust','stand'].includes(cur.status)) {
+                let n = data.turnIndex+1;
+                if(n >= data.players.length) runDealer(data, ref);
+                else await updateDoc(ref, { turnIndex: n });
+            }
+        }
+    }
+
+    // --- LOGIC: SOLO (LOCAL) ---
+    function soloGameLoop(data) {
+        // Similar to host but updates local obj and calls render
+        if(data.state==='betting' && data.players[0].ready) {
+            const deck=createDeck();
+            data.dealerHand=[deck.pop(),deck.pop()];
+            data.players[0].hand=[deck.pop(),deck.pop()];
+            data.players[0].status='playing';
+            data.players[0].score=calcHand(data.players[0].hand);
+            data.deck=deck;
+            data.state='playing';
+            data.turnIndex=0;
+            renderBjState(data);
+        }
+        if(data.state==='playing') {
+            const p = data.players[0];
+            if(p.score>21) p.status='bust';
+            if(['bust','stand'].includes(p.status)) {
+                // Dealer Turn
+                let dScore = calcHand(data.dealerHand);
+                while(dScore<17) {
+                    data.dealerHand.push(data.deck.pop());
+                    dScore=calcHand(data.dealerHand);
+                }
+                data.state='finished';
+                renderBjState(data);
+            }
+        }
+    }
+
+    async function runDealer(data, ref) {
+        let h=[...data.dealerHand], d=[...data.deck], s=calcHand(h);
+        while(s<17) { h.push(d.pop()); s=calcHand(h); }
+        await updateDoc(ref, { state:'finished', dealerHand:h, deck:d });
+    }
+
+    async function resetGame(data) {
+        bjSoloTimer=null;
+        const pR = data.players.map(p=>({...p, hand:[], bet:0, ready:false, status:'waiting', score:0}));
+        if(isSoloMode) {
+            data.players=pR; data.dealerHand=[]; data.state='betting'; data.turnIndex=-1;
+            renderBjState(data);
+        } else {
+            await updateDoc(doc(db,'bj_tables',bjRoomId), { state:'betting', dealerHand:[], players:pR, turnIndex:-1 });
+        }
+    }
+
+    // --- ACTIONS ---
+    window.bjAddBet = (n) => {
+        if(bjPlayerState.money>=n) { bjPlayerState.bet+=n; bjPlayerState.money-=n; updateLocalHUD(); beep(400); }
+    };
+    window.bjClearBet = () => {
+        bjPlayerState.money+=bjPlayerState.bet; bjPlayerState.bet=0; updateLocalHUD();
+    };
+    function updateLocalHUD() {
+        document.getElementById('bjBank').innerText=bjPlayerState.money;
+        document.getElementById('bjBetAmount').innerText=bjPlayerState.bet;
+    }
+    window.bjToggleReady = async () => {
+        if(bjPlayerState.bet===0) return alert("Bet First");
+        if(isSoloMode) {
+            bjSoloData.players[0].bet = bjPlayerState.bet;
+            bjSoloData.players[0].ready = true;
+            renderBjState(bjSoloData);
+        } else {
+            await runTransaction(db, async(t)=>{
+                const r=doc(db,'bj_tables',bjRoomId); const d=(await t.get(r)).data();
+                const i=d.players.findIndex(p=>p.uid===myUid);
+                d.players[i].bet=bjPlayerState.bet; d.players[i].ready=true;
+                t.update(r,{players:d.players});
+            });
+        }
+    };
+    window.bjHit = async () => {
+        if(isSoloMode) {
+            bjSoloData.players[0].hand.push(bjSoloData.deck.pop());
+            bjSoloData.players[0].score=calcHand(bjSoloData.players[0].hand);
+            renderBjState(bjSoloData);
+        } else {
+            await runTransaction(db, async(t)=>{
+                const r=doc(db,'bj_tables',bjRoomId); const d=(await t.get(r)).data();
+                const i=d.players.findIndex(p=>p.uid===myUid);
+                d.players[i].hand.push(d.deck.pop());
+                d.players[i].score=calcHand(d.players[i].hand);
+                t.update(r,{players:d.players, deck:d.deck});
+            });
+        }
+    };
+    window.bjStand = async () => {
+        if(isSoloMode) {
+            bjSoloData.players[0].status='stand';
+            renderBjState(bjSoloData); // Loop will catch this
+        } else {
+            await runTransaction(db, async(t)=>{
+                const r=doc(db,'bj_tables',bjRoomId); const d=(await t.get(r)).data();
+                const i=d.players.findIndex(p=>p.uid===myUid);
+                d.players[i].status='stand';
+                t.update(r,{players:d.players});
+            });
+        }
+    };
+
+    // Utils
+    function createDeck(){ const s=['♠','♥','♦','♣'],v=['2','3','4','5','6','7','8','9','10','J','Q','K','A']; let d=[]; for(let S of s)for(let V of v)d.push({suit:S,val:V}); return d.sort(()=>Math.random()-.5); }
+    function calcHand(h){ let s=0,a=0; h.forEach(c=>{ if(['J','Q','K'].includes(c.val))s+=10; else if(c.val==='A'){s+=11;a++} else s+=parseInt(c.val); }); while(s>21&&a>0){s-=10;a--} return s; }
+    function renderCard(c, el, hidden) {
+        const d=document.createElement('div'); d.className='bj-card'+(hidden?' hidden':'');
+        if(!hidden){ d.innerHTML=`<div>${c.val}</div><div>${c.suit}</div><div>${c.val}</div>`; d.style.color=['♥','♦'].includes(c.suit)?'red':'inherit'; }
+        el.appendChild(d);
+    }
+
+    // GAME OVER
+    window.triggerGameOver=(g,s)=>{
+        stopAllGames(); document.getElementById('gameOverText').innerText="SCORE: "+s;
+        document.getElementById('modalGameOver').classList.add('active');
+        document.getElementById('btnRestart').onclick=()=>{
+            document.getElementById('modalGameOver').classList.remove('active');
+            if(g==='snake') initSnake(); if(g==='runner') initRunner(); if(g==='pong') initPong();
+        };
+    };
+    document.getElementById('btnExitGame').onclick=()=>{
+        document.getElementById('modalGameOver').classList.remove('active');
+        stopAllGames(); document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active'));
+    };
+
+    // TTT LOGIC
     let tttUnsub;
     function initTTT() { currentGame='ttt'; document.getElementById('tttMenu').style.display='flex'; document.getElementById('tttGame').style.display='none'; }
     document.getElementById('btnCreateRoom').onclick=async()=>{
@@ -882,392 +832,6 @@
             });
         }
     }
-
-    /* =========================================
-       BLACKJACK V3 ENGINE (NET-RUN)
-       ========================================= */
-    let bjRoomId = null;
-    let bjUnsub = null;
-    let bjPlayerState = { money: 1000, bet: 0, ready: false };
-    let bjIsHost = false;
-    let bjGameMode = 2; // Default players
-    let bjDeck = [];
-    
-    // --- LOBBY FUNCTIONS ---
-    function initBlackjack() {
-        currentGame = 'blackjack';
-        bjPlayerState = { money: 1000, bet: 0, ready: false };
-        document.getElementById('bjLobbyContainer').style.display = 'flex';
-        document.getElementById('bjGameInterface').style.display = 'none';
-        document.getElementById('bjMainMenu').style.display = 'flex';
-        document.getElementById('bjCreateMenu').style.display = 'none';
-        document.getElementById('bjWaiting').style.display = 'none';
-    }
-
-    window.showBjCreate = () => {
-        document.getElementById('bjMainMenu').style.display = 'none';
-        document.getElementById('bjCreateMenu').style.display = 'flex';
-    };
-
-    window.backToBjMain = () => {
-        document.getElementById('bjCreateMenu').style.display = 'none';
-        document.getElementById('bjMainMenu').style.display = 'flex';
-    };
-
-    window.doCreateBj = async (players) => {
-        if(!myUid) return alert("Offline");
-        const code = Math.floor(1000 + Math.random()*9000).toString();
-        bjIsHost = true;
-        bjGameMode = players;
-        
-        await setDoc(doc(db, 'bj_tables', code), {
-            host: myUid,
-            maxPlayers: players,
-            state: 'lobby', // lobby, betting, dealing, playing, finished
-            turnIndex: -1,
-            deck: [],
-            dealerHand: [],
-            players: [{
-                uid: myUid,
-                seat: 0, // Host always 0
-                hand: [],
-                bet: 0,
-                ready: false,
-                status: 'waiting', // waiting, playing, bust, stand
-                score: 0
-            }]
-        });
-        enterBjRoom(code);
-    };
-
-    window.joinBjTable = async () => {
-        const code = document.getElementById('bjJoinInput').value;
-        const ref = doc(db, 'bj_tables', code);
-        const snap = await getDoc(ref);
-        
-        if(!snap.exists()) return alert("Not Found");
-        const data = snap.data();
-        
-        if(data.state !== 'lobby') return alert("Game in progress");
-        if(data.players.length >= data.maxPlayers) return alert("Full");
-        
-        // Add self
-        const newPlayers = [...data.players, {
-            uid: myUid,
-            seat: data.players.length,
-            hand: [],
-            bet: 0,
-            ready: false,
-            status: 'waiting',
-            score: 0
-        }];
-        
-        await updateDoc(ref, { players: newPlayers });
-        bjIsHost = false;
-        enterBjRoom(code);
-    };
-
-    function enterBjRoom(code) {
-        bjRoomId = code;
-        document.getElementById('bjCreateMenu').style.display = 'none';
-        document.getElementById('bjMainMenu').style.display = 'none';
-        document.getElementById('bjWaiting').style.display = 'flex';
-        document.getElementById('bjWaitCode').innerText = code;
-        
-        if(bjIsHost) document.getElementById('bjHostMsg').style.display='block';
-
-        bjUnsub = onSnapshot(doc(db, 'bj_tables', code), (snap) => {
-            const data = snap.data();
-            renderBjState(data);
-        });
-    }
-
-    // --- GAME RENDER & LOGIC ---
-    function renderBjState(data) {
-        // Lobby Wait Check
-        if(data.state === 'lobby') {
-            document.getElementById('bjWaitCount').innerText = `PLAYERS: ${data.players.length} / ${data.maxPlayers}`;
-            if(data.players.length === data.maxPlayers && bjIsHost) {
-                // Auto Start
-                updateDoc(doc(db, 'bj_tables', bjRoomId), { state: 'betting' });
-            }
-            return;
-        }
-
-        // Switch to Game View
-        document.getElementById('bjLobbyContainer').style.display = 'none';
-        document.getElementById('bjGameInterface').style.display = 'flex';
-        
-        // My Data
-        const me = data.players.find(p => p.uid === myUid);
-        if(!me) return; // Error or kicked
-
-        // 1. Render Dealer
-        const dDiv = document.getElementById('bjDealerHand');
-        dDiv.innerHTML = '';
-        data.dealerHand.forEach((c, i) => {
-            // Hide 2nd card if playing
-            const hidden = (i===1 && data.state !== 'finished');
-            renderCard(c, dDiv, hidden);
-        });
-        if(data.state === 'finished') document.getElementById('bjDealerScore').innerText = calcHand(data.dealerHand);
-        else document.getElementById('bjDealerScore').innerText = '';
-
-        // 2. Render Opponents
-        const oppContainer = document.getElementById('bjOpponentContainer');
-        oppContainer.innerHTML = '';
-        
-        data.players.forEach((p, idx) => {
-            if(p.uid === myUid) {
-                // Render ME (Bottom)
-                const myDiv = document.getElementById('bjMyHand');
-                if(myDiv.childElementCount !== p.hand.length) {
-                    myDiv.innerHTML = '';
-                    p.hand.forEach(c => renderCard(c, myDiv));
-                }
-                
-                // Status Text
-                let status = "";
-                if(data.state === 'betting') status = p.ready ? "READY" : "BETTING...";
-                if(data.state === 'playing') status = (data.turnIndex === p.seat) ? "YOUR TURN!" : p.status;
-                
-                document.getElementById('bjMyStatus').innerText = `${status} ($${p.bet})`;
-                document.getElementById('bjBetAmount').innerText = p.bet;
-                
-                // Controls Logic
-                const actDiv = document.getElementById('bjActionControls');
-                const betDiv = document.getElementById('bjBetControls');
-                
-                if(data.state === 'betting') {
-                    betDiv.style.display = p.ready ? 'none' : 'flex';
-                    actDiv.style.display = 'none';
-                    document.getElementById('bjGamePhaseMsg').innerText = p.ready ? "WAITING FOR OTHERS" : "PLACE BET & READY";
-                } else if(data.state === 'playing') {
-                    betDiv.style.display = 'none';
-                    if(data.turnIndex === p.seat && p.status !== 'stand' && p.status !== 'bust') {
-                        actDiv.style.display = 'flex';
-                        document.getElementById('bjGamePhaseMsg').innerText = "YOUR TURN >>>";
-                    } else {
-                        actDiv.style.display = 'none';
-                        document.getElementById('bjGamePhaseMsg').innerText = "WAITING...";
-                    }
-                } else {
-                    betDiv.style.display = 'none';
-                    actDiv.style.display = 'none';
-                    // End Game Payout calc logic is done by host, just show result
-                    if(p.score > 21) document.getElementById('bjGamePhaseMsg').innerText = "BUST!";
-                    else if(calcHand(data.dealerHand) > 21) document.getElementById('bjGamePhaseMsg').innerText = "WIN!";
-                    else if(p.score > calcHand(data.dealerHand)) document.getElementById('bjGamePhaseMsg').innerText = "WIN!";
-                    else document.getElementById('bjGamePhaseMsg').innerText = "LOSE";
-                    
-                    if(data.state === 'finished' && bjIsHost) {
-                        setTimeout(() => resetGame(data), 5000); // Host restarts loop
-                    }
-                }
-
-            } else {
-                // OPPONENT RENDER
-                // Calculate visual position relative to me
-                // Simple logic: distribute 1, 2, 3 based on array index relative to me
-                let relIndex = (idx - me.seat + data.maxPlayers) % data.maxPlayers;
-                
-                const oppDiv = document.createElement('div');
-                oppDiv.className = `bj-seat seat-pos-${relIndex}`; 
-                if(data.turnIndex === p.seat && data.state === 'playing') oppDiv.classList.add('active-turn');
-                
-                let html = `<div class="bj-seat-label">P${idx+1}</div><div class="bj-hand">`;
-                // If betting, hide cards/show status
-                if(data.state === 'betting') {
-                     html += `<div style="font-size:10px; color:#555;">${p.ready ? "[READY]" : "[...]"}</div>`;
-                } else {
-                     // Cards
-                     p.hand.forEach(c => {
-                         // WE USE THE SAME RENDER LOGIC TO KEEP CARDS BIG
-                         // But we construct HTML manually here for speed
-                         const color = ['♥','♦'].includes(c.suit)?'red':'inherit';
-                         html += `<div class="bj-card" style="color:${color}">
-                            <div>${c.val}</div><div>${c.suit}</div><div>${c.val}</div>
-                         </div>`;
-                     });
-                }
-                html += `</div><div class="bj-seat-status">${p.status}</div>`;
-                oppDiv.innerHTML = html;
-                oppContainer.appendChild(oppDiv);
-            }
-        });
-        
-        // HOST LOGIC TRIGGER (State Machine)
-        if(bjIsHost) hostGameLoop(data);
-    }
-
-    // --- HOST LOGIC ---
-    async function hostGameLoop(data) {
-        const ref = doc(db, 'bj_tables', bjRoomId);
-        
-        // 1. Check Start Game
-        if(data.state === 'betting') {
-            if(data.players.every(p => p.ready)) {
-                // DEAL
-                const deck = createDeck();
-                const dealerH = [deck.pop(), deck.pop()];
-                const newPlayers = data.players.map(p => ({
-                    ...p, 
-                    hand: [deck.pop(), deck.pop()],
-                    status: 'playing',
-                    score: 0 // Calc later
-                }));
-                // Calculate initial scores
-                newPlayers.forEach(p => p.score = calcHand(p.hand));
-                
-                await updateDoc(ref, {
-                    state: 'playing',
-                    deck: deck,
-                    dealerHand: dealerH,
-                    players: newPlayers,
-                    turnIndex: 0 // Start with Seat 0 (Host)
-                });
-            }
-        }
-        
-        // 2. Check Turn Rotation
-        if(data.state === 'playing') {
-            const currentP = data.players[data.turnIndex];
-            
-            // If current player is done (stand/bust), move next
-            if(currentP.status === 'stand' || currentP.status === 'bust' || currentP.score > 21) {
-                // Handle Bust Update if not already
-                if(currentP.score > 21 && currentP.status !== 'bust') {
-                     // Wait, client should set this? To be safe host updates score check
-                }
-
-                let nextIdx = data.turnIndex + 1;
-                if(nextIdx >= data.players.length) {
-                    // ALL PLAYERS DONE -> DEALER TURN
-                    runDealer(data);
-                } else {
-                    await updateDoc(ref, { turnIndex: nextIdx });
-                }
-            }
-        }
-    }
-
-    async function runDealer(data) {
-        const ref = doc(db, 'bj_tables', bjRoomId);
-        let dHand = [...data.dealerHand];
-        let deck = [...data.deck];
-        let dScore = calcHand(dHand);
-        
-        while(dScore < 17) {
-            dHand.push(deck.pop());
-            dScore = calcHand(dHand);
-        }
-        
-        await updateDoc(ref, {
-            state: 'finished',
-            dealerHand: dHand,
-            deck: deck
-        });
-    }
-
-    async function resetGame(data) {
-        // Reset for next round
-        const ref = doc(db, 'bj_tables', bjRoomId);
-        const resetPlayers = data.players.map(p => ({
-            ...p, hand: [], bet: 0, ready: false, status: 'waiting', score: 0
-        }));
-        await updateDoc(ref, {
-            state: 'betting',
-            dealerHand: [],
-            players: resetPlayers,
-            turnIndex: -1
-        });
-    }
-
-    // --- CLIENT ACTIONS ---
-    window.bjAddBet = (amt) => {
-        if(bjPlayerState.money >= amt) {
-            bjPlayerState.bet += amt;
-            bjPlayerState.money -= amt;
-            document.getElementById('bjBank').innerText = bjPlayerState.money;
-            document.getElementById('bjBetAmount').innerText = bjPlayerState.bet;
-            beep(400);
-        }
-    };
-    window.bjClearBet = () => {
-        bjPlayerState.money += bjPlayerState.bet;
-        bjPlayerState.bet = 0;
-        document.getElementById('bjBank').innerText = bjPlayerState.money;
-        document.getElementById('bjBetAmount').innerText = 0;
-    };
-    window.bjToggleReady = async () => {
-        if(bjPlayerState.bet === 0) return alert("Bet first!");
-        
-        const ref = doc(db, 'bj_tables', bjRoomId);
-        // We need to update specific item in array. 
-        // Firestore array manipulation is hard, so we read-modify-write (safe enough for this scale)
-        await runTransaction(db, async(t) => {
-            const d = (await t.get(ref)).data();
-            const idx = d.players.findIndex(p => p.uid === myUid);
-            d.players[idx].bet = bjPlayerState.bet;
-            d.players[idx].ready = true;
-            t.update(ref, { players: d.players });
-        });
-    };
-
-    window.bjHit = async () => {
-        const ref = doc(db, 'bj_tables', bjRoomId);
-        await runTransaction(db, async(t) => {
-            const d = (await t.get(ref)).data();
-            const card = d.deck.pop();
-            const idx = d.players.findIndex(p => p.uid === myUid);
-            d.players[idx].hand.push(card);
-            
-            const sc = calcHand(d.players[idx].hand);
-            d.players[idx].score = sc;
-            if(sc > 21) d.players[idx].status = 'bust';
-            
-            t.update(ref, { players: d.players, deck: d.deck });
-        });
-    };
-
-    window.bjStand = async () => {
-        const ref = doc(db, 'bj_tables', bjRoomId);
-        await runTransaction(db, async(t) => {
-            const d = (await t.get(ref)).data();
-            const idx = d.players.findIndex(p => p.uid === myUid);
-            d.players[idx].status = 'stand';
-            t.update(ref, { players: d.players });
-        });
-    };
-
-    // Utils
-    function createDeck() {
-        const suits=['♠','♥','♦','♣'], vals=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-        let d=[]; for(let s of suits) for(let v of vals) d.push({suit:s, val:v});
-        return d.sort(()=>Math.random()-.5);
-    }
-    function calcHand(h) {
-        let s=0, a=0;
-        h.forEach(c=>{ if(['J','Q','K'].includes(c.val))s+=10; else if(c.val==='A'){s+=11;a++} else s+=parseInt(c.val); });
-        while(s>21&&a>0){s-=10;a--} return s;
-    }
-    function renderCard(c, el, hidden=false) {
-        const d=document.createElement('div'); d.className='bj-card'+(hidden?' hidden':'');
-        if(!hidden) { d.innerHTML=`<div>${c.val}</div><div>${c.suit}</div><div>${c.val}</div>`; d.style.color=['♥','♦'].includes(c.suit)?'red':'inherit'; }
-        el.appendChild(d);
-    }
-
-    /* GLOBAL ERROR HANDLER */
-    window.triggerGameOver = (g,s) => {
-        stopAllGames();
-        document.getElementById('gameOverText').innerText="SCORE: "+s;
-        document.getElementById('modalGameOver').classList.add('active');
-        document.getElementById('btnRestart').onclick=()=>{
-            document.getElementById('modalGameOver').classList.remove('active');
-            if(g==='snake') initSnake(); else if(g==='runner') initRunner(); else if(g==='pong') initPong();
-        };
-    };
-
 </script>
 </body>
 </html>
