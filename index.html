@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V16 [REFACTORED]</title>
+<title>GOONER TERMINAL V18 [ULTIMATE]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
@@ -47,10 +47,10 @@
     .wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 20px; width: 100%; }
 
     .top-bar {
-        position: fixed; top: 0; left: 0; width: 100%; height: 40px;
+        position: fixed; top: 0; left: 0; width: 100%; height: 50px;
         display: flex; justify-content: space-between; align-items: center;
-        padding: 0 20px; z-index: 2000; background: rgba(0,0,0,0.8);
-        border-bottom: 1px solid var(--accent-dim);
+        padding: 0 20px; z-index: 2000; background: rgba(0,0,0,0.9);
+        border-bottom: 1px solid var(--accent);
     }
     .menu-btn {
         background: transparent; color: var(--accent); padding: 8px 12px;
@@ -61,7 +61,7 @@
     .sys-info { display: flex; gap: 15px; font-size: 8px; color: var(--accent); opacity: 0.8; }
     
     .dropdown-content {
-        display: none; position: absolute; right: 20px; top: 40px; background-color: #000;
+        display: none; position: absolute; right: 20px; top: 50px; background-color: #000;
         min-width: 200px; border: 1px solid var(--accent); border-top: none;
         box-shadow: 0 8px 16px rgba(0,0,0,0.8); z-index: 2001;
     }
@@ -93,15 +93,14 @@
         overflow: hidden; margin-bottom: 40px; text-transform: uppercase; z-index: 20; letter-spacing: 5px;
     }
     .gooner-btn:hover { transform: scale(1.05); box-shadow: 0 0 50px var(--accent-glow), inset 0 0 50px var(--accent-glow); background: var(--accent); color: #000; text-shadow: none; }
-    .gooner-btn:active { transform: scale(0.98); }
     .subtitle { color: var(--accent); font-size: 10px; opacity: 0.7; margin-top: -20px; text-transform: uppercase; letter-spacing: 4px; text-align: center; }
 
     /* --- 6. OVERLAYS & MODALS --- */
     .overlay {
         position: fixed; inset: 0; background: #000; display: none; flex-direction: column;
-        align-items: center; justify-content: center; z-index: 1000; overflow: hidden;
+        align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;
     }
-    .overlay.active { display: flex; }
+    .overlay.active { display: flex !important; }
     .menu-box { background: rgba(0,0,0,0.9); border: 2px solid var(--accent); padding: 20px; display: flex; flex-direction: column; gap: 15px; text-align: center; min-width: 300px; box-shadow: 0 0 15px var(--accent-dim); }
 
     /* LOGIN */
@@ -112,15 +111,10 @@
     .term-input { background: transparent; border: 2px solid var(--accent); color: var(--accent); padding: 15px; font-family: inherit; text-align: center; font-size: 20px; outline: none; margin-bottom: 20px; width: 100%; }
     .term-btn { background: var(--accent); color: #000; border: none; padding: 15px; font-family: inherit; font-weight: bold; cursor: pointer; transition:0.2s; width: 100%; }
     .term-btn:hover { opacity: 0.8; }
-    input[type="color"] { -webkit-appearance: none; border: none; width: 25px; height: 25px; background: none; }
-    input[type="color"]::-webkit-color-swatch { border: 2px solid var(--accent); }
-    input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; background: var(--accent); margin-top: -5px; }
-    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--accent-dim); }
-
+    
     /* --- 7. GAMES --- */
-    canvas { border: 4px solid var(--accent); background: #000; box-shadow: 0 0 20px var(--accent-dim); max-width: 95vw; max-height: 70vh; image-rendering: pixelated; margin-bottom: 10px; }
-    .exit-btn-fixed { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; border: 2px solid var(--accent); background: #000; color: var(--accent); padding: 15px; font-family: inherit; text-transform: uppercase; cursor: pointer; transition: 0.2s; }
+    canvas { border: 4px solid var(--accent); background: #000; box-shadow: 0 0 20px var(--accent-dim); max-width: 95vw; max-height: 60vh; image-rendering: pixelated; margin-bottom: 10px; }
+    .exit-btn-fixed { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; border: 2px solid var(--accent); background: #000; color: var(--accent); padding: 15px; font-family: inherit; text-transform: uppercase; cursor: pointer; transition: 0.2s; z-index: 1001; }
     .exit-btn-fixed:hover { background: var(--accent); color: #000; }
     
     .touch-controls { display: none; margin-top: 10px; gap: 10px; }
@@ -151,7 +145,6 @@
     /* Config */
     .config-box { width: 300px; padding: 20px; border: 1px solid var(--accent); background: #000; }
     .config-row { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; }
-    .config-label { font-size: 10px; }
 
     /* Blackjack */
     .bj-table { width: 100%; max-width: 600px; }
@@ -183,24 +176,24 @@
 <canvas id="matrixCanvas"></canvas>
 
 <div class="top-bar">
-    <button class="menu-btn" id="configToggle">CONFIG</button>
+    <button class="menu-btn" onclick="window.openGame('overlayConfig')">CONFIG</button>
     <div class="sys-info">
         <span id="sysClock">00:00:00</span> | PING: <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
     </div>
     <div style="display:flex; gap:10px;">
-        <button class="menu-btn" id="profileToggle">PROFILE</button>
-        <button class="menu-btn" id="scoresToggle">SCORES</button>
+        <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
+        <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
     </div>
 </div>
 
 <div class="dropdown-content" id="menuDropdown">
-    <button data-game="type">TYPE RUNNER</button>
-    <button data-game="pong">PONG</button>
-    <button data-game="snake">SNAKE</button>
-    <button data-game="runner">RUNNER</button>
-    <button data-game="blackjack" style="border-top:1px solid #444">BLACKJACK (PVP)</button>
-    <button data-game="ttt">TIC TAC TOE</button>
+    <button onclick="window.launchGame('type')">TYPE RUNNER</button>
+    <button onclick="window.launchGame('pong')">PONG</button>
+    <button onclick="window.launchGame('snake')">SNAKE</button>
+    <button onclick="window.launchGame('runner')">RUNNER</button>
+    <button onclick="window.launchGame('blackjack')" style="border-top:1px solid #444">BLACKJACK (PVP)</button>
+    <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
 </div>
 
 <div class="wrap">
@@ -237,7 +230,7 @@
             <div class="stat-row"><span>GAMES PLAYED</span><span id="profGames">0</span></div>
             <div class="stat-row"><span>ACCOUNT ID</span><span id="profUid">...</span></div>
         </div>
-        <button class="term-btn" style="margin-top:20px;" data-close="overlayProfile">CLOSE</button>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
 </div>
 
@@ -251,7 +244,7 @@
             <div class="score-tab" data-tab="pong">PONG</div>
         </div>
         <div class="score-list" id="scoreList"><div class="score-item">LOADING DATA...</div></div>
-        <button class="term-btn" style="margin-top:20px;" data-close="overlayScores">CLOSE</button>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
 </div>
 
@@ -265,7 +258,7 @@
         <div class="config-row"><span>VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50"></div>
         <div class="config-row"><span>FULLSCREEN</span><button class="menu-btn" id="fsToggle">TOGGLE</button></div>
         <button class="term-btn" id="btnLogout" style="border-color:red; color:red; margin-top:10px;">LOGOUT</button>
-        <button class="term-btn" style="margin-top:20px;" data-close="overlayConfig">CLOSE</button>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
 </div>
 
@@ -278,7 +271,7 @@
         <div style="font-size:20px; color:#0f0; margin-top:10px;" id="typeWPM">0 WPM</div>
     </div>
     <input type="text" id="typeInput">
-    <button class="exit-btn-fixed" data-close="overlayType">EXIT SYSTEM</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayPong">
@@ -290,12 +283,7 @@
         <button class="menu-btn" onclick="window.setPongDiff('easy')">EASY</button>
         <button class="menu-btn" onclick="window.setPongDiff('hard')">HARD</button>
     </div>
-    <div class="touch-controls" id="pongControls">
-        <div></div><div class="touch-btn" data-key="up">▲</div><div></div>
-        <div></div><div></div><div></div>
-        <div></div><div class="touch-btn" data-key="down">▼</div><div></div>
-    </div>
-    <button class="exit-btn-fixed" data-close="overlayPong">EXIT SYSTEM</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlaySnake">
@@ -307,7 +295,7 @@
         <div></div><div class="touch-btn" data-sk="up">▲</div><div></div>
         <div class="touch-btn" data-sk="left">◀</div><div class="touch-btn" data-sk="down">▼</div><div class="touch-btn" data-sk="right">▶</div>
     </div>
-    <button class="exit-btn-fixed" data-close="overlaySnake">EXIT SYSTEM</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayRunner">
@@ -316,7 +304,7 @@
     <div style="margin-bottom:10px;" id="runnerScoreBoard">SCORE: 0</div>
     <canvas id="runnerCanvas" width="800" height="400"></canvas>
     <div class="mobile-hint active" style="margin-top:20px;">TAP / SPACE TO JUMP</div>
-    <button class="exit-btn-fixed" data-close="overlayRunner">EXIT SYSTEM</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayTTT">
@@ -342,7 +330,7 @@
         </div>
         <button class="term-btn" id="tttReplay" style="display:none; margin-top:20px;">PLAY AGAIN</button>
     </div>
-    <button class="exit-btn-fixed" data-close="overlayTTT">EXIT SYSTEM</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayBlackjack">
@@ -374,10 +362,11 @@
         <div class="bj-side-table" id="bjSide"></div>
         <div style="display:flex; align-items:center; gap:20px; margin:10px;">
             <div class="bj-deck-container" id="bjDeck">
-                <div class="bj-deck-card"></div><div class="bj-deck-card"></div>
-                <div style="position:absolute; background:#000; padding:2px; font-size:10px; z-index:5;">ACTION</div>
+                <div class="bj-card hidden" style="width:45px; height:65px; border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                    <div style="font-size:10px;">DECK</div>
+                </div>
             </div>
-            <div id="bjMsg" style="width:150px; text-align:center; font-size:10px;">PLACE BET</div>
+            <div id="bjMessage" style="width:150px; text-align:center; font-size:10px;">PLACE BET</div>
         </div>
         <div class="bj-area active-seat" id="bjMySeat">
             <span class="bj-label">YOU</span>
@@ -397,12 +386,12 @@
             </div>
         </div>
     </div>
-    <button class="exit-btn-fixed" data-close="overlayBlackjack">EXIT SYSTEM</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:9000;">
     <h1 style="color:red; font-size:40px; margin-bottom:20px;">GAME OVER</h1>
-    <p id="goText" style="margin-bottom:30px;">SCORE: 0</p>
+    <p id="gameOverText" style="margin-bottom:30px;">SCORE: 0</p>
     <button class="term-btn" id="goRestart" style="width:200px;">RESTART</button>
     <button class="menu-btn" id="goExit" style="margin-top:20px;">EXIT TO MENU</button>
 </div>
@@ -420,6 +409,12 @@
     let myUid=null, myName="ANON", myMoney=1000, myStats={games:0, wpm:0, wins:0}; 
     let globalVol=0.5, currentGame=null;
     const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    
+    // Game Loop Variables
+    let pAnim = null; // Pong Animation Frame
+    let sAnim = null; // Snake Timeout
+    let rAnim = null; // Runner Animation Frame
+    let typeInterval = null; // Type Timer
 
     // --- 3. SYSTEM FUNCTIONS (Audio, Auth, Clock) ---
     function beep(freq=440, type='square', len=0.1) {
@@ -438,7 +433,43 @@
         document.getElementById('sysPing').innerText=Math.floor(Math.random()*40+10)+"ms";
     },1000);
 
-    // --- 4. ACCOUNT SYSTEM ---
+    // --- 4. NAVIGATION & OVERLAYS ---
+    window.openGame = (id) => {
+        window.closeOverlays();
+        const el = document.getElementById(id);
+        if(el) el.classList.add('active');
+    };
+
+    window.closeOverlays = () => {
+        stopAllGames();
+        document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+        document.getElementById('menuDropdown').classList.remove('show');
+    };
+    
+    window.launchGame = (game) => {
+        window.closeOverlays();
+        const overlayId = 'overlay' + (game === 'ttt' ? 'TTT' : (game.charAt(0).toUpperCase() + game.slice(1)));
+        document.getElementById(overlayId).classList.add('active');
+        
+        if(game==='pong') initPong();
+        if(game==='snake') initSnake();
+        if(game==='runner') initRunner();
+        if(game==='type') initTypeGame();
+        if(game==='blackjack') initBJ();
+        if(game==='ttt') initTTT();
+    };
+
+    function stopAllGames(){
+        if(pAnim) cancelAnimationFrame(pAnim);
+        if(sAnim) clearTimeout(sAnim);
+        if(rAnim) cancelAnimationFrame(rAnim);
+        if(typeInterval) clearInterval(typeInterval);
+        cleanupTTT();
+        cleanupBJ();
+        currentGame=null;
+    }
+
+    // --- 5. ACCOUNT SYSTEM ---
     async function login(username, pin) {
         const ref = doc(db, 'gooner_users', username.toUpperCase());
         const snap = await getDoc(ref);
@@ -486,11 +517,9 @@
     };
     document.getElementById('btnLogout').onclick = () => { localStorage.clear(); location.reload(); };
 
-    // --- 5. UI HANDLERS ---
+    // --- 6. UI HANDLERS ---
     document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); document.getElementById('menuDropdown').classList.toggle('show'); };
     document.addEventListener('click', (e) => { if(!e.target.closest('#menuToggle')) document.getElementById('menuDropdown').classList.remove('show'); });
-    document.getElementById('configToggle').onclick = () => document.getElementById('overlayConfig').classList.add('active');
-    document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { document.getElementById(b.dataset.close).classList.remove('active'); stopAllGames(); });
     
     document.getElementById('themeColor').oninput = (e) => {
         const h = e.target.value; document.documentElement.style.setProperty('--accent', h);
@@ -503,9 +532,7 @@
     document.getElementById('flickerToggle').onclick = (e) => { document.body.classList.toggle('flicker-on'); e.target.innerText = document.body.classList.contains('flicker-on')?"ON":"OFF"; };
     document.getElementById('fsToggle').onclick = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
 
-    // --- 6. LEADERBOARDS & CHAT ---
-    document.getElementById('scoresToggle').onclick = () => { document.getElementById('overlayScores').classList.add('active'); loadLeaderboard('richest'); };
-    document.getElementById('profileToggle').onclick = () => document.getElementById('overlayProfile').classList.add('active');
+    // --- 7. LEADERBOARDS & CHAT ---
     document.querySelectorAll('.score-tab').forEach(t => t.onclick = () => {
         document.querySelectorAll('.score-tab').forEach(x => x.classList.remove('active'));
         t.classList.add('active'); loadLeaderboard(t.dataset.tab);
@@ -546,8 +573,7 @@
         });
     }
 
-    // --- 7. GAMES LOGIC ---
-    function stopAllGames(){ stopPong(); stopSnake(); stopRunner(); cleanupTTT(); cleanupBJ(); if(typeInterval)clearInterval(typeInterval); currentGame=null; }
+    // --- 8. GAMES LOGIC ---
     function updateHighScore(game, score) {
         const k = `hs_${game}`; const old = parseInt(localStorage.getItem(k)||0);
         if(score > old) { localStorage.setItem(k, score); saveGlobalScore(game, score); return score; }
@@ -560,43 +586,29 @@
         document.getElementById('hsType').innerText = localStorage.getItem('hs_type')||0;
     }
 
-    // GAME LAUNCHER
-    document.querySelectorAll('[data-game]').forEach(b => b.onclick = () => {
-        stopAllGames(); const g=b.dataset.game;
-        if(g==='pong'){initPong();document.getElementById('overlayPong').classList.add('active');}
-        else if(g==='snake'){initSnake();document.getElementById('overlaySnake').classList.add('active');}
-        else if(g==='runner'){initRunner();document.getElementById('overlayRunner').classList.add('active');}
-        else if(g==='type'){initTypeGame();document.getElementById('overlayType').classList.add('active');}
-        else if(g==='ttt'){initTTT();document.getElementById('overlayTTT').classList.add('active');}
-        else if(g==='blackjack'){initBJ();document.getElementById('overlayBlackjack').classList.add('active');}
-    });
-
     // === TYPE RUNNER ===
     const wordList = ["HACK","SYSTEM","NODE","DATA","CYBER","CODE","BREACH","SERVER","ROOT","SHELL","LINUX","JAVA","PYTHON","REACT","ADMIN","SUDO","GREP","ECHO","PING","VOID","NULL","ASYNC","AWAIT","FETCH","GRID","NEON","GLITCH","SYNTAX","ERROR","DEBUG","DEPLOY"];
-    let typeWords=[], curWIdx=0, startT=0, typeInterval;
+    let typeWords=[], curWIdx=0, startT=0;
     function initTypeGame(){ currentGame='type'; loadHighScores(); typeWords=[]; for(let i=0;i<10;i++)typeWords.push(wordList[Math.floor(Math.random()*wordList.length)]); curWIdx=0; startT=0; const d=document.getElementById('wordDisplay'); d.innerHTML=typeWords.map((w,i)=>`<span class="type-word" id="w${i}">${w}</span>`).join(' '); document.getElementById('typeInput').value=''; document.getElementById('typeInput').focus(); document.getElementById('typeTimer').innerText="0.0s"; document.getElementById('typeWPM').innerText="0 WPM"; document.getElementById('wordDisplay').onclick=()=>document.getElementById('typeInput').focus(); document.getElementById('typeInput').oninput=handleTypeInput; }
     function handleTypeInput(e){ if(!startT){startT=Date.now(); typeInterval=setInterval(()=>{document.getElementById('typeTimer').innerText=((Date.now()-startT)/1000).toFixed(1)+"s";},100);} const val=e.target.value.trim().toUpperCase(), tgt=typeWords[curWIdx], el=document.getElementById(`w${curWIdx}`); document.querySelectorAll('.type-word').forEach(x=>x.classList.remove('active')); el.classList.add('active'); if(val===tgt){el.classList.add('correct');e.target.value='';curWIdx++;beep(800,'sine',0.05);if(curWIdx>=typeWords.length){clearInterval(typeInterval);const t=(Date.now()-startT)/1000, chars=typeWords.join('').length, wpm=Math.round((chars/5)/(t/60)); if(wpm>(myStats.wpm||0)){myStats.wpm=wpm;saveStats();saveGlobalScore('type',wpm);updateHighScore('type',wpm);} document.getElementById('typeWPM').innerText=wpm+" WPM"; alert(`COMPLETE! ${wpm} WPM`); initTypeGame();}} else if(!tgt.startsWith(val)){el.classList.add('error');} else {el.classList.remove('error');} }
 
     // === PONG ===
-    let pAnim, pCtx, pCv, ball={x:400,y:300,dx:5,dy:5}, p1={y:250,h:80}, p2={y:250,h:80}, pSc=0, aiSc=0, pDiff=0.08;
+    let pCtx, pCv, ball={x:400,y:300,dx:5,dy:5}, p1={y:250,h:80}, p2={y:250,h:80}, pSc=0, aiSc=0, pDiff=0.08;
     window.setPongDiff=(l)=>{pDiff=l==='hard'?0.15:0.08; resetBall();};
     function initPong(){currentGame='pong';loadHighScores();pCv=document.getElementById('pongCanvas');pCtx=pCv.getContext('2d');pSc=0;aiSc=0;resetBall();loopPong();}
-    function stopPong(){cancelAnimationFrame(pAnim);}
     function resetBall(){if(!pCv)return;ball.x=400;ball.y=300;ball.dx=(Math.random()>.5?6:-6);ball.dy=(Math.random()*8-4);}
     function loopPong(){if(currentGame!=='pong')return;pCtx.fillStyle='rgba(0,0,0,0.2)';pCtx.fillRect(0,0,800,600);pCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');pCtx.fillRect(20,p1.y,10,p1.h);pCtx.fillRect(770,p2.y,10,p2.h);pCtx.beginPath();pCtx.arc(ball.x,ball.y,8,0,Math.PI*2);pCtx.fill();ball.x+=ball.dx;ball.y+=ball.dy;if(ball.y<0||ball.y>600)ball.dy*=-1;if(ball.x<30&&ball.y>p1.y&&ball.y<p1.y+p1.h){ball.dx=Math.abs(ball.dx)+0.5;beep(600);}if(ball.x>770&&ball.y>p2.y&&ball.y<p2.y+p2.h){ball.dx=-(Math.abs(ball.dx)+0.5);beep(600);}if(ball.x<0){aiSc++;resetBall();beep(200);}if(ball.x>800){pSc++;updateHighScore('pong',pSc);loadHighScores();resetBall();beep(800);}document.getElementById('pongScore').innerText=`${pSc} : ${aiSc}`;p2.y+=(ball.y-p2.h/2-p2.y)*pDiff;pAnim=requestAnimationFrame(loopPong);}
     
     // === SNAKE ===
-    let sAnim, sCtx, sCv, snake=[], food={}, sD='R', sNextD='R', sSc=0;
+    let sCtx, sCv, snake=[], food={}, sD='R', sNextD='R', sSc=0;
     function initSnake(){currentGame='snake';loadHighScores();sCv=document.getElementById('snakeCanvas');sCtx=sCv.getContext('2d');snake=[{x:10,y:10}];sD='R';sNextD='R';sSc=0;document.getElementById('snakeScoreVal').innerText=0;placeFood();loopSnake();}
     function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
-    function stopSnake(){clearTimeout(sAnim);}
-    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);document.getElementById('snakeScoreVal').innerText=sSc;placeFood();beep(600);}else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
+    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);document.getElementById('snakeScoreVal').innerText=sSc;placeFood();beep(600);}else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
     
     // === RUNNER ===
-    let rAnim, rCtx, rCv, runner={lane:1,y:0,jumping:false,jumpH:0}, obs=[], rSc=0, rFr=0;
+    let rCtx, rCv, runner={lane:1,y:0,jumping:false,jumpH:0}, obs=[], rSc=0, rFr=0;
     function initRunner(){currentGame='runner';loadHighScores();rCv=document.getElementById('runnerCanvas');rCtx=rCv.getContext('2d');runner={lane:1,y:0,jumping:false,jumpH:0};obs=[];rSc=0;rFr=0;document.getElementById('runnerScoreBoard').innerText="SCORE: 0";loopRunner();}
-    function stopRunner(){cancelAnimationFrame(rAnim);}
-    function loopRunner(){if(currentGame!=='runner')return;rFr++;if(rFr%100===0)obs.push({lane:Math.floor(Math.random()*3),z:100});rCtx.fillStyle='#000';rCtx.fillRect(0,0,800,400);const ac=getComputedStyle(document.documentElement).getPropertyValue('--accent');rCtx.strokeStyle=ac;rCtx.lineWidth=2;rCtx.beginPath();rCtx.moveTo(400,200);rCtx.lineTo(0,400);rCtx.stroke();rCtx.beginPath();rCtx.moveTo(400,200);rCtx.lineTo(800,400);rCtx.stroke();for(let i=obs.length-1;i>=0;i--){let o=obs[i];o.z-=1.5;if(o.z<=0){obs.splice(i,1);rSc++;updateHighScore('runner',rSc);document.getElementById('runnerScoreBoard').innerText="SCORE: "+rSc;}let s=100/(o.z+10),w=50*s,h=50*s,x=400+(o.lane-1)*(400*s)-w/2,y=400-(200*s)-h;rCtx.fillStyle=ac;rCtx.fillRect(x,y,w,h);if(o.z<10&&o.z>0&&o.lane===runner.lane&&runner.jumpH<10){showGameOver('runner',rSc);return;}}if(runner.jumping){runner.jumpH+=2;if(runner.jumpH>40)runner.jumping=false;}else if(runner.jumpH>0)runner.jumpH-=2;let px=400+(runner.lane-1)*200-30,py=300-runner.jumpH-80;rCtx.fillStyle='#fff';rCtx.fillRect(px,py,60,80);rAnim=requestAnimationFrame(loopRunner);}
+    function loopRunner(){if(currentGame!=='runner')return;rFr++;if(rFr%100===0)obs.push({lane:Math.floor(Math.random()*3),z:100});rCtx.fillStyle='#000';rCtx.fillRect(0,0,800,400);const ac=getComputedStyle(document.documentElement).getPropertyValue('--accent');rCtx.strokeStyle=ac;rCtx.lineWidth=2;rCtx.beginPath();rCtx.moveTo(400,200);rCtx.lineTo(0,400);rCtx.stroke();rCtx.beginPath();rCtx.moveTo(400,200);rCtx.lineTo(800,400);rCtx.stroke();for(let i=obs.length-1;i>=0;i--){let o=obs[i];o.z-=1.5;if(o.z<=0){obs.splice(i,1);rSc++;updateHighScore('runner',rSc);document.getElementById('runnerScoreBoard').innerText="SCORE: "+rSc;}let s=100/(o.z+10),w=50*s,h=50*s,x=400+(o.lane-1)*(400*s)-w/2,y=400-(200*s)-h;rCtx.fillStyle=ac;rCtx.fillRect(x,y,w,h);if(o.z<10&&o.z>0&&o.lane===runner.lane&&runner.jumpH<10){window.showGameOver('runner',rSc);return;}}if(runner.jumping){runner.jumpH+=2;if(runner.jumpH>40)runner.jumping=false;}else if(runner.jumpH>0)runner.jumpH-=2;let px=400+(runner.lane-1)*200-30,py=300-runner.jumpH-80;rCtx.fillStyle='#fff';rCtx.fillRect(px,py,60,80);rAnim=requestAnimationFrame(loopRunner);}
     
     // INPUTS
     document.addEventListener('keydown',e=>{
@@ -613,12 +625,12 @@
     function initBJ() { currentGame='blackjack'; bjCurrentBet=0; document.getElementById('bjMode').style.display='flex'; document.getElementById('bjNetMenu').style.display='none'; document.getElementById('bjLobby').style.display='none'; document.getElementById('bjTable').style.display='none'; updBJ(); }
     function cleanupBJ() { if(bjRoomUnsub)bjRoomUnsub(); bjRoomUnsub=null; bjRoomCode=null; bjMySeatIdx=-1; bjLastPhase=''; }
     window.bjSelect=(m)=>{bjMode=m;document.getElementById('bjMode').style.display='none';if(m==='solo'){document.getElementById('bjTable').style.display='flex';document.getElementById('bjHostLabel').innerText="DEALER";document.querySelector('.bj-pot-display').style.display='none';document.getElementById('bjSide').innerHTML='';startSoloBetting();}else{document.querySelector('.bj-pot-display').style.display='block';document.getElementById('bjNetMenu').style.display='flex';}beep(400,'square',0.1);};
-    function updBJ(){document.getElementById('bjBalance').innerText=myMoney;document.getElementById('bjBetVal').innerText=bjCurrentBet;document.getElementById('globalBank').innerText=myMoney;saveStats();}
+    function updBJ(){document.getElementById('bjBetVal').innerText=bjCurrentBet;document.getElementById('globalBank').innerText=myMoney;saveStats();}
 
     function startSoloBetting(){bjPlayerHand=[];bjDealerHand=[];bjCurrentBet=0;document.getElementById('bjPlayerHand').innerHTML='';document.getElementById('bjDealerHand').innerHTML='';document.getElementById('bjPlayerScore').innerText='';document.getElementById('bjDealerScore').innerText='';document.getElementById('bjMessage').innerText='PLACE BET & CLICK DECK';document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='visible';document.querySelector('#bjDeck div:last-child').innerText="DEAL";updBJ();}
     async function startSoloRound(){if(bjCurrentBet<=0)return beep(200,'sawtooth',0.5);document.getElementById('bjBetBtns').style.visibility='hidden';bjDeck=createDeck();bjPlayerHand=[bjDeck.pop(),bjDeck.pop()];bjDealerHand=[bjDeck.pop(),bjDeck.pop()];renderHand(bjPlayerHand,'bjPlayerHand');renderScore('bjPlayerScore',bjPlayerHand);const dDiv=document.getElementById('bjDealerHand');dDiv.innerHTML='';renderCard(bjDealerHand[0],dDiv);renderCard(bjDealerHand[1],dDiv,true);document.getElementById('bjDealerScore').innerText='';document.getElementById('bjGameBtns').style.display='flex';document.getElementById('bjMessage').innerText="YOUR TURN";if(calcHand(bjPlayerHand)===21)endSolo();}
     async function endSolo(){document.getElementById('bjGameBtns').style.display='none';const dDiv=document.getElementById('bjDealerHand');dDiv.innerHTML='';renderCard(bjDealerHand[0],dDiv);renderCard(bjDealerHand[1],dDiv);let ps=calcHand(bjPlayerHand),ds=calcHand(bjDealerHand);renderScore('bjDealerScore',bjDealerHand);if(ps>21)finishSolo("YOU BUST!",0);else{while(ds<17){await new Promise(r=>setTimeout(r,600));let c=bjDeck.pop();bjDealerHand.push(c);renderCard(c,dDiv);ds=calcHand(bjDealerHand);renderScore('bjDealerScore',bjDealerHand);}if(ds>21)finishSolo("DEALER BUST! YOU WIN",bjCurrentBet*2);else if(ps>ds)finishSolo("YOU WIN!",bjCurrentBet*2);else if(ps<ds)finishSolo("YOU LOSE",0);else finishSolo("PUSH",bjCurrentBet);}}
-    function finishSolo(msg,win){document.getElementById('bjMessage').innerText=msg;myMoney+=win;updBJ();bjCurrentBet=0;document.querySelector('#bjDeck div:last-child').innerText="AGAIN";if(win===0&&myMoney<=0)setTimeout(()=>showGameOver('blackjack',0),1500);else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500);}
+    function finishSolo(msg,win){document.getElementById('bjMessage').innerText=msg;myMoney+=win;updBJ();bjCurrentBet=0;document.querySelector('#bjDeck div:last-child').innerText="AGAIN";if(win===0&&myMoney<=0)setTimeout(()=>window.showGameOver('blackjack',0),1500);else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500);}
 
     function getBJRef(c){return doc(db,'gooner_terminal_rooms','bj_'+c);}
     document.getElementById('btnCreateBJ').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();const seats=[{uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false},null,null,null];await setDoc(getBJRef(c),{seats:seats,deck:[],phase:'lobby',activeSeat:0,pot:0});joinBJ(c,0);};
@@ -633,10 +645,11 @@
         const deckLabel=document.querySelector('#bjDeck div:last-child');
         if(d.phase==='betting'){if(!me.ready){document.getElementById('bjBetBtns').style.visibility='visible';document.getElementById('bjMessage').innerText="BET & LOCK IN";deckLabel.innerText="LOCK";}else{document.getElementById('bjBetBtns').style.visibility='hidden';document.getElementById('bjMessage').innerText="WAITING...";deckLabel.innerText="WAIT";if(bjMySeatIdx===0&&d.seats.every((s,i)=>i===0||!s||s.ready)){document.getElementById('bjMessage').innerText="ALL READY";deckLabel.innerText="DEAL";}}}
         else if(d.phase==='playing'){document.getElementById('bjBetBtns').style.visibility='hidden';deckLabel.innerText="PLAY";if(d.activeSeat===bjMySeatIdx){document.getElementById('bjGameBtns').style.display='flex';document.getElementById('bjMessage').innerText="YOUR TURN";}else{document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjMessage').innerText="OPPONENT TURN";}}
-        else if(d.phase==='resolution'){document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='hidden';if(bjLastPhase!=='resolution'){if(me.status==='win'){myMoney+=d.pot;updBJ();}else if(me.status==='push'){myMoney+=me.bet;updBJ();}bjCurrentBet=0;if(myMoney<=0)setTimeout(()=>showGameOver('blackjack',0),2000);}let msg="ROUND OVER";if(me.status==='win')msg=`WON $${d.pot}!`;else if(me.status==='push')msg="PUSH";else msg="LOST";document.getElementById('bjMessage').innerText=msg;deckLabel.innerText=bjMySeatIdx===0?"NEXT":"WAIT";}
+        else if(d.phase==='resolution'){document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='hidden';if(bjLastPhase!=='resolution'){if(me.status==='win'){myMoney+=d.pot;updBJ();}else if(me.status==='push'){myMoney+=me.bet;updBJ();}bjCurrentBet=0;if(myMoney<=0)setTimeout(()=>window.showGameOver('blackjack',0),2000);}let msg="ROUND OVER";if(me.status==='win')msg=`WON $${d.pot}!`;else if(me.status==='push')msg="PUSH";else msg="LOST";document.getElementById('bjMessage').innerText=msg;deckLabel.innerText=bjMySeatIdx===0?"NEXT":"WAIT";}
         bjLastPhase=d.phase;
     }
-    document.getElementById('bjStartBtn').onclick=async()=>{await updateDoc(getBJRef(bjRoomCode),{phase:'betting'});};document.getElementById('bjDeck').onclick=async()=>{if(currentGame!=='blackjack'||bjMode==='solo')return;const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data();if(d.phase==='betting'){if(!d.seats[bjMySeatIdx].ready){if(bjCurrentBet<=0)return beep(200,'sawtooth',0.5);myMoney-=bjCurrentBet;updBJ();const ns=[...d.seats];ns[bjMySeatIdx].bet=bjCurrentBet;ns[bjMySeatIdx].ready=true;ns[bjMySeatIdx].status='playing';await updateDoc(ref,{seats:ns,pot:d.pot+bjCurrentBet});}else if(bjMySeatIdx===0){if(d.seats.some((s,i)=>i>0&&s&&!s.ready))return;const deck=createDeck();const ns=[...d.seats];ns.forEach(s=>{if(s){s.hand=[deck.pop(),deck.pop()];if(s.uid===myUid)s.hand[1].h=true;}});await updateDoc(ref,{seats:ns,deck:deck,phase:'playing',activeSeat:0});}}else if(d.phase==='resolution'&&bjMySeatIdx===0){const ns=d.seats.map(s=>{if(!s)return null;return{...s,hand:[],bet:0,ready:false,status:'waiting'};});await updateDoc(ref,{seats:ns,pot:0,phase:'betting'});}};
+    document.getElementById('bjStartBtn').onclick=async()=>{await updateDoc(getBJRef(bjRoomCode),{phase:'betting'});};
+    document.getElementById('bjDeck').onclick=async()=>{if(currentGame!=='blackjack')return; if(bjMode==='solo'){ if(document.getElementById('bjMessage').innerText.includes('PLACE')) startSoloRound(); return; } const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data();if(d.phase==='betting'){if(!d.seats[bjMySeatIdx].ready){if(bjCurrentBet<=0)return beep(200,'sawtooth',0.5);myMoney-=bjCurrentBet;updBJ();const ns=[...d.seats];ns[bjMySeatIdx].bet=bjCurrentBet;ns[bjMySeatIdx].ready=true;ns[bjMySeatIdx].status='playing';await updateDoc(ref,{seats:ns,pot:d.pot+bjCurrentBet});}else if(bjMySeatIdx===0){if(d.seats.some((s,i)=>i>0&&s&&!s.ready))return;const deck=createDeck();const ns=[...d.seats];ns.forEach(s=>{if(s){s.hand=[deck.pop(),deck.pop()];if(s.uid===myUid)s.hand[1].h=true;}});await updateDoc(ref,{seats:ns,deck:deck,phase:'playing',activeSeat:0});}}else if(d.phase==='resolution'&&bjMySeatIdx===0){const ns=d.seats.map(s=>{if(!s)return null;return{...s,hand:[],bet:0,ready:false,status:'waiting'};});await updateDoc(ref,{seats:ns,pot:0,phase:'betting'});}};
     document.getElementById('bjHit').onclick=()=>doNetAct('hit');document.getElementById('bjStand').onclick=()=>doNetAct('stand');
     async function doNetAct(act){const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data();if(d.activeSeat!==bjMySeatIdx)return;const deck=[...d.deck],ns=[...d.seats],me=ns[bjMySeatIdx];if(act==='hit'){me.hand.push(deck.pop());if(calcHand(me.hand)>21){me.status='bust';passTurn(ref,d.activeSeat,ns,deck);}else await updateDoc(ref,{seats:ns,deck:deck});}else{me.status='stand';passTurn(ref,d.activeSeat,ns,deck);}}
     async function passTurn(ref,curr,seats,deck){let next=curr+1;while(next<4&&seats[next]===null)next++;if(next>=4){seats[0].hand[1].h=false;let best=0;seats.forEach(s=>{if(s&&s.status!=='bust'){const sc=calcHand(s.hand);if(sc>best)best=sc;}});seats.forEach(s=>{if(!s||s.status==='bust')return;const sc=calcHand(s.hand);s.status=(sc===best&&best>0)?'win':'lose';});await updateDoc(ref,{seats:seats,deck:deck,phase:'resolution',activeSeat:-1});}else await updateDoc(ref,{seats:seats,deck:deck,activeSeat:next});}
@@ -648,6 +661,7 @@
     document.getElementById('btnJoinTTT').onclick=async()=>{const c=document.getElementById('joinTTTCode').value,ref=getTTTRef(c),s=await getDoc(ref);if(!s.exists())return alert("404");if(!s.data().players.O){await updateDoc(ref,{['players.O']:myUid,['names.O']:myName});joinTTT(c,'O');}};
     function joinTTT(c,side){document.getElementById('tttMenu').style.display='none';document.getElementById('tttLobby').style.display='flex';document.getElementById('tttRoomId').innerText=c;if(tttUnsub)tttUnsub();tttUnsub=onSnapshot(getTTTRef(c),d=>{if(!d.exists())return;const data=d.data();if(data.status==='lobby'){document.getElementById('tttPList').innerHTML=`<div>X: ${data.names.X}</div><div>O: ${data.names.O}</div>`;if(side==='X'&&data.players.O){document.getElementById('tttStartBtn').style.display='block';document.getElementById('tttWait').innerText="READY";}else{document.getElementById('tttStartBtn').style.display='none';document.getElementById('tttWait').innerText="WAITING...";}}else{document.getElementById('tttLobby').style.display='none';document.getElementById('tttGame').style.display='block';const cells=document.getElementById('tttGrid').children;data.board.forEach((v,i)=>{cells[i].innerText=v||'';cells[i].style.color=v==='X'?'red':'#fff';});document.getElementById('tttStatus').innerText=data.status==='finished'?"GAME OVER":(data.turn===side?"YOUR TURN":"OPPONENT TURN");if(data.status==='finished'&&side==='X'){document.getElementById('tttReplay').style.display='block';document.getElementById('tttReplay').onclick=async()=>{await updateDoc(getTTTRef(c),{board:Array(9).fill(null),turn:'X',status:'playing'});};}else document.getElementById('tttReplay').style.display='none';}});}
     document.getElementById('tttStartBtn').onclick=async()=>{await updateDoc(getTTTRef(document.getElementById('tttRoomId').innerText),{status:'playing'});};
+    function cleanupTTT() { if(tttUnsub) tttUnsub(); tttUnsub=null; }
     document.getElementById('tttGrid').onclick=async(e)=>{const i=e.target.dataset.i;if(!i)return;await runTransaction(db,async(t)=>{const r=getTTTRef(document.getElementById('tttRoomId').innerText),s=await t.get(r);if(!s.exists())return;const d=s.data();if(d.turn!==tttUnsub.side||d.board[i]||d.status!=='playing')return;const nb=[...d.board];nb[i]=tttUnsub.side;let w=null;[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]].forEach(k=>{if(nb[k[0]]&&nb[k[0]]===nb[k[1]]&&nb[k[0]]===nb[k[2]])w=nb[k[0]];});t.update(r,{board:nb,turn:tttUnsub.side==='X'?'O':'X',status:(w||!nb.includes(null))?'finished':'playing'});});};
 
     /* UTILS */
@@ -655,9 +669,20 @@
     function calcHand(h){let s=0,a=0;h.forEach(c=>{if(c.h)return;if(['J','Q','K'].includes(c.v))s+=10;else if(c.v==='A'){s+=11;a++;}else s+=parseInt(c.v);});while(s>21&&a>0){s-=10;a--;}return s;}
     function renderCard(c,el,hidden=false){const d=document.createElement('div');d.className='bj-card'+(hidden?' hidden':'');if(!hidden){d.innerHTML=`<div>${c.v}</div><div>${c.s}</div><div>${c.v}</div>`;d.style.color=['♥','♦'].includes(c.s)?'red':'inherit';}el.appendChild(d);}
     function renderScore(id,h){document.getElementById(id).innerText=calcHand(h);}
-    window.showGameOver=(g,s)=>{stopAllGames();document.getElementById('gameOverText').innerText='SCORE: '+s;document.getElementById('modalGameOver').classList.add('active');};
-    document.getElementById('goRestart').onclick=()=>{document.getElementById('modalGameOver').classList.remove('active');if(currentGame==='snake')initSnake();if(currentGame==='pong')initPong();if(currentGame==='runner')initRunner();if(currentGame==='blackjack'){myMoney=1000;updBJ();initBJ();document.getElementById('overlayBlackjack').classList.add('active');}};
-    document.getElementById('goExit').onclick=()=>{document.getElementById('modalGameOver').classList.remove('active');stopAllGames();document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active'));};
+    
+    window.showGameOver=(g,s)=>{
+        stopAllGames();
+        document.getElementById('gameOverText').innerText='SCORE: '+s;
+        document.getElementById('modalGameOver').classList.add('active');
+    };
+    document.getElementById('goRestart').onclick=()=>{
+        document.getElementById('modalGameOver').classList.remove('active');
+        if(currentGame==='snake')initSnake();
+        if(currentGame==='pong')initPong();
+        if(currentGame==='runner')initRunner();
+        if(currentGame==='blackjack'){myMoney=1000;updBJ();initBJ();document.getElementById('overlayBlackjack').classList.add('active');}
+    };
+    document.getElementById('goExit').onclick=()=>{ window.closeOverlays(); document.getElementById('modalGameOver').classList.remove('active'); };
 </script>
 </body>
 </html>
