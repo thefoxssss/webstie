@@ -3,12 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL</title>
+<title>GOONER TERMINAL V2</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<!-- FIREBASE SCRIPTS (Version 8 Compat - Most Stable for simple HTML) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <style>
     :root {
@@ -18,7 +14,6 @@
         --accent-dim: rgba(255, 6, 6, 0.2);
         --accent-glow: rgba(255, 6, 6, 0.6);
         --text: #ff3333;
-        --crt-flicker: 0.03;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -30,6 +25,7 @@
         font-family: "Press Start 2P", monospace;
         overflow: hidden;
         color: var(--accent);
+        user-select: none;
     }
 
     /* CRT Scanline Effect */
@@ -45,7 +41,6 @@
         animation: flicker 0.15s infinite;
     }
     
-    /* Vignette */
     body::after {
         content: " ";
         display: block;
@@ -107,22 +102,19 @@
         right: 0;
         top: 100%;
         background-color: #000;
-        min-width: 180px;
+        min-width: 200px;
         border: 2px solid var(--accent);
         border-top: none;
         box-shadow: 0 8px 16px rgba(0,0,0,0.5);
         z-index: 2001;
     }
 
-    .dropdown-content.show {
-        display: block;
-    }
+    .dropdown-content.show { display: block; }
 
     .dropdown-content button {
         background: transparent;
         color: var(--accent);
         padding: 15px;
-        text-decoration: none;
         display: block;
         width: 100%;
         text-align: left;
@@ -137,10 +129,6 @@
     .dropdown-content button:hover {
         background-color: var(--accent);
         color: #000;
-    }
-
-    .dropdown-content button:last-child {
-        border-bottom: none;
     }
 
     /* The Big Button */
@@ -169,9 +157,7 @@
         text-shadow: none;
     }
     
-    .gooner-btn:active {
-        transform: scale(0.95);
-    }
+    .gooner-btn:active { transform: scale(0.95); }
 
     .subtitle {
         color: var(--accent);
@@ -196,9 +182,7 @@
         overflow: hidden;
     }
     
-    .overlay.active {
-        display: flex;
-    }
+    .overlay.active { display: flex; }
 
     .overlay h1 {
         font-size: clamp(20px, 5vw, 40px);
@@ -222,15 +206,12 @@
         transition: 0.2s;
     }
     
-    .close-btn:hover {
-        background: var(--accent);
-        color: #000;
-    }
+    .close-btn:hover { background: var(--accent); color: #000; }
 
     /* Game Canvas Styles */
     canvas {
         border: 4px solid var(--accent);
-        background: #000; /* Deep black for contrast */
+        background: #000;
         box-shadow: 0 0 20px rgba(255, 6, 6, 0.2);
         max-width: 95vw;
         max-height: 70vh;
@@ -239,7 +220,7 @@
 
     /* Mobile Controls */
     .touch-controls {
-        display: none; /* hidden by default */
+        display: none;
         margin-top: 20px;
         gap: 10px;
         user-select: none;
@@ -265,10 +246,7 @@
         cursor: pointer;
     }
     
-    .touch-btn:active {
-        background: var(--accent);
-        color: #000;
-    }
+    .touch-btn:active { background: var(--accent); color: #000; }
 
     .mobile-hint {
         display: none;
@@ -279,13 +257,21 @@
     }
     
     .mobile-hint.active { display: block; }
+    
+    /* Media Query to show touch controls on mobile */
+    @media (pointer: coarse) {
+        .touch-controls.active { display: grid; }
+        .mobile-hint.active { display: block; }
+    }
 
     /* Secret Visuals */
     .glitch-text {
         position: fixed;
-        font-size: 10px;
-        opacity: 0.4;
+        font-size: 14px;
+        opacity: 0.8;
         pointer-events: none;
+        font-weight: bold;
+        z-index: 5;
     }
     
     .version-tag {
@@ -305,7 +291,7 @@
         gap: 20px;
     }
 
-    .ttt-menu-box {
+    .menu-box {
         background: rgba(20,0,0,0.8);
         border: 2px solid var(--accent);
         padding: 20px;
@@ -316,7 +302,7 @@
         min-width: 300px;
     }
 
-    .ttt-input {
+    .term-input {
         background: transparent;
         border: 2px solid var(--accent);
         color: var(--accent);
@@ -327,7 +313,7 @@
         font-size: 16px;
     }
 
-    .ttt-btn {
+    .term-btn {
         background: var(--accent);
         color: black;
         border: none;
@@ -337,9 +323,8 @@
         font-weight: bold;
     }
 
-    .ttt-btn:hover {
-        opacity: 0.8;
-    }
+    .term-btn:hover { opacity: 0.8; }
+    .term-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .ttt-grid {
         display: grid;
@@ -362,25 +347,156 @@
         user-select: none;
     }
 
-    .ttt-cell:active {
-        background: #110000;
+    .ttt-cell:active { background: #110000; }
+    .ttt-status { font-size: 12px; margin-bottom: 10px; text-align: center; min-height: 20px; }
+    .ttt-room-code { font-size: 24px; letter-spacing: 5px; margin: 10px 0; color: #fff; }
+
+    /* --- BLACKJACK STYLES --- */
+    .bj-table {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 600px;
+        gap: 20px;
     }
 
-    .ttt-status {
-        font-size: 12px;
-        margin-bottom: 10px;
-        text-align: center;
-        min-height: 20px;
+    .bj-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 120px;
+        width: 100%;
+        border: 1px dashed var(--accent-dim);
+        padding: 10px;
+        position: relative;
     }
 
-    .ttt-room-code {
-        font-size: 24px;
-        letter-spacing: 5px;
-        margin: 10px 0;
-        color: #fff;
+    .bj-label {
+        position: absolute;
+        top: -10px;
+        background: #000;
+        padding: 0 10px;
+        font-size: 10px;
+        color: var(--accent);
+    }
+
+    .bj-hand {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        min-height: 90px;
+    }
+
+    @keyframes flyIn {
+        0% { transform: translateY(-200px) rotate(10deg) scale(1.5); opacity: 0; }
+        100% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
     }
     
-    /* Scrollbar */
+    @keyframes fall {
+        0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+
+    .bj-card {
+        width: 60px;
+        height: 84px;
+        border: 2px solid var(--accent);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 5px;
+        font-size: 14px;
+        background: #000;
+        box-shadow: 2px 2px 0px var(--accent-dim);
+        user-select: none;
+        animation: flyIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        position: relative;
+    }
+    
+    .bj-card.hidden {
+        background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent-dim) 5px, var(--accent-dim) 10px);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .bj-score { margin-top: 10px; font-size: 12px; }
+    .bj-controls { display: flex; gap: 20px; margin-top: 10px; }
+    .bj-message { font-size: 14px; min-height: 20px; color: #fff; text-align: center; text-shadow: 0 0 5px var(--accent); }
+    
+    .bj-deck-container {
+        width: 80px;
+        height: 110px;
+        border: 2px dashed var(--accent-dim);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        margin: 10px;
+        position: relative;
+        transition: transform 0.1s;
+    }
+    .bj-deck-container:active { transform: scale(0.95); }
+    
+    .bj-deck-card {
+        position: absolute;
+        width: 60px;
+        height: 84px;
+        background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 6px);
+        border: 2px solid var(--accent);
+        box-shadow: -2px 2px 0px var(--accent-dim);
+        top: 12px; left: 10px;
+    }
+    .bj-deck-card:nth-child(2) { top: 8px; left: 6px; }
+    .bj-deck-card:nth-child(3) { top: 4px; left: 2px; }
+    
+    .bj-chip-rack {
+        display: flex;
+        gap: 15px;
+        margin-top: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .bj-chip {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: 2px solid var(--accent);
+        background: #000;
+        color: var(--accent);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 10px;
+        cursor: pointer;
+        box-shadow: 0 0 10px var(--accent-dim), inset 0 0 5px rgba(0,0,0,0.5);
+        user-select: none;
+        transition: all 0.2s;
+        font-weight: bold;
+    }
+    .bj-chip:hover { 
+        background: var(--accent); color: #000; 
+        transform: translateY(-5px) scale(1.1); 
+        box-shadow: 0 10px 15px var(--accent-dim);
+    }
+    
+    .bj-all-in { width: auto; padding: 0 10px; border-radius: 20px; border-color: #ffcc00; color: #ffcc00; }
+    .bj-bet-display { font-size: 16px; color: #fff; margin: 10px 0; text-align: center; text-shadow: 0 0 5px var(--accent); }
+
+    /* Falling Cards Animation */
+    .falling-card {
+        position: fixed;
+        width: 40px;
+        height: 56px;
+        background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 8px);
+        border: 2px solid var(--accent);
+        z-index: 9998;
+        pointer-events: none;
+        top: -60px;
+    }
+
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #111; }
     ::-webkit-scrollbar-thumb { background: #500; }
@@ -388,45 +504,42 @@
 
     @media (max-width: 768px) {
         h1 { font-size: 24px; }
+        .ttt-cell { width: 60px; height: 60px; font-size: 30px; }
+        .bj-card { width: 45px; height: 63px; font-size: 10px; }
+        .bj-deck-container { display: none; }
     }
 </style>
 </head>
 <body>
 
-<!-- Hidden Easter Eggs -->
-<div class="version-tag">SYS.V.23.0 // LOGGING</div>
+<div class="version-tag">SYS.V.25.1 // AUTH_PATCHED</div>
 <div id="glitchContainer"></div>
 
-<!-- Top Right Menu -->
 <div class="top-menu">
     <button class="menu-btn" id="menuToggle">GAMES ▼</button>
     <div class="dropdown-content" id="menuDropdown">
         <button data-game-trigger="pong">PONG</button>
         <button data-game-trigger="snake">SNAKE</button>
         <button data-game-trigger="runner">RUNNER</button>
-        <button data-game-trigger="ttt" style="border-top: 2px solid var(--accent);">TIC TAC TOE (ONLINE)</button>
+        <button data-game-trigger="blackjack" style="border-top: 2px solid var(--accent);">BLACKJACK</button>
+        <button data-game-trigger="ttt">TIC TAC TOE (ONLINE)</button>
     </div>
 </div>
 
-<!-- Main UI -->
 <div class="wrap">
     <div class="gooner-btn" id="mainBtn">GOONER</div>
     <div class="subtitle">SELECT GAME FROM MENU ↗</div>
 </div>
 
-<!-- ==================== OVERLAYS ==================== -->
-
-<!-- 1. PONG -->
 <div class="overlay" id="overlayPong">
     <button class="close-btn" data-close="overlayPong">ABORT</button>
     <h1>PONG</h1>
     <div style="margin-bottom:10px; font-size:12px;" id="pongScore">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
     
-    <!-- Difficulty -->
     <div style="margin-top:10px;">
-        <button class="close-btn" style="position:static; display:inline-block;" onclick="setPongDiff('easy')">EASY</button>
-        <button class="close-btn" style="position:static; display:inline-block;" onclick="setPongDiff('hard')">HARD</button>
+        <button class="close-btn" style="position:static; display:inline-block;" onclick="window.setPongDiff('easy')">EASY</button>
+        <button class="close-btn" style="position:static; display:inline-block;" onclick="window.setPongDiff('hard')">HARD</button>
     </div>
 
     <div class="mobile-hint" id="pongHint">TAP ARROWS TO MOVE</div>
@@ -443,16 +556,23 @@
     </div>
 </div>
 
-<!-- 2. SNAKE -->
 <div class="overlay" id="overlaySnake">
     <button class="close-btn" data-close="overlaySnake">ABORT</button>
     <h1>SNAKE</h1>
     <div style="margin-bottom:10px; font-size:12px;">SCORE: <span id="snakeScoreVal">0</span></div>
     <canvas id="snakeCanvas" width="600" height="400"></canvas>
     <div class="mobile-hint active" id="snakeHint">USE ARROW KEYS OR WASD</div>
+    
+    <div class="touch-controls active" id="snakeControls" style="margin-top:20px;">
+        <div></div>
+        <div class="touch-btn" data-snake-key="up">▲</div>
+        <div></div>
+        <div class="touch-btn" data-snake-key="left">◀</div>
+        <div class="touch-btn" data-snake-key="down">▼</div>
+        <div class="touch-btn" data-snake-key="right">▶</div>
+    </div>
 </div>
 
-<!-- 3. RUNNER (GOODBOY) -->
 <div class="overlay" id="overlayRunner">
     <button class="close-btn" data-close="overlayRunner">ABORT</button>
     <h1>RUNNER</h1>
@@ -461,32 +581,28 @@
     <div class="mobile-hint active" style="margin-top:10px;">TAP TO JUMP / SWIPE TO SWITCH LANES</div>
 </div>
 
-<!-- 4. TIC TAC TOE (MULTIPLAYER) -->
 <div class="overlay" id="overlayTTT">
     <button class="close-btn" data-close="overlayTTT">DISCONNECT</button>
     <h1>TIC TAC TOE</h1>
     
-    <!-- View: Menu -->
     <div id="tttMenu" class="ttt-container">
-        <div class="ttt-menu-box">
+        <div class="menu-box">
             <p>MULTIPLAYER LOBBY</p>
-            <button class="ttt-btn" id="btnCreateRoom">CREATE ROOM</button>
+            <button class="term-btn" id="btnCreateRoom">CREATE ROOM</button>
             <p>- OR -</p>
-            <input type="text" id="joinRoomCode" class="ttt-input" placeholder="ENTER 4-DIGIT CODE" maxlength="4">
-            <button class="ttt-btn" id="btnJoinRoom">JOIN ROOM</button>
+            <input type="text" id="joinRoomCode" class="term-input" placeholder="4-DIGIT CODE" maxlength="4">
+            <button class="term-btn" id="btnJoinRoom">JOIN ROOM</button>
         </div>
         <div style="font-size:10px; max-width:320px; text-align:center; line-height:1.5;">
-            STATUS: <span id="authStatus" style="color:yellow;">INITIALIZING...</span>
+            STATUS: <span id="authStatus" style="color:yellow;">CONNECTING...</span>
         </div>
     </div>
 
-    <!-- View: Lobby/Game -->
     <div id="tttGame" class="ttt-container" style="display:none;">
         <div class="ttt-status" id="tttStatus">WAITING FOR OPPONENT...</div>
         <div class="ttt-room-code" id="displayRoomCode">????</div>
         
         <div class="ttt-grid" id="tttGrid">
-            <!-- Cells generated by JS -->
             <div class="ttt-cell" data-idx="0"></div>
             <div class="ttt-cell" data-idx="1"></div>
             <div class="ttt-cell" data-idx="2"></div>
@@ -498,12 +614,71 @@
             <div class="ttt-cell" data-idx="8"></div>
         </div>
         
-        <button class="ttt-btn" id="tttReset" style="display:none; margin-top:20px;">PLAY AGAIN</button>
+        <button class="term-btn" id="tttReset" style="display:none; margin-top:20px;">PLAY AGAIN</button>
     </div>
 </div>
 
+<div class="overlay" id="overlayBlackjack">
+    <button class="close-btn" data-close="overlayBlackjack">ABORT</button>
+    <h1>BLACKJACK</h1>
+    
+    <div id="bjModeSelect" class="menu-box">
+        <p>SELECT MODE</p>
+        <button class="term-btn" onclick="window.selectBjMode('solo')">SOLO RUN (VS AI)</button>
+        <button class="term-btn" onclick="window.selectBjMode('multi')">NET RUN (VS PVP)</button>
+    </div>
 
-<!-- Generic Game Over Modal -->
+    <div id="bjLobby" class="menu-box" style="display:none;">
+        <p>NET RUN LOBBY</p>
+        <button class="term-btn" id="btnBjCreate">CREATE TABLE</button>
+        <p>- OR -</p>
+        <input type="text" id="joinBjCode" class="term-input" placeholder="CODE" maxlength="4">
+        <button class="term-btn" id="btnBjJoin">JOIN TABLE</button>
+    </div>
+
+    <div id="bjTable" class="bj-table" style="display:none;">
+        <div class="bj-area">
+            <span class="bj-label" id="bjOpponentLabel">DEALER</span>
+            <div class="bj-hand" id="bjDealerHand"></div>
+            <div class="bj-score" id="bjDealerScore"></div>
+        </div>
+        
+        <div style="display:flex; align-items:center; justify-content:center; gap:20px; margin: 10px 0;">
+            <div class="bj-deck-container" id="bjDeck">
+                <div class="bj-deck-card"></div>
+                <div class="bj-deck-card"></div>
+                <div class="bj-deck-card"></div>
+                <div style="position:absolute; z-index:10; font-size:10px; background:#000; padding:4px;">DEAL</div>
+            </div>
+            <div class="bj-message" id="bjMessage">PLACE BET & CLICK DECK</div>
+        </div>
+
+        <div class="bj-area">
+            <span class="bj-label">YOU</span>
+            <div class="bj-hand" id="bjPlayerHand"></div>
+            <div class="bj-score" id="bjPlayerScore"></div>
+        </div>
+        
+        <div class="bj-controls" id="bjGameControls" style="display:none;">
+            <button class="term-btn" id="btnBjHit">HIT</button>
+            <button class="term-btn" id="btnBjStand">STAND</button>
+        </div>
+        
+        <div id="bjBettingControls">
+            <div class="bj-bet-display">BET: $<span id="bjCurrentBet">0</span></div>
+            <div class="bj-chip-rack">
+                <div class="bj-chip" data-val="10">10</div>
+                <div class="bj-chip" data-val="50">50</div>
+                <div class="bj-chip" data-val="100">100</div>
+                <div class="bj-chip bj-all-in" id="btnBjAllIn">ALL IN</div>
+                <div class="bj-chip" id="btnBjClear" style="border-color:#fff; color:#fff;">CLR</div>
+            </div>
+        </div>
+        
+        <div style="font-size:10px; margin-top:20px;">BANK: $<span id="bjBalance">1000</span></div>
+    </div>
+</div>
+
 <div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:2000;">
     <h1 style="color:red; font-size:40px;">GAME OVER</h1>
     <p id="gameOverText" style="margin-bottom:20px; color:#fff;">SCORE: 0</p>
@@ -511,12 +686,34 @@
     <button class="close-btn" style="position:static; margin-top:20px;" id="btnExitGame">EXIT</button>
 </div>
 
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- FIREBASE CONFIGURATION ---
+    // Ensure you have enabled Authentication (Anonymous) and Firestore in your Firebase Console.
+    const firebaseConfig = {
+        apiKey: "AIzaSyAoXwDA6KtqSD4yfGprus8C8Mi_--1KwSw",
+        authDomain: "funnys-18ff7.firebaseapp.com",
+        projectId: "funnys-18ff7",
+        storageBucket: "funnys-18ff7.firebasestorage.app",
+        messagingSenderId: "368675604960",
+        appId: "1:368675604960:web:24c5dcd6a5329c9fd94385",
+        measurementId: "G-6PE47RLP8V"
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
     /* --------------------------------------------------------
        CORE SYSTEM & VISUALS
     -------------------------------------------------------- */
     const mainBtn = document.getElementById('mainBtn');
     let currentGame = null; 
+    let myUid = null;
 
     // Sound Synth
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -533,6 +730,31 @@
         osc.start();
         osc.stop(audioCtx.currentTime + dur);
     }
+
+    /* --- AUTH HANDLER --- */
+    const initAuth = async () => {
+         try {
+            await signInAnonymously(auth);
+         } catch(e) { 
+             console.error("Auth Fail", e);
+             const statusEl = document.getElementById('authStatus');
+             if(statusEl) {
+                 statusEl.innerText = "AUTH ERROR: " + e.code;
+                 statusEl.style.color = "red";
+             }
+         }
+    };
+    initAuth();
+    onAuthStateChanged(auth, (user) => { 
+        if (user) {
+            myUid = user.uid;
+            const statusEl = document.getElementById('authStatus');
+            if(statusEl) {
+                statusEl.innerText = "ONLINE";
+                statusEl.style.color = "#0f0";
+            }
+        }
+    });
 
     /* --- MENU LOGIC --- */
     const menuToggle = document.getElementById('menuToggle');
@@ -558,26 +780,23 @@
             else if (game === 'snake') launchOverlay('overlaySnake', initSnake);
             else if (game === 'runner') launchOverlay('overlayRunner', initRunner);
             else if (game === 'ttt') launchOverlay('overlayTTT', initTTT);
+            else if (game === 'blackjack') launchOverlay('overlayBlackjack', initBlackjack);
         });
     });
 
-    // Button Click Effect
     mainBtn.addEventListener('click', () => {
         beep(100, 'sawtooth', 0.3);
-        const stamps = ['GOON', 'CODE', 'HACK', 'SYS'];
+        const stamps = ['GOON', 'CODE', 'HACK', 'SYS', 'TERM'];
         const el = document.createElement('div');
         el.className = 'glitch-text';
         el.textContent = stamps[Math.floor(Math.random()*stamps.length)];
-        el.style.left = Math.random() * window.innerWidth + 'px';
-        el.style.top = Math.random() * window.innerHeight + 'px';
-        el.style.color = '#ff0000';
+        el.style.left = Math.random() * (window.innerWidth - 50) + 'px';
+        el.style.top = Math.random() * (window.innerHeight - 20) + 'px';
+        el.style.color = Math.random() > 0.5 ? '#ff0000' : '#ffffff';
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 2000);
-        document.body.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
-        setTimeout(() => document.body.style.transform = 'none', 50);
     });
 
-    // Close Handler
     document.querySelectorAll('[data-close]').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.dataset.close;
@@ -598,6 +817,7 @@
         stopSnake();
         stopRunner();
         cleanupTTT();
+        cleanupBJ();
         currentGame = null;
     }
 
@@ -605,83 +825,72 @@
        PONG
     -------------------------------------------------------- */
     let pongAnim, pongCtx, pongCanvas;
-    let ball = {x:400, y:300, dx:5, dy:5, r:8};
-    let p1 = {y:250, h:80}, p2 = {y:250, h:80};
-    let pScore=0, aiScore=0;
-    let pongDiff = 0.08;
+    let ball = {x:400, y:300, dx:5, dy:5, r:8}, p1 = {y:250, h:80}, p2 = {y:250, h:80}, pScore=0, aiScore=0, pongDiff=0.08;
 
-    function initPong() {
-        currentGame = 'pong';
-        pongCanvas = document.getElementById('pongCanvas');
-        pongCtx = pongCanvas.getContext('2d');
-        pScore = 0; aiScore = 0;
-        resetBall();
-        loopPong();
+    window.setPongDiff = (l) => { 
+        pongDiff = l === 'hard' ? 0.15 : 0.08; 
+        resetBall(); 
+        beep(800, 'square', 0.1);
+    };
+
+    function initPong() { 
+        currentGame='pong'; 
+        pongCanvas=document.getElementById('pongCanvas'); 
+        pongCtx=pongCanvas.getContext('2d'); 
+        pScore=0; aiScore=0;
+        resetBall(); 
+        loopPong(); 
     }
-
-    function setPongDiff(level) {
-        pongDiff = level === 'hard' ? 0.15 : 0.08;
-        resetBall();
-    }
-
     function stopPong() { cancelAnimationFrame(pongAnim); }
-
-    function resetBall() {
-        ball.x = pongCanvas.width/2;
-        ball.y = pongCanvas.height/2;
-        ball.dx = (Math.random() > 0.5 ? 6 : -6);
-        ball.dy = (Math.random() * 8 - 4);
+    function resetBall() { 
+        if(!pongCanvas)return; 
+        ball.x=400; ball.y=300; 
+        ball.dx=(Math.random()>.5?6:-6); 
+        ball.dy=(Math.random()*8-4); 
     }
-
     function loopPong() {
-        if (currentGame !== 'pong') return;
-        pongCtx.fillStyle = 'rgba(0,0,0,0.2)';
-        pongCtx.fillRect(0, 0, pongCanvas.width, pongCanvas.height);
-        pongCtx.fillStyle = '#ff0606';
-        pongCtx.fillRect(20, p1.y, 10, p1.h);
-        pongCtx.fillRect(pongCanvas.width-30, p2.y, 10, p2.h);
-        pongCtx.beginPath();
-        pongCtx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
-        pongCtx.fill();
-
-        ball.x += ball.dx;
-        ball.y += ball.dy;
-
-        if(ball.y < 0 || ball.y > pongCanvas.height) { ball.dy *= -1; beep(300); }
-
-        if(ball.x < 30 && ball.y > p1.y && ball.y < p1.y + p1.h) {
-            ball.dx = Math.abs(ball.dx) + 0.5;
-            beep(600);
+        if(currentGame!=='pong')return;
+        pongCtx.fillStyle='rgba(0,0,0,0.2)'; pongCtx.fillRect(0,0,800,600); 
+        
+        // Draw Paddles
+        pongCtx.fillStyle='#f00';
+        pongCtx.fillRect(20,p1.y,10,p1.h); 
+        pongCtx.fillRect(770,p2.y,10,p2.h);
+        
+        // Draw Ball
+        pongCtx.beginPath(); pongCtx.arc(ball.x,ball.y,8,0,Math.PI*2); pongCtx.fill();
+        
+        // Physics
+        ball.x+=ball.dx; ball.y+=ball.dy;
+        if(ball.y<0||ball.y>600) ball.dy*=-1;
+        
+        // Paddle Collision
+        if(ball.x<30 && ball.y>p1.y && ball.y<p1.y+p1.h) { 
+            ball.dx=Math.abs(ball.dx)+0.5; beep(600); 
         }
-        if(ball.x > pongCanvas.width-30 && ball.y > p2.y && ball.y < p2.y + p2.h) {
-            ball.dx = -(Math.abs(ball.dx) + 0.5);
-            beep(600);
+        if(ball.x>770 && ball.y>p2.y && ball.y<p2.y+p2.h) { 
+            ball.dx=-(Math.abs(ball.dx)+0.5); beep(600); 
         }
-
-        if(ball.x < 0) { aiScore++; resetBall(); beep(100, 'sawtooth', 0.5); }
-        if(ball.x > pongCanvas.width) { pScore++; resetBall(); beep(800, 'square', 0.2); }
-
+        
+        // Scoring
+        if(ball.x<0) { aiScore++; resetBall(); beep(200,'sawtooth',0.3); } 
+        if(ball.x>800) { pScore++; resetBall(); beep(800,'square',0.2); }
         document.getElementById('pongScore').innerText = `${pScore} : ${aiScore}`;
-
-        let target = ball.y - p2.h/2;
-        p2.y += (target - p2.y) * pongDiff;
-        pongAnim = requestAnimationFrame(loopPong);
+        
+        // AI
+        p2.y += (ball.y-p2.h/2 - p2.y) * pongDiff;
+        
+        pongAnim=requestAnimationFrame(loopPong);
     }
-
-    document.addEventListener('keydown', (e) => {
-        if(currentGame !== 'pong') return;
-        if(e.key === 'ArrowUp' || e.key === 'w') p1.y -= 25;
-        if(e.key === 'ArrowDown' || e.key === 's') p1.y += 25;
-        p1.y = Math.max(0, Math.min(pongCanvas.height-p1.h, p1.y));
-    });
-
+    
+    // Pong Controls
+    document.addEventListener('keydown',e=>{ if(currentGame==='pong'){ if(e.key==='w'||e.key==='ArrowUp')p1.y-=25; if(e.key==='s'||e.key==='ArrowDown')p1.y+=25; }});
     document.querySelectorAll('#pongControls .touch-btn').forEach(b => {
-        b.addEventListener('touchstart', (e) => {
+        b.addEventListener('click', (e) => {
             e.preventDefault();
-            if(currentGame !== 'pong') return;
-            const key = b.dataset.key;
-            if(key === 'up') p1.y -= 40;
-            if(key === 'down') p1.y += 40;
+            if(currentGame!=='pong') return;
+            if(b.dataset.key==='up') p1.y-=40;
+            if(b.dataset.key==='down') p1.y+=40;
         });
     });
 
@@ -689,453 +898,572 @@
        SNAKE
     -------------------------------------------------------- */
     let snakeAnim, snakeCtx, snakeCanvas;
-    let snake = [], food = {}, sDir = 'RIGHT';
-    let lastProcessedDir = 'RIGHT'; 
-    let sScore = 0;
-    
-    function initSnake() {
-        currentGame = 'snake';
-        snakeCanvas = document.getElementById('snakeCanvas');
-        snakeCtx = snakeCanvas.getContext('2d');
-        snake = [{x:10, y:10}, {x:9, y:10}, {x:8, y:10}];
-        sDir = 'RIGHT';
-        lastProcessedDir = 'RIGHT';
-        sScore = 0;
-        placeFood();
-        loopSnake();
+    let snake = [], food = {}, sDir = 'RIGHT', lastProcessedDir = 'RIGHT', sScore = 0;
+
+    function initSnake() { 
+        currentGame='snake'; 
+        snakeCanvas=document.getElementById('snakeCanvas'); 
+        snakeCtx=snakeCanvas.getContext('2d'); 
+        snake=[{x:10,y:10}]; 
+        sDir='RIGHT'; 
+        sScore=0; 
+        document.getElementById('snakeScoreVal').innerText=sScore;
+        placeFood(); 
+        loopSnake(); 
     }
-    
     function stopSnake() { clearTimeout(snakeAnim); }
-
-    function placeFood() {
-        food = {
-            x: Math.floor(Math.random() * (snakeCanvas.width/20)),
-            y: Math.floor(Math.random() * (snakeCanvas.height/20))
-        };
-    }
-
+    function placeFood() { food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)}; }
+    
     function loopSnake() {
-        if (currentGame !== 'snake') return;
-
-        const head = {x: snake[0].x, y: snake[0].y};
-        if(sDir === 'RIGHT') head.x++;
-        if(sDir === 'LEFT') head.x--;
-        if(sDir === 'UP') head.y--;
-        if(sDir === 'DOWN') head.y++;
-
-        lastProcessedDir = sDir; 
-
-        if(head.x < 0 || head.x >= snakeCanvas.width/20 || head.y < 0 || head.y >= snakeCanvas.height/20 || snake.some(s => s.x === head.x && s.y === head.y)) {
-            triggerGameOver('snake', sScore);
-            return;
+        if(currentGame!=='snake')return;
+        let h={x:snake[0].x,y:snake[0].y};
+        if(sDir==='RIGHT')h.x++; if(sDir==='LEFT')h.x--; if(sDir==='UP')h.y--; if(sDir==='DOWN')h.y++;
+        lastProcessedDir=sDir;
+        
+        // Collision
+        if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)) { 
+            triggerGameOver('snake',sScore); 
+            return; 
         }
-
-        snake.unshift(head);
-
-        if(head.x === food.x && head.y === food.y) {
-            sScore += 10;
-            document.getElementById('snakeScoreVal').innerText = sScore;
-            placeFood();
-            beep(600, 'square', 0.05);
+        
+        snake.unshift(h);
+        if(h.x===food.x&&h.y===food.y) { 
+            sScore+=10; document.getElementById('snakeScoreVal').innerText=sScore; 
+            placeFood(); beep(600); 
         } else {
             snake.pop();
         }
-
-        snakeCtx.fillStyle = '#000';
-        snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-        snakeCtx.fillStyle = '#ff0606';
-        snake.forEach(s => { snakeCtx.fillRect(s.x*20, s.y*20, 18, 18); });
-        snakeCtx.fillStyle = '#fff';
-        snakeCtx.fillRect(food.x*20, food.y*20, 18, 18);
-
-        snakeAnim = setTimeout(loopSnake, 100);
+        
+        // Draw
+        snakeCtx.fillStyle='#000'; snakeCtx.fillRect(0,0,600,400);
+        snakeCtx.fillStyle='#f00'; snake.forEach(s=>snakeCtx.fillRect(s.x*20,s.y*20,18,18));
+        snakeCtx.fillStyle='#fff'; snakeCtx.fillRect(food.x*20,food.y*20,18,18);
+        
+        snakeAnim=setTimeout(loopSnake,100);
     }
-
-    document.addEventListener('keydown', (e) => {
-        if(currentGame !== 'snake') return;
-        const k = e.key.toLowerCase();
-        if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
-
-        if((k === 'arrowup' || k === 'w') && lastProcessedDir !== 'DOWN') sDir = 'UP';
-        if((k === 'arrowdown' || k === 's') && lastProcessedDir !== 'UP') sDir = 'DOWN';
-        if((k === 'arrowleft' || k === 'a') && lastProcessedDir !== 'RIGHT') sDir = 'LEFT';
-        if((k === 'arrowright' || k === 'd') && lastProcessedDir !== 'LEFT') sDir = 'RIGHT';
+    
+    // Snake Controls
+    const handleSnakeKey = (k) => {
+        if(currentGame!=='snake') return;
+        if((k==='ArrowUp'||k==='w')&&lastProcessedDir!=='DOWN')sDir='UP';
+        if((k==='ArrowDown'||k==='s')&&lastProcessedDir!=='UP')sDir='DOWN';
+        if((k==='ArrowLeft'||k==='a')&&lastProcessedDir!=='RIGHT')sDir='LEFT';
+        if((k==='ArrowRight'||k==='d')&&lastProcessedDir!=='LEFT')sDir='RIGHT';
+    };
+    document.addEventListener('keydown', e => handleSnakeKey(e.key));
+    document.querySelectorAll('[data-snake-key]').forEach(b => {
+        b.addEventListener('click', (e) => {
+            e.preventDefault();
+            let k = b.dataset.snakeKey;
+            // Map touch to key strings
+            if(k==='up') handleSnakeKey('ArrowUp');
+            if(k==='down') handleSnakeKey('ArrowDown');
+            if(k==='left') handleSnakeKey('ArrowLeft');
+            if(k==='right') handleSnakeKey('ArrowRight');
+        });
     });
 
     /* --------------------------------------------------------
        RUNNER (GOODBOY)
     -------------------------------------------------------- */
     let runAnim, runCtx, runCanvas;
-    let runner = { lane: 1, y: 0, jumping: false, jumpH: 0 };
-    let obstacles = [];
-    let rScore = 0;
-    let runFrame = 0;
-    let touchStartX = 0;
+    let runner = { lane: 1, y: 0, jumping: false, jumpH: 0 }, obstacles = [], rScore = 0, runFrame = 0;
 
-    function initRunner() {
-        currentGame = 'runner';
-        runCanvas = document.getElementById('runnerCanvas');
-        runCtx = runCanvas.getContext('2d');
-        runner = { lane: 1, y: 0, jumping: false, jumpH: 0 };
-        obstacles = [];
-        rScore = 0;
-        loopRunner();
+    function initRunner() { 
+        currentGame='runner'; 
+        runCanvas=document.getElementById('runnerCanvas'); 
+        runCtx=runCanvas.getContext('2d'); 
+        runner={lane:1,y:0,jumping:false,jumpH:0}; 
+        obstacles=[]; 
+        rScore=0; 
+        document.getElementById('runnerScoreBoard').innerText='SCORE: 0';
+        loopRunner(); 
     }
-    
     function stopRunner() { cancelAnimationFrame(runAnim); }
-
     function loopRunner() {
-        if(currentGame !== 'runner') return;
+        if(currentGame!=='runner')return;
         runFrame++;
-
-        if(runFrame % 100 === 0) {
-            obstacles.push({lane: Math.floor(Math.random()*3), z: 100});
-        }
-
-        runCtx.fillStyle = '#0a0000';
-        runCtx.fillRect(0,0, runCanvas.width, runCanvas.height);
+        if(runFrame%100===0) obstacles.push({lane:Math.floor(Math.random()*3),z:100});
         
-        runCtx.strokeStyle = '#300';
-        runCtx.lineWidth = 2;
-        const cx = runCanvas.width/2;
-        const cy = runCanvas.height/2;
+        runCtx.fillStyle='#0a0000'; runCtx.fillRect(0,0,800,400);
         
-        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(0, runCanvas.height); runCtx.stroke();
-        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(runCanvas.width, runCanvas.height); runCtx.stroke();
-        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(runCanvas.width*0.33, runCanvas.height); runCtx.stroke();
-        runCtx.beginPath(); runCtx.moveTo(cx, cy); runCtx.lineTo(runCanvas.width*0.66, runCanvas.height); runCtx.stroke();
-
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            let o = obstacles[i];
-            o.z -= 1.5;
-            if(o.z <= 0) {
-                obstacles.splice(i, 1);
-                rScore++;
-                document.getElementById('runnerScoreBoard').innerText = 'SCORE: ' + rScore;
-                beep(800, 'sine', 0.05);
+        // Lanes
+        runCtx.strokeStyle='#300'; runCtx.lineWidth=2;
+        runCtx.beginPath(); runCtx.moveTo(400,200); runCtx.lineTo(0,400); runCtx.stroke();
+        runCtx.beginPath(); runCtx.moveTo(400,200); runCtx.lineTo(800,400); runCtx.stroke();
+        
+        // Obstacles
+        for(let i=obstacles.length-1;i>=0;i--) {
+            let o=obstacles[i]; o.z-=1.5;
+            if(o.z<=0) { 
+                obstacles.splice(i,1); rScore++; 
+                document.getElementById('runnerScoreBoard').innerText='SCORE: '+rScore; 
             }
             
-            const scale = 100 / (o.z + 10);
-            const ow = 50 * scale;
-            const oh = 50 * scale;
-            const ox = cx + (o.lane - 1) * (runCanvas.width*0.5 * scale) - ow/2;
-            const oy = runCanvas.height - (runCanvas.height*0.5 * scale) - oh;
-
-            runCtx.fillStyle = '#ff0000';
-            runCtx.fillRect(ox, oy, ow, oh);
-            runCtx.strokeStyle = '#fff';
-            runCtx.strokeRect(ox, oy, ow, oh);
-
-            if(o.z < 10 && o.z > 0 && o.lane === runner.lane && runner.jumpH < 10) {
-                triggerGameOver('runner', rScore);
+            let s=100/(o.z+10), w=50*s, h=50*s, x=400+(o.lane-1)*(400*s)-w/2, y=400-(200*s)-h;
+            runCtx.fillStyle='#f00'; runCtx.fillRect(x,y,w,h);
+            
+            // Collision
+            if(o.z<10 && o.z>0 && o.lane===runner.lane && runner.jumpH<10) {
+                triggerGameOver('runner',rScore);
+                return;
             }
         }
-
-        if(runner.jumping) {
-            runner.jumpH += 2;
-            if(runner.jumpH > 40) runner.jumping = false;
-        } else if(runner.jumpH > 0) {
-            runner.jumpH -= 2;
-        }
-
-        const pScale = 1;
-        const pw = 60; 
-        const ph = 80;
-        const px = cx + (runner.lane - 1) * 200 - pw/2;
-        const py = runCanvas.height - 100 - runner.jumpH - ph;
-
-        runCtx.fillStyle = '#00ff00';
-        runCtx.fillRect(px, py, pw, ph);
         
-        if(runFrame % 10 < 5) {
-             runCtx.fillRect(px-10, py+20, 10, 40); // left arm
-             runCtx.fillRect(px+pw, py+20, 10, 40); // right arm
-        }
-
-        runAnim = requestAnimationFrame(loopRunner);
+        // Player
+        if(runner.jumping) { 
+            runner.jumpH+=2; if(runner.jumpH>40)runner.jumping=false; 
+        } else if(runner.jumpH>0) runner.jumpH-=2;
+        
+        let px=400+(runner.lane-1)*200-30, py=300-runner.jumpH-80;
+        runCtx.fillStyle='#0f0'; runCtx.fillRect(px,py,60,80);
+        
+        runAnim=requestAnimationFrame(loopRunner);
     }
-
-    document.addEventListener('keydown', (e) => {
-        if(currentGame !== 'runner') return;
-        if((e.key === 'ArrowLeft' || e.key === 'a') && runner.lane > 0) runner.lane--;
-        if((e.key === 'ArrowRight' || e.key === 'd') && runner.lane < 2) runner.lane++;
-        if((e.key === ' ' || e.key === 'w' || e.key === 'ArrowUp') && runner.jumpH === 0) runner.jumping = true;
-    });
-
-    // RUNNER TOUCH CONTROLS
-    const rCanvas = document.getElementById('runnerCanvas');
-    rCanvas.addEventListener('touchstart', (e) => {
-        if(currentGame !== 'runner') return;
-        e.preventDefault();
-        touchStartX = e.touches[0].clientX;
-        if(runner.jumpH === 0) runner.jumping = true; 
-    });
-
-    rCanvas.addEventListener('touchend', (e) => {
-        if(currentGame !== 'runner') return;
-        e.preventDefault();
-        const touchEndX = e.changedTouches[0].clientX;
-        const diff = touchEndX - touchStartX;
-
-        if (Math.abs(diff) > 30) { 
-            if (diff > 0 && runner.lane < 2) runner.lane++; 
-            else if (diff < 0 && runner.lane > 0) runner.lane--; 
+    
+    document.addEventListener('keydown',e=>{ 
+        if(currentGame==='runner'){ 
+            if(e.key==='ArrowLeft'&&runner.lane>0)runner.lane--; 
+            if(e.key==='ArrowRight'&&runner.lane<2)runner.lane++; 
+            if(e.key===' '&&runner.jumpH===0)runner.jumping=true; 
         }
+    });
+    // Simple Touch for Runner
+    document.getElementById('runnerCanvas').addEventListener('click', () => {
+        if(currentGame==='runner' && runner.jumpH===0) runner.jumping=true;
     });
 
     /* --------------------------------------------------------
-       MULTIPLAYER TIC TAC TOE (With Error Reporting)
+       BLACKJACK SYSTEM (MULTI & SOLO)
     -------------------------------------------------------- */
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+    let bjState = 'menu'; 
+    let bjMode = 'solo'; 
+    let bjDeck = [], bjPlayerHand = [], bjDealerHand = [];
+    let bjMoney = 1000;
+    let bjCurrentBet = 0;
+    let bjRoomCode = null;
+    let bjRoomUnsub = null;
+    let bjMyRole = null; 
+
+    function initBlackjack() {
+        currentGame = 'blackjack';
+        bjState = 'menu';
+        bjCurrentBet = 0;
+        document.getElementById('bjModeSelect').style.display = 'flex';
+        document.getElementById('bjLobby').style.display = 'none';
+        document.getElementById('bjTable').style.display = 'none';
+        updateBjUI();
+    }
+
+    function cleanupBJ() {
+        if(bjRoomUnsub) bjRoomUnsub();
+        bjRoomUnsub = null;
+        bjRoomCode = null;
+    }
+
+    // Expose selectBjMode to window for HTML access
+    window.selectBjMode = (mode) => {
+        bjMode = mode;
+        document.getElementById('bjModeSelect').style.display = 'none';
+        if(mode === 'solo') {
+            document.getElementById('bjTable').style.display = 'flex';
+            document.getElementById('bjOpponentLabel').innerText = "DEALER";
+            resetBjRound();
+        } else {
+            document.getElementById('bjLobby').style.display = 'flex';
+        }
+        beep(400, 'square', 0.1);
+    };
+
+    // --- SOLO LOGIC ---
+    function resetBjRound() {
+        bjState = 'betting';
+        bjPlayerHand = [];
+        bjDealerHand = [];
+        document.getElementById('bjDealerHand').innerHTML = '';
+        document.getElementById('bjPlayerHand').innerHTML = '';
+        document.getElementById('bjDealerScore').innerText = '';
+        document.getElementById('bjPlayerScore').innerText = '';
+        document.getElementById('bjMessage').innerText = 'PLACE BET & CLICK DECK';
+        
+        document.getElementById('bjGameControls').style.display = 'none';
+        document.getElementById('bjBettingControls').style.visibility = 'visible';
+        document.getElementById('bjDeck').style.pointerEvents = 'auto';
+    }
+
+    function updateBjUI() {
+        document.getElementById('bjBalance').innerText = bjMoney;
+        document.getElementById('bjCurrentBet').innerText = bjCurrentBet;
+    }
+
+    // --- MULTIPLAYER ROOMS ---
+    function getBjRoomRef(code) { return doc(db, 'gooner_terminal_rooms', 'bj_' + code); }
+
+    document.getElementById('btnBjCreate').addEventListener('click', async () => {
+        if(!myUid) return alert("Offline");
+        const code = Math.floor(1000 + Math.random()*9000).toString();
+        await setDoc(getBjRoomRef(code), {
+            host: myUid, guest: null,
+            hostHand: [], guestHand: [],
+            hostStatus: 'betting', guestStatus: 'waiting',
+            deck: [], turn: null, phase: 'lobby'
+        });
+        joinBjRoom(code, 'host');
+    });
+
+    document.getElementById('btnBjJoin').addEventListener('click', async () => {
+        const code = document.getElementById('joinBjCode').value;
+        const ref = getBjRoomRef(code);
+        const snap = await getDoc(ref);
+        if(!snap.exists()) return alert("Room not found");
+        if(!snap.data().guest) {
+            await updateDoc(ref, { guest: myUid, guestStatus: 'betting', phase: 'betting' });
+            joinBjRoom(code, 'guest');
+        } else alert("Full");
+    });
+
+    function joinBjRoom(code, role) {
+        bjRoomCode = code;
+        bjMyRole = role;
+        document.getElementById('bjLobby').style.display = 'none';
+        document.getElementById('bjTable').style.display = 'flex';
+        document.getElementById('bjOpponentLabel').innerText = (role==='host' ? "OPPONENT" : "HOST");
+        resetBjRound();
+        
+        bjRoomUnsub = onSnapshot(getBjRoomRef(code), (snap) => {
+            const data = snap.data();
+            if(!data) return;
+            handleMultiplayerUpdate(data);
+        });
+    }
+
+    async function handleMultiplayerUpdate(data) {
+        // Sync Hands
+        const myHand = bjMyRole === 'host' ? data.hostHand : data.guestHand;
+        const oppHand = bjMyRole === 'host' ? data.guestHand : data.hostHand;
+        
+        const pDiv = document.getElementById('bjPlayerHand');
+        const dDiv = document.getElementById('bjDealerHand');
+        
+        if(pDiv.childElementCount !== myHand.length) {
+            pDiv.innerHTML = '';
+            myHand.forEach(c => renderNewCard(c, 'bjPlayerHand'));
+            document.getElementById('bjPlayerScore').innerText = calculateHand(myHand);
+        }
+        
+        if(dDiv.childElementCount !== oppHand.length) {
+            dDiv.innerHTML = '';
+            oppHand.forEach(c => renderNewCard(c, 'bjDealerHand'));
+            document.getElementById('bjDealerScore').innerText = calculateHand(oppHand);
+        }
+
+        if(data.phase === 'betting') {
+            document.getElementById('bjMessage').innerText = "BOTH PLAYERS BETTING...";
+        } 
+        else if (data.phase === 'playing') {
+            document.getElementById('bjBettingControls').style.visibility = 'hidden';
+            if(data.turn === myUid) {
+                document.getElementById('bjGameControls').style.display = 'flex';
+                document.getElementById('bjMessage').innerText = "YOUR TURN";
+                beep(600, 'sine', 0.1);
+            } else {
+                document.getElementById('bjGameControls').style.display = 'none';
+                document.getElementById('bjMessage').innerText = "OPPONENT'S TURN";
+            }
+        }
+        else if (data.phase === 'finished') {
+            const myScore = calculateHand(myHand);
+            const oppScore = calculateHand(oppHand);
+            let msg = "DRAW";
+            
+            if (myScore > 21) msg = "YOU BUST! LOSE";
+            else if (oppScore > 21) { msg = "OPPONENT BUST! YOU WIN"; bjMoney += bjCurrentBet*2; }
+            else if (myScore > oppScore) { msg = "YOU WIN!"; bjMoney += bjCurrentBet*2; }
+            else if (myScore < oppScore) msg = "YOU LOSE";
+            else { msg = "PUSH (TIE)"; bjMoney += bjCurrentBet; }
+
+            if(msg.includes("LOSE") || msg.includes("BUST")) createCardRain();
+            
+            document.getElementById('bjMessage').innerText = msg;
+            document.getElementById('bjGameControls').style.display = 'none';
+        }
+    }
+
+    // --- BETTING & CONTROLS ---
+    document.getElementById('btnBjAllIn').addEventListener('click', () => {
+        if(currentGame!=='blackjack' || bjState !== 'betting') return;
+        if(bjMoney > 0) {
+            bjCurrentBet += bjMoney;
+            bjMoney = 0;
+            updateBjUI();
+            beep(800, 'square', 0.2);
+        }
+    });
+
+    document.querySelectorAll('.bj-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            if(currentGame !== 'blackjack' || bjState !== 'betting') return;
+            if(chip.id.includes('AllIn')) return; 
+            
+            if(chip.id === 'btnBjClear') {
+                bjMoney += bjCurrentBet;
+                bjCurrentBet = 0;
+            } else {
+                const val = parseInt(chip.dataset.val);
+                if(bjMoney >= val) {
+                    bjMoney -= val;
+                    bjCurrentBet += val;
+                }
+            }
+            updateBjUI();
+        });
+    });
+
+    document.getElementById('bjDeck').addEventListener('click', async () => {
+        if(currentGame!=='blackjack') return;
+        if(bjCurrentBet === 0) return;
+
+        if(bjMode === 'solo') {
+            startSoloRound();
+        } else if (bjMode === 'multi') {
+            // Simple Start Trigger for Host
+            if(bjMyRole === 'host') {
+                const deck = createDeck();
+                const p1h = [deck.pop(), deck.pop()];
+                const p2h = [deck.pop(), deck.pop()];
+                await updateDoc(getBjRoomRef(bjRoomCode), {
+                    deck: deck,
+                    hostHand: p1h, guestHand: p2h,
+                    phase: 'playing', turn: myUid 
+                });
+            } else {
+                document.getElementById('bjMessage').innerText = "WAITING FOR HOST...";
+            }
+        }
+    });
+
+    // --- GAMEPLAY LOGIC ---
+    function createDeck() {
+        let deck = [];
+        for(let s of suits) for(let v of values) deck.push({suit: s, value: v});
+        return deck.sort(()=>Math.random()-.5);
+    }
+
+    async function startSoloRound() {
+        bjState = 'playing';
+        document.getElementById('bjBettingControls').style.visibility = 'hidden';
+        bjDeck = createDeck();
+        bjPlayerHand = [bjDeck.pop(), bjDeck.pop()];
+        bjDealerHand = [bjDeck.pop(), bjDeck.pop()];
+        
+        document.getElementById('bjPlayerHand').innerHTML = '';
+        document.getElementById('bjDealerHand').innerHTML = '';
+        bjPlayerHand.forEach(c => renderNewCard(c,'bjPlayerHand'));
+        renderNewCard(bjDealerHand[0], 'bjDealerHand');
+        renderNewCard(bjDealerHand[1], 'bjDealerHand', true); // Hidden
+        
+        updateScoresSolo();
+        document.getElementById('bjGameControls').style.display = 'flex';
+        
+        if(calculateHand(bjPlayerHand) === 21) endSoloRound(); // BJ!
+    }
+
+    function renderNewCard(c, tid, h=false) {
+        const d=document.createElement('div'); d.className='bj-card'+(h?' hidden':'');
+        if(!h){ 
+            d.innerHTML=`<div>${c.value}</div><div>${c.suit}</div><div>${c.value}</div>`; 
+            d.style.color=['♥','♦'].includes(c.suit)?'red':'inherit'; 
+        }
+        document.getElementById(tid).appendChild(d);
+    }
+
+    function calculateHand(hand) {
+        let sum=0, aces=0;
+        hand.forEach(c=>{ 
+            if(['J','Q','K'].includes(c.value)) sum+=10; 
+            else if(c.value==='A') {sum+=11; aces++;} 
+            else sum+=parseInt(c.value); 
+        });
+        while(sum>21 && aces>0) { sum-=10; aces--; }
+        return sum;
+    }
+
+    function updateScoresSolo() {
+        document.getElementById('bjPlayerScore').innerText = calculateHand(bjPlayerHand);
+    }
+
+    // HIT
+    document.getElementById('btnBjHit').addEventListener('click', async () => {
+        if(bjMode === 'solo') {
+            const c = bjDeck.pop();
+            bjPlayerHand.push(c);
+            renderNewCard(c, 'bjPlayerHand');
+            updateScoresSolo();
+            if(calculateHand(bjPlayerHand) > 21) endSoloRound();
+        } else {
+            // Multiplayer Hit
+            const ref = getBjRoomRef(bjRoomCode);
+            const snap = await getDoc(ref);
+            const data = snap.data();
+            const deck = data.deck;
+            const card = deck.pop();
+            const updates = { deck: deck };
+            if(bjMyRole === 'host') {
+                const h = [...data.hostHand, card];
+                updates.hostHand = h;
+                if(calculateHand(h) > 21) updates.turn = data.guest; 
+            } else {
+                const h = [...data.guestHand, card];
+                updates.guestHand = h;
+                if(calculateHand(h) > 21) updates.phase = 'finished'; 
+            }
+            await updateDoc(ref, updates);
+        }
+    });
+
+    // STAND
+    document.getElementById('btnBjStand').addEventListener('click', async () => {
+        if(bjMode === 'solo') {
+            endSoloRound();
+        } else {
+            // Multiplayer Stand
+            const ref = getBjRoomRef(bjRoomCode);
+            const snap = await getDoc(ref);
+            const data = snap.data();
+            if(bjMyRole === 'host') {
+                await updateDoc(ref, { turn: data.guest }); 
+            } else {
+                await updateDoc(ref, { phase: 'finished' }); 
+            }
+        }
+    });
+
+    async function endSoloRound() {
+        document.getElementById('bjGameControls').style.display = 'none';
+        
+        // Reveal Dealer
+        const dContainer = document.getElementById('bjDealerHand');
+        dContainer.innerHTML = '';
+        bjDealerHand.forEach(c => renderNewCard(c, 'bjDealerHand'));
+        
+        let dScore = calculateHand(bjDealerHand);
+        document.getElementById('bjDealerScore').innerText = dScore;
+        
+        // Dealer AI Logic
+        while(dScore < 17) {
+            await new Promise(r=>setTimeout(r,800)); // Pause for suspense
+            const c = bjDeck.pop();
+            bjDealerHand.push(c);
+            renderNewCard(c, 'bjDealerHand');
+            dScore = calculateHand(bjDealerHand);
+            document.getElementById('bjDealerScore').innerText = dScore;
+        }
+
+        const pScore = calculateHand(bjPlayerHand);
+        let msg = '';
+        
+        if(pScore > 21) msg = "YOU BUST!";
+        else if(dScore > 21) { msg = "DEALER BUST! YOU WIN"; bjMoney += bjCurrentBet*2; }
+        else if(pScore > dScore) { msg = "YOU WIN!"; bjMoney += bjCurrentBet*2; }
+        else if(pScore === dScore) { msg = "PUSH"; bjMoney += bjCurrentBet; }
+        else msg = "YOU LOSE";
+
+        if(msg.includes("LOSE") || msg.includes("BUST")) createCardRain();
+        
+        document.getElementById('bjMessage').innerText = msg + " (CLICK DECK)";
+        bjState = 'betting'; 
+    }
+
+    // --- CARD RAIN VISUAL ---
+    function createCardRain() {
+        for(let i=0; i<30; i++) {
+            const card = document.createElement('div');
+            card.className = 'falling-card';
+            card.style.left = Math.random() * window.innerWidth + 'px';
+            card.style.animation = `fall ${1+Math.random()}s linear forwards`;
+            document.body.appendChild(card);
+            setTimeout(() => card.remove(), 2000);
+        }
+    }
+
+    /* --------------------------------------------------------
+       TIC TAC TOE
+    -------------------------------------------------------- */
+    let tttRoomUnsub;
+    function getTTTRoomRef(c) { return doc(db, 'gooner_terminal_rooms', c); }
+    function initTTT() { currentGame='ttt'; document.getElementById('tttMenu').style.display='flex'; document.getElementById('tttGame').style.display='none'; }
+    function cleanupTTT() { if(tttRoomUnsub)tttRoomUnsub(); }
     
-    // --- USER CONFIGURED FIREBASE ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyA7aPTCswKKsOAo9bIa64Td9iqVDkHro-M",
-      authDomain: "tic-toe-84c69.firebaseapp.com",
-      projectId: "tic-toe-84c69",
-      storageBucket: "tic-toe-84c69.firebasestorage.app",
-      messagingSenderId: "494287629910",
-      appId: "1:494287629910:web:5415f478e9e0a06b69d5f7",
-      measurementId: "G-WWVVCLKN3Z"
+    document.getElementById('btnCreateRoom').addEventListener('click',async()=>{
+        if(!myUid)return alert("Offline"); const c=Math.floor(1000+Math.random()*9000).toString();
+        await setDoc(getTTTRoomRef(c),{board:Array(9).fill(null),turn:'X',playerX:myUid,playerO:null,status:'waiting'});
+        joinTTTLobby(c,'X');
+    });
+    
+    document.getElementById('btnJoinRoom').addEventListener('click',async()=>{
+        const c=document.getElementById('joinRoomCode').value; const r=getTTTRoomRef(c); const s=await getDoc(r);
+        if(!s.exists())return alert("No Room"); if(!s.data().playerO) { await updateDoc(r,{playerO:myUid,status:'playing'}); joinTTTLobby(c,'O'); }
+    });
+    
+    function joinTTTLobby(c,side) {
+        document.getElementById('tttMenu').style.display='none'; document.getElementById('tttGame').style.display='flex';
+        document.getElementById('displayRoomCode').innerText="CODE: "+c;
+        tttRoomUnsub=onSnapshot(getTTTRoomRef(c),d=>{
+            if(!d.exists())return; const data=d.data();
+            const cells=document.getElementById('tttGrid').children;
+            data.board.forEach((v,i)=>{ cells[i].innerText=v||''; cells[i].style.color=v==='X'?'#f00':'#fff'; });
+            
+            let statusText = data.status;
+            if(data.status === 'playing') statusText = (data.turn===side?"YOUR TURN":"ENEMY TURN");
+            if(data.status === 'finished') statusText = "GAME OVER";
+            
+            document.getElementById('tttStatus').innerText = statusText;
+        });
+        
+        document.getElementById('tttGrid').onclick = async(e) => {
+            const i=e.target.dataset.idx; if(!i && i!=='0')return;
+            await runTransaction(db,async(t)=>{
+                const s=await t.get(getTTTRoomRef(c)); const d=s.data();
+                if(d.turn!==side || d.board[i] || d.status!=='playing') return;
+                
+                const nb=[...d.board]; nb[i]=side;
+                let w=null;
+                const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+                wins.forEach(combo=>{ if(nb[combo[0]]&&nb[combo[0]]===nb[combo[1]]&&nb[combo[0]]===nb[combo[2]]) w=nb[combo[0]]; });
+                
+                let nextStatus = 'playing';
+                if(w) nextStatus = 'finished';
+                else if(!nb.includes(null)) nextStatus = 'finished'; // Draw
+                
+                t.update(getTTTRoomRef(c),{board:nb,turn:side==='X'?'O':'X',status:nextStatus});
+            });
+        };
+    }
+    
+    /* --------------------------------------------------------
+       GLOBAL GAME CONTROLS
+    -------------------------------------------------------- */
+    window.triggerGameOver = (g,s) => { 
+        stopAllGames(); 
+        document.getElementById('gameOverText').innerText='SCORE: '+s; 
+        document.getElementById('modalGameOver').classList.add('active'); 
+        
+        // Remember which game ended to restart it properly
+        document.getElementById('btnRestart').onclick = () => {
+            document.getElementById('modalGameOver').classList.remove('active');
+            if(g === 'snake') initSnake();
+            if(g === 'runner') initRunner();
+            if(g === 'pong') initPong();
+        };
     };
     
-    // Firebase Init
-    let db, auth;
-    let myUid = null;
-    let currentRoom = null;
-    let roomUnsub = null;
-    let mySide = null; // 'X' or 'O'
-
-    // Attempt init
-    try {
-        if(firebaseConfig.apiKey) {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            auth = firebase.auth();
-        }
-    } catch(e) { console.error("Firebase Init Error:", e); }
-
-    function initTTT() {
-        currentGame = 'ttt';
-        if(!db) {
-            alert("Firebase not configured! Check code.");
-            return;
-        }
-        
-        // Show Menu, Hide Game
-        document.getElementById('tttMenu').style.display = 'flex';
-        document.getElementById('tttGame').style.display = 'none';
-        
-        // Auth Logic with detailed error reporting
-        auth.signInAnonymously()
-            .then(userCred => {
-                myUid = userCred.user.uid;
-                document.getElementById('authStatus').innerText = "ONLINE";
-                document.getElementById('authStatus').style.color = "#0f0";
-            })
-            .catch(err => {
-                console.error("Auth Error Full:", err);
-                let msg = "AUTH ERROR";
-                // Common Errors mapping
-                if (err.code === 'auth/operation-not-allowed') msg = "ENABLE ANON AUTH IN FIREBASE";
-                else if (err.code === 'auth/unauthorized-domain') msg = "DOMAIN NOT AUTHORIZED IN FIREBASE";
-                else if (err.message) msg = err.message;
-                
-                document.getElementById('authStatus').innerText = msg;
-                document.getElementById('authStatus').style.color = "#f00";
-            });
-    }
-    
-    function cleanupTTT() {
-        if(roomUnsub) roomUnsub();
-        currentRoom = null;
-        mySide = null;
-    }
-
-    // CREATE ROOM
-    document.getElementById('btnCreateRoom').addEventListener('click', async () => {
-        if(!myUid) return alert("Must be ONLINE to play. Check Status.");
-        const code = Math.floor(1000 + Math.random() * 9000).toString();
-        
-        try {
-            await db.collection('ttt_rooms').doc(code).set({
-                board: Array(9).fill(null),
-                turn: 'X',
-                playerX: myUid,
-                playerO: null,
-                status: 'waiting',
-                winner: null
-            });
-            
-            mySide = 'X';
-            joinLobby(code);
-        } catch (e) {
-            console.error(e);
-            alert("Error creating room: " + e.message + "\n\nCheck Firestore Rules (Test Mode required).");
-        }
-    });
-
-    // JOIN ROOM
-    document.getElementById('btnJoinRoom').addEventListener('click', async () => {
-        if(!myUid) return alert("Must be ONLINE to play");
-        const code = document.getElementById('joinRoomCode').value;
-        if(code.length !== 4) return alert("Invalid Code");
-
-        try {
-            const docRef = db.collection('ttt_rooms').doc(code);
-            const doc = await docRef.get();
-            
-            if(!doc.exists) return alert("Room not found");
-            const data = doc.data();
-            
-            if(data.playerO && data.playerO !== myUid) return alert("Room full");
-            
-            if(!data.playerO) {
-                await docRef.update({ playerO: myUid, status: 'playing' });
-            }
-            
-            mySide = 'O';
-            joinLobby(code);
-        } catch(e) {
-            console.error(e);
-            alert("Error joining room: " + e.message);
-        }
-    });
-
-    // LOBBY LOGIC
-    function joinLobby(code) {
-        currentRoom = code;
-        document.getElementById('tttMenu').style.display = 'none';
-        document.getElementById('tttGame').style.display = 'flex';
-        document.getElementById('displayRoomCode').innerText = "CODE: " + code;
-        document.getElementById('tttStatus').innerText = "WAITING...";
-
-        // Realtime Listener
-        roomUnsub = db.collection('ttt_rooms').doc(code).onSnapshot(snap => {
-            if(!snap.exists) return;
-            const data = snap.data();
-            renderTTT(data);
-        });
-    }
-
-    function renderTTT(data) {
-        const grid = document.getElementById('tttGrid');
-        const cells = grid.children;
-        const status = document.getElementById('tttStatus');
-        
-        // Update Board
-        data.board.forEach((val, i) => {
-            cells[i].innerText = val || '';
-            cells[i].style.color = val === 'X' ? '#ff0606' : '#ffffff';
-        });
-
-        // Update Status
-        if(data.status === 'waiting') {
-            status.innerText = "WAITING FOR OPPONENT... (SHARE CODE)";
-        } else if(data.status === 'playing') {
-            if(data.turn === mySide) status.innerText = "YOUR TURN (" + mySide + ")";
-            else status.innerText = "OPPONENT'S TURN";
-        } else if(data.status === 'finished') {
-            if(data.winner === 'draw') status.innerText = "DRAW GAME!";
-            else if(data.winner === mySide) status.innerText = "YOU WIN!";
-            else status.innerText = "YOU LOSE.";
-            document.getElementById('tttReset').style.display = 'block';
-        }
-    }
-
-    // CLICK CELL
-    document.getElementById('tttGrid').addEventListener('click', async (e) => {
-        if(!e.target.classList.contains('ttt-cell')) return;
-        if(!currentRoom || !mySide) return;
-        
-        const idx = parseInt(e.target.dataset.idx);
-        const docRef = db.collection('ttt_rooms').doc(currentRoom);
-        
-        // Transaction to prevent race conditions
-        try {
-            await db.runTransaction(async (t) => {
-                const doc = await t.get(docRef);
-                const data = doc.data();
-
-                if(data.status !== 'playing') throw "Game not active";
-                if(data.turn !== mySide) throw "Not your turn";
-                if(data.board[idx] !== null) throw "Cell taken";
-
-                const newBoard = [...data.board];
-                newBoard[idx] = mySide;
-
-                // Check Win
-                let winner = null;
-                const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-                
-                wins.forEach(c => {
-                    if(newBoard[c[0]] && newBoard[c[0]] === newBoard[c[1]] && newBoard[c[0]] === newBoard[c[2]]) {
-                        winner = newBoard[c[0]];
-                    }
-                });
-
-                let status = 'playing';
-                let nextTurn = mySide === 'X' ? 'O' : 'X';
-
-                if(winner) {
-                    status = 'finished';
-                } else if(!newBoard.includes(null)) {
-                    status = 'finished';
-                    winner = 'draw';
-                }
-
-                t.update(docRef, {
-                    board: newBoard,
-                    turn: nextTurn,
-                    status: status,
-                    winner: winner
-                });
-            });
-            beep(600, 'square', 0.1);
-        } catch(err) {
-            console.log("Move failed:", err);
-            beep(200, 'sawtooth', 0.2); // Error beep
-        }
-    });
-
-    // PLAY AGAIN
-    document.getElementById('tttReset').addEventListener('click', async () => {
-        await db.collection('ttt_rooms').doc(currentRoom).update({
-            board: Array(9).fill(null),
-            turn: 'X',
-            status: 'playing',
-            winner: null
-        });
-        document.getElementById('tttReset').style.display = 'none';
-    });
-
-
-    /* --------------------------------------------------------
-       GAME OVER MODAL
-    -------------------------------------------------------- */
-    const modalGO = document.getElementById('modalGameOver');
-    const btnRestart = document.getElementById('btnRestart');
-    const btnExit = document.getElementById('btnExitGame');
-    let lastGameType = '';
-
-    function triggerGameOver(game, score) {
-        stopAllGames();
-        lastGameType = game;
-        document.getElementById('gameOverText').innerText = 'SCORE: ' + score;
-        modalGO.classList.add('active');
-        beep(100, 'sawtooth', 0.5);
-    }
-
-    btnRestart.addEventListener('click', () => {
-        modalGO.classList.remove('active');
-        if(lastGameType === 'snake') initSnake();
-        if(lastGameType === 'runner') initRunner();
-        if(lastGameType === 'pong') initPong();
-    });
-
-    btnExit.addEventListener('click', () => {
-        modalGO.classList.remove('active');
-        document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
-    });
+    document.getElementById('btnExitGame').onclick=()=>{ 
+        document.getElementById('modalGameOver').classList.remove('active'); 
+        stopAllGames(); 
+        document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active')); 
+    };
 
 </script>
 </body>
