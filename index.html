@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V3 (NET-RUN)</title>
+<title>GOONER TERMINAL V3.1 (VISUAL RESTORE)</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
@@ -392,7 +392,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 120px;
+        width: 140px;
         transition: all 0.5s ease;
     }
 
@@ -418,43 +418,41 @@
         min-height: 12px;
     }
 
-    /* Positions based on player count and index (Calculated in JS or preset classes) */
-    /* We will use specific classes for "My Seat" vs "Enemy Seats" */
-    
+    /* Positions */
     .bj-my-seat {
-        bottom: 140px; /* Space for controls */
+        bottom: 130px; 
         left: 50%;
-        transform: translateX(-50%) scale(1.1);
+        transform: translateX(-50%);
         z-index: 20;
     }
 
-    /* Enemy Seat positions for visual flair */
-    .seat-pos-1 { top: 100px; left: 10%; } /* Left */
-    .seat-pos-2 { top: 100px; right: 10%; } /* Right */
-    .seat-pos-3 { top: 60px; left: 50%; transform: translateX(-50%); } /* Center Top (for 4p) */
+    /* Enemy Seat positions - Scaled slightly to fit 60x84 cards */
+    .seat-pos-1 { top: 120px; left: 5%; transform: scale(0.85); } /* Left */
+    .seat-pos-2 { top: 120px; right: 5%; transform: scale(0.85); } /* Right */
+    .seat-pos-3 { top: 60px; left: 50%; transform: translateX(-50%) scale(0.85); } /* Center Top */
 
     .bj-hand {
         display: flex;
         gap: 5px;
         justify-content: center;
-        min-height: 60px;
+        min-height: 84px;
     }
 
-    /* Cards */
+    /* Cards - RESTORED TO V2 STYLE */
     @keyframes flyIn {
         0% { transform: translateY(-200px) scale(0.5); opacity: 0; }
         100% { transform: translateY(0) scale(1); opacity: 1; }
     }
 
     .bj-card {
-        width: 45px;
-        height: 63px;
+        width: 60px;  /* RESTORED */
+        height: 84px; /* RESTORED */
         border: 2px solid var(--accent);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        padding: 3px;
-        font-size: 10px;
+        padding: 5px;
+        font-size: 14px; /* RESTORED */
         background: #000;
         box-shadow: 2px 2px 0px var(--accent-dim);
         user-select: none;
@@ -463,7 +461,14 @@
     }
     
     .bj-card.hidden {
-        background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent-dim) 5px, var(--accent-dim) 10px);
+        /* RESTORED V2 HIDDEN STYLE */
+        background: repeating-linear-gradient(
+            45deg,
+            #000,
+            #000 5px,
+            var(--accent-dim) 5px,
+            var(--accent-dim) 10px
+        );
         justify-content: center;
         align-items: center;
     }
@@ -531,7 +536,7 @@
 </head>
 <body>
 
-<div class="version-tag">SYS.V.25.3 // MULTI_PATCHED</div>
+<div class="version-tag">SYS.V.25.4 // VISUAL_RESTORED</div>
 <div id="glitchContainer"></div>
 
 <div class="top-menu">
@@ -1077,7 +1082,12 @@
                 } else {
                      // Cards
                      p.hand.forEach(c => {
-                         html += `<div class="bj-card" style="width:30px; height:42px; font-size:8px;">${c.val}</div>`;
+                         // WE USE THE SAME RENDER LOGIC TO KEEP CARDS BIG
+                         // But we construct HTML manually here for speed
+                         const color = ['♥','♦'].includes(c.suit)?'red':'inherit';
+                         html += `<div class="bj-card" style="color:${color}">
+                            <div>${c.val}</div><div>${c.suit}</div><div>${c.val}</div>
+                         </div>`;
                      });
                 }
                 html += `</div><div class="bj-seat-status">${p.status}</div>`;
