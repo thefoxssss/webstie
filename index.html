@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V18 [ULTIMATE]</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<title>GOONER TERMINAL V19 [MONKEY UPDATE]</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
     /* --- 1. CORE VARIABLES --- */
@@ -15,14 +15,16 @@
         --accent-glow: rgba(255, 6, 6, 0.6);
         --scanline-opacity: 0.5;
         --glow-strength: 10px;
+        --font-main: "Press Start 2P", monospace;
+        --font-type: "Roboto Mono", monospace; /* Better font for typing */
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; cursor: default; user-select: none; }
-    button, input, .bj-card, .ttt-cell, .chat-input, .type-word { cursor: pointer; }
+    button, input, .bj-card, .ttt-cell, .chat-input { cursor: pointer; }
     
     html, body {
         height: 100%; margin: 0; background-color: var(--bg);
-        font-family: "Press Start 2P", monospace; overflow: hidden;
+        font-family: var(--font-main); overflow: hidden;
         color: var(--accent); touch-action: none;
         text-shadow: 0 0 var(--glow-strength) var(--accent);
     }
@@ -123,14 +125,56 @@
     .touch-btn:active { background: var(--accent); color: #000; }
     @media (pointer: coarse) { .touch-controls.active { display: grid; } }
 
-    /* Type Runner */
-    #typeGameArea { width: 80%; max-width: 800px; text-align: center; margin-bottom: 50px; }
-    #wordDisplay { font-size: 24px; line-height: 2; margin-bottom: 30px; min-height: 100px; color: #555; user-select: none; }
-    .type-word { margin: 0 10px; display: inline-block; transition: 0.2s; }
-    .type-word.active { color: var(--accent); text-shadow: 0 0 10px var(--accent); transform: scale(1.1); }
-    .type-word.correct { color: #0f0; opacity: 0.5; }
-    .type-word.error { color: #fff; background: red; }
-    #typeInput { opacity: 0; position: absolute; top: -1000px; }
+    /* --- TYPE RUNNER (MONKEY UPDATE) --- */
+    #typeGameArea { width: 90%; max-width: 900px; text-align: left; margin-bottom: 50px; position: relative; }
+    #typeTextBox { 
+        font-family: var(--font-type); font-size: 24px; line-height: 1.6; 
+        color: #555; user-select: none; position: relative; word-break: break-all;
+        min-height: 150px; max-height: 300px; overflow: hidden;
+    }
+    .letter { position: relative; transition: color 0.1s; }
+    .letter.correct { color: var(--accent); text-shadow: 0 0 5px var(--accent-dim); }
+    .letter.incorrect { color: #ff0000; text-decoration: underline; }
+    .letter.active::before {
+        content: "|"; position: absolute; left: -2px; color: var(--accent); 
+        animation: blink 1s infinite; opacity: 0.8;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    #typeHiddenInput { position: absolute; opacity: 0; top: 0; left: 0; pointer-events: none; }
+    .type-stats { display: flex; gap: 20px; font-size: 20px; margin-bottom: 20px; color: var(--accent); font-family: var(--font-type); }
+
+    /* --- BLACKJACK (V8 RESTORED VISUALS) --- */
+    .bj-table { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .bj-pot-display { font-size: 24px; color: #ffd700; text-shadow: 0 0 10px #b8860b; padding: 10px; margin-bottom: 15px; border-bottom: 2px solid #ffd700; width: 100%; text-align: center; display: none; }
+    .bj-area { width: 100%; border: 1px dashed var(--accent-dim); padding: 10px; position: relative; min-height: 120px; display:flex; flex-direction:column; align-items:center; }
+    .bj-label { position: absolute; top: -8px; background: #000; padding: 0 5px; font-size: 8px; color: var(--accent); left: 10px; }
+    .bj-hand { display: flex; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+    
+    /* V8 Card Style */
+    .bj-card { 
+        width: 50px; height: 70px; border: 2px solid var(--accent); 
+        display: flex; flex-direction: column; justify-content: space-between; 
+        padding: 4px; font-size: 12px; background: #000; 
+        box-shadow: 2px 2px 0px var(--accent-dim); user-select: none; position: relative; color: var(--accent); 
+    }
+    .bj-card.mini { width: 30px; height: 42px; font-size: 8px; border: 1px solid var(--accent); }
+    .bj-card.hidden { background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent-dim) 5px, var(--accent-dim) 10px); color: transparent; }
+    
+    /* V8 Deck Style */
+    .bj-deck-container { width: 60px; height: 84px; border: 2px dashed var(--accent-dim); display: flex; justify-content: center; align-items: center; cursor: pointer; margin: 5px; position: relative; transition: transform 0.1s; }
+    .bj-deck-container:active { transform: scale(0.95); }
+    .bj-deck-card { position: absolute; width: 45px; height: 63px; background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 6px); border: 2px solid var(--accent); box-shadow: -2px 2px 0px var(--accent-dim); top: 8px; left: 6px; }
+
+    .bj-side-table { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; margin-top:10px;}
+    .bj-small-seat { border: 1px dotted var(--accent-dim); padding: 5px; min-height: 60px; display:flex; flex-direction:column; align-items:center; }
+    .bj-small-hand { display:flex; gap:2px; flex-wrap:wrap; justify-content:center; }
+    .active-seat { box-shadow: 0 0 10px var(--accent); border-color: var(--accent); }
+    
+    .bj-chip-rack { display: flex; gap: 10px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
+    .bj-chip { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); background: #000; color: var(--accent); display: flex; justify-content: center; align-items: center; font-size: 9px; cursor: pointer; box-shadow: 0 0 10px var(--accent-dim), inset 0 0 5px rgba(0,0,0,0.5); font-weight: bold; transition: transform 0.1s; }
+    .bj-chip:hover { background: var(--accent); color: #000; transform: translateY(-5px); }
+    .bj-all-in { border-color: #ffcc00; color: #ffcc00; width: auto; padding: 0 10px; }
+    .falling-card { position: fixed; width: 40px; height: 56px; background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 8px); border: 2px solid var(--accent); z-index: 9998; pointer-events: none; top: -60px; }
 
     /* Leaderboard */
     .score-box { width: 80%; max-width: 600px; border: 2px solid var(--accent); background: #000; padding: 20px; }
@@ -145,23 +189,6 @@
     /* Config */
     .config-box { width: 300px; padding: 20px; border: 1px solid var(--accent); background: #000; }
     .config-row { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; }
-
-    /* Blackjack */
-    .bj-table { width: 100%; max-width: 600px; }
-    .bj-pot-display { font-size: 24px; color: #ffd700; text-shadow: 0 0 10px #b8860b; padding: 10px; margin-bottom: 15px; border-bottom: 2px solid #ffd700; width: 100%; text-align: center; display: none; }
-    .bj-area { width: 100%; border: 1px dashed var(--accent-dim); padding: 10px; position: relative; min-height: 110px; display:flex; flex-direction:column; align-items:center; }
-    .bj-label { position: absolute; top: -8px; background: #000; padding: 0 5px; font-size: 8px; color: var(--accent); left: 10px; }
-    .bj-hand { display: flex; gap: 5px; justify-content: center; margin-top: 5px; }
-    .bj-card { width: 45px; height: 65px; border: 2px solid var(--accent); background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 12px; }
-    .bj-card.mini { width: 30px; height: 45px; font-size: 8px; border: 1px solid var(--accent-dim); }
-    .bj-card.hidden { background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent-dim) 5px, var(--accent-dim) 10px); color: transparent; }
-    .bj-side-table { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; }
-    .bj-small-seat { border: 1px dotted var(--accent-dim); padding: 5px; min-height: 60px; display:flex; flex-direction:column; align-items:center; }
-    .active-seat { box-shadow: 0 0 10px var(--accent); border-color: var(--accent); }
-    .bj-chip-rack { display: flex; gap: 10px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
-    .bj-chip { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); background: #000; color: var(--accent); display: flex; justify-content: center; align-items: center; font-size: 9px; cursor: pointer; box-shadow: 0 0 10px var(--accent-dim), inset 0 0 5px rgba(0,0,0,0.5); }
-    .bj-chip:hover { background: var(--accent); color: #000; transform: translateY(-5px); }
-    .bj-all-in { border-color: #ffcc00; color: #ffcc00; width: auto; padding: 0 10px; }
 
     /* TTT */
     .ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px; }
@@ -264,13 +291,15 @@
 
 <div class="overlay" id="overlayType">
     <h1>TYPE RUNNER</h1>
-    <div class="high-score-display">BEST WPM: <span id="hsType">0</span></div>
-    <div id="typeGameArea">
-        <div id="wordDisplay">CLICK TO START</div>
-        <div style="font-size:40px; margin-top:20px;" id="typeTimer">0.0s</div>
-        <div style="font-size:20px; color:#0f0; margin-top:10px;" id="typeWPM">0 WPM</div>
+    <div class="type-stats">
+        <span>TIME: <span id="typeTimer">0</span>s</span>
+        <span>WPM: <span id="typeWPM">0</span></span>
     </div>
-    <input type="text" id="typeInput">
+    <div id="typeGameArea" onclick="document.getElementById('typeHiddenInput').focus()">
+        <div id="typeTextBox">CLICK TO START</div>
+        <input type="text" id="typeHiddenInput" autocomplete="off">
+    </div>
+    <button class="menu-btn" onclick="window.initTypeGame()" style="margin-bottom:20px;">RESTART</button>
     <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
@@ -354,29 +383,34 @@
     </div>
     <div id="bjTable" class="bj-table" style="display:none;">
         <div class="bj-pot-display">POT: $<span id="bjPot">0</span></div>
-        <div class="bj-area" id="bjSeat0">
+        
+        <div class="bj-side-table" id="bjSide"></div>
+
+        <div class="bj-area" id="bjSeat0" style="margin-bottom:10px;">
             <span class="bj-label" id="bjHostLabel">DEALER</span>
             <div class="bj-hand" id="bjDealerHand"></div>
             <div class="bj-score" id="bjDealerScore"></div>
         </div>
-        <div class="bj-side-table" id="bjSide"></div>
+        
         <div style="display:flex; align-items:center; gap:20px; margin:10px;">
             <div class="bj-deck-container" id="bjDeck">
-                <div class="bj-card hidden" style="width:45px; height:65px; border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                    <div style="font-size:10px;">DECK</div>
-                </div>
+                <div class="bj-deck-card"></div><div class="bj-deck-card"></div>
+                <div style="position:absolute; background:#000; padding:2px; font-size:10px; z-index:5;">ACTION</div>
             </div>
             <div id="bjMessage" style="width:150px; text-align:center; font-size:10px;">PLACE BET</div>
         </div>
+        
         <div class="bj-area active-seat" id="bjMySeat">
             <span class="bj-label">YOU</span>
             <div class="bj-hand" id="bjPlayerHand"></div>
             <div class="bj-score" id="bjPlayerScore"></div>
         </div>
+        
         <div class="bj-controls" id="bjGameBtns" style="display:none;">
             <button class="term-btn" id="bjHit">HIT</button>
             <button class="term-btn" id="bjStand">STAND</button>
         </div>
+        
         <div id="bjBetBtns">
             <div style="text-align:center; margin-bottom:5px;">BET: $<span id="bjBetVal">0</span></div>
             <div class="bj-chip-rack">
@@ -454,7 +488,7 @@
         if(game==='pong') initPong();
         if(game==='snake') initSnake();
         if(game==='runner') initRunner();
-        if(game==='type') initTypeGame();
+        if(game==='type') window.initTypeGame();
         if(game==='blackjack') initBJ();
         if(game==='ttt') initTTT();
     };
@@ -471,19 +505,27 @@
 
     // --- 5. ACCOUNT SYSTEM ---
     async function login(username, pin) {
-        const ref = doc(db, 'gooner_users', username.toUpperCase());
-        const snap = await getDoc(ref);
-        if(snap.exists()) {
-            if(snap.data().pin === pin) { loadProfile(snap.data()); return true; } 
-            else return "INVALID PIN";
-        } else return "USER NOT FOUND";
+        try {
+            const ref = doc(db, 'gooner_users', username.toUpperCase());
+            const snap = await getDoc(ref);
+            if(snap.exists()) {
+                if(snap.data().pin === pin) { loadProfile(snap.data()); return true; } 
+                else return "INVALID PIN";
+            } else return "USER NOT FOUND";
+        } catch(e) { return "ERROR: " + e.message; }
     }
     async function register(username, pin) {
-        const ref = doc(db, 'gooner_users', username.toUpperCase());
-        const snap = await getDoc(ref);
-        if(snap.exists()) return "USERNAME TAKEN";
-        const data = { name: username.toUpperCase(), pin: pin, money: 1000, joined: Date.now(), stats: {games:0, wpm:0, wins:0} };
-        await setDoc(ref, data); loadProfile(data); return true;
+        try {
+            if(!myUid) return "WAITING FOR NETWORK...";
+            const ref = doc(db, 'gooner_users', username.toUpperCase());
+            const snap = await getDoc(ref);
+            if(snap.exists()) return "USERNAME TAKEN";
+            const data = { name: username.toUpperCase(), pin: pin, money: 1000, joined: Date.now(), stats: {games:0, wpm:0, wins:0} };
+            await setDoc(ref, data); loadProfile(data); return true;
+        } catch(e) {
+            alert("REGISTRATION FAILED: " + e.message + "\nCheck your connection.");
+            return "REG ERROR";
+        }
     }
     function loadProfile(data) {
         myName = data.name; myMoney = data.money; myStats = data.stats || {games:0, wpm:0, wins:0};
@@ -493,7 +535,7 @@
         document.getElementById('profBank').innerText = "$"+myMoney;
         document.getElementById('profWPM').innerText = (myStats.wpm||0) + " WPM";
         document.getElementById('profGames').innerText = myStats.games||0;
-        document.getElementById('profUid').innerText = myUid.substring(0,8);
+        document.getElementById('profUid').innerText = myUid ? myUid.substring(0,8) : "ERR";
         document.getElementById('overlayLogin').classList.remove('active');
         localStorage.setItem('goonerUser', myName); localStorage.setItem('goonerPin', data.pin);
     }
@@ -538,12 +580,24 @@
         t.classList.add('active'); loadLeaderboard(t.dataset.tab);
     });
     async function saveGlobalScore(game, score) { if(score<=0 || myName==="ANON") return; await addDoc(collection(db, 'gooner_scores'), { game: game, name: myName, score: score }); }
+    
     function loadLeaderboard(game) {
         const list = document.getElementById('scoreList'); list.innerHTML = 'LOADING...';
-        const q = query(collection(db, 'gooner_scores'), orderBy('score', 'desc'), limit(50));
+        const q = query(collection(db, 'gooner_scores'), orderBy('score', 'desc'), limit(100)); // Get top 100 raw to filter
         onSnapshot(q, (snap) => {
-            list.innerHTML = ''; const data = []; snap.forEach(d => data.push(d.data()));
-            const filtered = data.filter(d => d.game === game).slice(0, 10);
+            list.innerHTML = ''; 
+            const data = []; 
+            snap.forEach(d => data.push(d.data()));
+            
+            // FILTER: Unique name, only keep highest score per person
+            const uniqueScores = {};
+            data.filter(d => d.game === game).forEach(s => {
+                if (!uniqueScores[s.name] || s.score > uniqueScores[s.name].score) {
+                    uniqueScores[s.name] = s;
+                }
+            });
+            const filtered = Object.values(uniqueScores).sort((a,b) => b.score - a.score).slice(0, 10);
+
             if(filtered.length===0) list.innerHTML = '<div style="padding:10px">NO DATA</div>';
             filtered.forEach((s, i) => {
                 const item = document.createElement('div'); item.className = 'score-item';
@@ -552,6 +606,7 @@
             });
         });
     }
+    
     function initChat() {
         const chatRef = collection(db, 'gooner_global_chat');
         const q = query(chatRef, orderBy('ts', 'desc'), limit(15));
@@ -583,14 +638,100 @@
         document.getElementById('hsPong').innerText = localStorage.getItem('hs_pong')||0;
         document.getElementById('hsSnake').innerText = localStorage.getItem('hs_snake')||0;
         document.getElementById('hsRunner').innerText = localStorage.getItem('hs_runner')||0;
-        document.getElementById('hsType').innerText = localStorage.getItem('hs_type')||0;
     }
 
-    // === TYPE RUNNER ===
-    const wordList = ["HACK","SYSTEM","NODE","DATA","CYBER","CODE","BREACH","SERVER","ROOT","SHELL","LINUX","JAVA","PYTHON","REACT","ADMIN","SUDO","GREP","ECHO","PING","VOID","NULL","ASYNC","AWAIT","FETCH","GRID","NEON","GLITCH","SYNTAX","ERROR","DEBUG","DEPLOY"];
-    let typeWords=[], curWIdx=0, startT=0;
-    function initTypeGame(){ currentGame='type'; loadHighScores(); typeWords=[]; for(let i=0;i<10;i++)typeWords.push(wordList[Math.floor(Math.random()*wordList.length)]); curWIdx=0; startT=0; const d=document.getElementById('wordDisplay'); d.innerHTML=typeWords.map((w,i)=>`<span class="type-word" id="w${i}">${w}</span>`).join(' '); document.getElementById('typeInput').value=''; document.getElementById('typeInput').focus(); document.getElementById('typeTimer').innerText="0.0s"; document.getElementById('typeWPM').innerText="0 WPM"; document.getElementById('wordDisplay').onclick=()=>document.getElementById('typeInput').focus(); document.getElementById('typeInput').oninput=handleTypeInput; }
-    function handleTypeInput(e){ if(!startT){startT=Date.now(); typeInterval=setInterval(()=>{document.getElementById('typeTimer').innerText=((Date.now()-startT)/1000).toFixed(1)+"s";},100);} const val=e.target.value.trim().toUpperCase(), tgt=typeWords[curWIdx], el=document.getElementById(`w${curWIdx}`); document.querySelectorAll('.type-word').forEach(x=>x.classList.remove('active')); el.classList.add('active'); if(val===tgt){el.classList.add('correct');e.target.value='';curWIdx++;beep(800,'sine',0.05);if(curWIdx>=typeWords.length){clearInterval(typeInterval);const t=(Date.now()-startT)/1000, chars=typeWords.join('').length, wpm=Math.round((chars/5)/(t/60)); if(wpm>(myStats.wpm||0)){myStats.wpm=wpm;saveStats();saveGlobalScore('type',wpm);updateHighScore('type',wpm);} document.getElementById('typeWPM').innerText=wpm+" WPM"; alert(`COMPLETE! ${wpm} WPM`); initTypeGame();}} else if(!tgt.startsWith(val)){el.classList.add('error');} else {el.classList.remove('error');} }
+    // === TYPE RUNNER (MONKEY UPDATE) ===
+    const commonWords = ["the","be","to","of","and","a","in","that","have","I","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us"];
+    let typeText = "";
+    let typeIndex = 0;
+    let typeStartTime = null;
+    let typeCorrectChars = 0;
+
+    window.initTypeGame = () => {
+        currentGame = 'type';
+        typeIndex = 0;
+        typeStartTime = null;
+        typeCorrectChars = 0;
+        if(typeInterval) clearInterval(typeInterval);
+        document.getElementById('typeTimer').innerText = "0";
+        document.getElementById('typeWPM').innerText = "0";
+        document.getElementById('typeHiddenInput').value = "";
+        document.getElementById('typeHiddenInput').focus();
+        
+        // Generate random paragraph
+        typeText = "";
+        for(let i=0; i<30; i++) {
+            typeText += commonWords[Math.floor(Math.random() * commonWords.length)] + " ";
+        }
+        typeText = typeText.trim();
+        renderTypeDisplay();
+    };
+
+    function renderTypeDisplay() {
+        const display = document.getElementById('typeTextBox');
+        display.innerHTML = "";
+        typeText.split('').forEach((char, idx) => {
+            const span = document.createElement('span');
+            span.innerText = char;
+            span.className = 'letter';
+            if (idx === typeIndex) span.classList.add('active');
+            display.appendChild(span);
+        });
+    }
+
+    document.getElementById('typeHiddenInput').addEventListener('input', (e) => {
+        if(currentGame !== 'type') return;
+        
+        if(!typeStartTime) {
+            typeStartTime = Date.now();
+            typeInterval = setInterval(() => {
+                const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60;
+                const wpm = Math.round((typeCorrectChars / 5) / elapsedMin);
+                document.getElementById('typeTimer').innerText = Math.round(elapsedMin * 60);
+                if(wpm > 0 && wpm < 300) document.getElementById('typeWPM').innerText = wpm;
+            }, 100);
+        }
+
+        const inputVal = e.target.value;
+        const charTyped = inputVal.charAt(inputVal.length - 1);
+        const letters = document.querySelectorAll('.letter');
+
+        if (e.inputType === "deleteContentBackward") {
+            if(typeIndex > 0) {
+                typeIndex--;
+                letters[typeIndex].classList.remove('correct', 'incorrect');
+                if(letters[typeIndex].innerText === typeText[typeIndex]) typeCorrectChars--;
+            }
+        } else {
+            if(typeIndex < typeText.length) {
+                if(charTyped === typeText[typeIndex]) {
+                    letters[typeIndex].classList.add('correct');
+                    typeCorrectChars++;
+                } else {
+                    letters[typeIndex].classList.add('incorrect');
+                }
+                typeIndex++;
+            }
+        }
+
+        // Update Cursor
+        document.querySelectorAll('.letter').forEach(l => l.classList.remove('active'));
+        if(typeIndex < letters.length) letters[typeIndex].classList.add('active');
+
+        // Finish
+        if(typeIndex >= typeText.length) {
+            clearInterval(typeInterval);
+            const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60;
+            const wpm = Math.round((typeCorrectChars / 5) / elapsedMin);
+            if(wpm > (myStats.wpm || 0)) {
+                myStats.wpm = wpm;
+                saveStats();
+                saveGlobalScore('type', wpm);
+            }
+            alert("FINISHED! WPM: " + wpm);
+            window.initTypeGame();
+        }
+    });
 
     // === PONG ===
     let pCtx, pCv, ball={x:400,y:300,dx:5,dy:5}, p1={y:250,h:80}, p2={y:250,h:80}, pSc=0, aiSc=0, pDiff=0.08;
