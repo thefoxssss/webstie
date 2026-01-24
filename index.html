@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V8 [ULTIMATE]</title>
+<title>GOONER TERMINAL V9 [MAX]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
     :root {
         --bg: #050505;
-        --accent: #ff0606; /* Default Red */
+        --accent: #ff0606;
         --accent-dim: rgba(255, 6, 6, 0.2);
         --accent-glow: rgba(255, 6, 6, 0.6);
-        --scanline: rgba(18, 16, 16, 0.5);
+        --scanline-opacity: 0.5;
+        --glow-strength: 10px;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -26,6 +27,7 @@
         color: var(--accent);
         user-select: none;
         touch-action: none;
+        text-shadow: 0 0 var(--glow-strength) var(--accent);
     }
 
     /* Matrix Canvas Background */
@@ -33,8 +35,8 @@
         position: absolute;
         top: 0; left: 0;
         z-index: 0;
-        opacity: 0.3;
-        display: none; /* Hidden by default */
+        opacity: 0.8;
+        display: none;
     }
     #matrixCanvas.active { display: block; }
 
@@ -47,6 +49,18 @@
         background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
         z-index: 99999;
         background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+        opacity: var(--scanline-opacity);
+    }
+
+    /* CRT Flicker Animation Class */
+    .flicker-on::after {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.4) 100%);
+        z-index: 99999;
         pointer-events: none;
         animation: flicker 0.15s infinite;
     }
@@ -70,7 +84,7 @@
         width: 100%;
     }
 
-    /* Top Menus */
+    /* Menus */
     .top-right { position: fixed; top: 20px; right: 20px; z-index: 2000; }
     .top-left { position: fixed; top: 20px; left: 20px; z-index: 2000; }
 
@@ -94,7 +108,7 @@
     }
     .dropdown-content button:hover { background-color: var(--accent); color: #000; }
 
-    /* The Big Button */
+    /* Gooner Button */
     .gooner-btn {
         font-size: clamp(24px, 8vw, 72px); color: var(--accent); cursor: pointer; padding: 30px 40px;
         border: 4px solid var(--accent); background: rgba(0, 0, 0, 0.8);
@@ -113,41 +127,43 @@
     }
     .overlay.active { display: flex; }
     
-    /* Settings Overlay Specifics */
-    #overlayConfig { background: rgba(0,0,0,0.95); }
-    .config-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 15px 0; }
-    .config-label { font-size: 12px; }
+    /* Config Menu */
+    #overlayConfig { background: rgba(0,0,0,0.98); }
+    .config-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 12px 0; }
+    .config-label { font-size: 10px; color: var(--accent); }
     
-    /* Custom Color Input Styling */
-    input[type="color"] {
-        -webkit-appearance: none; border: none; width: 30px; height: 30px; cursor: pointer; background: none;
-    }
+    input[type="color"] { -webkit-appearance: none; border: none; width: 30px; height: 30px; cursor: pointer; background: none; }
     input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
     input[type="color"]::-webkit-color-swatch { border: 2px solid var(--accent); }
     
-    /* Range Slider Styling */
-    input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; margin-top: -6px; box-shadow: 0 0 5px var(--accent); }
-    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--accent-dim); border-radius: 2px; }
+    input[type=range] { -webkit-appearance: none; width: 120px; background: transparent; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 0; background: var(--accent); cursor: pointer; margin-top: -6px; border: 1px solid #fff; }
+    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--accent-dim); }
 
+    /* EXIT BUTTON - FIXED POSITION */
     .close-btn {
-        position: absolute; top: 20px; right: 20px; background: transparent; border: 2px solid var(--accent);
-        color: var(--accent); padding: 8px 12px; font-family: inherit; font-size: 12px; cursor: pointer; z-index: 1001; transition: 0.2s;
+        position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background: #000; border: 2px solid var(--accent); color: var(--accent);
+        padding: 15px 30px; font-family: inherit; font-size: 14px; cursor: pointer;
+        z-index: 1001; transition: 0.2s; text-transform: uppercase;
+        box-shadow: 0 0 15px #000;
     }
-    .close-btn:hover { background: var(--accent); color: #000; }
+    .close-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-glow); }
 
-    /* Modal / Result Overlay */
+    /* Modal */
     .result-modal {
         position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 50;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         border: 2px solid var(--accent);
     }
-    .result-title { font-size: 30px; color: yellow; margin-bottom: 20px; text-shadow: 0 0 10px red; }
-    .result-text { color: #fff; margin-bottom: 30px; font-size: 14px; text-align: center; line-height: 1.5; }
+    .result-title { font-size: 30px; color: yellow; margin-bottom: 20px; }
+    .result-text { color: #fff; margin-bottom: 30px; font-size: 14px; text-align: center; }
     .vote-status { font-size: 10px; color: #888; margin-top: 10px; }
 
-    /* Canvas & Controls */
+    /* Canvas */
     canvas { border: 4px solid var(--accent); background: #000; box-shadow: 0 0 20px var(--accent-dim); max-width: 95vw; max-height: 70vh; image-rendering: pixelated; }
+    
+    /* Controls */
     .touch-controls { display: none; margin-top: 20px; gap: 10px; user-select: none; }
     .touch-controls.active { display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 10px; }
     .touch-btn { width: 50px; height: 50px; border: 2px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--accent-dim); border-radius: 8px; cursor: pointer; }
@@ -157,7 +173,7 @@
     @media (pointer: coarse) { .touch-controls.active { display: grid; } .mobile-hint.active { display: block; } }
 
     /* Menu & TTT */
-    .ttt-container { display: flex; flex-direction: column; align-items: center; gap: 20px; position: relative; }
+    .ttt-container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
     .menu-box { background: rgba(0,0,0,0.9); border: 2px solid var(--accent); padding: 20px; display: flex; flex-direction: column; gap: 15px; text-align: center; min-width: 300px; box-shadow: 0 0 15px var(--accent-dim); }
     .term-input { background: transparent; border: 2px solid var(--accent); color: var(--accent); padding: 10px; font-family: inherit; text-align: center; text-transform: uppercase; font-size: 16px; outline: none; }
     .term-btn { background: var(--accent); color: #000; border: none; padding: 12px; font-family: inherit; cursor: pointer; font-weight: bold; transition:0.2s; }
@@ -169,8 +185,8 @@
     .ttt-status { font-size: 12px; margin-bottom: 10px; text-align: center; min-height: 20px; }
     .ttt-room-code { font-size: 24px; letter-spacing: 5px; margin: 10px 0; color: #fff; }
 
-    /* BLACKJACK PVP */
-    .bj-table { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 600px; gap: 10px; position: relative; }
+    /* BJ Styles */
+    .bj-table { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 600px; gap: 10px; }
     .lobby-list { width: 100%; max-width: 400px; border: 1px dashed var(--accent-dim); padding: 10px; text-align: left; margin-bottom: 20px; }
     .lobby-item { margin: 5px 0; font-size: 12px; padding: 5px; border-bottom: 1px solid var(--accent-dim); }
     .bj-area { display: flex; flex-direction: column; align-items: center; min-height: 100px; width: 100%; border: 1px dashed var(--accent-dim); padding: 5px; position: relative; }
@@ -196,7 +212,7 @@
     .bj-bet-display { font-size: 14px; color: #fff; margin: 5px 0; text-align: center; text-shadow: 0 0 5px var(--accent); }
     .falling-card { position: fixed; width: 40px; height: 56px; background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 8px); border: 2px solid var(--accent); z-index: 9998; pointer-events: none; top: -60px; }
 
-    /* Secret Visuals */
+    /* Visual FX */
     .glitch-text { position: fixed; font-size: 14px; opacity: 0.8; pointer-events: none; font-weight: bold; z-index: 5; text-shadow: 2px 0 red, -2px 0 blue; }
     .version-tag { position: fixed; top: 10px; left: 10px; font-size: 10px; color: var(--accent-dim); z-index: 1002; }
 
@@ -207,10 +223,10 @@
     @media (max-width: 768px) { .bj-card { width: 40px; height: 56px; font-size: 10px; } .bj-deck-container { display: none; } }
 </style>
 </head>
-<body>
+<body class="flicker-on">
 
 <canvas id="matrixCanvas"></canvas>
-<div class="version-tag">SYS.V.25.8 // ULTIMATE</div>
+<div class="version-tag">SYS.V.25.9 // MAX_OVERDRIVE</div>
 
 <div class="overlay active" id="overlayLogin">
     <h1 style="color:var(--accent); text-shadow:0 0 10px var(--accent);">TERMINAL LOGIN</h1>
@@ -244,55 +260,47 @@
 </div>
 
 <div class="overlay" id="overlayConfig">
-    <button class="close-btn" data-close="overlayConfig">CLOSE</button>
     <h1>SYSTEM CONFIG</h1>
     <div class="menu-box" style="min-width:320px;">
-        <div class="config-row">
-            <span class="config-label">THEME COLOR</span>
-            <input type="color" id="themeColor" value="#ff0606">
-        </div>
-        <div class="config-row">
-            <span class="config-label">MATRIX RAIN</span>
-            <button class="term-btn" id="matrixToggle" style="font-size:10px; padding:8px;">OFF</button>
-        </div>
-        <div class="config-row">
-            <span class="config-label">AUDIO VOLUME</span>
-            <input type="range" id="volSlider" min="0" max="100" value="50">
-        </div>
+        <div class="config-row"><span class="config-label">THEME COLOR</span><input type="color" id="themeColor" value="#ff0606"></div>
+        <div class="config-row"><span class="config-label">MATRIX RAIN</span><button class="term-btn" id="matrixToggle" style="font-size:10px; padding:8px;">OFF</button></div>
+        <div class="config-row"><span class="config-label">SCANLINES</span><input type="range" id="scanSlider" min="0" max="100" value="50"></div>
+        <div class="config-row"><span class="config-label">GLOW POWER</span><input type="range" id="glowSlider" min="0" max="20" value="10"></div>
+        <div class="config-row"><span class="config-label">CRT FLICKER</span><button class="term-btn" id="flickerToggle" style="font-size:10px; padding:8px; color:#0f0;">ON</button></div>
+        <div class="config-row"><span class="config-label">AUDIO VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50"></div>
     </div>
+    <button class="close-btn" data-close="overlayConfig">EXIT CONFIG</button>
 </div>
 
 <div class="overlay" id="overlayPong">
-    <button class="close-btn" data-close="overlayPong">ABORT</button>
     <h1>PONG</h1>
     <div style="margin-bottom:10px; font-size:12px;" id="pongScore">0 : 0</div>
     <canvas id="pongCanvas" width="800" height="600"></canvas>
-    <div style="margin-top:10px;"><button class="close-btn" style="position:static; display:inline-block;" onclick="window.setPongDiff('easy')">EASY</button><button class="close-btn" style="position:static; display:inline-block;" onclick="window.setPongDiff('hard')">HARD</button></div>
+    <div style="margin-top:10px;"><button class="term-btn" onclick="window.setPongDiff('easy')">EASY</button> <button class="term-btn" onclick="window.setPongDiff('hard')">HARD</button></div>
     <div class="mobile-hint" id="pongHint">TAP ARROWS</div>
     <div class="touch-controls" id="pongControls"><div></div><div class="touch-btn" data-key="up">▲</div><div></div><div></div><div></div><div></div><div></div><div class="touch-btn" data-key="down">▼</div><div></div></div>
+    <button class="close-btn" data-close="overlayPong">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlaySnake">
-    <button class="close-btn" data-close="overlaySnake">ABORT</button>
     <h1>SNAKE</h1>
     <div style="margin-bottom:10px; font-size:12px;">SCORE: <span id="snakeScoreVal">0</span></div>
     <canvas id="snakeCanvas" width="600" height="400"></canvas>
     <div class="mobile-hint active" id="snakeHint">USE ARROWS</div>
     <div class="touch-controls active" id="snakeControls" style="margin-top:20px;"><div></div><div class="touch-btn" data-snake-key="up">▲</div><div></div><div class="touch-btn" data-snake-key="left">◀</div><div class="touch-btn" data-snake-key="down">▼</div><div class="touch-btn" data-snake-key="right">▶</div></div>
+    <button class="close-btn" data-close="overlaySnake">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayRunner">
-    <button class="close-btn" data-close="overlayRunner">ABORT</button>
     <h1>RUNNER</h1>
     <div style="margin-bottom:10px; font-size:12px;" id="runnerScoreBoard">SCORE: 0</div>
     <canvas id="runnerCanvas" width="800" height="400"></canvas>
     <div class="mobile-hint active" style="margin-top:10px;">TAP TO JUMP</div>
+    <button class="close-btn" data-close="overlayRunner">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayTTT">
-    <button class="close-btn" data-close="overlayTTT">DISCONNECT</button>
     <h1>TIC TAC TOE</h1>
-    
     <div id="tttMenu" class="ttt-container">
         <div class="menu-box">
             <p>MULTIPLAYER LOBBY</p>
@@ -301,18 +309,15 @@
             <button class="term-btn" id="btnJoinRoom">JOIN ROOM</button>
         </div>
     </div>
-
     <div id="tttLobby" class="menu-box" style="display:none;">
         <h2>ROOM: <span id="tttRoomId">????</span></h2>
         <div id="tttPlayerList" class="lobby-list"></div>
         <button class="term-btn" id="tttStartBtn" style="display:none; color:#0f0; border-color:#0f0;">START GAME</button>
         <p id="tttWaitMsg" style="font-size:10px;">WAITING FOR OPPONENT...</p>
     </div>
-
     <div id="tttGame" class="ttt-container" style="display:none;">
         <div class="ttt-status" id="tttStatus">WAITING...</div>
         <div class="ttt-grid" id="tttGrid"><div class="ttt-cell" data-idx="0"></div><div class="ttt-cell" data-idx="1"></div><div class="ttt-cell" data-idx="2"></div><div class="ttt-cell" data-idx="3"></div><div class="ttt-cell" data-idx="4"></div><div class="ttt-cell" data-idx="5"></div><div class="ttt-cell" data-idx="6"></div><div class="ttt-cell" data-idx="7"></div><div class="ttt-cell" data-idx="8"></div></div>
-        
         <div id="tttResultModal" class="result-modal" style="display:none;">
             <div class="result-title" id="tttResultTitle">GAME OVER</div>
             <div class="result-text" id="tttResultText"></div>
@@ -320,18 +325,16 @@
             <div class="vote-status" id="tttVoteStatus">VOTES: 0/2</div>
         </div>
     </div>
+    <button class="close-btn" data-close="overlayTTT">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayBlackjack">
-    <button class="close-btn" data-close="overlayBlackjack">ABORT</button>
     <h1>BATTLE ROYALE 21</h1>
-    
     <div id="bjModeSelect" class="menu-box">
         <p>SELECT MODE</p>
         <button class="term-btn" onclick="window.selectBjMode('solo')">SOLO (VS AI)</button>
         <button class="term-btn" onclick="window.selectBjMode('multi')">PVP (4 PLAYERS)</button>
     </div>
-
     <div id="bjJoinMenu" class="menu-box" style="display:none;">
         <p>NET RUN LOBBY</p>
         <button class="term-btn" id="btnBjCreate">CREATE TABLE</button>
@@ -339,19 +342,15 @@
         <input type="text" id="joinBjCode" class="term-input" placeholder="CODE" maxlength="4">
         <button class="term-btn" id="btnBjJoin">JOIN TABLE</button>
     </div>
-
     <div id="bjLobbyPanel" class="menu-box" style="display:none;">
         <h2 id="bjRoomCodeDisplay" style="color:white; margin-bottom:10px;">CODE: ????</h2>
         <div class="lobby-list" id="bjPlayerList"></div>
         <button class="term-btn" id="btnBjStartGame" style="display:none; width:100%; border-color:#0f0; color:#0f0;">START GAME</button>
         <p style="font-size:10px; margin-top:10px;" id="bjLobbyStatus">WAITING FOR HOST...</p>
     </div>
-
     <div id="bjTable" class="bj-table" style="display:none;">
         <div class="bj-pot-display">POT: $<span id="bjPot">0</span></div>
-
         <div class="bj-side-table" id="bjOtherPlayers"></div>
-        
         <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin: 5px 0;">
             <div class="bj-deck-container" id="bjDeck">
                 <div class="bj-deck-card"></div><div class="bj-deck-card"></div><div class="bj-deck-card"></div>
@@ -359,18 +358,15 @@
             </div>
             <div class="bj-message" id="bjMessage">PLACE BET & CLICK DECK</div>
         </div>
-
         <div class="bj-area" id="bjMySeat">
             <span class="bj-label">YOU</span>
             <div class="bj-hand" id="bjPlayerHand"></div>
             <div class="bj-score" id="bjPlayerScore"></div>
         </div>
-        
         <div class="bj-controls" id="bjGameControls" style="display:none;">
             <button class="term-btn" id="btnBjHit">HIT</button>
             <button class="term-btn" id="btnBjStand">STAND</button>
         </div>
-        
         <div id="bjBettingControls">
             <div class="bj-bet-display">BET: $<span id="bjCurrentBet">0</span></div>
             <div class="bj-chip-rack">
@@ -378,7 +374,6 @@
             </div>
         </div>
         <div style="font-size:10px; margin-top:10px;">BANK: $<span id="bjBalance">1000</span></div>
-
         <div id="bjResultModal" class="result-modal" style="display:none;">
             <div class="result-title" id="bjResultTitle">GAME OVER</div>
             <div class="result-text" id="bjResultText"></div>
@@ -386,6 +381,7 @@
             <div class="vote-status" id="bjVoteStatus">WAITING FOR VOTES...</div>
         </div>
     </div>
+    <button class="close-btn" data-close="overlayBlackjack">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:2000;">
@@ -421,79 +417,59 @@
     const initAuth = async () => { try { await signInAnonymously(auth); } catch(e) { console.error(e); } }; initAuth();
     onAuthStateChanged(auth, (user) => { if (user) { myUid = user.uid; document.getElementById('authStatus').innerText = "ONLINE"; document.getElementById('authStatus').style.color = "#0f0"; } });
 
-    /* --- LOGIN LOGIC --- */
+    /* LOGIN */
     document.getElementById('btnLogin').addEventListener('click', () => {
-        const input = document.getElementById('usernameInput');
-        const val = input.value.trim().toUpperCase();
+        const val = document.getElementById('usernameInput').value.trim().toUpperCase();
         if(val.length < 1) return beep(200,'sawtooth',0.3);
-        myName = val;
-        document.getElementById('displayUser').innerText = myName;
+        myName = val; document.getElementById('displayUser').innerText = myName;
         document.getElementById('overlayLogin').classList.remove('active');
         beep(600,'square',0.1); beep(800,'square',0.1);
     });
 
-    /* --- CONFIG & THEME --- */
-    const configToggle = document.getElementById('configToggle');
-    const overlayConfig = document.getElementById('overlayConfig');
-    configToggle.addEventListener('click', () => overlayConfig.classList.add('active'));
-    
-    // Theme Color
+    /* CONFIG */
+    document.getElementById('configToggle').addEventListener('click', () => document.getElementById('overlayConfig').classList.add('active'));
     document.getElementById('themeColor').addEventListener('input', (e) => {
-        const hex = e.target.value;
-        document.documentElement.style.setProperty('--accent', hex);
-        // Convert hex to rgb for dim/glow
-        const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+        const hex = e.target.value; document.documentElement.style.setProperty('--accent', hex);
+        const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
         document.documentElement.style.setProperty('--accent-dim', `rgba(${r},${g},${b},0.2)`);
         document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.6)`);
     });
-
-    // Volume
-    document.getElementById('volSlider').addEventListener('input', (e) => {
-        globalVol = e.target.value / 100;
-        beep(400, 'sine', 0.1);
-    });
-
-    // Matrix Rain
-    const matrixCanvas = document.getElementById('matrixCanvas');
-    const mCtx = matrixCanvas.getContext('2d');
-    let matrixInterval = null;
-    let matrixActive = false;
+    document.getElementById('volSlider').addEventListener('input', (e) => { globalVol = e.target.value/100; beep(400,'sine',0.1); });
+    document.getElementById('scanSlider').addEventListener('input', (e) => document.documentElement.style.setProperty('--scanline-opacity', e.target.value/100));
+    document.getElementById('glowSlider').addEventListener('input', (e) => document.documentElement.style.setProperty('--glow-strength', e.target.value+'px'));
     
-    document.getElementById('matrixToggle').addEventListener('click', (e) => {
-        matrixActive = !matrixActive;
-        e.target.innerText = matrixActive ? "ON" : "OFF";
-        e.target.style.color = matrixActive ? "#0f0" : "inherit";
-        if(matrixActive) {
-            matrixCanvas.classList.add('active');
-            startMatrix();
-        } else {
-            matrixCanvas.classList.remove('active');
-            clearInterval(matrixInterval);
-            mCtx.clearRect(0,0,matrixCanvas.width,matrixCanvas.height);
-        }
+    let flickerActive = true;
+    document.getElementById('flickerToggle').addEventListener('click', (e) => {
+        flickerActive = !flickerActive;
+        e.target.innerText = flickerActive ? "ON" : "OFF"; e.target.style.color = flickerActive ? "#0f0" : "inherit";
+        if(flickerActive) document.body.classList.add('flicker-on'); else document.body.classList.remove('flicker-on');
     });
 
+    // IMPROVED MATRIX RAIN
+    const matrixCanvas = document.getElementById('matrixCanvas'); const mCtx = matrixCanvas.getContext('2d');
+    let matrixInterval = null, matrixActive = false;
+    document.getElementById('matrixToggle').addEventListener('click', (e) => {
+        matrixActive = !matrixActive; e.target.innerText = matrixActive ? "ON" : "OFF"; e.target.style.color = matrixActive ? "#0f0" : "inherit";
+        if(matrixActive) { matrixCanvas.classList.add('active'); startMatrix(); } 
+        else { matrixCanvas.classList.remove('active'); clearInterval(matrixInterval); mCtx.clearRect(0,0,matrixCanvas.width,matrixCanvas.height); }
+    });
     function startMatrix() {
-        matrixCanvas.width = window.innerWidth;
-        matrixCanvas.height = window.innerHeight;
-        const cols = Math.floor(matrixCanvas.width / 20);
-        const ypos = Array(cols).fill(0);
-        
+        matrixCanvas.width = window.innerWidth; matrixCanvas.height = window.innerHeight;
+        const fontSize = 14; const columns = matrixCanvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+        const chars = "ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         if(matrixInterval) clearInterval(matrixInterval);
         matrixInterval = setInterval(() => {
-            mCtx.fillStyle = '#0001';
-            mCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+            mCtx.fillStyle = 'rgba(5, 5, 5, 0.05)'; mCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
             mCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
-            mCtx.font = '15px monospace';
-            
-            ypos.forEach((y, ind) => {
-                const text = String.fromCharCode(Math.random() * 128);
-                const x = ind * 20;
-                mCtx.fillText(text, x, y);
-                if (y > matrixCanvas.height && Math.random() > 0.975) ypos[ind] = 0;
-                else ypos[ind] = y + 20;
-            });
-        }, 50);
+            mCtx.font = fontSize + "px monospace";
+            for(let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                mCtx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if(drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }, 33);
     }
     window.addEventListener('resize', () => { if(matrixActive) startMatrix(); });
 
@@ -511,25 +487,10 @@
             else if (game === 'blackjack') launchOverlay('overlayBlackjack', initBlackjack);
         });
     });
-    
-    // GOONER BUTTON GLITCH
     mainBtn.addEventListener('click', () => { 
         beep(100, 'sawtooth', 0.3); beep(50, 'square', 0.3);
-        for(let i=0; i<5; i++) {
-            setTimeout(() => {
-                const el = document.createElement('div'); 
-                el.className = 'glitch-text'; 
-                el.textContent = ['SYSTEM_FAILURE', 'WAKE_UP', 'GOONER', 'NULL_PTR'][Math.floor(Math.random()*4)]; 
-                el.style.left = Math.random()*(window.innerWidth-100)+'px'; 
-                el.style.top = Math.random()*(window.innerHeight-50)+'px';
-                el.style.color = Math.random()>0.5 ? 'red' : 'white';
-                el.style.transform = `scale(${1+Math.random()})`;
-                document.body.appendChild(el); 
-                setTimeout(()=>el.remove(), 500);
-            }, i*100);
-        }
+        for(let i=0; i<5; i++) { setTimeout(() => { const el = document.createElement('div'); el.className = 'glitch-text'; el.textContent = ['SYSTEM_FAILURE', 'WAKE_UP', 'GOONER', 'NULL_PTR'][Math.floor(Math.random()*4)]; el.style.left = Math.random()*(window.innerWidth-100)+'px'; el.style.top = Math.random()*(window.innerHeight-50)+'px'; el.style.color = Math.random()>0.5 ? 'red' : 'white'; el.style.transform = `scale(${1+Math.random()})`; document.body.appendChild(el); setTimeout(()=>el.remove(), 500); }, i*100); }
     });
-
     document.querySelectorAll('[data-close]').forEach(btn => { btn.addEventListener('click', () => { document.getElementById(btn.dataset.close).classList.remove('active'); stopAllGames(); }); });
     function launchOverlay(id, initFunc) { stopAllGames(); document.getElementById(id).classList.add('active'); if (initFunc) initFunc(); }
     function stopAllGames() { stopPong(); stopSnake(); stopRunner(); cleanupTTT(); cleanupBJ(); currentGame = null; }
