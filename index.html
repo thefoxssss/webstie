@@ -1,30 +1,4 @@
-This is a massive update. I have completely rewritten the **Blackjack Multiplayer Engine** to support **Lobbies, Ready Systems, and Dynamic 2-4 Player Round Tables.**
 
-### **New Features Added:**
-
-1. **Lobby System:** When you create a table, you now enter a **"Setup Menu"** where you choose the max player count (2, 3, or 4).
-2. **Round Table Layout:**
-* **2 Players:** Classic Head-to-Head (Top vs Bottom).
-* **3-4 Players:** The UI transforms into a "Round Table." You always sit at the bottom, and opponents are seated in an arc around the Dealer based on their seat number.
-
-
-3. **Ready System:**
-* Players place bets and **must click [READY]**.
-* The game **auto-starts** only when everyone is locked in.
-* You can see who is "WAITING..." vs "READY" in real-time.
-
-
-4. **Turn Indicator:** A yellow arrow `>>>` points to the player whose turn it currently is.
-
-### **Instructions:**
-
-1. **Copy/Paste** this entire code into your `index.html`.
-2. **Refresh** the page.
-3. **Host** creates a room -> Selects "3 Players" (for example).
-4. **Guests** join using the code.
-5. **Everyone** bets, clicks READY, and the Host's computer will automatically deal the cards.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
