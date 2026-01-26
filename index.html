@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V29 [GEO DASH UPDATE]</title>
+<title>GOONER TERMINAL V31 [ECONOMY UPDATE]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -13,8 +13,13 @@
         --accent: #ff0606;
         --accent-dim: rgba(255, 6, 6, 0.2);
         --accent-glow: rgba(255, 6, 6, 0.6);
-        --scanline-opacity: 0.5;
-        --glow-strength: 10px;
+        
+        /* Rarity Colors */
+        --common: #b0b0b0;
+        --rare: #00ccff;
+        --epic: #d000ff;
+        --leg: #ffd700;
+
         --font-main: "Press Start 2P", monospace;
         --font-type: "Roboto Mono", monospace;
     }
@@ -26,7 +31,7 @@
         height: 100%; margin: 0; background-color: var(--bg);
         font-family: var(--font-main); overflow: hidden;
         color: var(--accent); touch-action: none;
-        text-shadow: 0 0 var(--glow-strength) var(--accent);
+        text-shadow: 0 0 10px var(--accent);
         transition: color 0.5s, text-shadow 0.5s;
     }
 
@@ -45,7 +50,7 @@
     body::before {
         content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
         background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: var(--scanline-opacity);
+        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: 0.5;
     }
     .flicker-on::after {
         content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
@@ -207,12 +212,28 @@
     .restart-hint { font-size: 10px; margin-top: 20px; animation: blink 1s infinite; color: #fff; }
 
     /* --- ACHIEVEMENTS & SHOP --- */
-    .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
-    .badge-item { border: 1px solid #333; padding: 10px; color: #555; font-size: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; transition: 0.3s; }
+    .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; max-height: 200px; overflow-y: auto; }
+    .badge-item { border: 1px solid #333; padding: 8px; color: #555; font-size: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; transition: 0.2s; cursor: help; height: 70px; }
+    .badge-item:hover { transform: scale(1.05); border-color: var(--accent-glow); }
     .badge-item.unlocked { border-color: var(--accent); color: var(--accent); opacity: 1; box-shadow: 0 0 5px var(--accent-dim); background: rgba(255, 255, 255, 0.05); }
-    .badge-icon { font-size: 24px; margin-bottom: 5px; }
+    
+    /* RARITY COLORS */
+    .badge-item.common { border-color: var(--common); color: var(--common); }
+    .badge-item.rare { border-color: var(--rare); color: var(--rare); }
+    .badge-item.epic { border-color: var(--epic); color: var(--epic); }
+    .badge-item.legendary { border-color: var(--leg); color: var(--leg); box-shadow: 0 0 10px var(--leg); }
+    
+    .badge-icon { font-size: 20px; margin-bottom: 5px; }
 
-    /* TOAST NOTIFICATION */
+    /* ACHIEVEMENT DETAIL MODAL */
+    #modalBadgeDetail { background: rgba(5,5,5,0.98); z-index: 9600; text-align: center; }
+    #bdIcon { font-size: 50px; margin-bottom: 20px; display: block; }
+    #bdTitle { font-size: 18px; margin-bottom: 10px; color: var(--accent); }
+    #bdRarity { font-size: 10px; margin-bottom: 15px; text-transform: uppercase; font-weight: bold; }
+    #bdDesc { font-size: 10px; line-height: 1.5; color: #fff; max-width: 80%; margin: 0 auto; }
+    #bdReward { margin-top: 20px; color: #0f0; font-size: 12px; }
+
+    /* TOAST */
     #toastBox { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
     .toast {
         background: rgba(0,0,0,0.95); border: 2px solid var(--accent); color: var(--accent);
@@ -228,11 +249,14 @@
     @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
-    /* SHOP */
+    /* SHOP & BANK */
     .shop-list { max-height: 250px; overflow-y: auto; margin-top: 10px; }
     .shop-item { border: 1px solid var(--accent); padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
     .shop-buy-btn { background: var(--accent); color: #000; border: none; padding: 5px 10px; font-weight: bold; font-family: inherit; }
     .shop-buy-btn:disabled { background: #333; color: #555; cursor: not-allowed; }
+    
+    .bank-log { max-height: 150px; overflow-y: auto; text-align: left; font-size: 8px; color: #aaa; margin-top: 10px; border-top: 1px solid #333; padding-top: 5px; }
+    .bank-entry { margin-bottom: 5px; display:flex; justify-content:space-between; }
 
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-thumb { background: var(--accent); }
@@ -256,9 +280,9 @@
         <span id="sysClock">00:00:00</span> | PING: <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
     </div>
     <div style="display:flex; gap:10px;">
+        <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
         <button class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
         <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
-        <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
     </div>
 </div>
@@ -309,10 +333,32 @@
             <div class="stat-row"><span>ACCOUNT ID</span><span id="profUid">...</span></div>
         </div>
         <div style="border-top:1px dashed var(--accent-dim); margin-top:15px; padding-top:10px;">
-            <div style="text-align:center; font-size:10px; margin-bottom:10px;">ACHIEVEMENTS</div>
+            <div style="text-align:center; font-size:10px; margin-bottom:10px;">ACHIEVEMENTS (CLICK TO INSPECT)</div>
             <div class="badge-grid" id="badgeGrid">
                 </div>
         </div>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+    </div>
+</div>
+
+<div class="overlay" id="modalBadgeDetail">
+    <div class="score-box" style="border-color:#fff;">
+        <span id="bdIcon">🔒</span>
+        <h2 id="bdTitle">UNKNOWN</h2>
+        <div id="bdRarity">COMMON</div>
+        <p id="bdDesc">This achievement is locked.</p>
+        <div id="bdReward">REWARD: $???</div>
+        <button class="term-btn" style="margin-top:20px;" onclick="document.getElementById('modalBadgeDetail').classList.remove('active')">CLOSE</button>
+    </div>
+</div>
+
+<div class="overlay" id="overlayBank">
+    <div class="score-box">
+        <h2 style="text-align:center;">THE BANK</h2>
+        <div style="text-align:center; font-size:20px; margin:20px 0; color:#0f0;">$<span id="bankDisplay">0</span></div>
+        <div style="text-align:center; font-size:10px; margin-bottom:10px;">RECENT TRANSACTIONS</div>
+        <div class="bank-log" id="bankLog">
+            </div>
         <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
 </div>
@@ -520,6 +566,7 @@
     let myUid=null, myName="ANON", myMoney=1000, myStats={games:0, wpm:0, wins:0}; 
     let myAchievements = []; 
     let myInventory = [];
+    let transactionLog = [];
     let globalVol=0.5, currentGame=null;
     let keysPressed = {}; 
     const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
@@ -531,19 +578,30 @@
     let gAnim = null; // Geo Dash Animation
     let typeInterval = null; // Type Timer
 
-    // Achievement Definitions
+    // Achievement Definitions (With Rarity & Value)
     const ACHIEVEMENTS = [
-        { id: 'noob', icon: '🐣', title: 'NOOB', desc: 'Played your first game' },
-        { id: 'diamond_hands', icon: '💎', title: 'DIAMOND HANDS', desc: 'Bank account > $5000' },
-        { id: 'type_god', icon: '⌨️', title: 'TYPE GOD', desc: 'WPM > 80' },
-        { id: 'viper', icon: '🐍', title: 'VIPER', desc: 'Score > 30 in Snake' },
-        { id: 'untouchable', icon: '🛡️', title: 'UNTOUCHABLE', desc: 'Perfect 10-0 in Pong' },
-        { id: 'high_roller', icon: '🎰', title: 'HIGH ROLLER', desc: 'Win a bet > $500' },
+        { id: 'noob', icon: '🐣', title: 'NOOB', desc: 'Played your first game', rarity: 'common', reward: 500 },
+        { id: 'diamond_hands', icon: '💎', title: 'DIAMOND HANDS', desc: 'Bank account > $5000', rarity: 'rare', reward: 2500 },
+        { id: 'millionaire', icon: '💸', title: 'MILLIONAIRE', desc: 'Bank account > $1,000,000', rarity: 'legendary', reward: 50000 },
+        { id: 'type_god', icon: '⌨️', title: 'TYPE GOD', desc: 'WPM > 80', rarity: 'rare', reward: 2500 },
+        { id: 'viper', icon: '🐍', title: 'VIPER', desc: 'Score > 30 in Snake', rarity: 'rare', reward: 2500 },
+        { id: 'untouchable', icon: '🛡️', title: 'UNTOUCHABLE', desc: 'Perfect 10-0 in Pong', rarity: 'epic', reward: 10000 },
+        { id: 'high_roller', icon: '🎰', title: 'HIGH ROLLER', desc: 'Win a bet > $500', rarity: 'rare', reward: 2500 },
+        { id: 'shopaholic', icon: '🛍️', title: 'SHOPAHOLIC', desc: 'Buy 3 items', rarity: 'common', reward: 500 },
+        { id: 'chatterbox', icon: '💬', title: 'CHATTERBOX', desc: 'Send 10 messages', rarity: 'common', reward: 500 },
+        { id: 'neo', icon: '🕶️', title: 'NEO', desc: 'Unlock Matrix Mode', rarity: 'epic', reward: 10000 },
+        { id: 'lonely', icon: '🐺', title: 'LONE WOLF', desc: 'Play 10 rounds of Solo Blackjack', rarity: 'common', reward: 500 },
+        
         // SECRETS
-        { id: 'rug_pulled', icon: '📉', title: 'RUG PULLED', desc: 'Hit $0 balance', hidden: true },
-        { id: 'touch_grass', icon: '🌿', title: 'TOUCH GRASS', desc: 'Stop touching the terminal', hidden: true },
-        { id: 'master_hacker', icon: '💀', title: 'MASTER HACKER', desc: 'Access root', hidden: true },
-        { id: 'leet', icon: '👾', title: '1337', desc: 'Play at XX:37', hidden: true }
+        { id: 'rug_pulled', icon: '📉', title: 'RUG PULLED', desc: 'Hit $0 balance', hidden: true, rarity: 'rare', reward: 1000 },
+        { id: 'touch_grass', icon: '🌿', title: 'TOUCH GRASS', desc: 'Stop touching the terminal', hidden: true, rarity: 'common', reward: 500 },
+        { id: 'master_hacker', icon: '💀', title: 'MASTER HACKER', desc: 'Access root', hidden: true, rarity: 'epic', reward: 10000 },
+        { id: 'leet', icon: '👾', title: '1337', desc: 'Play at XX:37', hidden: true, rarity: 'epic', reward: 10000 },
+        { id: 'architect', icon: '🏛️', title: 'THE ARCHITECT', desc: 'Ask for help', hidden: true, rarity: 'rare', reward: 2500 },
+        { id: 'rage_quit', icon: '🤬', title: 'RAGE QUIT', desc: 'Score 0 in 3 games straight', hidden: true, rarity: 'rare', reward: 2500 },
+        { id: 'insomniac', icon: '🌙', title: 'INSOMNIAC', desc: 'Play between 3AM-4AM', hidden: true, rarity: 'epic', reward: 10000 },
+        { id: 'spammer', icon: '🔨', title: 'SPAMMER', desc: 'Click logo 50 times', hidden: true, rarity: 'rare', reward: 2500 },
+        { id: 'void_gazer', icon: '👁️', title: 'VOID GAZER', desc: 'Click empty space 50 times', hidden: true, rarity: 'rare', reward: 2500 }
     ];
 
     // SHOP ITEMS (GAMEPLAY MODIFIERS)
@@ -571,6 +629,19 @@
         const el = document.getElementById(id);
         if(el) el.innerText = txt;
     }
+    
+    function logTransaction(msg, amount) {
+        transactionLog.unshift({ msg, amount, ts: new Date().toLocaleTimeString() });
+        if(transactionLog.length > 20) transactionLog.pop();
+        updateBankLog();
+    }
+    
+    function updateBankLog() {
+        const div = document.getElementById('bankLog');
+        div.innerHTML = transactionLog.map(t => 
+            `<div class="bank-entry"><span>${t.ts} ${t.msg}</span><span style="color:${t.amount>=0?'#0f0':'#f00'}">${t.amount>=0?'+':''}$${t.amount}</span></div>`
+        ).join('');
+    }
 
     const initAuth = async () => { try{await signInAnonymously(auth);}catch(e){console.error(e);} }; initAuth();
     onAuthStateChanged(auth, u=>{ if(u){ myUid=u.uid; initChat(); } });
@@ -580,6 +651,7 @@
         setText('sysClock', d.toLocaleTimeString('en-GB'));
         setText('sysPing', Math.floor(Math.random()*40+10)+"ms");
         if(d.getMinutes() === 37) unlockAchievement('leet');
+        if(d.getHours() === 3) unlockAchievement('insomniac');
     },1000);
 
     // --- 4. NAVIGATION ---
@@ -589,6 +661,7 @@
         if(el) el.classList.add('active');
         if(id==='overlayProfile') renderBadges();
         if(id==='overlayShop') renderShop();
+        if(id==='overlayBank') updateBankLog();
     };
 
     window.closeOverlays = () => {
@@ -666,7 +739,18 @@
     
     function updateUI() {
         setText('displayUser', myName);
-        setText('globalBank', myMoney);
+        
+        // ANIMATE MONEY
+        const bankEl = document.getElementById('globalBank');
+        const bankOverlayEl = document.getElementById('bankDisplay');
+        const currentVal = parseInt(bankEl.innerText) || 0;
+        if(currentVal !== myMoney) {
+            bankEl.style.color = myMoney > currentVal ? '#0f0' : '#f00';
+            setTimeout(() => bankEl.style.color = 'var(--accent)', 500);
+        }
+        bankEl.innerText = myMoney;
+        if(bankOverlayEl) bankOverlayEl.innerText = myMoney;
+
         setText('profName', myName);
         setText('profBank', "$"+myMoney);
         setText('profWPM', (myStats.wpm||0) + " WPM");
@@ -677,8 +761,17 @@
         setText('displayRank', "[" + rank + "]");
         setText('profRank', rank);
         
+        // Welfare Check
+        if(myMoney === 0) {
+            unlockAchievement('rug_pulled');
+            myMoney = 10;
+            logTransaction("EMERGENCY GRANT", 10);
+            showToast("WELFARE GRANT", "💰", "Don't spend it all in one place.");
+            saveStats();
+        }
+        
         if(myMoney >= 5000) unlockAchievement('diamond_hands');
-        if(myMoney === 0) unlockAchievement('rug_pulled');
+        if(myMoney >= 1000000) unlockAchievement('millionaire');
     }
     
     async function register(username, pin) {
@@ -702,7 +795,13 @@
         if(myAchievements.includes(id) || myName === "ANON") return;
         myAchievements.push(id);
         const badge = ACHIEVEMENTS.find(a => a.id === id);
-        if(badge) showToast(`ACHIEVEMENT UNLOCKED`, badge.icon, badge.title);
+        
+        if(badge) {
+            myMoney += badge.reward;
+            logTransaction(`ACHIEVEMENT: ${badge.title}`, badge.reward);
+            showToast(`UNLOCKED: ${badge.title}`, badge.icon, `+$${badge.reward}`);
+        }
+        
         saveStats();
         playSuccessSound();
     }
@@ -713,16 +812,32 @@
         ACHIEVEMENTS.forEach(a => {
             const unlocked = myAchievements.includes(a.id);
             const div = document.createElement('div');
+            
             if(a.hidden && !unlocked) {
                  div.className = 'badge-item';
                  div.innerHTML = `<div class="badge-icon">🔒</div><div>???</div>`;
+                 div.onclick = () => showBadgeDetail(a, false);
             } else {
-                 div.className = 'badge-item' + (unlocked ? ' unlocked' : '');
+                 div.className = 'badge-item unlocked ' + a.rarity;
                  div.innerHTML = `<div class="badge-icon">${a.icon}</div><div>${a.title}</div>`;
-                 div.title = a.desc;
+                 div.onclick = () => showBadgeDetail(a, true);
             }
             grid.appendChild(div);
         });
+    }
+    
+    function showBadgeDetail(badge, unlocked) {
+        setText('bdIcon', unlocked ? badge.icon : '🔒');
+        setText('bdTitle', unlocked ? badge.title : 'LOCKED');
+        setText('bdRarity', unlocked ? badge.rarity : 'UNKNOWN');
+        setText('bdDesc', unlocked ? badge.desc : 'This achievement is hidden until unlocked.');
+        setText('bdReward', unlocked ? `REWARDED: $${badge.reward}` : `REWARD: $${badge.reward}`);
+        
+        // Color code rarity text
+        const rEl = document.getElementById('bdRarity');
+        rEl.style.color = unlocked ? `var(--${badge.rarity})` : '#555';
+        
+        document.getElementById('modalBadgeDetail').classList.add('active');
     }
 
     function renderShop() {
@@ -732,9 +847,7 @@
         SHOP_ITEMS.forEach(item => {
             const div = document.createElement('div');
             div.className = 'shop-item';
-            const owned = myInventory.includes(item.id) && item.type !== 'consumable'; // Consumables always rebuyable if used? Logic implies stacking or one-time use. Let's assume standard 'owned' check for perks.
-            // For consumable shield, we check if we have one.
-            // Simplified: If perk is owned, show OWNED.
+            
             let label = '$'+item.cost;
             let btnText = 'BUY';
             let disabled = myMoney < item.cost;
@@ -761,16 +874,16 @@
         if(myMoney >= item.cost) {
             myMoney -= item.cost;
             if(item.type !== 'consumable') myInventory.push(id);
-            else {
-                // Consumable logic: Just add to array, we'll check presence and remove on use
-                myInventory.push(id); 
-            }
+            else myInventory.push(id); // Logic for consumables would go here (stacking)
             
+            if(myInventory.filter(i => i !== 'item_shield').length >= 3) unlockAchievement('shopaholic'); // 3 unique items roughly
             if(id === 'item_matrix') {
+                 unlockAchievement('neo');
                  document.documentElement.style.setProperty('--accent', '#00ff00');
                  document.getElementById('matrixCanvas').classList.add('active');
             }
             
+            logTransaction(`BOUGHT: ${item.name}`, -item.cost);
             saveStats();
             renderShop();
             playSuccessSound();
@@ -830,10 +943,12 @@
         myMoney += 1000; saveStats(); playSuccessSound();
     }
     let logoClicks = 0;
-    document.getElementById('mainBtn').onclick = () => { logoClicks++; if(logoClicks === 10) { showToast("SECRET FOUND", "🤫", "500 Credits"); myMoney += 500; saveStats(); logoClicks = 0; } };
+    document.getElementById('mainBtn').onclick = () => { logoClicks++; if(logoClicks === 50) { unlockAchievement('spammer'); showToast("SECRET FOUND", "🤫", "500 Credits"); myMoney += 500; saveStats(); logoClicks = 0; } };
     let bgClicks = 0;
-    document.addEventListener('click', (e) => { if (e.target.tagName === 'BODY' || e.target.classList.contains('wrap')) { bgClicks++; if(bgClicks === 20) unlockAchievement('touch_grass'); } else { bgClicks = 0; } });
+    document.addEventListener('click', (e) => { if (e.target.tagName === 'BODY' || e.target.classList.contains('wrap')) { bgClicks++; if(bgClicks === 50) unlockAchievement('void_gazer'); } else { bgClicks = 0; } });
     
+    // CHAT TRACKER
+    let chatCount = 0;
     function initChat() {
         const chatRef = collection(db, 'gooner_global_chat');
         const q = query(chatRef, orderBy('ts', 'desc'), limit(15));
@@ -853,6 +968,10 @@
                 if(txt.length > 0) { 
                     if(txt === '/clear') { document.getElementById('chatHistory').innerHTML=''; e.target.value=''; return;}
                     if(txt === '/root') { e.target.value = ''; document.getElementById('hackOverlay').classList.add('active'); setTimeout(() => { document.getElementById('hackOverlay').classList.remove('active'); unlockAchievement('master_hacker'); }, 2000); return; }
+                    if(txt === '/help') { unlockAchievement('architect'); }
+                    
+                    chatCount++;
+                    if(chatCount === 10) unlockAchievement('chatterbox');
                     await addDoc(chatRef, { user: myName, msg: txt, ts: Date.now() }); e.target.value = ''; 
                 }
             }
@@ -888,69 +1007,25 @@
     function loopGeometry() {
         if(currentGame!=='geo') return;
         const cv = document.getElementById('geoCanvas'); const ctx = cv.getContext('2d');
-        
-        // BG
         ctx.fillStyle = '#000'; ctx.fillRect(0,0,800,400);
-        
-        // Speed Mod (Slow-Mo Perk)
         let currentSpeed = gSpeed * (myInventory.includes('item_slowmo') ? 0.8 : 1);
-
-        // Input
         if((keysPressed[' '] || keysPressed['ArrowUp']) && gPlayer.grounded) {
             gPlayer.dy = -13; gPlayer.grounded = false;
         }
-        
-        // Physics
-        gPlayer.dy += 0.8; // Gravity
-        gPlayer.y += gPlayer.dy;
-        if(gPlayer.y > 320) { gPlayer.y = 320; gPlayer.dy = 0; gPlayer.grounded = true; 
-            // Snap rotation
-            gPlayer.ang = Math.round(gPlayer.ang / (Math.PI/2)) * (Math.PI/2);
-        } else {
-            gPlayer.ang += 0.1; // Rotate while jumping
-        }
-
-        // Draw Floor
+        gPlayer.dy += 0.8; gPlayer.y += gPlayer.dy;
+        if(gPlayer.y > 320) { gPlayer.y = 320; gPlayer.dy = 0; gPlayer.grounded = true; gPlayer.ang = Math.round(gPlayer.ang / (Math.PI/2)) * (Math.PI/2); } else { gPlayer.ang += 0.1; }
         ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
         ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,350); ctx.lineTo(800,350); ctx.stroke();
-
-        // Draw Player (Rotated)
-        ctx.save();
-        ctx.translate(gPlayer.x + gPlayer.w/2, gPlayer.y + gPlayer.h/2);
-        ctx.rotate(gPlayer.ang);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(-gPlayer.w/2, -gPlayer.h/2, gPlayer.w, gPlayer.h);
-        ctx.restore();
-
-        // Obstacles
-        if(Math.random() < 0.02) {
-            gObs.push({x: 800, y: 320, w: 30, h: 30, type: Math.random()>0.5 ? 'spike' : 'block'});
-        }
-
+        ctx.save(); ctx.translate(gPlayer.x + gPlayer.w/2, gPlayer.y + gPlayer.h/2); ctx.rotate(gPlayer.ang); ctx.fillStyle = '#fff'; ctx.fillRect(-gPlayer.w/2, -gPlayer.h/2, gPlayer.w, gPlayer.h); ctx.restore();
+        if(Math.random() < 0.02) { gObs.push({x: 800, y: 320, w: 30, h: 30, type: Math.random()>0.5 ? 'spike' : 'block'}); }
         for(let i=gObs.length-1; i>=0; i--) {
-            let o = gObs[i];
-            o.x -= currentSpeed;
-            
+            let o = gObs[i]; o.x -= currentSpeed;
             ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
-            if(o.type === 'spike') {
-                ctx.beginPath(); ctx.moveTo(o.x, o.y+30); ctx.lineTo(o.x+15, o.y); ctx.lineTo(o.x+30, o.y+30); ctx.fill();
-            } else {
-                ctx.fillRect(o.x, o.y, o.w, o.h);
-            }
-
-            // Hitbox
-            if(gPlayer.x < o.x + o.w - 5 && gPlayer.x + gPlayer.w > o.x + 5 &&
-               gPlayer.y < o.y + o.h - 5 && gPlayer.y + gPlayer.h > o.y + 5) {
-                   // Check Shield
-                   if(myInventory.includes('item_shield')) {
-                       myInventory = myInventory.filter(id => id !== 'item_shield');
-                       gObs.splice(i, 1);
-                       showToast("SHIELD USED", "🛡️");
-                       continue;
-                   }
+            if(o.type === 'spike') { ctx.beginPath(); ctx.moveTo(o.x, o.y+30); ctx.lineTo(o.x+15, o.y); ctx.lineTo(o.x+30, o.y+30); ctx.fill(); } else { ctx.fillRect(o.x, o.y, o.w, o.h); }
+            if(gPlayer.x < o.x + o.w - 5 && gPlayer.x + gPlayer.w > o.x + 5 && gPlayer.y < o.y + o.h - 5 && gPlayer.y + gPlayer.h > o.y + 5) {
+                   if(myInventory.includes('item_shield')) { myInventory = myInventory.filter(id => id !== 'item_shield'); gObs.splice(i, 1); showToast("SHIELD USED", "🛡️"); continue; }
                    window.showGameOver('geo', Math.floor(gScore)); return;
             }
-
             if(o.x < -50) { gObs.splice(i,1); gScore++; updateHighScore('geo', gScore); setText('geoScore', "SCORE: "+gScore); }
         }
         gAnim = requestAnimationFrame(loopGeometry);
@@ -972,29 +1047,17 @@
     function loopPong(){
         if(currentGame!=='pong')return;
         pCtx.fillStyle='rgba(0,0,0,0.2)'; pCtx.fillRect(0,0,800,600);
-        
-        // Player Movement (Or Aimbot)
-        if(myInventory.includes('item_aimbot')) {
-            p1.y += (ball.y - p1.h/2 - p1.y) * 0.1; // Smooth Auto Aim
-        } else {
-            if(keysPressed['w'] || keysPressed['ArrowUp']) p1.y -= 8;
-            if(keysPressed['s'] || keysPressed['ArrowDown']) p1.y += 8;
-        }
-        if(p1.y < 0) p1.y = 0; if(p1.y > 520) p1.y = 520;
-        
-        p2.y+=(ball.y-p2.h/2-p2.y)*pDiff;
-        if(p2.y < 0) p2.y = 0; if(p2.y > 520) p2.y = 520;
-
+        if(myInventory.includes('item_aimbot')) { p1.y += (ball.y - p1.h/2 - p1.y) * 0.1; } else { if(keysPressed['w'] || keysPressed['ArrowUp']) p1.y -= 8; if(keysPressed['s'] || keysPressed['ArrowDown']) p1.y += 8; }
+        if(p1.y < 0) p1.y = 0; if(p1.y > 520) p1.y = 520; p2.y+=(ball.y-p2.h/2-p2.y)*pDiff; if(p2.y < 0) p2.y = 0; if(p2.y > 520) p2.y = 520;
         pCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');
         pCtx.fillRect(20,p1.y,10,p1.h); pCtx.fillRect(770,p2.y,10,p2.h);
         pCtx.beginPath();pCtx.arc(ball.x,ball.y,8,0,Math.PI*2);pCtx.fill();
         ball.x+=ball.dx; ball.y+=ball.dy;
-        
         if(ball.y<0||ball.y>600)ball.dy*=-1;
         if(ball.x<30 && ball.y>p1.y && ball.y<p1.y+p1.h){ ball.dx = Math.abs(ball.dx)+0.5; ball.x = 30; beep(600); }
         if(ball.x>770 && ball.y>p2.y && ball.y<p2.y+p2.h){ ball.dx = -(Math.abs(ball.dx)+0.5); ball.x = 770; beep(600); }
-        if(ball.x<0){aiSc++; resetBall(); beep(200); pSc=0; } 
-        if(ball.x>800){ pSc++; updateHighScore('pong',pSc); loadHighScores(); resetBall(); beep(800); if(pSc >= 10 && aiSc === 0) unlockAchievement('untouchable'); }
+        if(ball.x<0){aiSc++; resetBall(); beep(200); checkLossStreak(); pSc=0; } 
+        if(ball.x>800){ pSc++; updateHighScore('pong',pSc); loadHighScores(); resetBall(); beep(800); lossStreak=0; if(pSc >= 10 && aiSc === 0) unlockAchievement('untouchable'); }
         setText('pongScore', `${pSc} : ${aiSc}`);
         pAnim=requestAnimationFrame(loopPong);
     }
@@ -1003,7 +1066,7 @@
     let sCtx, sCv, snake=[], food={}, sD='R', sNextD='R', sSc=0;
     function initSnake(){currentGame='snake';loadHighScores();sCv=document.getElementById('snakeCanvas');sCtx=sCv.getContext('2d');snake=[{x:10,y:10}];sD='R';sNextD='R';sSc=0;setText('snakeScoreVal', 0);placeFood();loopSnake();}
     function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
-    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);setText('snakeScoreVal', sSc);placeFood();beep(600); if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
+    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){checkLossStreak(); window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);setText('snakeScoreVal', sSc);placeFood();beep(600); lossStreak=0; if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
     
     // === RUNNER V2 ===
     let rCtx, rCv, player={}, rObs=[], rSpeed=5, rScore=0, rFrame=0;
@@ -1014,26 +1077,21 @@
         rCtx.fillStyle='#000'; rCtx.fillRect(0,0,800,400);
         rCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
         rCtx.lineWidth = 2; rCtx.beginPath(); rCtx.moveTo(0,350); rCtx.lineTo(800,350); rCtx.stroke();
-        
         let currentSpeed = rSpeed * (myInventory.includes('item_slowmo') ? 0.8 : 1);
-
         if((keysPressed[' '] || keysPressed['ArrowUp']) && player.grounded) { player.dy = -player.jumpForce; player.grounded = false; }
         player.dy += player.gravity; player.y += player.dy;
         if(player.y > 300) { player.y = 300; player.dy = 0; player.grounded = true; }
-
         rCtx.fillStyle = '#fff'; rCtx.fillRect(player.x, player.y, player.w, player.h);
-
         if(rFrame % Math.floor(1000/currentSpeed) === 0) { let height = Math.random() > 0.7 ? 60 : 30; rObs.push({ x: 800, y: 350 - height, w: 20, h: height }); }
-
         for(let i=rObs.length-1; i>=0; i--){
             let o = rObs[i]; o.x -= currentSpeed;
             rCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
             rCtx.fillRect(o.x, o.y, o.w, o.h);
             if (player.x < o.x + o.w && player.x + player.w > o.x && player.y < o.y + o.h && player.y + player.h > o.y) {
                  if(myInventory.includes('item_shield')) { myInventory = myInventory.filter(id => id !== 'item_shield'); rObs.splice(i, 1); showToast("SHIELD USED", "🛡️"); continue; }
-                 window.showGameOver('runner', Math.floor(rScore)); return;
+                 checkLossStreak(); window.showGameOver('runner', Math.floor(rScore)); return;
             }
-            if(o.x < -30) { rObs.splice(i, 1); rScore += 1; updateHighScore('runner', rScore); setText('runnerScoreBoard', "SCORE: "+rScore); if(rScore % 5 === 0) rSpeed += 0.5; }
+            if(o.x < -30) { rObs.splice(i, 1); rScore += 1; updateHighScore('runner', rScore); setText('runnerScoreBoard', "SCORE: "+rScore); if(rScore % 5 === 0) rSpeed += 0.5; lossStreak=0; }
         }
         rAnim=requestAnimationFrame(loopRunner);
     }
@@ -1042,8 +1100,9 @@
     document.addEventListener('keydown', e => { keysPressed[e.key] = true; if(currentGame==='snake'){const k=e.key;if((k==='ArrowUp'||k==='w')&&sD!=='D')sNextD='U';if((k==='ArrowDown'||k==='s')&&sD!=='U')sNextD='D';if((k==='ArrowLeft'||k==='a')&&sD!=='R')sNextD='L';if((k==='ArrowRight'||k==='d')&&sD!=='L')sNextD='R';} });
     document.addEventListener('keyup', e => { keysPressed[e.key] = false; });
 
-    // === BLACKJACK === (Standard + Online)
+    // === BLACKJACK ===
     let bjMode='solo', bjDeck=[], bjPlayerHand=[], bjDealerHand=[], bjCurrentBet=0, bjRoomCode=null, bjRoomUnsub=null, bjMySeatIdx=-1, bjLastPhase='';
+    let soloRounds = 0;
     const suits=['♠','♥','♦','♣'], values=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
     function initBJ() { currentGame='blackjack'; bjCurrentBet=0; document.getElementById('bjMode').style.display='flex'; document.getElementById('bjNetMenu').style.display='none'; document.getElementById('bjLobby').style.display='none'; document.getElementById('bjTable').style.display='none'; updBJ(); }
     function cleanupBJ() { if(bjRoomUnsub)bjRoomUnsub(); bjRoomUnsub=null; bjRoomCode=null; bjMySeatIdx=-1; bjLastPhase=''; }
@@ -1053,7 +1112,12 @@
     async function startSoloRound(){ if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5); document.getElementById('bjBetBtns').style.visibility='hidden'; bjDeck=createDeck(); bjPlayerHand=[bjDeck.pop(),bjDeck.pop()]; bjDealerHand=[bjDeck.pop(),bjDeck.pop()]; renderHand(bjPlayerHand,'bjPlayerHand'); renderScore('bjPlayerScore',bjPlayerHand); const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); renderNewCard(bjDealerHand[1], 'bjDealerHand', true); setText('bjDealerScore', ''); document.getElementById('bjGameBtns').style.display='flex'; setText('bjMessage', "YOUR TURN"); if(calcHand(bjPlayerHand)===21) endSolo(); }
     function soloHit() { const c = bjDeck.pop(); bjPlayerHand.push(c); renderNewCard(c, 'bjPlayerHand'); renderScore('bjPlayerScore', bjPlayerHand); if(calcHand(bjPlayerHand) > 21) endSolo(); }
     async function soloStand() { document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); renderNewCard(bjDealerHand[1], 'bjDealerHand'); renderScore('bjDealerScore', bjDealerHand); while(calcHand(bjDealerHand) < 17) { await new Promise(r=>setTimeout(r, 600)); let c = bjDeck.pop(); bjDealerHand.push(c); renderNewCard(c, 'bjDealerHand'); renderScore('bjDealerScore', bjDealerHand); } endSolo(); }
-    async function endSolo(){ document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); if(dDiv.querySelector('.hidden')) { dDiv.innerHTML=''; bjDealerHand.forEach(c => renderNewCard(c, 'bjDealerHand')); renderScore('bjDealerScore', bjDealerHand); } let ps=calcHand(bjPlayerHand), ds=calcHand(bjDealerHand); let msg="", win=0; if(ps > 21) { msg="YOU BUST!"; win=0; } else if(ds > 21) { msg="DEALER BUST! YOU WIN"; win=bjCurrentBet*2; } else if(ps > ds) { msg="YOU WIN!"; win=bjCurrentBet*2; } else if(ps < ds) { msg="YOU LOSE"; win=0; } else { msg="PUSH"; win=bjCurrentBet; } if(msg.includes("WIN") && bjCurrentBet >= 500) unlockAchievement('high_roller'); setText('bjMessage', msg); myMoney+=win; updBJ(); bjCurrentBet=0; document.querySelector('#bjDeck div:last-child').innerText="AGAIN"; if(win===0 && myMoney<=0) setTimeout(()=>window.showGameOver('blackjack',0),1500); else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500); }
+    async function endSolo(){ document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); if(dDiv.querySelector('.hidden')) { dDiv.innerHTML=''; bjDealerHand.forEach(c => renderNewCard(c, 'bjDealerHand')); renderScore('bjDealerScore', bjDealerHand); } let ps=calcHand(bjPlayerHand), ds=calcHand(bjDealerHand); let msg="", win=0; if(ps > 21) { msg="YOU BUST!"; win=0; } else if(ds > 21) { msg="DEALER BUST! YOU WIN"; win=bjCurrentBet*2; } else if(ps > ds) { msg="YOU WIN!"; win=bjCurrentBet*2; } else if(ps < ds) { msg="YOU LOSE"; win=0; } else { msg="PUSH"; win=bjCurrentBet; } 
+    if(msg.includes("WIN") && bjCurrentBet >= 500) unlockAchievement('high_roller');
+    soloRounds++; if(soloRounds===10) unlockAchievement('lonely');
+    setText('bjMessage', msg); myMoney+=win; updBJ(); bjCurrentBet=0; document.querySelector('#bjDeck div:last-child').innerText="AGAIN"; if(win===0 && myMoney<=0) setTimeout(()=>window.showGameOver('blackjack',0),1500); else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500); }
+    
+    // --- GENERIC NET CODE ---
     function getBJRef(c){return doc(db,'gooner_terminal_rooms','bj_'+c);}
     document.getElementById('btnCreateBJ').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();const seats=[{uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false},null,null,null];await setDoc(getBJRef(c),{seats:seats,deck:[],phase:'lobby',activeSeat:0,pot:0});joinBJ(c,0);};
     document.getElementById('btnJoinBJ').onclick=async()=>{const c=document.getElementById('joinBJCode').value,ref=getBJRef(c);await runTransaction(db,async(t)=>{const s=await t.get(ref);if(!s.exists())throw "404";const d=s.data();let idx=-1;for(let i=1;i<4;i++)if(d.seats[i]===null){idx=i;break;}if(idx===-1)throw "Full";const ns=[...d.seats];ns[idx]={uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false};t.update(ref,{seats:ns});joinBJ(c,idx);}).catch(e=>alert(e));};
@@ -1083,6 +1147,11 @@
     function renderHand(hand, elId) { document.getElementById(elId).innerHTML = ''; hand.forEach(c => renderNewCard(c, elId, c.h)); }
     function renderScore(id,h){setText(id, calcHand(h));}
     function quickRestartListener(e) { if (e.key === ' ' || e.key === 'Enter') { document.getElementById('goRestart').click(); window.removeEventListener('keydown', quickRestartListener); } }
+    
+    // RAGE QUIT CHECK
+    let lossStreak = 0;
+    function checkLossStreak() { lossStreak++; if(lossStreak===3) unlockAchievement('rage_quit'); }
+
     window.showGameOver=(g,s)=>{ stopAllGames(); beep(150, 'sawtooth', 0.5); setText('gameOverText', 'SYSTEM_FAILURE: SCORE_' + s); document.getElementById('modalGameOver').classList.add('active'); window.addEventListener('keydown', quickRestartListener); };
     document.getElementById('goRestart').onclick=()=>{ document.getElementById('modalGameOver').classList.remove('active'); window.removeEventListener('keydown', quickRestartListener); if(currentGame==='snake')initSnake(); if(currentGame==='pong')initPong(); if(currentGame==='runner')initRunner(); if(currentGame==='geo')initGeometry(); if(currentGame==='blackjack'){myMoney=1000;updBJ();initBJ();document.getElementById('overlayBlackjack').classList.add('active');} };
     document.getElementById('goExit').onclick=()=>{ window.closeOverlays(); document.getElementById('modalGameOver').classList.remove('active'); };
