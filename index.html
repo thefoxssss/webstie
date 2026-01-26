@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V27 [ONLINE]</title>
+<title>GOONER TERMINAL V28 [STABLE]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -307,6 +307,7 @@
             <div class="stat-row"><span>NET WORTH</span><span id="profBank">$0</span></div>
             <div class="stat-row"><span>TYPING SPEED</span><span id="profWPM">0 WPM</span></div>
             <div class="stat-row"><span>GAMES PLAYED</span><span id="profGames">0</span></div>
+            <div class="stat-row"><span>ACCOUNT ID</span><span id="profUid">...</span></div>
         </div>
         <div style="border-top:1px dashed var(--accent-dim); margin-top:15px; padding-top:10px;">
             <div style="text-align:center; font-size:10px; margin-bottom:10px;">ACHIEVEMENTS</div>
@@ -555,14 +556,20 @@
     function playSuccessSound() {
         beep(523.25, 'triangle', 0.1); setTimeout(() => beep(659.25, 'triangle', 0.1), 100); setTimeout(() => beep(783.99, 'triangle', 0.2), 200);
     }
+    
+    function setText(id, txt) {
+        const el = document.getElementById(id);
+        if(el) el.innerText = txt;
+        else console.warn("Element missing: " + id);
+    }
 
     const initAuth = async () => { try{await signInAnonymously(auth);}catch(e){console.error(e);} }; initAuth();
     onAuthStateChanged(auth, u=>{ if(u){ myUid=u.uid; initChat(); } });
     
     setInterval(()=>{ 
         const d=new Date(); 
-        document.getElementById('sysClock').innerText=d.toLocaleTimeString('en-GB'); 
-        document.getElementById('sysPing').innerText=Math.floor(Math.random()*40+10)+"ms";
+        setText('sysClock', d.toLocaleTimeString('en-GB'));
+        setText('sysPing', Math.floor(Math.random()*40+10)+"ms");
         
         // SECRET: 1337 Check (xx:37)
         if(d.getMinutes() === 37) unlockAchievement('leet');
@@ -651,17 +658,17 @@
     }
     
     function updateUI() {
-        document.getElementById('displayUser').innerText = myName;
-        document.getElementById('globalBank').innerText = myMoney;
-        document.getElementById('profName').innerText = myName;
-        document.getElementById('profBank').innerText = "$"+myMoney;
-        document.getElementById('profWPM').innerText = (myStats.wpm||0) + " WPM";
-        document.getElementById('profGames').innerText = myStats.games||0;
-        document.getElementById('profUid').innerText = myUid ? myUid.substring(0,8) : "ERR";
+        setText('displayUser', myName);
+        setText('globalBank', myMoney);
+        setText('profName', myName);
+        setText('profBank', "$"+myMoney);
+        setText('profWPM', (myStats.wpm||0) + " WPM");
+        setText('profGames', myStats.games||0);
+        setText('profUid', myUid ? myUid.substring(0,8) : "ERR");
         
         const rank = getRank(myMoney);
-        document.getElementById('displayRank').innerText = "[" + rank + "]";
-        document.getElementById('profRank').innerText = rank;
+        setText('displayRank', "[" + rank + "]");
+        setText('profRank', rank);
         
         if(myMoney >= 5000) unlockAchievement('diamond_hands');
         if(myMoney === 0) unlockAchievement('rug_pulled');
@@ -720,7 +727,7 @@
 
     function renderShop() {
         const list = document.getElementById('shopList');
-        document.getElementById('shopBank').innerText = myMoney;
+        setText('shopBank', myMoney);
         list.innerHTML = '';
         SHOP_ITEMS.forEach(item => {
             const div = document.createElement('div');
@@ -780,13 +787,13 @@
         const u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('pinInput').value.trim();
         if(u.length<3||p.length<4) return beep(200,'sawtooth',0.5);
         const res=await login(u,p);
-        if(res===true) beep(600,'square',0.1); else { document.getElementById('loginMsg').innerText=res; beep(100,'sawtooth',0.5); }
+        if(res===true) beep(600,'square',0.1); else { setText('loginMsg', res); beep(100,'sawtooth',0.5); }
     };
     document.getElementById('btnRegister').onclick = async () => {
         const u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('pinInput').value.trim();
         if(u.length<3||p.length<4) return;
         const res=await register(u,p);
-        if(res===true) beep(600,'square',0.1); else { document.getElementById('loginMsg').innerText=res; beep(100,'sawtooth',0.5); }
+        if(res===true) beep(600,'square',0.1); else { setText('loginMsg', res); beep(100,'sawtooth',0.5); }
     };
     document.getElementById('btnLogout').onclick = () => { localStorage.clear(); location.reload(); };
 
@@ -898,9 +905,9 @@
         return old;
     }
     function loadHighScores() {
-        document.getElementById('hsPong').innerText = localStorage.getItem('hs_pong')||0;
-        document.getElementById('hsSnake').innerText = localStorage.getItem('hs_snake')||0;
-        document.getElementById('hsRunner').innerText = localStorage.getItem('hs_runner')||0;
+        setText('hsPong', localStorage.getItem('hs_pong')||0);
+        setText('hsSnake', localStorage.getItem('hs_snake')||0);
+        setText('hsRunner', localStorage.getItem('hs_runner')||0);
     }
     // --- 7. LEADERBOARDS & CHAT ---
     document.querySelectorAll('.score-tab').forEach(t => t.onclick = () => {
@@ -948,8 +955,8 @@
         typeStartTime = null;
         typeCorrectChars = 0;
         if(typeInterval) clearInterval(typeInterval);
-        document.getElementById('typeTimer').innerText = "0";
-        document.getElementById('typeWPM').innerText = "0";
+        setText('typeTimer', "0");
+        setText('typeWPM', "0");
         document.getElementById('typeHiddenInput').value = "";
         document.getElementById('typeHiddenInput').focus();
         typeText = "";
@@ -977,8 +984,8 @@
             typeInterval = setInterval(() => {
                 const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60;
                 const wpm = Math.round((typeCorrectChars / 5) / elapsedMin);
-                document.getElementById('typeTimer').innerText = Math.round(elapsedMin * 60);
-                if(wpm > 0 && wpm < 300) document.getElementById('typeWPM').innerText = wpm;
+                setText('typeTimer', Math.round(elapsedMin * 60));
+                if(wpm > 0 && wpm < 300) setText('typeWPM', wpm);
             }, 100);
         }
         const inputVal = e.target.value;
@@ -1051,15 +1058,15 @@
             pSc++; updateHighScore('pong',pSc); loadHighScores(); resetBall(); beep(800);
             if(pSc >= 10 && aiSc === 0) unlockAchievement('untouchable');
         }
-        document.getElementById('pongScore').innerText=`${pSc} : ${aiSc}`;
+        setText('pongScore', `${pSc} : ${aiSc}`);
         pAnim=requestAnimationFrame(loopPong);
     }
     
     // === SNAKE ===
     let sCtx, sCv, snake=[], food={}, sD='R', sNextD='R', sSc=0;
-    function initSnake(){currentGame='snake';loadHighScores();sCv=document.getElementById('snakeCanvas');sCtx=sCv.getContext('2d');snake=[{x:10,y:10}];sD='R';sNextD='R';sSc=0;document.getElementById('snakeScoreVal').innerText=0;placeFood();loopSnake();}
+    function initSnake(){currentGame='snake';loadHighScores();sCv=document.getElementById('snakeCanvas');sCtx=sCv.getContext('2d');snake=[{x:10,y:10}];sD='R';sNextD='R';sSc=0;setText('snakeScoreVal', 0);placeFood();loopSnake();}
     function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
-    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);document.getElementById('snakeScoreVal').innerText=sSc;placeFood();beep(600); if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
+    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);setText('snakeScoreVal', sSc);placeFood();beep(600); if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
     
     // === RUNNER V2 ===
     let rCtx, rCv, player={}, rObs=[], rSpeed=5, rScore=0, rFrame=0;
@@ -1069,7 +1076,7 @@
         rCtx=rCv.getContext('2d');
         player = { x: 50, y: 300, w: 30, h: 50, dy: 0, grounded: true, jumpForce: 12, gravity: 0.6 };
         rObs = []; rSpeed = 5; rScore = 0; rFrame = 0;
-        document.getElementById('runnerScoreBoard').innerText="SCORE: 0";
+        setText('runnerScoreBoard', "SCORE: 0");
         loopRunner();
     }
     
@@ -1098,7 +1105,7 @@
             if (player.x < o.x + o.w && player.x + player.w > o.x && player.y < o.y + o.h && player.y + player.h > o.y) { window.showGameOver('runner', Math.floor(rScore)); return; }
             if(o.x < -30) {
                 rObs.splice(i, 1); rScore += 1; updateHighScore('runner', rScore);
-                document.getElementById('runnerScoreBoard').innerText="SCORE: "+rScore;
+                setText('runnerScoreBoard', "SCORE: "+rScore);
                 if(rScore % 5 === 0) rSpeed += 0.5;
             }
         }
@@ -1115,16 +1122,16 @@
     
     function initBJ() { currentGame='blackjack'; bjCurrentBet=0; document.getElementById('bjMode').style.display='flex'; document.getElementById('bjNetMenu').style.display='none'; document.getElementById('bjLobby').style.display='none'; document.getElementById('bjTable').style.display='none'; updBJ(); }
     function cleanupBJ() { if(bjRoomUnsub)bjRoomUnsub(); bjRoomUnsub=null; bjRoomCode=null; bjMySeatIdx=-1; bjLastPhase=''; }
-    window.bjSelect=(m)=>{bjMode=m;document.getElementById('bjMode').style.display='none';if(m==='solo'){document.getElementById('bjTable').style.display='flex';document.getElementById('bjHostLabel').innerText="DEALER";document.querySelector('.bj-pot-display').style.display='none';document.getElementById('bjSide').innerHTML='';startSoloBetting();}else{document.querySelector('.bj-pot-display').style.display='block';document.getElementById('bjNetMenu').style.display='flex';}beep(400,'square',0.1);};
-    function updBJ(){document.getElementById('bjBetVal').innerText=bjCurrentBet;document.getElementById('globalBank').innerText=myMoney;saveStats(); if(myMoney >= 5000) unlockAchievement('diamond_hands'); if(myMoney===0) unlockAchievement('rug_pulled'); }
+    window.bjSelect=(m)=>{bjMode=m;document.getElementById('bjMode').style.display='none';if(m==='solo'){document.getElementById('bjTable').style.display='flex';setText('bjHostLabel', "DEALER");document.querySelector('.bj-pot-display').style.display='none';document.getElementById('bjSide').innerHTML='';startSoloBetting();}else{document.querySelector('.bj-pot-display').style.display='block';document.getElementById('bjNetMenu').style.display='flex';}beep(400,'square',0.1);};
+    function updBJ(){setText('bjBetVal', bjCurrentBet);setText('globalBank', myMoney);saveStats(); if(myMoney >= 5000) unlockAchievement('diamond_hands'); if(myMoney===0) unlockAchievement('rug_pulled'); }
 
     function startSoloBetting(){
         bjPlayerHand=[]; bjDealerHand=[]; bjCurrentBet=0;
         document.getElementById('bjPlayerHand').innerHTML=''; 
         document.getElementById('bjDealerHand').innerHTML='';
-        document.getElementById('bjPlayerScore').innerText=''; 
-        document.getElementById('bjDealerScore').innerText='';
-        document.getElementById('bjMessage').innerText='PLACE BET & CLICK DECK';
+        setText('bjPlayerScore', ''); 
+        setText('bjDealerScore', '');
+        setText('bjMessage', 'PLACE BET & CLICK DECK');
         document.getElementById('bjGameBtns').style.display='none';
         document.getElementById('bjBetBtns').style.visibility='visible';
         document.querySelector('#bjDeck div:last-child').innerText="DEAL";
@@ -1145,9 +1152,9 @@
         renderNewCard(bjDealerHand[0], 'bjDealerHand');
         renderNewCard(bjDealerHand[1], 'bjDealerHand', true); 
         
-        document.getElementById('bjDealerScore').innerText='';
+        setText('bjDealerScore', '');
         document.getElementById('bjGameBtns').style.display='flex';
-        document.getElementById('bjMessage').innerText="YOUR TURN";
+        setText('bjMessage', "YOUR TURN");
         
         if(calcHand(bjPlayerHand)===21) endSolo();
     }
@@ -1197,7 +1204,7 @@
 
         if(msg.includes("WIN") && bjCurrentBet >= 500) unlockAchievement('high_roller');
 
-        document.getElementById('bjMessage').innerText=msg;
+        setText('bjMessage', msg);
         myMoney+=win;
         updBJ();
         bjCurrentBet=0;
@@ -1210,11 +1217,11 @@
     function getBJRef(c){return doc(db,'gooner_terminal_rooms','bj_'+c);}
     document.getElementById('btnCreateBJ').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();const seats=[{uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false},null,null,null];await setDoc(getBJRef(c),{seats:seats,deck:[],phase:'lobby',activeSeat:0,pot:0});joinBJ(c,0);};
     document.getElementById('btnJoinBJ').onclick=async()=>{const c=document.getElementById('joinBJCode').value,ref=getBJRef(c);await runTransaction(db,async(t)=>{const s=await t.get(ref);if(!s.exists())throw "404";const d=s.data();let idx=-1;for(let i=1;i<4;i++)if(d.seats[i]===null){idx=i;break;}if(idx===-1)throw "Full";const ns=[...d.seats];ns[idx]={uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false};t.update(ref,{seats:ns});joinBJ(c,idx);}).catch(e=>alert(e));};
-    function joinBJ(c,idx){bjRoomCode=c;bjMySeatIdx=idx;document.getElementById('bjNetMenu').style.display='none';document.getElementById('bjLobby').style.display='flex';document.getElementById('bjRoomId').innerText=c;if(bjRoomUnsub)bjRoomUnsub();bjRoomUnsub=onSnapshot(getBJRef(c),s=>{if(s.exists())handleBJUpdate(s.data());});}
+    function joinBJ(c,idx){bjRoomCode=c;bjMySeatIdx=idx;document.getElementById('bjNetMenu').style.display='none';document.getElementById('bjLobby').style.display='flex';setText('bjRoomId', c);if(bjRoomUnsub)bjRoomUnsub();bjRoomUnsub=onSnapshot(getBJRef(c),s=>{if(s.exists())handleBJUpdate(s.data());});}
     function handleBJUpdate(d){
         const deckLabel=document.querySelector('#bjDeck div:last-child');
-        if(d.phase==='lobby'){document.getElementById('bjLobby').style.display='flex';document.getElementById('bjTable').style.display='none';document.getElementById('bjPList').innerHTML=d.seats.map((s,i)=>s?`<div>${s.name} ${i===0?'(HOST)':''}</div>`:'').join('');if(bjMySeatIdx===0){document.getElementById('bjStartBtn').style.display='block';document.getElementById('bjWait').innerText="CLICK START";}else{document.getElementById('bjStartBtn').style.display='none';document.getElementById('bjWait').innerText="WAITING FOR HOST...";}return;}
-        document.getElementById('bjLobby').style.display='none';document.getElementById('bjTable').style.display='flex';document.getElementById('bjPot').innerText=d.pot||0;document.getElementById('bjHostLabel').innerText="HOST (P1)";
+        if(d.phase==='lobby'){document.getElementById('bjLobby').style.display='flex';document.getElementById('bjTable').style.display='none';document.getElementById('bjPList').innerHTML=d.seats.map((s,i)=>s?`<div>${s.name} ${i===0?'(HOST)':''}</div>`:'').join('');if(bjMySeatIdx===0){document.getElementById('bjStartBtn').style.display='block';setText('bjWait', "CLICK START");}else{document.getElementById('bjStartBtn').style.display='none';setText('bjWait', "WAITING FOR HOST...");}return;}
+        document.getElementById('bjLobby').style.display='none';document.getElementById('bjTable').style.display='flex';setText('bjPot', d.pot||0);setText('bjHostLabel', "HOST (P1)");
         const sideDiv=document.getElementById('bjSide');sideDiv.innerHTML='';
         d.seats.forEach((s,i)=>{
             if(i===0||i===bjMySeatIdx||!s)return;
@@ -1240,15 +1247,15 @@
                  renderNewCard(c,'bjDealerHand', isHidden);
             });
         }
-        document.getElementById('bjDealerScore').innerText=(d.phase==='resolution' || bjMySeatIdx===0)?calcHand(host.hand):'';
+        setText('bjDealerScore', (d.phase==='resolution' || bjMySeatIdx===0)?calcHand(host.hand):'');
         const me=d.seats[bjMySeatIdx];
         if(me){
             const pDiv=document.getElementById('bjPlayerHand');
             if(pDiv.childElementCount!==me.hand.length){ pDiv.innerHTML=''; me.hand.forEach(c=>renderNewCard(c,'bjPlayerHand')); renderScore('bjPlayerScore',me.hand); }
         }
-        if(d.phase==='betting'){if(!me.ready){document.getElementById('bjBetBtns').style.visibility='visible';document.getElementById('bjMessage').innerText="BET & LOCK IN";deckLabel.innerText="LOCK";}else{document.getElementById('bjBetBtns').style.visibility='hidden';document.getElementById('bjMessage').innerText="WAITING...";deckLabel.innerText="WAIT";if(bjMySeatIdx===0&&d.seats.every((s,i)=>i===0||!s||s.ready)){document.getElementById('bjMessage').innerText="ALL READY";deckLabel.innerText="DEAL";}}}
-        else if(d.phase==='playing'){document.getElementById('bjBetBtns').style.visibility='hidden';deckLabel.innerText="PLAY";if(d.activeSeat===bjMySeatIdx){document.getElementById('bjGameBtns').style.display='flex';document.getElementById('bjMessage').innerText="YOUR TURN";}else{document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjMessage').innerText="OPPONENT TURN";}}
-        else if(d.phase==='resolution'){document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='hidden';if(bjLastPhase!=='resolution'){if(me.status==='win'){myMoney+=d.pot;updBJ();}else if(me.status==='push'){myMoney+=me.bet;updBJ();}bjCurrentBet=0;if(myMoney<=0)setTimeout(()=>window.showGameOver('blackjack',0),2000);}let msg="ROUND OVER";if(me.status==='win')msg=`WON $${d.pot}!`;else if(me.status==='push')msg="PUSH";else msg="LOST";document.getElementById('bjMessage').innerText=msg;deckLabel.innerText=bjMySeatIdx===0?"NEXT":"WAIT";}
+        if(d.phase==='betting'){if(!me.ready){document.getElementById('bjBetBtns').style.visibility='visible';setText('bjMessage', "BET & LOCK IN");deckLabel.innerText="LOCK";}else{document.getElementById('bjBetBtns').style.visibility='hidden';setText('bjMessage', "WAITING...");deckLabel.innerText="WAIT";if(bjMySeatIdx===0&&d.seats.every((s,i)=>i===0||!s||s.ready)){setText('bjMessage', "ALL READY");deckLabel.innerText="DEAL";}}}
+        else if(d.phase==='playing'){document.getElementById('bjBetBtns').style.visibility='hidden';deckLabel.innerText="PLAY";if(d.activeSeat===bjMySeatIdx){document.getElementById('bjGameBtns').style.display='flex';setText('bjMessage', "YOUR TURN");}else{document.getElementById('bjGameBtns').style.display='none';setText('bjMessage', "OPPONENT TURN");}}
+        else if(d.phase==='resolution'){document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='hidden';if(bjLastPhase!=='resolution'){if(me.status==='win'){myMoney+=d.pot;updBJ();}else if(me.status==='push'){myMoney+=me.bet;updBJ();}bjCurrentBet=0;if(myMoney<=0)setTimeout(()=>window.showGameOver('blackjack',0),2000);}let msg="ROUND OVER";if(me.status==='win')msg=`WON $${d.pot}!`;else if(me.status==='push')msg="PUSH";else msg="LOST";setText('bjMessage', msg);deckLabel.innerText=bjMySeatIdx===0?"NEXT":"WAIT";}
         bjLastPhase=d.phase;
     }
     document.getElementById('bjStartBtn').onclick=async()=>{await updateDoc(getBJRef(bjRoomCode),{phase:'betting'});};
@@ -1263,7 +1270,7 @@
     let tttUnsub; function getTTTRef(c){return doc(db,'gooner_terminal_rooms',c);}
     document.getElementById('btnCreateTTT').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();await setDoc(getTTTRef(c),{board:Array(9).fill(null),turn:'X',players:{X:myUid,O:null},names:{X:myName,O:"..."},status:'lobby'});joinTTT(c,'X');};
     document.getElementById('btnJoinTTT').onclick=async()=>{const c=document.getElementById('joinTTTCode').value,ref=getTTTRef(c),s=await getDoc(ref);if(!s.exists())return alert("404");if(!s.data().players.O){await updateDoc(ref,{['players.O']:myUid,['names.O']:myName});joinTTT(c,'O');}};
-    function joinTTT(c,side){document.getElementById('tttMenu').style.display='none';document.getElementById('tttLobby').style.display='flex';document.getElementById('tttRoomId').innerText=c;if(tttUnsub)tttUnsub();tttUnsub=onSnapshot(getTTTRef(c),d=>{if(!d.exists())return;const data=d.data();if(data.status==='lobby'){document.getElementById('tttPList').innerHTML=`<div>X: ${data.names.X}</div><div>O: ${data.names.O}</div>`;if(side==='X'&&data.players.O){document.getElementById('tttStartBtn').style.display='block';document.getElementById('tttWait').innerText="READY";}else{document.getElementById('tttStartBtn').style.display='none';document.getElementById('tttWait').innerText="WAITING...";}}else{document.getElementById('tttLobby').style.display='none';document.getElementById('tttGame').style.display='block';const cells=document.getElementById('tttGrid').children;data.board.forEach((v,i)=>{cells[i].innerText=v||'';cells[i].style.color=v==='X'?'red':'#fff';});document.getElementById('tttStatus').innerText=data.status==='finished'?"GAME OVER":(data.turn===side?"YOUR TURN":"OPPONENT TURN");if(data.status==='finished'&&side==='X'){document.getElementById('tttReplay').style.display='block';document.getElementById('tttReplay').onclick=async()=>{await updateDoc(getTTTRef(c),{board:Array(9).fill(null),turn:'X',status:'playing'});};}else document.getElementById('tttReplay').style.display='none';}});}
+    function joinTTT(c,side){document.getElementById('tttMenu').style.display='none';document.getElementById('tttLobby').style.display='flex';setText('tttRoomId', c);if(tttUnsub)tttUnsub();tttUnsub=onSnapshot(getTTTRef(c),d=>{if(!d.exists())return;const data=d.data();if(data.status==='lobby'){document.getElementById('tttPList').innerHTML=`<div>X: ${data.names.X}</div><div>O: ${data.names.O}</div>`;if(side==='X'&&data.players.O){document.getElementById('tttStartBtn').style.display='block';setText('tttWait', "READY");}else{document.getElementById('tttStartBtn').style.display='none';setText('tttWait', "WAITING...");}}else{document.getElementById('tttLobby').style.display='none';document.getElementById('tttGame').style.display='block';const cells=document.getElementById('tttGrid').children;data.board.forEach((v,i)=>{cells[i].innerText=v||'';cells[i].style.color=v==='X'?'red':'#fff';});setText('tttStatus', data.status==='finished'?"GAME OVER":(data.turn===side?"YOUR TURN":"OPPONENT TURN"));if(data.status==='finished'&&side==='X'){document.getElementById('tttReplay').style.display='block';document.getElementById('tttReplay').onclick=async()=>{await updateDoc(getTTTRef(c),{board:Array(9).fill(null),turn:'X',status:'playing'});};}else document.getElementById('tttReplay').style.display='none';}});}
     document.getElementById('tttStartBtn').onclick=async()=>{await updateDoc(getTTTRef(document.getElementById('tttRoomId').innerText),{status:'playing'});};
     function cleanupTTT() { if(tttUnsub) tttUnsub(); tttUnsub=null; }
     document.getElementById('tttGrid').onclick=async(e)=>{const i=e.target.dataset.i;if(!i)return;await runTransaction(db,async(t)=>{const r=getTTTRef(document.getElementById('tttRoomId').innerText),s=await t.get(r);if(!s.exists())return;const d=s.data();if(d.turn!==tttUnsub.side||d.board[i]||d.status!=='playing')return;const nb=[...d.board];nb[i]=tttUnsub.side;let w=null;[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]].forEach(k=>{if(nb[k[0]]&&nb[k[0]]===nb[k[1]]&&nb[k[0]]===nb[k[2]])w=nb[k[0]];});t.update(r,{board:nb,turn:tttUnsub.side==='X'?'O':'X',status:(w||!nb.includes(null))?'finished':'playing'});});};
@@ -1273,9 +1280,9 @@
     function calcHand(h){let s=0,a=0;h.forEach(c=>{if(c.h)return;if(['J','Q','K'].includes(c.v))s+=10;else if(c.v==='A'){s+=11;a++;}else s+=parseInt(c.v);});while(s>21&&a>0){s-=10;a--;}return s;}
     function renderNewCard(c, elId, hidden=false){ const d=document.createElement('div'); d.className='bj-card' + (hidden ? ' hidden' : ''); d.innerHTML=`<div>${c.v}</div><div>${c.s}</div><div>${c.v}</div>`; d.style.color=['♥','♦'].includes(c.s)?'red':'inherit'; document.getElementById(elId).appendChild(d); }
     function renderHand(hand, elId) { document.getElementById(elId).innerHTML = ''; hand.forEach(c => renderNewCard(c, elId, c.h)); }
-    function renderScore(id,h){document.getElementById(id).innerText=calcHand(h);}
+    function renderScore(id,h){setText(id, calcHand(h));}
     function quickRestartListener(e) { if (e.key === ' ' || e.key === 'Enter') { document.getElementById('goRestart').click(); window.removeEventListener('keydown', quickRestartListener); } }
-    window.showGameOver=(g,s)=>{ stopAllGames(); beep(150, 'sawtooth', 0.5); document.getElementById('gameOverText').innerText='SYSTEM_FAILURE: SCORE_' + s; document.getElementById('modalGameOver').classList.add('active'); window.addEventListener('keydown', quickRestartListener); };
+    window.showGameOver=(g,s)=>{ stopAllGames(); beep(150, 'sawtooth', 0.5); setText('gameOverText', 'SYSTEM_FAILURE: SCORE_' + s); document.getElementById('modalGameOver').classList.add('active'); window.addEventListener('keydown', quickRestartListener); };
     document.getElementById('goRestart').onclick=()=>{ document.getElementById('modalGameOver').classList.remove('active'); window.removeEventListener('keydown', quickRestartListener); if(currentGame==='snake')initSnake(); if(currentGame==='pong')initPong(); if(currentGame==='runner')initRunner(); if(currentGame==='blackjack'){myMoney=1000;updBJ();initBJ();document.getElementById('overlayBlackjack').classList.add('active');} };
     document.getElementById('goExit').onclick=()=>{ window.closeOverlays(); document.getElementById('modalGameOver').classList.remove('active'); };
 </script>
