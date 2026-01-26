@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V36 [STABLE]</title>
+<title>GOONER TERMINAL V37 [STABLE CORE]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -61,7 +61,7 @@
     body::before {
         content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
         background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: var(--scanline-opacity);
+        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: 0.5;
     }
     .flicker-on::after {
         content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
@@ -100,22 +100,23 @@
     }
     .dropdown-content button:hover { background-color: var(--accent-dim); padding-left: 20px; }
 
-    /* --- 4. CHAT (BOTTOM LEFT TOGGLE) --- */
-    #chatToggle {
-        position: fixed; bottom: 0; left: 0; z-index: 2001;
-        background: #000; border: 1px solid var(--accent); border-left:0; border-bottom:0;
-        color: var(--accent); padding: 10px 20px; font-family: inherit; font-size: 10px; cursor: pointer;
+    /* --- 4. NEW COLLAPSIBLE CHAT --- */
+    #chatToggleBtn {
+        position: fixed; bottom: 0; left: 0; width: 150px; height: 35px;
+        background: #000; border: 1px solid var(--accent); border-left:none; border-bottom:none;
+        color: var(--accent); font-family: inherit; font-size: 10px;
+        z-index: 2000; cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
-    #chatToggle:hover { background: var(--accent-dim); }
+    #chatToggleBtn:hover { background: var(--accent-dim); }
 
     #globalChat {
-        position: fixed; bottom: 40px; left: 0; width: 320px; height: 250px;
-        background: rgba(0,0,0,0.95); border: 1px solid var(--accent); border-left:0; z-index: 2000;
-        display: none; flex-direction: column; font-size: 10px;
-        box-shadow: 5px -5px 20px rgba(0,0,0,0.5);
+        position: fixed; bottom: 35px; left: 0; width: 300px; height: 250px;
+        background: rgba(0,0,0,0.95); border: 1px solid var(--accent); border-left: none;
+        z-index: 1999; display: none; flex-direction: column; font-size: 10px;
+        box-shadow: 5px -5px 15px rgba(0,0,0,0.5);
     }
-    #globalChat.visible { display: flex; animation: slideUpChat 0.2s ease-out; }
-    @keyframes slideUpChat { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+    #globalChat.visible { display: flex; animation: chatSlide 0.3s ease-out; }
+    @keyframes chatSlide { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     #chatHistory { flex: 1; overflow-y: auto; padding: 10px; color: #fff; text-shadow:none; }
     .chat-msg { margin-bottom: 5px; word-wrap: break-word; }
@@ -238,12 +239,16 @@
     .badge-item { border: 1px solid #333; padding: 8px; color: #555; font-size: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; transition: 0.2s; cursor: help; height: 70px; }
     .badge-item:hover { transform: scale(1.05); border-color: var(--accent-glow); }
     .badge-item.unlocked { border-color: var(--accent); color: var(--accent); opacity: 1; box-shadow: 0 0 5px var(--accent-dim); background: rgba(255, 255, 255, 0.05); }
+    
+    /* RARITY COLORS */
     .badge-item.common { border-color: var(--common); color: var(--common); }
     .badge-item.rare { border-color: var(--rare); color: var(--rare); }
     .badge-item.epic { border-color: var(--epic); color: var(--epic); }
     .badge-item.legendary { border-color: var(--leg); color: var(--leg); box-shadow: 0 0 10px var(--leg); }
+    
     .badge-icon { font-size: 20px; margin-bottom: 5px; }
 
+    /* ACHIEVEMENT DETAIL MODAL */
     #modalBadgeDetail { background: rgba(5,5,5,0.98); z-index: 9600; text-align: center; }
     #bdIcon { font-size: 50px; margin-bottom: 20px; display: block; }
     #bdTitle { font-size: 18px; margin-bottom: 10px; color: var(--accent); }
@@ -253,7 +258,13 @@
 
     /* TOAST */
     #toastBox { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-    .toast { background: rgba(0,0,0,0.95); border: 2px solid var(--accent); color: var(--accent); padding: 15px 25px; min-width: 300px; text-align: center; box-shadow: 0 0 20px var(--accent-glow); display: flex; align-items: center; gap: 15px; animation: slideUp 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28), fadeOut 0.5s ease-in 3.5s forwards; }
+    .toast {
+        background: rgba(0,0,0,0.95); border: 2px solid var(--accent); color: var(--accent);
+        padding: 15px 25px; min-width: 300px; text-align: center;
+        box-shadow: 0 0 20px var(--accent-glow);
+        display: flex; align-items: center; gap: 15px;
+        animation: slideUp 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28), fadeOut 0.5s ease-in 3.5s forwards;
+    }
     .toast-icon { font-size: 30px; }
     .toast-content { text-align: left; }
     .toast-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
@@ -261,6 +272,7 @@
     @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
+    /* SHOP & BANK */
     .shop-list { max-height: 250px; overflow-y: auto; margin-top: 10px; }
     .shop-item { border: 1px solid var(--accent); padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
     .shop-buy-btn { background: var(--accent); color: #000; border: none; padding: 5px 10px; font-weight: bold; font-family: inherit; }
@@ -279,7 +291,7 @@
 <div id="hackOverlay"><div>ROOT ACCESS REQUESTED...</div><div>BYPASSING FIREWALL...</div><div>ACCESS GRANTED.</div></div>
 <div id="toastBox"></div>
 
-<button id="chatToggle">COMM LINK ▼</button>
+<button id="chatToggleBtn">TERMINAL COMM ▼</button>
 <div id="globalChat">
     <div id="chatHistory"></div>
     <input type="text" id="chatInput" placeholder="TYPE /help..." maxlength="30">
@@ -479,6 +491,7 @@
 </div>
 
 <script type="module">
+    // STARTUP
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -486,11 +499,51 @@
     const firebaseConfig = { apiKey: "AIzaSyAoXwDA6KtqSD4yfGprus8C8Mi_--1KwSw", authDomain: "funnys-18ff7.firebaseapp.com", projectId: "funnys-18ff7", storageBucket: "funnys-18ff7.firebasestorage.app", messagingSenderId: "368675604960", appId: "1:368675604960:web:24c5dcd6a5329c9fd94385", measurementId: "G-6PE47RLP8V" };
     const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
 
+    // --- GAME LAUNCHER SYSTEM ---
+    window.launchGame = function(game) {
+        window.closeOverlays();
+        let overlayId = "";
+        
+        // Explicit Map to ensure correct ID is found
+        switch(game) {
+            case 'crash': overlayId = 'overlayCrash'; break;
+            case 'geo': overlayId = 'overlayGeo'; break;
+            case 'type': overlayId = 'overlayType'; break;
+            case 'pong': overlayId = 'overlayPong'; break;
+            case 'snake': overlayId = 'overlaySnake'; break;
+            case 'runner': overlayId = 'overlayRunner'; break;
+            case 'blackjack': overlayId = 'overlayBlackjack'; break;
+            case 'ttt': overlayId = 'overlayTTT'; break;
+            case 'flappy': overlayId = 'overlayFlappy'; break;
+            default: console.error("Unknown game:", game); return;
+        }
+
+        const el = document.getElementById(overlayId);
+        if(el) el.classList.add('active');
+        
+        // Init Game Logic with slight delay for DOM
+        setTimeout(() => {
+             if(game==='pong') initPong(); 
+             if(game==='snake') initSnake(); 
+             if(game==='runner') initRunner(); 
+             if(game==='geo') initGeometry(); 
+             if(game==='type') window.initTypeGame(); 
+             if(game==='blackjack') initBJ(); 
+             if(game==='ttt') initTTT(); 
+             if(game==='flappy') initFlappy(); 
+             if(game==='crash') initCrash();
+        }, 100);
+        unlockAchievement('noob');
+    };
+
+    window.openGame = (id) => { window.closeOverlays(); const el = document.getElementById(id); if(el) el.classList.add('active'); if(id==='overlayProfile') renderBadges(); if(id==='overlayShop') renderShop(); if(id==='overlayBank') updateBankLog(); };
+    window.closeOverlays = () => { stopAllGames(); document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); document.getElementById('menuDropdown').classList.remove('show'); };
+    
+    // VARIABLES
     let myUid=null, myName="ANON", myMoney=1000, myStats={games:0, wpm:0, wins:0}; 
     let myAchievements = []; let myInventory = []; let transactionLog = [];
     let globalVol=0.5, currentGame=null; let keysPressed = {}; 
     const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    
     let pAnim, sAnim, rAnim, gAnim, fAnim, typeInterval, cAnim;
 
     const ACHIEVEMENTS = [
@@ -550,29 +603,9 @@
         if(d.getMinutes() === 37) unlockAchievement('leet'); if(d.getHours() === 3) unlockAchievement('insomniac');
     },1000);
 
-    document.getElementById('chatToggle').onclick = () => document.getElementById('globalChat').classList.toggle('visible');
-
-    // MAPPING FIX: Ensures all game IDs are correctly mapped to their overlay IDs
-    const GAME_MAP = {
-        'geo': 'overlayGeo', 'type': 'overlayType', 'pong': 'overlayPong', 'snake': 'overlaySnake',
-        'runner': 'overlayRunner', 'blackjack': 'overlayBlackjack', 'ttt': 'overlayTTT',
-        'flappy': 'overlayFlappy', 'crash': 'overlayCrash'
-    };
-
-    window.openGame = (id) => { window.closeOverlays(); const el = document.getElementById(id); if(el) el.classList.add('active'); if(id==='overlayProfile') renderBadges(); if(id==='overlayShop') renderShop(); if(id==='overlayBank') updateBankLog(); };
-    window.closeOverlays = () => { stopAllGames(); document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); document.getElementById('menuDropdown').classList.remove('show'); };
-    
-    window.launchGame = (game) => {
-        window.closeOverlays();
-        const overlayId = GAME_MAP[game]; // Use the map
-        const el = document.getElementById(overlayId); 
-        if(el) el.classList.add('active');
-        
-        // Small delay to ensure overlay DOM is ready
-        setTimeout(() => {
-             if(game==='pong') initPong(); if(game==='snake') initSnake(); if(game==='runner') initRunner(); if(game==='geo') initGeometry(); if(game==='type') window.initTypeGame(); if(game==='blackjack') initBJ(); if(game==='ttt') initTTT(); if(game==='flappy') initFlappy(); if(game==='crash') initCrash();
-        }, 50);
-        unlockAchievement('noob');
+    // CHAT TOGGLE
+    document.getElementById('chatToggleBtn').onclick = () => {
+        document.getElementById('globalChat').classList.toggle('visible');
     };
 
     function stopAllGames(){
@@ -673,7 +706,7 @@
         }
     }
 
-    // === GEO DASH (BOOT FIX + PHYSICS TWEAK) ===
+    // === GEO DASH (PHYSICS FIX) ===
     let gPlayer={}, gObs=[], gScore=0, gSpeed=6; 
     function initGeometry() { currentGame='geo'; loadHighScores(); const cv = document.getElementById('geoCanvas'); const ctx = cv.getContext('2d'); gPlayer = { x: 100, y: 300, w: 30, h: 30, dy: 0, ang: 0, grounded: true }; gObs = []; gScore=0; gSpeed=6; setText('geoScore', 'SCORE: 0'); loopGeometry(); }
     function loopGeometry() { if(currentGame!=='geo') return; const cv = document.getElementById('geoCanvas'); const ctx = cv.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0,0,800,400); let currentSpeed = gSpeed * (myInventory.includes('item_slowmo') ? 0.8 : 1); 
