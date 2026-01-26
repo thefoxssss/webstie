@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V31 [ECONOMY UPDATE]</title>
+<title>GOONER TERMINAL V31 [SHOP UPDATE]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -24,6 +24,21 @@
         --font-type: "Roboto Mono", monospace;
     }
 
+    /* RAINBOW ANIMATION */
+    @keyframes rgbLoop {
+        0% { --accent: #ff0000; }
+        20% { --accent: #ffff00; }
+        40% { --accent: #00ff00; }
+        60% { --accent: #00ffff; }
+        80% { --accent: #0000ff; }
+        100% { --accent: #ff00ff; }
+    }
+    body.rainbow-mode {
+        animation: rgbLoop 5s linear infinite;
+        --accent-dim: rgba(255, 255, 255, 0.2);
+        --accent-glow: rgba(255, 255, 255, 0.5);
+    }
+
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; cursor: default; user-select: none; }
     button, input, .bj-card, .ttt-cell, .chat-input { cursor: pointer; }
     
@@ -36,9 +51,7 @@
     }
 
     /* --- 2. VISUAL EFFECTS --- */
-    #matrixCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.8; pointer-events: none; display: none; }
-    #matrixCanvas.active { display: block; }
-    
+    /* HACK OVERLAY */
     #hackOverlay {
         position: fixed; inset: 0; background: #000; z-index: 99999; display: none;
         flex-direction: column; justify-content: flex-end; padding: 20px;
@@ -50,7 +63,7 @@
     body::before {
         content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
         background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: 0.5;
+        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: var(--scanline-opacity);
     }
     .flicker-on::after {
         content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
@@ -264,7 +277,6 @@
 </head>
 <body class="flicker-on">
 
-<canvas id="matrixCanvas"></canvas>
 <div id="hackOverlay">
     <div>ROOT ACCESS REQUESTED...</div>
     <div>BYPASSING FIREWALL...</div>
@@ -283,6 +295,7 @@
         <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
         <button class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
         <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
+        <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
     </div>
 </div>
@@ -392,7 +405,6 @@
     <div class="config-box">
         <h2 style="text-align:center; border-bottom:1px solid var(--accent); padding-bottom:10px; margin-bottom:20px;">CONFIG</h2>
         <div class="config-row"><span>THEME</span><input type="color" id="themeColor" value="#ff0606"></div>
-        <div class="config-row"><span>MATRIX</span><button class="menu-btn" id="matrixToggle">OFF</button></div>
         <div class="config-row"><span>SCANLINES</span><input type="range" id="scanSlider" min="0" max="100" value="50"></div>
         <div class="config-row"><span>FLICKER</span><button class="menu-btn" id="flickerToggle">ON</button></div>
         <div class="config-row"><span>VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50"></div>
@@ -604,12 +616,15 @@
         { id: 'void_gazer', icon: '👁️', title: 'VOID GAZER', desc: 'Click empty space 50 times', hidden: true, rarity: 'rare', reward: 2500 }
     ];
 
-    // SHOP ITEMS (GAMEPLAY MODIFIERS)
+    // SHOP ITEMS (UPDATED)
     const SHOP_ITEMS = [
         { id: 'item_aimbot', name: 'PONG AIMBOT', cost: 2000, type: 'perk', desc: 'Auto-play Pong' },
         { id: 'item_slowmo', name: 'RUNNER SLOW-MO', cost: 1500, type: 'perk', desc: '20% Slower Speed' },
         { id: 'item_shield', name: '1-HIT SHIELD', cost: 500, type: 'consumable', desc: 'Survive one crash' },
-        { id: 'item_matrix', name: 'MATRIX RAIN', cost: 5000, type: 'visual', desc: 'Unlock visual effect' }
+        { id: 'item_xray', name: 'X-RAY VISOR', cost: 5000, type: 'perk', desc: 'See Dealer Card' },
+        { id: 'item_double', name: 'SNAKE OIL', cost: 3000, type: 'perk', desc: 'Double Snake Points' },
+        { id: 'item_rainbow', name: 'RGB MODE', cost: 10000, type: 'visual', desc: 'Color Cycle' },
+        { id: 'item_autotype', name: 'AUTO-TYPER', cost: 7500, type: 'perk', desc: 'Bot plays Typer' }
     ];
 
     // --- 3. SYSTEM FUNCTIONS ---
@@ -730,11 +745,17 @@
         document.getElementById('overlayLogin').classList.remove('active');
         localStorage.setItem('goonerUser', myName); localStorage.setItem('goonerPin', data.pin);
         
-        // Permanent Unlock Checks
-        if(myInventory.includes('item_matrix')) {
-             document.documentElement.style.setProperty('--accent', '#00ff00');
-             document.getElementById('matrixCanvas').classList.add('active');
+        // Apply Permanent Effects
+        if(myInventory.includes('item_rainbow')) document.body.classList.add('rainbow-mode');
+        
+        // Daily Reward Check
+        const lastLogin = data.lastLogin || 0;
+        const now = Date.now();
+        if(now - lastLogin > 86400000) { // 24 hours
+            myMoney += 100;
+            showToast("DAILY BONUS: $100", "💰");
         }
+        updateDoc(doc(db, 'gooner_users', myName), { lastLogin: now });
     }
     
     function updateUI() {
@@ -761,6 +782,9 @@
         setText('displayRank', "[" + rank + "]");
         setText('profRank', rank);
         
+        if(myMoney >= 5000) unlockAchievement('diamond_hands');
+        if(myMoney >= 1000000) unlockAchievement('millionaire');
+        
         // Welfare Check
         if(myMoney === 0) {
             unlockAchievement('rug_pulled');
@@ -769,9 +793,6 @@
             showToast("WELFARE GRANT", "💰", "Don't spend it all in one place.");
             saveStats();
         }
-        
-        if(myMoney >= 5000) unlockAchievement('diamond_hands');
-        if(myMoney >= 1000000) unlockAchievement('millionaire');
     }
     
     async function register(username, pin) {
@@ -833,7 +854,6 @@
         setText('bdDesc', unlocked ? badge.desc : 'This achievement is hidden until unlocked.');
         setText('bdReward', unlocked ? `REWARDED: $${badge.reward}` : `REWARD: $${badge.reward}`);
         
-        // Color code rarity text
         const rEl = document.getElementById('bdRarity');
         rEl.style.color = unlocked ? `var(--${badge.rarity})` : '#555';
         
@@ -874,14 +894,12 @@
         if(myMoney >= item.cost) {
             myMoney -= item.cost;
             if(item.type !== 'consumable') myInventory.push(id);
-            else myInventory.push(id); // Logic for consumables would go here (stacking)
+            else myInventory.push(id);
             
-            if(myInventory.filter(i => i !== 'item_shield').length >= 3) unlockAchievement('shopaholic'); // 3 unique items roughly
-            if(id === 'item_matrix') {
-                 unlockAchievement('neo');
-                 document.documentElement.style.setProperty('--accent', '#00ff00');
-                 document.getElementById('matrixCanvas').classList.add('active');
-            }
+            // SPECIAL ITEM EFFECTS
+            if(id === 'item_rainbow') document.body.classList.add('rainbow-mode');
+            
+            if(myInventory.filter(i => i !== 'item_shield').length >= 3) unlockAchievement('shopaholic');
             
             logTransaction(`BOUGHT: ${item.name}`, -item.cost);
             saveStats();
@@ -938,8 +956,7 @@
     function activateMatrixHack() {
         if(myName === "ANON") return alert("LOGIN FIRST");
         document.documentElement.style.setProperty('--accent', '#00ff00');
-        document.getElementById('matrixCanvas').classList.add('active');
-        showToast("MATRIX MODE ACTIVATED", "🐇");
+        showToast("HACKER MODE ACTIVATED", "🐇");
         myMoney += 1000; saveStats(); playSuccessSound();
     }
     let logoClicks = 0;
@@ -1037,7 +1054,42 @@
     const commonWords = ["the","be","to","of","and","a","in","that","have","I","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us"];
     window.initTypeGame = () => { currentGame = 'type'; typeIndex = 0; typeStartTime = null; typeCorrectChars = 0; if(typeInterval) clearInterval(typeInterval); setText('typeTimer', "0"); setText('typeWPM', "0"); document.getElementById('typeHiddenInput').value = ""; document.getElementById('typeHiddenInput').focus(); typeText = ""; for(let i=0; i<30; i++) typeText += commonWords[Math.floor(Math.random() * commonWords.length)] + " "; typeText = typeText.trim(); renderTypeDisplay(); };
     function renderTypeDisplay() { const display = document.getElementById('typeTextBox'); display.innerHTML = ""; typeText.split('').forEach((char, idx) => { const span = document.createElement('span'); span.innerText = char; span.className = 'letter'; if (idx === typeIndex) span.classList.add('active'); display.appendChild(span); }); }
-    document.getElementById('typeHiddenInput').addEventListener('input', (e) => { if(currentGame !== 'type') return; if(!typeStartTime) { typeStartTime = Date.now(); typeInterval = setInterval(() => { const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); setText('typeTimer', Math.round(elapsedMin * 60)); if(wpm > 0 && wpm < 300) setText('typeWPM', wpm); }, 100); } const inputVal = e.target.value; const charTyped = inputVal.charAt(inputVal.length - 1); const letters = document.querySelectorAll('.letter'); if (e.inputType === "deleteContentBackward") { if(typeIndex > 0) { typeIndex--; letters[typeIndex].classList.remove('correct', 'incorrect'); if(letters[typeIndex].innerText === typeText[typeIndex]) typeCorrectChars--; } } else { if(typeIndex < typeText.length) { if(charTyped === typeText[typeIndex]) { letters[typeIndex].classList.add('correct'); typeCorrectChars++; } else { letters[typeIndex].classList.add('incorrect'); } typeIndex++; } } document.querySelectorAll('.letter').forEach(l => l.classList.remove('active')); if(typeIndex < letters.length) letters[typeIndex].classList.add('active'); if(typeIndex >= typeText.length) { clearInterval(typeInterval); const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); if(wpm > (myStats.wpm || 0)) { myStats.wpm = wpm; saveStats(); saveGlobalScore('type', wpm); } if(wpm >= 80) unlockAchievement('type_god'); alert("FINISHED! WPM: " + wpm); window.initTypeGame(); } });
+    document.getElementById('typeHiddenInput').addEventListener('input', (e) => { 
+        if(currentGame !== 'type') return; 
+        if(!typeStartTime) { typeStartTime = Date.now(); typeInterval = setInterval(() => { const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); setText('typeTimer', Math.round(elapsedMin * 60)); if(wpm > 0 && wpm < 300) setText('typeWPM', wpm); }, 100); }
+        
+        // AUTO TYPER CHEAT
+        if(myInventory.includes('item_autotype')) {
+             if(Math.random() > 0.1) { // 90% accuracy per frame
+                 let char = typeText[typeIndex];
+                 // simulate key press
+             }
+        }
+        
+        const inputVal = e.target.value; const charTyped = inputVal.charAt(inputVal.length - 1); const letters = document.querySelectorAll('.letter'); if (e.inputType === "deleteContentBackward") { if(typeIndex > 0) { typeIndex--; letters[typeIndex].classList.remove('correct', 'incorrect'); if(letters[typeIndex].innerText === typeText[typeIndex]) typeCorrectChars--; } } else { if(typeIndex < typeText.length) { if(charTyped === typeText[typeIndex]) { letters[typeIndex].classList.add('correct'); typeCorrectChars++; } else { letters[typeIndex].classList.add('incorrect'); } typeIndex++; } } document.querySelectorAll('.letter').forEach(l => l.classList.remove('active')); if(typeIndex < letters.length) letters[typeIndex].classList.add('active'); if(typeIndex >= typeText.length) { clearInterval(typeInterval); const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); if(wpm > (myStats.wpm || 0)) { myStats.wpm = wpm; saveStats(); saveGlobalScore('type', wpm); } if(wpm >= 80) unlockAchievement('type_god'); alert("FINISHED! WPM: " + wpm); window.initTypeGame(); } 
+    });
+    
+    // Auto Typer Interval
+    setInterval(() => {
+        if(currentGame === 'type' && myInventory.includes('item_autotype') && typeText.length > 0) {
+            const letters = document.querySelectorAll('.letter');
+            if(typeIndex < typeText.length) {
+                letters[typeIndex].classList.add('correct');
+                typeIndex++;
+                typeCorrectChars++;
+                // Visual update
+                document.querySelectorAll('.letter').forEach(l => l.classList.remove('active'));
+                if(typeIndex < letters.length) letters[typeIndex].classList.add('active');
+                
+                // Finish check logic duplicated here for bot
+                if(typeIndex >= typeText.length) {
+                    clearInterval(typeInterval);
+                    alert("BOT FINISHED!");
+                    window.initTypeGame();
+                }
+            }
+        }
+    }, 150); // Speed of bot
 
     // === PONG ===
     let pCtx, pCv, ball={x:400,y:300,dx:5,dy:5}, p1={y:250,h:80}, p2={y:250,h:80}, pSc=0, aiSc=0, pDiff=0.08;
@@ -1066,7 +1118,9 @@
     let sCtx, sCv, snake=[], food={}, sD='R', sNextD='R', sSc=0;
     function initSnake(){currentGame='snake';loadHighScores();sCv=document.getElementById('snakeCanvas');sCtx=sCv.getContext('2d');snake=[{x:10,y:10}];sD='R';sNextD='R';sSc=0;setText('snakeScoreVal', 0);placeFood();loopSnake();}
     function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
-    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){checkLossStreak(); window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){sSc+=10;updateHighScore('snake',sSc);setText('snakeScoreVal', sSc);placeFood();beep(600); lossStreak=0; if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
+    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){checkLossStreak(); window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){
+        let pts = myInventory.includes('item_double') ? 20 : 10;
+        sSc+=pts; updateHighScore('snake',sSc);setText('snakeScoreVal', sSc);placeFood();beep(600); lossStreak=0; if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
     
     // === RUNNER V2 ===
     let rCtx, rCv, player={}, rObs=[], rSpeed=5, rScore=0, rFrame=0;
@@ -1109,7 +1163,12 @@
     window.bjSelect=(m)=>{bjMode=m;document.getElementById('bjMode').style.display='none';if(m==='solo'){document.getElementById('bjTable').style.display='flex';setText('bjHostLabel', "DEALER");document.querySelector('.bj-pot-display').style.display='none';document.getElementById('bjSide').innerHTML='';startSoloBetting();}else{document.querySelector('.bj-pot-display').style.display='block';document.getElementById('bjNetMenu').style.display='flex';}beep(400,'square',0.1);};
     function updBJ(){setText('bjBetVal', bjCurrentBet);setText('globalBank', myMoney);saveStats(); if(myMoney >= 5000) unlockAchievement('diamond_hands'); if(myMoney===0) unlockAchievement('rug_pulled'); }
     function startSoloBetting(){ bjPlayerHand=[]; bjDealerHand=[]; bjCurrentBet=0; document.getElementById('bjPlayerHand').innerHTML=''; document.getElementById('bjDealerHand').innerHTML=''; setText('bjPlayerScore', ''); setText('bjDealerScore', ''); setText('bjMessage', 'PLACE BET & CLICK DECK'); document.getElementById('bjGameBtns').style.display='none'; document.getElementById('bjBetBtns').style.visibility='visible'; document.querySelector('#bjDeck div:last-child').innerText="DEAL"; updBJ(); }
-    async function startSoloRound(){ if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5); document.getElementById('bjBetBtns').style.visibility='hidden'; bjDeck=createDeck(); bjPlayerHand=[bjDeck.pop(),bjDeck.pop()]; bjDealerHand=[bjDeck.pop(),bjDeck.pop()]; renderHand(bjPlayerHand,'bjPlayerHand'); renderScore('bjPlayerScore',bjPlayerHand); const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); renderNewCard(bjDealerHand[1], 'bjDealerHand', true); setText('bjDealerScore', ''); document.getElementById('bjGameBtns').style.display='flex'; setText('bjMessage', "YOUR TURN"); if(calcHand(bjPlayerHand)===21) endSolo(); }
+    async function startSoloRound(){ if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5); document.getElementById('bjBetBtns').style.visibility='hidden'; bjDeck=createDeck(); bjPlayerHand=[bjDeck.pop(),bjDeck.pop()]; bjDealerHand=[bjDeck.pop(),bjDeck.pop()]; renderHand(bjPlayerHand,'bjPlayerHand'); renderScore('bjPlayerScore',bjPlayerHand); const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); 
+    // XRAY CHECK
+    let hideDealer = !myInventory.includes('item_xray');
+    renderNewCard(bjDealerHand[1], 'bjDealerHand', hideDealer); 
+    setText('bjDealerScore', hideDealer ? '' : calcHand(bjDealerHand));
+    document.getElementById('bjGameBtns').style.display='flex'; setText('bjMessage', "YOUR TURN"); if(calcHand(bjPlayerHand)===21) endSolo(); }
     function soloHit() { const c = bjDeck.pop(); bjPlayerHand.push(c); renderNewCard(c, 'bjPlayerHand'); renderScore('bjPlayerScore', bjPlayerHand); if(calcHand(bjPlayerHand) > 21) endSolo(); }
     async function soloStand() { document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); renderNewCard(bjDealerHand[1], 'bjDealerHand'); renderScore('bjDealerScore', bjDealerHand); while(calcHand(bjDealerHand) < 17) { await new Promise(r=>setTimeout(r, 600)); let c = bjDeck.pop(); bjDealerHand.push(c); renderNewCard(c, 'bjDealerHand'); renderScore('bjDealerScore', bjDealerHand); } endSolo(); }
     async function endSolo(){ document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); if(dDiv.querySelector('.hidden')) { dDiv.innerHTML=''; bjDealerHand.forEach(c => renderNewCard(c, 'bjDealerHand')); renderScore('bjDealerScore', bjDealerHand); } let ps=calcHand(bjPlayerHand), ds=calcHand(bjDealerHand); let msg="", win=0; if(ps > 21) { msg="YOU BUST!"; win=0; } else if(ds > 21) { msg="DEALER BUST! YOU WIN"; win=bjCurrentBet*2; } else if(ps > ds) { msg="YOU WIN!"; win=bjCurrentBet*2; } else if(ps < ds) { msg="YOU LOSE"; win=0; } else { msg="PUSH"; win=bjCurrentBet; } 
