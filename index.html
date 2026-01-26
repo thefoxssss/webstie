@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V25 [SECRETS]</title>
+<title>GOONER TERMINAL V27 [ONLINE]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -34,7 +34,6 @@
     #matrixCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.8; pointer-events: none; display: none; }
     #matrixCanvas.active { display: block; }
     
-    /* HACK OVERLAY */
     #hackOverlay {
         position: fixed; inset: 0; background: #000; z-index: 99999; display: none;
         flex-direction: column; justify-content: flex-end; padding: 20px;
@@ -215,7 +214,7 @@
     .badge-item.unlocked { border-color: var(--accent); color: var(--accent); opacity: 1; box-shadow: 0 0 5px var(--accent-dim); background: rgba(255, 255, 255, 0.05); }
     .badge-icon { font-size: 24px; margin-bottom: 5px; }
 
-    /* TOAST NOTIFICATION (VIDEO GAME STYLE) */
+    /* TOAST NOTIFICATION */
     #toastBox { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
     .toast {
         background: rgba(0,0,0,0.95); border: 2px solid var(--accent); color: var(--accent);
@@ -668,6 +667,20 @@
         if(myMoney === 0) unlockAchievement('rug_pulled');
     }
     
+    async function register(username, pin) {
+        try {
+            if(!myUid) return "WAITING FOR NETWORK...";
+            const ref = doc(db, 'gooner_users', username.toUpperCase());
+            const snap = await getDoc(ref);
+            if(snap.exists()) return "USERNAME TAKEN";
+            const data = { name: username.toUpperCase(), pin: pin, money: 1000, joined: Date.now(), stats: {games:0, wpm:0, wins:0} };
+            await setDoc(ref, data); loadProfile(data); return true;
+        } catch(e) {
+            alert("REGISTRATION FAILED: " + e.message + "\nCheck your connection.");
+            return "REG ERROR";
+        }
+    }
+
     async function saveStats() {
         if(myName==="ANON") return;
         await updateDoc(doc(db, 'gooner_users', myName), { money: myMoney, stats: myStats, achievements: myAchievements, inventory: myInventory });
@@ -767,6 +780,12 @@
         const u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('pinInput').value.trim();
         if(u.length<3||p.length<4) return beep(200,'sawtooth',0.5);
         const res=await login(u,p);
+        if(res===true) beep(600,'square',0.1); else { document.getElementById('loginMsg').innerText=res; beep(100,'sawtooth',0.5); }
+    };
+    document.getElementById('btnRegister').onclick = async () => {
+        const u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('pinInput').value.trim();
+        if(u.length<3||p.length<4) return;
+        const res=await register(u,p);
         if(res===true) beep(600,'square',0.1); else { document.getElementById('loginMsg').innerText=res; beep(100,'sawtooth',0.5); }
     };
     document.getElementById('btnLogout').onclick = () => { localStorage.clear(); location.reload(); };
@@ -883,7 +902,38 @@
         document.getElementById('hsSnake').innerText = localStorage.getItem('hs_snake')||0;
         document.getElementById('hsRunner').innerText = localStorage.getItem('hs_runner')||0;
     }
+    // --- 7. LEADERBOARDS & CHAT ---
+    document.querySelectorAll('.score-tab').forEach(t => t.onclick = () => {
+        document.querySelectorAll('.score-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active'); loadLeaderboard(t.dataset.tab);
+    });
     async function saveGlobalScore(game, score) { if(score<=0 || myName==="ANON") return; await addDoc(collection(db, 'gooner_scores'), { game: game, name: myName, score: score }); }
+    
+    function loadLeaderboard(game) {
+        const list = document.getElementById('scoreList'); list.innerHTML = 'LOADING...';
+        const q = query(collection(db, 'gooner_scores'), orderBy('score', 'desc'), limit(100)); // Get top 100 raw to filter
+        onSnapshot(q, (snap) => {
+            list.innerHTML = ''; 
+            const data = []; 
+            snap.forEach(d => data.push(d.data()));
+            
+            // FILTER: Unique name, only keep highest score per person
+            const uniqueScores = {};
+            data.filter(d => d.game === game).forEach(s => {
+                if (!uniqueScores[s.name] || s.score > uniqueScores[s.name].score) {
+                    uniqueScores[s.name] = s;
+                }
+            });
+            const filtered = Object.values(uniqueScores).sort((a,b) => b.score - a.score).slice(0, 10);
+
+            if(filtered.length===0) list.innerHTML = '<div style="padding:10px">NO DATA</div>';
+            filtered.forEach((s, i) => {
+                const item = document.createElement('div'); item.className = 'score-item';
+                item.innerHTML = `<span class="score-rank">#${i+1}</span> <span>${s.name}</span> <span>${s.score}</span>`;
+                list.appendChild(item);
+            });
+        });
+    }
 
     // === TYPE RUNNER ===
     const commonWords = ["the","be","to","of","and","a","in","that","have","I","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us"];
