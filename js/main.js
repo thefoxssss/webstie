@@ -63,6 +63,105 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => state.keysPressed[e.key] = false);
 
+// --- User System (Login/Register) ---
+
+function getRank(money) {
+    if(money < 500) return "RAT";
+    if(money < 2000) return "SCRIPT KIDDIE";
+    if(money < 5000) return "HACKER";
+    if(money < 10000) return "GOONER";
+    if(money < 50000) return "CYBER LORD";
+    return "KINGPIN";
+}
+
+function updateUI() {
+    setText('displayUser', state.myName);
+    
+    // Bank Display Animation
+    const bankEl = document.getElementById('globalBank');
+    const bankOverlayEl = document.getElementById('bankDisplay');
+    const currentVal = parseInt(bankEl.innerText) || 0;
+    
+    if(currentVal !== state.myMoney) {
+        bankEl.style.color = state.myMoney > currentVal ? '#0f0' : '#f00';
+        setTimeout(() => bankEl.style.color = 'var(--accent)', 500);
+    }
+    
+    bankEl.innerText = state.myMoney;
+    if(bankOverlayEl) bankOverlayEl.innerText = state.myMoney;
+
+    // Profile Overlay Data
+    setText('profName', state.myName);
+    setText('profBank', "$" + state.myMoney);
+    setText('profWPM', (state.myStats.wpm||0) + " WPM");
+    setText('profGames', state.myStats.games||0);
+    setText('profUid', state.myUid ? state.myUid.substring(0,8) : "ERR");
+    
+    const rank = getRank(state.myMoney);
+    setText('displayRank', "[" + rank + "]");
+    setText('profRank', rank);
+}
+
+function loadProfile(data) {
+    state.myName = data.name;
+    state.myMoney = data.money;
+    state.myStats = data.stats || {games:0, wpm:0, wins:0};
+    state.myAchievements = data.achievements || [];
+    state.myInventory = data.inventory || [];
+    
+    updateUI();
+    
+    // Hide Login Overlay & Save Local Storage
+    document.getElementById('overlayLogin').classList.remove('active');
+    localStorage.setItem('goonerUser', state.myName);
+    localStorage.setItem('goonerPin', data.pin);
+    
+    showToast("WELCOME BACK", "🔓", state.myName);
+    
+    // Apply Inventory Effects (Simple version)
+    if(state.myInventory.includes('item_matrix')) {
+        document.getElementById('matrixCanvas').classList.add('active');
+    }
+}
+
+async function login(username, pin) {
+    try {
+        const ref = doc(db, 'gooner_users', username.toUpperCase());
+        const snap = await getDoc(ref);
+        if(snap.exists()) {
+            if(snap.data().pin === pin) {
+                loadProfile(snap.data());
+                return true;
+            } else return "INVALID PIN";
+        } else return "USER NOT FOUND";
+    } catch(e) {
+        return "ERROR: " + e.message;
+    }
+}
+
+async function register(username, pin) {
+    try {
+        if(!state.myUid) return "WAITING FOR NETWORK...";
+        const ref = doc(db, 'gooner_users', username.toUpperCase());
+        const snap = await getDoc(ref);
+        if(snap.exists()) return "USERNAME TAKEN";
+        
+        const data = {
+            name: username.toUpperCase(),
+            pin: pin,
+            money: 1000,
+            joined: Date.now(),
+            stats: {games:0, wpm:0, wins:0}
+        };
+        
+        await setDoc(ref, data);
+        loadProfile(data);
+        return true;
+    } catch(e) {
+        return "REG ERROR: " + e.message;
+    }
+}
+
 // --- Auth & Startup ---
 const initAuth = async () => { 
     try { await signInAnonymously(auth); } catch (e) { console.error(e); } 
@@ -71,17 +170,61 @@ const initAuth = async () => {
 onAuthStateChanged(auth, async (u) => {
     if (u) {
         state.myUid = u.uid;
-        // Load User Data logic here (simplified for brevity)
-        const ref = doc(db, 'gooner_users', "ANON"); // Replace with actual login logic
-        // ... load data ...
+        console.log("Connected to Mainframe:", u.uid);
+        
+        // Auto-login check
+        const savedUser = localStorage.getItem('goonerUser');
+        const savedPin = localStorage.getItem('goonerPin');
+        
+        if (savedUser && savedPin) {
+            login(savedUser, savedPin);
+        }
     }
 });
 
 // Init
 initAuth();
 
-// --- Blackjack Event Binding (Since HTML buttons call window functions) ---
-// Bind Blackjack buttons to the module functions
+// --- Event Listeners ---
+
+// Login Button
+document.getElementById('btnLogin').onclick = async () => {
+    const u = document.getElementById('usernameInput').value.trim();
+    const p = document.getElementById('pinInput').value.trim();
+    if(u.length < 3 || p.length < 4) return beep(200, 'sawtooth', 0.5);
+    
+    const res = await login(u, p);
+    if(res === true) beep(600, 'square', 0.1);
+    else {
+        setText('loginMsg', res);
+        beep(100, 'sawtooth', 0.5);
+    }
+};
+
+// Register Button
+document.getElementById('btnRegister').onclick = async () => {
+    const u = document.getElementById('usernameInput').value.trim();
+    const p = document.getElementById('pinInput').value.trim();
+    if(u.length < 3 || p.length < 4) return;
+    
+    const res = await register(u, p);
+    if(res === true) beep(600, 'square', 0.1);
+    else {
+        setText('loginMsg', res);
+        beep(100, 'sawtooth', 0.5);
+    }
+};
+
+// Logout (Needs HTML button with id='btnLogout')
+const btnLogout = document.getElementById('btnLogout');
+if(btnLogout) {
+    btnLogout.onclick = () => {
+        localStorage.clear();
+        location.reload();
+    };
+}
+
+// Blackjack Bindings
 document.getElementById('bjDeck').onclick = Blackjack.handleDeckClick;
 document.getElementById('bjHit').onclick = Blackjack.hit;
 document.getElementById('bjStand').onclick = Blackjack.stand;
