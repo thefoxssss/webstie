@@ -1,0 +1,16 @@
+/* --- 1. CORE VARIABLES --- */
+:root {
+    --bg: #050505;
+    --accent: #ff0606;
+    --accent-dim: rgba(255, 6, 6, 0.2);
+    --accent-glow: rgba(255, 6, 6, 0.6);
+    --common: #b0b0b0; --rare: #00ccff; --epic: #d000ff; --leg: #ffd700;
+    --font-main: "Press Start 2P", monospace;
+    --font-type: "Roboto Mono", monospace;
+}
+
+/* ... PASTE THE REST OF YOUR CSS HERE ... */
+/* (Copy everything from inside the <style> tags in your original file) */
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--accent); }
