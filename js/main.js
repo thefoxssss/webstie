@@ -1,4 +1,43 @@
-import './core.js';
+// 1. CREATE VISUAL DEBUGGER (So you can see errors on screen)
+const debugBox = document.createElement('div');
+debugBox.style.position = 'fixed';
+debugBox.style.bottom = '10px';
+debugBox.style.right = '10px';
+debugBox.style.width = '300px';
+debugBox.style.height = '200px';
+debugBox.style.background = 'rgba(0,0,0,0.9)';
+debugBox.style.border = '2px solid red';
+debugBox.style.color = '#0f0';
+debugBox.style.fontFamily = 'monospace';
+debugBox.style.fontSize = '10px';
+debugBox.style.overflowY = 'scroll';
+debugBox.style.zIndex = '10000';
+debugBox.style.padding = '5px';
+debugBox.id = 'visual-debug';
+document.body.appendChild(debugBox);
+
+function log(msg, type='info') {
+    const l = document.createElement('div');
+    l.innerText = `> ${msg}`;
+    if(type==='error') l.style.color = 'red';
+    if(type==='success') l.style.color = 'cyan';
+    debugBox.appendChild(l);
+    debugBox.scrollTop = debugBox.scrollHeight;
+    console.log(msg);
+}
+
+log("SYSTEM BOOT: Starting script...");
+
+// 2. IMPORT MODULES WITH ERROR CATCHING
+try {
+    log("Importing Core...", 'info');
+    await import('./core.js');
+    log("Core Imported.", 'success');
+} catch (e) {
+    log("CRITICAL ERROR: Could not load core.js! " + e.message, 'error');
+}
+
+// Import Games
 import { initGeometry } from './games/geo.js';
 import { initPong } from './games/pong.js';
 import { initSnake } from './games/snake.js';
@@ -7,11 +46,9 @@ import { initBJ, cleanupBJ } from './games/blackjack.js';
 import { initTTT, cleanupTTT } from './games/ttt.js';
 import { initFlappy } from './games/flappy.js';
 
-console.log("MAIN: Script Loaded");
-
-// --- Game Switcher ---
+// --- GAME SWITCHER ---
 window.launchGame = (game) => {
-    console.log("Launching Game:", game);
+    log(`Launching: ${game}`);
     window.closeOverlays();
     const overlayId = 'overlay' + (game === 'ttt' || game === 'geo' ? game.toUpperCase() : (game.charAt(0).toUpperCase() + game.slice(1)));
     const el = document.getElementById(overlayId); if(el) el.classList.add('active');
@@ -28,7 +65,6 @@ window.launchGame = (game) => {
     window.unlockAchievement('noob');
 };
 
-// --- UI Helpers ---
 window.openGame = (id) => { 
     window.closeOverlays(); 
     const el = document.getElementById(id); if(el) el.classList.add('active'); 
@@ -55,7 +91,137 @@ function stopAllGames(){
     window.keysPressed = {}; 
 }
 
-// --- SECRETS & GLOBAL KEYS ---
+// --- WAIT FOR HTML TO LOAD ---
+// We use a safe logic here to ensure buttons exist
+function attachListeners() {
+    log("Searching for buttons...");
+
+    const btnLogin = document.getElementById('btnLogin');
+    const btnRegister = document.getElementById('btnRegister');
+
+    if(!btnLogin) {
+        log("ERROR: Login Button (btnLogin) NOT FOUND in HTML", 'error');
+        return;
+    }
+    if(!btnRegister) {
+        log("ERROR: Register Button (btnRegister) NOT FOUND in HTML", 'error');
+        return;
+    }
+
+    log("Buttons found. Attaching click events.", 'success');
+
+    // === LOGIN LOGIC ===
+    btnLogin.onclick = async function() {
+        log("Login Clicked detected!", 'info');
+        const u = document.getElementById('usernameInput').value.trim();
+        const p = document.getElementById('pinInput').value.trim();
+
+        if(!window.login) {
+            log("CRITICAL: window.login function missing!", 'error');
+            return;
+        }
+
+        if(u.length < 3 || p.length < 4) {
+            log("Invalid Input length", 'error');
+            return window.beep(200,'sawtooth',0.5);
+        }
+
+        window.setText('loginMsg', "CONNECTING...");
+        log("Calling Firebase Login...");
+        
+        try {
+            const res = await window.login(u,p);
+            log("Result: " + res);
+            
+            if(res === true) {
+                window.beep(600,'square',0.1);
+                log("Login Success!", 'success');
+            } else {
+                window.setText('loginMsg', res);
+                window.beep(100,'sawtooth',0.5);
+                log("Login Failed: " + res, 'error');
+            }
+        } catch (err) {
+            log("JS Error during login: " + err.message, 'error');
+        }
+    };
+
+    // === REGISTER LOGIC ===
+    btnRegister.onclick = async function() {
+        log("Register Clicked detected!", 'info');
+        const u = document.getElementById('usernameInput').value.trim();
+        const p = document.getElementById('pinInput').value.trim();
+
+        if(!window.register) {
+            log("CRITICAL: window.register function missing!", 'error');
+            return;
+        }
+
+        if(u.length < 3 || p.length < 4) return;
+
+        window.setText('loginMsg', "REGISTERING...");
+        log("Calling Firebase Register...");
+
+        try {
+            const res = await window.register(u,p);
+            log("Result: " + res);
+
+            if(res === true) {
+                window.beep(600,'square',0.1);
+                log("Register Success!", 'success');
+            } else {
+                window.setText('loginMsg', res);
+                window.beep(100,'sawtooth',0.5);
+                log("Register Failed: " + res, 'error');
+            }
+        } catch (err) {
+            log("JS Error during reg: " + err.message, 'error');
+        }
+    };
+
+    // OTHER LISTENERS
+    const btnLogout = document.getElementById('btnLogout');
+    if(btnLogout) btnLogout.onclick = () => { localStorage.clear(); location.reload(); };
+
+    const menuToggle = document.getElementById('menuToggle');
+    if(menuToggle) menuToggle.onclick = (e) => { e.stopPropagation(); document.getElementById('menuDropdown').classList.toggle('show'); };
+    
+    document.addEventListener('click', (e) => { if(!e.target.closest('#menuToggle')) document.getElementById('menuDropdown').classList.remove('show'); });
+
+    // Config Sliders
+    const themeColor = document.getElementById('themeColor');
+    if(themeColor) themeColor.oninput = (e) => { 
+        const h = e.target.value; document.documentElement.style.setProperty('--accent', h); 
+        const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16); 
+        document.documentElement.style.setProperty('--accent-dim', `rgba(${r},${g},${b},0.2)`); 
+        document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.6)`); 
+    };
+
+    // Restart Button
+    const goRestart = document.getElementById('goRestart');
+    if(goRestart) goRestart.onclick=()=>{ 
+        document.getElementById('modalGameOver').classList.remove('active'); 
+        if(window.currentGame==='snake')initSnake(); 
+        if(window.currentGame==='pong')initPong(); 
+        if(window.currentGame==='runner')initRunner(); 
+        if(window.currentGame==='geo')initGeometry(); 
+        if(window.currentGame==='flappy')initFlappy(); 
+        if(window.currentGame==='blackjack'){window.myMoney=1000;initBJ();document.getElementById('overlayBlackjack').classList.add('active');} 
+    };
+    
+    // Exit Button
+    const goExit = document.getElementById('goExit');
+    if(goExit) goExit.onclick=()=>{ window.closeOverlays(); document.getElementById('modalGameOver').classList.remove('active'); };
+}
+
+// 4. BOOT STRAP
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachListeners);
+} else {
+    attachListeners();
+}
+
+// SECRETS
 const konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a']; let konamiIndex = 0; 
 document.addEventListener('keydown', (e) => { 
     window.keysPressed[e.key] = true; 
@@ -70,107 +236,3 @@ function activateMatrixHack() {
     document.documentElement.style.setProperty('--accent', '#00ff00'); document.getElementById('matrixCanvas').classList.add('active'); 
     window.showToast("MATRIX MODE ACTIVATED", "🐇"); window.myMoney += 1000; window.saveStats(); window.playSuccessSound(); 
 }
-
-// --- INITIALIZATION ---
-// This waits for the HTML to be ready before attaching buttons
-window.onload = () => {
-    console.log("MAIN: Window Loaded. Attaching listeners...");
-
-    // 1. Clock
-    setInterval(()=>{ 
-        const d=new Date(); window.setText('sysClock', d.toLocaleTimeString('en-GB')); window.setText('sysPing', Math.floor(Math.random()*40+10)+"ms");
-        if(d.getMinutes() === 37) window.unlockAchievement('leet'); if(d.getHours() === 3) window.unlockAchievement('insomniac');
-    },1000);
-
-    // 2. Auto-Login from LocalStorage
-    if(localStorage.getItem('goonerUser')) window.login(localStorage.getItem('goonerUser'), localStorage.getItem('goonerPin'));
-
-    // 3. Login Button
-    const btnLogin = document.getElementById('btnLogin');
-    if(btnLogin) {
-        btnLogin.onclick = async () => { 
-            console.log("Login Clicked");
-            const u=document.getElementById('usernameInput').value.trim();
-            const p=document.getElementById('pinInput').value.trim(); 
-            if(u.length<3||p.length<4) return window.beep(200,'sawtooth',0.5); 
-            
-            window.setText('loginMsg', "CONNECTING...");
-            const res=await window.login(u,p); 
-            
-            if(res===true) {
-                window.beep(600,'square',0.1); 
-            } else { 
-                window.setText('loginMsg', res); 
-                window.beep(100,'sawtooth',0.5); 
-            } 
-        };
-    } else console.error("MAIN: Login Button Not Found!");
-
-    // 4. Register Button
-    const btnRegister = document.getElementById('btnRegister');
-    if(btnRegister) {
-        btnRegister.onclick = async () => { 
-            console.log("Register Clicked");
-            const u=document.getElementById('usernameInput').value.trim();
-            const p=document.getElementById('pinInput').value.trim(); 
-            if(u.length<3||p.length<4) return; 
-            
-            window.setText('loginMsg', "REGISTERING...");
-            const res=await window.register(u,p); 
-            
-            if(res===true) {
-                window.beep(600,'square',0.1); 
-            } else { 
-                window.setText('loginMsg', res); 
-                window.beep(100,'sawtooth',0.5); 
-            } 
-        };
-    } else console.error("MAIN: Register Button Not Found!");
-
-    // 5. Menu Buttons
-    const btnLogout = document.getElementById('btnLogout');
-    if(btnLogout) btnLogout.onclick = () => { localStorage.clear(); location.reload(); };
-
-    const menuToggle = document.getElementById('menuToggle');
-    if(menuToggle) menuToggle.onclick = (e) => { e.stopPropagation(); document.getElementById('menuDropdown').classList.toggle('show'); };
-
-    document.addEventListener('click', (e) => { if(!e.target.closest('#menuToggle')) document.getElementById('menuDropdown').classList.remove('show'); });
-
-    // 6. Config Sliders
-    document.getElementById('themeColor').oninput = (e) => { 
-        const h = e.target.value; document.documentElement.style.setProperty('--accent', h); 
-        const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16); 
-        document.documentElement.style.setProperty('--accent-dim', `rgba(${r},${g},${b},0.2)`); 
-        document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.6)`); 
-    };
-    document.getElementById('volSlider').oninput = (e) => window.globalVol = e.target.value/100;
-    document.getElementById('scanSlider').oninput = (e) => document.documentElement.style.setProperty('--scanline-opacity', e.target.value/100);
-    document.getElementById('flickerToggle').onclick = (e) => { document.body.classList.toggle('flicker-on'); e.target.innerText = document.body.classList.contains('flicker-on')?"ON":"OFF"; };
-    document.getElementById('fsToggle').onclick = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
-    
-    // 7. Tabs
-    document.querySelectorAll('.score-tab').forEach(t => t.onclick = () => { document.querySelectorAll('.score-tab').forEach(x => x.classList.remove('active')); t.classList.add('active'); window.loadLeaderboard(t.dataset.tab); });
-    
-    // 8. Secrets
-    let logoClicks = 0; 
-    document.getElementById('mainBtn').onclick = () => { 
-        logoClicks++; 
-        if(logoClicks === 50) { window.unlockAchievement('spammer'); window.showToast("SECRET FOUND", "🤫", "500 Credits"); window.myMoney += 500; window.saveStats(); logoClicks = 0; } 
-    };
-    let bgClicks = 0; 
-    document.addEventListener('click', (e) => { 
-        if (e.target.tagName === 'BODY' || e.target.classList.contains('wrap')) { bgClicks++; if(bgClicks === 50) window.unlockAchievement('void_gazer'); } else { bgClicks = 0; } 
-    });
-    
-    // 9. Game Over
-    document.getElementById('goRestart').onclick=()=>{ 
-        document.getElementById('modalGameOver').classList.remove('active'); 
-        if(window.currentGame==='snake')initSnake(); 
-        if(window.currentGame==='pong')initPong(); 
-        if(window.currentGame==='runner')initRunner(); 
-        if(window.currentGame==='geo')initGeometry(); 
-        if(window.currentGame==='flappy')initFlappy(); 
-        if(window.currentGame==='blackjack'){window.myMoney=1000;initBJ();document.getElementById('overlayBlackjack').classList.add('active');} 
-    };
-    document.getElementById('goExit').onclick=()=>{ window.closeOverlays(); document.getElementById('modalGameOver').classList.remove('active'); };
-};
