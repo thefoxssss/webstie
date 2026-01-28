@@ -1,7 +1,7 @@
 import { auth, db, doc, setDoc, getDoc, updateDoc, addDoc, collection, query, orderBy, limit, onSnapshot, signInAnonymously, onAuthStateChanged } from './firebase.js';
 import { ACHIEVEMENTS, SHOP_ITEMS } from './data.js';
 
-// Global State attached to Window for easy access by game files
+// Global State
 window.myUid = null;
 window.myName = "ANON";
 window.myMoney = 1000;
@@ -14,7 +14,7 @@ window.currentGame = null;
 window.keysPressed = {};
 window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// Animation frames (exposed to stop games)
+// Animation frames
 window.pAnim = null; window.sAnim = null; window.rAnim = null; window.gAnim = null; window.fAnim = null; window.typeInterval = null;
 
 // --- UTILS ---
@@ -49,29 +49,73 @@ window.showToast = (title, icon, subtitle = "") => {
     setTimeout(() => t.remove(), 4000); 
 };
 
-// --- AUTH & PROFILE ---
+// --- AUTH HELPER (The Fix) ---
+async function ensureAuth() {
+    if (auth.currentUser) return auth.currentUser;
+    try {
+        console.log("Attempting auto-connection...");
+        const result = await signInAnonymously(auth);
+        window.myUid = result.user.uid;
+        return result.user;
+    } catch (e) {
+        console.error("Auth Failed:", e);
+        return null;
+    }
+}
+
+// --- LOGIN & REGISTER ---
 window.login = async (username, pin) => { 
     try { 
+        // 1. Ensure we are connected to Firebase first
+        const user = await ensureAuth();
+        if (!user) return "NETWORK ERROR: COULD NOT CONNECT";
+
+        // 2. Try to fetch user
         const ref = doc(db, 'gooner_users', username.toUpperCase()); 
         const snap = await getDoc(ref); 
+        
         if(snap.exists()) { 
-            if(snap.data().pin === pin) { loadProfile(snap.data()); return true; } 
-            else return "INVALID PIN"; 
-        } else return "USER NOT FOUND"; 
-    } catch(e) { return "ERROR: " + e.message; } 
+            if(snap.data().pin === pin) { 
+                loadProfile(snap.data()); 
+                return true; 
+            } else {
+                return "INVALID PIN"; 
+            }
+        } else {
+            return "USER NOT FOUND"; 
+        }
+    } catch(e) { 
+        console.error(e);
+        return "ERROR: " + e.message; 
+    } 
 };
 
 window.register = async (username, pin) => { 
     try { 
-        if(!window.myUid) return "WAITING FOR NETWORK..."; 
+        // 1. Ensure connection
+        const user = await ensureAuth();
+        if (!user) return "NETWORK ERROR: COULD NOT CONNECT";
+
         const ref = doc(db, 'gooner_users', username.toUpperCase()); 
         const snap = await getDoc(ref); 
+        
         if(snap.exists()) return "USERNAME TAKEN"; 
-        const data = { name: username.toUpperCase(), pin: pin, money: 1000, joined: Date.now(), stats: {games:0, wpm:0, wins:0} }; 
+        
+        const data = { 
+            name: username.toUpperCase(), 
+            pin: pin, 
+            money: 1000, 
+            joined: Date.now(), 
+            stats: {games:0, wpm:0, wins:0} 
+        }; 
+        
         await setDoc(ref, data); 
         loadProfile(data); 
         return true; 
-    } catch(e) { return "REG ERROR"; } 
+    } catch(e) { 
+        console.error(e);
+        return "REG ERROR: " + e.message; 
+    } 
 };
 
 function loadProfile(data) { 
