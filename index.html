@@ -3,275 +3,858 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>GOONER TERMINAL V32 [MODULAR]</title>
+<title>GOONER TERMINAL V32 [PVP FIX]</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+
+<style>
+    /* --- 1. CORE VARIABLES --- */
+    :root {
+        --bg: #050505;
+        --accent: #ff0606;
+        --accent-dim: rgba(255, 6, 6, 0.2);
+        --accent-glow: rgba(255, 6, 6, 0.6);
+        --common: #b0b0b0; --rare: #00ccff; --epic: #d000ff; --leg: #ffd700;
+        --font-main: "Press Start 2P", monospace;
+        --font-type: "Roboto Mono", monospace;
+    }
+
+    /* RAINBOW MODE */
+    @keyframes rgbLoop { 0% { --accent: #ff0000; } 20% { --accent: #ffff00; } 40% { --accent: #00ff00; } 60% { --accent: #00ffff; } 80% { --accent: #0000ff; } 100% { --accent: #ff00ff; } }
+    body.rainbow-mode { animation: rgbLoop 5s linear infinite; --accent-dim: rgba(255, 255, 255, 0.2); --accent-glow: rgba(255, 255, 255, 0.5); }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; cursor: default; user-select: none; }
+    button, input, .bj-card, .ttt-cell, .chat-input { cursor: pointer; }
+    
+    html, body {
+        height: 100%; margin: 0; background-color: var(--bg);
+        font-family: var(--font-main); overflow: hidden;
+        color: var(--accent); touch-action: none;
+        text-shadow: 0 0 10px var(--accent);
+        transition: color 0.5s, text-shadow 0.5s;
+    }
+
+    /* --- 2. VISUAL EFFECTS --- */
+    #matrixCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.8; pointer-events: none; display: none; }
+    #matrixCanvas.active { display: block; }
+    
+    #hackOverlay {
+        position: fixed; inset: 0; background: #000; z-index: 99999; display: none;
+        flex-direction: column; justify-content: flex-end; padding: 20px;
+        font-family: var(--font-type); color: #0f0; font-size: 12px; pointer-events: none;
+    }
+    #hackOverlay.active { display: flex; }
+
+    body::before {
+        content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        z-index: 99999; background-size: 100% 2px, 3px 100%; pointer-events: none; opacity: var(--scanline-opacity);
+    }
+    .flicker-on::after {
+        content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
+        background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.4) 100%);
+        z-index: 99999; pointer-events: none; animation: flicker 0.15s infinite;
+    }
+    @keyframes flicker { 0% { opacity: 0.95; } 50% { opacity: 0.85; } 100% { opacity: 0.98; } }
+
+    /* --- 3. LAYOUT & UI --- */
+    .wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 20px; width: 100%; }
+
+    .top-bar {
+        position: fixed; top: 0; left: 0; width: 100%; height: 50px;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0 20px; z-index: 2000; background: rgba(0,0,0,0.9);
+        border-bottom: 1px solid var(--accent);
+    }
+    .menu-btn {
+        background: transparent; color: var(--accent); padding: 8px 12px;
+        font-family: inherit; font-size: 10px; border: 1px solid var(--accent);
+        text-transform: uppercase; transition: 0.2s;
+    }
+    .menu-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
+    .sys-info { display: flex; gap: 15px; font-size: 8px; color: var(--accent); opacity: 0.8; }
+    
+    .dropdown-content {
+        display: none; position: absolute; right: 20px; top: 50px; background-color: #000;
+        min-width: 200px; border: 1px solid var(--accent); border-top: none;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.8); z-index: 2001;
+    }
+    .dropdown-content.show { display: block; }
+    .dropdown-content button {
+        background: transparent; color: var(--accent); padding: 15px; display: block; width: 100%;
+        text-align: left; border: none; border-bottom: 1px solid var(--accent-dim);
+        font-family: inherit; font-size: 10px; transition: 0.2s;
+    }
+    .dropdown-content button:hover { background-color: var(--accent-dim); padding-left: 20px; }
+
+    /* --- 4. CHAT --- */
+    #globalChat {
+        position: fixed; bottom: 20px; left: 20px; width: 300px; height: 200px;
+        background: rgba(0,0,0,0.8); border: 1px solid var(--accent); z-index: 10;
+        display: flex; flex-direction: column; font-size: 10px;
+    }
+    #chatHistory { flex: 1; overflow-y: auto; padding: 10px; color: #fff; text-shadow:none; }
+    .chat-msg { margin-bottom: 5px; word-wrap: break-word; }
+    .chat-user { color: var(--accent); font-weight: bold; }
+    #chatInput { background: #000; border: none; border-top: 1px solid var(--accent); color: var(--accent); padding: 10px; font-family: inherit; outline: none; }
+
+    /* --- 5. MAIN LOGO --- */
+    .gooner-btn {
+        font-size: clamp(30px, 10vw, 80px); color: var(--accent); cursor: pointer; padding: 40px 60px;
+        border: 4px solid var(--accent); background: rgba(0, 0, 0, 0.8);
+        box-shadow: 0 0 20px var(--accent-dim), inset 0 0 30px var(--accent-dim);
+        text-shadow: 0 0 15px var(--accent); transition: all 0.2s ease; position: relative;
+        overflow: hidden; margin-bottom: 40px; text-transform: uppercase; z-index: 20; letter-spacing: 5px;
+    }
+    .gooner-btn:hover { transform: scale(1.05); box-shadow: 0 0 50px var(--accent-glow), inset 0 0 50px var(--accent-glow); background: var(--accent); color: #000; text-shadow: none; }
+    .subtitle { color: var(--accent); font-size: 10px; opacity: 0.7; margin-top: -20px; text-transform: uppercase; letter-spacing: 4px; text-align: center; }
+
+    /* --- 6. OVERLAYS & MODALS --- */
+    .overlay {
+        position: fixed; inset: 0; background: #000; display: none; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;
+    }
+    .overlay.active { display: flex !important; }
+    .menu-box { background: rgba(0,0,0,0.9); border: 2px solid var(--accent); padding: 20px; display: flex; flex-direction: column; gap: 15px; text-align: center; min-width: 300px; box-shadow: 0 0 15px var(--accent-dim); }
+
+    /* LOGIN */
+    #overlayLogin { background: rgba(0,0,0,0.98); z-index: 9000; }
+    .login-box { border: 2px solid var(--accent); padding: 40px; text-align: center; box-shadow: 0 0 30px var(--accent-dim); background: #050505; width: 400px; }
+
+    /* INPUTS */
+    .term-input { background: transparent; border: 2px solid var(--accent); color: var(--accent); padding: 15px; font-family: inherit; text-align: center; font-size: 20px; outline: none; margin-bottom: 20px; width: 100%; }
+    .term-btn { background: var(--accent); color: #000; border: none; padding: 15px; font-family: inherit; font-weight: bold; cursor: pointer; transition:0.2s; width: 100%; }
+    .term-btn:hover { opacity: 0.8; }
+    
+    /* --- 7. GAMES --- */
+    canvas { border: 4px solid var(--accent); background: #000; box-shadow: 0 0 20px var(--accent-dim); max-width: 95vw; max-height: 60vh; image-rendering: pixelated; margin-bottom: 10px; }
+    .exit-btn-fixed { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; border: 2px solid var(--accent); background: #000; color: var(--accent); padding: 15px; font-family: inherit; text-transform: uppercase; cursor: pointer; transition: 0.2s; z-index: 1001; }
+    .exit-btn-fixed:hover { background: var(--accent); color: #000; }
+    
+    .touch-controls { display: none; margin-top: 10px; gap: 10px; }
+    .touch-controls.active { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .touch-btn { width: 50px; height: 50px; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(255,0,0,0.1); }
+    .touch-btn:active { background: var(--accent); color: #000; }
+    @media (pointer: coarse) { .touch-controls.active { display: grid; } }
+
+    /* --- TYPE RUNNER --- */
+    #typeGameArea { width: 90%; max-width: 900px; text-align: left; margin-bottom: 50px; position: relative; }
+    #typeTextBox { 
+        font-family: var(--font-type); font-size: 24px; line-height: 1.6; 
+        color: #555; user-select: none; position: relative; word-break: break-all;
+        min-height: 150px; max-height: 300px; overflow: hidden;
+    }
+    .letter { position: relative; transition: color 0.1s; }
+    .letter.correct { color: var(--accent); text-shadow: 0 0 5px var(--accent-dim); }
+    .letter.incorrect { color: #ff0000; text-decoration: underline; }
+    .letter.active::before {
+        content: "|"; position: absolute; left: -2px; color: var(--accent); 
+        animation: blink 1s infinite; opacity: 0.8;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    #typeHiddenInput { position: absolute; opacity: 0; top: 0; left: 0; pointer-events: none; }
+    .type-stats { display: flex; gap: 20px; font-size: 20px; margin-bottom: 20px; color: var(--accent); font-family: var(--font-type); }
+
+    /* --- BLACKJACK --- */
+    .bj-table { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .bj-pot-display { font-size: 24px; color: #ffd700; text-shadow: 0 0 10px #b8860b; padding: 10px; margin-bottom: 15px; border-bottom: 2px solid #ffd700; width: 100%; text-align: center; display: none; }
+    .bj-area { width: 100%; border: 1px dashed var(--accent-dim); padding: 10px; position: relative; min-height: 120px; display:flex; flex-direction:column; align-items:center; }
+    .bj-label { position: absolute; top: -8px; background: #000; padding: 0 5px; font-size: 8px; color: var(--accent); left: 10px; }
+    .bj-hand { display: flex; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+    
+    .bj-card { 
+        width: 50px; height: 70px; border: 2px solid var(--accent); 
+        display: flex; flex-direction: column; justify-content: space-between; 
+        padding: 4px; font-size: 12px; background: #000; 
+        box-shadow: 2px 2px 0px var(--accent-dim); user-select: none; position: relative; color: var(--accent); 
+    }
+    .bj-card.mini { width: 30px; height: 42px; font-size: 8px; border: 1px solid var(--accent); }
+    .bj-card.hidden { background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent-dim) 5px, var(--accent-dim) 10px); color: transparent; }
+    .bj-card.hidden > div { display: none; }
+
+    .bj-deck-container { width: 60px; height: 84px; border: 2px dashed var(--accent-dim); display: flex; justify-content: center; align-items: center; cursor: pointer; margin: 5px; position: relative; transition: transform 0.1s; }
+    .bj-deck-container:active { transform: scale(0.95); }
+    .bj-deck-card { position: absolute; width: 45px; height: 63px; background: repeating-linear-gradient(45deg, #000, #000 5px, var(--accent) 5px, var(--accent) 6px); border: 2px solid var(--accent); box-shadow: -2px 2px 0px var(--accent-dim); top: 8px; left: 6px; }
+
+    .bj-side-table { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; margin-top:10px;}
+    .bj-small-seat { border: 1px dotted var(--accent-dim); padding: 5px; min-height: 60px; display:flex; flex-direction:column; align-items:center; }
+    .bj-small-hand { display:flex; gap:2px; flex-wrap:wrap; justify-content:center; }
+    .active-seat { box-shadow: 0 0 10px var(--accent); border-color: var(--accent); }
+    
+    .bj-chip-rack { display: flex; gap: 10px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
+    .bj-chip { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); background: #000; color: var(--accent); display: flex; justify-content: center; align-items: center; font-size: 9px; cursor: pointer; box-shadow: 0 0 10px var(--accent-dim), inset 0 0 5px rgba(0,0,0,0.5); font-weight: bold; transition: transform 0.1s; }
+    .bj-chip:hover { background: var(--accent); color: #000; transform: translateY(-5px); }
+    .bj-all-in { border-color: #ffcc00; color: #ffcc00; width: auto; padding: 0 10px; }
+    
+    /* Leaderboard */
+    .score-box { width: 80%; max-width: 600px; border: 2px solid var(--accent); background: #000; padding: 20px; }
+    .score-tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+    .score-tab { padding: 10px; border: 1px solid var(--accent); cursor: pointer; font-size: 10px; }
+    .score-tab.active { background: var(--accent); color: #000; }
+    .score-list { max-height: 300px; overflow-y: auto; text-align: left; }
+    .score-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px dashed var(--accent-dim); font-size: 12px; }
+    .profile-stats { text-align: left; width: 100%; margin-top: 20px; }
+    .stat-row { display: flex; justify-content: space-between; margin: 10px 0; border-bottom: 1px solid var(--accent-dim); padding-bottom: 5px; }
+
+    /* Config */
+    .config-box { width: 300px; padding: 20px; border: 1px solid var(--accent); background: #000; }
+    .config-row { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; }
+
+    /* TTT */
+    .ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px; }
+    .ttt-cell { width: 70px; height: 70px; background: #111; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 35px; }
+
+    /* Game Over Modal */
+    #modalGameOver { background: rgba(5, 5, 5, 0.95); z-index: 9500; }
+    #modalGameOver h1 { color: #fff; text-shadow: 2px 2px red; font-size: 24px; margin-bottom: 10px; }
+    .restart-hint { font-size: 10px; margin-top: 20px; animation: blink 1s infinite; color: #fff; }
+
+    /* --- ACHIEVEMENTS & SHOP --- */
+    .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; max-height: 200px; overflow-y: auto; }
+    .badge-item { border: 1px solid #333; padding: 8px; color: #555; font-size: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; transition: 0.2s; cursor: help; height: 70px; }
+    .badge-item:hover { transform: scale(1.05); border-color: var(--accent-glow); }
+    .badge-item.unlocked { border-color: var(--accent); color: var(--accent); opacity: 1; box-shadow: 0 0 5px var(--accent-dim); background: rgba(255, 255, 255, 0.05); }
+    .badge-item.common { border-color: var(--common); color: var(--common); }
+    .badge-item.rare { border-color: var(--rare); color: var(--rare); }
+    .badge-item.epic { border-color: var(--epic); color: var(--epic); }
+    .badge-item.legendary { border-color: var(--leg); color: var(--leg); box-shadow: 0 0 10px var(--leg); }
+    .badge-icon { font-size: 20px; margin-bottom: 5px; }
+
+    #modalBadgeDetail { background: rgba(5,5,5,0.98); z-index: 9600; text-align: center; }
+    #bdIcon { font-size: 50px; margin-bottom: 20px; display: block; }
+    #bdTitle { font-size: 18px; margin-bottom: 10px; color: var(--accent); }
+    #bdRarity { font-size: 10px; margin-bottom: 15px; text-transform: uppercase; font-weight: bold; }
+    #bdDesc { font-size: 10px; line-height: 1.5; color: #fff; max-width: 80%; margin: 0 auto; }
+    #bdReward { margin-top: 20px; color: #0f0; font-size: 12px; }
+
+    #toastBox { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    .toast { background: rgba(0,0,0,0.95); border: 2px solid var(--accent); color: var(--accent); padding: 15px 25px; min-width: 300px; text-align: center; box-shadow: 0 0 20px var(--accent-glow); display: flex; align-items: center; gap: 15px; animation: slideUp 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28), fadeOut 0.5s ease-in 3.5s forwards; }
+    .toast-icon { font-size: 30px; }
+    .toast-content { text-align: left; }
+    .toast-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+    .toast-desc { font-size: 8px; opacity: 0.8; }
+    @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+    .shop-list { max-height: 250px; overflow-y: auto; margin-top: 10px; }
+    .shop-item { border: 1px solid var(--accent); padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
+    .shop-buy-btn { background: var(--accent); color: #000; border: none; padding: 5px 10px; font-weight: bold; font-family: inherit; }
+    .shop-buy-btn:disabled { background: #333; color: #555; cursor: not-allowed; }
+    
+    .bank-log { max-height: 150px; overflow-y: auto; text-align: left; font-size: 8px; color: #aaa; margin-top: 10px; border-top: 1px solid #333; padding-top: 5px; }
+    .bank-entry { margin-bottom: 5px; display:flex; justify-content:space-between; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--accent); }
+</style>
 </head>
 <body class="flicker-on">
 
-    <canvas id="matrixCanvas"></canvas>
-    <div id="hackOverlay"><div>ROOT ACCESS REQUESTED...</div><div>BYPASSING FIREWALL...</div><div>ACCESS GRANTED.</div></div>
-    <div id="toastBox"></div>
+<canvas id="matrixCanvas"></canvas>
+<div id="hackOverlay"><div>ROOT ACCESS REQUESTED...</div><div>BYPASSING FIREWALL...</div><div>ACCESS GRANTED.</div></div>
+<div id="toastBox"></div>
 
-    <div class="top-bar">
-        <button class="menu-btn" onclick="window.openGame('overlayConfig')">CONFIG</button>
-        <div class="sys-info">
-            <span id="sysClock">00:00:00</span> | PING: <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
-        </div>
+<div class="top-bar">
+    <button class="menu-btn" onclick="window.openGame('overlayConfig')">CONFIG</button>
+    <div class="sys-info">
+        <span id="sysClock">00:00:00</span> | PING: <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
+        <button class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
+        <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
+        <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
+        <button class="menu-btn" id="menuToggle">GAMES ▼</button>
+    </div>
+</div>
+
+<div class="dropdown-content" id="menuDropdown">
+    <button onclick="window.launchGame('geo')">GEO DASH</button>
+    <button onclick="window.launchGame('type')">TYPE RUNNER</button>
+    <button onclick="window.launchGame('pong')">PONG</button>
+    <button onclick="window.launchGame('snake')">SNAKE</button>
+    <button onclick="window.launchGame('runner')">RUNNER (V2)</button>
+    <button onclick="window.launchGame('blackjack')" style="border-top:1px solid #444">BLACKJACK (PVP)</button>
+    <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
+    <button onclick="window.launchGame('flappy')" id="btnFlappy" style="display:none; color:gold;">FLAPPY GOON</button>
+</div>
+
+<div class="wrap">
+    <div class="gooner-btn" id="mainBtn">GOONER</div>
+    <div class="subtitle">TERMINAL ONLINE</div>
+    <div style="margin-top:20px; font-size:10px;">OPERATOR: <span id="displayUser">ANON</span> <span id="displayRank" style="color:#fff; background:var(--accent-dim); padding:2px 5px;">[RAT]</span></div>
+</div>
+
+<div id="globalChat">
+    <div id="chatHistory"></div>
+    <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
+</div>
+
+<div class="overlay active" id="overlayLogin">
+    <div class="login-box">
+        <h1 style="margin-bottom:30px;">SECURE LOGIN</h1>
+        <input type="text" id="usernameInput" class="term-input" placeholder="CODENAME" maxlength="10">
+        <input type="password" id="pinInput" class="term-input" placeholder="4-DIGIT PIN" maxlength="4" style="letter-spacing:5px;">
         <div style="display:flex; gap:10px;">
-            <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
-            <button class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
-            <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
-            <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
-            <button class="menu-btn" id="menuToggle">GAMES ▼</button>
+            <button class="term-btn" id="btnLogin">LOGIN</button>
+            <button class="term-btn" id="btnRegister" style="border-color:#0f0; color:#0f0;">REGISTER</button>
         </div>
+        <p id="loginMsg" style="font-size:10px; margin-top:20px; color:yellow;"></p>
     </div>
+</div>
 
-    <div class="dropdown-content" id="menuDropdown">
-        <button onclick="window.launchGame('geo')">GEO DASH</button>
-        <button onclick="window.launchGame('type')">TYPE RUNNER</button>
-        <button onclick="window.launchGame('pong')">PONG</button>
-        <button onclick="window.launchGame('snake')">SNAKE</button>
-        <button onclick="window.launchGame('runner')">RUNNER (V2)</button>
-        <button onclick="window.launchGame('blackjack')" style="border-top:1px solid #444">BLACKJACK (PVP)</button>
-        <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
-        <button onclick="window.launchGame('flappy')" id="btnFlappy" style="display:none; color:gold;">FLAPPY GOON</button>
+<div class="overlay" id="overlayProfile">
+    <div class="score-box">
+        <h2 style="text-align:center;">OPERATOR PROFILE</h2>
+        <div class="profile-stats">
+            <div class="stat-row"><span>CODENAME</span><span id="profName">...</span></div>
+            <div class="stat-row"><span>RANK</span><span id="profRank">...</span></div>
+            <div class="stat-row"><span>NET WORTH</span><span id="profBank">$0</span></div>
+            <div class="stat-row"><span>TYPING SPEED</span><span id="profWPM">0 WPM</span></div>
+            <div class="stat-row"><span>GAMES PLAYED</span><span id="profGames">0</span></div>
+            <div class="stat-row"><span>ACCOUNT ID</span><span id="profUid">...</span></div>
+        </div>
+        <div style="border-top:1px dashed var(--accent-dim); margin-top:15px; padding-top:10px;">
+            <div style="text-align:center; font-size:10px; margin-bottom:10px;">ACHIEVEMENTS (CLICK TO INSPECT)</div>
+            <div class="badge-grid" id="badgeGrid"></div>
+        </div>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
+</div>
 
-    <div class="wrap">
-        <div class="gooner-btn" id="mainBtn">GOONER</div>
-        <div class="subtitle">TERMINAL ONLINE</div>
-        <div style="margin-top:20px; font-size:10px;">OPERATOR: <span id="displayUser">ANON</span> <span id="displayRank" style="color:#fff; background:var(--accent-dim); padding:2px 5px;">[RAT]</span></div>
+<div class="overlay" id="modalBadgeDetail">
+    <div class="score-box" style="border-color:#fff;">
+        <span id="bdIcon">🔒</span>
+        <h2 id="bdTitle">UNKNOWN</h2>
+        <div id="bdRarity">COMMON</div>
+        <p id="bdDesc">This achievement is locked.</p>
+        <div id="bdReward">REWARD: $???</div>
+        <button class="term-btn" style="margin-top:20px;" onclick="document.getElementById('modalBadgeDetail').classList.remove('active')">CLOSE</button>
     </div>
+</div>
 
-    <div id="globalChat">
-        <div id="chatHistory"></div>
-        <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
+<div class="overlay" id="overlayBank">
+    <div class="score-box">
+        <h2 style="text-align:center;">THE BANK</h2>
+        <div style="text-align:center; font-size:20px; margin:20px 0; color:#0f0;">$<span id="bankDisplay">0</span></div>
+        <div style="text-align:center; font-size:10px; margin-bottom:10px;">RECENT TRANSACTIONS</div>
+        <div class="bank-log" id="bankLog"></div>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
+</div>
 
-    <div class="overlay active" id="overlayLogin">
-        <div class="login-box">
-            <h1 style="margin-bottom:30px;">SECURE LOGIN</h1>
-            <input type="text" id="usernameInput" class="term-input" placeholder="CODENAME" maxlength="10">
-            <input type="password" id="pinInput" class="term-input" placeholder="4-DIGIT PIN" maxlength="4" style="letter-spacing:5px;">
-            <div style="display:flex; gap:10px;">
-                <button class="term-btn" id="btnLogin">LOGIN</button>
-                <button class="term-btn" id="btnRegister" style="border-color:#0f0; color:#0f0;">REGISTER</button>
+<div class="overlay" id="overlayShop">
+    <div class="score-box">
+        <h2 style="text-align:center;">BLACK MARKET</h2>
+        <div style="text-align:center; font-size:10px; margin-bottom:10px;">BALANCE: $<span id="shopBank">0</span></div>
+        <div class="shop-list" id="shopList"></div>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+    </div>
+</div>
+
+<div class="overlay" id="overlayScores">
+    <div class="score-box">
+        <h2 style="text-align:center; margin-bottom:20px;">GLOBAL LEADERBOARD</h2>
+        <div class="score-tabs">
+            <div class="score-tab active" data-tab="richest">RICHEST</div>
+            <div class="score-tab" data-tab="geo">GEO DASH</div>
+            <div class="score-tab" data-tab="type">TYPER</div>
+            <div class="score-tab" data-tab="snake">SNAKE</div>
+            <div class="score-tab" data-tab="pong">PONG</div>
+        </div>
+        <div class="score-list" id="scoreList"><div class="score-item">LOADING DATA...</div></div>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+    </div>
+</div>
+
+<div class="overlay" id="overlayConfig">
+    <div class="config-box">
+        <h2 style="text-align:center; border-bottom:1px solid var(--accent); padding-bottom:10px; margin-bottom:20px;">CONFIG</h2>
+        <div class="config-row"><span>THEME</span><input type="color" id="themeColor" value="#ff0606"></div>
+        <div class="config-row"><span>MATRIX</span><button class="menu-btn" id="matrixToggle">OFF</button></div>
+        <div class="config-row"><span>SCANLINES</span><input type="range" id="scanSlider" min="0" max="100" value="50"></div>
+        <div class="config-row"><span>FLICKER</span><button class="menu-btn" id="flickerToggle">ON</button></div>
+        <div class="config-row"><span>VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50"></div>
+        <div class="config-row"><span>FULLSCREEN</span><button class="menu-btn" id="fsToggle">TOGGLE</button></div>
+        <button class="term-btn" id="btnLogout" style="border-color:red; color:red; margin-top:10px;">LOGOUT</button>
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+    </div>
+</div>
+
+<div class="overlay" id="overlayGeo">
+    <h1>GEO DASH</h1>
+    <div class="high-score-display">HIGH: <span id="hsGeo">0</span></div>
+    <div style="margin-bottom:10px;" id="geoScore">SCORE: 0</div>
+    <canvas id="geoCanvas" width="800" height="400"></canvas>
+    <div class="mobile-hint active" style="margin-top:20px;">CLICK OR SPACE TO JUMP</div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlayType">
+    <h1>TYPE RUNNER</h1>
+    <div class="type-stats"><span>TIME: <span id="typeTimer">0</span>s</span><span>WPM: <span id="typeWPM">0</span></span></div>
+    <div id="typeGameArea" onclick="document.getElementById('typeHiddenInput').focus()"><div id="typeTextBox">CLICK TO START</div><input type="text" id="typeHiddenInput" autocomplete="off"></div>
+    <button class="menu-btn" onclick="window.initTypeGame()" style="margin-bottom:20px;">RESTART</button>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlayPong">
+    <h1>PONG</h1>
+    <div class="high-score-display">HIGH: <span id="hsPong">0</span></div>
+    <div style="margin-bottom:10px;">SCORE: <span id="pongScore">0 : 0</span></div>
+    <canvas id="pongCanvas" width="800" height="600"></canvas>
+    <div><button class="menu-btn" onclick="window.setPongDiff('easy')">EASY</button><button class="menu-btn" onclick="window.setPongDiff('hard')">HARD</button></div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlaySnake">
+    <h1>SNAKE</h1>
+    <div class="high-score-display">HIGH: <span id="hsSnake">0</span></div>
+    <div style="margin-bottom:10px;">SCORE: <span id="snakeScoreVal">0</span></div>
+    <canvas id="snakeCanvas" width="600" height="400"></canvas>
+    <div class="touch-controls active" id="snakeControls"><div></div><div class="touch-btn" data-sk="up">▲</div><div></div><div class="touch-btn" data-sk="left">◀</div><div class="touch-btn" data-sk="down">▼</div><div class="touch-btn" data-sk="right">▶</div></div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlayRunner">
+    <h1>RUNNER</h1>
+    <div class="high-score-display">HIGH: <span id="hsRunner">0</span></div>
+    <div style="margin-bottom:10px;" id="runnerScoreBoard">SCORE: 0</div>
+    <canvas id="runnerCanvas" width="800" height="400"></canvas>
+    <div class="mobile-hint active" style="margin-top:20px;">PRESS SPACE TO JUMP</div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlayTTT">
+    <h1>TIC TAC TOE</h1>
+    <div id="tttMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateTTT">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input type="text" id="joinTTTCode" class="term-input" placeholder="CODE" maxlength="4">
+        <button class="term-btn" id="btnJoinTTT">JOIN ROOM</button>
+    </div>
+    <div id="tttLobby" class="menu-box" style="display:none;">
+        <h2>ROOM: <span id="tttRoomId">????</span></h2>
+        <div id="tttPList" style="text-align:left; margin:20px 0;"></div>
+        <button class="term-btn" id="tttStartBtn" style="display:none; color:#0f0; border:1px solid #0f0;">START GAME</button>
+        <div id="tttWait" style="font-size:10px;">WAITING...</div>
+    </div>
+    <div id="tttGame" style="display:none; text-align:center;">
+        <div id="tttStatus" style="margin-bottom:10px;">PLAYING</div>
+        <div class="ttt-grid" id="tttGrid"><div class="ttt-cell" data-i="0"></div><div class="ttt-cell" data-i="1"></div><div class="ttt-cell" data-i="2"></div><div class="ttt-cell" data-i="3"></div><div class="ttt-cell" data-i="4"></div><div class="ttt-cell" data-i="5"></div><div class="ttt-cell" data-i="6"></div><div class="ttt-cell" data-i="7"></div><div class="ttt-cell" data-i="8"></div></div>
+        <button class="term-btn" id="tttReplay" style="display:none; margin-top:20px;">PLAY AGAIN</button>
+    </div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlayBlackjack">
+    <h1>BLACKJACK</h1>
+    <div id="bjMode" class="menu-box">
+        <button class="term-btn" onclick="window.bjSelect('solo')">SOLO (VS DEALER)</button>
+        <br><br>
+        <button class="term-btn" onclick="window.bjSelect('multi')">PVP (4 PLAYER)</button>
+    </div>
+    <div id="bjNetMenu" class="menu-box" style="display:none;">
+        <button class="term-btn" id="btnCreateBJ">CREATE TABLE</button>
+        <p>- OR -</p>
+        <input type="text" id="joinBJCode" class="term-input" placeholder="CODE" maxlength="4">
+        <button class="term-btn" id="btnJoinBJ">JOIN TABLE</button>
+    </div>
+    <div id="bjLobby" class="menu-box" style="display:none;">
+        <h2>ROOM: <span id="bjRoomId">????</span></h2>
+        <div id="bjPList" style="text-align:left; margin:20px 0;"></div>
+        <button class="term-btn" id="bjStartBtn" style="display:none; color:#0f0;">START GAME</button>
+        <div id="bjWait" style="font-size:10px;">WAITING...</div>
+    </div>
+    <div id="bjTable" class="bj-table" style="display:none;">
+        <div class="bj-pot-display">POT: $<span id="bjPot">0</span></div>
+        <div class="bj-side-table" id="bjSide"></div>
+        <div class="bj-area" id="bjSeat0" style="margin-bottom:10px;">
+            <span class="bj-label" id="bjHostLabel">OPPONENT</span>
+            <div class="bj-hand" id="bjDealerHand"></div>
+            <div class="bj-score" id="bjDealerScore"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:20px; margin:10px;">
+            <div class="bj-deck-container" id="bjDeck">
+                <div class="bj-deck-card"></div><div class="bj-deck-card"></div>
+                <div style="position:absolute; background:#000; padding:2px; font-size:10px; z-index:5;">ACTION</div>
             </div>
-            <p id="loginMsg" style="font-size:10px; margin-top:20px; color:yellow;"></p>
+            <div id="bjMessage" style="width:150px; text-align:center; font-size:10px;">PLACE BET</div>
+        </div>
+        <div class="bj-area active-seat" id="bjMySeat">
+            <span class="bj-label">YOU</span>
+            <div class="bj-hand" id="bjPlayerHand"></div>
+            <div class="bj-score" id="bjPlayerScore"></div>
+        </div>
+        <div class="bj-controls" id="bjGameBtns" style="display:none;"><button class="term-btn" id="bjHit">HIT</button><button class="term-btn" id="bjStand">STAND</button></div>
+        <div id="bjBetBtns">
+            <div style="text-align:center; margin-bottom:5px;">BET: $<span id="bjBetVal">0</span></div>
+            <div class="bj-chip-rack"><div class="bj-chip" data-v="10">10</div><div class="bj-chip" data-v="50">50</div><div class="bj-chip" data-v="100">100</div><div class="bj-chip bj-all-in" id="bjAllIn">ALL</div><div class="bj-chip" id="bjClear" style="border-color:#fff; color:#fff;">CLR</div></div>
         </div>
     </div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
 
-    <div class="overlay" id="overlayProfile">
-        <div class="score-box">
-            <h2 style="text-align:center;">OPERATOR PROFILE</h2>
-            <div class="profile-stats">
-                <div class="stat-row"><span>CODENAME</span><span id="profName">...</span></div>
-                <div class="stat-row"><span>RANK</span><span id="profRank">...</span></div>
-                <div class="stat-row"><span>NET WORTH</span><span id="profBank">$0</span></div>
-                <div class="stat-row"><span>TYPING SPEED</span><span id="profWPM">0 WPM</span></div>
-                <div class="stat-row"><span>GAMES PLAYED</span><span id="profGames">0</span></div>
-                <div class="stat-row"><span>ACCOUNT ID</span><span id="profUid">...</span></div>
-            </div>
-            <div style="border-top:1px dashed var(--accent-dim); margin-top:15px; padding-top:10px;">
-                <div style="text-align:center; font-size:10px; margin-bottom:10px;">ACHIEVEMENTS (CLICK TO INSPECT)</div>
-                <div class="badge-grid" id="badgeGrid"></div>
-            </div>
-            <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
-        </div>
-    </div>
+<div class="overlay" id="overlayFlappy">
+    <h1>FLAPPY GOON</h1>
+    <div class="high-score-display">HIGH: <span id="hsFlappy">0</span></div>
+    <div style="margin-bottom:10px;" id="flappyScore">SCORE: 0</div>
+    <canvas id="flappyCanvas" width="400" height="600"></canvas>
+    <div class="mobile-hint active">TAP TO FLAP</div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
 
-    <div class="overlay" id="modalBadgeDetail">
-        <div class="score-box" style="border-color:#fff;">
-            <span id="bdIcon">🔒</span>
-            <h2 id="bdTitle">UNKNOWN</h2>
-            <div id="bdRarity">COMMON</div>
-            <p id="bdDesc">This achievement is locked.</p>
-            <div id="bdReward">REWARD: $???</div>
-            <button class="term-btn" style="margin-top:20px;" onclick="document.getElementById('modalBadgeDetail').classList.remove('active')">CLOSE</button>
-        </div>
-    </div>
+<div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:9000;">
+    <h1 style="color:red; font-size:30px; margin-bottom:20px;">SYSTEM FAILURE</h1>
+    <p id="gameOverText" style="margin-bottom:30px; font-size:14px;">SCORE: 0</p>
+    <button class="term-btn" id="goRestart" style="width:200px;">REBOOT SYSTEM</button>
+    <div class="restart-hint">[ PRESS SPACE TO REBOOT ]</div>
+    <button class="menu-btn" id="goExit" style="margin-top:20px;">EXIT TO MENU</button>
+</div>
 
-    <div class="overlay" id="overlayBank">
-        <div class="score-box">
-            <h2 style="text-align:center;">THE BANK</h2>
-            <div style="text-align:center; font-size:20px; margin:20px 0; color:#0f0;">$<span id="bankDisplay">0</span></div>
-            <div style="text-align:center; font-size:10px; margin-bottom:10px;">RECENT TRANSACTIONS</div>
-            <div class="bank-log" id="bankLog"></div>
-            <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
-        </div>
-    </div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    <div class="overlay" id="overlayShop">
-        <div class="score-box">
-            <h2 style="text-align:center;">BLACK MARKET</h2>
-            <div style="text-align:center; font-size:10px; margin-bottom:10px;">BALANCE: $<span id="shopBank">0</span></div>
-            <div class="shop-list" id="shopList"></div>
-            <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
-        </div>
-    </div>
+    const firebaseConfig = { apiKey: "AIzaSyAoXwDA6KtqSD4yfGprus8C8Mi_--1KwSw", authDomain: "funnys-18ff7.firebaseapp.com", projectId: "funnys-18ff7", storageBucket: "funnys-18ff7.firebasestorage.app", messagingSenderId: "368675604960", appId: "1:368675604960:web:24c5dcd6a5329c9fd94385", measurementId: "G-6PE47RLP8V" };
+    const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
 
-    <div class="overlay" id="overlayScores">
-        <div class="score-box">
-            <h2 style="text-align:center; margin-bottom:20px;">GLOBAL LEADERBOARD</h2>
-            <div class="score-tabs">
-                <div class="score-tab active" data-tab="richest">RICHEST</div>
-                <div class="score-tab" data-tab="geo">GEO DASH</div>
-                <div class="score-tab" data-tab="type">TYPER</div>
-                <div class="score-tab" data-tab="snake">SNAKE</div>
-                <div class="score-tab" data-tab="pong">PONG</div>
-            </div>
-            <div class="score-list" id="scoreList"><div class="score-item">LOADING DATA...</div></div>
-            <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
-        </div>
-    </div>
+    let myUid=null, myName="ANON", myMoney=1000, myStats={games:0, wpm:0, wins:0}; 
+    let myAchievements = []; let myInventory = []; let transactionLog = [];
+    let globalVol=0.5, currentGame=null; let keysPressed = {}; 
+    const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    
+    let pAnim, sAnim, rAnim, gAnim, fAnim, typeInterval;
 
-    <div class="overlay" id="overlayConfig">
-        <div class="config-box">
-            <h2 style="text-align:center; border-bottom:1px solid var(--accent); padding-bottom:10px; margin-bottom:20px;">CONFIG</h2>
-            <div class="config-row"><span>THEME</span><input type="color" id="themeColor" value="#ff0606"></div>
-            <div class="config-row"><span>MATRIX</span><button class="menu-btn" id="matrixToggle">OFF</button></div>
-            <div class="config-row"><span>SCANLINES</span><input type="range" id="scanSlider" min="0" max="100" value="50"></div>
-            <div class="config-row"><span>FLICKER</span><button class="menu-btn" id="flickerToggle">ON</button></div>
-            <div class="config-row"><span>VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50"></div>
-            <div class="config-row"><span>FULLSCREEN</span><button class="menu-btn" id="fsToggle">TOGGLE</button></div>
-            <button class="term-btn" id="btnLogout" style="border-color:red; color:red; margin-top:10px;">LOGOUT</button>
-            <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
-        </div>
-    </div>
+    const ACHIEVEMENTS = [
+        { id: 'noob', icon: '🐣', title: 'NOOB', desc: 'Played your first game', rarity: 'common', reward: 500 },
+        { id: 'diamond_hands', icon: '💎', title: 'DIAMOND HANDS', desc: 'Bank account > $5000', rarity: 'rare', reward: 2500 },
+        { id: 'millionaire', icon: '💸', title: 'MILLIONAIRE', desc: 'Bank account > $1,000,000', rarity: 'legendary', reward: 50000 },
+        { id: 'type_god', icon: '⌨️', title: 'TYPE GOD', desc: 'WPM > 80', rarity: 'rare', reward: 2500 },
+        { id: 'viper', icon: '🐍', title: 'VIPER', desc: 'Score > 30 in Snake', rarity: 'rare', reward: 2500 },
+        { id: 'untouchable', icon: '🛡️', title: 'UNTOUCHABLE', desc: 'Perfect 10-0 in Pong', rarity: 'epic', reward: 10000 },
+        { id: 'high_roller', icon: '🎰', title: 'HIGH ROLLER', desc: 'Win a bet > $500', rarity: 'rare', reward: 2500 },
+        { id: 'shopaholic', icon: '🛍️', title: 'SHOPAHOLIC', desc: 'Buy 3 items', rarity: 'common', reward: 500 },
+        { id: 'chatterbox', icon: '💬', title: 'CHATTERBOX', desc: 'Send 10 messages', rarity: 'common', reward: 500 },
+        { id: 'neo', icon: '🕶️', title: 'NEO', desc: 'Unlock Matrix Mode', rarity: 'epic', reward: 10000 },
+        { id: 'lonely', icon: '🐺', title: 'LONE WOLF', desc: 'Play 10 rounds of Solo Blackjack', rarity: 'common', reward: 500 },
+        
+        { id: 'rug_pulled', icon: '📉', title: 'RUG PULLED', desc: 'Hit $0 balance', hidden: true, rarity: 'rare', reward: 1000 },
+        { id: 'touch_grass', icon: '🌿', title: 'TOUCH GRASS', desc: 'Stop touching the terminal', hidden: true, rarity: 'common', reward: 500 },
+        { id: 'master_hacker', icon: '💀', title: 'MASTER HACKER', desc: 'Access root', hidden: true, rarity: 'epic', reward: 10000 },
+        { id: 'leet', icon: '👾', title: '1337', desc: 'Play at XX:37', hidden: true, rarity: 'epic', reward: 10000 },
+        { id: 'architect', icon: '🏛️', title: 'THE ARCHITECT', desc: 'Ask for help', hidden: true, rarity: 'rare', reward: 2500 },
+        { id: 'rage_quit', icon: '🤬', title: 'RAGE QUIT', desc: 'Score 0 in 3 games straight', hidden: true, rarity: 'rare', reward: 2500 },
+        { id: 'insomniac', icon: '🌙', title: 'INSOMNIAC', desc: 'Play between 3AM-4AM', hidden: true, rarity: 'epic', reward: 10000 },
+        { id: 'spammer', icon: '🔨', title: 'SPAMMER', desc: 'Click logo 50 times', hidden: true, rarity: 'rare', reward: 2500 },
+        { id: 'void_gazer', icon: '👁️', title: 'VOID GAZER', desc: 'Click empty space 50 times', hidden: true, rarity: 'rare', reward: 2500 }
+    ];
 
-    <div class="overlay" id="overlayGeo">
-        <h1>GEO DASH</h1>
-        <div class="high-score-display">HIGH: <span id="hsGeo">0</span></div>
-        <div style="margin-bottom:10px;" id="geoScore">SCORE: 0</div>
-        <canvas id="geoCanvas" width="800" height="400"></canvas>
-        <div class="mobile-hint active" style="margin-top:20px;">CLICK OR SPACE TO JUMP</div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    const SHOP_ITEMS = [
+        { id: 'item_aimbot', name: 'PONG AIMBOT', cost: 2000, type: 'perk', desc: 'Auto-play Pong' },
+        { id: 'item_slowmo', name: 'RUNNER SLOW-MO', cost: 1500, type: 'perk', desc: '20% Slower Speed' },
+        { id: 'item_shield', name: '1-HIT SHIELD', cost: 500, type: 'consumable', desc: 'Survive one crash' },
+        { id: 'item_xray', name: 'X-RAY VISOR', cost: 5000, type: 'perk', desc: 'See Dealer Card' },
+        { id: 'item_cardcount', name: 'CARD COUNTER', cost: 3000, type: 'perk', desc: 'BJ Count Assist' },
+        { id: 'item_double', name: 'SNAKE OIL', cost: 3000, type: 'perk', desc: 'Double Snake Points' },
+        { id: 'item_rainbow', name: 'RGB MODE', cost: 10000, type: 'visual', desc: 'Color Cycle' },
+        { id: 'item_autotype', name: 'AUTO-TYPER', cost: 7500, type: 'perk', desc: 'Bot plays Typer' },
+        { id: 'item_flappy', name: 'GAME: FLAPPY', cost: 10000, type: 'visual', desc: 'Unlock Flappy Goon' }
+    ];
 
-    <div class="overlay" id="overlayType">
-        <h1>TYPE RUNNER</h1>
-        <div class="type-stats"><span>TIME: <span id="typeTimer">0</span>s</span><span>WPM: <span id="typeWPM">0</span></span></div>
-        <div id="typeGameArea" onclick="document.getElementById('typeHiddenInput').focus()"><div id="typeTextBox">CLICK TO START</div><input type="text" id="typeHiddenInput" autocomplete="off"></div>
-        <button class="menu-btn" onclick="window.initTypeGame()" style="margin-bottom:20px;">RESTART</button>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    function beep(freq=440, type='square', len=0.1) {
+        if(audioCtx.state==='suspended') audioCtx.resume();
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type=type; o.frequency.setValueAtTime(freq,audioCtx.currentTime);
+        g.gain.setValueAtTime(0.05*globalVol,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+len);
+        o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+len);
+    }
+    
+    function playSuccessSound() { beep(523.25, 'triangle', 0.1); setTimeout(() => beep(659.25, 'triangle', 0.1), 100); setTimeout(() => beep(783.99, 'triangle', 0.2), 200); }
+    function setText(id, txt) { const el = document.getElementById(id); if(el) el.innerText = txt; }
+    function logTransaction(msg, amount) { transactionLog.unshift({ msg, amount, ts: new Date().toLocaleTimeString() }); if(transactionLog.length > 20) transactionLog.pop(); updateBankLog(); }
+    function updateBankLog() { const div = document.getElementById('bankLog'); div.innerHTML = transactionLog.map(t => `<div class="bank-entry"><span>${t.ts} ${t.msg}</span><span style="color:${t.amount>=0?'#0f0':'#f00'}">${t.amount>=0?'+':''}$${t.amount}</span></div>`).join(''); }
 
-    <div class="overlay" id="overlayPong">
-        <h1>PONG</h1>
-        <div class="high-score-display">HIGH: <span id="hsPong">0</span></div>
-        <div style="margin-bottom:10px;">SCORE: <span id="pongScore">0 : 0</span></div>
-        <canvas id="pongCanvas" width="800" height="600"></canvas>
-        <div><button class="menu-btn" onclick="window.setPongDiff('easy')">EASY</button><button class="menu-btn" onclick="window.setPongDiff('hard')">HARD</button></div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    const initAuth = async () => { try{await signInAnonymously(auth);}catch(e){console.error(e);} }; initAuth();
+    onAuthStateChanged(auth, u=>{ if(u){ myUid=u.uid; initChat(); } });
+    
+    setInterval(()=>{ 
+        const d=new Date(); setText('sysClock', d.toLocaleTimeString('en-GB')); setText('sysPing', Math.floor(Math.random()*40+10)+"ms");
+        if(d.getMinutes() === 37) unlockAchievement('leet'); if(d.getHours() === 3) unlockAchievement('insomniac');
+    },1000);
 
-    <div class="overlay" id="overlaySnake">
-        <h1>SNAKE</h1>
-        <div class="high-score-display">HIGH: <span id="hsSnake">0</span></div>
-        <div style="margin-bottom:10px;">SCORE: <span id="snakeScoreVal">0</span></div>
-        <canvas id="snakeCanvas" width="600" height="400"></canvas>
-        <div class="touch-controls active" id="snakeControls"><div></div><div class="touch-btn" data-sk="up">▲</div><div></div><div class="touch-btn" data-sk="left">◀</div><div class="touch-btn" data-sk="down">▼</div><div class="touch-btn" data-sk="right">▶</div></div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    window.openGame = (id) => { window.closeOverlays(); const el = document.getElementById(id); if(el) el.classList.add('active'); if(id==='overlayProfile') renderBadges(); if(id==='overlayShop') renderShop(); if(id==='overlayBank') updateBankLog(); };
+    window.closeOverlays = () => { stopAllGames(); document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); document.getElementById('menuDropdown').classList.remove('show'); };
+    
+    window.launchGame = (game) => {
+        window.closeOverlays();
+        const overlayId = 'overlay' + (game === 'ttt' || game === 'geo' ? game.toUpperCase() : (game.charAt(0).toUpperCase() + game.slice(1)));
+        const el = document.getElementById(overlayId); if(el) el.classList.add('active');
+        if(game==='pong') initPong(); if(game==='snake') initSnake(); if(game==='runner') initRunner(); if(game==='geo') initGeometry(); if(game==='type') window.initTypeGame(); if(game==='blackjack') initBJ(); if(game==='ttt') initTTT(); if(game==='flappy') initFlappy();
+        unlockAchievement('noob');
+    };
 
-    <div class="overlay" id="overlayRunner">
-        <h1>RUNNER</h1>
-        <div class="high-score-display">HIGH: <span id="hsRunner">0</span></div>
-        <div style="margin-bottom:10px;" id="runnerScoreBoard">SCORE: 0</div>
-        <canvas id="runnerCanvas" width="800" height="400"></canvas>
-        <div class="mobile-hint active" style="margin-top:20px;">PRESS SPACE TO JUMP</div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    function stopAllGames(){
+        if(pAnim) cancelAnimationFrame(pAnim); if(sAnim) clearTimeout(sAnim); if(rAnim) cancelAnimationFrame(rAnim); if(gAnim) cancelAnimationFrame(gAnim); if(fAnim) cancelAnimationFrame(fAnim); if(typeInterval) clearInterval(typeInterval);
+        cleanupTTT(); cleanupBJ(); currentGame=null; keysPressed = {}; window.removeEventListener('keydown', quickRestartListener);
+    }
 
-    <div class="overlay" id="overlayTTT">
-        <h1>TIC TAC TOE</h1>
-        <div id="tttMenu" class="menu-box">
-            <button class="term-btn" id="btnCreateTTT">CREATE ROOM</button>
-            <p>- OR -</p>
-            <input type="text" id="joinTTTCode" class="term-input" placeholder="CODE" maxlength="4">
-            <button class="term-btn" id="btnJoinTTT">JOIN ROOM</button>
-        </div>
-        <div id="tttLobby" class="menu-box" style="display:none;">
-            <h2>ROOM: <span id="tttRoomId">????</span></h2>
-            <div id="tttPList" style="text-align:left; margin:20px 0;"></div>
-            <button class="term-btn" id="tttStartBtn" style="display:none; color:#0f0; border:1px solid #0f0;">START GAME</button>
-            <div id="tttWait" style="font-size:10px;">WAITING...</div>
-        </div>
-        <div id="tttGame" style="display:none; text-align:center;">
-            <div id="tttStatus" style="margin-bottom:10px;">PLAYING</div>
-            <div class="ttt-grid" id="tttGrid"><div class="ttt-cell" data-i="0"></div><div class="ttt-cell" data-i="1"></div><div class="ttt-cell" data-i="2"></div><div class="ttt-cell" data-i="3"></div><div class="ttt-cell" data-i="4"></div><div class="ttt-cell" data-i="5"></div><div class="ttt-cell" data-i="6"></div><div class="ttt-cell" data-i="7"></div><div class="ttt-cell" data-i="8"></div></div>
-            <button class="term-btn" id="tttReplay" style="display:none; margin-top:20px;">PLAY AGAIN</button>
-        </div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    async function login(username, pin) { try { const ref = doc(db, 'gooner_users', username.toUpperCase()); const snap = await getDoc(ref); if(snap.exists()) { if(snap.data().pin === pin) { loadProfile(snap.data()); return true; } else return "INVALID PIN"; } else return "USER NOT FOUND"; } catch(e) { return "ERROR: " + e.message; } }
+    function getRank(money) { if(money < 500) return "RAT"; if(money < 2000) return "SCRIPT KIDDIE"; if(money < 5000) return "HACKER"; if(money < 10000) return "GOONER"; if(money < 50000) return "CYBER LORD"; return "KINGPIN"; }
+    function loadProfile(data) { myName = data.name; myMoney = data.money; myStats = data.stats || {games:0, wpm:0, wins:0}; myAchievements = data.achievements || []; myInventory = data.inventory || []; updateUI(); document.getElementById('overlayLogin').classList.remove('active'); localStorage.setItem('goonerUser', myName); localStorage.setItem('goonerPin', data.pin); if(myInventory.includes('item_matrix')) { document.documentElement.style.setProperty('--accent', '#00ff00'); document.getElementById('matrixCanvas').classList.add('active'); } if(myInventory.includes('item_rainbow')) document.body.classList.add('rainbow-mode'); if(myInventory.includes('item_flappy')) document.getElementById('btnFlappy').style.display = 'block'; const lastLogin = data.lastLogin || 0; const now = Date.now(); if(now - lastLogin > 86400000) { myMoney += 100; showToast("DAILY BONUS: $100", "💰"); } updateDoc(doc(db, 'gooner_users', myName), { lastLogin: now }); }
+    function updateUI() { setText('displayUser', myName); const bankEl = document.getElementById('globalBank'); const bankOverlayEl = document.getElementById('bankDisplay'); const currentVal = parseInt(bankEl.innerText) || 0; if(currentVal !== myMoney) { bankEl.style.color = myMoney > currentVal ? '#0f0' : '#f00'; setTimeout(() => bankEl.style.color = 'var(--accent)', 500); } bankEl.innerText = myMoney; if(bankOverlayEl) bankOverlayEl.innerText = myMoney; setText('profName', myName); setText('profBank', "$"+myMoney); setText('profWPM', (myStats.wpm||0) + " WPM"); setText('profGames', myStats.games||0); setText('profUid', myUid ? myUid.substring(0,8) : "ERR"); const rank = getRank(myMoney); setText('displayRank', "[" + rank + "]"); setText('profRank', rank); if(myMoney >= 5000) unlockAchievement('diamond_hands'); if(myMoney >= 1000000) unlockAchievement('millionaire'); if(myMoney === 0) { unlockAchievement('rug_pulled'); myMoney = 10; logTransaction("EMERGENCY GRANT", 10); showToast("WELFARE GRANT", "💰", "Don't spend it all in one place."); saveStats(); } }
+    async function register(username, pin) { try { if(!myUid) return "WAITING FOR NETWORK..."; const ref = doc(db, 'gooner_users', username.toUpperCase()); const snap = await getDoc(ref); if(snap.exists()) return "USERNAME TAKEN"; const data = { name: username.toUpperCase(), pin: pin, money: 1000, joined: Date.now(), stats: {games:0, wpm:0, wins:0} }; await setDoc(ref, data); loadProfile(data); return true; } catch(e) { return "REG ERROR"; } }
+    async function saveStats() { if(myName==="ANON") return; await updateDoc(doc(db, 'gooner_users', myName), { money: myMoney, stats: myStats, achievements: myAchievements, inventory: myInventory }); updateUI(); }
+    
+    function unlockAchievement(id) { if(myAchievements.includes(id) || myName === "ANON") return; myAchievements.push(id); const badge = ACHIEVEMENTS.find(a => a.id === id); if(badge) { myMoney += badge.reward; logTransaction(`ACHIEVEMENT: ${badge.title}`, badge.reward); showToast(`UNLOCKED: ${badge.title}`, badge.icon, `+$${badge.reward}`); } saveStats(); playSuccessSound(); }
+    function renderBadges() { const grid = document.getElementById('badgeGrid'); grid.innerHTML = ''; ACHIEVEMENTS.forEach(a => { const unlocked = myAchievements.includes(a.id); const div = document.createElement('div'); if(a.hidden && !unlocked) { div.className = 'badge-item'; div.innerHTML = `<div class="badge-icon">🔒</div><div>???</div>`; div.onclick = () => showBadgeDetail(a, false); } else { div.className = 'badge-item unlocked ' + a.rarity; div.innerHTML = `<div class="badge-icon">${a.icon}</div><div>${a.title}</div>`; div.onclick = () => showBadgeDetail(a, true); } grid.appendChild(div); }); }
+    function showBadgeDetail(badge, unlocked) { setText('bdIcon', unlocked ? badge.icon : '🔒'); setText('bdTitle', unlocked ? badge.title : 'LOCKED'); setText('bdRarity', unlocked ? badge.rarity : 'UNKNOWN'); setText('bdDesc', unlocked ? badge.desc : 'This achievement is hidden until unlocked.'); setText('bdReward', unlocked ? `REWARDED: $${badge.reward}` : `REWARD: $${badge.reward}`); const rEl = document.getElementById('bdRarity'); rEl.style.color = unlocked ? `var(--${badge.rarity})` : '#555'; document.getElementById('modalBadgeDetail').classList.add('active'); }
+    function renderShop() { const list = document.getElementById('shopList'); setText('shopBank', myMoney); list.innerHTML = ''; SHOP_ITEMS.forEach(item => { const div = document.createElement('div'); div.className = 'shop-item'; let label = '$'+item.cost; let btnText = 'BUY'; let disabled = myMoney < item.cost; if(myInventory.includes(item.id) && item.type !== 'consumable') { label = 'OWNED'; btnText = 'ACTIVE'; disabled = true; } div.innerHTML = `<div>${item.name}<div style="font-size:8px;opacity:0.7">${item.desc}</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><button class="shop-buy-btn" onclick="window.buyItem('${item.id}')" ${disabled ? 'disabled' : ''}>${btnText}</button></div>`; list.appendChild(div); }); }
+    window.buyItem = (id) => { const item = SHOP_ITEMS.find(i => i.id === id); if(myMoney >= item.cost) { myMoney -= item.cost; if(item.type !== 'consumable') myInventory.push(id); else myInventory.push(id); if(id === 'item_rainbow') document.body.classList.add('rainbow-mode'); if(id === 'item_flappy') { document.getElementById('btnFlappy').style.display = 'block'; showToast("NEW GAME UNLOCKED", "🎮"); } if(myInventory.filter(i => i !== 'item_shield').length >= 3) unlockAchievement('shopaholic'); if(id === 'item_matrix') { unlockAchievement('neo'); document.documentElement.style.setProperty('--accent', '#00ff00'); document.getElementById('matrixCanvas').classList.add('active'); } logTransaction(`BOUGHT: ${item.name}`, -item.cost); saveStats(); renderShop(); playSuccessSound(); showToast(`BOUGHT: ${item.name}`, "🛒"); } };
+    function showToast(title, icon, subtitle = "") { const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-desc">${subtitle}</div></div>`; document.getElementById('toastBox').appendChild(t); setTimeout(() => t.remove(), 4000); }
 
-    <div class="overlay" id="overlayBlackjack">
-        <h1>BLACKJACK</h1>
-        <div id="bjMode" class="menu-box">
-            <button class="term-btn" onclick="window.bjSelect('solo')">SOLO (VS DEALER)</button>
-            <br><br>
-            <button class="term-btn" onclick="window.bjSelect('multi')">PVP (4 PLAYER)</button>
-        </div>
-        <div id="bjNetMenu" class="menu-box" style="display:none;">
-            <button class="term-btn" id="btnCreateBJ">CREATE TABLE</button>
-            <p>- OR -</p>
-            <input type="text" id="joinBJCode" class="term-input" placeholder="CODE" maxlength="4">
-            <button class="term-btn" id="btnJoinBJ">JOIN TABLE</button>
-        </div>
-        <div id="bjLobby" class="menu-box" style="display:none;">
-            <h2>ROOM: <span id="bjRoomId">????</span></h2>
-            <div id="bjPList" style="text-align:left; margin:20px 0;"></div>
-            <button class="term-btn" id="bjStartBtn" style="display:none; color:#0f0;">START GAME</button>
-            <div id="bjWait" style="font-size:10px;">WAITING...</div>
-        </div>
-        <div id="bjTable" class="bj-table" style="display:none;">
-            <div class="bj-pot-display">POT: $<span id="bjPot">0</span></div>
-            <div class="bj-side-table" id="bjSide"></div>
-            <div class="bj-area" id="bjSeat0" style="margin-bottom:10px;">
-                <span class="bj-label" id="bjHostLabel">OPPONENT</span>
-                <div class="bj-hand" id="bjDealerHand"></div>
-                <div class="bj-score" id="bjDealerScore"></div>
-            </div>
-            <div style="display:flex; align-items:center; gap:20px; margin:10px;">
-                <div class="bj-deck-container" id="bjDeck">
-                    <div class="bj-deck-card"></div><div class="bj-deck-card"></div>
-                    <div style="position:absolute; background:#000; padding:2px; font-size:10px; z-index:5;">ACTION</div>
-                </div>
-                <div id="bjMessage" style="width:150px; text-align:center; font-size:10px;">PLACE BET</div>
-            </div>
-            <div class="bj-area active-seat" id="bjMySeat">
-                <span class="bj-label">YOU</span>
-                <div class="bj-hand" id="bjPlayerHand"></div>
-                <div class="bj-score" id="bjPlayerScore"></div>
-            </div>
-            <div class="bj-controls" id="bjGameBtns" style="display:none;"><button class="term-btn" id="bjHit">HIT</button><button class="term-btn" id="bjStand">STAND</button></div>
-            <div id="bjBetBtns">
-                <div style="text-align:center; margin-bottom:5px;">BET: $<span id="bjBetVal">0</span></div>
-                <div class="bj-chip-rack"><div class="bj-chip" data-v="10">10</div><div class="bj-chip" data-v="50">50</div><div class="bj-chip" data-v="100">100</div><div class="bj-chip bj-all-in" id="bjAllIn">ALL</div><div class="bj-chip" id="bjClear" style="border-color:#fff; color:#fff;">CLR</div></div>
-            </div>
-        </div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    if(localStorage.getItem('goonerUser')) login(localStorage.getItem('goonerUser'), localStorage.getItem('goonerPin'));
+    document.getElementById('btnLogin').onclick = async () => { const u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('pinInput').value.trim(); if(u.length<3||p.length<4) return beep(200,'sawtooth',0.5); const res=await login(u,p); if(res===true) beep(600,'square',0.1); else { setText('loginMsg', res); beep(100,'sawtooth',0.5); } };
+    document.getElementById('btnRegister').onclick = async () => { const u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('pinInput').value.trim(); if(u.length<3||p.length<4) return; const res=await register(u,p); if(res===true) beep(600,'square',0.1); else { setText('loginMsg', res); beep(100,'sawtooth',0.5); } };
+    document.getElementById('btnLogout').onclick = () => { localStorage.clear(); location.reload(); };
+    document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); document.getElementById('menuDropdown').classList.toggle('show'); };
+    document.addEventListener('click', (e) => { if(!e.target.closest('#menuToggle')) document.getElementById('menuDropdown').classList.remove('show'); });
+    document.getElementById('themeColor').oninput = (e) => { const h = e.target.value; document.documentElement.style.setProperty('--accent', h); const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16); document.documentElement.style.setProperty('--accent-dim', `rgba(${r},${g},${b},0.2)`); document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.6)`); };
+    document.getElementById('volSlider').oninput = (e) => globalVol = e.target.value/100;
+    document.getElementById('scanSlider').oninput = (e) => document.documentElement.style.setProperty('--scanline-opacity', e.target.value/100);
+    document.getElementById('flickerToggle').onclick = (e) => { document.body.classList.toggle('flicker-on'); e.target.innerText = document.body.classList.contains('flicker-on')?"ON":"OFF"; };
+    document.getElementById('fsToggle').onclick = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
 
-    <div class="overlay" id="overlayFlappy">
-        <h1>FLAPPY GOON</h1>
-        <div class="high-score-display">HIGH: <span id="hsFlappy">0</span></div>
-        <div style="margin-bottom:10px;" id="flappyScore">SCORE: 0</div>
-        <canvas id="flappyCanvas" width="400" height="600"></canvas>
-        <div class="mobile-hint active">TAP TO FLAP</div>
-        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
+    // SECRETS
+    const konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a']; let konamiIndex = 0; document.addEventListener('keydown', (e) => { if(e.key === konamiCode[konamiIndex]) { konamiIndex++; if(konamiIndex === konamiCode.length) { activateMatrixHack(); konamiIndex = 0; } } else konamiIndex = 0; });
+    function activateMatrixHack() { if(myName === "ANON") return alert("LOGIN FIRST"); document.documentElement.style.setProperty('--accent', '#00ff00'); document.getElementById('matrixCanvas').classList.add('active'); showToast("MATRIX MODE ACTIVATED", "🐇"); myMoney += 1000; saveStats(); playSuccessSound(); }
+    let logoClicks = 0; document.getElementById('mainBtn').onclick = () => { logoClicks++; if(logoClicks === 50) { unlockAchievement('spammer'); showToast("SECRET FOUND", "🤫", "500 Credits"); myMoney += 500; saveStats(); logoClicks = 0; } };
+    let bgClicks = 0; document.addEventListener('click', (e) => { if (e.target.tagName === 'BODY' || e.target.classList.contains('wrap')) { bgClicks++; if(bgClicks === 50) unlockAchievement('void_gazer'); } else { bgClicks = 0; } });
+    let chatCount = 0; function initChat() { const chatRef = collection(db, 'gooner_global_chat'); const q = query(chatRef, orderBy('ts', 'desc'), limit(15)); onSnapshot(q, (snap) => { const list = document.getElementById('chatHistory'); list.innerHTML = ''; const msgs = []; snap.forEach(d => msgs.push(d.data())); msgs.reverse().forEach(m => { const d = document.createElement('div'); d.className = 'chat-msg'; d.innerHTML = `<span class="chat-user">${m.user}:</span> ${m.msg}`; list.appendChild(d); }); list.scrollTop = list.scrollHeight; }); document.getElementById('chatInput').addEventListener('keypress', async (e) => { if(e.key === 'Enter') { const txt = e.target.value.trim(); if(txt.length > 0) { if(txt === '/clear') { document.getElementById('chatHistory').innerHTML=''; e.target.value=''; return;} if(txt === '/root') { e.target.value = ''; document.getElementById('hackOverlay').classList.add('active'); setTimeout(() => { document.getElementById('hackOverlay').classList.remove('active'); unlockAchievement('master_hacker'); }, 2000); return; } if(txt === '/help') { unlockAchievement('architect'); } chatCount++; if(chatCount === 10) unlockAchievement('chatterbox'); await addDoc(chatRef, { user: myName, msg: txt, ts: Date.now() }); e.target.value = ''; } } }); }
 
-    <div class="overlay" id="modalGameOver" style="background:rgba(0,0,0,0.9); z-index:9000;">
-        <h1 style="color:red; font-size:30px; margin-bottom:20px;">SYSTEM FAILURE</h1>
-        <p id="gameOverText" style="margin-bottom:30px; font-size:14px;">SCORE: 0</p>
-        <button class="term-btn" id="goRestart" style="width:200px;">REBOOT SYSTEM</button>
-        <div class="restart-hint">[ PRESS SPACE TO REBOOT ]</div>
-        <button class="menu-btn" id="goExit" style="margin-top:20px;">EXIT TO MENU</button>
-    </div>
+    function updateHighScore(game, score) { const k = `hs_${game}`; const old = parseInt(localStorage.getItem(k)||0); if(score > old) { localStorage.setItem(k, score); saveGlobalScore(game, score); return score; } return old; }
+    function loadHighScores() { setText('hsPong', localStorage.getItem('hs_pong')||0); setText('hsSnake', localStorage.getItem('hs_snake')||0); setText('hsRunner', localStorage.getItem('hs_runner')||0); setText('hsGeo', localStorage.getItem('hs_geo')||0); setText('hsFlappy', localStorage.getItem('hs_flappy')||0); }
+    async function saveGlobalScore(game, score) { if(score<=0 || myName==="ANON") return; await addDoc(collection(db, 'gooner_scores'), { game: game, name: myName, score: score }); }
+    document.querySelectorAll('.score-tab').forEach(t => t.onclick = () => { document.querySelectorAll('.score-tab').forEach(x => x.classList.remove('active')); t.classList.add('active'); loadLeaderboard(t.dataset.tab); });
+    function loadLeaderboard(game) { const list = document.getElementById('scoreList'); list.innerHTML = 'LOADING...'; const q = query(collection(db, 'gooner_scores'), orderBy('score', 'desc'), limit(100)); onSnapshot(q, (snap) => { list.innerHTML = ''; const data = []; snap.forEach(d => data.push(d.data())); const uniqueScores = {}; data.filter(d => d.game === game).forEach(s => { if (!uniqueScores[s.name] || s.score > uniqueScores[s.name].score) { uniqueScores[s.name] = s; } }); const filtered = Object.values(uniqueScores).sort((a,b) => b.score - a.score).slice(0, 10); if(filtered.length===0) list.innerHTML = '<div style="padding:10px">NO DATA</div>'; filtered.forEach((s, i) => { const item = document.createElement('div'); item.className = 'score-item'; item.innerHTML = `<span class="score-rank">#${i+1}</span> <span>${s.name}</span> <span>${s.score}</span>`; list.appendChild(item); }); }); }
 
-    <script type="module" src="js/main.js"></script>
+    // === GEO DASH ===
+    let gPlayer={}, gObs=[], gScore=0, gSpeed=6; function initGeometry() { currentGame='geo'; loadHighScores(); const cv = document.getElementById('geoCanvas'); const ctx = cv.getContext('2d'); gPlayer = { x: 100, y: 300, w: 30, h: 30, dy: 0, ang: 0, grounded: true }; gObs = []; gScore=0; gSpeed=6; setText('geoScore', 'SCORE: 0'); loopGeometry(); }
+    function loopGeometry() { if(currentGame!=='geo') return; const cv = document.getElementById('geoCanvas'); const ctx = cv.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0,0,800,400); let currentSpeed = gSpeed * (myInventory.includes('item_slowmo') ? 0.8 : 1); if((keysPressed[' '] || keysPressed['ArrowUp']) && gPlayer.grounded) { gPlayer.dy = -13; gPlayer.grounded = false; } gPlayer.dy += 0.9; gPlayer.y += gPlayer.dy; if(gPlayer.y > 320) { gPlayer.y = 320; gPlayer.dy = 0; gPlayer.grounded = true; gPlayer.ang = Math.round(gPlayer.ang / (Math.PI/2)) * (Math.PI/2); } else { gPlayer.ang += 0.15; } ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,350); ctx.lineTo(800,350); ctx.stroke(); ctx.save(); ctx.translate(gPlayer.x + gPlayer.w/2, gPlayer.y + gPlayer.h/2); ctx.rotate(gPlayer.ang); ctx.fillStyle = '#fff'; ctx.fillRect(-gPlayer.w/2, -gPlayer.h/2, gPlayer.w, gPlayer.h); ctx.restore(); if(Math.random() < 0.02) { gObs.push({x: 800, y: 320, w: 30, h: 30, type: Math.random()>0.5 ? 'spike' : 'block'}); } for(let i=gObs.length-1; i>=0; i--) { let o = gObs[i]; o.x -= currentSpeed; ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent'); if(o.type === 'spike') { ctx.beginPath(); ctx.moveTo(o.x, o.y+30); ctx.lineTo(o.x+15, o.y); ctx.lineTo(o.x+30, o.y+30); ctx.fill(); } else { ctx.fillRect(o.x, o.y, o.w, o.h); } if(gPlayer.x < o.x + o.w - 5 && gPlayer.x + gPlayer.w > o.x + 5 && gPlayer.y < o.y + o.h - 5 && gPlayer.y + gPlayer.h > o.y + 5) { if(myInventory.includes('item_shield')) { myInventory = myInventory.filter(id => id !== 'item_shield'); gObs.splice(i, 1); showToast("SHIELD USED", "🛡️"); continue; } window.showGameOver('geo', Math.floor(gScore)); return; } if(o.x < -50) { gObs.splice(i,1); gScore++; updateHighScore('geo', gScore); setText('geoScore', "SCORE: "+gScore); } } gAnim = requestAnimationFrame(loopGeometry); }
+    document.getElementById('geoCanvas').onclick=()=>{ if(currentGame==='geo' && gPlayer.grounded) { gPlayer.dy = -13; gPlayer.grounded = false; } };
 
+    // === FLAPPY GOON ===
+    let fBird={}, fPipes=[], fScore=0; function initFlappy() { currentGame='flappy'; loadHighScores(); fBird={x:50,y:300,dy:0}; fPipes=[]; fScore=0; setText('flappyScore','SCORE: 0'); loopFlappy(); }
+    function loopFlappy(){ if(currentGame!=='flappy') return; const ctx=document.getElementById('flappyCanvas').getContext('2d'); ctx.fillStyle='#000'; ctx.fillRect(0,0,400,600); if(keysPressed[' ']) { fBird.dy = -6; keysPressed[' '] = false; } fBird.dy+=0.4; fBird.y+=fBird.dy; ctx.fillStyle='#fff'; ctx.fillRect(fBird.x,fBird.y,20,20); if(fBird.y>600||fBird.y<0) { window.showGameOver('flappy',fScore); return; } if(Math.random()<0.015) { fPipes.push({x:400, gap:150, h:Math.random()*300+50}); } for(let i=fPipes.length-1; i>=0; i--) { let p=fPipes[i]; p.x-=3; ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent'); ctx.fillRect(p.x,0,40,p.h); ctx.fillRect(p.x,p.h+p.gap,40,600); if(fBird.x+20>p.x && fBird.x<p.x+40 && (fBird.y<p.h || fBird.y+20>p.h+p.gap)) { window.showGameOver('flappy',fScore); return; } if(p.x<-40) { fPipes.splice(i,1); fScore++; updateHighScore('flappy',fScore); setText('flappyScore','SCORE: '+fScore); } } fAnim=requestAnimationFrame(loopFlappy); }
+    document.getElementById('flappyCanvas').onclick=()=>{ if(currentGame==='flappy') fBird.dy = -6; };
+
+    // === TYPE RUNNER ===
+    let typeText = ""; let typeIndex = 0; let typeStartTime = null; let typeCorrectChars = 0;
+    const commonWords = ["the","be","to","of","and","a","in","that","have","I","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us"];
+    window.initTypeGame = () => { currentGame = 'type'; typeIndex = 0; typeStartTime = null; typeCorrectChars = 0; if(typeInterval) clearInterval(typeInterval); setText('typeTimer', "0"); setText('typeWPM', "0"); document.getElementById('typeHiddenInput').value = ""; document.getElementById('typeHiddenInput').focus(); typeText = ""; for(let i=0; i<30; i++) typeText += commonWords[Math.floor(Math.random() * commonWords.length)] + " "; typeText = typeText.trim(); renderTypeDisplay(); };
+    function renderTypeDisplay() { const display = document.getElementById('typeTextBox'); display.innerHTML = ""; typeText.split('').forEach((char, idx) => { const span = document.createElement('span'); span.innerText = char; span.className = 'letter'; if (idx === typeIndex) span.classList.add('active'); display.appendChild(span); }); }
+    document.getElementById('typeHiddenInput').addEventListener('input', (e) => { 
+        if(currentGame !== 'type') return; 
+        if(!typeStartTime) { typeStartTime = Date.now(); typeInterval = setInterval(() => { const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); setText('typeTimer', Math.round(elapsedMin * 60)); if(wpm > 0 && wpm < 300) setText('typeWPM', wpm); }, 100); }
+        if(myInventory.includes('item_autotype')) { if(Math.random() > 0.1) { let char = typeText[typeIndex]; } }
+        const inputVal = e.target.value; const charTyped = inputVal.charAt(inputVal.length - 1); const letters = document.querySelectorAll('.letter'); if (e.inputType === "deleteContentBackward") { if(typeIndex > 0) { typeIndex--; letters[typeIndex].classList.remove('correct', 'incorrect'); if(letters[typeIndex].innerText === typeText[typeIndex]) typeCorrectChars--; } } else { if(typeIndex < typeText.length) { if(charTyped === typeText[typeIndex]) { letters[typeIndex].classList.add('correct'); typeCorrectChars++; } else { letters[typeIndex].classList.add('incorrect'); } typeIndex++; } } document.querySelectorAll('.letter').forEach(l => l.classList.remove('active')); if(typeIndex < letters.length) letters[typeIndex].classList.add('active'); if(typeIndex >= typeText.length) { clearInterval(typeInterval); const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); if(wpm > (myStats.wpm || 0)) { myStats.wpm = wpm; saveStats(); saveGlobalScore('type', wpm); } if(wpm >= 80) unlockAchievement('type_god'); alert("FINISHED! WPM: " + wpm); window.initTypeGame(); } 
+    });
+    setInterval(() => { if(currentGame === 'type' && myInventory.includes('item_autotype') && typeText.length > 0) { const letters = document.querySelectorAll('.letter'); if(typeIndex < typeText.length) { letters[typeIndex].classList.add('correct'); typeIndex++; typeCorrectChars++; document.querySelectorAll('.letter').forEach(l => l.classList.remove('active')); if(typeIndex < letters.length) letters[typeIndex].classList.add('active'); if(typeIndex >= typeText.length) { clearInterval(typeInterval); alert("BOT FINISHED!"); window.initTypeGame(); } } } }, 150);
+
+    // === PONG ===
+    let pCtx, pCv, ball={x:400,y:300,dx:5,dy:5}, p1={y:250,h:80}, p2={y:250,h:80}, pSc=0, aiSc=0, pDiff=0.08;
+    window.setPongDiff=(l)=>{pDiff=l==='hard'?0.15:0.08; resetBall();};
+    function initPong(){currentGame='pong';loadHighScores();pCv=document.getElementById('pongCanvas');pCtx=pCv.getContext('2d');pSc=0;aiSc=0;resetBall();loopPong();}
+    function resetBall(){if(!pCv)return;ball.x=400;ball.y=300;ball.dx=(Math.random()>.5?6:-6);ball.dy=(Math.random()*8-4);}
+    function loopPong(){
+        if(currentGame!=='pong')return;
+        pCtx.fillStyle='rgba(0,0,0,0.2)'; pCtx.fillRect(0,0,800,600);
+        if(myInventory.includes('item_aimbot')) { p1.y += (ball.y - p1.h/2 - p1.y) * 0.1; } else { if(keysPressed['w'] || keysPressed['ArrowUp']) p1.y -= 8; if(keysPressed['s'] || keysPressed['ArrowDown']) p1.y += 8; }
+        if(p1.y < 0) p1.y = 0; if(p1.y > 520) p1.y = 520; p2.y+=(ball.y-p2.h/2-p2.y)*pDiff; if(p2.y < 0) p2.y = 0; if(p2.y > 520) p2.y = 520;
+        pCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');
+        pCtx.fillRect(20,p1.y,10,p1.h); pCtx.fillRect(770,p2.y,10,p2.h);
+        pCtx.beginPath();pCtx.arc(ball.x,ball.y,8,0,Math.PI*2);pCtx.fill();
+        ball.x+=ball.dx; ball.y+=ball.dy;
+        if(ball.y<0||ball.y>600)ball.dy*=-1;
+        if(ball.x<30 && ball.y>p1.y && ball.y<p1.y+p1.h){ ball.dx = Math.abs(ball.dx)+0.5; ball.x = 30; beep(600); }
+        if(ball.x>770 && ball.y>p2.y && ball.y<p2.y+p2.h){ ball.dx = -(Math.abs(ball.dx)+0.5); ball.x = 770; beep(600); }
+        if(ball.x<0){aiSc++; resetBall(); beep(200); checkLossStreak(); pSc=0; } 
+        if(ball.x>800){ pSc++; updateHighScore('pong',pSc); loadHighScores(); resetBall(); beep(800); lossStreak=0; if(pSc >= 10 && aiSc === 0) unlockAchievement('untouchable'); }
+        setText('pongScore', `${pSc} : ${aiSc}`);
+        pAnim=requestAnimationFrame(loopPong);
+    }
+    
+    // === SNAKE ===
+    let sCtx, sCv, snake=[], food={}, sD='R', sNextD='R', sSc=0;
+    function initSnake(){currentGame='snake';loadHighScores();sCv=document.getElementById('snakeCanvas');sCtx=sCv.getContext('2d');snake=[{x:10,y:10}];sD='R';sNextD='R';sSc=0;setText('snakeScoreVal', 0);placeFood();loopSnake();}
+    function placeFood(){food={x:Math.floor(Math.random()*30),y:Math.floor(Math.random()*20)};}
+    function loopSnake(){if(currentGame!=='snake')return;let h={x:snake[0].x,y:snake[0].y};sD=sNextD;if(sD==='R')h.x++;if(sD==='L')h.x--;if(sD==='U')h.y--;if(sD==='D')h.y++;if(h.x<0||h.x>=30||h.y<0||h.y>=20||snake.some(s=>s.x===h.x&&s.y===h.y)){checkLossStreak(); window.showGameOver('snake',sSc);return;}snake.unshift(h);if(h.x===food.x&&h.y===food.y){
+        let pts = myInventory.includes('item_double') ? 20 : 10;
+        sSc+=pts; updateHighScore('snake',sSc);setText('snakeScoreVal', sSc);placeFood();beep(600); lossStreak=0; if(sSc>=30) unlockAchievement('viper'); }else snake.pop();sCtx.fillStyle='#000';sCtx.fillRect(0,0,600,400);sCtx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent');snake.forEach(s=>sCtx.fillRect(s.x*20,s.y*20,18,18));sCtx.fillStyle='#fff';sCtx.fillRect(food.x*20,food.y*20,18,18);sAnim=setTimeout(loopSnake,100);}
+    
+    // === RUNNER V2 ===
+    let rCtx, rCv, player={}, rObs=[], rSpeed=5, rScore=0, rFrame=0;
+    function initRunner(){ currentGame='runner'; loadHighScores(); rCv=document.getElementById('runnerCanvas'); rCtx=rCv.getContext('2d'); player = { x: 50, y: 300, w: 30, h: 50, dy: 0, grounded: true, jumpForce: 12, gravity: 0.6 }; rObs = []; rSpeed = 5; rScore = 0; rFrame = 0; setText('runnerScoreBoard', "SCORE: 0"); loopRunner(); }
+    function loopRunner(){
+        if(currentGame!=='runner') return;
+        rFrame++;
+        rCtx.fillStyle='#000'; rCtx.fillRect(0,0,800,400);
+        rCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+        rCtx.lineWidth = 2; rCtx.beginPath(); rCtx.moveTo(0,350); rCtx.lineTo(800,350); rCtx.stroke();
+        let currentSpeed = rSpeed * (myInventory.includes('item_slowmo') ? 0.8 : 1);
+        if((keysPressed[' '] || keysPressed['ArrowUp']) && player.grounded) { player.dy = -player.jumpForce; player.grounded = false; }
+        player.dy += player.gravity; player.y += player.dy;
+        if(player.y > 300) { player.y = 300; player.dy = 0; player.grounded = true; }
+        rCtx.fillStyle = '#fff'; rCtx.fillRect(player.x, player.y, player.w, player.h);
+        if(rFrame % Math.floor(1000/currentSpeed) === 0) { let height = Math.random() > 0.7 ? 60 : 30; rObs.push({ x: 800, y: 350 - height, w: 20, h: height }); }
+        for(let i=rObs.length-1; i>=0; i--){
+            let o = rObs[i]; o.x -= currentSpeed;
+            rCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+            rCtx.fillRect(o.x, o.y, o.w, o.h);
+            if (player.x < o.x + o.w && player.x + player.w > o.x && player.y < o.y + o.h && player.y + player.h > o.y) {
+                 if(myInventory.includes('item_shield')) { myInventory = myInventory.filter(id => id !== 'item_shield'); rObs.splice(i, 1); showToast("SHIELD USED", "🛡️"); continue; }
+                 checkLossStreak(); window.showGameOver('runner', Math.floor(rScore)); return;
+            }
+            if(o.x < -30) { rObs.splice(i, 1); rScore += 1; updateHighScore('runner', rScore); setText('runnerScoreBoard', "SCORE: "+rScore); if(rScore % 5 === 0) rSpeed += 0.5; lossStreak=0; }
+        }
+        rAnim=requestAnimationFrame(loopRunner);
+    }
+    document.getElementById('runnerCanvas').onclick=()=>{ if(currentGame==='runner' && player.grounded) { player.dy = -player.jumpForce; player.grounded = false; } };
+
+    document.addEventListener('keydown', e => { keysPressed[e.key] = true; if(currentGame==='snake'){const k=e.key;if((k==='ArrowUp'||k==='w')&&sD!=='D')sNextD='U';if((k==='ArrowDown'||k==='s')&&sD!=='U')sNextD='D';if((k==='ArrowLeft'||k==='a')&&sD!=='R')sNextD='L';if((k==='ArrowRight'||k==='d')&&sD!=='L')sNextD='R';} });
+    document.addEventListener('keyup', e => { keysPressed[e.key] = false; });
+
+    // === BLACKJACK (PVP FIX) ===
+    let bjMode='solo', bjDeck=[], bjPlayerHand=[], bjDealerHand=[], bjCurrentBet=0, bjRoomCode=null, bjRoomUnsub=null, bjMySeatIdx=-1, bjLastPhase='';
+    let soloRounds = 0;
+    const suits=['♠','♥','♦','♣'], values=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+    function initBJ() { currentGame='blackjack'; bjCurrentBet=0; document.getElementById('bjMode').style.display='flex'; document.getElementById('bjNetMenu').style.display='none'; document.getElementById('bjLobby').style.display='none'; document.getElementById('bjTable').style.display='none'; updBJ(); }
+    function cleanupBJ() { if(bjRoomUnsub)bjRoomUnsub(); bjRoomUnsub=null; bjRoomCode=null; bjMySeatIdx=-1; bjLastPhase=''; }
+    window.bjSelect=(m)=>{bjMode=m;document.getElementById('bjMode').style.display='none';if(m==='solo'){document.getElementById('bjTable').style.display='flex';setText('bjHostLabel', "DEALER");document.querySelector('.bj-pot-display').style.display='none';document.getElementById('bjSide').innerHTML='';startSoloBetting();}else{document.querySelector('.bj-pot-display').style.display='block';document.getElementById('bjNetMenu').style.display='flex';}beep(400,'square',0.1);};
+    function updBJ(){setText('bjBetVal', bjCurrentBet);setText('globalBank', myMoney);saveStats(); if(myMoney >= 5000) unlockAchievement('diamond_hands'); if(myMoney===0) unlockAchievement('rug_pulled'); }
+    function startSoloBetting(){ bjPlayerHand=[]; bjDealerHand=[]; bjCurrentBet=0; document.getElementById('bjPlayerHand').innerHTML=''; document.getElementById('bjDealerHand').innerHTML=''; setText('bjPlayerScore', ''); setText('bjDealerScore', ''); setText('bjMessage', 'PLACE BET & CLICK DECK'); document.getElementById('bjGameBtns').style.display='none'; document.getElementById('bjBetBtns').style.visibility='visible'; document.querySelector('#bjDeck div:last-child').innerText="DEAL"; updBJ(); }
+    async function startSoloRound(){ if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5); document.getElementById('bjBetBtns').style.visibility='hidden'; bjDeck=createDeck(); bjPlayerHand=[bjDeck.pop(),bjDeck.pop()]; bjDealerHand=[bjDeck.pop(),bjDeck.pop()]; renderHand(bjPlayerHand,'bjPlayerHand'); renderScore('bjPlayerScore',bjPlayerHand); const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); 
+    let hideDealer = !myInventory.includes('item_xray');
+    renderNewCard(bjDealerHand[1], 'bjDealerHand', hideDealer); 
+    setText('bjDealerScore', hideDealer ? '' : calcHand(bjDealerHand));
+    document.getElementById('bjGameBtns').style.display='flex'; setText('bjMessage', "YOUR TURN"); if(calcHand(bjPlayerHand)===21) endSolo(); }
+    function soloHit() { const c = bjDeck.pop(); bjPlayerHand.push(c); renderNewCard(c, 'bjPlayerHand'); renderScore('bjPlayerScore', bjPlayerHand); if(calcHand(bjPlayerHand) > 21) endSolo(); }
+    async function soloStand() { document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); dDiv.innerHTML=''; renderNewCard(bjDealerHand[0], 'bjDealerHand'); renderNewCard(bjDealerHand[1], 'bjDealerHand'); renderScore('bjDealerScore', bjDealerHand); while(calcHand(bjDealerHand) < 17) { await new Promise(r=>setTimeout(r, 600)); let c = bjDeck.pop(); bjDealerHand.push(c); renderNewCard(c, 'bjDealerHand'); renderScore('bjDealerScore', bjDealerHand); } endSolo(); }
+    async function endSolo(){ document.getElementById('bjGameBtns').style.display='none'; const dDiv=document.getElementById('bjDealerHand'); if(dDiv.querySelector('.hidden')) { dDiv.innerHTML=''; bjDealerHand.forEach(c => renderNewCard(c, 'bjDealerHand')); renderScore('bjDealerScore', bjDealerHand); } let ps=calcHand(bjPlayerHand), ds=calcHand(bjDealerHand); let msg="", win=0; if(ps > 21) { msg="YOU BUST!"; win=0; } else if(ds > 21) { msg="DEALER BUST! YOU WIN"; win=bjCurrentBet*2; } else if(ps > ds) { msg="YOU WIN!"; win=bjCurrentBet*2; } else if(ps < ds) { msg="YOU LOSE"; win=0; } else { msg="PUSH"; win=bjCurrentBet; } 
+    if(msg.includes("WIN") && bjCurrentBet >= 500) unlockAchievement('high_roller');
+    soloRounds++; if(soloRounds===10) unlockAchievement('lonely');
+    setText('bjMessage', msg); myMoney+=win; updBJ(); bjCurrentBet=0; document.querySelector('#bjDeck div:last-child').innerText="AGAIN"; if(win===0 && myMoney<=0) setTimeout(()=>window.showGameOver('blackjack',0),1500); else setTimeout(()=>document.getElementById('bjDeck').addEventListener('click',()=>{if(currentGame==='blackjack'&&bjMode==='solo')startSoloBetting();},{once:true}),500); }
+    
+    // --- GENERIC NET CODE ---
+    function getBJRef(c){return doc(db,'gooner_terminal_rooms','bj_'+c);}
+    document.getElementById('btnCreateBJ').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();const seats=[{uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false},null,null,null];await setDoc(getBJRef(c),{seats:seats,deck:[],phase:'lobby',activeSeat:0,pot:0});joinBJ(c,0);};
+    document.getElementById('btnJoinBJ').onclick=async()=>{const c=document.getElementById('joinBJCode').value,ref=getBJRef(c);await runTransaction(db,async(t)=>{const s=await t.get(ref);if(!s.exists())throw "404";const d=s.data();let idx=-1;for(let i=1;i<4;i++)if(d.seats[i]===null){idx=i;break;}if(idx===-1)throw "Full";const ns=[...d.seats];ns[idx]={uid:myUid,name:myName,hand:[],status:'waiting',bet:0,ready:false};t.update(ref,{seats:ns});joinBJ(c,idx);}).catch(e=>alert(e));};
+    function joinBJ(c,idx){bjRoomCode=c;bjMySeatIdx=idx;document.getElementById('bjNetMenu').style.display='none';document.getElementById('bjLobby').style.display='flex';setText('bjRoomId', c);if(bjRoomUnsub)bjRoomUnsub();bjRoomUnsub=onSnapshot(getBJRef(c),s=>{if(s.exists())handleBJUpdate(s.data());});}
+    
+    function handleBJUpdate(d){ 
+        const deckLabel=document.querySelector('#bjDeck div:last-child'); 
+        if(d.phase==='lobby'){document.getElementById('bjLobby').style.display='flex';document.getElementById('bjTable').style.display='none';document.getElementById('bjPList').innerHTML=d.seats.map((s,i)=>s?`<div>${s.name} ${i===0?'(HOST)':''}</div>`:'').join('');if(bjMySeatIdx===0){document.getElementById('bjStartBtn').style.display='block';setText('bjWait', "CLICK START");}else{document.getElementById('bjStartBtn').style.display='none';setText('bjWait', "WAITING FOR HOST...");}return;} 
+        document.getElementById('bjLobby').style.display='none';document.getElementById('bjTable').style.display='flex';setText('bjPot', d.pot||0);
+        
+        // --- 1. DETERMINE WHO IS "TOP" (OPPONENT) ---
+        let opponentIdx = -1;
+        if(bjMySeatIdx === 0) {
+            // I am Host (0). Show Seat 1, 2, or 3 as Top if they exist. Priority to Seat 1.
+            if(d.seats[1]) opponentIdx = 1;
+            else if(d.seats[2]) opponentIdx = 2;
+            else if(d.seats[3]) opponentIdx = 3;
+        } else {
+            // I am Guest. Show Host (0) as Top.
+            opponentIdx = 0;
+        }
+        
+        const topSeat = opponentIdx !== -1 ? d.seats[opponentIdx] : null;
+        setText('bjHostLabel', topSeat ? topSeat.name : "WAITING...");
+        
+        // --- 2. RENDER SIDE SEATS (Everyone else) ---
+        const sideDiv=document.getElementById('bjSide');sideDiv.innerHTML=''; 
+        d.seats.forEach((s,i)=>{ 
+            if(i===bjMySeatIdx || i===opponentIdx || !s) return; // Skip Me and Top Guy
+            const div=document.createElement('div');div.className='bj-small-seat'; 
+            if(d.activeSeat===i&&d.phase==='playing')div.classList.add('active-seat'); 
+            div.innerHTML=`<div style="font-size:8px">${s.name}</div><div class="bj-small-hand"></div>`; 
+            const hd=div.querySelector('.bj-small-hand'); 
+            s.hand.forEach((c, cIdx) => { 
+                const cd=document.createElement('div'); 
+                // Fog of War: Hide hits (idx >= 2) during play
+                let isHidden = (d.phase === 'playing' && cIdx >= 2); 
+                if(isHidden) { cd.className='bj-card mini hidden'; cd.innerHTML=`<div></div><div></div>`; } 
+                else { cd.className='bj-card mini'; cd.innerHTML=`<div>${c.v}</div><div>${c.s}</div>`; cd.style.color=['♥','♦'].includes(c.s)?'red':'inherit'; } 
+                hd.appendChild(cd); 
+            }); 
+            sideDiv.appendChild(div); 
+        }); 
+        
+        // --- 3. RENDER TOP HAND ---
+        const dDiv=document.getElementById('bjDealerHand'); 
+        if(topSeat) {
+            // Only update DOM if count changed or phase changed (to avoid flicker)
+            // Ideally we wipe and redraw for simplicity in this MVP
+            dDiv.innerHTML=''; 
+            topSeat.hand.forEach((c, cIdx) => { 
+                 let isHidden = false;
+                 // If Top is Host, maybe card 2 is hidden? No, in PVP all players see 2 cards up usually.
+                 // Let's apply same Fog of War: Hide hits.
+                 if(d.phase === 'playing' && cIdx >= 2) isHidden = true; 
+                 if(d.phase === 'resolution') isHidden = false; 
+                 renderNewCard(c,'bjDealerHand', isHidden); 
+            });
+            setText('bjDealerScore', (d.phase==='resolution') ? calcHand(topSeat.hand) : '');
+        } else {
+            dDiv.innerHTML = '';
+            setText('bjDealerScore', '');
+        }
+
+        // --- 4. RENDER MY HAND ---
+        const me=d.seats[bjMySeatIdx]; 
+        if(me){ 
+            const pDiv=document.getElementById('bjPlayerHand'); 
+            if(pDiv.childElementCount!==me.hand.length){ pDiv.innerHTML=''; me.hand.forEach(c=>renderNewCard(c,'bjPlayerHand')); renderScore('bjPlayerScore',me.hand); } 
+        } 
+        
+        // --- 5. GAME STATE ---
+        if(d.phase==='betting'){if(!me.ready){document.getElementById('bjBetBtns').style.visibility='visible';setText('bjMessage', "BET & LOCK IN");deckLabel.innerText="LOCK";}else{document.getElementById('bjBetBtns').style.visibility='hidden';setText('bjMessage', "WAITING...");deckLabel.innerText="WAIT";if(bjMySeatIdx===0&&d.seats.every((s,i)=>i===0||!s||s.ready)){setText('bjMessage', "ALL READY");deckLabel.innerText="DEAL";}}} 
+        else if(d.phase==='playing'){document.getElementById('bjBetBtns').style.visibility='hidden';deckLabel.innerText="PLAY";if(d.activeSeat===bjMySeatIdx){document.getElementById('bjGameBtns').style.display='flex';setText('bjMessage', "YOUR TURN");}else{document.getElementById('bjGameBtns').style.display='none';setText('bjMessage', "OPPONENT TURN");}} 
+        else if(d.phase==='resolution'){document.getElementById('bjGameBtns').style.display='none';document.getElementById('bjBetBtns').style.visibility='hidden';if(bjLastPhase!=='resolution'){if(me.status==='win'){myMoney+=d.pot;updBJ();}else if(me.status==='push'){myMoney+=me.bet;updBJ();}bjCurrentBet=0;if(myMoney<=0)setTimeout(()=>window.showGameOver('blackjack',0),2000);}let msg="ROUND OVER";if(me.status==='win')msg=`WON $${d.pot}!`;else if(me.status==='push')msg="PUSH";else msg="LOST";setText('bjMessage', msg);deckLabel.innerText=bjMySeatIdx===0?"NEXT":"WAIT";} bjLastPhase=d.phase; 
+    }
+    
+    document.getElementById('bjStartBtn').onclick=async()=>{await updateDoc(getBJRef(bjRoomCode),{phase:'betting'});};
+    document.getElementById('bjDeck').onclick=async()=>{ if(currentGame!=='blackjack') return; if(bjMode==='solo'){ if(document.getElementById('bjMessage').innerText.includes('PLACE')) { startSoloRound(); } return; } const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data(); if(d.phase==='betting'){ if(!d.seats[bjMySeatIdx].ready){ if(bjCurrentBet<=0) return beep(200,'sawtooth',0.5); myMoney-=bjCurrentBet;updBJ(); const ns=[...d.seats];ns[bjMySeatIdx].bet=bjCurrentBet;ns[bjMySeatIdx].ready=true;ns[bjMySeatIdx].status='playing'; await updateDoc(ref,{seats:ns,pot:d.pot+bjCurrentBet}); } else if(bjMySeatIdx===0){ if(d.seats.some((s,i)=>i>0&&s&&!s.ready)) return; const deck=createDeck();const ns=[...d.seats]; ns.forEach(s=>{if(s){s.hand=[deck.pop(),deck.pop()];if(s.uid===myUid)s.hand[1].h=true;}}); await updateDoc(ref,{seats:ns,deck:deck,phase:'playing',activeSeat:0}); } } else if(d.phase==='resolution'&&bjMySeatIdx===0){ const ns=d.seats.map(s=>{if(!s)return null;return{...s,hand:[],bet:0,ready:false,status:'waiting'};}); await updateDoc(ref,{seats:ns,pot:0,phase:'betting'}); } };
+    document.getElementById('bjHit').onclick=()=>{ if (bjMode === 'solo') soloHit(); else doNetAct('hit'); };
+    document.getElementById('bjStand').onclick=()=>{ if (bjMode === 'solo') soloStand(); else doNetAct('stand'); };
+    async function doNetAct(act){ const ref=getBJRef(bjRoomCode),snap=await getDoc(ref),d=snap.data(); if(d.activeSeat!==bjMySeatIdx)return; const deck=[...d.deck],ns=[...d.seats],me=ns[bjMySeatIdx]; if(act==='hit'){ me.hand.push(deck.pop()); if(calcHand(me.hand)>21){ me.status='bust'; passTurn(ref,d.activeSeat,ns,deck); } else { await updateDoc(ref,{seats:ns,deck:deck}); } } else { me.status='stand'; passTurn(ref,d.activeSeat,ns,deck); } }
+    async function passTurn(ref,curr,seats,deck){let next=curr+1;while(next<4&&seats[next]===null)next++;if(next>=4){seats[0].hand[1].h=false;let best=0;seats.forEach(s=>{if(s&&s.status!=='bust'){const sc=calcHand(s.hand);if(sc>best)best=sc;}});seats.forEach(s=>{if(!s||s.status==='bust')return;const sc=calcHand(s.hand);s.status=(sc===best&&best>0)?'win':'lose';});await updateDoc(ref,{seats:seats,deck:deck,phase:'resolution',activeSeat:-1});}else await updateDoc(ref,{seats:seats,deck:deck,activeSeat:next});}
+    document.querySelectorAll('.bj-chip').forEach(c=>{c.onclick=()=>{if(currentGame!=='blackjack')return;const v=parseInt(c.dataset.v)||0;if(c.id==='bjClear')bjCurrentBet=0;else if(c.id==='bjAllIn')bjCurrentBet=myMoney;else if(myMoney>=bjCurrentBet+v)bjCurrentBet+=v;updBJ();}});
+
+    /* TTT */
+    let tttUnsub; function getTTTRef(c){return doc(db,'gooner_terminal_rooms',c);}
+    document.getElementById('btnCreateTTT').onclick=async()=>{if(!myUid)return alert("Offline");const c=Math.floor(1000+Math.random()*9000).toString();await setDoc(getTTTRef(c),{board:Array(9).fill(null),turn:'X',players:{X:myUid,O:null},names:{X:myName,O:"..."},status:'lobby'});joinTTT(c,'X');};
+    document.getElementById('btnJoinTTT').onclick=async()=>{const c=document.getElementById('joinTTTCode').value,ref=getTTTRef(c),s=await getDoc(ref);if(!s.exists())return alert("404");if(!s.data().players.O){await updateDoc(ref,{['players.O']:myUid,['names.O']:myName});joinTTT(c,'O');}};
+    function joinTTT(c,side){document.getElementById('tttMenu').style.display='none';document.getElementById('tttLobby').style.display='flex';setText('tttRoomId', c);if(tttUnsub)tttUnsub();tttUnsub=onSnapshot(getTTTRef(c),d=>{if(!d.exists())return;const data=d.data();if(data.status==='lobby'){document.getElementById('tttPList').innerHTML=`<div>X: ${data.names.X}</div><div>O: ${data.names.O}</div>`;if(side==='X'&&data.players.O){document.getElementById('tttStartBtn').style.display='block';setText('tttWait', "READY");}else{document.getElementById('tttStartBtn').style.display='none';setText('tttWait', "WAITING...");}}else{document.getElementById('tttLobby').style.display='none';document.getElementById('tttGame').style.display='block';const cells=document.getElementById('tttGrid').children;data.board.forEach((v,i)=>{cells[i].innerText=v||'';cells[i].style.color=v==='X'?'red':'#fff';});setText('tttStatus', data.status==='finished'?"GAME OVER":(data.turn===side?"YOUR TURN":"OPPONENT TURN"));if(data.status==='finished'&&side==='X'){document.getElementById('tttReplay').style.display='block';document.getElementById('tttReplay').onclick=async()=>{await updateDoc(getTTTRef(c),{board:Array(9).fill(null),turn:'X',status:'playing'});};}else document.getElementById('tttReplay').style.display='none';}});}
+    document.getElementById('tttStartBtn').onclick=async()=>{await updateDoc(getTTTRef(document.getElementById('tttRoomId').innerText),{status:'playing'});};
+    function cleanupTTT() { if(tttUnsub) tttUnsub(); tttUnsub=null; }
+    document.getElementById('tttGrid').onclick=async(e)=>{const i=e.target.dataset.i;if(!i)return;await runTransaction(db,async(t)=>{const r=getTTTRef(document.getElementById('tttRoomId').innerText),s=await t.get(r);if(!s.exists())return;const d=s.data();if(d.turn!==tttUnsub.side||d.board[i]||d.status!=='playing')return;const nb=[...d.board];nb[i]=tttUnsub.side;let w=null;[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]].forEach(k=>{if(nb[k[0]]&&nb[k[0]]===nb[k[1]]&&nb[k[0]]===nb[k[2]])w=nb[k[0]];});t.update(r,{board:nb,turn:tttUnsub.side==='X'?'O':'X',status:(w||!nb.includes(null))?'finished':'playing'});});};
+
+    /* UTILS */
+    function createDeck(){let d=[];for(let s of suits)for(let v of values)d.push({s,v,h:false});return d.sort(()=>Math.random()-.5);}
+    function calcHand(h){let s=0,a=0;h.forEach(c=>{if(c.h)return;if(['J','Q','K'].includes(c.v))s+=10;else if(c.v==='A'){s+=11;a++;}else s+=parseInt(c.v);});while(s>21&&a>0){s-=10;a--;}return s;}
+    function renderNewCard(c, elId, hidden=false){ const d=document.createElement('div'); d.className='bj-card' + (hidden ? ' hidden' : ''); d.innerHTML=`<div>${c.v}</div><div>${c.s}</div><div>${c.v}</div>`; d.style.color=['♥','♦'].includes(c.s)?'red':'inherit'; document.getElementById(elId).appendChild(d); }
+    function renderHand(hand, elId) { document.getElementById(elId).innerHTML = ''; hand.forEach(c => renderNewCard(c, elId, c.h)); }
+    function renderScore(id,h){setText(id, calcHand(h));}
+    function quickRestartListener(e) { if (e.key === ' ' || e.key === 'Enter') { document.getElementById('goRestart').click(); window.removeEventListener('keydown', quickRestartListener); } }
+    
+    // RAGE QUIT CHECK
+    let lossStreak = 0;
+    function checkLossStreak() { lossStreak++; if(lossStreak===3) unlockAchievement('rage_quit'); }
+
+    window.showGameOver=(g,s)=>{ stopAllGames(); beep(150, 'sawtooth', 0.5); setText('gameOverText', 'SYSTEM_FAILURE: SCORE_' + s); document.getElementById('modalGameOver').classList.add('active'); window.addEventListener('keydown', quickRestartListener); };
+    document.getElementById('goRestart').onclick=()=>{ document.getElementById('modalGameOver').classList.remove('active'); window.removeEventListener('keydown', quickRestartListener); if(currentGame==='snake')initSnake(); if(currentGame==='pong')initPong(); if(currentGame==='runner')initRunner(); if(currentGame==='geo')initGeometry(); if(currentGame==='flappy')initFlappy(); if(currentGame==='blackjack'){myMoney=1000;updBJ();initBJ();document.getElementById('overlayBlackjack').classList.add('active');} };
+    document.getElementById('goExit').onclick=()=>{ window.closeOverlays(); document.getElementById('modalGameOver').classList.remove('active'); };
+</script>
 </body>
 </html>
