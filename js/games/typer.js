@@ -1,0 +1,120 @@
+import { setText, beep } from '../utils.js';
+
+let typeText = ""; 
+let typeIndex = 0; 
+let typeStartTime = null; 
+let typeCorrectChars = 0;
+let typeInterval;
+const commonWords = ["the","be","to","of","and","a","in","that","have","I","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us"];
+
+export function initTypeGame(System) {
+    typeIndex = 0; 
+    typeStartTime = null; 
+    typeCorrectChars = 0; 
+    if(typeInterval) clearInterval(typeInterval);
+    
+    setText('typeTimer', "0"); 
+    setText('typeWPM', "0");
+    
+    const input = document.getElementById('typeHiddenInput');
+    input.value = ""; 
+    input.focus();
+    
+    typeText = ""; 
+    for(let i=0; i<30; i++) typeText += commonWords[Math.floor(Math.random() * commonWords.length)] + " "; 
+    typeText = typeText.trim(); 
+    
+    renderTypeDisplay();
+    
+    // Auto-bot cheat logic
+    if(System.inventory.includes('item_autotype')) {
+        setTimeout(() => runAutoBot(System), 1000);
+    }
+}
+
+export function stopTyper() {
+    clearInterval(typeInterval);
+}
+
+export function handleTypeInput(e, System) {
+    // Timer Start
+    if(!typeStartTime) { 
+        typeStartTime = Date.now(); 
+        typeInterval = setInterval(() => { 
+            const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; 
+            const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); 
+            setText('typeTimer', Math.round(elapsedMin * 60)); 
+            if(wpm > 0 && wpm < 300) setText('typeWPM', wpm); 
+        }, 100); 
+    }
+
+    const inputVal = e.target.value; 
+    const charTyped = inputVal.charAt(inputVal.length - 1); 
+    const letters = document.querySelectorAll('.letter'); 
+
+    if (e.inputType === "deleteContentBackward") { 
+        if(typeIndex > 0) { 
+            typeIndex--; 
+            letters[typeIndex].classList.remove('correct', 'incorrect'); 
+            if(letters[typeIndex].innerText === typeText[typeIndex]) typeCorrectChars--; 
+        } 
+    } else { 
+        if(typeIndex < typeText.length) { 
+            if(charTyped === typeText[typeIndex]) { 
+                letters[typeIndex].classList.add('correct'); 
+                typeCorrectChars++; 
+            } else { 
+                letters[typeIndex].classList.add('incorrect'); 
+            } 
+            typeIndex++; 
+        } 
+    } 
+    
+    document.querySelectorAll('.letter').forEach(l => l.classList.remove('active')); 
+    if(typeIndex < letters.length) letters[typeIndex].classList.add('active'); 
+    
+    if(typeIndex >= typeText.length) { 
+        finish(System);
+    }
+}
+
+function renderTypeDisplay() { 
+    const display = document.getElementById('typeTextBox'); 
+    display.innerHTML = ""; 
+    typeText.split('').forEach((char, idx) => { 
+        const span = document.createElement('span'); 
+        span.innerText = char; 
+        span.className = 'letter'; 
+        if (idx === typeIndex) span.classList.add('active'); 
+        display.appendChild(span); 
+    }); 
+}
+
+function finish(System) {
+    clearInterval(typeInterval); 
+    const elapsedMin = (Date.now() - typeStartTime) / 1000 / 60; 
+    const wpm = Math.round((typeCorrectChars / 5) / elapsedMin); 
+    
+    if(wpm > (System.stats.wpm || 0)) { 
+        System.stats.wpm = wpm; 
+        System.saveStats(); 
+        System.saveGlobalScore('type', wpm); 
+    } 
+    
+    if(wpm >= 80) System.unlockAchievement('type_god'); 
+    alert("FINISHED! WPM: " + wpm); 
+    initTypeGame(System);
+}
+
+function runAutoBot(System) {
+    const letters = document.querySelectorAll('.letter');
+    if(typeIndex < typeText.length) {
+         letters[typeIndex].classList.add('correct');
+         typeIndex++; typeCorrectChars++;
+         document.querySelectorAll('.letter').forEach(l => l.classList.remove('active'));
+         if(typeIndex < letters.length) letters[typeIndex].classList.add('active');
+         
+         if(typeIndex >= typeText.length) finish(System);
+         else setTimeout(() => runAutoBot(System), 50); // Speed of bot
+    }
+}
