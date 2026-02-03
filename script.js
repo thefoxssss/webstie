@@ -8,7 +8,6 @@ import { initRunner } from "./games/runner.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
-import { initValorant } from "./games/valorant.js";
 
 window.openGame = openGame;
 window.closeOverlays = closeOverlays;
@@ -36,7 +35,6 @@ window.launchGame = (game) => {
   if (game === "blackjack") initBJ();
   if (game === "ttt") initTTT();
   if (game === "hangman") initHangman();
-  if (game === "valorant") initValorant();
   if (game === "flappy") initFlappy();
   unlockAchievement("noob");
 };
