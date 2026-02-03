@@ -10,6 +10,9 @@ let valStatus = "menu";
 let valAnim = null;
 let valLastSent = 0;
 let valOverlayOpen = false;
+let valBuyOpen = true;
+let valResizeHandler = null;
+let valKeyHandler = null;
 let valCredits = 2400;
 let valAgent = "SCOUT";
 let valWeapon = "CLASSIC";
@@ -97,13 +100,47 @@ function updateValorantHud() {
   }
 }
 
+function updateBuyMenuVisibility() {
+  const buyMenu = document.getElementById("valorantBuyMenu");
+  if (!buyMenu) return;
+  buyMenu.classList.toggle("hidden", !valBuyOpen);
+}
+
+function resizeValorantCanvas() {
+  const canvas = document.getElementById("valorantCanvas");
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
 export function initValorant() {
   state.currentGame = "valorant";
   valOverlayOpen = true;
+  valBuyOpen = true;
   document.getElementById("valorantMenu").style.display = "flex";
   document.getElementById("valorantLobby").style.display = "none";
   document.getElementById("valorantGame").style.display = "none";
   setText("valorantStatus", "LOADING ARENA...");
+  updateBuyMenuVisibility();
+  if (!valResizeHandler) {
+    valResizeHandler = () => resizeValorantCanvas();
+    window.addEventListener("resize", valResizeHandler);
+  }
+  if (!valKeyHandler) {
+    valKeyHandler = (e) => {
+      if (!valOverlayOpen) return;
+      if (e.key && e.key.toLowerCase() === "b") {
+        valBuyOpen = !valBuyOpen;
+        updateBuyMenuVisibility();
+      }
+    };
+    document.addEventListener("keydown", valKeyHandler);
+  }
+  resizeValorantCanvas();
   renderBuyMenu();
 }
 
@@ -176,6 +213,8 @@ function handleValorantUpdate(data) {
   setText("valorantStatus", "ARENA LIVE");
   renderBuyMenu();
   updateValorantHud();
+  updateBuyMenuVisibility();
+  resizeValorantCanvas();
   if (!valAnim) startValorantLoop();
 }
 
@@ -205,6 +244,11 @@ document.getElementById("valorantSpikeAction").onclick = async () => {
     });
     showToast("SPIKE DEFUSED", "🛡️", "SITE CLEARED");
   }
+};
+
+document.getElementById("valorantBuyToggle").onclick = () => {
+  valBuyOpen = !valBuyOpen;
+  updateBuyMenuVisibility();
 };
 
 function renderBuyMenu() {
@@ -316,8 +360,8 @@ function drawArena(ctx, me) {
     const relX = dx * Math.cos(-me.rot) - dy * Math.sin(-me.rot);
     const relZ = dx * Math.sin(-me.rot) + dy * Math.cos(-me.rot);
     if (relZ <= 5) return;
-    const size = Math.min(60, 900 / relZ);
-    const screenX = w / 2 + (relX / relZ) * 220;
+    const size = Math.min(70, 1100 / relZ);
+    const screenX = w / 2 + (relX / relZ) * 240;
     const screenY = horizon + (14000 / relZ) - size;
     const isPlanted = valSpike.plantedSite === site.id;
     ctx.fillStyle = isPlanted ? "rgba(255,0,0,0.75)" : "rgba(0,255,0,0.6)";
@@ -334,8 +378,8 @@ function drawArena(ctx, me) {
     const relX = dx * Math.cos(-me.rot) - dy * Math.sin(-me.rot);
     const relZ = dx * Math.sin(-me.rot) + dy * Math.cos(-me.rot);
     if (relZ <= 5) return;
-    const size = Math.min(80, 1200 / relZ);
-    const screenX = w / 2 + (relX / relZ) * 220;
+    const size = Math.min(90, 1300 / relZ);
+    const screenX = w / 2 + (relX / relZ) * 240;
     const screenY = horizon + (14000 / relZ) - size;
     const tint = p.team === "TERRORIST" ? "rgba(255,80,80,0.8)" : "rgba(80,160,255,0.8)";
     ctx.fillStyle = tint;
@@ -388,6 +432,11 @@ registerGameStop(() => {
   valStatus = "menu";
   if (valAnim) cancelAnimationFrame(valAnim);
   valAnim = null;
+  if (valResizeHandler) window.removeEventListener("resize", valResizeHandler);
+  valResizeHandler = null;
+  if (valKeyHandler) document.removeEventListener("keydown", valKeyHandler);
+  valKeyHandler = null;
+  valBuyOpen = true;
   valCredits = 2400;
   valAgent = "SCOUT";
   valWeapon = "CLASSIC";

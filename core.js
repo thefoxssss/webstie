@@ -19,6 +19,7 @@ let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
 const matrixAccentStoreKey = "goonerMatrixAccent";
+const rgbEnabledStoreKey = "goonerRgbEnabled";
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const gameStops = [];
@@ -272,7 +273,10 @@ function loadProfile(data) {
   if (myInventory.includes("item_matrix")) {
     setMatrixMode(true);
   }
-  if (myInventory.includes("item_rainbow")) document.body.classList.add("rainbow-mode");
+  if (myInventory.includes("item_rainbow")) {
+    const storedRgb = localStorage.getItem(rgbEnabledStoreKey);
+    setRgbMode(storedRgb !== "0");
+  }
   if (myInventory.includes("item_flappy")) document.getElementById("btnFlappy").style.display = "block";
   const lastLogin = data.lastLogin || 0;
   const now = Date.now();
@@ -282,6 +286,7 @@ function loadProfile(data) {
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
+  updateRgbToggle();
 }
 
 function updateUI() {
@@ -306,6 +311,7 @@ function updateUI() {
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
+  updateRgbToggle();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -405,7 +411,7 @@ export function buyItem(id) {
     myMoney -= item.cost;
     if (item.type !== "consumable") myInventory.push(id);
     else myInventory.push(id);
-    if (id === "item_rainbow") document.body.classList.add("rainbow-mode");
+    if (id === "item_rainbow") setRgbMode(true);
     if (id === "item_flappy") {
       document.getElementById("btnFlappy").style.display = "block";
       showToast("NEW GAME UNLOCKED", "🎮");
@@ -490,12 +496,28 @@ function setMatrixMode(enabled) {
   canvas.classList.toggle("active", enabled);
   updateMatrixToggle();
 }
+
+function setRgbMode(enabled) {
+  document.body.classList.toggle("rainbow-mode", enabled);
+  localStorage.setItem(rgbEnabledStoreKey, enabled ? "1" : "0");
+  updateRgbToggle();
+}
+
 function updateMatrixToggle() {
   const toggle = document.getElementById("matrixToggle");
   const canvas = document.getElementById("matrixCanvas");
   if (!toggle || !canvas) return;
   const hasAccess = myInventory.includes("item_matrix");
   const enabled = canvas.classList.contains("active");
+  toggle.disabled = !hasAccess;
+  toggle.innerText = hasAccess ? (enabled ? "ON" : "OFF") : "LOCKED";
+}
+
+function updateRgbToggle() {
+  const toggle = document.getElementById("rgbToggle");
+  if (!toggle) return;
+  const hasAccess = myInventory.includes("item_rainbow");
+  const enabled = document.body.classList.contains("rainbow-mode");
   toggle.disabled = !hasAccess;
   toggle.innerText = hasAccess ? (enabled ? "ON" : "OFF") : "LOCKED";
 }
@@ -507,6 +529,14 @@ document.getElementById("matrixToggle").onclick = () => {
   }
   const canvas = document.getElementById("matrixCanvas");
   setMatrixMode(!canvas.classList.contains("active"));
+};
+document.getElementById("rgbToggle").onclick = () => {
+  if (!myInventory.includes("item_rainbow")) {
+    showToast("RGB LOCKED", "🔒", "Buy RGB Mode in the shop.");
+    updateRgbToggle();
+    return;
+  }
+  setRgbMode(!document.body.classList.contains("rainbow-mode"));
 };
 document.getElementById("themeColor").oninput = (e) => {
   const h = e.target.value;

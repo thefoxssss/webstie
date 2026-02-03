@@ -135,6 +135,7 @@
         <h2 style="text-align:center; border-bottom:1px solid var(--accent); padding-bottom:10px; margin-bottom:20px;">CONFIG</h2>
         <div class="config-row"><span>THEME</span><input type="color" id="themeColor" value="#ff0606"></div>
         <div class="config-row"><span>MATRIX</span><button class="menu-btn" id="matrixToggle">OFF</button></div>
+        <div class="config-row"><span>RGB MODE</span><button class="menu-btn" id="rgbToggle">OFF</button></div>
         <div class="config-row"><span>SCANLINES</span><input type="range" id="scanSlider" min="0" max="100" value="50"></div>
         <div class="config-row"><span>FLICKER</span><button class="menu-btn" id="flickerToggle">ON</button></div>
         <div class="config-row"><span>VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50"></div>
@@ -284,42 +285,49 @@
 </div>
 
 <div class="overlay" id="overlayValorant">
-    <h1>VALORANT ARENA (BETA)</h1>
-    <div id="valorantMenu" class="menu-box">
+    <div class="valorant-shell">
+        <h1>VALORANT ARENA (BETA)</h1>
+        <div id="valorantMenu" class="menu-box">
         <button class="term-btn" id="btnCreateValorant">CREATE ROOM</button>
         <p>- OR -</p>
         <input type="text" id="joinValorantCode" class="term-input" placeholder="CODE" maxlength="4">
         <button class="term-btn" id="btnJoinValorant">JOIN ROOM</button>
-    </div>
-    <div id="valorantLobby" class="menu-box" style="display:none;">
+        </div>
+        <div id="valorantLobby" class="menu-box" style="display:none;">
         <h2>ROOM: <span id="valorantRoomId">????</span></h2>
         <div id="valorantPList" style="text-align:left; margin:20px 0;"></div>
         <button class="term-btn" id="valorantStartBtn" style="display:none; color:#0f0;">START MATCH</button>
         <div id="valorantWait" style="font-size:10px;">WAITING...</div>
-    </div>
-    <div id="valorantGame" style="display:none; text-align:center;">
-        <div class="valorant-status" id="valorantStatus">LOADING ARENA...</div>
-        <div class="valorant-hud">
-            <div class="valorant-money">CREDITS: $<span id="valorantCredits">0</span></div>
-            <div class="valorant-loadout">AGENT: <span id="valorantAgent">SCOUT</span> • WEAPON: <span id="valorantWeapon">CLASSIC</span></div>
-            <div class="valorant-team">TEAM: <span id="valorantTeam">--</span></div>
-            <div class="valorant-objective">SPIKE: <span id="valorantSpike">READY</span> • SITE: <span id="valorantSiteStatus">--</span></div>
         </div>
-        <button class="term-btn valorant-spike-action" id="valorantSpikeAction" style="display:none;">PLANT SPIKE</button>
-        <div class="valorant-buy-menu" id="valorantBuyMenu">
-            <div class="valorant-buy-section">
-                <div class="hangman-section-title">AGENTS</div>
-                <div class="valorant-grid" id="valorantAgentList"></div>
+        <div id="valorantGame" style="display:none;">
+            <div class="valorant-status" id="valorantStatus">LOADING ARENA...</div>
+            <div class="valorant-hud">
+                <div class="valorant-money">CREDITS: $<span id="valorantCredits">0</span></div>
+                <div class="valorant-loadout">AGENT: <span id="valorantAgent">SCOUT</span> • WEAPON: <span id="valorantWeapon">CLASSIC</span></div>
+                <div class="valorant-team">TEAM: <span id="valorantTeam">--</span></div>
+                <div class="valorant-objective">SPIKE: <span id="valorantSpike">READY</span> • SITE: <span id="valorantSiteStatus">--</span></div>
             </div>
-            <div class="valorant-buy-section">
-                <div class="hangman-section-title">WEAPONS</div>
-                <div class="valorant-grid" id="valorantWeaponList"></div>
+            <div class="valorant-stage">
+                <canvas id="valorantCanvas" width="900" height="500"></canvas>
+                <div class="valorant-actions">
+                    <button class="term-btn valorant-spike-action" id="valorantSpikeAction" style="display:none;">PLANT SPIKE</button>
+                    <button class="term-btn valorant-buy-toggle" id="valorantBuyToggle">BUY MENU (B)</button>
+                </div>
+                <div class="valorant-buy-menu" id="valorantBuyMenu">
+                    <div class="valorant-buy-section">
+                        <div class="hangman-section-title">AGENTS</div>
+                        <div class="valorant-grid" id="valorantAgentList"></div>
+                    </div>
+                    <div class="valorant-buy-section">
+                        <div class="hangman-section-title">WEAPONS</div>
+                        <div class="valorant-grid" id="valorantWeaponList"></div>
+                    </div>
+                </div>
+                <div class="valorant-hint">W/S MOVE • A/D TURN • ARROWS AIM • B BUY MENU • MULTIPLAYER POSITIONS SHOWN</div>
             </div>
         </div>
-        <canvas id="valorantCanvas" width="900" height="500"></canvas>
-        <div class="valorant-hint">W/S MOVE • A/D TURN • ARROWS AIM • MULTIPLAYER POSITIONS SHOWN</div>
+        <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
-    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
 <div class="overlay" id="overlayBlackjack">
