@@ -8,6 +8,7 @@ import { initRunner } from "./games/runner.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
+import { initValorant } from "./games/valorant.js";
 
 window.openGame = openGame;
 window.closeOverlays = closeOverlays;
@@ -18,7 +19,13 @@ window.setPongDiff = setPongDiff;
 
 window.launchGame = (game) => {
   window.closeOverlays();
-  const overlayId = "overlay" + (game === "ttt" || game === "geo" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
+  const overlayId =
+    "overlay" +
+    (game === "ttt"
+      ? "TTT"
+      : game === "geo"
+        ? "Geo"
+        : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   if (game === "pong") initPong();
@@ -29,6 +36,7 @@ window.launchGame = (game) => {
   if (game === "blackjack") initBJ();
   if (game === "ttt") initTTT();
   if (game === "hangman") initHangman();
+  if (game === "valorant") initValorant();
   if (game === "flappy") initFlappy();
   unlockAchievement("noob");
 };

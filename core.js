@@ -18,6 +18,7 @@ let globalVol = 0.5;
 let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
+const matrixAccentStoreKey = "goonerMatrixAccent";
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const gameStops = [];
@@ -136,6 +137,7 @@ const SHOP_ITEMS = [
   { id: "item_xray", name: "X-RAY VISOR", cost: 5000, type: "perk", desc: "See Dealer Card" },
   { id: "item_cardcount", name: "CARD COUNTER", cost: 3000, type: "perk", desc: "BJ Count Assist" },
   { id: "item_double", name: "SNAKE OIL", cost: 3000, type: "perk", desc: "Double Snake Points" },
+  { id: "item_matrix", name: "MATRIX MODE", cost: 6000, type: "visual", desc: "Toggle Matrix background" },
   { id: "item_rainbow", name: "RGB MODE", cost: 10000, type: "visual", desc: "Color Cycle" },
   { id: "item_autotype", name: "AUTO-TYPER", cost: 7500, type: "perk", desc: "Bot plays Typer" },
   { id: "item_flappy", name: "GAME: FLAPPY", cost: 10000, type: "visual", desc: "Unlock Flappy Goon" }
@@ -268,8 +270,7 @@ function loadProfile(data) {
   localStorage.setItem("goonerUser", myName);
   localStorage.setItem("goonerPin", data.pin);
   if (myInventory.includes("item_matrix")) {
-    document.documentElement.style.setProperty("--accent", "#00ff00");
-    document.getElementById("matrixCanvas").classList.add("active");
+    setMatrixMode(true);
   }
   if (myInventory.includes("item_rainbow")) document.body.classList.add("rainbow-mode");
   if (myInventory.includes("item_flappy")) document.getElementById("btnFlappy").style.display = "block";
@@ -280,6 +281,7 @@ function loadProfile(data) {
     showToast("DAILY BONUS: $100", "💰");
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
+  updateMatrixToggle();
 }
 
 function updateUI() {
@@ -303,6 +305,7 @@ function updateUI() {
   setText("profRank", rank);
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
+  updateMatrixToggle();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -410,9 +413,9 @@ export function buyItem(id) {
     if (myInventory.filter((i) => i !== "item_shield").length >= 3) unlockAchievement("shopaholic");
     if (id === "item_matrix") {
       unlockAchievement("neo");
-      document.documentElement.style.setProperty("--accent", "#00ff00");
-      document.getElementById("matrixCanvas").classList.add("active");
+      setMatrixMode(true);
     }
+    updateMatrixToggle();
     logTransaction(`BOUGHT: ${item.name}`, -item.cost);
     saveStats();
     renderShop();
@@ -463,14 +466,54 @@ document.getElementById("menuToggle").onclick = (e) => {
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#menuToggle")) document.getElementById("menuDropdown").classList.remove("show");
 });
-document.getElementById("themeColor").oninput = (e) => {
-  const h = e.target.value;
-  document.documentElement.style.setProperty("--accent", h);
-  const r = parseInt(h.slice(1, 3), 16);
-  const g = parseInt(h.slice(3, 5), 16);
-  const b = parseInt(h.slice(5, 7), 16);
+function setAccentColor(hex) {
+  if (!hex) return;
+  document.documentElement.style.setProperty("--accent", hex);
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
   document.documentElement.style.setProperty("--accent-dim", `rgba(${r},${g},${b},0.2)`);
   document.documentElement.style.setProperty("--accent-glow", `rgba(${r},${g},${b},0.6)`);
+}
+
+function setMatrixMode(enabled) {
+  const canvas = document.getElementById("matrixCanvas");
+  if (!canvas) return;
+  if (enabled) {
+    const currentAccent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+    if (currentAccent) localStorage.setItem(matrixAccentStoreKey, currentAccent);
+    setAccentColor("#00ff00");
+  } else {
+    const storedAccent = localStorage.getItem(matrixAccentStoreKey);
+    if (storedAccent) setAccentColor(storedAccent);
+  }
+  canvas.classList.toggle("active", enabled);
+  updateMatrixToggle();
+}
+function updateMatrixToggle() {
+  const toggle = document.getElementById("matrixToggle");
+  const canvas = document.getElementById("matrixCanvas");
+  if (!toggle || !canvas) return;
+  const hasAccess = myInventory.includes("item_matrix");
+  const enabled = canvas.classList.contains("active");
+  toggle.disabled = !hasAccess;
+  toggle.innerText = hasAccess ? (enabled ? "ON" : "OFF") : "LOCKED";
+}
+document.getElementById("matrixToggle").onclick = () => {
+  if (!myInventory.includes("item_matrix")) {
+    showToast("MATRIX LOCKED", "🔒", "Buy Matrix Mode in the shop.");
+    updateMatrixToggle();
+    return;
+  }
+  const canvas = document.getElementById("matrixCanvas");
+  setMatrixMode(!canvas.classList.contains("active"));
+};
+document.getElementById("themeColor").oninput = (e) => {
+  const h = e.target.value;
+  localStorage.setItem(matrixAccentStoreKey, h);
+  if (!document.getElementById("matrixCanvas").classList.contains("active")) {
+    setAccentColor(h);
+  }
 };
 document.getElementById("volSlider").oninput = (e) => {
   globalVol = e.target.value / 100;
@@ -498,8 +541,8 @@ document.addEventListener("keydown", (e) => {
 });
 function activateMatrixHack() {
   if (myName === "ANON") return alert("LOGIN FIRST");
-  document.documentElement.style.setProperty("--accent", "#00ff00");
-  document.getElementById("matrixCanvas").classList.add("active");
+  if (!myInventory.includes("item_matrix")) myInventory.push("item_matrix");
+  setMatrixMode(true);
   showToast("MATRIX MODE ACTIVATED", "🐇");
   myMoney += 1000;
   saveStats();
@@ -543,9 +586,9 @@ function initChat() {
     });
     list.scrollTop = list.scrollHeight;
   });
-  document.getElementById("chatInput").addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") {
-      const txt = e.target.value.trim();
+document.getElementById("chatInput").addEventListener("keydown", async (e) => {
+  if (e.key === "Enter") {
+    const txt = e.target.value.trim();
       if (txt.length > 0) {
         if (txt === "/clear") {
           document.getElementById("chatHistory").innerHTML = "";

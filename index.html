@@ -38,6 +38,7 @@
     <button onclick="window.launchGame('blackjack')" style="border-top:1px solid #444">BLACKJACK (PVP)</button>
     <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
     <button onclick="window.launchGame('hangman')">HANGMAN (PVP)</button>
+    <button onclick="window.launchGame('valorant')">VALORANT ARENA (BETA)</button>
     <button onclick="window.launchGame('flappy')" id="btnFlappy" style="display:none; color:gold;">FLAPPY GOON</button>
 </div>
 
@@ -148,7 +149,7 @@
     <div class="high-score-display">HIGH: <span id="hsGeo">0</span></div>
     <div style="margin-bottom:10px;" id="geoScore">SCORE: 0</div>
     <canvas id="geoCanvas" width="800" height="400"></canvas>
-    <div class="mobile-hint active" style="margin-top:20px;">CLICK OR SPACE TO JUMP</div>
+    <div class="mobile-hint active" style="margin-top:20px;">CLICK/TAP ANYWHERE OR SPACE TO JUMP</div>
     <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
 
@@ -220,20 +221,103 @@
     </div>
     <div id="hmLobby" class="menu-box" style="display:none;">
         <h2>ROOM: <span id="hmRoomId">????</span></h2>
+        <div class="hangman-lobby-info">ROUND: <span id="hmRoundInfo">1 / 5</span></div>
+        <div class="hangman-lobby-info">WORD PICKER: <span id="hmPickerName">...</span></div>
         <div id="hmPList" style="text-align:left; margin:20px 0;"></div>
+        <input type="text" id="hmLobbyWordInput" class="term-input" placeholder="PICK WORD" maxlength="16">
+        <button class="menu-btn" id="hmShowWordBtn" type="button">SHOW WORD</button>
         <button class="term-btn" id="hmStartBtn" style="display:none; color:#0f0; border:1px solid #0f0;">START GAME</button>
         <div id="hmWait" style="font-size:10px;">WAITING...</div>
     </div>
-    <div id="hmGame" class="menu-box" style="display:none;">
-        <div id="hmStatus" style="margin-bottom:10px;">DECRYPTING...</div>
-        <div class="hangman-word" id="hmMasked">_ _ _ _</div>
-        <div class="hangman-row">REMAINING: <span id="hmRemaining">6</span></div>
-        <div class="hangman-row">GUESSES:</div>
-        <div class="hangman-letters" id="hmGuesses"></div>
-        <div class="hangman-guess">
-            <input type="text" id="hmGuessInput" class="term-input" placeholder="LETTER" maxlength="1">
-            <button class="term-btn" id="hmGuessBtn">GUESS</button>
+    <div id="hmGame" class="hangman-room" style="display:none;">
+        <div id="hmRoundBanner" class="hangman-round-banner">ROUND 1</div>
+        <div class="hangman-sidebar">
+            <div class="hangman-panel">
+                <div class="hangman-section-title">OPERATORS</div>
+                <div id="hmPListLive"></div>
+                <div class="hangman-turn">TURN: <span id="hmTurnName">...</span></div>
+                <div class="hangman-row">REMAINING: <span id="hmRemaining">6</span></div>
+            </div>
+            <div class="hangman-panel">
+                <div class="hangman-section-title">SCORES</div>
+                <div id="hmScoreList" class="hangman-score-list"></div>
+            </div>
+            <div class="hangman-panel">
+                <div class="hangman-section-title">GUESSES</div>
+                <div class="hangman-letters" id="hmGuesses"></div>
+            </div>
         </div>
+        <div class="hangman-stage">
+            <div id="hmStatus" class="hangman-status">DECRYPTING...</div>
+            <div class="hangman-figure" id="hmFigure" data-stage="0">
+                <div class="hangman-gallows">
+                    <div class="hangman-base"></div>
+                    <div class="hangman-post"></div>
+                    <div class="hangman-beam"></div>
+                    <div class="hangman-rope"></div>
+                </div>
+                <div class="hangman-man">
+                    <div class="hangman-head"></div>
+                    <div class="hangman-body"></div>
+                    <div class="hangman-arm left"></div>
+                    <div class="hangman-arm right"></div>
+                    <div class="hangman-leg left"></div>
+                    <div class="hangman-leg right"></div>
+                </div>
+            </div>
+            <div class="hangman-word" id="hmMasked">_ _ _ _</div>
+        </div>
+        <div class="hangman-chat">
+            <div class="hangman-panel hangman-chat-log" id="hmChatLog"></div>
+            <div class="hangman-chat-input">
+                <input type="text" id="hmGuessInput" class="term-input" placeholder="GUESS A LETTER" maxlength="1">
+                <button class="term-btn" id="hmGuessBtn">SEND</button>
+            </div>
+            <div class="hangman-hint">GUESS ONE LETTER AT A TIME. TURN-BASED.</div>
+            <div class="hangman-panel hangman-summary" id="hmSummary" style="display:none;">
+                <div class="hangman-section-title">FINAL SCORES</div>
+                <div id="hmSummaryList"></div>
+            </div>
+        </div>
+    </div>
+    <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+</div>
+
+<div class="overlay" id="overlayValorant">
+    <h1>VALORANT ARENA (BETA)</h1>
+    <div id="valorantMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateValorant">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input type="text" id="joinValorantCode" class="term-input" placeholder="CODE" maxlength="4">
+        <button class="term-btn" id="btnJoinValorant">JOIN ROOM</button>
+    </div>
+    <div id="valorantLobby" class="menu-box" style="display:none;">
+        <h2>ROOM: <span id="valorantRoomId">????</span></h2>
+        <div id="valorantPList" style="text-align:left; margin:20px 0;"></div>
+        <button class="term-btn" id="valorantStartBtn" style="display:none; color:#0f0;">START MATCH</button>
+        <div id="valorantWait" style="font-size:10px;">WAITING...</div>
+    </div>
+    <div id="valorantGame" style="display:none; text-align:center;">
+        <div class="valorant-status" id="valorantStatus">LOADING ARENA...</div>
+        <div class="valorant-hud">
+            <div class="valorant-money">CREDITS: $<span id="valorantCredits">0</span></div>
+            <div class="valorant-loadout">AGENT: <span id="valorantAgent">SCOUT</span> • WEAPON: <span id="valorantWeapon">CLASSIC</span></div>
+            <div class="valorant-team">TEAM: <span id="valorantTeam">--</span></div>
+            <div class="valorant-objective">SPIKE: <span id="valorantSpike">READY</span> • SITE: <span id="valorantSiteStatus">--</span></div>
+        </div>
+        <button class="term-btn valorant-spike-action" id="valorantSpikeAction" style="display:none;">PLANT SPIKE</button>
+        <div class="valorant-buy-menu" id="valorantBuyMenu">
+            <div class="valorant-buy-section">
+                <div class="hangman-section-title">AGENTS</div>
+                <div class="valorant-grid" id="valorantAgentList"></div>
+            </div>
+            <div class="valorant-buy-section">
+                <div class="hangman-section-title">WEAPONS</div>
+                <div class="valorant-grid" id="valorantWeaponList"></div>
+            </div>
+        </div>
+        <canvas id="valorantCanvas" width="900" height="500"></canvas>
+        <div class="valorant-hint">W/S MOVE • A/D TURN • ARROWS AIM • MULTIPLAYER POSITIONS SHOWN</div>
     </div>
     <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
 </div>
