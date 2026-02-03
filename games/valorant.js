@@ -45,6 +45,8 @@ function defaultPlayer(uid, name, team) {
     uid,
     name,
     team,
+    agent: "SCOUT",
+    ready: false,
     x: isTerrorist ? -240 : 240,
     y: isTerrorist ? 80 : -80,
     rot: isTerrorist ? 0 : Math.PI
@@ -61,6 +63,41 @@ function pickTeam(players) {
 
 function getMyPlayer() {
   return valPlayers.find((p) => p.uid === state.myUid);
+}
+
+function syncLocalAgent() {
+  const me = getMyPlayer();
+  if (!me) return;
+  if (me.agent) valAgent = me.agent;
+}
+
+function updatePlayerState(updates) {
+  if (!valRoomCode) return;
+  const ref = getValRef(valRoomCode);
+  const players = valPlayers.map((p) => {
+    if (p.uid !== state.myUid) return p;
+    return { ...p, ...updates };
+  });
+  updateDoc(ref, { players }).catch(() => {});
+}
+
+function renderLobbyAgents() {
+  const list = document.getElementById("valorantLobbyAgents");
+  if (!list) return;
+  list.innerHTML = "";
+  AGENTS.forEach((agent) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    const me = getMyPlayer();
+    const selected = me?.agent === agent;
+    card.className = `term-btn valorant-agent-pick${selected ? " selected" : ""}`;
+    card.textContent = agent;
+    card.onclick = () => {
+      updatePlayerState({ agent, ready: false });
+      renderLobbyAgents();
+    };
+    list.appendChild(card);
+  });
 }
 
 function getNearbySite(me) {
@@ -196,9 +233,20 @@ function handleValorantUpdate(data) {
   if (valStatus === "lobby") {
     document.getElementById("valorantLobby").style.display = "flex";
     document.getElementById("valorantGame").style.display = "none";
+    syncLocalAgent();
     document.getElementById("valorantPList").innerHTML = valPlayers
-      .map((p) => `<div>${p.name} • ${p.team || "UNASSIGNED"}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`)
+      .map((p) => {
+        const readyText = p.ready ? "READY" : "NOT READY";
+        return `<div>${p.name} • ${p.team || "UNASSIGNED"} • ${p.agent || "SCOUT"} • ${readyText}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`;
+      })
       .join("");
+    renderLobbyAgents();
+    const me = getMyPlayer();
+    const readyBtn = document.getElementById("valorantReadyBtn");
+    if (readyBtn) {
+      readyBtn.textContent = me?.ready ? "UNREADY" : "READY UP";
+      readyBtn.disabled = !me?.agent;
+    }
     if (valIsHost) {
       document.getElementById("valorantStartBtn").style.display = "block";
       setText("valorantWait", "START MATCH WHEN READY");
@@ -211,6 +259,7 @@ function handleValorantUpdate(data) {
   document.getElementById("valorantLobby").style.display = "none";
   document.getElementById("valorantGame").style.display = "block";
   setText("valorantStatus", "ARENA LIVE");
+  syncLocalAgent();
   renderBuyMenu();
   updateValorantHud();
   updateBuyMenuVisibility();
@@ -220,10 +269,21 @@ function handleValorantUpdate(data) {
 
 document.getElementById("valorantStartBtn").onclick = async () => {
   if (!valIsHost || !valRoomCode) return;
+  const allReady = valPlayers.length > 0 && valPlayers.every((p) => p.ready && p.agent);
+  if (!allReady) {
+    showToast("PLAYERS NOT READY", "⏳", "Everyone must pick an agent and ready up.");
+    return;
+  }
   await updateDoc(getValRef(valRoomCode), {
     status: "playing",
     spike: { plantedSite: null, plantedBy: null, plantedAt: null }
   });
+};
+
+document.getElementById("valorantReadyBtn").onclick = () => {
+  const me = getMyPlayer();
+  if (!me) return;
+  updatePlayerState({ ready: !me.ready });
 };
 
 document.getElementById("valorantSpikeAction").onclick = async () => {
@@ -326,10 +386,35 @@ function drawArena(ctx, me) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
   const horizon = h * 0.35;
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = "#050505";
+  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+  sky.addColorStop(0, "#05070f");
+  sky.addColorStop(1, "#0b1018");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, horizon);
+  const floor = ctx.createLinearGradient(0, horizon, 0, h);
+  floor.addColorStop(0, "#050505");
+  floor.addColorStop(1, "#020202");
+  ctx.fillStyle = floor;
   ctx.fillRect(0, horizon, w, h - horizon);
+
+  ctx.fillStyle = "rgba(0,120,255,0.08)";
+  ctx.beginPath();
+  ctx.ellipse(w * 0.5, horizon - 30, 120, 40, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.beginPath();
+  ctx.moveTo(0, horizon);
+  ctx.lineTo(w * 0.25, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(w, horizon);
+  ctx.lineTo(w * 0.75, h);
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fill();
 
   ctx.strokeStyle = "rgba(255,255,255,0.15)";
   for (let i = 1; i < 20; i++) {

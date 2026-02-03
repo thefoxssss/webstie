@@ -283,6 +283,10 @@
     .valorant-card { border: 1px solid var(--accent); padding: 6px; font-size: 9px; cursor: pointer; text-align: center; }
     .valorant-card.selected { background: var(--accent); color: #000; }
     .valorant-card.disabled { opacity: 0.4; cursor: not-allowed; }
+    .valorant-lobby-title { font-size: 10px; margin-top: 10px; letter-spacing: 2px; }
+    .valorant-lobby-agents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .valorant-agent-pick.selected { background: var(--accent); color: #000; }
+    .valorant-ready-btn { margin-top: 10px; }
     /* Game Over Modal */
     #modalGameOver { background: rgba(5, 5, 5, 0.95); z-index: 9500; }
     #modalGameOver h1 { color: #fff; text-shadow: 2px 2px red; font-size: 24px; margin-bottom: 10px; }
