@@ -1,6 +1,6 @@
 import { firebase, state, showToast } from "./core.js";
 
-const { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, runTransaction } = firebase;
+const { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc } = firebase;
 
 let pc = null;
 let localStream = null;
@@ -11,7 +11,6 @@ let unsubGuestCandidates = null;
 let currentChannel = null;
 let isHost = false;
 let muted = false;
-let memberUnsub = null;
 
 const ICE_CONFIG = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -30,18 +29,6 @@ function setStatus(text) {
   if (statusEl) statusEl.innerText = text;
 }
 
-function renderMembers(members = []) {
-  const list = document.getElementById("voiceMemberList");
-  if (!list) return;
-  list.innerHTML = "";
-  members.forEach((member) => {
-    const row = document.createElement("div");
-    row.className = "voice-member";
-    row.innerHTML = `<div class="voice-member-name"><span class="voice-indicator"></span>${member.name}</div><span>${member.uid === state.myUid ? "YOU" : ""}</span>`;
-    list.appendChild(row);
-  });
-}
-
 async function createPeerConnection() {
   pc = new RTCPeerConnection(ICE_CONFIG);
   remoteStream = new MediaStream();
@@ -56,11 +43,6 @@ async function createPeerConnection() {
     await addDoc(candidatesRef(currentChannel, role), event.candidate.toJSON());
   };
   if (!localStream) {
-    if (!window.isSecureContext) {
-      showToast("HTTPS REQUIRED FOR MIC", "⚠️");
-      setStatus("MIC BLOCKED");
-      throw new Error("Microphone requires a secure context (HTTPS).");
-    }
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   }
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
@@ -73,26 +55,20 @@ async function joinChannel(channel) {
   }
   await leaveChannel();
   currentChannel = channel;
-  setStatus(`CONNECTING: ${channel.toUpperCase()}`);
+  setStatus("CONNECTING...");
   const ref = channelRef(channel);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
     isHost = true;
-    try {
-      await createPeerConnection();
-    } catch (err) {
-      showToast("MIC PERMISSION BLOCKED", "🎙️");
-      return;
-    }
+    await createPeerConnection();
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    await setDoc(ref, { hostUid: state.myUid, offer: offer.toJSON(), answer: null, members: [{ uid: state.myUid, name: state.myName }] });
+    await setDoc(ref, { hostUid: state.myUid, offer: offer.toJSON(), answer: null });
     unsubRoom = onSnapshot(ref, async (docSnap) => {
       const data = docSnap.data();
-      if (data?.members) renderMembers(data.members);
       if (data?.answer && !pc.currentRemoteDescription) {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        setStatus(`LIVE: ${channel.toUpperCase()}`);
+        setStatus("LIVE");
       }
     });
     unsubGuestCandidates = onSnapshot(candidatesRef(channel, "guest"), (snapCandidates) => {
@@ -111,27 +87,12 @@ async function joinChannel(channel) {
       return;
     }
     isHost = false;
-    await runTransaction(firebase.db, async (t) => {
-      const fresh = await t.get(ref);
-      if (!fresh.exists()) return;
-      const room = fresh.data();
-      const members = room.members || [];
-      if (!members.find((m) => m.uid === state.myUid)) {
-        members.push({ uid: state.myUid, name: state.myName });
-        t.update(ref, { members });
-      }
-    });
-    try {
-      await createPeerConnection();
-    } catch (err) {
-      showToast("MIC PERMISSION BLOCKED", "🎙️");
-      return;
-    }
+    await createPeerConnection();
     await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await updateDoc(ref, { answer: answer.toJSON() });
-    setStatus(`LIVE: ${channel.toUpperCase()}`);
+    setStatus("LIVE");
     unsubHostCandidates = onSnapshot(candidatesRef(channel, "host"), (snapCandidates) => {
       snapCandidates.docChanges().forEach((change) => {
         if (change.type === "added") {
@@ -140,21 +101,15 @@ async function joinChannel(channel) {
       });
     });
   }
-  memberUnsub = onSnapshot(ref, (docSnap) => {
-    const data = docSnap.data();
-    if (data?.members) renderMembers(data.members);
-  });
 }
 
 async function leaveChannel() {
   if (unsubRoom) unsubRoom();
   if (unsubHostCandidates) unsubHostCandidates();
   if (unsubGuestCandidates) unsubGuestCandidates();
-  if (memberUnsub) memberUnsub();
   unsubRoom = null;
   unsubHostCandidates = null;
   unsubGuestCandidates = null;
-  memberUnsub = null;
   if (pc) {
     pc.close();
     pc = null;
@@ -167,24 +122,12 @@ async function leaveChannel() {
     remoteStream.getTracks().forEach((track) => track.stop());
     remoteStream = null;
   }
-  if (currentChannel) {
-    const ref = channelRef(currentChannel);
-    if (isHost) {
-      await setDoc(ref, { hostUid: null, offer: null, answer: null, members: [] });
-    } else {
-      await runTransaction(firebase.db, async (t) => {
-        const snap = await t.get(ref);
-        if (!snap.exists()) return;
-        const room = snap.data();
-        const members = (room.members || []).filter((member) => member.uid !== state.myUid);
-        t.update(ref, { members });
-      });
-    }
+  if (currentChannel && isHost) {
+    await setDoc(channelRef(currentChannel), { hostUid: null, offer: null, answer: null });
   }
   currentChannel = null;
   isHost = false;
   setStatus("OFFLINE");
-  renderMembers([]);
 }
 
 function toggleMute() {
@@ -214,6 +157,4 @@ export function initVoiceChat() {
   const closeBtn = document.getElementById("chatCloseBtn");
   if (closeBtn) closeBtn.addEventListener("click", leaveChannel);
   setStatus("OFFLINE");
-  renderMembers([]);
-  window.addEventListener("beforeunload", leaveChannel);
 }

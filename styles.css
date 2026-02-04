@@ -4,6 +4,7 @@
         --accent: #ff0606;
         --accent-dim: rgba(255, 6, 6, 0.2);
         --accent-glow: rgba(255, 6, 6, 0.6);
+        --scanline-opacity: 0.5;
         --common: #b0b0b0; --rare: #00ccff; --epic: #d000ff; --leg: #ffd700;
         --font-main: "Press Start 2P", monospace;
         --font-type: "Roboto Mono", monospace;
@@ -61,6 +62,7 @@
         font-family: inherit; font-size: 10px; border: 1px solid var(--accent);
         text-transform: uppercase; transition: 0.2s;
     }
+    .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
     .menu-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
     .sys-info { display: flex; gap: 15px; font-size: 8px; color: var(--accent); opacity: 0.8; }
     
@@ -79,26 +81,14 @@
 
     /* --- 4. CHAT --- */
     #globalChat {
-        width: 100%; height: 220px;
-        background: rgba(0,0,0,0.8); border: 1px solid var(--accent);
+        position: fixed; bottom: 20px; left: 20px; width: 300px; height: 200px;
+        background: rgba(0,0,0,0.8); border: 1px solid var(--accent); z-index: 10;
         display: flex; flex-direction: column; font-size: 10px;
     }
     #chatHistory { flex: 1; overflow-y: auto; padding: 10px; color: #fff; text-shadow:none; }
     .chat-msg { margin-bottom: 5px; word-wrap: break-word; }
     .chat-user { color: var(--accent); font-weight: bold; }
     #chatInput { background: #000; border: none; border-top: 1px solid var(--accent); color: var(--accent); padding: 10px; font-family: inherit; outline: none; }
-    .chat-box { width: 80%; max-width: 600px; }
-    .voice-panel { margin-top: 20px; border-top: 1px dashed var(--accent-dim); padding-top: 15px; display: flex; flex-direction: column; gap: 12px; }
-    .voice-header { text-align: center; font-size: 10px; letter-spacing: 2px; }
-    .voice-channels { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-    .voice-status { display: flex; justify-content: center; gap: 8px; font-size: 10px; }
-    .voice-members { border: 1px dashed var(--accent-dim); padding: 10px; }
-    #voiceMemberList { display: flex; flex-direction: column; gap: 6px; font-size: 10px; }
-    .voice-member { display: flex; align-items: center; justify-content: space-between; }
-    .voice-indicator { width: 8px; height: 8px; border-radius: 50%; background: #0f0; box-shadow: 0 0 6px #0f0; margin-right: 6px; }
-    .voice-member-name { display: flex; align-items: center; gap: 6px; }
-    .voice-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-    .voice-btn.active { background: var(--accent); color: #000; }
 
     /* --- 5. MAIN LOGO --- */
     .gooner-btn {
@@ -207,13 +197,66 @@
     .ttt-cell { width: 70px; height: 70px; background: #111; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 35px; }
 
     /* Hangman */
+    .hangman-room { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 20px; width: 100%; max-width: 1100px; }
+    .hangman-sidebar, .hangman-chat { display: flex; flex-direction: column; gap: 15px; }
+    .hangman-panel { border: 1px solid var(--accent); background: rgba(0,0,0,0.8); padding: 12px; font-size: 10px; box-shadow: 0 0 10px var(--accent-dim); }
+    .hangman-section-title { font-size: 9px; letter-spacing: 2px; margin-bottom: 8px; opacity: 0.8; text-transform: uppercase; }
+    .hangman-turn { margin-top: 10px; font-size: 10px; }
+    .hangman-chat-log { height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .hangman-chat-line { display: flex; flex-direction: column; gap: 2px; }
+    .hangman-chat-name { color: var(--accent); font-weight: bold; font-size: 9px; }
+    .hangman-chat-text { color: #fff; font-family: var(--font-type); font-size: 11px; text-shadow: none; }
+    .hangman-chat-text.good { color: #0f0; }
+    .hangman-chat-text.bad { color: #f00; }
+    .hangman-chat-input { display: flex; flex-direction: column; gap: 8px; }
+    .hangman-hint { font-size: 8px; opacity: 0.7; text-align: center; }
+    .hangman-status { margin-bottom: 12px; font-size: 10px; text-align: center; }
     .hangman-word { font-size: 24px; letter-spacing: 8px; margin: 10px 0 20px; text-align: center; }
     .hangman-row { font-size: 10px; margin-bottom: 10px; text-align: center; }
     .hangman-letters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: 12px; margin-bottom: 10px; }
-    .hangman-letters span { border: 1px solid var(--accent-dim); padding: 4px 6px; }
-    .hangman-guess { display: flex; gap: 10px; align-items: center; }
-    .hangman-guess .term-input { margin-bottom: 0; }
-
+    .hangman-letters span { border: 1px solid var(--accent); padding: 4px 6px; }
+    .hangman-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .hangman-figure { position: relative; width: 200px; height: 220px; margin-bottom: 15px; }
+    .hangman-gallows { position: absolute; inset: 0; }
+    .hangman-base { position: absolute; bottom: 0; left: 20px; width: 140px; height: 6px; background: var(--accent); }
+    .hangman-post { position: absolute; bottom: 6px; left: 40px; width: 6px; height: 170px; background: var(--accent); }
+    .hangman-beam { position: absolute; top: 20px; left: 40px; width: 100px; height: 6px; background: var(--accent); }
+    .hangman-rope { position: absolute; top: 26px; left: 132px; width: 4px; height: 30px; background: var(--accent); }
+    .hangman-man div { position: absolute; background: #fff; opacity: 0; transition: opacity 0.3s; }
+    .hangman-head { width: 28px; height: 28px; border: 3px solid #fff; border-radius: 50%; top: 56px; left: 118px; background: transparent; }
+    .hangman-body { width: 6px; height: 50px; top: 86px; left: 131px; }
+    .hangman-arm.left { width: 30px; height: 4px; top: 100px; left: 102px; transform: rotate(-25deg); transform-origin: right center; }
+    .hangman-arm.right { width: 30px; height: 4px; top: 100px; left: 134px; transform: rotate(25deg); transform-origin: left center; }
+    .hangman-leg.left { width: 32px; height: 4px; top: 132px; left: 102px; transform: rotate(-30deg); transform-origin: right center; }
+    .hangman-leg.right { width: 32px; height: 4px; top: 132px; left: 132px; transform: rotate(30deg); transform-origin: left center; }
+    .hangman-figure[data-stage="1"] .hangman-head { opacity: 1; }
+    .hangman-figure[data-stage="2"] .hangman-body { opacity: 1; }
+    .hangman-figure[data-stage="3"] .hangman-arm.left { opacity: 1; }
+    .hangman-figure[data-stage="4"] .hangman-arm.right { opacity: 1; }
+    .hangman-figure[data-stage="5"] .hangman-leg.left { opacity: 1; }
+    .hangman-figure[data-stage="6"] .hangman-leg.right { opacity: 1; }
+    .hangman-figure[data-stage="2"] .hangman-head,
+    .hangman-figure[data-stage="3"] .hangman-head,
+    .hangman-figure[data-stage="4"] .hangman-head,
+    .hangman-figure[data-stage="5"] .hangman-head,
+    .hangman-figure[data-stage="6"] .hangman-head,
+    .hangman-figure[data-stage="3"] .hangman-body,
+    .hangman-figure[data-stage="4"] .hangman-body,
+    .hangman-figure[data-stage="5"] .hangman-body,
+    .hangman-figure[data-stage="6"] .hangman-body,
+    .hangman-figure[data-stage="4"] .hangman-arm.left,
+    .hangman-figure[data-stage="5"] .hangman-arm.left,
+    .hangman-figure[data-stage="6"] .hangman-arm.left,
+    .hangman-figure[data-stage="5"] .hangman-arm.right,
+    .hangman-figure[data-stage="6"] .hangman-arm.right,
+    .hangman-figure[data-stage="6"] .hangman-leg.left { opacity: 1; }
+    @media (max-width: 900px) {
+        .hangman-room { grid-template-columns: 1fr; }
+        .hangman-stage { order: 1; }
+        .hangman-sidebar { order: 2; }
+        .hangman-chat { order: 3; }
+        .hangman-figure { transform: scale(0.9); }
+    }
     /* Game Over Modal */
     #modalGameOver { background: rgba(5, 5, 5, 0.95); z-index: 9500; }
     #modalGameOver h1 { color: #fff; text-shadow: 2px 2px red; font-size: 24px; margin-bottom: 10px; }
