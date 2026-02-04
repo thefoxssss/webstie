@@ -5,17 +5,26 @@ let gObs = [];
 let gScore = 0;
 let gSpeed = 6;
 let gAnim;
+let gControlsBound = false;
+let gJumpHandler = null;
+let gKeyHandler = null;
+let gCanvasRef = null;
+let gOverlayRef = null;
 
 export function initGeometry() {
   state.currentGame = "geo";
   loadHighScores();
   const cv = document.getElementById("geoCanvas");
   const ctx = cv.getContext("2d");
+  if (gAnim) cancelAnimationFrame(gAnim);
+  gCanvasRef = cv;
+  gOverlayRef = document.getElementById("overlayGeo");
   gPlayer = { x: 100, y: 300, w: 30, h: 30, dy: 0, ang: 0, grounded: true };
   gObs = [];
   gScore = 0;
   gSpeed = 6;
   setText("geoScore", "SCORE: 0");
+  bindGeoControls();
   loopGeometry(ctx);
 }
 
@@ -26,10 +35,6 @@ function loopGeometry(ctx) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
   const currentSpeed = gSpeed * (state.myInventory.includes("item_slowmo") ? 0.8 : 1);
-  if ((state.keysPressed[" "] || state.keysPressed["ArrowUp"]) && gPlayer.grounded) {
-    gPlayer.dy = -13;
-    gPlayer.grounded = false;
-  }
   gPlayer.dy += 0.9;
   gPlayer.y += gPlayer.dy;
   if (gPlayer.y > 320) {
@@ -88,13 +93,40 @@ function loopGeometry(ctx) {
   gAnim = requestAnimationFrame(() => loopGeometry(ctx));
 }
 
-document.getElementById("geoCanvas").onclick = () => {
+function jumpGeo() {
   if (state.currentGame === "geo" && gPlayer.grounded) {
     gPlayer.dy = -13;
     gPlayer.grounded = false;
   }
-};
+}
+
+function bindGeoControls() {
+  if (gControlsBound || !gCanvasRef) return;
+  gJumpHandler = (event) => {
+    if (event && event.target && event.target.closest && event.target.closest(".exit-btn-fixed")) return;
+    jumpGeo();
+  };
+  gKeyHandler = (e) => {
+    if (e.key === " " || e.key === "ArrowUp") {
+      e.preventDefault();
+      jumpGeo();
+    }
+  };
+  gCanvasRef.addEventListener("pointerdown", gJumpHandler);
+  if (gOverlayRef) gOverlayRef.addEventListener("pointerdown", gJumpHandler);
+  window.addEventListener("keydown", gKeyHandler);
+  gControlsBound = true;
+}
+
+function unbindGeoControls() {
+  if (!gControlsBound || !gCanvasRef) return;
+  gCanvasRef.removeEventListener("pointerdown", gJumpHandler);
+  if (gOverlayRef) gOverlayRef.removeEventListener("pointerdown", gJumpHandler);
+  window.removeEventListener("keydown", gKeyHandler);
+  gControlsBound = false;
+}
 
 registerGameStop(() => {
   if (gAnim) cancelAnimationFrame(gAnim);
+  unbindGeoControls();
 });

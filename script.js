@@ -8,7 +8,6 @@ import { initRunner } from "./games/runner.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
-import { initVoiceChat } from "./voice.js";
 
 window.openGame = openGame;
 window.closeOverlays = closeOverlays;
@@ -16,17 +15,10 @@ window.showGameOver = showGameOver;
 window.buyItem = buyItem;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
-initVoiceChat();
-
-const overlayMap = {
-  geo: "overlayGeo",
-  ttt: "overlayTTT",
-  hangman: "overlayHangman"
-};
 
 window.launchGame = (game) => {
   window.closeOverlays();
-  const overlayId = overlayMap[game] || `overlay${game.charAt(0).toUpperCase()}${game.slice(1)}`;
+  const overlayId = "overlay" + (game === "ttt" || game === "geo" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   if (game === "pong") initPong();
