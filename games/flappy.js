@@ -10,6 +10,7 @@ const GRAVITY = 0.3;
 const PIPE_SPEED = 2.2;
 const PIPE_GAP = 200;
 const PIPE_SPAWN_CHANCE = 0.01;
+const PIPE_MIN_DISTANCE = 220;
 
 export function initFlappy() {
   state.currentGame = "flappy";
@@ -38,7 +39,9 @@ function loopFlappy() {
     showGameOver("flappy", fScore);
     return;
   }
-  if (Math.random() < PIPE_SPAWN_CHANCE) {
+  const lastPipe = fPipes[fPipes.length - 1];
+  const canSpawnPipe = !lastPipe || lastPipe.x < 400 - PIPE_MIN_DISTANCE;
+  if (canSpawnPipe && Math.random() < PIPE_SPAWN_CHANCE) {
     fPipes.push({ x: 400, gap: PIPE_GAP, h: Math.random() * 250 + 50 });
   }
   for (let i = fPipes.length - 1; i >= 0; i--) {
