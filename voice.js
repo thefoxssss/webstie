@@ -1,6 +1,6 @@
 import { firebase, state, showToast } from "./core.js";
 
-const { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc } = firebase;
+const { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } = firebase;
 
 let pc = null;
 let localStream = null;
@@ -26,7 +26,20 @@ function candidatesRef(channel, role) {
 
 function setStatus(text) {
   const statusEl = document.getElementById("voiceStatus");
-  if (statusEl) statusEl.innerText = text;
+  if (statusEl) {
+    statusEl.innerText = text;
+    statusEl.dataset.state = text.toLowerCase().replace(/[^a-z]+/g, " ").trim();
+  }
+}
+
+async function clearCandidates(channel, role) {
+  const snapshot = await getDocs(candidatesRef(channel, role));
+  await Promise.all(snapshot.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+}
+
+async function resetChannel(channel) {
+  await setDoc(channelRef(channel), { hostUid: null, offer: null, answer: null, updatedAt: Date.now() });
+  await Promise.all([clearCandidates(channel, "host"), clearCandidates(channel, "guest")]);
 }
 
 async function createPeerConnection() {
@@ -35,7 +48,23 @@ async function createPeerConnection() {
   pc.ontrack = (event) => {
     event.streams[0].getTracks().forEach((track) => remoteStream.addTrack(track));
     const audioEl = document.getElementById("voiceRemote");
-    if (audioEl) audioEl.srcObject = remoteStream;
+    if (audioEl) {
+      audioEl.srcObject = remoteStream;
+      audioEl.play().catch(() => {
+        showToast("CLICK TO ENABLE AUDIO", "⚠️");
+      });
+    }
+  };
+  pc.onconnectionstatechange = () => {
+    if (!pc) return;
+    if (pc.connectionState === "connected") setStatus("LIVE");
+    if (pc.connectionState === "disconnected") setStatus("RECONNECTING");
+    if (pc.connectionState === "failed") setStatus("FAILED");
+  };
+  pc.oniceconnectionstatechange = () => {
+    if (!pc) return;
+    if (pc.iceConnectionState === "checking") setStatus("CONNECTING");
+    if (pc.iceConnectionState === "disconnected") setStatus("RECONNECTING");
   };
   pc.onicecandidate = async (event) => {
     if (!event.candidate || !currentChannel) return;
@@ -43,7 +72,13 @@ async function createPeerConnection() {
     await addDoc(candidatesRef(currentChannel, role), event.candidate.toJSON());
   };
   if (!localStream) {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (error) {
+      setStatus("MIC BLOCKED");
+      showToast("MIC ACCESS REQUIRED", "⚠️");
+      throw error;
+    }
   }
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 }
@@ -55,19 +90,21 @@ async function joinChannel(channel) {
   }
   await leaveChannel();
   currentChannel = channel;
-  setStatus("CONNECTING...");
+  setStatus("CONNECTING");
   const ref = channelRef(channel);
   const snap = await getDoc(ref);
-  if (!snap.exists()) {
+  const data = snap.data();
+  if (!snap.exists() || !data?.offer || !data?.hostUid) {
     isHost = true;
+    await resetChannel(channel);
     await createPeerConnection();
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    await setDoc(ref, { hostUid: state.myUid, offer: offer.toJSON(), answer: null });
+    await setDoc(ref, { hostUid: state.myUid, offer: offer.toJSON(), answer: null, updatedAt: Date.now() });
     unsubRoom = onSnapshot(ref, async (docSnap) => {
-      const data = docSnap.data();
-      if (data?.answer && !pc.currentRemoteDescription) {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+      const room = docSnap.data();
+      if (room?.answer && !pc.currentRemoteDescription) {
+        await pc.setRemoteDescription(new RTCSessionDescription(room.answer));
         setStatus("LIVE");
       }
     });
@@ -79,19 +116,19 @@ async function joinChannel(channel) {
       });
     });
   } else {
-    const data = snap.data();
-    if (!data.offer) {
+    if (!data.offer || data.answer) {
       showToast("VOICE BUSY", "⚠️");
-      setStatus("OFFLINE");
+      setStatus("BUSY");
       currentChannel = null;
       return;
     }
     isHost = false;
+    await clearCandidates(channel, "guest");
     await createPeerConnection();
     await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    await updateDoc(ref, { answer: answer.toJSON() });
+    await updateDoc(ref, { answer: answer.toJSON(), updatedAt: Date.now() });
     setStatus("LIVE");
     unsubHostCandidates = onSnapshot(candidatesRef(channel, "host"), (snapCandidates) => {
       snapCandidates.docChanges().forEach((change) => {
@@ -123,7 +160,9 @@ async function leaveChannel() {
     remoteStream = null;
   }
   if (currentChannel && isHost) {
-    await setDoc(channelRef(currentChannel), { hostUid: null, offer: null, answer: null });
+    await resetChannel(currentChannel);
+  } else if (currentChannel) {
+    await clearCandidates(currentChannel, "guest");
   }
   currentChannel = null;
   isHost = false;
@@ -138,7 +177,10 @@ function toggleMute() {
     });
   }
   const muteBtn = document.getElementById("voiceMuteBtn");
-  if (muteBtn) muteBtn.innerText = muted ? "UNMUTE" : "MUTE";
+  if (muteBtn) {
+    muteBtn.innerText = muted ? "UNMUTE" : "MUTE";
+    muteBtn.classList.toggle("active", muted);
+  }
 }
 
 export function initVoiceChat() {
@@ -147,14 +189,24 @@ export function initVoiceChat() {
     btn.addEventListener("click", async () => {
       channelButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      await joinChannel(btn.dataset.channel);
+      try {
+        await joinChannel(btn.dataset.channel);
+      } catch (error) {
+        channelButtons.forEach((b) => b.classList.remove("active"));
+      }
     });
   });
   const leaveBtn = document.getElementById("voiceLeaveBtn");
-  if (leaveBtn) leaveBtn.addEventListener("click", leaveChannel);
+  if (leaveBtn) {
+    leaveBtn.addEventListener("click", async () => {
+      await leaveChannel();
+      channelButtons.forEach((b) => b.classList.remove("active"));
+    });
+  }
   const muteBtn = document.getElementById("voiceMuteBtn");
   if (muteBtn) muteBtn.addEventListener("click", toggleMute);
   const closeBtn = document.getElementById("chatCloseBtn");
   if (closeBtn) closeBtn.addEventListener("click", leaveChannel);
+  window.addEventListener("beforeunload", leaveChannel);
   setStatus("OFFLINE");
 }

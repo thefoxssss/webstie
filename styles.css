@@ -26,7 +26,11 @@
     }
 
     /* --- 2. VISUAL EFFECTS --- */
-    #matrixCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.8; pointer-events: none; display: none; }
+    #matrixCanvas {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0;
+        opacity: 0.8; pointer-events: none; display: none;
+        border: none; box-shadow: none; margin: 0; max-width: none; max-height: none;
+    }
     #matrixCanvas.active { display: block; }
     
     #hackOverlay {
@@ -89,6 +93,28 @@
     .chat-msg { margin-bottom: 5px; word-wrap: break-word; }
     .chat-user { color: var(--accent); font-weight: bold; }
     #chatInput { background: #000; border: none; border-top: 1px solid var(--accent); color: var(--accent); padding: 10px; font-family: inherit; outline: none; }
+    .chat-box { max-width: 760px; width: min(90vw, 760px); }
+    .voice-panel {
+        margin-top: 15px; padding: 15px; border: 1px solid var(--accent-dim);
+        background: rgba(0,0,0,0.7); box-shadow: inset 0 0 20px rgba(255, 6, 6, 0.1);
+        display: flex; flex-direction: column; gap: 12px;
+    }
+    .voice-header { font-size: 10px; letter-spacing: 2px; text-align: center; color: #fff; }
+    .voice-channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .voice-btn.active { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent-glow); }
+    .voice-status {
+        display: flex; justify-content: space-between; font-size: 9px; padding: 6px 10px;
+        border: 1px dashed var(--accent-dim); background: #050505;
+    }
+    #voiceStatus[data-state="live"] { color: #0f0; }
+    #voiceStatus[data-state="connecting"] { color: #ffd700; }
+    #voiceStatus[data-state="reconnecting"] { color: #ff8800; }
+    #voiceStatus[data-state="busy"] { color: #ff8800; }
+    #voiceStatus[data-state="failed"],
+    #voiceStatus[data-state="mic blocked"] { color: #ff4d4d; }
+    .voice-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #voiceMuteBtn.active { background: #fff; color: #000; }
+    #voiceRemote { width: 100%; height: 36px; background: #000; border: 1px solid var(--accent-dim); }
 
     /* --- 5. MAIN LOGO --- */
     .gooner-btn {
