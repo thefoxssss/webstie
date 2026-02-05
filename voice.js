@@ -11,6 +11,8 @@ let peer;
 let myStream;
 let isMuted = false;
 let myName = 'Me (You)';
+let peerPollTimer;
+const knownPeers = new Set();
 
 // 1. THE TRIGGER: User clicks "Join Voice"
 async function joinVoiceChannel() {
@@ -49,6 +51,7 @@ function initPeerConnection() {
     peer.on('open', (id) => {
         document.getElementById('status-text').innerText = "Connected";
         document.getElementById('status-text').style.color = "#0f0";
+        startPeerDiscovery(id);
     });
 
     // When someone calls us, answer automatically
@@ -58,11 +61,46 @@ function initPeerConnection() {
     });
 }
 
+function startPeerDiscovery(selfId) {
+    if (!peer.listAllPeers) {
+        document.getElementById('status-text').innerText = "Connected (No Peer List)";
+        return;
+    }
+    if (peerPollTimer) clearInterval(peerPollTimer);
+    peerPollTimer = setInterval(() => {
+        peer.listAllPeers((peers) => {
+            const activePeers = peers.filter((p) => p && p !== selfId);
+            syncPeerList(activePeers);
+            activePeers.forEach((peerId) => {
+                if (knownPeers.has(peerId)) return;
+                knownPeers.add(peerId);
+                const call = peer.call(peerId, myStream);
+                handleCall(call);
+            });
+        });
+    }, 2000);
+}
+
+function syncPeerList(peerIds) {
+    const list = document.getElementById('user-list');
+    if (!list) return;
+    const nextIds = new Set(peerIds);
+    [...knownPeers].forEach((peerId) => {
+        if (!nextIds.has(peerId)) {
+            const safeId = peerId.replace(/[^a-zA-Z0-9_-]/g, '');
+            const row = document.getElementById(`user-${safeId}`);
+            if (row) row.remove();
+            knownPeers.delete(peerId);
+        }
+    });
+}
+
 // 3. HANDLE INCOMING AUDIO
 function handleCall(call) {
     call.on('stream', (remoteStream) => {
         // If user isn't in the list, add them
-        if (!document.getElementById(`user-${call.peer}`)) {
+        const safeId = call.peer.replace(/[^a-zA-Z0-9_-]/g, '');
+        if (!document.getElementById(`user-${safeId}`)) {
             addUserToUI(call.peer, false, remoteStream);
         }
     });
@@ -143,5 +181,7 @@ function toggleMute() {
 function leaveVoice() {
     if (peer) peer.destroy();
     if (myStream) myStream.getTracks().forEach(track => track.stop());
+    if (peerPollTimer) clearInterval(peerPollTimer);
+    knownPeers.clear();
     location.reload(); // Simple way to reset everything
 }
