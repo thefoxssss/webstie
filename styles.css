@@ -26,7 +26,11 @@
     }
 
     /* --- 2. VISUAL EFFECTS --- */
-    #matrixCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.8; pointer-events: none; display: none; }
+    #matrixCanvas {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0;
+        opacity: 0.8; pointer-events: none; display: none;
+        border: none; box-shadow: none; margin: 0; max-width: none; max-height: none;
+    }
     #matrixCanvas.active { display: block; }
     
     #hackOverlay {
