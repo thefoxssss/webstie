@@ -1,0 +1,105 @@
+/* voice.css - Discord Style Retro Terminal */
+.voice-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 280px;
+    background-color: #000;
+    border: 2px solid #0f0;
+    font-family: 'Courier New', monospace;
+    color: #0f0;
+    z-index: 10000;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+/* The header looks like a Discord Voice Channel name */
+.voice-header {
+    background: #002200;
+    padding: 10px;
+    border-bottom: 1px solid #0f0;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.channel-name::before {
+    content: "🔊 "; /* Speaker icon */
+}
+
+/* The list of people in the call */
+.user-list {
+    padding: 10px;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #050505;
+}
+
+.user-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+/* The Avatar Circle */
+.user-avatar {
+    width: 24px;
+    height: 24px;
+    background: #003300;
+    border-radius: 50%;
+    margin-right: 10px;
+    border: 2px solid #333;
+    transition: all 0.1s;
+}
+
+/* DISCORD FEATURE: Green ring when talking */
+.user-row.speaking .user-avatar {
+    border-color: #0f0;
+    box-shadow: 0 0 8px #0f0;
+    background: #0f0;
+}
+
+.user-name {
+    font-size: 0.9em;
+}
+
+/* Bottom Controls (Mute, Deafen, Disconnect) */
+.voice-controls {
+    padding: 10px;
+    border-top: 1px solid #0f0;
+    background: #001100;
+    display: flex;
+    justify-content: space-around;
+}
+
+.control-btn {
+    background: transparent;
+    border: 1px solid #0f0;
+    color: #0f0;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.control-btn:hover {
+    background: #0f0;
+    color: #000;
+}
+
+.control-btn.disconnect {
+    border-color: red;
+    color: red;
+}
+.control-btn.disconnect:hover {
+    background: red;
+    color: white;
+}
+
+/* Hidden by default until you click Join */
+.hidden { display: none; }

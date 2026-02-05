@@ -8,7 +8,6 @@ import { initRunner } from "./games/runner.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
-import { initVoiceChat } from "./voice.js";
 
 window.openGame = openGame;
 window.closeOverlays = closeOverlays;
@@ -16,7 +15,6 @@ window.showGameOver = showGameOver;
 window.buyItem = buyItem;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
-initVoiceChat();
 
 const overlayMap = {
   geo: "overlayGeo",

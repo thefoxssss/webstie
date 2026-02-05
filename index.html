@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="voice.css">
 
 </head>
 <body class="flicker-on">
@@ -50,37 +51,34 @@
 
 <div class="overlay" id="overlayChat">
     <div class="score-box chat-box">
-        <div class="chat-layout">
-            <aside class="voice-panel">
-                <div class="voice-header">VOICE CHANNELS</div>
-                <div class="voice-channels">
-                    <button class="menu-btn voice-btn" data-channel="alpha"># alpha</button>
-                    <button class="menu-btn voice-btn" data-channel="bravo"># bravo</button>
-                    <button class="menu-btn voice-btn" data-channel="charlie"># charlie</button>
-                </div>
-                <div class="voice-status">
-                    <span id="voiceChannelLabel">NO CHANNEL</span>
-                    <span id="voiceStatus">OFFLINE</span>
-                </div>
-                <div class="voice-members">
-                    <div class="voice-header">IN CHANNEL</div>
-                    <div id="voiceMemberList"></div>
-                </div>
-                <div class="voice-controls">
-                    <button class="menu-btn" id="voiceMuteBtn">MUTE</button>
-                    <button class="menu-btn" id="voiceLeaveBtn">LEAVE</button>
-                </div>
-                <audio id="voiceRemote" autoplay></audio>
-            </aside>
-            <section class="chat-main">
-                <h2 class="chat-title">GLOBAL CHAT</h2>
-                <div id="globalChat">
-                    <div id="chatHistory"></div>
-                    <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
-                </div>
-            </section>
+        <h2 style="text-align:center;">GLOBAL CHAT</h2>
+        <div id="globalChat">
+            <div id="chatHistory"></div>
+            <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
         </div>
         <button class="term-btn" id="chatCloseBtn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+    </div>
+</div>
+
+<div class="voice-widget">
+    <div class="voice-header">
+        <span class="channel-name">General Voice</span>
+        <span id="status-text" style="font-size: 0.8em; color: #555;">Offline</span>
+    </div>
+
+    <div id="start-screen" style="padding: 20px; text-align: center;">
+        <p style="font-size: 0.8em; margin-bottom: 15px;">Connect to Neural Net?</p>
+        <button class="control-btn" onclick="joinVoiceChannel()">[ JOIN VOICE ]</button>
+    </div>
+
+    <div id="connected-screen" class="hidden">
+        <div id="user-list" class="user-list">
+        </div>
+
+        <div class="voice-controls">
+            <button id="btn-mute" class="control-btn" onclick="toggleMute()">MUTE</button>
+            <button class="control-btn disconnect" onclick="leaveVoice()">DISCONNECT</button>
+        </div>
     </div>
 </div>
 
@@ -335,6 +333,8 @@
     <button class="menu-btn" id="goExit" style="margin-top:20px;">EXIT TO MENU</button>
 </div>
 
+<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script type="module" src="script.js"></script>
+<script src="voice.js"></script>
 </body>
 </html>
