@@ -106,6 +106,21 @@
     .voice-member-name { display: flex; align-items: center; gap: 6px; }
     .voice-controls { display: flex; justify-content: space-between; gap: 8px; }
     .voice-controls .menu-btn { flex: 1; font-size: 9px; }
+    .voice-box { width: 90%; max-width: 520px; text-align: left; }
+    .voice-box .voice-header { background: var(--accent-dim); color: var(--accent); padding: 10px; border: 1px solid var(--accent); display: flex; justify-content: space-between; align-items: center; font-size: 10px; text-transform: uppercase; }
+    .voice-box .channel-name::before { content: "🔊 "; }
+    .voice-start { padding: 20px; text-align: center; }
+    .voice-start p { font-size: 10px; margin-bottom: 15px; }
+    .voice-box .user-list { padding: 10px; min-height: 120px; max-height: 220px; overflow-y: auto; border: 1px dashed var(--accent-dim); background: rgba(0,0,0,0.6); }
+    .voice-box .user-row { display: flex; align-items: center; margin-bottom: 8px; padding: 5px; border-radius: 4px; }
+    .voice-box .user-avatar { width: 24px; height: 24px; background: var(--accent-dim); border-radius: 50%; margin-right: 10px; border: 2px solid #333; transition: all 0.1s; }
+    .voice-box .user-row.speaking .user-avatar { border-color: var(--accent); box-shadow: 0 0 8px var(--accent); background: var(--accent); }
+    .voice-box .user-name { font-size: 0.9em; color: var(--accent); }
+    .voice-box .voice-controls { padding: 10px 0; border-top: 1px solid var(--accent-dim); display: flex; justify-content: space-around; gap: 10px; }
+    .voice-box .control-btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 6px 10px; cursor: pointer; font-size: 0.8em; text-transform: uppercase; }
+    .voice-box .control-btn:hover { background: var(--accent); color: #000; }
+    .voice-box .control-btn.disconnect { border-color: red; color: red; }
+    .voice-box .control-btn.disconnect:hover { background: red; color: #fff; }
 
     /* --- 5. MAIN LOGO --- */
     .gooner-btn {

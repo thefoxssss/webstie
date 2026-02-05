@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="voice.css">
 
 </head>
 <body class="flicker-on">
@@ -23,6 +22,7 @@
     </div>
     <div style="display:flex; gap:10px;">
         <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
+        <button class="menu-btn" onclick="window.openGame('overlayVoice')">VOICE</button>
         <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
         <button class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
         <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
@@ -60,25 +60,28 @@
     </div>
 </div>
 
-<div class="voice-widget">
-    <div class="voice-header">
-        <span class="channel-name">General Voice</span>
-        <span id="status-text" style="font-size: 0.8em; color: #555;">Offline</span>
-    </div>
-
-    <div id="start-screen" style="padding: 20px; text-align: center;">
-        <p style="font-size: 0.8em; margin-bottom: 15px;">Connect to Neural Net?</p>
-        <button class="control-btn" onclick="joinVoiceChannel()">[ JOIN VOICE ]</button>
-    </div>
-
-    <div id="connected-screen" class="hidden">
-        <div id="user-list" class="user-list">
+<div class="overlay" id="overlayVoice">
+    <div class="score-box voice-box">
+        <div class="voice-header">
+            <span class="channel-name">General Voice</span>
+            <span id="status-text">Offline</span>
         </div>
 
-        <div class="voice-controls">
-            <button id="btn-mute" class="control-btn" onclick="toggleMute()">MUTE</button>
-            <button class="control-btn disconnect" onclick="leaveVoice()">DISCONNECT</button>
+        <div id="start-screen" class="voice-start">
+            <p>Connect to Neural Net?</p>
+            <button class="menu-btn control-btn" onclick="joinVoiceChannel()">[ JOIN VOICE ]</button>
         </div>
+
+        <div id="connected-screen" class="hidden">
+            <div id="user-list" class="user-list"></div>
+
+            <div class="voice-controls">
+                <button id="btn-mute" class="menu-btn control-btn" onclick="toggleMute()">MUTE</button>
+                <button class="menu-btn control-btn disconnect" onclick="leaveVoice()">DISCONNECT</button>
+            </div>
+        </div>
+
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
 </div>
 
