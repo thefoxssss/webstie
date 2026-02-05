@@ -269,6 +269,8 @@ function loadProfile(data) {
   localStorage.setItem("goonerUser", myName);
   localStorage.setItem("goonerPin", data.pin);
   if (myInventory.includes("item_matrix")) {
+    document.documentElement.style.setProperty("--accent", "#00ff00");
+    document.getElementById("matrixCanvas").classList.add("active");
     setMatrixMode(true);
     document.documentElement.style.setProperty("--accent", "#00ff00");
   }
@@ -413,6 +415,9 @@ export function buyItem(id) {
     if (myInventory.filter((i) => i !== "item_shield").length >= 3) unlockAchievement("shopaholic");
     if (id === "item_matrix") {
       unlockAchievement("neo");
+      document.documentElement.style.setProperty("--accent", "#00ff00");
+      document.getElementById("matrixCanvas").classList.add("active");
+    }
       setMatrixMode(true);
       document.documentElement.style.setProperty("--accent", "#00ff00");
     }
@@ -526,6 +531,8 @@ document.addEventListener("keydown", (e) => {
 });
 function activateMatrixHack() {
   if (myName === "ANON") return alert("LOGIN FIRST");
+  document.documentElement.style.setProperty("--accent", "#00ff00");
+  document.getElementById("matrixCanvas").classList.add("active");
   if (!myInventory.includes("item_matrix")) myInventory.push("item_matrix");
   document.documentElement.style.setProperty("--accent", "#00ff00");
   setMatrixMode(true);
@@ -572,6 +579,9 @@ function initChat() {
     });
     list.scrollTop = list.scrollHeight;
   });
+  document.getElementById("chatInput").addEventListener("keypress", async (e) => {
+    if (e.key === "Enter") {
+      const txt = e.target.value.trim();
 document.getElementById("chatInput").addEventListener("keydown", async (e) => {
   if (e.key === "Enter") {
     const txt = e.target.value.trim();

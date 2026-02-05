@@ -4,10 +4,19 @@ let fBird = {};
 let fPipes = [];
 let fScore = 0;
 let fAnim;
+let fSpawnTimer = 0;
+let fDifficultyTimer = 0;
+const baseGap = 190;
+const baseSpeed = 2.4;
 
 export function initFlappy() {
   state.currentGame = "flappy";
   loadHighScores();
+  fBird = { x: 60, y: 300, dy: 0 };
+  fPipes = [];
+  fScore = 0;
+  fSpawnTimer = 0;
+  fDifficultyTimer = 0;
   fBird = { x: 50, y: 300, dy: 0 };
   fPipes = [];
   fScore = 0;
@@ -21,6 +30,10 @@ function loopFlappy() {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 400, 600);
   if (state.keysPressed[" "]) {
+    fBird.dy = -7.5;
+    state.keysPressed[" "] = false;
+  }
+  fBird.dy += 0.35;
     fBird.dy = -6;
     state.keysPressed[" "] = false;
   }
@@ -32,6 +45,21 @@ function loopFlappy() {
     showGameOver("flappy", fScore);
     return;
   }
+  fSpawnTimer += 1;
+  fDifficultyTimer += 1;
+  const gap = Math.max(170, baseGap - Math.floor(fDifficultyTimer / 900) * 10);
+  const speed = Math.min(3.2, baseSpeed + Math.floor(fDifficultyTimer / 1200) * 0.1);
+  const spawnInterval = Math.max(110, 170 - Math.floor(fDifficultyTimer / 900) * 10);
+  if (fSpawnTimer >= spawnInterval) {
+    const minHeight = 80;
+    const maxHeight = 600 - gap - 80;
+    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight) + minHeight);
+    fPipes.push({ x: 400, gap, h: topHeight });
+    fSpawnTimer = 0;
+  }
+  for (let i = fPipes.length - 1; i >= 0; i--) {
+    const p = fPipes[i];
+    p.x -= speed;
   if (Math.random() < 0.015) {
     fPipes.push({ x: 400, gap: 150, h: Math.random() * 300 + 50 });
   }

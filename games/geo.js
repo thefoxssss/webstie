@@ -35,6 +35,10 @@ function loopGeometry(ctx) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
   const currentSpeed = gSpeed * (state.myInventory.includes("item_slowmo") ? 0.8 : 1);
+  if ((state.keysPressed[" "] || state.keysPressed["ArrowUp"]) && gPlayer.grounded) {
+    gPlayer.dy = -13;
+    gPlayer.grounded = false;
+  }
   gPlayer.dy += 0.9;
   gPlayer.y += gPlayer.dy;
   if (gPlayer.y > 320) {
@@ -93,11 +97,16 @@ function loopGeometry(ctx) {
   gAnim = requestAnimationFrame(() => loopGeometry(ctx));
 }
 
+document.getElementById("geoCanvas").onclick = () => {
 function jumpGeo() {
   if (state.currentGame === "geo" && gPlayer.grounded) {
     gPlayer.dy = -13;
     gPlayer.grounded = false;
   }
+};
+
+registerGameStop(() => {
+  if (gAnim) cancelAnimationFrame(gAnim);
 }
 
 function bindGeoControls() {

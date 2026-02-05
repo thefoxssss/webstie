@@ -20,6 +20,9 @@
     <div class="sys-info">
         <span id="sysClock">00:00:00</span> | PING: <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
     </div>
+    <div class="top-actions">
+        <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
+        <button class="menu-btn" onclick="window.openGame('overlayVoice')">VOICE</button>
     <div style="display:flex; gap:10px;">
         <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
         <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
@@ -28,6 +31,11 @@
         <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
     </div>
+</div>
+
+<div class="quick-actions" aria-label="Quick actions">
+    <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
+    <button class="menu-btn" onclick="window.openGame('overlayVoice')">VOICE</button>
 </div>
 
 <div class="dropdown-content" id="menuDropdown">
@@ -55,6 +63,32 @@
             <div id="chatHistory"></div>
             <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
         </div>
+        <button class="term-btn" id="chatCloseBtn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+    </div>
+</div>
+
+<div class="overlay" id="overlayVoice">
+    <div class="score-box voice-box">
+        <div class="voice-header">
+            <span class="channel-name">General Voice</span>
+            <span id="status-text">Offline</span>
+        </div>
+
+        <div id="start-screen" class="voice-start">
+            <p>Connect to Neural Net?</p>
+            <button class="menu-btn control-btn" onclick="joinVoiceChannel()">[ JOIN VOICE ]</button>
+        </div>
+
+        <div id="connected-screen" class="hidden">
+            <div id="user-list" class="user-list"></div>
+
+            <div class="voice-controls">
+                <button id="btn-mute" class="menu-btn control-btn" onclick="toggleMute()">MUTE</button>
+                <button class="menu-btn control-btn disconnect" onclick="leaveVoice()">DISCONNECT</button>
+            </div>
+        </div>
+
+        <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
         <div class="voice-panel">
             <div class="voice-header">VOICE CHANNELS</div>
             <div class="voice-channels">
@@ -248,6 +282,15 @@
         <button class="term-btn" id="hmStartBtn" style="display:none; color:#0f0; border:1px solid #0f0;">START GAME</button>
         <div id="hmWait" style="font-size:10px;">WAITING...</div>
     </div>
+    <div id="hmGame" class="menu-box" style="display:none;">
+        <div id="hmStatus" style="margin-bottom:10px;">DECRYPTING...</div>
+        <div class="hangman-word" id="hmMasked">_ _ _ _</div>
+        <div class="hangman-row">REMAINING: <span id="hmRemaining">6</span></div>
+        <div class="hangman-row">GUESSES:</div>
+        <div class="hangman-letters" id="hmGuesses"></div>
+        <div class="hangman-guess">
+            <input type="text" id="hmGuessInput" class="term-input" placeholder="LETTER" maxlength="1">
+            <button class="term-btn" id="hmGuessBtn">GUESS</button>
     <div id="hmGame" class="hangman-room" style="display:none;">
         <div class="hangman-sidebar">
             <div class="hangman-panel">
@@ -358,6 +401,9 @@
     <button class="menu-btn" id="goExit" style="margin-top:20px;">EXIT TO MENU</button>
 </div>
 
+<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+<script type="module" src="script.js"></script>
+<script src="voice.js"></script>
 <script type="module" src="script.js"></script>
 </body>
 </html>
