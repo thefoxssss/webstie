@@ -6,7 +6,7 @@ let fScore = 0;
 let fAnim;
 
 const FLAP_STRENGTH = -7;
-const GRAVITY = 0.3;
+const GRAVITY = 0.5;
 const PIPE_SPEED = 2.2;
 const PIPE_GAP = 200;
 const PIPE_SPAWN_CHANCE = 0.01;
