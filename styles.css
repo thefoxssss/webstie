@@ -52,12 +52,6 @@
     .wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 20px; width: 100%; }
 
     .top-bar {
-        position: fixed; top: 0; left: 0; width: 100%; min-height: 50px;
-        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
-        padding: 6px 20px; z-index: 2000; background: rgba(0,0,0,0.9);
-        border-bottom: 1px solid var(--accent);
-    }
-    .top-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
         position: fixed; top: 0; left: 0; width: 100%; height: 50px;
         display: flex; justify-content: space-between; align-items: center;
         padding: 0 20px; z-index: 2000; background: rgba(0,0,0,0.9);
@@ -85,23 +79,6 @@
     }
     .dropdown-content button:hover { background-color: var(--accent-dim); padding-left: 20px; }
 
-    @media (max-width: 900px) {
-        .top-bar { height: auto; padding: 8px 10px; flex-wrap: wrap; gap: 8px; }
-        .sys-info { width: 100%; justify-content: center; order: 3; }
-        .top-actions { width: 100%; justify-content: center; }
-    }
-
-    .quick-actions {
-        position: fixed; bottom: 20px; left: 20px; display: flex; gap: 10px;
-        z-index: 2500; background: rgba(0,0,0,0.8); padding: 8px;
-        border: 1px solid var(--accent); border-radius: 6px;
-    }
-    .quick-actions .menu-btn { font-size: 9px; padding: 6px 10px; }
-
-    /* --- 4. CHAT --- */
-    #globalChat {
-        width: 100%; height: 100%;
-        background: rgba(0,0,0,0.8); border: 1px solid var(--accent);
     /* --- 4. CHAT --- */
     #globalChat {
         position: fixed; bottom: 20px; left: 20px; width: 300px; height: 200px;
@@ -112,40 +89,6 @@
     .chat-msg { margin-bottom: 5px; word-wrap: break-word; }
     .chat-user { color: var(--accent); font-weight: bold; }
     #chatInput { background: #000; border: none; border-top: 1px solid var(--accent); color: var(--accent); padding: 10px; font-family: inherit; outline: none; }
-    .chat-box { width: 90%; max-width: 1100px; }
-    .chat-layout { display: grid; grid-template-columns: 280px 1fr; gap: 0; min-height: 460px; border: 1px solid #111; }
-    .chat-main { display: flex; flex-direction: column; gap: 10px; padding: 15px; background: rgba(10,10,10,0.9); border-left: 1px solid #111; }
-    .chat-title { text-align: left; font-size: 12px; margin: 0; }
-    .voice-panel { padding: 15px; display: flex; flex-direction: column; gap: 12px; background: #0b0b0d; }
-    .voice-header { text-align: left; font-size: 9px; letter-spacing: 2px; color: #6e6e73; text-transform: uppercase; }
-    .voice-channels { display: flex; flex-direction: column; gap: 4px; }
-    .voice-channels .menu-btn { text-align: left; padding: 8px 12px; border-color: transparent; background: transparent; color: #c7c7cc; font-size: 10px; }
-    .voice-channels .menu-btn:hover { background: #1a1a1f; color: #fff; }
-    .voice-btn.active { background: #24242b; color: #fff; box-shadow: inset 2px 0 0 var(--accent); }
-    .voice-status { display: flex; flex-direction: column; gap: 2px; font-size: 9px; text-transform: uppercase; color: #9a9aa1; }
-    .voice-status span:first-child { color: #fff; font-size: 10px; }
-    .voice-members { border-top: 1px solid #1a1a1f; padding-top: 10px; }
-    #voiceMemberList { display: flex; flex-direction: column; gap: 8px; font-size: 10px; color: #d1d1d6; }
-    .voice-member { display: flex; align-items: center; justify-content: space-between; }
-    .voice-indicator { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.6); margin-right: 6px; }
-    .voice-member-name { display: flex; align-items: center; gap: 6px; }
-    .voice-controls { display: flex; justify-content: space-between; gap: 8px; }
-    .voice-controls .menu-btn { flex: 1; font-size: 9px; }
-    .voice-box { width: 90%; max-width: 520px; text-align: left; }
-    .voice-box .voice-header { background: var(--accent-dim); color: var(--accent); padding: 10px; border: 1px solid var(--accent); display: flex; justify-content: space-between; align-items: center; font-size: 10px; text-transform: uppercase; }
-    .voice-box .channel-name::before { content: "🔊 "; }
-    .voice-start { padding: 20px; text-align: center; }
-    .voice-start p { font-size: 10px; margin-bottom: 15px; }
-    .voice-box .user-list { padding: 10px; min-height: 120px; max-height: 220px; overflow-y: auto; border: 1px dashed var(--accent-dim); background: rgba(0,0,0,0.6); }
-    .voice-box .user-row { display: flex; align-items: center; margin-bottom: 8px; padding: 5px; border-radius: 4px; }
-    .voice-box .user-avatar { width: 24px; height: 24px; background: var(--accent-dim); border-radius: 50%; margin-right: 10px; border: 2px solid #333; transition: all 0.1s; }
-    .voice-box .user-row.speaking .user-avatar { border-color: var(--accent); box-shadow: 0 0 8px var(--accent); background: var(--accent); }
-    .voice-box .user-name { font-size: 0.9em; color: var(--accent); }
-    .voice-box .voice-controls { padding: 10px 0; border-top: 1px solid var(--accent-dim); display: flex; justify-content: space-around; gap: 10px; }
-    .voice-box .control-btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 6px 10px; cursor: pointer; font-size: 0.8em; text-transform: uppercase; }
-    .voice-box .control-btn:hover { background: var(--accent); color: #000; }
-    .voice-box .control-btn.disconnect { border-color: red; color: red; }
-    .voice-box .control-btn.disconnect:hover { background: red; color: #fff; }
 
     /* --- 5. MAIN LOGO --- */
     .gooner-btn {
@@ -254,13 +197,6 @@
     .ttt-cell { width: 70px; height: 70px; background: #111; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 35px; }
 
     /* Hangman */
-    .hangman-word { font-size: 24px; letter-spacing: 8px; margin: 10px 0 20px; text-align: center; }
-    .hangman-row { font-size: 10px; margin-bottom: 10px; text-align: center; }
-    .hangman-letters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: 12px; margin-bottom: 10px; }
-    .hangman-letters span { border: 1px solid var(--accent-dim); padding: 4px 6px; }
-    .hangman-guess { display: flex; gap: 10px; align-items: center; }
-    .hangman-guess .term-input { margin-bottom: 0; }
-
     .hangman-room { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 20px; width: 100%; max-width: 1100px; }
     .hangman-sidebar, .hangman-chat { display: flex; flex-direction: column; gap: 15px; }
     .hangman-panel { border: 1px solid var(--accent); background: rgba(0,0,0,0.8); padding: 12px; font-size: 10px; box-shadow: 0 0 10px var(--accent-dim); }
