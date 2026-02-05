@@ -136,6 +136,7 @@ const SHOP_ITEMS = [
   { id: "item_xray", name: "X-RAY VISOR", cost: 5000, type: "perk", desc: "See Dealer Card" },
   { id: "item_cardcount", name: "CARD COUNTER", cost: 3000, type: "perk", desc: "BJ Count Assist" },
   { id: "item_double", name: "SNAKE OIL", cost: 3000, type: "perk", desc: "Double Snake Points" },
+  { id: "item_matrix", name: "MATRIX MODE", cost: 6000, type: "visual", desc: "Toggle Matrix background" },
   { id: "item_rainbow", name: "RGB MODE", cost: 10000, type: "visual", desc: "Color Cycle" },
   { id: "item_autotype", name: "AUTO-TYPER", cost: 7500, type: "perk", desc: "Bot plays Typer" },
   { id: "item_flappy", name: "GAME: FLAPPY", cost: 10000, type: "visual", desc: "Unlock Flappy Goon" }
@@ -270,6 +271,8 @@ function loadProfile(data) {
   if (myInventory.includes("item_matrix")) {
     document.documentElement.style.setProperty("--accent", "#00ff00");
     document.getElementById("matrixCanvas").classList.add("active");
+    setMatrixMode(true);
+    document.documentElement.style.setProperty("--accent", "#00ff00");
   }
   if (myInventory.includes("item_rainbow")) document.body.classList.add("rainbow-mode");
   if (myInventory.includes("item_flappy")) document.getElementById("btnFlappy").style.display = "block";
@@ -280,6 +283,7 @@ function loadProfile(data) {
     showToast("DAILY BONUS: $100", "💰");
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
+  updateMatrixToggle();
 }
 
 function updateUI() {
@@ -303,6 +307,7 @@ function updateUI() {
   setText("profRank", rank);
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
+  updateMatrixToggle();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -413,6 +418,10 @@ export function buyItem(id) {
       document.documentElement.style.setProperty("--accent", "#00ff00");
       document.getElementById("matrixCanvas").classList.add("active");
     }
+      setMatrixMode(true);
+      document.documentElement.style.setProperty("--accent", "#00ff00");
+    }
+    updateMatrixToggle();
     logTransaction(`BOUGHT: ${item.name}`, -item.cost);
     saveStats();
     renderShop();
@@ -463,6 +472,30 @@ document.getElementById("menuToggle").onclick = (e) => {
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#menuToggle")) document.getElementById("menuDropdown").classList.remove("show");
 });
+function setMatrixMode(enabled) {
+  const canvas = document.getElementById("matrixCanvas");
+  if (!canvas) return;
+  canvas.classList.toggle("active", enabled);
+  updateMatrixToggle();
+}
+function updateMatrixToggle() {
+  const toggle = document.getElementById("matrixToggle");
+  const canvas = document.getElementById("matrixCanvas");
+  if (!toggle || !canvas) return;
+  const hasAccess = myInventory.includes("item_matrix");
+  const enabled = canvas.classList.contains("active");
+  toggle.disabled = !hasAccess;
+  toggle.innerText = hasAccess ? (enabled ? "ON" : "OFF") : "LOCKED";
+}
+document.getElementById("matrixToggle").onclick = () => {
+  if (!myInventory.includes("item_matrix")) {
+    showToast("MATRIX LOCKED", "🔒", "Buy Matrix Mode in the shop.");
+    updateMatrixToggle();
+    return;
+  }
+  const canvas = document.getElementById("matrixCanvas");
+  setMatrixMode(!canvas.classList.contains("active"));
+};
 document.getElementById("themeColor").oninput = (e) => {
   const h = e.target.value;
   document.documentElement.style.setProperty("--accent", h);
@@ -500,6 +533,9 @@ function activateMatrixHack() {
   if (myName === "ANON") return alert("LOGIN FIRST");
   document.documentElement.style.setProperty("--accent", "#00ff00");
   document.getElementById("matrixCanvas").classList.add("active");
+  if (!myInventory.includes("item_matrix")) myInventory.push("item_matrix");
+  document.documentElement.style.setProperty("--accent", "#00ff00");
+  setMatrixMode(true);
   showToast("MATRIX MODE ACTIVATED", "🐇");
   myMoney += 1000;
   saveStats();
@@ -546,6 +582,9 @@ function initChat() {
   document.getElementById("chatInput").addEventListener("keypress", async (e) => {
     if (e.key === "Enter") {
       const txt = e.target.value.trim();
+document.getElementById("chatInput").addEventListener("keydown", async (e) => {
+  if (e.key === "Enter") {
+    const txt = e.target.value.trim();
       if (txt.length > 0) {
         if (txt === "/clear") {
           document.getElementById("chatHistory").innerHTML = "";

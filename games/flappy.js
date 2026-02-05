@@ -17,6 +17,9 @@ export function initFlappy() {
   fScore = 0;
   fSpawnTimer = 0;
   fDifficultyTimer = 0;
+  fBird = { x: 50, y: 300, dy: 0 };
+  fPipes = [];
+  fScore = 0;
   setText("flappyScore", "SCORE: 0");
   loopFlappy();
 }
@@ -31,6 +34,10 @@ function loopFlappy() {
     state.keysPressed[" "] = false;
   }
   fBird.dy += 0.35;
+    fBird.dy = -6;
+    state.keysPressed[" "] = false;
+  }
+  fBird.dy += 0.4;
   fBird.y += fBird.dy;
   ctx.fillStyle = "#fff";
   ctx.fillRect(fBird.x, fBird.y, 20, 20);
@@ -53,6 +60,12 @@ function loopFlappy() {
   for (let i = fPipes.length - 1; i >= 0; i--) {
     const p = fPipes[i];
     p.x -= speed;
+  if (Math.random() < 0.015) {
+    fPipes.push({ x: 400, gap: 150, h: Math.random() * 300 + 50 });
+  }
+  for (let i = fPipes.length - 1; i >= 0; i--) {
+    const p = fPipes[i];
+    p.x -= 3;
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
     ctx.fillRect(p.x, 0, 40, p.h);
     ctx.fillRect(p.x, p.h + p.gap, 40, 600);

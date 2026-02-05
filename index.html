@@ -23,12 +23,19 @@
     <div class="top-actions">
         <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
         <button class="menu-btn" onclick="window.openGame('overlayVoice')">VOICE</button>
+    <div style="display:flex; gap:10px;">
+        <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
         <button class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
         <button class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
         <button class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
         <button class="menu-btn" onclick="window.openGame('overlayScores')">SCORES</button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
     </div>
+</div>
+
+<div class="quick-actions" aria-label="Quick actions">
+    <button class="menu-btn" onclick="window.openGame('overlayChat')">CHAT</button>
+    <button class="menu-btn" onclick="window.openGame('overlayVoice')">VOICE</button>
 </div>
 
 <div class="dropdown-content" id="menuDropdown">
@@ -82,6 +89,24 @@
         </div>
 
         <button class="term-btn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
+        <div class="voice-panel">
+            <div class="voice-header">VOICE CHANNELS</div>
+            <div class="voice-channels">
+                <button class="menu-btn voice-btn" data-channel="alpha">ALPHA</button>
+                <button class="menu-btn voice-btn" data-channel="bravo">BRAVO</button>
+                <button class="menu-btn voice-btn" data-channel="charlie">CHARLIE</button>
+            </div>
+            <div class="voice-status">
+                <span>STATUS:</span>
+                <span id="voiceStatus">OFFLINE</span>
+            </div>
+        <div class="voice-controls">
+            <button class="menu-btn" id="voiceMuteBtn">MUTE</button>
+            <button class="menu-btn" id="voiceLeaveBtn">LEAVE</button>
+        </div>
+        <audio id="voiceRemote" autoplay></audio>
+    </div>
+        <button class="term-btn" id="chatCloseBtn" style="margin-top:20px;" onclick="window.closeOverlays()">CLOSE</button>
     </div>
 </div>
 
@@ -266,6 +291,46 @@
         <div class="hangman-guess">
             <input type="text" id="hmGuessInput" class="term-input" placeholder="LETTER" maxlength="1">
             <button class="term-btn" id="hmGuessBtn">GUESS</button>
+    <div id="hmGame" class="hangman-room" style="display:none;">
+        <div class="hangman-sidebar">
+            <div class="hangman-panel">
+                <div class="hangman-section-title">OPERATORS</div>
+                <div id="hmPListLive"></div>
+                <div class="hangman-turn">TURN: <span id="hmTurnName">...</span></div>
+                <div class="hangman-row">REMAINING: <span id="hmRemaining">6</span></div>
+            </div>
+            <div class="hangman-panel">
+                <div class="hangman-section-title">GUESSES</div>
+                <div class="hangman-letters" id="hmGuesses"></div>
+            </div>
+        </div>
+        <div class="hangman-stage">
+            <div id="hmStatus" class="hangman-status">DECRYPTING...</div>
+            <div class="hangman-figure" id="hmFigure" data-stage="0">
+                <div class="hangman-gallows">
+                    <div class="hangman-base"></div>
+                    <div class="hangman-post"></div>
+                    <div class="hangman-beam"></div>
+                    <div class="hangman-rope"></div>
+                </div>
+                <div class="hangman-man">
+                    <div class="hangman-head"></div>
+                    <div class="hangman-body"></div>
+                    <div class="hangman-arm left"></div>
+                    <div class="hangman-arm right"></div>
+                    <div class="hangman-leg left"></div>
+                    <div class="hangman-leg right"></div>
+                </div>
+            </div>
+            <div class="hangman-word" id="hmMasked">_ _ _ _</div>
+        </div>
+        <div class="hangman-chat">
+            <div class="hangman-panel hangman-chat-log" id="hmChatLog"></div>
+            <div class="hangman-chat-input">
+                <input type="text" id="hmGuessInput" class="term-input" placeholder="GUESS A LETTER" maxlength="1">
+                <button class="term-btn" id="hmGuessBtn">SEND</button>
+            </div>
+            <div class="hangman-hint">GUESS ONE LETTER AT A TIME. TURN-BASED.</div>
         </div>
     </div>
     <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
@@ -339,5 +404,6 @@
 <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script type="module" src="script.js"></script>
 <script src="voice.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
