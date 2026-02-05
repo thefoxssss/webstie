@@ -1,6 +1,5 @@
 import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
 
-const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 const { doc, setDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
 let hmRoomCode = null;
@@ -34,7 +33,6 @@ export function initHangman() {
   document.getElementById("hmGame").style.display = "none";
   document.getElementById("hmGuessInput").value = "";
   document.getElementById("hmGuesses").innerHTML = "";
-  setText("hmStatus", "DECRYPTING...");
   document.getElementById("hmChatLog").innerHTML = "";
   setText("hmStatus", "DECRYPTING...");
   setText("hmTurnName", "...");
@@ -57,8 +55,6 @@ document.getElementById("btnCreateHM").onclick = async () => {
     wrong: [],
     remaining: 6,
     status: "lobby",
-    players: [{ uid: state.myUid, name: state.myName }]
-  };
     turnIndex: 0,
     players: [{ uid: state.myUid, name: state.myName }]
   };
@@ -76,9 +72,6 @@ document.getElementById("btnJoinHM").onclick = async () => {
     if (!snap.exists()) throw "404";
     const data = snap.data();
     const players = data.players || [];
-    if (!players.find((p) => p.uid === state.myUid)) {
-      players.push({ uid: state.myUid, name: state.myName });
-      t.update(ref, { players });
     if (players.length >= HM_MAX_PLAYERS) throw "ROOM FULL";
     if (!players.find((p) => p.uid === state.myUid)) {
       players.push({ uid: state.myUid, name: state.myName });
@@ -104,10 +97,6 @@ function joinHM(code, isHost) {
 }
 
 function handleHMUpdate(data) {
-  if (data.status === "lobby") {
-    document.getElementById("hmLobby").style.display = "flex";
-    document.getElementById("hmGame").style.display = "none";
-    document.getElementById("hmPList").innerHTML = (data.players || []).map((p) => `<div>${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`).join("");
   const players = data.players || [];
   if (data.status === "lobby") {
     document.getElementById("hmLobby").style.display = "flex";
@@ -124,8 +113,6 @@ function handleHMUpdate(data) {
   }
   document.getElementById("hmLobby").style.display = "none";
   document.getElementById("hmGame").style.display = "flex";
-  setText("hmMasked", data.masked.split("").join(" "));
-  setText("hmRemaining", data.remaining);
   document.getElementById("hmPListLive").innerHTML = players.map((p, idx) => {
     const isTurn = idx === (data.turnIndex ?? 0);
     return `<div>${isTurn ? "▶ " : ""}${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`;
@@ -145,15 +132,6 @@ function handleHMUpdate(data) {
     span.style.borderColor = data.wrong.includes(g) ? "#f00" : "var(--accent)";
     guessContainer.appendChild(span);
   });
-  if (data.status === "finished") {
-    setText("hmStatus", data.remaining === 0 ? "TRACE FAILED" : "ACCESS GRANTED");
-    document.getElementById("hmGuessBtn").disabled = true;
-    document.getElementById("hmGuessInput").disabled = true;
-  } else {
-    setText("hmStatus", hmIsHost ? "HOSTING" : "DECODING");
-    document.getElementById("hmGuessBtn").disabled = false;
-    document.getElementById("hmGuessInput").disabled = false;
-  }
   const chatLog = document.getElementById("hmChatLog");
   chatLog.innerHTML = "";
   (data.chat || []).forEach((entry) => {
@@ -175,7 +153,6 @@ function handleHMUpdate(data) {
 
 document.getElementById("hmStartBtn").onclick = async () => {
   if (!hmIsHost || !hmRoomCode) return;
-  await updateDoc(getHMRef(hmRoomCode), { status: "playing" });
   const ref = getHMRef(hmRoomCode);
   await runTransaction(firebase.db, async (t) => {
     const snap = await t.get(ref);
@@ -212,17 +189,6 @@ async function submitGuess() {
     const newGuesses = [...guesses];
     const newWrong = [...wrong];
     let remaining = data.remaining ?? 6;
-    if (data.word.includes(guess)) {
-      newGuesses.push(guess);
-    } else {
-      newWrong.push(guess);
-      remaining = Math.max(0, remaining - 1);
-    }
-    const masked = maskWord(data.word, newGuesses);
-    let status = data.status;
-    if (!masked.includes("_")) status = "finished";
-    if (remaining === 0) status = "finished";
-    t.update(ref, { guesses: newGuesses, wrong: newWrong, masked, remaining, status });
     const chat = data.chat || [];
     if (data.word.includes(guess)) {
       newGuesses.push(guess);
@@ -249,7 +215,6 @@ async function submitGuess() {
 }
 
 document.getElementById("hmGuessBtn").onclick = submitGuess;
-document.getElementById("hmGuessInput").addEventListener("keypress", (e) => {
 document.getElementById("hmGuessInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") submitGuess();
 });
