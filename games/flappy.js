@@ -5,6 +5,7 @@ let fPipes = [];
 let fScore = 0;
 let fAnim;
 
+const FLAP_STRENGTH = -7.5;
 const FLAP_STRENGTH = -7;
 const GRAVITY = 0.3;
 const PIPE_SPEED = 2.2;
