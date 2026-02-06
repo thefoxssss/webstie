@@ -292,6 +292,46 @@ body::before {
 .home-chat {
   z-index: 50;
 }
+.voice-dock {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 280px;
+  background: rgba(7, 7, 7, 0.92);
+  border: 1px solid var(--accent);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  box-shadow: 0 0 18px var(--accent-dim);
+  pointer-events: auto;
+  touch-action: auto;
+}
+.voice-dock.collapsed .voice-panel {
+  display: none;
+}
+.voice-dock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--accent-dim);
+  color: #fff;
+  letter-spacing: 1px;
+  font-size: 9px;
+  text-align: center;
+}
+.voice-dock-toggle {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  line-height: 18px;
+  cursor: pointer;
+  padding: 0;
+}
 .chat-header {
   padding: 8px 10px;
   border-bottom: 1px solid var(--accent-dim);
@@ -333,20 +373,14 @@ body::before {
   width: min(90vw, 760px);
 }
 .voice-panel {
-  margin-top: 15px;
-  padding: 15px;
+  margin-top: 10px;
+  padding: 12px;
   border: 1px solid var(--accent-dim);
   background: rgba(0, 0, 0, 0.7);
   box-shadow: inset 0 0 20px rgba(255, 6, 6, 0.1);
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.voice-header {
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-align: center;
-  color: #fff;
 }
 .voice-channels {
   display: grid;
