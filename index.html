@@ -59,6 +59,7 @@
       <button onclick="window.launchGame('pong')">PONG</button>
       <button onclick="window.launchGame('snake')">SNAKE</button>
       <button onclick="window.launchGame('runner')">RUNNER (V2)</button>
+      <button onclick="window.launchGame('dodge')">DODGE GRID</button>
       <button
         onclick="window.launchGame('blackjack')"
         style="border-top: 1px solid #444"
@@ -421,6 +422,20 @@
       <canvas id="runnerCanvas" width="800" height="400"></canvas>
       <div class="mobile-hint active" style="margin-top: 20px">
         PRESS SPACE TO JUMP
+      </div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Dodge Grid mini-game overlay. -->
+    <div class="overlay" id="overlayDodge">
+      <h1>DODGE GRID</h1>
+      <div class="high-score-display">HIGH: <span id="hsDodge">0</span></div>
+      <div style="margin-bottom: 10px" id="dodgeScore">SCORE: 0</div>
+      <canvas id="dodgeCanvas" width="700" height="450"></canvas>
+      <div class="mobile-hint active" style="margin-top: 20px">
+        ARROWS OR WASD TO EVADE
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM

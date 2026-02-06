@@ -189,6 +189,14 @@ const ACHIEVEMENTS = [
     reward: 2500,
   },
   {
+    id: "grid_runner",
+    icon: "🧿",
+    title: "GRID RUNNER",
+    desc: "Score 25 in Dodge Grid",
+    rarity: "rare",
+    reward: 2000,
+  },
+  {
     id: "untouchable",
     icon: "🛡️",
     title: "UNTOUCHABLE",
@@ -416,6 +424,13 @@ const SHOP_ITEMS = [
     cost: 3000,
     type: "perk",
     desc: "Double Snake Points",
+  },
+  {
+    id: "item_dodge_stabilizer",
+    name: "DODGE STABILIZER",
+    cost: 2500,
+    type: "perk",
+    desc: "Slow falling shards",
   },
   {
     id: "item_matrix",
@@ -1128,6 +1143,7 @@ export function loadHighScores() {
   setText("hsRunner", localStorage.getItem("hs_runner") || 0);
   setText("hsGeo", localStorage.getItem("hs_geo") || 0);
   setText("hsFlappy", localStorage.getItem("hs_flappy") || 0);
+  setText("hsDodge", localStorage.getItem("hs_dodge") || 0);
 }
 
 // Persist a high score globally so it appears on the leaderboard.
