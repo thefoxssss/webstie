@@ -18,7 +18,7 @@ window.setPongDiff = setPongDiff;
 
 window.launchGame = (game) => {
   window.closeOverlays();
-  const overlayId = "overlay" + (game === "ttt" || game === "geo" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
+  const overlayId = "overlay" + (game === "ttt" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   if (game === "pong") initPong();
