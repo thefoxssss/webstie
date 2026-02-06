@@ -36,7 +36,6 @@
         <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
       </div>
       <div style="display: flex; gap: 10px">
-        <button class="menu-btn" id="voiceDockToggle">VOICE</button>
         <button class="menu-btn" onclick="window.openGame('overlayBank')">
           BANK
         </button>
@@ -55,7 +54,6 @@
 
     <!-- Dropdown game menu (toggled from the top bar). -->
     <div class="dropdown-content" id="menuDropdown">
-      <button id="voiceDockToggleMenu">VOICE</button>
       <button onclick="window.launchGame('geo')">GEO DASH</button>
       <button onclick="window.launchGame('type')">TYPE RUNNER</button>
       <button onclick="window.launchGame('pong')">PONG</button>
@@ -88,30 +86,6 @@
         placeholder="TYPE MESSAGE..."
         maxlength="30"
       />
-    </div>
-
-    <!-- Voice chat dock (Discord-style, always visible on home). -->
-    <div id="voiceDock" class="voice-dock">
-      <div class="voice-dock-header">
-        <span>VOICE CHANNELS</span>
-        <button class="voice-dock-toggle" id="voiceDockCollapse">–</button>
-      </div>
-      <div class="voice-panel">
-        <div class="voice-channels">
-          <button class="menu-btn voice-btn" data-channel="alpha">ALPHA</button>
-          <button class="menu-btn voice-btn" data-channel="bravo">BRAVO</button>
-          <button class="menu-btn voice-btn" data-channel="charlie">CHARLIE</button>
-        </div>
-        <div class="voice-status">
-          <span>STATUS:</span>
-          <span id="voiceStatus">OFFLINE</span>
-        </div>
-        <div class="voice-controls">
-          <button class="menu-btn" id="voiceMuteBtn">MUTE</button>
-          <button class="menu-btn" id="voiceLeaveBtn">LEAVE</button>
-        </div>
-        <audio id="voiceRemote" autoplay></audio>
-      </div>
     </div>
 
     <!-- Landing splash section + operator info. -->
