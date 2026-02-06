@@ -1,4 +1,12 @@
-import { registerGameStop, showGameOver, setText, updateHighScore, loadHighScores, state } from "../core.js";
+// Flappy-style game with pipes, gravity, and tap-to-flap controls.
+import {
+  registerGameStop,
+  showGameOver,
+  setText,
+  updateHighScore,
+  loadHighScores,
+  state,
+} from "../core.js";
 
 let fBird = {};
 let fPipes = [];
@@ -22,6 +30,7 @@ export function initFlappy() {
   loopFlappy();
 }
 
+// Main game loop: physics update, pipe spawn, collision, render.
 function loopFlappy() {
   if (state.currentGame !== "flappy") return;
   const ctx = document.getElementById("flappyCanvas").getContext("2d");
@@ -50,7 +59,11 @@ function loopFlappy() {
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
     ctx.fillRect(p.x, 0, 40, p.h);
     ctx.fillRect(p.x, p.h + p.gap, 40, 600);
-    if (fBird.x + 20 > p.x && fBird.x < p.x + 40 && (fBird.y < p.h || fBird.y + 20 > p.h + p.gap)) {
+    if (
+      fBird.x + 20 > p.x &&
+      fBird.x < p.x + 40 &&
+      (fBird.y < p.h || fBird.y + 20 > p.h + p.gap)
+    ) {
       showGameOver("flappy", fScore);
       return;
     }
@@ -64,10 +77,12 @@ function loopFlappy() {
   fAnim = requestAnimationFrame(loopFlappy);
 }
 
+// Click/tap to flap.
 document.getElementById("flappyCanvas").onclick = () => {
   if (state.currentGame === "flappy") fBird.dy = FLAP_STRENGTH;
 };
 
+// Cancel animation loop on exit.
 registerGameStop(() => {
   if (fAnim) cancelAnimationFrame(fAnim);
 });

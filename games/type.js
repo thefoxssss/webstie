@@ -1,4 +1,12 @@
-import { registerGameStop, setText, saveGlobalScore, saveStats, unlockAchievement, state } from "../core.js";
+// Typing speed game that tracks WPM and updates high scores.
+import {
+  registerGameStop,
+  setText,
+  saveGlobalScore,
+  saveStats,
+  unlockAchievement,
+  state,
+} from "../core.js";
 
 let typeText = "";
 let typeIndex = 0;
@@ -6,8 +14,111 @@ let typeStartTime = null;
 let typeCorrectChars = 0;
 let typeInterval;
 
-const commonWords = ["the", "be", "to", "of", "and", "a", "in", "that", "have", "I", "it", "for", "not", "on", "with", "he", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an", "will", "my", "one", "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who", "get", "which", "go", "me", "when", "make", "can", "like", "time", "no", "just", "him", "know", "take", "people", "into", "year", "your", "good", "some", "could", "them", "see", "other", "than", "then", "now", "look", "only", "come", "its", "over", "think", "also", "back", "after", "use", "two", "how", "our", "work", "first", "well", "way", "even", "new", "want", "because", "any", "these", "give", "day", "most", "us"];
+// Word list used to build randomized typing prompts.
+const commonWords = [
+  "the",
+  "be",
+  "to",
+  "of",
+  "and",
+  "a",
+  "in",
+  "that",
+  "have",
+  "I",
+  "it",
+  "for",
+  "not",
+  "on",
+  "with",
+  "he",
+  "as",
+  "you",
+  "do",
+  "at",
+  "this",
+  "but",
+  "his",
+  "by",
+  "from",
+  "they",
+  "we",
+  "say",
+  "her",
+  "she",
+  "or",
+  "an",
+  "will",
+  "my",
+  "one",
+  "all",
+  "would",
+  "there",
+  "their",
+  "what",
+  "so",
+  "up",
+  "out",
+  "if",
+  "about",
+  "who",
+  "get",
+  "which",
+  "go",
+  "me",
+  "when",
+  "make",
+  "can",
+  "like",
+  "time",
+  "no",
+  "just",
+  "him",
+  "know",
+  "take",
+  "people",
+  "into",
+  "year",
+  "your",
+  "good",
+  "some",
+  "could",
+  "them",
+  "see",
+  "other",
+  "than",
+  "then",
+  "now",
+  "look",
+  "only",
+  "come",
+  "its",
+  "over",
+  "think",
+  "also",
+  "back",
+  "after",
+  "use",
+  "two",
+  "how",
+  "our",
+  "work",
+  "first",
+  "well",
+  "way",
+  "even",
+  "new",
+  "want",
+  "because",
+  "any",
+  "these",
+  "give",
+  "day",
+  "most",
+  "us",
+];
 
+// Initialize typing state, build a new prompt, and focus the input.
 export function initTypeGame() {
   state.currentGame = "type";
   typeIndex = 0;
@@ -19,11 +130,14 @@ export function initTypeGame() {
   document.getElementById("typeHiddenInput").value = "";
   document.getElementById("typeHiddenInput").focus();
   typeText = "";
-  for (let i = 0; i < 30; i++) typeText += commonWords[Math.floor(Math.random() * commonWords.length)] + " ";
+  for (let i = 0; i < 30; i++) {
+    typeText += commonWords[Math.floor(Math.random() * commonWords.length)] + " ";
+  }
   typeText = typeText.trim();
   renderTypeDisplay();
 }
 
+// Render the prompt with per-letter spans for styling.
 function renderTypeDisplay() {
   const display = document.getElementById("typeTextBox");
   display.innerHTML = "";
@@ -36,6 +150,7 @@ function renderTypeDisplay() {
   });
 }
 
+// Handle text input and score as the player types.
 document.getElementById("typeHiddenInput").addEventListener("input", (e) => {
   if (state.currentGame !== "type") return;
   if (!typeStartTime) {
@@ -87,8 +202,13 @@ document.getElementById("typeHiddenInput").addEventListener("input", (e) => {
   }
 });
 
+// Auto-typing bot that completes prompts if the perk is active.
 setInterval(() => {
-  if (state.currentGame === "type" && state.myInventory.includes("item_autotype") && typeText.length > 0) {
+  if (
+    state.currentGame === "type" &&
+    state.myInventory.includes("item_autotype") &&
+    typeText.length > 0
+  ) {
     const letters = document.querySelectorAll(".letter");
     if (typeIndex < typeText.length) {
       letters[typeIndex].classList.add("correct");
@@ -105,6 +225,7 @@ setInterval(() => {
   }
 }, 150);
 
+// Clear any active intervals when leaving the game.
 registerGameStop(() => {
   if (typeInterval) clearInterval(typeInterval);
 });
