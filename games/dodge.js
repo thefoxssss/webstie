@@ -18,7 +18,8 @@ let shards = [];
 let dScore = 0;
 let dFrame = 0;
 let dAnim;
-let spawnRate = 80;
+let spawnRate = 70;
+let sideRate = 200;
 
 const CANVAS_W = 700;
 const CANVAS_H = 450;
@@ -38,19 +39,35 @@ export function initDodge() {
   shards = [];
   dScore = 0;
   dFrame = 0;
-  spawnRate = 80;
+  spawnRate = 70;
+  sideRate = 200;
   setText("dodgeScore", "SCORE: 0");
   loopDodge();
 }
 
 function spawnShard() {
-  const size = 16 + Math.random() * 20;
+  const size = 18 + Math.random() * 26;
   shards.push({
     x: Math.random() * (CANVAS_W - size),
     y: -size,
     w: size,
     h: size,
-    speed: 2 + Math.random() * 2 + dScore * 0.03,
+    speed: 2.8 + Math.random() * 2.8 + dScore * 0.05,
+    type: "fall",
+  });
+}
+
+function spawnSideShard() {
+  const width = 60 + Math.random() * 90;
+  const height = 16 + Math.random() * 12;
+  const fromLeft = Math.random() > 0.5;
+  shards.push({
+    x: fromLeft ? -width : CANVAS_W + width,
+    y: 40 + Math.random() * (CANVAS_H - 80),
+    w: width,
+    h: height,
+    speed: 3 + Math.random() * 2.5 + dScore * 0.03,
+    type: fromLeft ? "side-left" : "side-right",
   });
 }
 
@@ -84,7 +101,13 @@ function loopDodge() {
 
   if (dFrame % spawnRate === 0) {
     spawnShard();
-    if (spawnRate > 35) spawnRate -= 1;
+    if (Math.random() > 0.6) spawnShard();
+    if (spawnRate > 30) spawnRate -= 1;
+  }
+
+  if (dFrame % sideRate === 0) {
+    spawnSideShard();
+    if (sideRate > 120) sideRate -= 2;
   }
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
@@ -95,7 +118,12 @@ function loopDodge() {
 
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
-    s.y += s.speed * shardSlowdown;
+    if (s.type === "fall") {
+      s.y += s.speed * shardSlowdown;
+    } else {
+      const dir = s.type === "side-left" ? 1 : -1;
+      s.x += dir * s.speed * shardSlowdown;
+    }
     dCtx.fillStyle = "#fff";
     dCtx.fillRect(s.x, s.y, s.w, s.h);
 
@@ -110,7 +138,7 @@ function loopDodge() {
       return;
     }
 
-    if (s.y > CANVAS_H + 20) {
+    if (s.y > CANVAS_H + 20 || s.x < -CANVAS_W || s.x > CANVAS_W * 2) {
       shards.splice(i, 1);
       dScore += 1;
       updateHighScore("dodge", dScore);
