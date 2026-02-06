@@ -43,6 +43,11 @@
     <button onclick="window.launchGame('flappy')" id="btnFlappy" style="display:none; color:gold;">FLAPPY GOON</button>
 </div>
 
+<div id="globalChat" class="home-chat">
+    <div id="chatHistory"></div>
+    <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
+</div>
+
 <div class="wrap">
     <div class="gooner-btn" id="mainBtn">GOONER</div>
     <div class="subtitle">TERMINAL ONLINE</div>
@@ -51,11 +56,7 @@
 
 <div class="overlay" id="overlayChat">
     <div class="score-box chat-box">
-        <h2 style="text-align:center;">GLOBAL CHAT</h2>
-        <div id="globalChat">
-            <div id="chatHistory"></div>
-            <input type="text" id="chatInput" placeholder="TYPE MESSAGE..." maxlength="30">
-        </div>
+        <h2 style="text-align:center;">VOICE CHANNELS</h2>
         <div class="voice-panel">
             <div class="voice-header">VOICE CHANNELS</div>
             <div class="voice-channels">
