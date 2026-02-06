@@ -75,36 +75,3 @@ document.getElementById("goExit").onclick = () => {
   closeOverlays();
   document.getElementById("modalGameOver").classList.remove("active");
 };
-
-// Normalize version strings (semver, commit sha, or "dev") for display.
-const formatVersionValue = (value) => {
-  if (!value) return null;
-  const trimmed = String(value).trim();
-  if (!trimmed) return null;
-  const normalized = trimmed.replace(/^v/i, "");
-  if (normalized.toLowerCase() === "dev") return "dev";
-  if (/^[0-9a-f]{7,40}$/i.test(normalized)) return normalized.slice(0, 7);
-  return normalized;
-};
-
-// Pull version metadata from globals and <meta> tags, then render to the UI.
-const setVersionIndicator = () => {
-  const indicator = document.getElementById("versionIndicator");
-  if (!indicator) return;
-
-  const metaAppVersion = document.querySelector('meta[name="app-version"]')?.content;
-  const metaCommit = document.querySelector('meta[name="git-commit"]')?.content;
-  const candidates = [
-    window.APP_COMMIT,
-    window.COMMIT_SHA,
-    metaCommit,
-    window.APP_VERSION,
-    metaAppVersion,
-  ];
-
-  const resolved = candidates.map(formatVersionValue).find(Boolean) || "dev";
-  indicator.textContent = `VERSION: ${resolved}`;
-};
-
-// Initialize the version indicator on load.
-setVersionIndicator();
