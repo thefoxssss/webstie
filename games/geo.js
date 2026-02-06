@@ -10,6 +10,7 @@ let gJumpHandler = null;
 let gKeyHandler = null;
 let gCanvasRef = null;
 let gOverlayRef = null;
+let gSpawnDistanceRemaining = 0;
 
 export function initGeometry() {
   state.currentGame = "geo";
@@ -23,6 +24,7 @@ export function initGeometry() {
   gObs = [];
   gScore = 0;
   gSpeed = 6;
+  gSpawnDistanceRemaining = 0;
   setText("geoScore", "SCORE: 0");
   bindGeoControls();
   loopGeometry(ctx);
@@ -57,8 +59,10 @@ function loopGeometry(ctx) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(-gPlayer.w / 2, -gPlayer.h / 2, gPlayer.w, gPlayer.h);
   ctx.restore();
-  if (Math.random() < 0.02) {
+  gSpawnDistanceRemaining -= currentSpeed;
+  if (gSpawnDistanceRemaining <= 0 && Math.random() < 0.4) {
     gObs.push({ x: 800, y: 320, w: 30, h: 30, type: Math.random() > 0.5 ? "spike" : "block" });
+    gSpawnDistanceRemaining = 180 + Math.random() * 120;
   }
   for (let i = gObs.length - 1; i >= 0; i--) {
     const o = gObs[i];
