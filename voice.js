@@ -1,6 +1,17 @@
+// WebRTC-based voice chat, backed by Firestore for signaling.
 import { firebase, state, showToast } from "./core.js";
 
-const { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } = firebase;
+const {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  onSnapshot,
+  collection,
+  addDoc,
+  deleteDoc,
+  getDocs,
+} = firebase;
 
 let pc = null;
 let localStream = null;
@@ -12,18 +23,22 @@ let currentChannel = null;
 let isHost = false;
 let muted = false;
 
+// Minimal ICE server list for NAT traversal.
 const ICE_CONFIG = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
+// Resolve the Firestore document for a specific voice channel.
 function channelRef(channel) {
   return doc(firebase.db, "gooner_voice_channels", channel);
 }
 
+// Reference for candidate ICE sub-collection by role.
 function candidatesRef(channel, role) {
   return collection(firebase.db, "gooner_voice_channels", channel, `${role}Candidates`);
 }
 
+// Update the voice chat status label + data attribute.
 function setStatus(text) {
   const statusEl = document.getElementById("voiceStatus");
   if (statusEl) {
@@ -32,16 +47,24 @@ function setStatus(text) {
   }
 }
 
+// Remove all ICE candidates for the given channel/role.
 async function clearCandidates(channel, role) {
   const snapshot = await getDocs(candidatesRef(channel, role));
   await Promise.all(snapshot.docs.map((docSnap) => deleteDoc(docSnap.ref)));
 }
 
+// Clear a channel state so a new host can initialize.
 async function resetChannel(channel) {
-  await setDoc(channelRef(channel), { hostUid: null, offer: null, answer: null, updatedAt: Date.now() });
+  await setDoc(channelRef(channel), {
+    hostUid: null,
+    offer: null,
+    answer: null,
+    updatedAt: Date.now(),
+  });
   await Promise.all([clearCandidates(channel, "host"), clearCandidates(channel, "guest")]);
 }
 
+// Create a peer connection, wiring tracks + ICE handling.
 async function createPeerConnection() {
   pc = new RTCPeerConnection(ICE_CONFIG);
   remoteStream = new MediaStream();
@@ -83,6 +106,7 @@ async function createPeerConnection() {
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 }
 
+// Join a channel as host or guest depending on existing offer state.
 async function joinChannel(channel) {
   if (!state.myUid) {
     showToast("LOGIN REQUIRED", "⚠️");
@@ -100,7 +124,12 @@ async function joinChannel(channel) {
     await createPeerConnection();
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    await setDoc(ref, { hostUid: state.myUid, offer: offer.toJSON(), answer: null, updatedAt: Date.now() });
+    await setDoc(ref, {
+      hostUid: state.myUid,
+      offer: offer.toJSON(),
+      answer: null,
+      updatedAt: Date.now(),
+    });
     unsubRoom = onSnapshot(ref, async (docSnap) => {
       const room = docSnap.data();
       if (room?.answer && !pc.currentRemoteDescription) {
@@ -140,6 +169,7 @@ async function joinChannel(channel) {
   }
 }
 
+// Leave a channel and tear down local/remote streams.
 async function leaveChannel() {
   if (unsubRoom) unsubRoom();
   if (unsubHostCandidates) unsubHostCandidates();
@@ -169,6 +199,7 @@ async function leaveChannel() {
   setStatus("OFFLINE");
 }
 
+// Toggle local microphone track enablement.
 function toggleMute() {
   muted = !muted;
   if (localStream) {
@@ -183,6 +214,7 @@ function toggleMute() {
   }
 }
 
+// Wire up buttons for channel selection, leave, and mute.
 export function initVoiceChat() {
   const channelButtons = document.querySelectorAll(".voice-btn");
   channelButtons.forEach((btn) => {

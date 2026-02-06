@@ -1,22 +1,33 @@
+// Multiplayer Tic-Tac-Toe using Firestore for shared state.
 import { registerGameStop, setText, state, firebase } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
 let tttUnsub;
+// Firestore room reference helper.
 function getTTTRef(code) {
   return doc(firebase.db, "gooner_terminal_rooms", code);
 }
 
+// Set the active game flag so keyboard handlers stay consistent.
 export function initTTT() {
   state.currentGame = "ttt";
 }
 
+// Create a new TTT room with a random 4-digit code.
 document.getElementById("btnCreateTTT").onclick = async () => {
   if (!state.myUid) return alert("Offline");
   const code = Math.floor(1000 + Math.random() * 9000).toString();
-  await setDoc(getTTTRef(code), { board: Array(9).fill(null), turn: "X", players: { X: state.myUid, O: null }, names: { X: state.myName, O: "..." }, status: "lobby" });
+  await setDoc(getTTTRef(code), {
+    board: Array(9).fill(null),
+    turn: "X",
+    players: { X: state.myUid, O: null },
+    names: { X: state.myName, O: "..." },
+    status: "lobby",
+  });
   joinTTT(code, "X");
 };
+// Join an existing room as O if the seat is open.
 document.getElementById("btnJoinTTT").onclick = async () => {
   const code = document.getElementById("joinTTTCode").value;
   const ref = getTTTRef(code);
@@ -28,6 +39,7 @@ document.getElementById("btnJoinTTT").onclick = async () => {
   }
 };
 
+// Subscribe to the room and update UI for lobby or gameplay.
 function joinTTT(code, side) {
   document.getElementById("tttMenu").style.display = "none";
   document.getElementById("tttLobby").style.display = "flex";
@@ -53,7 +65,14 @@ function joinTTT(code, side) {
         cells[i].innerText = v || "";
         cells[i].style.color = v === "X" ? "red" : "#fff";
       });
-      setText("tttStatus", data.status === "finished" ? "GAME OVER" : data.turn === side ? "YOUR TURN" : "OPPONENT TURN");
+      setText(
+        "tttStatus",
+        data.status === "finished"
+          ? "GAME OVER"
+          : data.turn === side
+          ? "YOUR TURN"
+          : "OPPONENT TURN"
+      );
       if (data.status === "finished" && side === "X") {
         document.getElementById("tttReplay").style.display = "block";
         document.getElementById("tttReplay").onclick = async () => {
@@ -65,10 +84,12 @@ function joinTTT(code, side) {
   tttUnsub.side = side;
 }
 
+// Start the match once both players are present.
 document.getElementById("tttStartBtn").onclick = async () => {
   await updateDoc(getTTTRef(document.getElementById("tttRoomId").innerText), { status: "playing" });
 };
 
+// Apply a move transactionally to prevent collisions.
 document.getElementById("tttGrid").onclick = async (e) => {
   const i = e.target.dataset.i;
   if (!i) return;
@@ -81,13 +102,29 @@ document.getElementById("tttGrid").onclick = async (e) => {
     const nb = [...d.board];
     nb[i] = tttUnsub.side;
     let w = null;
-    [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]].forEach((k) => {
-      if (nb[k[0]] && nb[k[0]] === nb[k[1]] && nb[k[0]] === nb[k[2]]) w = nb[k[0]];
+    [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ].forEach((k) => {
+      if (nb[k[0]] && nb[k[0]] === nb[k[1]] && nb[k[0]] === nb[k[2]]) {
+        w = nb[k[0]];
+      }
     });
-    t.update(r, { board: nb, turn: tttUnsub.side === "X" ? "O" : "X", status: w || !nb.includes(null) ? "finished" : "playing" });
+    t.update(r, {
+      board: nb,
+      turn: tttUnsub.side === "X" ? "O" : "X",
+      status: w || !nb.includes(null) ? "finished" : "playing",
+    });
   });
 };
 
+// Unsubscribe when leaving the game to avoid leaking listeners.
 registerGameStop(() => {
   if (tttUnsub) tttUnsub();
   tttUnsub = null;

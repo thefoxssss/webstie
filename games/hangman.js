@@ -1,3 +1,4 @@
+// Multiplayer hangman mode with lobby, turn order, and chat.
 import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
 
 const { doc, setDoc, updateDoc, onSnapshot, runTransaction } = firebase;
@@ -8,14 +9,17 @@ let hmIsHost = false;
 const HM_MAX_PLAYERS = 4;
 const HM_MAX_CHAT = 30;
 
+// Firestore room reference helper.
 function getHMRef(code) {
   return doc(firebase.db, "gooner_terminal_rooms", "hm_" + code);
 }
 
+// Normalize a guess/word into uppercase A-Z plus spaces.
 function sanitizeWord(word) {
   return word.toUpperCase().replace(/[^A-Z ]/g, "").trim();
 }
 
+// Render a masked word based on the guesses so far.
 function maskWord(word, guesses) {
   return word
     .split("")
@@ -26,6 +30,7 @@ function maskWord(word, guesses) {
     .join("");
 }
 
+// Reset the hangman UI to the main menu state.
 export function initHangman() {
   state.currentGame = "hangman";
   document.getElementById("hmMenu").style.display = "flex";
@@ -38,6 +43,7 @@ export function initHangman() {
   setText("hmTurnName", "...");
 }
 
+// Create a new hangman room and become the host.
 document.getElementById("btnCreateHM").onclick = async () => {
   if (!state.myUid) return alert("Offline");
   const rawWord = document.getElementById("hmWordInput").value;
@@ -46,7 +52,14 @@ document.getElementById("btnCreateHM").onclick = async () => {
   const code = Math.floor(1000 + Math.random() * 9000).toString();
   const guesses = [];
   const masked = maskWord(word, guesses);
-  const chat = [{ name: "SYSTEM", msg: "ROOM CREATED. WAITING FOR PLAYERS.", type: "system", ts: Date.now() }];
+  const chat = [
+    {
+      name: "SYSTEM",
+      msg: "ROOM CREATED. WAITING FOR PLAYERS.",
+      type: "system",
+      ts: Date.now(),
+    },
+  ];
   const room = {
     hostUid: state.myUid,
     word,
@@ -56,13 +69,14 @@ document.getElementById("btnCreateHM").onclick = async () => {
     remaining: 6,
     status: "lobby",
     turnIndex: 0,
-    players: [{ uid: state.myUid, name: state.myName }]
+    players: [{ uid: state.myUid, name: state.myName }],
   };
   room.chat = chat;
   await setDoc(getHMRef(code), room);
   joinHM(code, true);
 };
 
+// Join a room if there is space available.
 document.getElementById("btnJoinHM").onclick = async () => {
   const code = document.getElementById("joinHMCode").value;
   if (!code) return;
@@ -76,7 +90,12 @@ document.getElementById("btnJoinHM").onclick = async () => {
     if (!players.find((p) => p.uid === state.myUid)) {
       players.push({ uid: state.myUid, name: state.myName });
       const chat = data.chat || [];
-      chat.push({ name: "SYSTEM", msg: `${state.myName} JOINED THE ROOM.`, type: "system", ts: Date.now() });
+      chat.push({
+        name: "SYSTEM",
+        msg: `${state.myName} JOINED THE ROOM.`,
+        type: "system",
+        ts: Date.now(),
+      });
       if (chat.length > HM_MAX_CHAT) chat.shift();
       t.update(ref, { players, chat });
     }
@@ -84,6 +103,7 @@ document.getElementById("btnJoinHM").onclick = async () => {
   }).catch((e) => alert(e));
 };
 
+// Subscribe to room updates and toggle lobby/game UI.
 function joinHM(code, isHost) {
   hmRoomCode = code;
   hmIsHost = isHost;
@@ -96,12 +116,15 @@ function joinHM(code, isHost) {
   });
 }
 
+// Handle UI updates for lobby state, turn display, and chat.
 function handleHMUpdate(data) {
   const players = data.players || [];
   if (data.status === "lobby") {
     document.getElementById("hmLobby").style.display = "flex";
     document.getElementById("hmGame").style.display = "none";
-    document.getElementById("hmPList").innerHTML = players.map((p) => `<div>${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`).join("");
+    document.getElementById("hmPList").innerHTML = players
+      .map((p) => `<div>${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`)
+      .join("");
     if (hmIsHost) {
       document.getElementById("hmStartBtn").style.display = "block";
       setText("hmWait", "SET WORD & START");
@@ -113,10 +136,12 @@ function handleHMUpdate(data) {
   }
   document.getElementById("hmLobby").style.display = "none";
   document.getElementById("hmGame").style.display = "flex";
-  document.getElementById("hmPListLive").innerHTML = players.map((p, idx) => {
-    const isTurn = idx === (data.turnIndex ?? 0);
-    return `<div>${isTurn ? "▶ " : ""}${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`;
-  }).join("");
+  document.getElementById("hmPListLive").innerHTML = players
+    .map((p, idx) => {
+      const isTurn = idx === (data.turnIndex ?? 0);
+      return `<div>${isTurn ? "▶ " : ""}${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`;
+    })
+    .join("");
   const currentPlayer = players[data.turnIndex ?? 0];
   setText("hmTurnName", currentPlayer ? currentPlayer.name : "...");
   setText("hmMasked", data.masked.split("").join(" "));
@@ -151,6 +176,7 @@ function handleHMUpdate(data) {
   document.getElementById("hmGuessInput").disabled = !isMyTurn || data.status === "finished";
 }
 
+// Start the game from the lobby (host only).
 document.getElementById("hmStartBtn").onclick = async () => {
   if (!hmIsHost || !hmRoomCode) return;
   const ref = getHMRef(hmRoomCode);
@@ -159,11 +185,19 @@ document.getElementById("hmStartBtn").onclick = async () => {
     if (!snap.exists()) return;
     const data = snap.data();
     const masked = maskWord(data.word || "", []);
-    const chat = [{ name: "SYSTEM", msg: "GAME STARTED. FIRST TURN ACTIVE.", type: "system", ts: Date.now() }];
+    const chat = [
+      {
+        name: "SYSTEM",
+        msg: "GAME STARTED. FIRST TURN ACTIVE.",
+        type: "system",
+        ts: Date.now(),
+      },
+    ];
     t.update(ref, { status: "playing", guesses: [], wrong: [], remaining: 6, masked, turnIndex: 0, chat });
   });
 };
 
+// Submit a guess for the current player's turn.
 async function submitGuess() {
   if (!hmRoomCode) return;
   const rawGuess = document.getElementById("hmGuessInput").value;
@@ -192,11 +226,21 @@ async function submitGuess() {
     const chat = data.chat || [];
     if (data.word.includes(guess)) {
       newGuesses.push(guess);
-      chat.push({ name: currentPlayer.name, msg: `guessed "${guess}"`, type: "good", ts: Date.now() });
+      chat.push({
+        name: currentPlayer.name,
+        msg: `guessed "${guess}"`,
+        type: "good",
+        ts: Date.now(),
+      });
     } else {
       newWrong.push(guess);
       remaining = Math.max(0, remaining - 1);
-      chat.push({ name: currentPlayer.name, msg: `missed "${guess}"`, type: "bad", ts: Date.now() });
+      chat.push({
+        name: currentPlayer.name,
+        msg: `missed "${guess}"`,
+        type: "bad",
+        ts: Date.now(),
+      });
     }
     const masked = maskWord(data.word, newGuesses);
     let status = data.status;
@@ -214,11 +258,13 @@ async function submitGuess() {
   });
 }
 
+// Guess input handlers (button click + Enter).
 document.getElementById("hmGuessBtn").onclick = submitGuess;
 document.getElementById("hmGuessInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") submitGuess();
 });
 
+// Cleanup listener when leaving the game.
 registerGameStop(() => {
   if (hmRoomUnsub) hmRoomUnsub();
   hmRoomUnsub = null;
