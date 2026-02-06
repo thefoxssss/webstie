@@ -315,6 +315,60 @@ const ACHIEVEMENTS = [
     rarity: "rare",
     reward: 2500,
   },
+  {
+    id: "signal_spy",
+    icon: "📡",
+    title: "SIGNAL SPY",
+    desc: "Spoof the ping readout",
+    hidden: true,
+    rarity: "rare",
+    reward: 1500,
+  },
+  {
+    id: "clockwork",
+    icon: "⏱️",
+    title: "CLOCKWORK",
+    desc: "Loop the system clock",
+    hidden: true,
+    rarity: "rare",
+    reward: 1500,
+  },
+  {
+    id: "ghost_signal",
+    icon: "👻",
+    title: "GHOST SIGNAL",
+    desc: "Transmit a silent message",
+    hidden: true,
+    rarity: "epic",
+    reward: 3000,
+  },
+  {
+    id: "menu_masher",
+    icon: "🧭",
+    title: "MENU MASHER",
+    desc: "Toggle the games menu too fast",
+    hidden: true,
+    rarity: "rare",
+    reward: 1500,
+  },
+  {
+    id: "bank_tapper",
+    icon: "🏦",
+    title: "BANK TAPPER",
+    desc: "Drum the bank counter",
+    hidden: true,
+    rarity: "rare",
+    reward: 1500,
+  },
+  {
+    id: "flicker_fiend",
+    icon: "📺",
+    title: "FLICKER FIEND",
+    desc: "Spam the flicker switch",
+    hidden: true,
+    rarity: "rare",
+    reward: 1500,
+  },
 ];
 
 // Shop inventory (drives UI cards + gameplay modifiers).
@@ -766,6 +820,7 @@ document.getElementById("btnLogout").onclick = () => {
 document.getElementById("menuToggle").onclick = (e) => {
   e.stopPropagation();
   document.getElementById("menuDropdown").classList.toggle("show");
+  registerMenuMash();
 };
 // Click outside closes the dropdown menu.
 document.addEventListener("click", (e) => {
@@ -822,6 +877,7 @@ document.getElementById("scanSlider").oninput = (e) =>
 document.getElementById("flickerToggle").onclick = (e) => {
   document.body.classList.toggle("flicker-on");
   e.target.innerText = document.body.classList.contains("flicker-on") ? "ON" : "OFF";
+  registerFlickerFiend();
 };
 // Fullscreen toggle for immersion.
 document.getElementById("fsToggle").onclick = () => {
@@ -886,6 +942,110 @@ document.addEventListener("click", (e) => {
   }
 });
 
+let bankClicks = 0;
+let bankTimer = null;
+const bankCounterEl = document.getElementById("globalBank");
+if (bankCounterEl) {
+  bankCounterEl.addEventListener("click", () => {
+    bankClicks++;
+    if (!bankTimer) {
+      bankTimer = setTimeout(() => {
+        bankClicks = 0;
+        bankTimer = null;
+      }, 4000);
+    }
+    if (bankClicks === 15) {
+      unlockAchievement("bank_tapper");
+      showToast("BANK TAPPED", "🏦", "Counting faster than the mint.");
+      bankClicks = 0;
+      clearTimeout(bankTimer);
+      bankTimer = null;
+    }
+  });
+}
+
+let menuMashCount = 0;
+let menuMashTimer = null;
+function registerMenuMash() {
+  menuMashCount++;
+  if (!menuMashTimer) {
+    menuMashTimer = setTimeout(() => {
+      menuMashCount = 0;
+      menuMashTimer = null;
+    }, 5000);
+  }
+  if (menuMashCount === 12) {
+    unlockAchievement("menu_masher");
+    showToast("MENU OVERRIDE", "🧭", "Navigation scrambled.");
+    menuMashCount = 0;
+    clearTimeout(menuMashTimer);
+    menuMashTimer = null;
+  }
+}
+
+let flickerClickCount = 0;
+let flickerTimer = null;
+function registerFlickerFiend() {
+  flickerClickCount++;
+  if (!flickerTimer) {
+    flickerTimer = setTimeout(() => {
+      flickerClickCount = 0;
+      flickerTimer = null;
+    }, 4000);
+  }
+  if (flickerClickCount === 6) {
+    unlockAchievement("flicker_fiend");
+    showToast("CRT OVERDRIVE", "📺", "Flicker stabilized.");
+    flickerClickCount = 0;
+    clearTimeout(flickerTimer);
+    flickerTimer = null;
+  }
+}
+
+let pingClicks = 0;
+let pingTimer = null;
+const pingEl = document.getElementById("sysPing");
+if (pingEl) {
+  pingEl.addEventListener("click", () => {
+    pingClicks++;
+    if (!pingTimer) {
+      pingTimer = setTimeout(() => {
+        pingClicks = 0;
+        pingTimer = null;
+      }, 4000);
+    }
+    if (pingClicks === 10) {
+      unlockAchievement("signal_spy");
+      showToast("PING SPOOFED", "📡", "Latency masked.");
+      pingClicks = 0;
+      clearTimeout(pingTimer);
+      pingTimer = null;
+    }
+  });
+}
+
+let clockClicks = 0;
+let clockTimer = null;
+const clockEl = document.getElementById("sysClock");
+if (clockEl) {
+  clockEl.addEventListener("click", () => {
+    clockClicks++;
+    if (!clockTimer) {
+      clockTimer = setTimeout(() => {
+        clockClicks = 0;
+        clockTimer = null;
+      }, 3000);
+    }
+    if (clockClicks === 7) {
+      unlockAchievement("clockwork");
+      showToast("TIME LOOP STABILIZED", "⏱️", "Chrono buffer reset.");
+      clockClicks = 0;
+      clearTimeout(clockTimer);
+      clockTimer = null;
+    }
+  });
+}
+
 let chatCount = 0;
 // Initialize realtime chat streaming and input handling.
 function initChat() {
@@ -927,6 +1087,12 @@ function initChat() {
     }
     if (txt === "/help") {
       unlockAchievement("architect");
+    }
+    if (txt === "/ghost") {
+      unlockAchievement("ghost_signal");
+      showToast("GHOST SIGNAL", "👻", "Silent channel open.");
+      e.target.value = "";
+      return;
     }
 
     // Normal message flow.
