@@ -74,6 +74,12 @@ function startSoloBetting() {
 
 async function startSoloRound() {
   if (bjCurrentBet <= 0) return beep(200, "sawtooth", 0.5);
+  if (state.myMoney < bjCurrentBet) {
+    showToast("Not enough cash for that bet.");
+    return;
+  }
+  state.myMoney -= bjCurrentBet;
+  updBJ();
   document.getElementById("bjBetBtns").style.visibility = "hidden";
   bjDeck = createDeck();
   bjPlayerHand = [bjDeck.pop(), bjDeck.pop()];
