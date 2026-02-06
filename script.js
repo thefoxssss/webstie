@@ -16,6 +16,7 @@ import { initTypeGame } from "./games/type.js";
 import { initPong, setPongDiff } from "./games/pong.js";
 import { initSnake } from "./games/snake.js";
 import { initRunner } from "./games/runner.js";
+import { initDodge } from "./games/dodge.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
@@ -47,6 +48,7 @@ window.launchGame = (game) => {
   if (game === "ttt") initTTT();
   if (game === "hangman") initHangman();
   if (game === "flappy") initFlappy();
+  if (game === "dodge") initDodge();
   unlockAchievement("noob");
 };
 
@@ -59,6 +61,7 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "runner") initRunner();
   if (state.currentGame === "geo") initGeometry();
   if (state.currentGame === "flappy") initFlappy();
+  if (state.currentGame === "dodge") initDodge();
   if (state.currentGame === "blackjack") {
     state.myMoney = 1000;
     initBJ();
