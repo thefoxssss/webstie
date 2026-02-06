@@ -1,4 +1,15 @@
-import { registerGameStop, beep, checkLossStreak, loadHighScores, resetLossStreak, setText, unlockAchievement, updateHighScore, state } from "../core.js";
+// Pong game implementation with optional aimbot and difficulty tuning.
+import {
+  registerGameStop,
+  beep,
+  checkLossStreak,
+  loadHighScores,
+  resetLossStreak,
+  setText,
+  unlockAchievement,
+  updateHighScore,
+  state,
+} from "../core.js";
 
 let pCtx;
 let pCv;
@@ -15,6 +26,7 @@ export function setPongDiff(level) {
   resetBall();
 }
 
+// Initialize the Pong canvas and reset score/state.
 export function initPong() {
   state.currentGame = "pong";
   loadHighScores();
@@ -26,6 +38,7 @@ export function initPong() {
   loopPong();
 }
 
+// Reset ball position and velocity to a new random serve.
 function resetBall() {
   if (!pCv) return;
   ball.x = 400;
@@ -34,6 +47,7 @@ function resetBall() {
   ball.dy = Math.random() * 8 - 4;
 }
 
+// Main animation loop: update paddles, ball, scores, and render.
 function loopPong() {
   if (state.currentGame !== "pong") return;
   pCtx.fillStyle = "rgba(0,0,0,0.2)";
@@ -88,6 +102,7 @@ function loopPong() {
   pAnim = requestAnimationFrame(loopPong);
 }
 
+// Clear animation frame when exiting the game.
 registerGameStop(() => {
   if (pAnim) cancelAnimationFrame(pAnim);
 });

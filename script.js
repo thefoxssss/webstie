@@ -1,4 +1,15 @@
-import { buyItem, clearRestartListener, closeOverlays, openGame, showGameOver, stopAllGames, unlockAchievement, state } from "./core.js";
+// Central game launcher wiring for the UI buttons and overlays.
+// This file acts as the "glue" between the DOM and each game module.
+import {
+  buyItem,
+  clearRestartListener,
+  closeOverlays,
+  openGame,
+  showGameOver,
+  stopAllGames,
+  unlockAchievement,
+  state,
+} from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
 import { initTypeGame } from "./games/type.js";
@@ -9,6 +20,7 @@ import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
 
+// Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
 window.closeOverlays = closeOverlays;
 window.showGameOver = showGameOver;
@@ -16,9 +28,14 @@ window.buyItem = buyItem;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 
+// Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {
   window.closeOverlays();
-  const overlayId = "overlay" + (game === "ttt" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
+  const overlayId =
+    "overlay" +
+    (game === "ttt"
+      ? game.toUpperCase()
+      : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   if (game === "pong") initPong();
@@ -33,6 +50,7 @@ window.launchGame = (game) => {
   unlockAchievement("noob");
 };
 
+// Restart the last game from the game-over modal.
 document.getElementById("goRestart").onclick = () => {
   document.getElementById("modalGameOver").classList.remove("active");
   clearRestartListener();
@@ -48,12 +66,14 @@ document.getElementById("goRestart").onclick = () => {
   }
 };
 
+// Exit the current game and close all overlays.
 document.getElementById("goExit").onclick = () => {
   stopAllGames();
   closeOverlays();
   document.getElementById("modalGameOver").classList.remove("active");
 };
 
+// Normalize version strings (semver, commit sha, or "dev") for display.
 const formatVersionValue = (value) => {
   if (!value) return null;
   const trimmed = String(value).trim();
@@ -64,6 +84,7 @@ const formatVersionValue = (value) => {
   return normalized;
 };
 
+// Pull version metadata from globals and <meta> tags, then render to the UI.
 const setVersionIndicator = () => {
   const indicator = document.getElementById("versionIndicator");
   if (!indicator) return;
@@ -82,4 +103,5 @@ const setVersionIndicator = () => {
   indicator.textContent = `VERSION: ${resolved}`;
 };
 
+// Initialize the version indicator on load.
 setVersionIndicator();

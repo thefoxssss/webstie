@@ -1,4 +1,15 @@
-import { registerGameStop, checkLossStreak, resetLossStreak, setText, showGameOver, showToast, updateHighScore, loadHighScores, state } from "../core.js";
+// Endless runner with obstacles, jump physics, and speed scaling.
+import {
+  registerGameStop,
+  checkLossStreak,
+  resetLossStreak,
+  setText,
+  showGameOver,
+  showToast,
+  updateHighScore,
+  loadHighScores,
+  state,
+} from "../core.js";
 
 let rCtx;
 let rCv;
@@ -23,6 +34,7 @@ export function initRunner() {
   loopRunner();
 }
 
+// Main runner loop: update physics, spawn obstacles, render, and score.
 function loopRunner() {
   if (state.currentGame !== "runner") return;
   rFrame++;
@@ -57,7 +69,12 @@ function loopRunner() {
     o.x -= currentSpeed;
     rCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
     rCtx.fillRect(o.x, o.y, o.w, o.h);
-    if (player.x < o.x + o.w && player.x + player.w > o.x && player.y < o.y + o.h && player.y + player.h > o.y) {
+    if (
+      player.x < o.x + o.w &&
+      player.x + player.w > o.x &&
+      player.y < o.y + o.h &&
+      player.y + player.h > o.y
+    ) {
       if (state.myInventory.includes("item_shield")) {
         state.myInventory = state.myInventory.filter((id) => id !== "item_shield");
         rObs.splice(i, 1);
@@ -80,6 +97,7 @@ function loopRunner() {
   rAnim = requestAnimationFrame(loopRunner);
 }
 
+// Mouse/tap jump support on the canvas.
 document.getElementById("runnerCanvas").onclick = () => {
   if (state.currentGame === "runner" && player.grounded) {
     player.dy = -player.jumpForce;
@@ -87,6 +105,7 @@ document.getElementById("runnerCanvas").onclick = () => {
   }
 };
 
+// Stop the animation when leaving the game.
 registerGameStop(() => {
   if (rAnim) cancelAnimationFrame(rAnim);
 });

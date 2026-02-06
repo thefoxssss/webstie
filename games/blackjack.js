@@ -1,4 +1,15 @@
-import { beep, registerGameStop, saveStats, setText, showGameOver, showToast, unlockAchievement, state, firebase } from "../core.js";
+// Blackjack game with solo and multiplayer modes (Firestore-backed lobby).
+import {
+  beep,
+  registerGameStop,
+  saveStats,
+  setText,
+  showGameOver,
+  showToast,
+  unlockAchievement,
+  state,
+  firebase,
+} from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -15,6 +26,7 @@ let soloRounds = 0;
 const suits = ["♠", "♥", "♦", "♣"];
 const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
+// Initialize Blackjack overlay into mode select.
 export function initBJ() {
   state.currentGame = "blackjack";
   bjCurrentBet = 0;
@@ -25,6 +37,7 @@ export function initBJ() {
   updBJ();
 }
 
+// Reset local multiplayer state and unsubscribe from Firestore.
 function cleanupBJ() {
   if (bjRoomUnsub) bjRoomUnsub();
   bjRoomUnsub = null;
@@ -33,6 +46,7 @@ function cleanupBJ() {
   bjLastPhase = "";
 }
 
+// Select solo or multiplayer mode from the UI.
 window.bjSelect = (mode) => {
   bjMode = mode;
   document.getElementById("bjMode").style.display = "none";
@@ -49,6 +63,7 @@ window.bjSelect = (mode) => {
   beep(400, "square", 0.1);
 };
 
+// Update bank display and persist stats.
 function updBJ() {
   setText("bjBetVal", bjCurrentBet);
   setText("globalBank", state.myMoney);
@@ -57,6 +72,7 @@ function updBJ() {
   if (state.myMoney === 0) unlockAchievement("rug_pulled");
 }
 
+// Reset solo table and prompt for a new bet.
 function startSoloBetting() {
   bjPlayerHand = [];
   bjDealerHand = [];
@@ -72,6 +88,7 @@ function startSoloBetting() {
   updBJ();
 }
 
+// Start a solo round: deal cards, hide dealer, and show action buttons.
 async function startSoloRound() {
   if (bjCurrentBet <= 0) return beep(200, "sawtooth", 0.5);
   if (state.myMoney < bjCurrentBet) {
@@ -97,6 +114,7 @@ async function startSoloRound() {
   if (calcHand(bjPlayerHand) === 21) endSolo();
 }
 
+// Hit action for solo mode.
 function soloHit() {
   const c = bjDeck.pop();
   bjPlayerHand.push(c);
@@ -105,6 +123,7 @@ function soloHit() {
   if (calcHand(bjPlayerHand) > 21) endSolo();
 }
 
+// Stand action for solo mode (dealer plays out hand).
 async function soloStand() {
   document.getElementById("bjGameBtns").style.display = "none";
   const dDiv = document.getElementById("bjDealerHand");
@@ -122,6 +141,7 @@ async function soloStand() {
   endSolo();
 }
 
+// Resolve a solo round and payout winnings.
 async function endSolo() {
   document.getElementById("bjGameBtns").style.display = "none";
   const dDiv = document.getElementById("bjDealerHand");
@@ -158,7 +178,9 @@ async function endSolo() {
   updBJ();
   bjCurrentBet = 0;
   document.querySelector("#bjDeck div:last-child").innerText = "AGAIN";
-  if (win === 0 && state.myMoney <= 0) setTimeout(() => showGameOver("blackjack", 0), 1500);
+  if (win === 0 && state.myMoney <= 0) {
+    setTimeout(() => showGameOver("blackjack", 0), 1500);
+  }
   else
     setTimeout(
       () =>
@@ -173,18 +195,26 @@ async function endSolo() {
     );
 }
 
+// Firestore room reference helper for Blackjack rooms.
 function getBJRef(code) {
   return doc(firebase.db, "gooner_terminal_rooms", "bj_" + code);
 }
 
+// Create a new multiplayer Blackjack room as seat 0.
 document.getElementById("btnCreateBJ").onclick = async () => {
   if (!state.myUid) return alert("Offline");
   const code = Math.floor(1000 + Math.random() * 9000).toString();
-  const seats = [{ uid: state.myUid, name: state.myName, hand: [], status: "waiting", bet: 0, ready: false }, null, null, null];
+  const seats = [
+    { uid: state.myUid, name: state.myName, hand: [], status: "waiting", bet: 0, ready: false },
+    null,
+    null,
+    null,
+  ];
   await setDoc(getBJRef(code), { seats: seats, deck: [], phase: "lobby", activeSeat: 0, pot: 0 });
   joinBJ(code, 0);
 };
 
+// Join an existing Blackjack room if a seat is open.
 document.getElementById("btnJoinBJ").onclick = async () => {
   const code = document.getElementById("joinBJCode").value;
   const ref = getBJRef(code);
@@ -199,12 +229,20 @@ document.getElementById("btnJoinBJ").onclick = async () => {
     }
     if (idx === -1) throw "Full";
     const ns = [...d.seats];
-    ns[idx] = { uid: state.myUid, name: state.myName, hand: [], status: "waiting", bet: 0, ready: false };
+    ns[idx] = {
+      uid: state.myUid,
+      name: state.myName,
+      hand: [],
+      status: "waiting",
+      bet: 0,
+      ready: false,
+    };
     t.update(ref, { seats: ns });
     joinBJ(code, idx);
   }).catch((e) => alert(e));
 };
 
+// Join a room and subscribe to live updates.
 function joinBJ(code, idx) {
   bjRoomCode = code;
   bjMySeatIdx = idx;
@@ -217,12 +255,15 @@ function joinBJ(code, idx) {
   });
 }
 
+// Render lobby/table state based on current phase.
 function handleBJUpdate(d) {
   const deckLabel = document.querySelector("#bjDeck div:last-child");
   if (d.phase === "lobby") {
     document.getElementById("bjLobby").style.display = "flex";
     document.getElementById("bjTable").style.display = "none";
-    document.getElementById("bjPList").innerHTML = d.seats.map((s, i) => (s ? `<div>${s.name} ${i === 0 ? "(HOST)" : ""}</div>` : "")).join("");
+    document.getElementById("bjPList").innerHTML = d.seats
+      .map((s, i) => (s ? `<div>${s.name} ${i === 0 ? "(HOST)" : ""}</div>` : ""))
+      .join("");
     if (bjMySeatIdx === 0) {
       document.getElementById("bjStartBtn").style.display = "block";
       setText("bjWait", "CLICK START");
@@ -340,10 +381,12 @@ function handleBJUpdate(d) {
   bjLastPhase = d.phase;
 }
 
+// Host starts the betting phase.
 document.getElementById("bjStartBtn").onclick = async () => {
   await updateDoc(getBJRef(bjRoomCode), { phase: "betting" });
 };
 
+// Deck click handler for both solo and multiplayer flows.
 document.getElementById("bjDeck").onclick = async () => {
   if (state.currentGame !== "blackjack") return;
   if (bjMode === "solo") {
@@ -395,6 +438,7 @@ document.getElementById("bjStand").onclick = () => {
   else doNetAct("stand");
 };
 
+// Apply a multiplayer action (hit/stand) and sync to Firestore.
 async function doNetAct(act) {
   const ref = getBJRef(bjRoomCode);
   const snap = await getDoc(ref);
@@ -417,6 +461,7 @@ async function doNetAct(act) {
   }
 }
 
+// Advance the turn, resolve the hand if all seats have acted.
 async function passTurn(ref, curr, seats, deck) {
   let next = curr + 1;
   while (next < 4 && seats[next] === null) next++;
@@ -438,6 +483,7 @@ async function passTurn(ref, curr, seats, deck) {
   } else await updateDoc(ref, { seats: seats, deck: deck, activeSeat: next });
 }
 
+// Betting chip click handlers for adjusting current bet.
 document.querySelectorAll(".bj-chip").forEach((c) => {
   c.onclick = () => {
     if (state.currentGame !== "blackjack") return;
@@ -449,11 +495,13 @@ document.querySelectorAll(".bj-chip").forEach((c) => {
   };
 });
 
+// Build and shuffle a standard 52-card deck.
 function createDeck() {
   const d = [];
   for (const s of suits) for (const v of values) d.push({ s, v, h: false });
   return d.sort(() => Math.random() - 0.5);
 }
+// Calculate a hand's score with Ace handling.
 function calcHand(h) {
   let s = 0;
   let a = 0;
@@ -471,6 +519,7 @@ function calcHand(h) {
   }
   return s;
 }
+// Render a single card into the specified hand element.
 function renderNewCard(c, elId, hidden = false) {
   const d = document.createElement("div");
   d.className = "bj-card" + (hidden ? " hidden" : "");
@@ -478,14 +527,17 @@ function renderNewCard(c, elId, hidden = false) {
   d.style.color = ["♥", "♦"].includes(c.s) ? "red" : "inherit";
   document.getElementById(elId).appendChild(d);
 }
+// Render a full hand of cards.
 function renderHand(hand, elId) {
   document.getElementById(elId).innerHTML = "";
   hand.forEach((c) => renderNewCard(c, elId, c.h));
 }
+// Render the current hand score into the UI.
 function renderScore(id, hand) {
   setText(id, calcHand(hand));
 }
 
+// Cleanup the multiplayer listener and local state on exit.
 registerGameStop(() => {
   cleanupBJ();
 });

@@ -1,4 +1,13 @@
-import { registerGameStop, showGameOver, setText, updateHighScore, loadHighScores, showToast, state } from "../core.js";
+// Geometry-inspired endless runner with rotating cube and obstacles.
+import {
+  registerGameStop,
+  showGameOver,
+  setText,
+  updateHighScore,
+  loadHighScores,
+  showToast,
+  state,
+} from "../core.js";
 
 let gPlayer = {};
 let gObs = [];
@@ -30,6 +39,7 @@ export function initGeometry() {
   loopGeometry(ctx);
 }
 
+// Main loop for the geometry runner: physics, obstacles, rendering.
 function loopGeometry(ctx) {
   if (state.currentGame !== "geo") return;
   const cv = document.getElementById("geoCanvas");
@@ -61,7 +71,13 @@ function loopGeometry(ctx) {
   ctx.restore();
   gSpawnDistanceRemaining -= currentSpeed;
   if (gSpawnDistanceRemaining <= 0 && Math.random() < 0.4) {
-    gObs.push({ x: 800, y: 320, w: 30, h: 30, type: Math.random() > 0.5 ? "spike" : "block" });
+    gObs.push({
+      x: 800,
+      y: 320,
+      w: 30,
+      h: 30,
+      type: Math.random() > 0.5 ? "spike" : "block",
+    });
     gSpawnDistanceRemaining = 180 + Math.random() * 120;
   }
   for (let i = gObs.length - 1; i >= 0; i--) {
@@ -77,7 +93,12 @@ function loopGeometry(ctx) {
     } else {
       ctx.fillRect(o.x, o.y, o.w, o.h);
     }
-    if (gPlayer.x < o.x + o.w - 5 && gPlayer.x + gPlayer.w > o.x + 5 && gPlayer.y < o.y + o.h - 5 && gPlayer.y + gPlayer.h > o.y + 5) {
+    if (
+      gPlayer.x < o.x + o.w - 5 &&
+      gPlayer.x + gPlayer.w > o.x + 5 &&
+      gPlayer.y < o.y + o.h - 5 &&
+      gPlayer.y + gPlayer.h > o.y + 5
+    ) {
       if (state.myInventory.includes("item_shield")) {
         state.myInventory = state.myInventory.filter((id) => id !== "item_shield");
         gObs.splice(i, 1);
@@ -97,6 +118,7 @@ function loopGeometry(ctx) {
   gAnim = requestAnimationFrame(() => loopGeometry(ctx));
 }
 
+// Apply a jump impulse if grounded.
 function jumpGeo() {
   if (state.currentGame === "geo" && gPlayer.grounded) {
     gPlayer.dy = -13;
@@ -104,6 +126,7 @@ function jumpGeo() {
   }
 }
 
+// Bind pointer/keyboard controls once per session.
 function bindGeoControls() {
   if (gControlsBound || !gCanvasRef) return;
   gJumpHandler = (event) => {
@@ -122,6 +145,7 @@ function bindGeoControls() {
   gControlsBound = true;
 }
 
+// Cleanup handler for controls.
 function unbindGeoControls() {
   if (!gControlsBound || !gCanvasRef) return;
   gCanvasRef.removeEventListener("pointerdown", gJumpHandler);
@@ -130,6 +154,7 @@ function unbindGeoControls() {
   gControlsBound = false;
 }
 
+// Stop the animation loop and detach controls on exit.
 registerGameStop(() => {
   if (gAnim) cancelAnimationFrame(gAnim);
   unbindGeoControls();

@@ -1,4 +1,16 @@
-import { registerGameStop, beep, checkLossStreak, resetLossStreak, setText, showGameOver, unlockAchievement, updateHighScore, loadHighScores, state } from "../core.js";
+// Classic snake game with grid-based movement and point-based growth.
+import {
+  registerGameStop,
+  beep,
+  checkLossStreak,
+  resetLossStreak,
+  setText,
+  showGameOver,
+  unlockAchievement,
+  updateHighScore,
+  loadHighScores,
+  state,
+} from "../core.js";
 
 let sCtx;
 let sCv;
@@ -23,10 +35,12 @@ export function initSnake() {
   loopSnake();
 }
 
+// Randomize a new food position within the grid.
 function placeFood() {
   food = { x: Math.floor(Math.random() * 30), y: Math.floor(Math.random() * 20) };
 }
 
+// Main game loop: move, collide, draw, and schedule next tick.
 function loopSnake() {
   if (state.currentGame !== "snake") return;
   const head = { x: snake[0].x, y: snake[0].y };
@@ -35,7 +49,13 @@ function loopSnake() {
   if (sD === "L") head.x--;
   if (sD === "U") head.y--;
   if (sD === "D") head.y++;
-  if (head.x < 0 || head.x >= 30 || head.y < 0 || head.y >= 20 || snake.some((s) => s.x === head.x && s.y === head.y)) {
+  if (
+    head.x < 0 ||
+    head.x >= 30 ||
+    head.y < 0 ||
+    head.y >= 20 ||
+    snake.some((s) => s.x === head.x && s.y === head.y)
+  ) {
     checkLossStreak();
     showGameOver("snake", sSc);
     return;
@@ -62,6 +82,7 @@ function loopSnake() {
   sAnim = setTimeout(loopSnake, 100);
 }
 
+// Translate keyboard input into the next movement direction.
 document.addEventListener("keydown", (e) => {
   if (state.currentGame !== "snake") return;
   const key = e.key;
@@ -71,6 +92,7 @@ document.addEventListener("keydown", (e) => {
   if ((key === "ArrowRight" || key === "d") && sD !== "L") sNextD = "R";
 });
 
+// Clean up timers when the game is stopped.
 registerGameStop(() => {
   if (sAnim) clearTimeout(sAnim);
 });
