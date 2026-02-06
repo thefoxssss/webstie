@@ -69,6 +69,14 @@
     .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
     .menu-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
     .sys-info { display: flex; gap: 15px; font-size: 8px; color: var(--accent); opacity: 0.8; }
+
+    .version-indicator {
+        position: fixed; bottom: 12px; left: 12px; z-index: 2000;
+        font-size: 8px; letter-spacing: 1px; color: var(--accent);
+        background: rgba(0, 0, 0, 0.7); border: 1px solid var(--accent-dim);
+        padding: 4px 6px; text-shadow: 0 0 8px var(--accent);
+        text-transform: uppercase; pointer-events: none;
+    }
     
     .dropdown-content {
         display: none; position: absolute; right: 20px; top: 50px; background-color: #000;
