@@ -22,6 +22,7 @@ let unsubGuestCandidates = null;
 let currentChannel = null;
 let isHost = false;
 let muted = false;
+let connectTimer = null;
 
 // Minimal ICE server list for NAT traversal.
 const ICE_CONFIG = {
@@ -45,6 +46,20 @@ function setStatus(text) {
     statusEl.innerText = text;
     statusEl.dataset.state = text.toLowerCase().replace(/[^a-z]+/g, " ").trim();
   }
+  if (["LIVE", "FAILED", "OFFLINE", "BUSY"].includes(text)) {
+    if (connectTimer) {
+      clearTimeout(connectTimer);
+      connectTimer = null;
+    }
+  }
+}
+
+function startConnectTimer() {
+  if (connectTimer) clearTimeout(connectTimer);
+  connectTimer = setTimeout(() => {
+    setStatus("FAILED");
+    showToast("VOICE CONNECTION FAILED", "⚠️");
+  }, 15000);
 }
 
 // Remove all ICE candidates for the given channel/role.
@@ -77,6 +92,7 @@ async function createPeerConnection() {
         showToast("CLICK TO ENABLE AUDIO", "⚠️");
       });
     }
+    setStatus("LIVE");
   };
   pc.onconnectionstatechange = () => {
     if (!pc) return;
@@ -87,7 +103,10 @@ async function createPeerConnection() {
   pc.oniceconnectionstatechange = () => {
     if (!pc) return;
     if (pc.iceConnectionState === "checking") setStatus("CONNECTING");
+    if (pc.iceConnectionState === "connected") setStatus("LIVE");
+    if (pc.iceConnectionState === "completed") setStatus("LIVE");
     if (pc.iceConnectionState === "disconnected") setStatus("RECONNECTING");
+    if (pc.iceConnectionState === "failed") setStatus("FAILED");
   };
   pc.onicecandidate = async (event) => {
     if (!event.candidate || !currentChannel) return;
@@ -115,6 +134,7 @@ async function joinChannel(channel) {
   await leaveChannel();
   currentChannel = channel;
   setStatus("CONNECTING");
+  startConnectTimer();
   const ref = channelRef(channel);
   const snap = await getDoc(ref);
   const data = snap.data();
