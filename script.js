@@ -18,7 +18,7 @@ window.setPongDiff = setPongDiff;
 
 window.launchGame = (game) => {
   window.closeOverlays();
-  const overlayId = "overlay" + (game === "ttt" || game === "geo" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
+  const overlayId = "overlay" + (game === "ttt" ? game.toUpperCase() : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   if (game === "pong") initPong();
@@ -53,3 +53,33 @@ document.getElementById("goExit").onclick = () => {
   closeOverlays();
   document.getElementById("modalGameOver").classList.remove("active");
 };
+
+const formatVersionValue = (value) => {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.replace(/^v/i, "");
+  if (normalized.toLowerCase() === "dev") return "dev";
+  if (/^[0-9a-f]{7,40}$/i.test(normalized)) return normalized.slice(0, 7);
+  return normalized;
+};
+
+const setVersionIndicator = () => {
+  const indicator = document.getElementById("versionIndicator");
+  if (!indicator) return;
+
+  const metaAppVersion = document.querySelector('meta[name="app-version"]')?.content;
+  const metaCommit = document.querySelector('meta[name="git-commit"]')?.content;
+  const candidates = [
+    window.APP_COMMIT,
+    window.COMMIT_SHA,
+    metaCommit,
+    window.APP_VERSION,
+    metaAppVersion,
+  ];
+
+  const resolved = candidates.map(formatVersionValue).find(Boolean) || "dev";
+  indicator.textContent = `VERSION: ${resolved}`;
+};
+
+setVersionIndicator();
