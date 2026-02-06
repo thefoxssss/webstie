@@ -87,7 +87,10 @@ async function createPeerConnection() {
   pc.oniceconnectionstatechange = () => {
     if (!pc) return;
     if (pc.iceConnectionState === "checking") setStatus("CONNECTING");
+    if (pc.iceConnectionState === "connected") setStatus("LIVE");
+    if (pc.iceConnectionState === "completed") setStatus("LIVE");
     if (pc.iceConnectionState === "disconnected") setStatus("RECONNECTING");
+    if (pc.iceConnectionState === "failed") setStatus("FAILED");
   };
   pc.onicecandidate = async (event) => {
     if (!event.candidate || !currentChannel) return;
