@@ -17,6 +17,7 @@ import {
   query,
   orderBy,
   limit,
+  where,
   addDoc,
   deleteDoc,
   getDocs,
@@ -139,6 +140,7 @@ export const firebase = {
   query,
   orderBy,
   limit,
+  where,
   addDoc,
   deleteDoc,
   getDocs
@@ -485,6 +487,10 @@ export function openGame(id) {
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
   if (id === "overlayBank") updateBankLog();
+  if (id === "overlayScores") {
+    const activeTab = document.querySelector(".score-tab.active");
+    loadLeaderboard(activeTab?.dataset.tab || "richest");
+  }
 }
 
 // Close overlays and clear dropdown state.
@@ -978,35 +984,53 @@ document.querySelectorAll(".score-tab").forEach((t) => {
     loadLeaderboard(t.dataset.tab);
   };
 });
+let leaderboardUnsub = null;
+const renderLeaderboardRows = (list, rows, { valuePrefix = "" } = {}) => {
+  list.innerHTML = "";
+  if (!rows.length) {
+    list.innerHTML = '<div style="padding:10px">NO DATA</div>';
+    return;
+  }
+  rows.forEach((row, i) => {
+    const item = document.createElement("div");
+    item.className = "score-item";
+    item.innerHTML = `<span class="score-rank">#${i + 1}</span> <span>${row.name}</span> <span>${valuePrefix}${row.score}</span>`;
+    list.appendChild(item);
+  });
+};
+
 // Render the leaderboard for the currently selected game.
 function loadLeaderboard(game) {
   const list = document.getElementById("scoreList");
   list.innerHTML = "LOADING...";
-  const q = query(collection(db, "gooner_scores"), orderBy("score", "desc"), limit(100));
-  onSnapshot(q, (snap) => {
-    list.innerHTML = "";
+  if (leaderboardUnsub) leaderboardUnsub();
+  if (game === "richest") {
+    const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(10));
+    leaderboardUnsub = onSnapshot(q, (snap) => {
+      const rows = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        rows.push({ name: data.name || d.id, score: data.money ?? 0 });
+      });
+      renderLeaderboardRows(list, rows, { valuePrefix: "$" });
+    });
+    return;
+  }
+
+  const q = query(collection(db, "gooner_scores"), where("game", "==", game), limit(200));
+  leaderboardUnsub = onSnapshot(q, (snap) => {
     const data = [];
     snap.forEach((d) => data.push(d.data()));
     const uniqueScores = {};
-    data
-      .filter((d) => d.game === game)
-      .forEach((s) => {
-        if (!uniqueScores[s.name] || s.score > uniqueScores[s.name].score) {
-          uniqueScores[s.name] = s;
-        }
-      });
+    data.forEach((s) => {
+      if (!uniqueScores[s.name] || s.score > uniqueScores[s.name].score) {
+        uniqueScores[s.name] = s;
+      }
+    });
     const filtered = Object.values(uniqueScores)
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
-    if (filtered.length === 0) {
-      list.innerHTML = '<div style="padding:10px">NO DATA</div>';
-    }
-    filtered.forEach((s, i) => {
-      const item = document.createElement("div");
-      item.className = "score-item";
-      item.innerHTML = `<span class="score-rank">#${i + 1}</span> <span>${s.name}</span> <span>${s.score}</span>`;
-      list.appendChild(item);
-    });
+    renderLeaderboardRows(list, filtered);
   });
 }
 
