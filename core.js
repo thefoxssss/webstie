@@ -748,6 +748,13 @@ export async function tradeMoney() {
     msg.innerText = e.message || "TRANSFER FAILED";
     msg.style.color = "#f66";
   }
+// Consume exactly one shield charge if available.
+export function consumeShield() {
+  const shieldIndex = myInventory.indexOf("item_shield");
+  if (shieldIndex === -1) return false;
+  myInventory.splice(shieldIndex, 1);
+  saveStats();
+  return true;
 }
 
 // Unlock an achievement, award money, and show a toast.
@@ -1244,6 +1251,19 @@ function loadLeaderboard(game) {
   const list = document.getElementById("scoreList");
   list.innerHTML = "LOADING...";
   if (leaderboardUnsub) leaderboardUnsub();
+  if (game === "players") {
+    const q = query(collection(db, "gooner_users"), orderBy("name"), limit(100));
+    leaderboardUnsub = onSnapshot(q, (snap) => {
+      const rows = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        rows.push({ name: data.name || d.id, score: data.rank || "RAT" });
+      });
+      renderLeaderboardRows(list, rows);
+    });
+    return;
+  }
+
   if (game === "richest") {
     const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(10));
     leaderboardUnsub = onSnapshot(q, (snap) => {

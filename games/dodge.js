@@ -5,9 +5,11 @@ import {
   resetLossStreak,
   setText,
   showGameOver,
+  showToast,
   unlockAchievement,
   updateHighScore,
   loadHighScores,
+  consumeShield,
   state,
 } from "../core.js";
 
@@ -133,6 +135,11 @@ function loopDodge() {
       player.y < s.y + s.h &&
       player.y + player.h > s.y
     ) {
+      if (consumeShield()) {
+        shards.splice(i, 1);
+        showToast("SHIELD USED", "🛡️");
+        continue;
+      }
       checkLossStreak();
       showGameOver("dodge", dScore);
       return;
