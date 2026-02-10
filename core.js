@@ -1261,8 +1261,10 @@ function loadLeaderboard(game) {
       const rows = snap.docs
         .map((d) => {
           const data = d.data();
+          const rawName = data.name ?? d.id ?? "UNKNOWN";
+          const safeName = String(rawName).trim() || "UNKNOWN";
           return {
-            name: (data.name || d.id || "UNKNOWN").trim(),
+            name: safeName,
             score: data.rank || "RAT",
           };
         })
