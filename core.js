@@ -759,6 +759,8 @@ export async function tradeMoney() {
     msg.innerText = e.message || "TRANSFER FAILED";
     msg.style.color = "#f66";
   }
+}
+
 // Consume exactly one shield charge if available.
 export function consumeShield() {
   const shieldIndex = myInventory.indexOf("item_shield");
