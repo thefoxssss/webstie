@@ -19,6 +19,11 @@ function sanitizeWord(word) {
   return word.toUpperCase().replace(/[^A-Z ]/g, "").trim();
 }
 
+// Normalize spaces so full-word guesses match consistently.
+function normalizePhrase(word) {
+  return sanitizeWord(word).replace(/\s+/g, " ");
+}
+
 // Render a masked word based on the guesses so far.
 function maskWord(word, guesses) {
   return word
@@ -66,6 +71,7 @@ document.getElementById("btnCreateHM").onclick = async () => {
     masked,
     guesses: [],
     wrong: [],
+    wrongWords: [],
     remaining: 6,
     status: "lobby",
     turnIndex: 0,
@@ -168,7 +174,7 @@ function handleHMUpdate(data) {
   chatLog.scrollTop = chatLog.scrollHeight;
   const isMyTurn = currentPlayer && currentPlayer.uid === state.myUid;
   if (data.status === "finished") {
-    setText("hmStatus", data.remaining === 0 ? "TRACE FAILED" : "ACCESS GRANTED");
+    setText("hmStatus", data.remaining === 0 ? `TRACE FAILED — WORD: ${data.word}` : "ACCESS GRANTED");
   } else {
     setText("hmStatus", isMyTurn ? "YOUR TURN" : "AWAITING TURN");
   }
@@ -193,7 +199,16 @@ document.getElementById("hmStartBtn").onclick = async () => {
         ts: Date.now(),
       },
     ];
-    t.update(ref, { status: "playing", guesses: [], wrong: [], remaining: 6, masked, turnIndex: 0, chat });
+    t.update(ref, {
+      status: "playing",
+      guesses: [],
+      wrong: [],
+      wrongWords: [],
+      remaining: 6,
+      masked,
+      turnIndex: 0,
+      chat,
+    });
   });
 };
 
@@ -201,7 +216,7 @@ document.getElementById("hmStartBtn").onclick = async () => {
 async function submitGuess() {
   if (!hmRoomCode) return;
   const rawGuess = document.getElementById("hmGuessInput").value;
-  const guess = sanitizeWord(rawGuess).slice(0, 1);
+  const guess = normalizePhrase(rawGuess);
   document.getElementById("hmGuessInput").value = "";
   if (!guess) return;
   const ref = getHMRef(hmRoomCode);
@@ -219,30 +234,63 @@ async function submitGuess() {
     }
     const guesses = data.guesses || [];
     const wrong = data.wrong || [];
-    if (guesses.includes(guess) || wrong.includes(guess)) return;
+    const wrongWords = data.wrongWords || [];
     const newGuesses = [...guesses];
     const newWrong = [...wrong];
+    const newWrongWords = [...wrongWords];
     let remaining = data.remaining ?? 6;
     const chat = data.chat || [];
-    if (data.word.includes(guess)) {
-      newGuesses.push(guess);
-      chat.push({
-        name: currentPlayer.name,
-        msg: `guessed "${guess}"`,
-        type: "good",
-        ts: Date.now(),
-      });
+    const targetWord = normalizePhrase(data.word || "");
+    const isWordAttempt = guess.length > 1;
+
+    if (isWordAttempt) {
+      if (newWrongWords.includes(guess)) {
+        showToast("WORD ALREADY TRIED", "⚠️");
+        return;
+      }
+      if (guess === targetWord) {
+        newGuesses.splice(0, newGuesses.length, ...Array.from(new Set(targetWord.replace(/ /g, "").split(""))));
+        chat.push({
+          name: currentPlayer.name,
+          msg: `cracked the word "${targetWord}"`,
+          type: "good",
+          ts: Date.now(),
+        });
+      } else {
+        newWrongWords.push(guess);
+        remaining = Math.max(0, remaining - 1);
+        chat.push({
+          name: currentPlayer.name,
+          msg: `wrong word "${guess}"`,
+          type: "bad",
+          ts: Date.now(),
+        });
+      }
     } else {
-      newWrong.push(guess);
-      remaining = Math.max(0, remaining - 1);
-      chat.push({
-        name: currentPlayer.name,
-        msg: `missed "${guess}"`,
-        type: "bad",
-        ts: Date.now(),
-      });
+      if (guesses.includes(guess) || wrong.includes(guess)) {
+        showToast("LETTER ALREADY USED", "⚠️");
+        return;
+      }
+      if (targetWord.includes(guess)) {
+        newGuesses.push(guess);
+        chat.push({
+          name: currentPlayer.name,
+          msg: `guessed "${guess}"`,
+          type: "good",
+          ts: Date.now(),
+        });
+      } else {
+        newWrong.push(guess);
+        remaining = Math.max(0, remaining - 1);
+        chat.push({
+          name: currentPlayer.name,
+          msg: `missed "${guess}"`,
+          type: "bad",
+          ts: Date.now(),
+        });
+      }
     }
-    const masked = maskWord(data.word, newGuesses);
+    const masked = maskWord(targetWord, newGuesses);
     let status = data.status;
     if (!masked.includes("_")) {
       status = "finished";
@@ -254,7 +302,16 @@ async function submitGuess() {
     }
     const nextTurn = players.length > 0 ? (turnIndex + 1) % players.length : 0;
     if (chat.length > HM_MAX_CHAT) chat.splice(0, chat.length - HM_MAX_CHAT);
-    t.update(ref, { guesses: newGuesses, wrong: newWrong, masked, remaining, status, turnIndex: nextTurn, chat });
+    t.update(ref, {
+      guesses: newGuesses,
+      wrong: newWrong,
+      wrongWords: newWrongWords,
+      masked,
+      remaining,
+      status,
+      turnIndex: status === "finished" ? turnIndex : nextTurn,
+      chat,
+    });
   });
 }
 
