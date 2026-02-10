@@ -6,9 +6,11 @@ import {
   resetLossStreak,
   setText,
   showGameOver,
+  showToast,
   unlockAchievement,
   updateHighScore,
   loadHighScores,
+  consumeShield,
   state,
 } from "../core.js";
 
@@ -44,23 +46,29 @@ function placeFood() {
 function loopSnake() {
   if (state.currentGame !== "snake") return;
   const head = { x: snake[0].x, y: snake[0].y };
+  let shieldSavedThisTick = false;
   sD = sNextD;
   if (sD === "R") head.x++;
   if (sD === "L") head.x--;
   if (sD === "U") head.y--;
   if (sD === "D") head.y++;
-  if (
-    head.x < 0 ||
-    head.x >= 30 ||
-    head.y < 0 ||
-    head.y >= 20 ||
-    snake.some((s) => s.x === head.x && s.y === head.y)
-  ) {
-    checkLossStreak();
-    showGameOver("snake", sSc);
-    return;
+  const wallCollision = head.x < 0 || head.x >= 30 || head.y < 0 || head.y >= 20;
+  const selfCollision = snake.some((s) => s.x === head.x && s.y === head.y);
+  if (wallCollision || selfCollision) {
+    if (consumeShield()) {
+      head.x = Math.max(0, Math.min(29, head.x));
+      head.y = Math.max(0, Math.min(19, head.y));
+      snake = [{ x: head.x, y: head.y }];
+      shieldSavedThisTick = true;
+      showToast("SHIELD USED", "🛡️");
+    } else {
+      checkLossStreak();
+      showGameOver("snake", sSc);
+      return;
+    }
+  } else {
+    snake.unshift(head);
   }
-  snake.unshift(head);
   if (head.x === food.x && head.y === food.y) {
     const pts = state.myInventory.includes("item_double") ? 20 : 10;
     sSc += pts;
@@ -70,7 +78,7 @@ function loopSnake() {
     beep(600);
     resetLossStreak();
     if (sSc >= 30) unlockAchievement("viper");
-  } else {
+  } else if (!shieldSavedThisTick) {
     snake.pop();
   }
   sCtx.fillStyle = "#000";

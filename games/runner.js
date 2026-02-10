@@ -8,6 +8,7 @@ import {
   showToast,
   updateHighScore,
   loadHighScores,
+  consumeShield,
   state,
 } from "../core.js";
 
@@ -75,11 +76,7 @@ function loopRunner() {
       player.y < o.y + o.h &&
       player.y + player.h > o.y
     ) {
-      if (state.myInventory.includes("item_shield")) {
-        const shieldIndex = state.myInventory.indexOf("item_shield");
-        if (shieldIndex !== -1) {
-          state.myInventory.splice(shieldIndex, 1);
-        }
+      if (consumeShield()) {
         rObs.splice(i, 1);
         showToast("SHIELD USED", "🛡️");
         continue;

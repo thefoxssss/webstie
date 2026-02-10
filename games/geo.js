@@ -6,6 +6,7 @@ import {
   updateHighScore,
   loadHighScores,
   showToast,
+  consumeShield,
   state,
 } from "../core.js";
 
@@ -99,11 +100,7 @@ function loopGeometry(ctx) {
       gPlayer.y < o.y + o.h - 5 &&
       gPlayer.y + gPlayer.h > o.y + 5
     ) {
-      if (state.myInventory.includes("item_shield")) {
-        const shieldIndex = state.myInventory.indexOf("item_shield");
-        if (shieldIndex !== -1) {
-          state.myInventory.splice(shieldIndex, 1);
-        }
+      if (consumeShield()) {
         gObs.splice(i, 1);
         showToast("SHIELD USED", "🛡️");
         continue;

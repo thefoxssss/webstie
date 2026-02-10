@@ -692,6 +692,15 @@ export async function saveStats() {
   updateUI();
 }
 
+// Consume exactly one shield charge if available.
+export function consumeShield() {
+  const shieldIndex = myInventory.indexOf("item_shield");
+  if (shieldIndex === -1) return false;
+  myInventory.splice(shieldIndex, 1);
+  saveStats();
+  return true;
+}
+
 // Unlock an achievement, award money, and show a toast.
 export function unlockAchievement(id) {
   if (myAchievements.includes(id) || myName === "ANON") return;
