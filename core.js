@@ -1256,13 +1256,17 @@ function loadLeaderboard(game) {
   list.innerHTML = "LOADING...";
   if (leaderboardUnsub) leaderboardUnsub();
   if (game === "players") {
-    const q = query(collection(db, "gooner_users"), orderBy("name"), limit(100));
+    const q = query(collection(db, "gooner_users"), limit(200));
     leaderboardUnsub = onSnapshot(q, (snap) => {
-      const rows = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        rows.push({ name: data.name || d.id, score: data.rank || "RAT" });
-      });
+      const rows = snap.docs
+        .map((d) => {
+          const data = d.data();
+          return {
+            name: (data.name || d.id || "UNKNOWN").trim(),
+            score: data.rank || "RAT",
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
       renderLeaderboardRows(list, rows);
     });
     return;
