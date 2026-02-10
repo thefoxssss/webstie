@@ -30,6 +30,8 @@ window.closeOverlays = closeOverlays;
 window.showGameOver = showGameOver;
 window.buyItem = buyItem;
 window.tradeMoney = tradeMoney;
+// Backward-compatible alias for legacy/lowercase callers.
+window.trademoney = tradeMoney;
 window.startJob = startJob;
 window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
