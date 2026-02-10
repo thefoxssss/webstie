@@ -1232,10 +1232,14 @@ document.querySelectorAll(".score-tab").forEach((t) => {
   };
 });
 let leaderboardUnsub = null;
-const renderLeaderboardRows = (list, rows, { valuePrefix = "" } = {}) => {
+const renderLeaderboardRows = (
+  list,
+  rows,
+  { valuePrefix = "", emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD" } = {}
+) => {
   list.innerHTML = "";
   if (!rows.length) {
-    list.innerHTML = '<div style="padding:10px">NO DATA</div>';
+    list.innerHTML = `<div style="padding:10px">${emptyText}</div>`;
     return;
   }
   rows.forEach((row, i) => {
