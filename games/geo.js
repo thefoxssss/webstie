@@ -100,7 +100,10 @@ function loopGeometry(ctx) {
       gPlayer.y + gPlayer.h > o.y + 5
     ) {
       if (state.myInventory.includes("item_shield")) {
-        state.myInventory = state.myInventory.filter((id) => id !== "item_shield");
+        const shieldIndex = state.myInventory.indexOf("item_shield");
+        if (shieldIndex !== -1) {
+          state.myInventory.splice(shieldIndex, 1);
+        }
         gObs.splice(i, 1);
         showToast("SHIELD USED", "🛡️");
         continue;
