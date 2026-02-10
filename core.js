@@ -51,6 +51,7 @@ let globalVol = 0.5;
 let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
+let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -125,6 +126,12 @@ export const state = {
   },
   set lossStreak(value) {
     lossStreak = value;
+  },
+  get jobData() {
+    return jobData;
+  },
+  set jobData(value) {
+    jobData = value;
   }
 };
 
@@ -556,6 +563,7 @@ export function openGame(id) {
   if (el) el.classList.add("active");
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
+  if (id === "overlayJobs") renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
     setText("bankTransferMsg", "");
@@ -610,6 +618,7 @@ function loadProfile(data) {
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
+  jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
   localStorage.setItem("goonerUser", myName);
@@ -675,6 +684,7 @@ async function register(username, pin) {
       money: 1000,
       joined: Date.now(),
       stats: { games: 0, wpm: 0, wins: 0 },
+      jobs: { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } },
     };
     await setDoc(ref, data);
     loadProfile(data);
@@ -692,6 +702,7 @@ export async function saveStats() {
     stats: myStats,
     achievements: myAchievements,
     inventory: myInventory,
+    jobs: jobData,
   });
   updateUI();
 }
@@ -778,6 +789,7 @@ export async function tradeMoney() {
     msg.style.color = "#f66";
   }
 }
+
 // Consume exactly one shield charge if available.
 export function consumeShield() {
   const shieldIndex = myInventory.indexOf("item_shield");
@@ -831,6 +843,106 @@ function showBadgeDetail(badge, unlocked) {
   const rEl = document.getElementById("bdRarity");
   rEl.style.color = unlocked ? `var(--${badge.rarity})` : "#555";
   document.getElementById("modalBadgeDetail").classList.add("active");
+}
+
+const JOBS = {
+  math: { name: "DATA ENTRY", reward: 120, cooldownMs: 30000 },
+  code: { name: "PACKET SORT", reward: 160, cooldownMs: 40000 },
+  click: { name: "SPAM CLEANUP", reward: 200, cooldownMs: 45000 },
+};
+const activeJobs = { math: null, code: null, click: null };
+
+function getCooldownText(type) {
+  const left = (jobData.cooldowns?.[type] || 0) - Date.now();
+  if (left <= 0) return "READY";
+  return `COOLDOWN: ${Math.ceil(left / 1000)}s`;
+}
+
+function markJobComplete(type) {
+  const cfg = JOBS[type];
+  myMoney += cfg.reward;
+  if (!jobData.completed) jobData.completed = { math: 0, code: 0, click: 0 };
+  jobData.completed[type] = (jobData.completed[type] || 0) + 1;
+  if (!jobData.cooldowns) jobData.cooldowns = {};
+  jobData.cooldowns[type] = Date.now() + cfg.cooldownMs;
+  logTransaction(`JOB: ${cfg.name}`, cfg.reward);
+  showToast(`JOB COMPLETE: ${cfg.name}`, "💼", `+$${cfg.reward}`);
+  setText("jobsMsg", `${cfg.name} PAID OUT +$${cfg.reward}`);
+  activeJobs[type] = null;
+  saveStats();
+  renderJobs();
+}
+
+function failJob(msg) {
+  setText("jobsMsg", msg);
+  beep(120, "sawtooth", 0.4);
+}
+
+function renderJobs() {
+  setText("jobsMsg", "");
+  setText("jobMathPrompt", activeJobs.math?.prompt || getCooldownText("math"));
+  setText("jobCodePrompt", activeJobs.code?.prompt || getCooldownText("code"));
+  const click = activeJobs.click;
+  setText(
+    "jobClickPrompt",
+    click ? `CLEANED ${click.count}/${click.goal}` : getCooldownText("click")
+  );
+}
+
+export function startJob(type) {
+  if (myName === "ANON") return failJob("LOGIN REQUIRED");
+  const cooldownEnd = jobData.cooldowns?.[type] || 0;
+  if (Date.now() < cooldownEnd) return failJob(`${JOBS[type].name} ${getCooldownText(type)}`);
+
+  if (type === "math") {
+    const a = Math.floor(Math.random() * 15) + 5;
+    const b = Math.floor(Math.random() * 15) + 3;
+    activeJobs.math = { answer: a + b, prompt: `${a} + ${b} = ?` };
+    setText("jobMathPrompt", activeJobs.math.prompt);
+    document.getElementById("jobMathInput").value = "";
+  }
+  if (type === "code") {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    activeJobs.code = { answer: code, prompt: `TYPE: ${code}` };
+    setText("jobCodePrompt", activeJobs.code.prompt);
+    document.getElementById("jobCodeInput").value = "";
+  }
+  if (type === "click") {
+    activeJobs.click = { count: 0, goal: 20, startedAt: Date.now(), durationMs: 12000 };
+    setText("jobClickPrompt", "CLEANED 0/20");
+  }
+  setText("jobsMsg", `${JOBS[type].name} STARTED`);
+}
+
+export function submitJob(type) {
+  const cfg = JOBS[type];
+  if (!cfg) return;
+
+  if (type === "math") {
+    const value = Number(document.getElementById("jobMathInput").value);
+    if (!activeJobs.math) return failJob("START DATA ENTRY FIRST");
+    if (value === activeJobs.math.answer) return markJobComplete("math");
+    return failJob("WRONG ANSWER");
+  }
+
+  if (type === "code") {
+    const value = document.getElementById("jobCodeInput").value.trim().toUpperCase();
+    if (!activeJobs.code) return failJob("START PACKET SORT FIRST");
+    if (value === activeJobs.code.answer) return markJobComplete("code");
+    return failJob("CODE MISMATCH");
+  }
+
+  if (type === "click") {
+    if (!activeJobs.click) return failJob("START SPAM CLEANUP FIRST");
+    if (Date.now() - activeJobs.click.startedAt > activeJobs.click.durationMs) {
+      activeJobs.click = null;
+      renderJobs();
+      return failJob("TOO SLOW. JOB FAILED");
+    }
+    activeJobs.click.count += 1;
+    setText("jobClickPrompt", `CLEANED ${activeJobs.click.count}/20`);
+    if (activeJobs.click.count >= activeJobs.click.goal) return markJobComplete("click");
+  }
 }
 
 // Render the shop list with pricing + purchase state.

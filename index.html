@@ -42,6 +42,9 @@
         <button class="menu-btn" onclick="window.openGame('overlayShop')">
           SHOP
         </button>
+        <button class="menu-btn" onclick="window.openGame('overlayJobs')">
+          JOBS
+        </button>
         <button class="menu-btn" onclick="window.openGame('overlayProfile')">
           PROFILE
         </button>
@@ -274,6 +277,73 @@
           style="margin-top: 20px"
           onclick="window.closeOverlays()"
         >
+          CLOSE
+        </button>
+      </div>
+    </div>
+
+    <!-- Scores overlay for local + global leaderboards. -->
+    <div class="overlay" id="overlayJobs">
+      <div class="score-box">
+        <h2 style="text-align: center">SIDE JOBS</h2>
+        <div class="jobs-note">COMPLETE QUICK TASKS TO GET PAID</div>
+        <div class="jobs-grid">
+          <div class="job-card">
+            <div class="job-head">
+              <span>DATA ENTRY</span><span>$120</span>
+            </div>
+            <div class="job-desc">Solve a random math check.</div>
+            <div class="job-controls">
+              <div id="jobMathPrompt" class="job-prompt">PRESS START</div>
+              <input
+                id="jobMathInput"
+                class="term-input job-input"
+                type="number"
+                placeholder="ANSWER"
+              />
+              <div class="job-actions">
+                <button class="term-btn" onclick="window.startJob('math')">START</button>
+                <button class="term-btn" onclick="window.submitJob('math')">SUBMIT</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="job-card">
+            <div class="job-head">
+              <span>PACKET SORT</span><span>$160</span>
+            </div>
+            <div class="job-desc">Type the shown code exactly.</div>
+            <div class="job-controls">
+              <div id="jobCodePrompt" class="job-prompt">PRESS START</div>
+              <input
+                id="jobCodeInput"
+                class="term-input job-input"
+                maxlength="8"
+                placeholder="TYPE CODE"
+              />
+              <div class="job-actions">
+                <button class="term-btn" onclick="window.startJob('code')">START</button>
+                <button class="term-btn" onclick="window.submitJob('code')">SUBMIT</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="job-card">
+            <div class="job-head">
+              <span>SPAM CLEANUP</span><span>$200</span>
+            </div>
+            <div class="job-desc">Clear 20 spam pings fast.</div>
+            <div class="job-controls">
+              <div id="jobClickPrompt" class="job-prompt">PRESS START</div>
+              <div class="job-actions">
+                <button class="term-btn" onclick="window.startJob('click')">START</button>
+                <button class="term-btn" onclick="window.submitJob('click')">CLEAN +1</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="jobsMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
           CLOSE
         </button>
       </div>

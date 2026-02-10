@@ -9,6 +9,8 @@ import {
   showGameOver,
   stopAllGames,
   unlockAchievement,
+  startJob,
+  submitJob,
   state,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
@@ -28,6 +30,8 @@ window.closeOverlays = closeOverlays;
 window.showGameOver = showGameOver;
 window.buyItem = buyItem;
 window.tradeMoney = tradeMoney;
+window.startJob = startJob;
+window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 
