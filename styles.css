@@ -1289,6 +1289,23 @@ canvas {
   padding: 8px;
 }
 
+.bank-transfer-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.bank-preset-btn {
+  padding: 6px;
+  font-size: 9px;
+}
+
+.bank-transfer-help {
+  text-align: center;
+  color: #777;
+  font-size: 8px;
+}
+
 .bank-transfer-msg {
   min-height: 12px;
   font-size: 10px;
