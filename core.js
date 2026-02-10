@@ -846,9 +846,9 @@ function showBadgeDetail(badge, unlocked) {
 }
 
 const JOBS = {
-  math: { name: "DATA ENTRY", reward: 120, cooldownMs: 30000 },
-  code: { name: "PACKET SORT", reward: 160, cooldownMs: 40000 },
-  click: { name: "SPAM CLEANUP", reward: 200, cooldownMs: 45000 },
+  math: { name: "CASHIER SHIFT", reward: 120, cooldownMs: 30000 },
+  code: { name: "RECEPTION DESK", reward: 160, cooldownMs: 40000 },
+  click: { name: "WAREHOUSE PICK", reward: 200, cooldownMs: 45000 },
 };
 const activeJobs = { math: null, code: null, click: null };
 
@@ -885,7 +885,7 @@ function renderJobs() {
   const click = activeJobs.click;
   setText(
     "jobClickPrompt",
-    click ? `CLEANED ${click.count}/${click.goal}` : getCooldownText("click")
+    click ? `PACKED ${click.count}/${click.goal}` : getCooldownText("click")
   );
 }
 
@@ -897,19 +897,19 @@ export function startJob(type) {
   if (type === "math") {
     const a = Math.floor(Math.random() * 15) + 5;
     const b = Math.floor(Math.random() * 15) + 3;
-    activeJobs.math = { answer: a + b, prompt: `${a} + ${b} = ?` };
+    activeJobs.math = { answer: a + b, prompt: `CUSTOMER TOTAL: ${a} + ${b} = ?` };
     setText("jobMathPrompt", activeJobs.math.prompt);
     document.getElementById("jobMathInput").value = "";
   }
   if (type === "code") {
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    activeJobs.code = { answer: code, prompt: `TYPE: ${code}` };
+    activeJobs.code = { answer: code, prompt: `BOOKING CODE: ${code}` };
     setText("jobCodePrompt", activeJobs.code.prompt);
     document.getElementById("jobCodeInput").value = "";
   }
   if (type === "click") {
     activeJobs.click = { count: 0, goal: 20, startedAt: Date.now(), durationMs: 12000 };
-    setText("jobClickPrompt", "CLEANED 0/20");
+    setText("jobClickPrompt", "PACKED 0/20");
   }
   setText("jobsMsg", `${JOBS[type].name} STARTED`);
 }
@@ -920,27 +920,27 @@ export function submitJob(type) {
 
   if (type === "math") {
     const value = Number(document.getElementById("jobMathInput").value);
-    if (!activeJobs.math) return failJob("START DATA ENTRY FIRST");
+    if (!activeJobs.math) return failJob("START CASHIER FIRST");
     if (value === activeJobs.math.answer) return markJobComplete("math");
     return failJob("WRONG ANSWER");
   }
 
   if (type === "code") {
     const value = document.getElementById("jobCodeInput").value.trim().toUpperCase();
-    if (!activeJobs.code) return failJob("START PACKET SORT FIRST");
+    if (!activeJobs.code) return failJob("START RECEPTIONIST FIRST");
     if (value === activeJobs.code.answer) return markJobComplete("code");
     return failJob("CODE MISMATCH");
   }
 
   if (type === "click") {
-    if (!activeJobs.click) return failJob("START SPAM CLEANUP FIRST");
+    if (!activeJobs.click) return failJob("START WAREHOUSE PICKER FIRST");
     if (Date.now() - activeJobs.click.startedAt > activeJobs.click.durationMs) {
       activeJobs.click = null;
       renderJobs();
       return failJob("TOO SLOW. JOB FAILED");
     }
     activeJobs.click.count += 1;
-    setText("jobClickPrompt", `CLEANED ${activeJobs.click.count}/20`);
+    setText("jobClickPrompt", `PACKED ${activeJobs.click.count}/20`);
     if (activeJobs.click.count >= activeJobs.click.goal) return markJobComplete("click");
   }
 }
