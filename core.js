@@ -532,6 +532,7 @@ const initAuth = async () => {
   }
 };
 initAuth();
+setupBankTransferUX();
 onAuthStateChanged(auth, (u) => {
   if (u) {
     myUid = u.uid;
@@ -696,6 +697,34 @@ export async function saveStats() {
 }
 
 // Send money to another player account using a transaction for consistency.
+function setupBankTransferUX() {
+  const userInput = document.getElementById("bankTransferUser");
+  const amountInput = document.getElementById("bankTransferAmount");
+  const presetContainer = document.getElementById("bankTransferPresets");
+  if (!userInput || !amountInput || !presetContainer) return;
+
+  const sendOnEnter = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      tradeMoney();
+    }
+  };
+  userInput.addEventListener("keydown", sendOnEnter);
+  amountInput.addEventListener("keydown", sendOnEnter);
+
+  presetContainer.querySelectorAll("button[data-amount]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = button.dataset.amount;
+      if (value === "max") {
+        amountInput.value = Math.max(1, myMoney);
+      } else {
+        amountInput.value = value;
+      }
+      amountInput.focus();
+    });
+  });
+}
+
 export async function tradeMoney() {
   const msg = document.getElementById("bankTransferMsg");
   const userInput = document.getElementById("bankTransferUser");
@@ -748,6 +777,7 @@ export async function tradeMoney() {
     msg.innerText = e.message || "TRANSFER FAILED";
     msg.style.color = "#f66";
   }
+}
 // Consume exactly one shield charge if available.
 export function consumeShield() {
   const shieldIndex = myInventory.indexOf("item_shield");

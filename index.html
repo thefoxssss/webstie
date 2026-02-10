@@ -230,7 +230,7 @@
             id="bankTransferUser"
             type="text"
             maxlength="20"
-            placeholder="PLAYER"
+            placeholder="PLAYER NAME"
           />
           <input
             class="term-input bank-transfer-input"
@@ -238,9 +238,16 @@
             type="number"
             min="1"
             step="1"
-            placeholder="AMOUNT"
+            placeholder="AMOUNT ($)"
           />
+          <div class="bank-transfer-presets" id="bankTransferPresets">
+            <button class="term-btn bank-preset-btn" data-amount="100">$100</button>
+            <button class="term-btn bank-preset-btn" data-amount="500">$500</button>
+            <button class="term-btn bank-preset-btn" data-amount="1000">$1000</button>
+            <button class="term-btn bank-preset-btn" data-amount="max">MAX</button>
+          </div>
           <button class="term-btn" onclick="window.tradeMoney()">SEND MONEY</button>
+          <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
           <div id="bankTransferMsg" class="bank-transfer-msg"></div>
         </div>
         <div class="bank-log" id="bankLog"></div>
