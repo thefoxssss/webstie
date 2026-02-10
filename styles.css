@@ -1274,6 +1274,26 @@ canvas {
   justify-content: space-between;
 }
 
+.bank-transfer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bank-transfer-input {
+  margin-bottom: 0;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.bank-transfer-msg {
+  min-height: 12px;
+  font-size: 10px;
+  text-align: center;
+  color: #aaa;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
 }

@@ -2,6 +2,7 @@
 // This file acts as the "glue" between the DOM and each game module.
 import {
   buyItem,
+  tradeMoney,
   clearRestartListener,
   closeOverlays,
   openGame,
@@ -26,6 +27,7 @@ window.openGame = openGame;
 window.closeOverlays = closeOverlays;
 window.showGameOver = showGameOver;
 window.buyItem = buyItem;
+window.tradeMoney = tradeMoney;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 

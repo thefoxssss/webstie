@@ -224,6 +224,25 @@
         <div style="text-align: center; font-size: 10px; margin-bottom: 10px">
           RECENT TRANSACTIONS
         </div>
+        <div class="bank-transfer">
+          <input
+            class="term-input bank-transfer-input"
+            id="bankTransferUser"
+            type="text"
+            maxlength="20"
+            placeholder="PLAYER"
+          />
+          <input
+            class="term-input bank-transfer-input"
+            id="bankTransferAmount"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="AMOUNT"
+          />
+          <button class="term-btn" onclick="window.tradeMoney()">SEND MONEY</button>
+          <div id="bankTransferMsg" class="bank-transfer-msg"></div>
+        </div>
         <div class="bank-log" id="bankLog"></div>
         <button
           class="term-btn"

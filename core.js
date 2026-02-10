@@ -555,7 +555,10 @@ export function openGame(id) {
   if (el) el.classList.add("active");
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
-  if (id === "overlayBank") updateBankLog();
+  if (id === "overlayBank") {
+    updateBankLog();
+    setText("bankTransferMsg", "");
+  }
   if (id === "overlayScores") {
     const activeTab = document.querySelector(".score-tab.active");
     loadLeaderboard(activeTab?.dataset.tab || "richest");
@@ -692,6 +695,59 @@ export async function saveStats() {
   updateUI();
 }
 
+// Send money to another player account using a transaction for consistency.
+export async function tradeMoney() {
+  const msg = document.getElementById("bankTransferMsg");
+  const userInput = document.getElementById("bankTransferUser");
+  const amountInput = document.getElementById("bankTransferAmount");
+  if (!msg || !userInput || !amountInput) return;
+
+  const target = userInput.value.trim().toUpperCase();
+  const amount = parseInt(amountInput.value, 10);
+  if (myName === "ANON") {
+    msg.innerText = "LOGIN REQUIRED";
+    msg.style.color = "#f66";
+    return;
+  }
+  if (!target || Number.isNaN(amount) || amount <= 0) {
+    msg.innerText = "ENTER PLAYER + VALID AMOUNT";
+    msg.style.color = "#f66";
+    return;
+  }
+  if (target === myName) {
+    msg.innerText = "CAN'T SEND TO YOURSELF";
+    msg.style.color = "#f66";
+    return;
+  }
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const myRef = doc(db, "gooner_users", myName);
+      const targetRef = doc(db, "gooner_users", target);
+      const mySnap = await transaction.get(myRef);
+      const targetSnap = await transaction.get(targetRef);
+
+      if (!mySnap.exists()) throw new Error("PROFILE NOT FOUND");
+      if (!targetSnap.exists()) throw new Error("PLAYER NOT FOUND");
+      const freshMoney = mySnap.data().money ?? 0;
+      if (freshMoney < amount) throw new Error("NOT ENOUGH CASH");
+
+      transaction.update(myRef, { money: freshMoney - amount });
+      transaction.update(targetRef, { money: (targetSnap.data().money ?? 0) + amount });
+    });
+
+    myMoney -= amount;
+    logTransaction(`TRANSFER TO ${target}`, -amount);
+    updateUI();
+    userInput.value = "";
+    amountInput.value = "";
+    msg.innerText = `SENT $${amount} TO ${target}`;
+    msg.style.color = "#0f0";
+    showToast("TRANSFER SENT", "💸", `${target} +$${amount}`);
+  } catch (e) {
+    msg.innerText = e.message || "TRANSFER FAILED";
+    msg.style.color = "#f66";
+  }
 // Consume exactly one shield charge if available.
 export function consumeShield() {
   const shieldIndex = myInventory.indexOf("item_shield");
