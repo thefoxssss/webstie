@@ -765,6 +765,60 @@ canvas {
   border-bottom: 1px dashed var(--accent-dim);
   font-size: 12px;
 }
+
+
+.jobs-note {
+  text-align: center;
+  font-size: 10px;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+.job-card {
+  border: 1px solid var(--accent-dim);
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.job-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.job-desc {
+  font-family: var(--font-type);
+  font-size: 11px;
+  margin-bottom: 10px;
+  opacity: 0.85;
+}
+.job-prompt {
+  min-height: 18px;
+  font-size: 10px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.job-input {
+  margin: 0 0 8px;
+  width: 100%;
+}
+.job-actions {
+  display: flex;
+  gap: 8px;
+}
+.job-actions .term-btn {
+  flex: 1;
+}
+.jobs-msg {
+  text-align: center;
+  min-height: 16px;
+  margin-top: 12px;
+  font-size: 10px;
+}
+
 .profile-stats {
   text-align: left;
   width: 100%;
