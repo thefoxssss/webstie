@@ -739,6 +739,9 @@ canvas {
   gap: 10px;
   margin-bottom: 20px;
   justify-content: center;
+  flex-wrap: wrap;
+  max-height: 140px;
+  overflow-y: auto;
 }
 .score-tab {
   padding: 10px;
