@@ -218,6 +218,10 @@ function updateAdminMenu() {
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
 }
 
+function isBannedUser(data) {
+  return Boolean(data?.banned);
+}
+
 // Achievements metadata (UI + reward tracking).
 const ACHIEVEMENTS = [
   {
@@ -655,8 +659,10 @@ async function login(username, pin) {
     const ref = doc(db, "gooner_users", username.toUpperCase());
     const snap = await getDoc(ref);
     if (snap.exists()) {
-      if (snap.data().pin === pin) {
-        loadProfile(snap.data());
+      const profile = snap.data();
+      if (isBannedUser(profile)) return "ACCOUNT BANNED";
+      if (profile.pin === pin) {
+        loadProfile(profile);
         return true;
       }
       return "INVALID PIN";
@@ -1613,7 +1619,11 @@ let leaderboardUnsub = null;
 const renderLeaderboardRows = (
   list,
   rows,
-  { valuePrefix = "", emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD" } = {}
+  {
+    valuePrefix = "",
+    emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD",
+    showAdminBan = false,
+  } = {}
 ) => {
   list.innerHTML = "";
   if (!rows.length) {
@@ -1623,10 +1633,49 @@ const renderLeaderboardRows = (
   rows.forEach((row, i) => {
     const item = document.createElement("div");
     item.className = "score-item";
-    item.innerHTML = `<span class="score-rank">#${i + 1}</span> <span>${row.name}</span> <span>${valuePrefix}${row.score}</span>`;
+
+    const rank = document.createElement("span");
+    rank.className = "score-rank";
+    rank.innerText = `#${i + 1}`;
+
+    const name = document.createElement("span");
+    name.innerText = row.name;
+
+    const value = document.createElement("span");
+    value.innerText = `${valuePrefix}${row.score}`;
+
+    item.append(rank, name, value);
+
+    if (showAdminBan && isGodUser() && row.canBan) {
+      const actions = document.createElement("div");
+      actions.className = "score-actions";
+      const banBtn = document.createElement("button");
+      banBtn.className = "menu-btn admin-ban-btn";
+      banBtn.innerText = row.banned ? "UNBAN" : "BAN";
+      banBtn.onclick = () => adminSetBanStatus(row.name, !row.banned);
+      actions.appendChild(banBtn);
+      item.appendChild(actions);
+    }
+
     list.appendChild(item);
   });
 };
+
+async function adminSetBanStatus(targetName, banned) {
+  if (!isGodUser()) return;
+  const name = String(targetName || "").toUpperCase();
+  if (!name || name === myName || isGodUser(name)) return;
+
+  try {
+    await updateDoc(doc(db, "gooner_users", name), { banned: Boolean(banned) });
+    showToast(
+      banned ? `PLAYER BANNED: ${name}` : `PLAYER UNBANNED: ${name}`,
+      banned ? "⛔" : "✅"
+    );
+  } catch (e) {
+    showToast("BAN UPDATE FAILED", "⚠️", "Try again.");
+  }
+}
 
 // Render the leaderboard for the currently selected game.
 function loadLeaderboard(game) {
@@ -1639,12 +1688,15 @@ function loadLeaderboard(game) {
       const rows = [];
       snap.forEach((d) => {
         const data = d.data();
+        const playerName = data.name || d.id;
         rows.push({
-          name: data.name || d.id,
-          score: data.rank || getRank(Number(data.money) || 0, data.name),
+          name: playerName,
+          score: data.rank || getRank(Number(data.money) || 0, playerName),
+          banned: isBannedUser(data),
+          canBan: playerName !== myName && !isGodUser(playerName),
         });
       });
-      renderLeaderboardRows(list, rows);
+      renderLeaderboardRows(list, rows, { showAdminBan: true });
     });
     return;
   }
