@@ -846,9 +846,9 @@ function showBadgeDetail(badge, unlocked) {
 }
 
 const JOBS = {
-  math: { name: "CASHIER SHIFT", reward: 120, cooldownMs: 30000 },
-  code: { name: "RECEPTION DESK", reward: 160, cooldownMs: 40000 },
-  click: { name: "WAREHOUSE PICK", reward: 200, cooldownMs: 45000 },
+  math: { name: "CASHIER RUSH", reward: 120, cooldownMs: 30000 },
+  code: { name: "FRONT DESK MEMORY", reward: 160, cooldownMs: 40000 },
+  click: { name: "DELIVERY DRIVER RUN", reward: 200, cooldownMs: 45000 },
 };
 const activeJobs = { math: null, code: null, click: null };
 
@@ -878,15 +878,30 @@ function failJob(msg) {
   beep(120, "sawtooth", 0.4);
 }
 
-function renderJobs() {
-  setText("jobsMsg", "");
-  setText("jobMathPrompt", activeJobs.math?.prompt || getCooldownText("math"));
-  setText("jobCodePrompt", activeJobs.code?.prompt || getCooldownText("code"));
-  const click = activeJobs.click;
+function setNextCashierPrompt() {
+  const a = Math.floor(Math.random() * 20) + 5;
+  const b = Math.floor(Math.random() * 20) + 3;
+  activeJobs.math.answer = a + b;
+  activeJobs.math.prompt = `CUSTOMER ${activeJobs.math.round + 1}/${activeJobs.math.goal}: ${a} + ${b} = ?`;
+  setText("jobMathPrompt", activeJobs.math.prompt);
+}
+
+function setDeliveryPrompt() {
+  const drive = activeJobs.click;
+  if (!drive) return;
+  const speed = drive.lastSpeed == null ? "--" : drive.lastSpeed;
   setText(
     "jobClickPrompt",
-    click ? `PACKED ${click.count}/${click.goal}` : getCooldownText("click")
+    `SPEED ${speed} MPH | SAFE ${drive.safeMin}-${drive.safeMax} | CHECKPOINT ${drive.count}/${drive.goal}`
   );
+}
+
+function renderJobs() {
+  setText("jobMathPrompt", activeJobs.math?.prompt || getCooldownText("math"));
+  setText("jobCodePrompt", activeJobs.code?.prompt || getCooldownText("code"));
+  const drive = activeJobs.click;
+  if (!drive) return setText("jobClickPrompt", getCooldownText("click"));
+  setDeliveryPrompt();
 }
 
 export function startJob(type) {
@@ -895,21 +910,34 @@ export function startJob(type) {
   if (Date.now() < cooldownEnd) return failJob(`${JOBS[type].name} ${getCooldownText(type)}`);
 
   if (type === "math") {
-    const a = Math.floor(Math.random() * 15) + 5;
-    const b = Math.floor(Math.random() * 15) + 3;
-    activeJobs.math = { answer: a + b, prompt: `CUSTOMER TOTAL: ${a} + ${b} = ?` };
-    setText("jobMathPrompt", activeJobs.math.prompt);
+    activeJobs.math = { round: 0, goal: 3, answer: 0, prompt: "" };
+    setNextCashierPrompt();
     document.getElementById("jobMathInput").value = "";
   }
   if (type === "code") {
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    activeJobs.code = { answer: code, prompt: `BOOKING CODE: ${code}` };
-    setText("jobCodePrompt", activeJobs.code.prompt);
+    const revealMs = 2500;
+    activeJobs.code = { answer: code, hidden: false, prompt: `MEMORIZE: ${code}` };
+    setText("jobCodePrompt", `MEMORIZE: ${code} (${(revealMs / 1000).toFixed(1)}s)`);
+    window.setTimeout(() => {
+      if (!activeJobs.code || activeJobs.code.answer !== code) return;
+      activeJobs.code.hidden = true;
+      activeJobs.code.prompt = "TYPE THE BOOKING CODE FROM MEMORY";
+      setText("jobCodePrompt", activeJobs.code.prompt);
+    }, revealMs);
     document.getElementById("jobCodeInput").value = "";
   }
   if (type === "click") {
-    activeJobs.click = { count: 0, goal: 20, startedAt: Date.now(), durationMs: 12000 };
-    setText("jobClickPrompt", "PACKED 0/20");
+    activeJobs.click = {
+      count: 0,
+      goal: 8,
+      startedAt: Date.now(),
+      durationMs: 15000,
+      safeMin: 45,
+      safeMax: 55,
+      lastSpeed: null,
+    };
+    setDeliveryPrompt();
   }
   setText("jobsMsg", `${JOBS[type].name} STARTED`);
 }
@@ -920,28 +948,43 @@ export function submitJob(type) {
 
   if (type === "math") {
     const value = Number(document.getElementById("jobMathInput").value);
-    if (!activeJobs.math) return failJob("START CASHIER FIRST");
-    if (value === activeJobs.math.answer) return markJobComplete("math");
-    return failJob("WRONG ANSWER");
+    if (!activeJobs.math) return failJob("START CASHIER RUSH FIRST");
+    if (value !== activeJobs.math.answer) {
+      activeJobs.math = null;
+      renderJobs();
+      return failJob("WRONG TOTAL. CUSTOMER LEFT.");
+    }
+    activeJobs.math.round += 1;
+    if (activeJobs.math.round >= activeJobs.math.goal) return markJobComplete("math");
+    setNextCashierPrompt();
+    document.getElementById("jobMathInput").value = "";
+    return setText("jobsMsg", `GOOD. NEXT CUSTOMER ${activeJobs.math.round + 1}/${activeJobs.math.goal}`);
   }
 
   if (type === "code") {
     const value = document.getElementById("jobCodeInput").value.trim().toUpperCase();
-    if (!activeJobs.code) return failJob("START RECEPTIONIST FIRST");
+    if (!activeJobs.code) return failJob("START FRONT DESK MEMORY FIRST");
     if (value === activeJobs.code.answer) return markJobComplete("code");
-    return failJob("CODE MISMATCH");
+    return failJob("WRONG CODE. TRY AGAIN.");
   }
 
   if (type === "click") {
-    if (!activeJobs.click) return failJob("START WAREHOUSE PICKER FIRST");
+    if (!activeJobs.click) return failJob("START DELIVERY DRIVER RUN FIRST");
     if (Date.now() - activeJobs.click.startedAt > activeJobs.click.durationMs) {
       activeJobs.click = null;
       renderJobs();
-      return failJob("TOO SLOW. JOB FAILED");
+      return failJob("SHIFT ENDED. TOO SLOW.");
     }
-    activeJobs.click.count += 1;
-    setText("jobClickPrompt", `PACKED ${activeJobs.click.count}/20`);
-    if (activeJobs.click.count >= activeJobs.click.goal) return markJobComplete("click");
+    const speed = Math.floor(Math.random() * 61) + 20;
+    activeJobs.click.lastSpeed = speed;
+    if (speed >= activeJobs.click.safeMin && speed <= activeJobs.click.safeMax) {
+      activeJobs.click.count += 1;
+      setDeliveryPrompt();
+      if (activeJobs.click.count >= activeJobs.click.goal) return markJobComplete("click");
+      return setText("jobsMsg", "CLEAN CHECKPOINT. KEEP DRIVING.");
+    }
+    setDeliveryPrompt();
+    return failJob("MISS! STAY IN THE SAFE SPEED ZONE.");
   }
 }
 
