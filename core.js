@@ -1099,6 +1099,14 @@ function getComparableMoney(value) {
   return 0;
 }
 
+function sanitizeMoneyValue(value, fallback = 0) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(numeric)) return fallback;
+  if (numeric === Infinity || numeric === -Infinity) return numeric;
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
+
 function getRank(money, name = myName) {
   if (isGodUser(name)) return "GOD";
   if (money < 500) return "RAT";
@@ -1134,7 +1142,7 @@ function getRankProgress(money) {
 // Populate local state from stored profile data.
 function loadProfile(data) {
   myName = data.name;
-  myMoney = data.money;
+  myMoney = sanitizeMoneyValue(data.money, 1000);
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
@@ -1171,33 +1179,37 @@ function updateUI() {
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
   const currentVal = getComparableMoney(bankEl.innerText);
+  const safeMoney = sanitizeMoneyValue(myMoney);
+  const nextVal = getComparableMoney(safeMoney);
   const nextVal = getComparableMoney(myMoney);
   if (currentVal !== nextVal) {
     bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
+  bankEl.innerText = formatBankAmount(safeMoney);
+  if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(safeMoney);
   bankEl.innerText = formatBankAmount(myMoney);
   if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
-  setText("profBank", "$" + myMoney);
+  setText("profBank", "$" + formatBankAmount(safeMoney));
   setText("profWPM", (myStats.wpm || 0) + " WPM");
   setText("profGames", myStats.games || 0);
   setText("profWins", myStats.wins || 0);
   setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
   setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
-  const rank = getRank(myMoney);
+  const rank = getRank(safeMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
   setText("profSummaryRank", "[" + rank + "]");
-  const rankProgress = getRankProgress(myMoney);
+  const rankProgress = getRankProgress(safeMoney);
   setText("profProgressLabel", rankProgress.label);
   const progressFill = document.getElementById("profProgressFill");
   if (progressFill) progressFill.style.width = `${rankProgress.pct}%`;
-  if (myMoney >= 5000) unlockAchievement("diamond_hands");
-  if (myMoney >= 1000000) unlockAchievement("millionaire");
+  if (safeMoney >= 5000) unlockAchievement("diamond_hands");
+  if (safeMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
   updateAdminMenu();
   if (myMoney === 0) {
@@ -1472,7 +1484,7 @@ export async function saveStats() {
   const snapshot = {
     name: myName,
     pin: localStorage.getItem("goonerPin") || "0000",
-    money: myMoney,
+    money: sanitizeMoneyValue(myMoney),
     joined: myJoined || Date.now(),
     stats: myStats,
     achievements: myAchievements,
@@ -1485,7 +1497,7 @@ export async function saveStats() {
   };
   saveLocalProfileSnapshot(snapshot);
   await updateDoc(doc(db, "gooner_users", myName), {
-    money: myMoney,
+    money: sanitizeMoneyValue(myMoney),
     stats: myStats,
     achievements: myAchievements,
     inventory: myInventory,
@@ -1677,6 +1689,12 @@ export async function tradeMoney() {
 
       if (!mySnap.exists()) throw new Error("PROFILE NOT FOUND");
       if (!receiverSnap?.exists() || !receiverRef) throw new Error("PLAYER NOT FOUND");
+      const freshMoney = sanitizeMoneyValue(mySnap.data().money);
+      if (freshMoney < amount) throw new Error("NOT ENOUGH CASH");
+
+      transaction.update(myRef, { money: freshMoney - amount });
+      const receiverMoney = sanitizeMoneyValue(receiverSnap.data().money);
+      transaction.update(receiverRef, { money: receiverMoney + amount });
       const freshMoney = mySnap.data().money ?? 0;
       if (freshMoney < amount) throw new Error("NOT ENOUGH CASH");
 
