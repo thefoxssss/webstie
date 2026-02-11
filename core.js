@@ -1181,12 +1181,15 @@ function updateUI() {
   const currentVal = getComparableMoney(bankEl.innerText);
   const safeMoney = sanitizeMoneyValue(myMoney);
   const nextVal = getComparableMoney(safeMoney);
+  const nextVal = getComparableMoney(myMoney);
   if (currentVal !== nextVal) {
     bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
   bankEl.innerText = formatBankAmount(safeMoney);
   if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(safeMoney);
+  bankEl.innerText = formatBankAmount(myMoney);
+  if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
@@ -1692,6 +1695,11 @@ export async function tradeMoney() {
       transaction.update(myRef, { money: freshMoney - amount });
       const receiverMoney = sanitizeMoneyValue(receiverSnap.data().money);
       transaction.update(receiverRef, { money: receiverMoney + amount });
+      const freshMoney = mySnap.data().money ?? 0;
+      if (freshMoney < amount) throw new Error("NOT ENOUGH CASH");
+
+      transaction.update(myRef, { money: freshMoney - amount });
+      transaction.update(receiverRef, { money: (receiverSnap.data().money ?? 0) + amount });
     });
 
     myMoney -= amount;
