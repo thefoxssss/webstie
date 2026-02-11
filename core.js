@@ -1009,6 +1009,113 @@ export async function adminGrantCash(amount) {
   await saveStats();
 }
 
+export async function adminSetMaxCash() {
+  if (!isGodUser()) return;
+  const previous = Math.floor(Number(myMoney) || 0);
+  myMoney = 999999999;
+  const delta = Math.max(0, myMoney - previous);
+  if (delta > 0) logTransaction("ADMIN BANK OVERRIDE", delta);
+  showToast("BANK SET TO $999,999,999", "💰");
+  await saveStats();
+}
+
+export async function adminGrantAllShopItems() {
+  if (!isGodUser()) return;
+  let unlocked = 0;
+  SHOP_ITEMS.forEach((item) => {
+    if (!myInventory.includes(item.id)) {
+      myInventory.push(item.id);
+      unlocked++;
+    }
+    setItemToggle(item.id, true);
+  });
+  applyOwnedVisuals();
+  showToast(
+    unlocked ? `ADMIN UNLOCKED ${unlocked} ITEMS` : "ALL SHOP ITEMS ALREADY OWNED",
+    "🧰"
+  );
+  await saveStats();
+}
+
+export async function adminClearDebtAndCooldowns() {
+  if (!isGodUser()) return;
+  loanData.debt = 0;
+  loanData.rate = 0;
+  loanData.lastInterestAt = Date.now();
+  jobData.cooldowns = {};
+  showToast("DEBT PURGED + JOBS RESET", "🧽");
+  await saveStats();
+}
+
+export async function adminBoostStats() {
+  if (!isGodUser()) return;
+  myStats.games = Math.max(0, Number(myStats.games) || 0) + 250;
+  myStats.wins = Math.max(0, Number(myStats.wins) || 0) + 100;
+  myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
+  jobData.completed = {
+    math: Math.max(50, Number(jobData.completed?.math) || 0),
+    code: Math.max(50, Number(jobData.completed?.code) || 0),
+    click: Math.max(50, Number(jobData.completed?.click) || 0),
+  };
+  showToast("STATS BOOSTED TO GOD-TIER", "📈");
+  await saveStats();
+}
+
+export async function adminMaxPortfolio() {
+  if (!isGodUser()) return;
+  ensureStockProfile();
+  marketState.stocks.forEach((stock) => {
+    stockData.holdings[stock.symbol] = 9999;
+  });
+  stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
+  showToast("PORTFOLIO MAXED OUT", "📊");
+  await saveStats();
+}
+
+export async function adminPrestigePack() {
+  if (!isGodUser()) return;
+  const previousMoney = Math.floor(Number(myMoney) || 0);
+  myMoney = Math.max(previousMoney, 999999999);
+  const moneyDelta = Math.max(0, myMoney - previousMoney);
+  if (moneyDelta > 0) logTransaction("ADMIN PRESTIGE PACK", moneyDelta);
+
+  SHOP_ITEMS.forEach((item) => {
+    if (!myInventory.includes(item.id)) myInventory.push(item.id);
+    setItemToggle(item.id, true);
+  });
+
+  ACHIEVEMENTS.forEach((achievement) => {
+    if (!myAchievements.includes(achievement.id)) myAchievements.push(achievement.id);
+  });
+
+  myStats.games = Math.max(1000, Number(myStats.games) || 0);
+  myStats.wins = Math.max(750, Number(myStats.wins) || 0);
+  myStats.wpm = Math.max(140, Number(myStats.wpm) || 0);
+  jobData.completed = { math: 99, code: 99, click: 99 };
+  jobData.cooldowns = {};
+  loanData = { debt: 0, rate: 0, lastInterestAt: Date.now() };
+  applyOwnedVisuals();
+  showToast("PRESTIGE PACK DEPLOYED", "👑");
+  await saveStats();
+}
+
+export async function adminBanWave() {
+  if (!isGodUser()) return;
+  try {
+    const snap = await getDocs(collection(db, "gooner_users"));
+    const removals = [];
+    snap.forEach((playerDoc) => {
+      const playerName = String(playerDoc.id || "").toUpperCase();
+      if (!playerName || isGodUser(playerName)) return;
+      removals.push(deleteDoc(doc(db, "gooner_users", playerName)));
+    });
+    await Promise.all(removals);
+    showToast(`BAN WAVE COMPLETE: ${removals.length} REMOVED`, "☠️");
+  } catch (e) {
+    showToast("BAN WAVE FAILED", "⚠️", "Try again.");
+  }
+}
+
 export async function adminUnlockAllAchievements() {
   if (!isGodUser()) return;
   const missing = ACHIEVEMENTS.filter((achievement) => !myAchievements.includes(achievement.id));
