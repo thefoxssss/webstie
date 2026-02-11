@@ -427,6 +427,13 @@ body::before {
   opacity: 0.8;
 }
 
+
+.admin-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 /* --- 7. GAMES --- */
 canvas {
   border: 4px solid var(--accent);
@@ -766,6 +773,15 @@ canvas {
   border-bottom: 1px dashed var(--accent-dim);
   font-size: clamp(10px, 2vw, 13px);
   word-break: break-word;
+  align-items: center;
+}
+.score-actions {
+  margin-left: auto;
+}
+.admin-remove-btn {
+  padding: 6px 10px;
+  font-size: 10px;
+  min-width: 64px;
 }
 
 

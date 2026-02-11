@@ -51,6 +51,14 @@
         <button class="menu-btn" onclick="window.openGame('overlayScores')">
           SCORES
         </button>
+        <button
+          class="menu-btn"
+          id="adminMenuBtn"
+          onclick="window.openGame('overlayAdmin')"
+          style="display: none; border-color: #ffd700; color: #ffd700"
+        >
+          ADMIN
+        </button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
       </div>
     </div>
@@ -78,6 +86,30 @@
       >
         FLAPPY GOON
       </button>
+    </div>
+
+    <!-- God-tier operator controls. Visible only to allowlisted users. -->
+    <div class="overlay" id="overlayAdmin">
+      <div class="score-box" style="border-color: #ffd700">
+        <h2 style="text-align: center; color: #ffd700">ADMIN MENU</h2>
+        <p style="text-align: center; font-size: 10px">
+          GOD ACCESS: <span id="adminName">UNKNOWN</span>
+        </p>
+        <div class="admin-actions">
+          <button class="term-btn" onclick="window.adminGrantCash(1000)">
+            GRANT +$1,000
+          </button>
+          <button class="term-btn" onclick="window.adminGrantCash(10000)">
+            GRANT +$10,000
+          </button>
+          <button class="term-btn" onclick="window.adminUnlockAllAchievements()">
+            UNLOCK ALL ACHIEVEMENTS
+          </button>
+        </div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
+          CLOSE
+        </button>
+      </div>
     </div>
 
     <!-- Global text chat dock (always visible on home). -->

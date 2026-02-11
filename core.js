@@ -56,6 +56,7 @@ let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
+const GOD_USERS = new Set(["NOOB", "THEFOX"]);
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -203,6 +204,20 @@ function applyOwnedVisuals() {
     ? "block"
     : "none";
 }
+
+
+function isGodUser(name = myName) {
+  return GOD_USERS.has(String(name || "").toUpperCase());
+}
+
+function updateAdminMenu() {
+  const adminBtn = document.getElementById("adminMenuBtn");
+  const adminName = document.getElementById("adminName");
+  const hasAccess = isGodUser();
+  if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
+  if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
+}
+
 
 // Achievements metadata (UI + reward tracking).
 const ACHIEVEMENTS = [
@@ -609,6 +624,7 @@ setInterval(() => {
 
 // Open an overlay by id, optionally render its contents.
 export function openGame(id) {
+  if (id === "overlayAdmin" && !isGodUser()) return;
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
@@ -640,8 +656,9 @@ async function login(username, pin) {
     const ref = doc(db, "gooner_users", username.toUpperCase());
     const snap = await getDoc(ref);
     if (snap.exists()) {
-      if (snap.data().pin === pin) {
-        loadProfile(snap.data());
+      const profile = snap.data();
+      if (profile.pin === pin) {
+        loadProfile(profile);
         return true;
       }
       return "INVALID PIN";
@@ -653,7 +670,8 @@ async function login(username, pin) {
 }
 
 // Convert money tiers into user-facing rank labels.
-function getRank(money) {
+function getRank(money, name = myName) {
+  if (isGodUser(name)) return "GOD";
   if (money < 500) return "RAT";
   if (money < 2000) return "SCRIPT KIDDIE";
   if (money < 5000) return "HACKER";
@@ -712,6 +730,7 @@ function loadProfile(data) {
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
+  updateAdminMenu();
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -745,6 +764,7 @@ function updateUI() {
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
+  updateAdminMenu();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -775,6 +795,38 @@ async function register(username, pin) {
   } catch (e) {
     return "REG ERROR";
   }
+}
+
+
+export async function adminGrantCash(amount) {
+  if (!isGodUser()) return;
+  const grant = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!grant) return;
+  myMoney += grant;
+  logTransaction("ADMIN GRANT", grant);
+  showToast(`ADMIN GRANT: +$${grant.toLocaleString()}`, "🛡️");
+  await saveStats();
+}
+
+export async function adminUnlockAllAchievements() {
+  if (!isGodUser()) return;
+  const missing = ACHIEVEMENTS.filter((achievement) => !myAchievements.includes(achievement.id));
+  if (!missing.length) {
+    showToast("ALL ACHIEVEMENTS ALREADY UNLOCKED", "✅");
+    return;
+  }
+
+  let rewardTotal = 0;
+  missing.forEach((achievement) => {
+    myAchievements.push(achievement.id);
+    rewardTotal += achievement.reward || 0;
+  });
+  if (rewardTotal > 0) {
+    myMoney += rewardTotal;
+    logTransaction("ADMIN ACHIEVEMENT SYNC", rewardTotal);
+  }
+  showToast(`UNLOCKED ${missing.length} ACHIEVEMENTS`, "🛡️");
+  await saveStats();
 }
 
 // Persist stats + inventory changes to Firestore.
@@ -1563,7 +1615,11 @@ let leaderboardUnsub = null;
 const renderLeaderboardRows = (
   list,
   rows,
-  { valuePrefix = "", emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD" } = {}
+  {
+    valuePrefix = "",
+    emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD",
+    showAdminRemove = false,
+  } = {}
 ) => {
   list.innerHTML = "";
   if (!rows.length) {
@@ -1573,10 +1629,46 @@ const renderLeaderboardRows = (
   rows.forEach((row, i) => {
     const item = document.createElement("div");
     item.className = "score-item";
-    item.innerHTML = `<span class="score-rank">#${i + 1}</span> <span>${row.name}</span> <span>${valuePrefix}${row.score}</span>`;
+
+    const rank = document.createElement("span");
+    rank.className = "score-rank";
+    rank.innerText = `#${i + 1}`;
+
+    const name = document.createElement("span");
+    name.innerText = row.name;
+
+    const value = document.createElement("span");
+    value.innerText = `${valuePrefix}${row.score}`;
+
+    item.append(rank, name, value);
+
+    if (showAdminRemove && isGodUser() && row.canRemove) {
+      const actions = document.createElement("div");
+      actions.className = "score-actions";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "menu-btn admin-remove-btn";
+      removeBtn.innerText = "REMOVE";
+      removeBtn.onclick = () => adminRemoveAccount(row.name);
+      actions.appendChild(removeBtn);
+      item.appendChild(actions);
+    }
+
     list.appendChild(item);
   });
 };
+
+async function adminRemoveAccount(targetName) {
+  if (!isGodUser()) return;
+  const name = String(targetName || "").toUpperCase();
+  if (!name || name === myName || isGodUser(name)) return;
+
+  try {
+    await deleteDoc(doc(db, "gooner_users", name));
+    showToast(`PLAYER REMOVED: ${name}`, "🗑️");
+  } catch (e) {
+    showToast("ACCOUNT REMOVE FAILED", "⚠️", "Try again.");
+  }
+}
 
 // Render the leaderboard for the currently selected game.
 function loadLeaderboard(game) {
@@ -1589,12 +1681,14 @@ function loadLeaderboard(game) {
       const rows = [];
       snap.forEach((d) => {
         const data = d.data();
+        const playerName = data.name || d.id;
         rows.push({
-          name: data.name || d.id,
-          score: data.rank || getRank(Number(data.money) || 0),
+          name: playerName,
+          score: data.rank || getRank(Number(data.money) || 0, playerName),
+          canRemove: playerName !== myName && !isGodUser(playerName),
         });
       });
-      renderLeaderboardRows(list, rows);
+      renderLeaderboardRows(list, rows, { showAdminRemove: true });
     });
     return;
   }
