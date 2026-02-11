@@ -1373,8 +1373,8 @@ export async function adminMarketCrashToZero() {
 
 export async function adminMarketTimesThousand() {
   if (!isGodUser()) return;
-  await setMarketShift(1000, 0.01, 1);
-  showToast("MARKET MULTIPLIED x1000", "📈");
+  await setMarketShift(1000000000000000000, 0.01, 1);
+  showToast("MARKET MULTIPLIED x1000000000000000000", "📈");
   await saveStats();
 }
 
@@ -1623,7 +1623,8 @@ export async function tradeMoney() {
   const amountInput = document.getElementById("bankTransferAmount");
   if (!msg || !userInput || !amountInput) return;
 
-  const target = userInput.value.trim().toUpperCase();
+  const rawTarget = userInput.value.trim();
+  const target = rawTarget.toUpperCase();
   const amount = parseInt(amountInput.value, 10);
   if (myName === "ANON") {
     msg.innerText = "LOGIN REQUIRED";
@@ -1645,16 +1646,20 @@ export async function tradeMoney() {
     await runTransaction(db, async (transaction) => {
       const myRef = doc(db, "gooner_users", myName);
       const targetRef = doc(db, "gooner_users", target);
+      const targetRawRef = rawTarget && rawTarget !== target ? doc(db, "gooner_users", rawTarget) : null;
       const mySnap = await transaction.get(myRef);
       const targetSnap = await transaction.get(targetRef);
+      const targetRawSnap = targetRawRef ? await transaction.get(targetRawRef) : null;
+      const receiverSnap = targetSnap.exists() ? targetSnap : targetRawSnap;
+      const receiverRef = targetSnap.exists() ? targetRef : targetRawRef;
 
       if (!mySnap.exists()) throw new Error("PROFILE NOT FOUND");
-      if (!targetSnap.exists()) throw new Error("PLAYER NOT FOUND");
+      if (!receiverSnap?.exists() || !receiverRef) throw new Error("PLAYER NOT FOUND");
       const freshMoney = mySnap.data().money ?? 0;
       if (freshMoney < amount) throw new Error("NOT ENOUGH CASH");
 
       transaction.update(myRef, { money: freshMoney - amount });
-      transaction.update(targetRef, { money: (targetSnap.data().money ?? 0) + amount });
+      transaction.update(receiverRef, { money: (receiverSnap.data().money ?? 0) + amount });
     });
 
     myMoney -= amount;
