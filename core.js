@@ -712,7 +712,8 @@ function setupBankTransferUX() {
   const userInput = document.getElementById("bankTransferUser");
   const amountInput = document.getElementById("bankTransferAmount");
   const presetContainer = document.getElementById("bankTransferPresets");
-  if (!userInput || !amountInput || !presetContainer) return;
+  const sendButton = document.getElementById("bankTransferSend");
+  if (!userInput || !amountInput || !presetContainer || !sendButton) return;
 
   const sendOnEnter = (event) => {
     if (event.key === "Enter") {
@@ -733,6 +734,10 @@ function setupBankTransferUX() {
       }
       amountInput.focus();
     });
+  });
+
+  sendButton.addEventListener("click", () => {
+    tradeMoney();
   });
 }
 
