@@ -1538,6 +1538,20 @@ canvas {
   min-height: 18px;
 }
 
+.stock-multipliers {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stock-mult-btn {
+  padding: 4px 0;
+}
+
+.stock-mult-btn.active {
+  background: var(--accent-dim);
+}
+
 .stock-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
