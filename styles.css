@@ -1433,6 +1433,36 @@ canvas {
   color: #aaa;
 }
 
+
+.bank-loan {
+  border-top: 1px dashed #333;
+  margin-top: 10px;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bank-loan-title {
+  text-align: center;
+  font-size: 10px;
+  color: #f80;
+  letter-spacing: 0.5px;
+}
+
+.bank-loan-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #aaa;
+}
+
+.bank-loan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
 }
