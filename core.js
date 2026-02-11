@@ -563,7 +563,7 @@ export function openGame(id) {
   if (el) el.classList.add("active");
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
-  if (id === "overlayJobs") renderJobs();
+  if (id === "overlayJobs" || id === "overlayJobCashier" || id === "overlayJobFrontdesk" || id === "overlayJobDelivery") renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
     setText("bankTransferMsg", "");
@@ -851,11 +851,11 @@ function showBadgeDetail(badge, unlocked) {
 }
 
 const JOBS = {
-  math: { name: "DATA ENTRY", reward: 120, cooldownMs: 30000 },
-  code: { name: "PACKET SORT", reward: 160, cooldownMs: 40000 },
-  click: { name: "SPAM CLEANUP", reward: 200, cooldownMs: 45000 },
+  cashier: { name: "CASHIER RUSH", reward: 120, cooldownMs: 30000 },
+  frontdesk: { name: "FRONT DESK MEMORY", reward: 160, cooldownMs: 40000 },
+  delivery: { name: "DELIVERY DRIVER RUN", reward: 200, cooldownMs: 45000 },
 };
-const activeJobs = { math: null, code: null, click: null };
+const activeJobs = { cashier: null, frontdesk: null, delivery: null };
 
 function getCooldownText(type) {
   const left = (jobData.cooldowns?.[type] || 0) - Date.now();
@@ -863,90 +863,160 @@ function getCooldownText(type) {
   return `COOLDOWN: ${Math.ceil(left / 1000)}s`;
 }
 
+function setJobMsg(type, msg) {
+  const map = {
+    cashier: "jobCashierMsg",
+    frontdesk: "jobFrontdeskMsg",
+    delivery: "jobDeliveryMsg",
+  };
+  const id = map[type];
+  if (id) setText(id, msg);
+}
+
 function markJobComplete(type) {
   const cfg = JOBS[type];
   myMoney += cfg.reward;
-  if (!jobData.completed) jobData.completed = { math: 0, code: 0, click: 0 };
+  if (!jobData.completed) jobData.completed = { cashier: 0, frontdesk: 0, delivery: 0 };
   jobData.completed[type] = (jobData.completed[type] || 0) + 1;
   if (!jobData.cooldowns) jobData.cooldowns = {};
   jobData.cooldowns[type] = Date.now() + cfg.cooldownMs;
   logTransaction(`JOB: ${cfg.name}`, cfg.reward);
   showToast(`JOB COMPLETE: ${cfg.name}`, "💼", `+$${cfg.reward}`);
   setText("jobsMsg", `${cfg.name} PAID OUT +$${cfg.reward}`);
+  setJobMsg(type, `PAYDAY +$${cfg.reward}`);
   activeJobs[type] = null;
   saveStats();
   renderJobs();
 }
 
-function failJob(msg) {
+function failJob(type, msg) {
+  setJobMsg(type, msg);
   setText("jobsMsg", msg);
   beep(120, "sawtooth", 0.4);
 }
 
-function renderJobs() {
-  setText("jobsMsg", "");
-  setText("jobMathPrompt", activeJobs.math?.prompt || getCooldownText("math"));
-  setText("jobCodePrompt", activeJobs.code?.prompt || getCooldownText("code"));
-  const click = activeJobs.click;
+function setCashierPrompt() {
+  const c = activeJobs.cashier;
+  if (!c) return;
+  const a = Math.floor(Math.random() * 20) + 5;
+  const b = Math.floor(Math.random() * 20) + 3;
+  c.answer = a + b;
+  c.prompt = `CUSTOMER ${c.round + 1}/${c.goal}: ${a} + ${b} = ?`;
+  setText("jobCashierPrompt", c.prompt);
+}
+
+function setDeliveryPrompt() {
+  const d = activeJobs.delivery;
+  if (!d) return;
+  const speed = d.lastSpeed == null ? "--" : d.lastSpeed;
   setText(
-    "jobClickPrompt",
-    click ? `CLEANED ${click.count}/${click.goal}` : getCooldownText("click")
+    "jobDeliveryPrompt",
+    `SPEED ${speed} MPH | SAFE ${d.safeMin}-${d.safeMax} | CHECKPOINT ${d.count}/${d.goal}`
   );
 }
 
-export function startJob(type) {
-  if (myName === "ANON") return failJob("LOGIN REQUIRED");
-  const cooldownEnd = jobData.cooldowns?.[type] || 0;
-  if (Date.now() < cooldownEnd) return failJob(`${JOBS[type].name} ${getCooldownText(type)}`);
+function renderJobs() {
+  setText("jobCashierStatus", getCooldownText("cashier"));
+  setText("jobFrontdeskStatus", getCooldownText("frontdesk"));
+  setText("jobDeliveryStatus", getCooldownText("delivery"));
 
-  if (type === "math") {
-    const a = Math.floor(Math.random() * 15) + 5;
-    const b = Math.floor(Math.random() * 15) + 3;
-    activeJobs.math = { answer: a + b, prompt: `${a} + ${b} = ?` };
-    setText("jobMathPrompt", activeJobs.math.prompt);
-    document.getElementById("jobMathInput").value = "";
+  setText("jobCashierPrompt", activeJobs.cashier?.prompt || getCooldownText("cashier"));
+  setText("jobFrontdeskPrompt", activeJobs.frontdesk?.prompt || getCooldownText("frontdesk"));
+
+  if (!activeJobs.delivery) setText("jobDeliveryPrompt", getCooldownText("delivery"));
+  else setDeliveryPrompt();
+}
+
+export function startJob(type) {
+  if (myName === "ANON") return failJob(type, "LOGIN REQUIRED");
+  const cfg = JOBS[type];
+  if (!cfg) return;
+
+  const cooldownEnd = jobData.cooldowns?.[type] || 0;
+  if (Date.now() < cooldownEnd) return failJob(type, `${cfg.name} ${getCooldownText(type)}`);
+
+  if (type === "cashier") {
+    activeJobs.cashier = { round: 0, goal: 3, answer: 0, prompt: "" };
+    setCashierPrompt();
+    document.getElementById("jobCashierInput").value = "";
+    setJobMsg(type, "SHIFT STARTED");
   }
-  if (type === "code") {
+
+  if (type === "frontdesk") {
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    activeJobs.code = { answer: code, prompt: `TYPE: ${code}` };
-    setText("jobCodePrompt", activeJobs.code.prompt);
-    document.getElementById("jobCodeInput").value = "";
+    const revealMs = 2500;
+    activeJobs.frontdesk = { answer: code, prompt: "" };
+    setText("jobFrontdeskPrompt", `MEMORIZE: ${code} (${(revealMs / 1000).toFixed(1)}s)`);
+    activeJobs.frontdesk.prompt = "TYPE THE BOOKING CODE FROM MEMORY";
+    setTimeout(() => {
+      if (!activeJobs.frontdesk || activeJobs.frontdesk.answer !== code) return;
+      setText("jobFrontdeskPrompt", activeJobs.frontdesk.prompt);
+    }, revealMs);
+    document.getElementById("jobFrontdeskInput").value = "";
+    setJobMsg(type, "SHIFT STARTED");
   }
-  if (type === "click") {
-    activeJobs.click = { count: 0, goal: 20, startedAt: Date.now(), durationMs: 12000 };
-    setText("jobClickPrompt", "CLEANED 0/20");
+
+  if (type === "delivery") {
+    activeJobs.delivery = {
+      count: 0,
+      goal: 8,
+      startedAt: Date.now(),
+      durationMs: 15000,
+      safeMin: 45,
+      safeMax: 55,
+      lastSpeed: null,
+    };
+    setDeliveryPrompt();
+    setJobMsg(type, "SHIFT STARTED");
   }
-  setText("jobsMsg", `${JOBS[type].name} STARTED`);
+
+  setText("jobsMsg", `${cfg.name} STARTED`);
+  renderJobs();
 }
 
 export function submitJob(type) {
   const cfg = JOBS[type];
   if (!cfg) return;
 
-  if (type === "math") {
-    const value = Number(document.getElementById("jobMathInput").value);
-    if (!activeJobs.math) return failJob("START DATA ENTRY FIRST");
-    if (value === activeJobs.math.answer) return markJobComplete("math");
-    return failJob("WRONG ANSWER");
-  }
-
-  if (type === "code") {
-    const value = document.getElementById("jobCodeInput").value.trim().toUpperCase();
-    if (!activeJobs.code) return failJob("START PACKET SORT FIRST");
-    if (value === activeJobs.code.answer) return markJobComplete("code");
-    return failJob("CODE MISMATCH");
-  }
-
-  if (type === "click") {
-    if (!activeJobs.click) return failJob("START SPAM CLEANUP FIRST");
-    if (Date.now() - activeJobs.click.startedAt > activeJobs.click.durationMs) {
-      activeJobs.click = null;
+  if (type === "cashier") {
+    const value = Number(document.getElementById("jobCashierInput").value);
+    if (!activeJobs.cashier) return failJob(type, "START SHIFT FIRST");
+    if (value !== activeJobs.cashier.answer) {
+      activeJobs.cashier = null;
       renderJobs();
-      return failJob("TOO SLOW. JOB FAILED");
+      return failJob(type, "WRONG TOTAL. CUSTOMER LEFT.");
     }
-    activeJobs.click.count += 1;
-    setText("jobClickPrompt", `CLEANED ${activeJobs.click.count}/20`);
-    if (activeJobs.click.count >= activeJobs.click.goal) return markJobComplete("click");
+    activeJobs.cashier.round += 1;
+    if (activeJobs.cashier.round >= activeJobs.cashier.goal) return markJobComplete(type);
+    setCashierPrompt();
+    document.getElementById("jobCashierInput").value = "";
+    return setJobMsg(type, `NICE! NEXT CUSTOMER ${activeJobs.cashier.round + 1}/${activeJobs.cashier.goal}`);
+  }
+
+  if (type === "frontdesk") {
+    const value = document.getElementById("jobFrontdeskInput").value.trim().toUpperCase();
+    if (!activeJobs.frontdesk) return failJob(type, "START SHIFT FIRST");
+    if (value === activeJobs.frontdesk.answer) return markJobComplete(type);
+    return failJob(type, "WRONG CODE. TRY AGAIN.");
+  }
+
+  if (type === "delivery") {
+    if (!activeJobs.delivery) return failJob(type, "START SHIFT FIRST");
+    if (Date.now() - activeJobs.delivery.startedAt > activeJobs.delivery.durationMs) {
+      activeJobs.delivery = null;
+      renderJobs();
+      return failJob(type, "SHIFT ENDED. TOO SLOW.");
+    }
+    const speed = Math.floor(Math.random() * 61) + 20;
+    activeJobs.delivery.lastSpeed = speed;
+    if (speed >= activeJobs.delivery.safeMin && speed <= activeJobs.delivery.safeMax) {
+      activeJobs.delivery.count += 1;
+      setDeliveryPrompt();
+      if (activeJobs.delivery.count >= activeJobs.delivery.goal) return markJobComplete(type);
+      return setJobMsg(type, "CLEAN CHECKPOINT. KEEP DRIVING.");
+    }
+    setDeliveryPrompt();
+    return failJob(type, "MISS! STAY IN SAFE SPEED ZONE.");
   }
 }
 
