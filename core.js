@@ -46,6 +46,7 @@ let myMoney = 1000;
 let myStats = { games: 0, wpm: 0, wins: 0 };
 let myAchievements = [];
 let myInventory = [];
+let myJoined = 0;
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
@@ -611,6 +612,28 @@ function getRank(money) {
   return "KINGPIN";
 }
 
+function getRankProgress(money) {
+  const tiers = [
+    { label: "RAT", min: 0, max: 500 },
+    { label: "SCRIPT KIDDIE", min: 500, max: 2000 },
+    { label: "HACKER", min: 2000, max: 5000 },
+    { label: "GOONER", min: 5000, max: 10000 },
+    { label: "CYBER LORD", min: 10000, max: 50000 },
+    { label: "KINGPIN", min: 50000, max: Infinity },
+  ];
+  const currentTier = tiers.find((tier) => money >= tier.min && money < tier.max) || tiers[0];
+  if (!Number.isFinite(currentTier.max)) {
+    return { label: "MAX RANK UNLOCKED", pct: 100 };
+  }
+  const span = currentTier.max - currentTier.min;
+  const earned = money - currentTier.min;
+  const pct = Math.max(0, Math.min(100, Math.round((earned / span) * 100)));
+  return {
+    label: `$${Math.max(0, currentTier.max - money)} TO ${tiers[tiers.indexOf(currentTier) + 1].label}`,
+    pct,
+  };
+}
+
 // Populate local state from stored profile data.
 function loadProfile(data) {
   myName = data.name;
@@ -618,6 +641,7 @@ function loadProfile(data) {
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
+  myJoined = data.joined || 0;
   jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
@@ -655,10 +679,18 @@ function updateUI() {
   setText("profBank", "$" + myMoney);
   setText("profWPM", (myStats.wpm || 0) + " WPM");
   setText("profGames", myStats.games || 0);
+  setText("profWins", myStats.wins || 0);
+  setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
+  setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
   const rank = getRank(myMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
+  setText("profSummaryRank", "[" + rank + "]");
+  const rankProgress = getRankProgress(myMoney);
+  setText("profProgressLabel", rankProgress.label);
+  const progressFill = document.getElementById("profProgressFill");
+  if (progressFill) progressFill.style.width = `${rankProgress.pct}%`;
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
