@@ -59,6 +59,7 @@ let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
+const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
 const GOD_USERS = new Set(["NOOB", "THEFOX"]);
 
 // Audio context for simple synth effects.
@@ -192,6 +193,33 @@ function setItemToggle(id, enabled) {
 
 function getShopToggleStorageKey(username) {
   return SHOP_TOGGLE_STORAGE_PREFIX + String(username || myName || "ANON").toUpperCase();
+}
+
+function loadLocalUsers() {
+  const raw = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalUsers(users) {
+  localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(users || {}));
+}
+
+function saveLocalProfileSnapshot(data) {
+  if (!data?.name) return;
+  const users = loadLocalUsers();
+  users[String(data.name).toUpperCase()] = data;
+  saveLocalUsers(users);
+}
+
+function getLocalProfile(username) {
+  const users = loadLocalUsers();
+  return users[String(username || "").toUpperCase()] || null;
 }
 
 function loadLocalShopToggles(username) {
@@ -893,19 +921,33 @@ export function closeOverlays() {
 
 // Attempt to log in with username + PIN and load their profile.
 async function login(username, pin) {
+  const normalized = String(username || "").toUpperCase();
   try {
-    const ref = doc(db, "gooner_users", username.toUpperCase());
+    const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
     if (snap.exists()) {
       const profile = snap.data();
       if (profile.pin === pin) {
+        saveLocalProfileSnapshot(profile);
         loadProfile(profile);
         return true;
       }
       return "INVALID PIN";
     }
+    const localProfile = getLocalProfile(normalized);
+    if (localProfile) {
+      if (localProfile.pin !== pin) return "INVALID PIN";
+      loadProfile(localProfile);
+      return true;
+    }
     return "USER NOT FOUND";
   } catch (e) {
+    const localProfile = getLocalProfile(normalized);
+    if (localProfile) {
+      if (localProfile.pin !== pin) return "INVALID PIN";
+      loadProfile(localProfile);
+      return true;
+    }
     return "ERROR: " + e.message;
   }
 }
@@ -1022,25 +1064,33 @@ function updateUI() {
 
 // Create a new user profile in Firestore.
 async function register(username, pin) {
+  const normalized = String(username || "").toUpperCase();
+  const data = {
+    name: normalized,
+    pin: pin,
+    money: 1000,
+    joined: Date.now(),
+    stats: { games: 0, wpm: 0, wins: 0 },
+    jobs: { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } },
+    stockData: { holdings: {}, selected: "GOON", buyMultiplier: 1 },
+  };
+
+  const localProfile = getLocalProfile(normalized);
+  if (localProfile) return "USERNAME TAKEN";
+
   try {
-    if (!myUid) return "WAITING FOR NETWORK...";
-    const ref = doc(db, "gooner_users", username.toUpperCase());
+    if (!myUid) throw new Error("OFFLINE");
+    const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
     if (snap.exists()) return "USERNAME TAKEN";
-    const data = {
-      name: username.toUpperCase(),
-      pin: pin,
-      money: 1000,
-      joined: Date.now(),
-      stats: { games: 0, wpm: 0, wins: 0 },
-      jobs: { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } },
-      stockData: { holdings: {}, selected: "GOON", buyMultiplier: 1 },
-    };
     await setDoc(ref, data);
+    saveLocalProfileSnapshot(data);
     loadProfile(data);
     return true;
-  } catch (e) {
-    return "REG ERROR";
+  } catch {
+    saveLocalProfileSnapshot(data);
+    loadProfile(data);
+    return true;
   }
 }
 
@@ -1221,6 +1271,21 @@ export async function adminUnlockAllAchievements() {
 export async function saveStats() {
   if (myName === "ANON") return;
   saveLocalShopToggles();
+  const snapshot = {
+    name: myName,
+    pin: localStorage.getItem("goonerPin") || "0000",
+    money: myMoney,
+    joined: myJoined || Date.now(),
+    stats: myStats,
+    achievements: myAchievements,
+    inventory: myInventory,
+    itemToggles: myItemToggles,
+    jobs: jobData,
+    loanData,
+    stockData,
+    lastLogin: Date.now(),
+  };
+  saveLocalProfileSnapshot(snapshot);
   await updateDoc(doc(db, "gooner_users", myName), {
     money: myMoney,
     stats: myStats,
@@ -1230,7 +1295,7 @@ export async function saveStats() {
     jobs: jobData,
     loanData,
     stockData,
-  });
+  }).catch(() => {});
   updateUI();
 }
 
