@@ -55,6 +55,8 @@ let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
 
+const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
+
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -170,6 +172,26 @@ export function hasActiveItem(id) {
 function setItemToggle(id, enabled) {
   if (!myInventory.includes(id)) return;
   myItemToggles[id] = enabled;
+}
+
+function getShopToggleStorageKey(username) {
+  return SHOP_TOGGLE_STORAGE_PREFIX + String(username || myName || "ANON").toUpperCase();
+}
+
+function loadLocalShopToggles(username) {
+  const raw = localStorage.getItem(getShopToggleStorageKey(username));
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalShopToggles() {
+  if (myName === "ANON") return;
+  localStorage.setItem(getShopToggleStorageKey(myName), JSON.stringify(myItemToggles || {}));
 }
 
 function applyOwnedVisuals() {
@@ -670,8 +692,9 @@ function loadProfile(data) {
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
   myJoined = data.joined || 0;
-  myItemToggles = data.itemToggles || {};
+  myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+  saveLocalShopToggles();
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
   localStorage.setItem("goonerUser", myName);
@@ -757,6 +780,7 @@ async function register(username, pin) {
 // Persist stats + inventory changes to Firestore.
 export async function saveStats() {
   if (myName === "ANON") return;
+  saveLocalShopToggles();
   await updateDoc(doc(db, "gooner_users", myName), {
     money: myMoney,
     stats: myStats,
