@@ -51,7 +51,7 @@ let globalVol = 0.5;
 let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
-let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -563,7 +563,7 @@ export function openGame(id) {
   if (el) el.classList.add("active");
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
-  if (id === "overlayJobs" || id === "overlayJobCashier" || id === "overlayJobFrontdesk" || id === "overlayJobDelivery") renderJobs();
+  if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
     setText("bankTransferMsg", "");
@@ -618,7 +618,9 @@ function loadProfile(data) {
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
-  jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+  jobData =
+    data.jobs ||
+    { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
   localStorage.setItem("goonerUser", myName);
@@ -684,7 +686,7 @@ async function register(username, pin) {
       money: 1000,
       joined: Date.now(),
       stats: { games: 0, wpm: 0, wins: 0 },
-      jobs: { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } },
+      jobs: { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } },
     };
     await setDoc(ref, data);
     loadProfile(data);
@@ -854,8 +856,11 @@ const JOBS = {
   cashier: { name: "CASHIER RUSH", reward: 120, cooldownMs: 30000 },
   frontdesk: { name: "FRONT DESK MEMORY", reward: 160, cooldownMs: 40000 },
   delivery: { name: "DELIVERY DRIVER RUN", reward: 200, cooldownMs: 45000 },
+  stocker: { name: "STOCK SHELF SORT", reward: 180, cooldownMs: 38000 },
+  janitor: { name: "JANITOR SPOT CHECK", reward: 150, cooldownMs: 32000 },
+  barista: { name: "ARCADE BARISTA", reward: 220, cooldownMs: 42000 },
 };
-const activeJobs = { cashier: null, frontdesk: null, delivery: null };
+const activeJobs = { cashier: null, frontdesk: null, delivery: null, stocker: null, janitor: null, barista: null };
 
 function getCooldownText(type) {
   const left = (jobData.cooldowns?.[type] || 0) - Date.now();
@@ -868,6 +873,9 @@ function setJobMsg(type, msg) {
     cashier: "jobCashierMsg",
     frontdesk: "jobFrontdeskMsg",
     delivery: "jobDeliveryMsg",
+    stocker: "jobStockerMsg",
+    janitor: "jobJanitorMsg",
+    barista: "jobBaristaMsg",
   };
   const id = map[type];
   if (id) setText(id, msg);
@@ -876,7 +884,9 @@ function setJobMsg(type, msg) {
 function markJobComplete(type) {
   const cfg = JOBS[type];
   myMoney += cfg.reward;
-  if (!jobData.completed) jobData.completed = { cashier: 0, frontdesk: 0, delivery: 0 };
+  if (!jobData.completed) {
+    jobData.completed = { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 };
+  }
   jobData.completed[type] = (jobData.completed[type] || 0) + 1;
   if (!jobData.cooldowns) jobData.cooldowns = {};
   jobData.cooldowns[type] = Date.now() + cfg.cooldownMs;
@@ -915,16 +925,60 @@ function setDeliveryPrompt() {
   );
 }
 
+function setStockerPrompt() {
+  const s = activeJobs.stocker;
+  if (!s) return;
+  setText("jobStockerPrompt", `TARGET ITEM ${s.round + 1}/${s.goal}: ${s.prompt}`);
+}
+
+function setJanitorPrompt() {
+  const j = activeJobs.janitor;
+  if (!j) return;
+  setText("jobJanitorPrompt", `SPILLS CLEANED: ${j.count}/${j.goal}`);
+}
+
+function setBaristaPrompt() {
+  const b = activeJobs.barista;
+  if (!b) return;
+  setText("jobBaristaPrompt", `SHOT ${b.count + 1}/${b.goal}: HIT ${b.targetMin}-${b.targetMax}°`);
+  setText("jobBaristaTemp", `${b.lastTemp == null ? "--" : b.lastTemp}°`);
+  const meter = document.getElementById("jobBaristaMeter");
+  if (meter) {
+    const pct = b.lastTemp == null ? 0 : Math.max(0, Math.min(100, ((b.lastTemp - 120) / 80) * 100));
+    meter.style.width = `${pct}%`;
+    meter.className = `job-meter-fill ${b.lastTemp >= b.targetMin && b.lastTemp <= b.targetMax ? "ok" : "bad"}`;
+  }
+}
+
 function renderJobs() {
   setText("jobCashierStatus", getCooldownText("cashier"));
   setText("jobFrontdeskStatus", getCooldownText("frontdesk"));
   setText("jobDeliveryStatus", getCooldownText("delivery"));
+  setText("jobStockerStatus", getCooldownText("stocker"));
+  setText("jobJanitorStatus", getCooldownText("janitor"));
+  setText("jobBaristaStatus", getCooldownText("barista"));
 
   setText("jobCashierPrompt", activeJobs.cashier?.prompt || getCooldownText("cashier"));
   setText("jobFrontdeskPrompt", activeJobs.frontdesk?.prompt || getCooldownText("frontdesk"));
 
   if (!activeJobs.delivery) setText("jobDeliveryPrompt", getCooldownText("delivery"));
   else setDeliveryPrompt();
+
+  if (!activeJobs.stocker) setText("jobStockerPrompt", getCooldownText("stocker"));
+  else setStockerPrompt();
+
+  if (!activeJobs.janitor) setText("jobJanitorPrompt", getCooldownText("janitor"));
+  else setJanitorPrompt();
+
+  if (!activeJobs.barista) {
+    setText("jobBaristaPrompt", getCooldownText("barista"));
+    setText("jobBaristaTemp", "--°");
+    const meter = document.getElementById("jobBaristaMeter");
+    if (meter) {
+      meter.style.width = "0%";
+      meter.className = "job-meter-fill";
+    }
+  } else setBaristaPrompt();
 }
 
 export function startJob(type) {
@@ -967,6 +1021,29 @@ export function startJob(type) {
       lastSpeed: null,
     };
     setDeliveryPrompt();
+    setJobMsg(type, "SHIFT STARTED");
+  }
+
+  if (type === "stocker") {
+    activeJobs.stocker = { round: 0, goal: 4, prompt: "", answer: "" };
+    const items = ["MILK", "BREAD", "RICE", "JUICE", "SOAP", "PASTA", "EGGS", "TEA"];
+    const pick = items[Math.floor(Math.random() * items.length)];
+    activeJobs.stocker.prompt = pick.split("").join("-");
+    activeJobs.stocker.answer = pick;
+    setStockerPrompt();
+    document.getElementById("jobStockerInput").value = "";
+    setJobMsg(type, "SHIFT STARTED");
+  }
+
+  if (type === "janitor") {
+    activeJobs.janitor = { count: 0, goal: 8, startedAt: Date.now(), durationMs: 12000 };
+    setJanitorPrompt();
+    setJobMsg(type, "SHIFT STARTED");
+  }
+
+  if (type === "barista") {
+    activeJobs.barista = { count: 0, goal: 5, targetMin: 155, targetMax: 165, lastTemp: null };
+    setBaristaPrompt();
     setJobMsg(type, "SHIFT STARTED");
   }
 
@@ -1017,6 +1094,48 @@ export function submitJob(type) {
     }
     setDeliveryPrompt();
     return failJob(type, "MISS! STAY IN SAFE SPEED ZONE.");
+  }
+
+  if (type === "stocker") {
+    const value = document.getElementById("jobStockerInput").value.trim().toUpperCase();
+    if (!activeJobs.stocker) return failJob(type, "START SHIFT FIRST");
+    if (value !== activeJobs.stocker.answer) return failJob(type, "WRONG ITEM LABEL.");
+    activeJobs.stocker.round += 1;
+    if (activeJobs.stocker.round >= activeJobs.stocker.goal) return markJobComplete(type);
+    const items = ["MILK", "BREAD", "RICE", "JUICE", "SOAP", "PASTA", "EGGS", "TEA"];
+    const pick = items[Math.floor(Math.random() * items.length)];
+    activeJobs.stocker.prompt = pick.split("").join("-");
+    activeJobs.stocker.answer = pick;
+    setStockerPrompt();
+    document.getElementById("jobStockerInput").value = "";
+    return setJobMsg(type, `AISLE CLEARED ${activeJobs.stocker.round}/${activeJobs.stocker.goal}`);
+  }
+
+  if (type === "janitor") {
+    if (!activeJobs.janitor) return failJob(type, "START SHIFT FIRST");
+    if (Date.now() - activeJobs.janitor.startedAt > activeJobs.janitor.durationMs) {
+      activeJobs.janitor = null;
+      renderJobs();
+      return failJob(type, "SHIFT ENDED. MISSED TOO MANY SPILLS.");
+    }
+    activeJobs.janitor.count += 1;
+    setJanitorPrompt();
+    if (activeJobs.janitor.count >= activeJobs.janitor.goal) return markJobComplete(type);
+    return setJobMsg(type, "SPILL CLEANED. KEEP MOVING.");
+  }
+
+  if (type === "barista") {
+    if (!activeJobs.barista) return failJob(type, "START SHIFT FIRST");
+    const temp = Math.floor(Math.random() * 71) + 120;
+    activeJobs.barista.lastTemp = temp;
+    setBaristaPrompt();
+    if (temp >= activeJobs.barista.targetMin && temp <= activeJobs.barista.targetMax) {
+      activeJobs.barista.count += 1;
+      if (activeJobs.barista.count >= activeJobs.barista.goal) return markJobComplete(type);
+      setBaristaPrompt();
+      return setJobMsg(type, "PERFECT SHOT. KEEP POURING.");
+    }
+    return failJob(type, "SHOT BURNT/WEAK. RE-ALIGN GRINDER.");
   }
 }
 

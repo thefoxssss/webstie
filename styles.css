@@ -821,6 +821,33 @@ canvas {
   font-size: 10px;
 }
 
+.job-meter {
+  width: 100%;
+  height: 16px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(255, 255, 255, 0.05);
+  margin-bottom: 6px;
+}
+.job-meter-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #45b6fe, #ffd93d);
+  transition: width 0.2s ease;
+}
+.job-meter-fill.ok {
+  background: linear-gradient(90deg, #2ecc71, #9be15d);
+}
+.job-meter-fill.bad {
+  background: linear-gradient(90deg, #ff6b6b, #ffb347);
+}
+.job-temp {
+  text-align: center;
+  font-size: 16px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
 .profile-stats {
   text-align: left;
   width: 100%;
