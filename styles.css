@@ -821,6 +821,42 @@ canvas {
   font-size: 10px;
 }
 
+
+.profile-summary {
+  margin-top: 14px;
+  border: 1px solid var(--accent-dim);
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.profile-summary-rank {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.profile-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profile-progress-label {
+  font-size: 9px;
+  text-align: center;
+  opacity: 0.85;
+}
+.profile-progress-track {
+  width: 100%;
+  height: 10px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(255, 255, 255, 0.05);
+}
+.profile-progress-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #0f0, #afffaf);
+  transition: width 0.35s ease;
+}
+
 .profile-stats {
   text-align: left;
   width: 100%;
