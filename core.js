@@ -218,9 +218,6 @@ function updateAdminMenu() {
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
 }
 
-function isBannedUser(data) {
-  return Boolean(data?.banned);
-}
 
 // Achievements metadata (UI + reward tracking).
 const ACHIEVEMENTS = [
@@ -660,7 +657,6 @@ async function login(username, pin) {
     const snap = await getDoc(ref);
     if (snap.exists()) {
       const profile = snap.data();
-      if (isBannedUser(profile)) return "ACCOUNT BANNED";
       if (profile.pin === pin) {
         loadProfile(profile);
         return true;
@@ -1622,7 +1618,7 @@ const renderLeaderboardRows = (
   {
     valuePrefix = "",
     emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD",
-    showAdminBan = false,
+    showAdminRemove = false,
   } = {}
 ) => {
   list.innerHTML = "";
@@ -1646,14 +1642,14 @@ const renderLeaderboardRows = (
 
     item.append(rank, name, value);
 
-    if (showAdminBan && isGodUser() && row.canBan) {
+    if (showAdminRemove && isGodUser() && row.canRemove) {
       const actions = document.createElement("div");
       actions.className = "score-actions";
-      const banBtn = document.createElement("button");
-      banBtn.className = "menu-btn admin-ban-btn";
-      banBtn.innerText = row.banned ? "UNBAN" : "BAN";
-      banBtn.onclick = () => adminSetBanStatus(row.name, !row.banned);
-      actions.appendChild(banBtn);
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "menu-btn admin-remove-btn";
+      removeBtn.innerText = "REMOVE";
+      removeBtn.onclick = () => adminRemoveAccount(row.name);
+      actions.appendChild(removeBtn);
       item.appendChild(actions);
     }
 
@@ -1661,19 +1657,16 @@ const renderLeaderboardRows = (
   });
 };
 
-async function adminSetBanStatus(targetName, banned) {
+async function adminRemoveAccount(targetName) {
   if (!isGodUser()) return;
   const name = String(targetName || "").toUpperCase();
   if (!name || name === myName || isGodUser(name)) return;
 
   try {
-    await updateDoc(doc(db, "gooner_users", name), { banned: Boolean(banned) });
-    showToast(
-      banned ? `PLAYER BANNED: ${name}` : `PLAYER UNBANNED: ${name}`,
-      banned ? "⛔" : "✅"
-    );
+    await deleteDoc(doc(db, "gooner_users", name));
+    showToast(`PLAYER REMOVED: ${name}`, "🗑️");
   } catch (e) {
-    showToast("BAN UPDATE FAILED", "⚠️", "Try again.");
+    showToast("ACCOUNT REMOVE FAILED", "⚠️", "Try again.");
   }
 }
 
@@ -1692,11 +1685,10 @@ function loadLeaderboard(game) {
         rows.push({
           name: playerName,
           score: data.rank || getRank(Number(data.money) || 0, playerName),
-          banned: isBannedUser(data),
-          canBan: playerName !== myName && !isGodUser(playerName),
+          canRemove: playerName !== myName && !isGodUser(playerName),
         });
       });
-      renderLeaderboardRows(list, rows, { showAdminBan: true });
+      renderLeaderboardRows(list, rows, { showAdminRemove: true });
     });
     return;
   }
