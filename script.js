@@ -14,11 +14,15 @@ import {
   submitJob,
   state,
   adminGrantCash,
+  adminInjectJackpot,
   adminSetMaxCash,
   adminGrantAllShopItems,
   adminClearDebtAndCooldowns,
   adminBoostStats,
   adminMaxPortfolio,
+  adminMarketMoonshot,
+  adminMarketMeltdown,
+  adminCrashAllPlayerStocksToZero,
   adminPrestigePack,
   adminBanWave,
   adminUnlockAllAchievements,
@@ -46,11 +50,15 @@ window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 window.adminGrantCash = adminGrantCash;
+window.adminInjectJackpot = adminInjectJackpot;
 window.adminSetMaxCash = adminSetMaxCash;
 window.adminGrantAllShopItems = adminGrantAllShopItems;
 window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
 window.adminBoostStats = adminBoostStats;
 window.adminMaxPortfolio = adminMaxPortfolio;
+window.adminMarketMoonshot = adminMarketMoonshot;
+window.adminMarketMeltdown = adminMarketMeltdown;
+window.adminCrashAllPlayerStocksToZero = adminCrashAllPlayerStocksToZero;
 window.adminPrestigePack = adminPrestigePack;
 window.adminBanWave = adminBanWave;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;

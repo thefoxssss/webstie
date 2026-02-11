@@ -558,19 +558,53 @@ const STOCK_SYMBOLS = [
   { symbol: "PUMP", name: "PUMP CAPITAL" },
 ];
 
+const STOCK_SEED_PRICES = { GOON: 110, MEME: 90, BYTE: 130, NOVA: 75, PUMP: 55 };
+const GLOBAL_MARKET_COLLECTION = "gooner_meta";
+const GLOBAL_MARKET_DOC_ID = "stock_market";
+const GLOBAL_MARKET_TICK_MS = 2000;
+
 const marketState = {
   stocks: STOCK_SYMBOLS.map((entry) => {
-    const start = Math.floor(Math.random() * 120) + 40;
+    const start = STOCK_SEED_PRICES[entry.symbol] || 100;
     return {
       ...entry,
       price: start,
-      history: Array.from({ length: 40 }, (_, i) =>
-        Number((start * (0.94 + (i / 40) * 0.12)).toFixed(2))
-      ),
+      history: Array.from({ length: 40 }, () => Number(start.toFixed(2))),
       lastMove: 0,
     };
   }),
 };
+
+let marketSyncStarted = false;
+
+function buildStockSnapshot(stocks) {
+  return stocks.map((stock) => ({
+    symbol: stock.symbol,
+    name: stock.name,
+    price: Number((stock.price || 0).toFixed(2)),
+    history: (Array.isArray(stock.history) ? stock.history : []).slice(-80).map((value) => Number(value || 0)),
+    lastMove: Number(stock.lastMove || 0),
+  }));
+}
+
+function applyMarketSnapshot(stocks) {
+  const safeList = Array.isArray(stocks) ? stocks : [];
+  marketState.stocks = STOCK_SYMBOLS.map((entry) => {
+    const found = safeList.find((stock) => stock.symbol === entry.symbol) || {};
+    const seed = STOCK_SEED_PRICES[entry.symbol] || 100;
+    const price = Math.max(3, Number(found.price || seed));
+    const history = Array.isArray(found.history) && found.history.length
+      ? found.history.slice(-80).map((value) => Number(value || price))
+      : Array.from({ length: 40 }, () => price);
+    return {
+      ...entry,
+      price: Number(price.toFixed(2)),
+      history,
+      lastMove: Number(found.lastMove || 0),
+    };
+  });
+  renderStockMarket();
+}
 
 function getStock(symbol) {
   return marketState.stocks.find((stock) => stock.symbol === symbol) || marketState.stocks[0];
@@ -600,21 +634,71 @@ function formatStockMoney(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
 
-function tickStockMarket() {
-  marketState.stocks.forEach((stock) => {
+function tickStockMarket(stocks = marketState.stocks) {
+  const nextStocks = stocks.map((stock) => ({ ...stock }));
+  nextStocks.forEach((stock) => {
     const drift = (Math.random() - 0.49) * 0.09;
     const momentum = stock.lastMove * 0.35;
     const swing = (Math.random() - 0.5) * 0.04;
     const next = Math.max(3, stock.price * (1 + drift + momentum + swing));
     stock.lastMove = (next - stock.price) / stock.price;
     stock.price = Number(next.toFixed(2));
+    stock.history = Array.isArray(stock.history) ? [...stock.history] : [];
     stock.history.push(stock.price);
     if (stock.history.length > 80) stock.history.shift();
   });
+  return nextStocks;
+}
 
-  if (document.getElementById("overlayBank")?.classList.contains("active")) {
-    renderStockMarket();
+async function initGlobalStockMarket() {
+  if (marketSyncStarted || !myUid) return;
+  marketSyncStarted = true;
+  const marketRef = doc(db, GLOBAL_MARKET_COLLECTION, GLOBAL_MARKET_DOC_ID);
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(marketRef);
+      if (snap.exists()) return;
+      tx.set(marketRef, {
+        stocks: buildStockSnapshot(marketState.stocks),
+        updatedAt: Date.now(),
+        updatedBy: myUid,
+      });
+    });
+  } catch (e) {
+    marketSyncStarted = false;
+    return;
   }
+
+  onSnapshot(marketRef, (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data() || {};
+    applyMarketSnapshot(data.stocks || []);
+  });
+
+  setInterval(async () => {
+    try {
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(marketRef);
+        if (!snap.exists()) return;
+        const data = snap.data() || {};
+        const updatedAt = Number(data.updatedAt || 0);
+        if (Date.now() - updatedAt < GLOBAL_MARKET_TICK_MS - 150) return;
+
+        const serverStocks = Array.isArray(data.stocks) && data.stocks.length
+          ? data.stocks
+          : marketState.stocks;
+        const nextStocks = tickStockMarket(serverStocks);
+        tx.set(marketRef, {
+          stocks: buildStockSnapshot(nextStocks),
+          updatedAt: Date.now(),
+          updatedBy: myUid,
+        });
+      });
+    } catch (e) {
+      // passive retry via interval
+    }
+  }, GLOBAL_MARKET_TICK_MS);
 }
 
 function drawStockGraph(stock) {
@@ -767,10 +851,6 @@ function tradeStock(isBuy) {
   saveStats();
 }
 
-setInterval(() => {
-  tickStockMarket();
-}, 2000);
-
 // Allow games to register a cleanup routine when overlays close.
 export function registerGameStop(stopFn) {
   gameStops.push(stopFn);
@@ -848,6 +928,7 @@ onAuthStateChanged(auth, (u) => {
   if (u) {
     myUid = u.uid;
     initChat();
+    initGlobalStockMarket();
   }
 });
 
@@ -1055,6 +1136,15 @@ export async function adminGrantCash(amount) {
   await saveStats();
 }
 
+export async function adminInjectJackpot() {
+  if (!isGodUser()) return;
+  const jackpot = 5000000;
+  myMoney += jackpot;
+  logTransaction("ADMIN JACKPOT", jackpot);
+  showToast(`JACKPOT INJECTED: +$${jackpot.toLocaleString()}`, "🎰");
+  await saveStats();
+}
+
 export async function adminSetMaxCash() {
   if (!isGodUser()) return;
   const previous = Math.floor(Number(myMoney) || 0);
@@ -1116,6 +1206,56 @@ export async function adminMaxPortfolio() {
   stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
   showToast("PORTFOLIO MAXED OUT", "📊");
   await saveStats();
+}
+
+async function adminApplyGlobalMarketShift(multiplier, successMsg, icon) {
+  const marketRef = doc(db, GLOBAL_MARKET_COLLECTION, GLOBAL_MARKET_DOC_ID);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(marketRef);
+      if (!snap.exists()) return;
+      const data = snap.data() || {};
+      const serverStocks = Array.isArray(data.stocks) && data.stocks.length
+        ? data.stocks
+        : marketState.stocks;
+      const shifted = serverStocks.map((stock) => {
+        const current = Math.max(3, Number(stock.price || STOCK_SEED_PRICES[stock.symbol] || 100));
+        const next = Math.max(3, Number((current * multiplier).toFixed(2)));
+        const baseHistory = Array.isArray(stock.history) ? stock.history.slice(-79).map((v) => Number(v || current)) : [];
+        baseHistory.push(next);
+        return {
+          symbol: stock.symbol,
+          name: stock.name || STOCK_SYMBOLS.find((s) => s.symbol === stock.symbol)?.name || stock.symbol,
+          price: next,
+          history: baseHistory,
+          lastMove: (next - current) / (current || 1),
+        };
+      });
+      tx.set(marketRef, {
+        stocks: buildStockSnapshot(shifted),
+        updatedAt: Date.now(),
+        updatedBy: myUid,
+      });
+    });
+    showToast(successMsg, icon);
+  } catch (e) {
+    showToast("GLOBAL MARKET UPDATE FAILED", "⚠️", "Try again.");
+  }
+}
+
+export async function adminMarketMoonshot() {
+  if (!isGodUser()) return;
+  await adminApplyGlobalMarketShift(1.35, "GLOBAL MARKET MOONSHOT APPLIED", "🚀");
+}
+
+export async function adminMarketMeltdown() {
+  if (!isGodUser()) return;
+  await adminApplyGlobalMarketShift(0.55, "GLOBAL MARKET MELTDOWN APPLIED", "💥");
+}
+
+export async function adminCrashAllPlayerStocksToZero() {
+  if (!isGodUser()) return;
+  await adminApplyGlobalMarketShift(0.01, "GLOBAL MARKET CRASHED TO NEAR ZERO", "🧨");
 }
 
 export async function adminPrestigePack() {
