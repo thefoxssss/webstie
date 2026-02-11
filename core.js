@@ -1078,6 +1078,27 @@ async function login(username, pin) {
 }
 
 // Convert money tiers into user-facing rank labels.
+function formatBankAmount(value) {
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) return value.toFixed(2);
+    return String(value);
+  }
+  if (value === null || value === undefined) return "0.00";
+  const raw = String(value).trim();
+  if (!raw) return "0.00";
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed)) return parsed.toFixed(2);
+  return raw;
+}
+
+function getComparableMoney(value) {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) return parsed;
+  if (parsed === Infinity) return Number.MAX_VALUE;
+  if (parsed === -Infinity) return -Number.MAX_VALUE;
+  return 0;
+}
+
 function getRank(money, name = myName) {
   if (isGodUser(name)) return "GOD";
   if (money < 500) return "RAT";
@@ -1149,13 +1170,14 @@ function updateUI() {
   setText("displayUser", myName);
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
-  const currentVal = parseFloat(bankEl.innerText) || 0;
-  if (currentVal !== myMoney) {
-    bankEl.style.color = myMoney > currentVal ? "#0f0" : "#f00";
+  const currentVal = getComparableMoney(bankEl.innerText);
+  const nextVal = getComparableMoney(myMoney);
+  if (currentVal !== nextVal) {
+    bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
-  bankEl.innerText = Number(myMoney || 0).toFixed(2);
-  if (bankOverlayEl) bankOverlayEl.innerText = Number(myMoney || 0).toFixed(2);
+  bankEl.innerText = formatBankAmount(myMoney);
+  if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
