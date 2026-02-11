@@ -9,6 +9,7 @@ import {
   unlockAchievement,
   updateHighScore,
   state,
+  hasActiveItem,
 } from "../core.js";
 
 let pCtx;
@@ -52,7 +53,7 @@ function loopPong() {
   if (state.currentGame !== "pong") return;
   pCtx.fillStyle = "rgba(0,0,0,0.2)";
   pCtx.fillRect(0, 0, 800, 600);
-  if (state.myInventory.includes("item_aimbot")) {
+  if (hasActiveItem("item_aimbot")) {
     p1.y += (ball.y - p1.h / 2 - p1.y) * 0.1;
   } else {
     if (state.keysPressed.w || state.keysPressed.ArrowUp) p1.y -= 8;
