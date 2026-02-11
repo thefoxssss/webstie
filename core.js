@@ -1589,7 +1589,10 @@ function loadLeaderboard(game) {
       const rows = [];
       snap.forEach((d) => {
         const data = d.data();
-        rows.push({ name: data.name || d.id, score: data.rank || "RAT" });
+        rows.push({
+          name: data.name || d.id,
+          score: data.rank || getRank(Number(data.money) || 0),
+        });
       });
       renderLeaderboardRows(list, rows);
     });
