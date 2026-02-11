@@ -46,12 +46,19 @@ let myMoney = 1000;
 let myStats = { games: 0, wpm: 0, wins: 0 };
 let myAchievements = [];
 let myInventory = [];
+let myJoined = 0;
+let myItemToggles = {};
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
+let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
+let stockData = { holdings: {}, selected: "GOON" };
+
+const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
+const GOD_USERS = new Set(["NOOB", "THEFOX"]);
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -97,6 +104,12 @@ export const state = {
   set myInventory(value) {
     myInventory = value;
   },
+  get myItemToggles() {
+    return myItemToggles;
+  },
+  set myItemToggles(value) {
+    myItemToggles = value;
+  },
   get transactionLog() {
     return transactionLog;
   },
@@ -132,6 +145,18 @@ export const state = {
   },
   set jobData(value) {
     jobData = value;
+  },
+  get loanData() {
+    return loanData;
+  },
+  set loanData(value) {
+    loanData = value;
+  },
+  get stockData() {
+    return stockData;
+  },
+  set stockData(value) {
+    stockData = value;
   }
 };
 
@@ -152,6 +177,61 @@ export const firebase = {
   deleteDoc,
   getDocs
 };
+
+export function hasActiveItem(id) {
+  const owned = myInventory.includes(id);
+  if (!owned) return false;
+  return myItemToggles[id] !== false;
+}
+
+function setItemToggle(id, enabled) {
+  if (!myInventory.includes(id)) return;
+  myItemToggles[id] = enabled;
+}
+
+function getShopToggleStorageKey(username) {
+  return SHOP_TOGGLE_STORAGE_PREFIX + String(username || myName || "ANON").toUpperCase();
+}
+
+function loadLocalShopToggles(username) {
+  const raw = localStorage.getItem(getShopToggleStorageKey(username));
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalShopToggles() {
+  if (myName === "ANON") return;
+  localStorage.setItem(getShopToggleStorageKey(myName), JSON.stringify(myItemToggles || {}));
+}
+
+function applyOwnedVisuals() {
+  const rainbowEnabled = hasActiveItem("item_rainbow");
+  document.body.classList.toggle("rainbow-mode", rainbowEnabled);
+
+  const flappyEnabled = hasActiveItem("item_flappy");
+  document.getElementById("btnFlappy").style.display = flappyEnabled
+    ? "block"
+    : "none";
+}
+
+
+function isGodUser(name = myName) {
+  return GOD_USERS.has(String(name || "").toUpperCase());
+}
+
+function updateAdminMenu() {
+  const adminBtn = document.getElementById("adminMenuBtn");
+  const adminName = document.getElementById("adminName");
+  const hasAccess = isGodUser();
+  if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
+  if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
+}
+
 
 // Achievements metadata (UI + reward tracking).
 const ACHIEVEMENTS = [
@@ -469,6 +549,182 @@ const SHOP_ITEMS = [
   },
 ];
 
+const STOCK_SYMBOLS = [
+  { symbol: "GOON", name: "GOON TECH" },
+  { symbol: "MEME", name: "MEME HOLDINGS" },
+  { symbol: "BYTE", name: "BYTE INDUSTRIES" },
+  { symbol: "NOVA", name: "NOVA ENERGY" },
+  { symbol: "PUMP", name: "PUMP CAPITAL" },
+];
+
+const marketState = {
+  stocks: STOCK_SYMBOLS.map((entry) => {
+    const start = Math.floor(Math.random() * 120) + 40;
+    return {
+      ...entry,
+      price: start,
+      history: Array.from({ length: 40 }, (_, i) =>
+        Number((start * (0.94 + (i / 40) * 0.12)).toFixed(2))
+      ),
+      lastMove: 0,
+    };
+  }),
+};
+
+function getStock(symbol) {
+  return marketState.stocks.find((stock) => stock.symbol === symbol) || marketState.stocks[0];
+}
+
+function ensureStockProfile() {
+  const safe = stockData && typeof stockData === "object" ? stockData : {};
+  stockData = {
+    holdings: { ...(safe.holdings || {}) },
+    selected: safe.selected || marketState.stocks[0]?.symbol || "GOON",
+  };
+}
+
+function getPortfolioValue() {
+  return marketState.stocks.reduce((total, stock) => {
+    const shares = Number(stockData.holdings?.[stock.symbol] || 0);
+    return total + shares * stock.price;
+  }, 0);
+}
+
+function formatStockMoney(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function tickStockMarket() {
+  marketState.stocks.forEach((stock) => {
+    const drift = (Math.random() - 0.49) * 0.09;
+    const momentum = stock.lastMove * 0.35;
+    const swing = (Math.random() - 0.5) * 0.04;
+    const next = Math.max(3, stock.price * (1 + drift + momentum + swing));
+    stock.lastMove = (next - stock.price) / stock.price;
+    stock.price = Number(next.toFixed(2));
+    stock.history.push(stock.price);
+    if (stock.history.length > 80) stock.history.shift();
+  });
+
+  if (document.getElementById("overlayBank")?.classList.contains("active")) {
+    renderStockMarket();
+  }
+}
+
+function drawStockGraph(stock) {
+  const canvas = document.getElementById("stockChart");
+  if (!canvas || !stock) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const { width, height } = canvas;
+  ctx.clearRect(0, 0, width, height);
+
+  const min = Math.min(...stock.history);
+  const max = Math.max(...stock.history);
+  const span = Math.max(0.01, max - min);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  for (let y = 1; y < 4; y += 1) {
+    const yPos = (height / 4) * y;
+    ctx.beginPath();
+    ctx.moveTo(0, yPos);
+    ctx.lineTo(width, yPos);
+    ctx.stroke();
+  }
+
+  const up = stock.history[stock.history.length - 1] >= stock.history[0];
+  ctx.strokeStyle = up ? "#00ff66" : "#ff3d3d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  stock.history.forEach((value, i) => {
+    const x = (i / (stock.history.length - 1 || 1)) * width;
+    const y = height - ((value - min) / span) * (height - 8) - 4;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function renderStockMarket() {
+  ensureStockProfile();
+  const list = document.getElementById("stockList");
+  if (!list) return;
+
+  const selected = getStock(stockData.selected);
+  const portfolioValue = getPortfolioValue();
+  setText("stockPortfolioValue", `PORTFOLIO: ${formatStockMoney(portfolioValue)}`);
+
+  list.innerHTML = "";
+  marketState.stocks.forEach((stock) => {
+    const row = document.createElement("button");
+    row.className = `stock-row ${selected.symbol === stock.symbol ? "active" : ""}`;
+    const shares = Number(stockData.holdings?.[stock.symbol] || 0);
+    const prev = stock.history.length > 1 ? stock.history[stock.history.length - 2] : stock.price;
+    const dayMove = ((stock.price - prev) / (prev || 1)) * 100;
+    row.innerHTML = `<span>${stock.symbol} (${shares})</span><span style="color:${dayMove >= 0 ? "#0f0" : "#f55"}">${formatStockMoney(stock.price)}</span>`;
+    row.addEventListener("click", () => {
+      stockData.selected = stock.symbol;
+      renderStockMarket();
+    });
+    list.appendChild(row);
+  });
+
+  const holdings = Number(stockData.holdings?.[selected.symbol] || 0);
+  setText("stockDetailName", `${selected.name} (${selected.symbol})`);
+  setText("stockDetailPrice", formatStockMoney(selected.price));
+  setText(
+    "stockDetailMeta",
+    `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))}`
+  );
+  drawStockGraph(selected);
+}
+
+function setupStockMarketUX() {
+  const buyBtn = document.getElementById("stockBuyBtn");
+  const sellBtn = document.getElementById("stockSellBtn");
+  if (!buyBtn || !sellBtn) return;
+
+  buyBtn.addEventListener("click", () => tradeStock(true));
+  sellBtn.addEventListener("click", () => tradeStock(false));
+}
+
+function tradeStock(isBuy) {
+  ensureStockProfile();
+  const stock = getStock(stockData.selected);
+  if (!stock) return;
+
+  if (isBuy) {
+    if (myMoney < stock.price) {
+      setText("stockTradeMsg", "NOT ENOUGH CASH FOR SHARE");
+      return;
+    }
+    myMoney = Number((myMoney - stock.price).toFixed(2));
+    stockData.holdings[stock.symbol] = Number(stockData.holdings[stock.symbol] || 0) + 1;
+    logTransaction(`BUY ${stock.symbol} SHARE`, -stock.price);
+    setText("stockTradeMsg", `BOUGHT 1 ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+  } else {
+    const owned = Number(stockData.holdings[stock.symbol] || 0);
+    if (owned <= 0) {
+      setText("stockTradeMsg", "NO SHARES TO SELL");
+      return;
+    }
+    stockData.holdings[stock.symbol] = owned - 1;
+    myMoney = Number((myMoney + stock.price).toFixed(2));
+    logTransaction(`SELL ${stock.symbol} SHARE`, stock.price);
+    setText("stockTradeMsg", `SOLD 1 ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+  }
+
+  updateUI();
+  renderStockMarket();
+  saveStats();
+}
+
+setInterval(() => {
+  tickStockMarket();
+}, 2000);
+
 // Allow games to register a cleanup routine when overlays close.
 export function registerGameStop(stopFn) {
   gameStops.push(stopFn);
@@ -540,6 +796,8 @@ const initAuth = async () => {
 };
 initAuth();
 setupBankTransferUX();
+setupLoanUX();
+setupStockMarketUX();
 onAuthStateChanged(auth, (u) => {
   if (u) {
     myUid = u.uid;
@@ -558,6 +816,7 @@ setInterval(() => {
 
 // Open an overlay by id, optionally render its contents.
 export function openGame(id) {
+  if (id === "overlayAdmin" && !isGodUser()) return;
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
@@ -566,7 +825,10 @@ export function openGame(id) {
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
+    renderStockMarket();
     setText("bankTransferMsg", "");
+    setText("bankLoanMsg", "");
+    setText("stockTradeMsg", "");
   }
   if (id === "overlayScores") {
     const activeTab = document.querySelector(".score-tab.active");
@@ -589,8 +851,9 @@ async function login(username, pin) {
     const ref = doc(db, "gooner_users", username.toUpperCase());
     const snap = await getDoc(ref);
     if (snap.exists()) {
-      if (snap.data().pin === pin) {
-        loadProfile(snap.data());
+      const profile = snap.data();
+      if (profile.pin === pin) {
+        loadProfile(profile);
         return true;
       }
       return "INVALID PIN";
@@ -602,13 +865,36 @@ async function login(username, pin) {
 }
 
 // Convert money tiers into user-facing rank labels.
-function getRank(money) {
+function getRank(money, name = myName) {
+  if (isGodUser(name)) return "GOD";
   if (money < 500) return "RAT";
   if (money < 2000) return "SCRIPT KIDDIE";
   if (money < 5000) return "HACKER";
   if (money < 10000) return "GOONER";
   if (money < 50000) return "CYBER LORD";
   return "KINGPIN";
+}
+
+function getRankProgress(money) {
+  const tiers = [
+    { label: "RAT", min: 0, max: 500 },
+    { label: "SCRIPT KIDDIE", min: 500, max: 2000 },
+    { label: "HACKER", min: 2000, max: 5000 },
+    { label: "GOONER", min: 5000, max: 10000 },
+    { label: "CYBER LORD", min: 10000, max: 50000 },
+    { label: "KINGPIN", min: 50000, max: Infinity },
+  ];
+  const currentTier = tiers.find((tier) => money >= tier.min && money < tier.max) || tiers[0];
+  if (!Number.isFinite(currentTier.max)) {
+    return { label: "MAX RANK UNLOCKED", pct: 100 };
+  }
+  const span = currentTier.max - currentTier.min;
+  const earned = money - currentTier.min;
+  const pct = Math.max(0, Math.min(100, Math.round((earned / span) * 100)));
+  return {
+    label: `$${Math.max(0, currentTier.max - money)} TO ${tiers[tiers.indexOf(currentTier) + 1].label}`,
+    pct,
+  };
 }
 
 // Populate local state from stored profile data.
@@ -618,19 +904,22 @@ function loadProfile(data) {
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
-  jobData =
-    data.jobs ||
-    { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
+  myJoined = data.joined || 0;
+  myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
+  jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
+  loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
+  stockData = data.stockData || { holdings: {}, selected: "GOON" };
+  ensureStockProfile();
+  saveLocalShopToggles();
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
   localStorage.setItem("goonerUser", myName);
   localStorage.setItem("goonerPin", data.pin);
-  if (myInventory.includes("item_matrix")) {
+  if (hasActiveItem("item_matrix")) {
     setMatrixMode(true);
     document.documentElement.style.setProperty("--accent", "#00ff00");
   }
-  if (myInventory.includes("item_rainbow")) document.body.classList.add("rainbow-mode");
-  if (myInventory.includes("item_flappy")) document.getElementById("btnFlappy").style.display = "block";
+  applyOwnedVisuals();
   const lastLogin = data.lastLogin || 0;
   const now = Date.now();
   if (now - lastLogin > 86400000) {
@@ -639,6 +928,7 @@ function loadProfile(data) {
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
+  updateAdminMenu();
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -646,24 +936,35 @@ function updateUI() {
   setText("displayUser", myName);
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
-  const currentVal = parseInt(bankEl.innerText) || 0;
+  const currentVal = parseFloat(bankEl.innerText) || 0;
   if (currentVal !== myMoney) {
     bankEl.style.color = myMoney > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
-  bankEl.innerText = myMoney;
-  if (bankOverlayEl) bankOverlayEl.innerText = myMoney;
+  bankEl.innerText = Number(myMoney || 0).toFixed(2);
+  if (bankOverlayEl) bankOverlayEl.innerText = Number(myMoney || 0).toFixed(2);
+  setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
+  setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
   setText("profBank", "$" + myMoney);
   setText("profWPM", (myStats.wpm || 0) + " WPM");
   setText("profGames", myStats.games || 0);
+  setText("profWins", myStats.wins || 0);
+  setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
+  setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
   const rank = getRank(myMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
+  setText("profSummaryRank", "[" + rank + "]");
+  const rankProgress = getRankProgress(myMoney);
+  setText("profProgressLabel", rankProgress.label);
+  const progressFill = document.getElementById("profProgressFill");
+  if (progressFill) progressFill.style.width = `${rankProgress.pct}%`;
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
+  updateAdminMenu();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -687,6 +988,7 @@ async function register(username, pin) {
       joined: Date.now(),
       stats: { games: 0, wpm: 0, wins: 0 },
       jobs: { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } },
+      stockData: { holdings: {}, selected: "GOON" },
     };
     await setDoc(ref, data);
     loadProfile(data);
@@ -696,18 +998,265 @@ async function register(username, pin) {
   }
 }
 
+
+export async function adminGrantCash(amount) {
+  if (!isGodUser()) return;
+  const grant = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!grant) return;
+  myMoney += grant;
+  logTransaction("ADMIN GRANT", grant);
+  showToast(`ADMIN GRANT: +$${grant.toLocaleString()}`, "🛡️");
+  await saveStats();
+}
+
+export async function adminSetMaxCash() {
+  if (!isGodUser()) return;
+  const previous = Math.floor(Number(myMoney) || 0);
+  myMoney = 999999999;
+  const delta = Math.max(0, myMoney - previous);
+  if (delta > 0) logTransaction("ADMIN BANK OVERRIDE", delta);
+  showToast("BANK SET TO $999,999,999", "💰");
+  await saveStats();
+}
+
+export async function adminGrantAllShopItems() {
+  if (!isGodUser()) return;
+  let unlocked = 0;
+  SHOP_ITEMS.forEach((item) => {
+    if (!myInventory.includes(item.id)) {
+      myInventory.push(item.id);
+      unlocked++;
+    }
+    setItemToggle(item.id, true);
+  });
+  applyOwnedVisuals();
+  showToast(
+    unlocked ? `ADMIN UNLOCKED ${unlocked} ITEMS` : "ALL SHOP ITEMS ALREADY OWNED",
+    "🧰"
+  );
+  await saveStats();
+}
+
+export async function adminClearDebtAndCooldowns() {
+  if (!isGodUser()) return;
+  loanData.debt = 0;
+  loanData.rate = 0;
+  loanData.lastInterestAt = Date.now();
+  jobData.cooldowns = {};
+  showToast("DEBT PURGED + JOBS RESET", "🧽");
+  await saveStats();
+}
+
+export async function adminBoostStats() {
+  if (!isGodUser()) return;
+  myStats.games = Math.max(0, Number(myStats.games) || 0) + 250;
+  myStats.wins = Math.max(0, Number(myStats.wins) || 0) + 100;
+  myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
+  jobData.completed = {
+    math: Math.max(50, Number(jobData.completed?.math) || 0),
+    code: Math.max(50, Number(jobData.completed?.code) || 0),
+    click: Math.max(50, Number(jobData.completed?.click) || 0),
+  };
+  showToast("STATS BOOSTED TO GOD-TIER", "📈");
+  await saveStats();
+}
+
+export async function adminMaxPortfolio() {
+  if (!isGodUser()) return;
+  ensureStockProfile();
+  marketState.stocks.forEach((stock) => {
+    stockData.holdings[stock.symbol] = 9999;
+  });
+  stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
+  showToast("PORTFOLIO MAXED OUT", "📊");
+  await saveStats();
+}
+
+export async function adminPrestigePack() {
+  if (!isGodUser()) return;
+  const previousMoney = Math.floor(Number(myMoney) || 0);
+  myMoney = Math.max(previousMoney, 999999999);
+  const moneyDelta = Math.max(0, myMoney - previousMoney);
+  if (moneyDelta > 0) logTransaction("ADMIN PRESTIGE PACK", moneyDelta);
+
+  SHOP_ITEMS.forEach((item) => {
+    if (!myInventory.includes(item.id)) myInventory.push(item.id);
+    setItemToggle(item.id, true);
+  });
+
+  ACHIEVEMENTS.forEach((achievement) => {
+    if (!myAchievements.includes(achievement.id)) myAchievements.push(achievement.id);
+  });
+
+  myStats.games = Math.max(1000, Number(myStats.games) || 0);
+  myStats.wins = Math.max(750, Number(myStats.wins) || 0);
+  myStats.wpm = Math.max(140, Number(myStats.wpm) || 0);
+  jobData.completed = { math: 99, code: 99, click: 99 };
+  jobData.cooldowns = {};
+  loanData = { debt: 0, rate: 0, lastInterestAt: Date.now() };
+  applyOwnedVisuals();
+  showToast("PRESTIGE PACK DEPLOYED", "👑");
+  await saveStats();
+}
+
+export async function adminBanWave() {
+  if (!isGodUser()) return;
+  try {
+    const snap = await getDocs(collection(db, "gooner_users"));
+    const removals = [];
+    snap.forEach((playerDoc) => {
+      const playerName = String(playerDoc.id || "").toUpperCase();
+      if (!playerName || isGodUser(playerName)) return;
+      removals.push(deleteDoc(doc(db, "gooner_users", playerName)));
+    });
+    await Promise.all(removals);
+    showToast(`BAN WAVE COMPLETE: ${removals.length} REMOVED`, "☠️");
+  } catch (e) {
+    showToast("BAN WAVE FAILED", "⚠️", "Try again.");
+  }
+}
+
+export async function adminUnlockAllAchievements() {
+  if (!isGodUser()) return;
+  const missing = ACHIEVEMENTS.filter((achievement) => !myAchievements.includes(achievement.id));
+  if (!missing.length) {
+    showToast("ALL ACHIEVEMENTS ALREADY UNLOCKED", "✅");
+    return;
+  }
+
+  let rewardTotal = 0;
+  missing.forEach((achievement) => {
+    myAchievements.push(achievement.id);
+    rewardTotal += achievement.reward || 0;
+  });
+  if (rewardTotal > 0) {
+    myMoney += rewardTotal;
+    logTransaction("ADMIN ACHIEVEMENT SYNC", rewardTotal);
+  }
+  showToast(`UNLOCKED ${missing.length} ACHIEVEMENTS`, "🛡️");
+  await saveStats();
+}
+
 // Persist stats + inventory changes to Firestore.
 export async function saveStats() {
   if (myName === "ANON") return;
+  saveLocalShopToggles();
   await updateDoc(doc(db, "gooner_users", myName), {
     money: myMoney,
     stats: myStats,
     achievements: myAchievements,
     inventory: myInventory,
+    itemToggles: myItemToggles,
     jobs: jobData,
+    loanData,
+    stockData,
   });
   updateUI();
 }
+
+function formatLoanStatus(msg, color = "#aaa") {
+  const el = document.getElementById("bankLoanMsg");
+  if (!el) return;
+  el.innerText = msg;
+  el.style.color = color;
+}
+
+function setupLoanUX() {
+  const amountInput = document.getElementById("loanAmount");
+  const takeBtn = document.getElementById("loanTakeBtn");
+  const repayBtn = document.getElementById("loanRepayBtn");
+  if (!amountInput || !takeBtn || !repayBtn) return;
+
+  amountInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      takeLoan();
+    }
+  });
+
+  takeBtn.addEventListener("click", () => takeLoan());
+  repayBtn.addEventListener("click", () => repayLoan());
+}
+
+function takeLoan() {
+  const amountInput = document.getElementById("loanAmount");
+  if (!amountInput) return;
+  if (myName === "ANON") {
+    formatLoanStatus("LOGIN REQUIRED", "#f66");
+    return;
+  }
+  const amount = parseInt(amountInput.value, 10);
+  if (Number.isNaN(amount) || amount < 100) {
+    formatLoanStatus("MIN LOAN IS $100", "#f66");
+    return;
+  }
+
+  const randomRate = (Math.floor(Math.random() * 36) + 25) / 100;
+  const now = Date.now();
+  loanData.debt = (loanData.debt || 0) + amount;
+  loanData.rate = randomRate;
+  loanData.lastInterestAt = now;
+  myMoney += amount;
+  logTransaction(`AGGRESSIVE LOAN @ ${Math.round(randomRate * 100)}%`, amount);
+  formatLoanStatus(`LOAN APPROVED: +$${amount} @ ${Math.round(randomRate * 100)}%`, "#f80");
+  amountInput.value = "";
+  updateUI();
+  saveStats();
+}
+
+function repayLoan() {
+  if (!loanData.debt || loanData.debt <= 0) {
+    formatLoanStatus("NO ACTIVE LOAN", "#aaa");
+    return;
+  }
+  const pay = Math.min(myMoney, Math.ceil(loanData.debt));
+  if (pay <= 0) {
+    formatLoanStatus("NOT ENOUGH CASH TO REPAY", "#f66");
+    return;
+  }
+
+  loanData.debt = Math.max(0, loanData.debt - pay);
+  myMoney -= pay;
+  logTransaction("LOAN REPAYMENT", -pay);
+  if (loanData.debt <= 0) {
+    loanData.debt = 0;
+    loanData.rate = 0;
+    loanData.lastInterestAt = 0;
+    formatLoanStatus("DEBT CLEARED", "#0f0");
+  } else {
+    formatLoanStatus(`PAID $${pay}. REMAINING: $${Math.ceil(loanData.debt)}`, "#ff0");
+  }
+  updateUI();
+  saveStats();
+}
+
+function applyLoanInterestTick() {
+  if (myName === "ANON") return;
+  if (!loanData.debt || loanData.debt <= 0 || !loanData.rate) return;
+  const now = Date.now();
+  const last = loanData.lastInterestAt || now;
+  const elapsed = now - last;
+  const tickMs = 15000;
+  if (elapsed < tickMs) return;
+
+  const cycles = Math.floor(elapsed / tickMs);
+  let debt = loanData.debt;
+  for (let i = 0; i < cycles; i++) {
+    const spike = 1 + loanData.rate * (0.7 + Math.random() * 0.9);
+    debt *= spike;
+  }
+  const growth = Math.round(debt - loanData.debt);
+  loanData.debt = debt;
+  loanData.lastInterestAt = last + cycles * tickMs;
+  logTransaction("LOAN INTEREST SPIKE", -growth);
+  formatLoanStatus(`INTEREST HIT: +$${growth} DEBT`, "#f66");
+  updateUI();
+  saveStats();
+}
+
+setInterval(() => {
+  applyLoanInterestTick();
+}, 3000);
 
 // Send money to another player account using a transaction for consistency.
 function setupBankTransferUX() {
@@ -799,6 +1348,7 @@ export async function tradeMoney() {
 
 // Consume exactly one shield charge if available.
 export function consumeShield() {
+  if (!hasActiveItem("item_shield")) return false;
   const shieldIndex = myInventory.indexOf("item_shield");
   if (shieldIndex === -1) return false;
   myInventory.splice(shieldIndex, 1);
@@ -1287,19 +1837,29 @@ function renderShop() {
   SHOP_ITEMS.forEach((item) => {
     const div = document.createElement("div");
     div.className = "shop-item";
+    const ownedCount = myInventory.filter((ownedId) => ownedId === item.id).length;
+    const isOwned = ownedCount > 0;
+    const isEnabled = hasActiveItem(item.id);
     let label = "$" + item.cost;
     let btnText = "BUY";
     let disabled = myMoney < item.cost;
-    if (myInventory.includes(item.id) && item.type !== "consumable") {
-      label = "OWNED";
-      btnText = "ACTIVE";
-      disabled = true;
+    if (isOwned) {
+      label = item.type === "consumable" ? `OWNED x${ownedCount}` : "OWNED";
+      if (item.type !== "consumable") {
+        btnText = "OWNED";
+        disabled = true;
+      }
     }
+    const toggleBtn = isOwned
+      ? `<button class="shop-toggle-btn" onclick="window.toggleItem('${item.id}')">${
+          isEnabled ? "ON" : "OFF"
+        }</button>`
+      : "";
     div.innerHTML = `<div>${item.name}<div style="font-size:8px;opacity:0.7">${
       item.desc
-    }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><button class="shop-buy-btn" onclick="window.buyItem('${
+    }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><div class="shop-item-actions"><button class="shop-buy-btn" onclick="window.buyItem('${
       item.id
-    }')" ${disabled ? "disabled" : ""}>${btnText}</button></div>`;
+    }')" ${disabled ? "disabled" : ""}>${btnText}</button>${toggleBtn}</div></div>`;
     list.appendChild(div);
   });
 }
@@ -1309,11 +1869,10 @@ export function buyItem(id) {
   const item = SHOP_ITEMS.find((i) => i.id === id);
   if (myMoney >= item.cost) {
     myMoney -= item.cost;
-    if (item.type !== "consumable") myInventory.push(id);
-    else myInventory.push(id);
-    if (id === "item_rainbow") document.body.classList.add("rainbow-mode");
+    myInventory.push(id);
+    setItemToggle(id, true);
+    applyOwnedVisuals();
     if (id === "item_flappy") {
-      document.getElementById("btnFlappy").style.display = "block";
       showToast("NEW GAME UNLOCKED", "🎮");
     }
     if (myInventory.filter((i) => i !== "item_shield").length >= 3) {
@@ -1331,6 +1890,21 @@ export function buyItem(id) {
     playSuccessSound();
     showToast(`BOUGHT: ${item.name}`, "🛒");
   }
+}
+
+export function toggleItem(id) {
+  if (!myInventory.includes(id)) return;
+  const enabled = !hasActiveItem(id);
+  setItemToggle(id, enabled);
+  if (id === "item_matrix" && !enabled) {
+    setMatrixMode(false);
+  }
+  applyOwnedVisuals();
+  updateMatrixToggle();
+  saveStats();
+  renderShop();
+  const itemName = SHOP_ITEMS.find((item) => item.id === id)?.name || "ITEM";
+  showToast(`${enabled ? "ENABLED" : "DISABLED"}: ${itemName}`, enabled ? "🟢" : "🔴");
 }
 
 // Display a toast notification with optional subtitle.
@@ -1400,14 +1974,14 @@ function updateMatrixToggle() {
   const toggle = document.getElementById("matrixToggle");
   const canvas = document.getElementById("matrixCanvas");
   if (!toggle || !canvas) return;
-  const hasAccess = myInventory.includes("item_matrix");
+  const hasAccess = hasActiveItem("item_matrix");
   const enabled = canvas.classList.contains("active");
   toggle.disabled = !hasAccess;
   toggle.innerText = hasAccess ? (enabled ? "ON" : "OFF") : "LOCKED";
 }
 // Toggle Matrix mode on user click (if unlocked).
 document.getElementById("matrixToggle").onclick = () => {
-  if (!myInventory.includes("item_matrix")) {
+  if (!hasActiveItem("item_matrix")) {
     showToast("MATRIX LOCKED", "🔒", "Buy Matrix Mode in the shop.");
     updateMatrixToggle();
     return;
@@ -1474,6 +2048,7 @@ document.addEventListener("keydown", (e) => {
 function activateMatrixHack() {
   if (myName === "ANON") return alert("LOGIN FIRST");
   if (!myInventory.includes("item_matrix")) myInventory.push("item_matrix");
+  setItemToggle("item_matrix", true);
   document.documentElement.style.setProperty("--accent", "#00ff00");
   setMatrixMode(true);
   showToast("MATRIX MODE ACTIVATED", "🐇");
@@ -1711,7 +2286,11 @@ let leaderboardUnsub = null;
 const renderLeaderboardRows = (
   list,
   rows,
-  { valuePrefix = "", emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD" } = {}
+  {
+    valuePrefix = "",
+    emptyText = "NO DATA YET — PLAY A ROUND TO POPULATE THIS BOARD",
+    showAdminRemove = false,
+  } = {}
 ) => {
   list.innerHTML = "";
   if (!rows.length) {
@@ -1721,10 +2300,46 @@ const renderLeaderboardRows = (
   rows.forEach((row, i) => {
     const item = document.createElement("div");
     item.className = "score-item";
-    item.innerHTML = `<span class="score-rank">#${i + 1}</span> <span>${row.name}</span> <span>${valuePrefix}${row.score}</span>`;
+
+    const rank = document.createElement("span");
+    rank.className = "score-rank";
+    rank.innerText = `#${i + 1}`;
+
+    const name = document.createElement("span");
+    name.innerText = row.name;
+
+    const value = document.createElement("span");
+    value.innerText = `${valuePrefix}${row.score}`;
+
+    item.append(rank, name, value);
+
+    if (showAdminRemove && isGodUser() && row.canRemove) {
+      const actions = document.createElement("div");
+      actions.className = "score-actions";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "menu-btn admin-remove-btn";
+      removeBtn.innerText = "REMOVE";
+      removeBtn.onclick = () => adminRemoveAccount(row.name);
+      actions.appendChild(removeBtn);
+      item.appendChild(actions);
+    }
+
     list.appendChild(item);
   });
 };
+
+async function adminRemoveAccount(targetName) {
+  if (!isGodUser()) return;
+  const name = String(targetName || "").toUpperCase();
+  if (!name || name === myName || isGodUser(name)) return;
+
+  try {
+    await deleteDoc(doc(db, "gooner_users", name));
+    showToast(`PLAYER REMOVED: ${name}`, "🗑️");
+  } catch (e) {
+    showToast("ACCOUNT REMOVE FAILED", "⚠️", "Try again.");
+  }
+}
 
 // Render the leaderboard for the currently selected game.
 function loadLeaderboard(game) {
@@ -1737,9 +2352,14 @@ function loadLeaderboard(game) {
       const rows = [];
       snap.forEach((d) => {
         const data = d.data();
-        rows.push({ name: data.name || d.id, score: data.rank || "RAT" });
+        const playerName = data.name || d.id;
+        rows.push({
+          name: playerName,
+          score: data.rank || getRank(Number(data.money) || 0, playerName),
+          canRemove: playerName !== myName && !isGodUser(playerName),
+        });
       });
-      renderLeaderboardRows(list, rows);
+      renderLeaderboardRows(list, rows, { showAdminRemove: true });
     });
     return;
   }

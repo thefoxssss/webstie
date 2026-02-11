@@ -427,6 +427,13 @@ body::before {
   opacity: 0.8;
 }
 
+
+.admin-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 /* --- 7. GAMES --- */
 canvas {
   border: 4px solid var(--accent);
@@ -766,6 +773,15 @@ canvas {
   border-bottom: 1px dashed var(--accent-dim);
   font-size: clamp(10px, 2vw, 13px);
   word-break: break-word;
+  align-items: center;
+}
+.score-actions {
+  margin-left: auto;
+}
+.admin-remove-btn {
+  padding: 6px 10px;
+  font-size: 10px;
+  min-width: 64px;
 }
 
 
@@ -894,6 +910,40 @@ canvas {
   color: var(--accent);
 }
 
+.profile-summary {
+  margin-top: 14px;
+  border: 1px solid var(--accent-dim);
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.profile-summary-rank {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.profile-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profile-progress-label {
+  font-size: 9px;
+  text-align: center;
+  opacity: 0.85;
+}
+.profile-progress-track {
+  width: 100%;
+  height: 10px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(255, 255, 255, 0.05);
+}
+.profile-progress-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #0f0, #afffaf);
+  transition: width 0.35s ease;
+}
 
 .profile-stats {
   text-align: left;
@@ -1387,6 +1437,20 @@ canvas {
   color: #555;
   cursor: not-allowed;
 }
+.shop-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+.shop-toggle-btn {
+  background: #111;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 5px 8px;
+  font-weight: bold;
+  font-family: inherit;
+}
 
 .bank-log {
   max-height: 150px;
@@ -1439,6 +1503,123 @@ canvas {
   font-size: 10px;
   text-align: center;
   color: #aaa;
+}
+
+
+.bank-loan {
+  border-top: 1px dashed #333;
+  margin-top: 10px;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bank-loan-title {
+  text-align: center;
+  font-size: 10px;
+  color: #f80;
+  letter-spacing: 0.5px;
+}
+
+.bank-loan-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #aaa;
+}
+
+.bank-loan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+
+.stock-market {
+  border-top: 1px dashed #333;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.stock-market-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.stock-market-grid {
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) 1fr;
+  gap: 10px;
+}
+
+.stock-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #333;
+}
+
+.stock-row {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #222;
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 9px;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.stock-row:hover,
+.stock-row.active {
+  background: var(--accent-dim);
+}
+
+.stock-detail {
+  border: 1px solid #333;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stock-detail-title {
+  font-size: 11px;
+}
+
+.stock-detail-price {
+  font-size: 16px;
+  color: #fff;
+}
+
+#stockChart {
+  width: 100%;
+  border: 1px solid #222;
+  background: #050505;
+  image-rendering: pixelated;
+}
+
+.stock-detail-meta {
+  font-size: 8px;
+  color: #aaa;
+  min-height: 18px;
+}
+
+.stock-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .stock-market-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 ::-webkit-scrollbar {

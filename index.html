@@ -51,6 +51,14 @@
         <button class="menu-btn" onclick="window.openGame('overlayScores')">
           SCORES
         </button>
+        <button
+          class="menu-btn"
+          id="adminMenuBtn"
+          onclick="window.openGame('overlayAdmin')"
+          style="display: none; border-color: #ffd700; color: #ffd700"
+        >
+          ADMIN
+        </button>
         <button class="menu-btn" id="menuToggle">GAMES ▼</button>
       </div>
     </div>
@@ -78,6 +86,51 @@
       >
         FLAPPY GOON
       </button>
+    </div>
+
+    <!-- God-tier operator controls. Visible only to allowlisted users. -->
+    <div class="overlay" id="overlayAdmin">
+      <div class="score-box" style="border-color: #ffd700">
+        <h2 style="text-align: center; color: #ffd700">ADMIN MENU</h2>
+        <p style="text-align: center; font-size: 10px">
+          GOD ACCESS: <span id="adminName">UNKNOWN</span>
+        </p>
+        <div class="admin-actions">
+          <button class="term-btn" onclick="window.adminGrantCash(1000)">
+            GRANT +$1,000
+          </button>
+          <button class="term-btn" onclick="window.adminGrantCash(10000)">
+            GRANT +$10,000
+          </button>
+          <button class="term-btn" onclick="window.adminSetMaxCash()">
+            SET BANK TO $999,999,999
+          </button>
+          <button class="term-btn" onclick="window.adminGrantAllShopItems()">
+            UNLOCK + ENABLE ALL SHOP ITEMS
+          </button>
+          <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">
+            CLEAR DEBT + RESET JOB COOLDOWNS
+          </button>
+          <button class="term-btn" onclick="window.adminBoostStats()">
+            BOOST STATS (+100 WINS / +250 GAMES)
+          </button>
+          <button class="term-btn" onclick="window.adminMaxPortfolio()">
+            MAX STOCK PORTFOLIO (9,999 SHARES EACH)
+          </button>
+          <button class="term-btn" onclick="window.adminPrestigePack()">
+            PRESTIGE PACK (MONEY + ITEMS + ACHIEVEMENTS)
+          </button>
+          <button class="term-btn" onclick="window.adminBanWave()">
+            BAN WAVE (DELETE ALL NON-GOD ACCOUNTS)
+          </button>
+          <button class="term-btn" onclick="window.adminUnlockAllAchievements()">
+            UNLOCK ALL ACHIEVEMENTS
+          </button>
+        </div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
+          CLOSE
+        </button>
+      </div>
     </div>
 
     <!-- Global text chat dock (always visible on home). -->
@@ -146,6 +199,17 @@
     <div class="overlay" id="overlayProfile">
       <div class="score-box">
         <h2 style="text-align: center">OPERATOR PROFILE</h2>
+        <div class="profile-summary">
+          <div class="profile-summary-rank" id="profSummaryRank">[RAT]</div>
+          <div class="profile-progress-wrap">
+            <div class="profile-progress-label" id="profProgressLabel">
+              $0 TO SCRIPT KIDDIE
+            </div>
+            <div class="profile-progress-track">
+              <div class="profile-progress-fill" id="profProgressFill"></div>
+            </div>
+          </div>
+        </div>
         <div class="profile-stats">
           <div class="stat-row">
             <span>CODENAME</span><span id="profName">...</span>
@@ -161,6 +225,15 @@
           </div>
           <div class="stat-row">
             <span>GAMES PLAYED</span><span id="profGames">0</span>
+          </div>
+          <div class="stat-row">
+            <span>TOTAL WINS</span><span id="profWins">0</span>
+          </div>
+          <div class="stat-row">
+            <span>ACHIEVEMENTS</span><span id="profAch">0 / 0</span>
+          </div>
+          <div class="stat-row">
+            <span>MEMBER SINCE</span><span id="profJoined">UNKNOWN</span>
           </div>
           <div class="stat-row">
             <span>ACCOUNT ID</span><span id="profUid">...</span>
@@ -252,6 +325,46 @@
           <button class="term-btn" id="bankTransferSend">SEND MONEY</button>
           <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
           <div id="bankTransferMsg" class="bank-transfer-msg"></div>
+        </div>
+        <div class="bank-loan">
+          <div class="bank-loan-title">HIGH-RISK LOANS</div>
+          <div class="bank-loan-stats">
+            <span>DEBT: <strong id="loanDebt">$0</strong></span>
+            <span>RATE: <strong id="loanRate">0%</strong></span>
+          </div>
+          <input
+            class="term-input bank-transfer-input"
+            id="loanAmount"
+            type="number"
+            min="100"
+            step="50"
+            placeholder="LOAN AMOUNT ($100 MIN)"
+          />
+          <div class="bank-loan-actions">
+            <button class="term-btn" id="loanTakeBtn">TAKE LOAN</button>
+            <button class="term-btn" id="loanRepayBtn">REPAY ALL</button>
+          </div>
+          <div id="bankLoanMsg" class="bank-transfer-msg"></div>
+        </div>
+        <div class="stock-market">
+          <div class="stock-market-header">
+            <div>SIM STOCK MARKET</div>
+            <div id="stockPortfolioValue">PORTFOLIO: $0</div>
+          </div>
+          <div class="stock-market-grid">
+            <div id="stockList" class="stock-list"></div>
+            <div class="stock-detail">
+              <div id="stockDetailName" class="stock-detail-title">SELECT A STOCK</div>
+              <div id="stockDetailPrice" class="stock-detail-price">$0.00</div>
+              <canvas id="stockChart" width="420" height="170"></canvas>
+              <div id="stockDetailMeta" class="stock-detail-meta">NO DATA</div>
+              <div class="stock-actions">
+                <button class="term-btn" id="stockBuyBtn">BUY 1</button>
+                <button class="term-btn" id="stockSellBtn">SELL 1</button>
+              </div>
+              <div id="stockTradeMsg" class="bank-transfer-msg"></div>
+            </div>
+          </div>
         </div>
         <div class="bank-log" id="bankLog"></div>
         <button

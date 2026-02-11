@@ -2,6 +2,7 @@
 // This file acts as the "glue" between the DOM and each game module.
 import {
   buyItem,
+  toggleItem,
   tradeMoney,
   clearRestartListener,
   closeOverlays,
@@ -12,6 +13,15 @@ import {
   startJob,
   submitJob,
   state,
+  adminGrantCash,
+  adminSetMaxCash,
+  adminGrantAllShopItems,
+  adminClearDebtAndCooldowns,
+  adminBoostStats,
+  adminMaxPortfolio,
+  adminPrestigePack,
+  adminBanWave,
+  adminUnlockAllAchievements,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -29,11 +39,21 @@ window.openGame = openGame;
 window.closeOverlays = closeOverlays;
 window.showGameOver = showGameOver;
 window.buyItem = buyItem;
+window.toggleItem = toggleItem;
 window.tradeMoney = tradeMoney;
 window.startJob = startJob;
 window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
+window.adminGrantCash = adminGrantCash;
+window.adminSetMaxCash = adminSetMaxCash;
+window.adminGrantAllShopItems = adminGrantAllShopItems;
+window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
+window.adminBoostStats = adminBoostStats;
+window.adminMaxPortfolio = adminMaxPortfolio;
+window.adminPrestigePack = adminPrestigePack;
+window.adminBanWave = adminBanWave;
+window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {

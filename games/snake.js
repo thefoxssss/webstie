@@ -12,6 +12,7 @@ import {
   loadHighScores,
   consumeShield,
   state,
+  hasActiveItem,
 } from "../core.js";
 
 let sCtx;
@@ -70,7 +71,7 @@ function loopSnake() {
     snake.unshift(head);
   }
   if (head.x === food.x && head.y === food.y) {
-    const pts = state.myInventory.includes("item_double") ? 20 : 10;
+    const pts = hasActiveItem("item_double") ? 20 : 10;
     sSc += pts;
     updateHighScore("snake", sSc);
     setText("snakeScoreVal", sSc);
