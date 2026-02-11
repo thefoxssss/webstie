@@ -1463,6 +1463,68 @@ canvas {
   gap: 6px;
 }
 
+.bank-stock {
+  border-top: 1px dashed #333;
+  margin-top: 10px;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bank-stock-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9px;
+  color: #7fd0ff;
+}
+
+.bank-stock-help {
+  font-size: 8px;
+  color: #9aa;
+  text-align: center;
+}
+
+.bank-stock-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stock-row {
+  border: 1px solid var(--accent-dim);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.stock-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 9px;
+}
+
+.stock-symbol {
+  color: #fff;
+  font-size: 10px;
+}
+
+.stock-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.stock-btn {
+  min-width: 60px;
+  padding: 6px;
+  font-size: 9px;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
 }
