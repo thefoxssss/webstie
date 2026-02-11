@@ -19,15 +19,21 @@ let dCv;
 let player = {};
 let shards = [];
 let dScore = 0;
-let dFrame = 0;
+let dElapsed = 0;
 let dAnim;
 let spawnRate = 70;
 let sideRate = 200;
 let wallRate = 520;
+let spawnTimer = 0;
+let sideTimer = 0;
+let wallTimer = 0;
+let dLastTime = 0;
 
 const CANVAS_W = 700;
 const CANVAS_H = 450;
 const FPS = 60;
+const FRAME_MS = 1000 / FPS;
+const MAX_DT_FRAMES = 2.5;
 
 export function initDodge() {
   state.currentGame = "dodge";
@@ -43,12 +49,16 @@ export function initDodge() {
   };
   shards = [];
   dScore = 0;
-  dFrame = 0;
+  dElapsed = 0;
   spawnRate = 70;
   sideRate = 200;
   wallRate = 520;
+  spawnTimer = 0;
+  sideTimer = 0;
+  wallTimer = 0;
+  dLastTime = 0;
   setText("dodgeScore", "TIME: 0s");
-  loopDodge();
+  loopDodge(performance.now());
 }
 
 function spawnShard() {
@@ -140,15 +150,15 @@ function spawnWallAttack() {
   }
 }
 
-function updatePlayer() {
+function updatePlayer(dtFrames) {
   const left = state.keysPressed.ArrowLeft || state.keysPressed.a;
   const right = state.keysPressed.ArrowRight || state.keysPressed.d;
   const up = state.keysPressed.ArrowUp || state.keysPressed.w;
   const down = state.keysPressed.ArrowDown || state.keysPressed.s;
-  if (left) player.x -= player.speed;
-  if (right) player.x += player.speed;
-  if (up) player.y -= player.speed;
-  if (down) player.y += player.speed;
+  if (left) player.x -= player.speed * dtFrames;
+  if (right) player.x += player.speed * dtFrames;
+  if (up) player.y -= player.speed * dtFrames;
+  if (down) player.y += player.speed * dtFrames;
   player.x = Math.max(10, Math.min(CANVAS_W - player.w - 10, player.x));
   player.y = Math.max(10, Math.min(CANVAS_H - player.h - 10, player.y));
 }
@@ -160,7 +170,7 @@ function drawHud() {
 }
 
 function updateScoreFromTime() {
-  const timeScore = Math.floor(dFrame / FPS);
+  const timeScore = Math.floor(dElapsed);
   if (timeScore === dScore) return;
   dScore = timeScore;
   updateHighScore("dodge", dScore);
@@ -169,29 +179,39 @@ function updateScoreFromTime() {
   resetLossStreak();
 }
 
-function loopDodge() {
+function loopDodge(now) {
   if (state.currentGame !== "dodge") return;
-  dFrame++;
+  const dtFrames = dLastTime
+    ? Math.min((now - dLastTime) / FRAME_MS, MAX_DT_FRAMES)
+    : 1;
+  dLastTime = now;
+  dElapsed += dtFrames / FPS;
+  spawnTimer += dtFrames;
+  sideTimer += dtFrames;
+  wallTimer += dtFrames;
   dCtx.fillStyle = "#000";
   dCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  updatePlayer();
+  updatePlayer(dtFrames);
   drawHud();
   updateScoreFromTime();
 
-  if (dFrame % spawnRate === 0) {
+  while (spawnTimer >= spawnRate) {
+    spawnTimer -= spawnRate;
     spawnShard();
     if (Math.random() > 0.6) spawnShard();
     if (spawnRate > 30) spawnRate -= 1;
   }
 
-  if (dFrame % sideRate === 0) {
+  while (sideTimer >= sideRate) {
+    sideTimer -= sideRate;
     spawnSideShard();
     if (dScore > 10 && Math.random() > 0.5) spawnDiagonalShard();
     if (sideRate > 120) sideRate -= 2;
   }
 
-  if (dFrame % wallRate === 0) {
+  while (wallTimer >= wallRate) {
+    wallTimer -= wallRate;
     spawnWallAttack();
     if (wallRate > 400) wallRate -= 20;
   }
@@ -205,21 +225,21 @@ function loopDodge() {
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
     if (s.type === "fall") {
-      s.y += s.speed * shardSlowdown;
+      s.y += s.speed * shardSlowdown * dtFrames;
     } else if (s.type === "diag") {
-      s.y += s.speed * shardSlowdown;
-      s.x += s.drift * shardSlowdown;
+      s.y += s.speed * shardSlowdown * dtFrames;
+      s.x += s.drift * shardSlowdown * dtFrames;
     } else if (s.type === "wall-down") {
-      s.y += s.speed * shardSlowdown;
+      s.y += s.speed * shardSlowdown * dtFrames;
     } else if (s.type === "wall-up") {
-      s.y -= s.speed * shardSlowdown;
+      s.y -= s.speed * shardSlowdown * dtFrames;
     } else if (s.type === "wall-right") {
-      s.x += s.speed * shardSlowdown;
+      s.x += s.speed * shardSlowdown * dtFrames;
     } else if (s.type === "wall-left") {
-      s.x -= s.speed * shardSlowdown;
+      s.x -= s.speed * shardSlowdown * dtFrames;
     } else {
       const dir = s.type === "side-left" ? 1 : -1;
-      s.x += dir * s.speed * shardSlowdown;
+      s.x += dir * s.speed * shardSlowdown * dtFrames;
     }
 
     const isWall = s.type.startsWith("wall-");

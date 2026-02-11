@@ -19,8 +19,12 @@ let player = {};
 let rObs = [];
 let rSpeed = 5;
 let rScore = 0;
-let rFrame = 0;
 let rAnim;
+let rSpawnTimer = 0;
+let rLastTime = 0;
+
+const BASE_FRAME_MS = 1000 / 60;
+const MAX_DT_FRAMES = 2.5;
 
 export function initRunner() {
   state.currentGame = "runner";
@@ -31,15 +35,19 @@ export function initRunner() {
   rObs = [];
   rSpeed = 5;
   rScore = 0;
-  rFrame = 0;
+  rSpawnTimer = 0;
+  rLastTime = 0;
   setText("runnerScoreBoard", "SCORE: 0");
-  loopRunner();
+  loopRunner(performance.now());
 }
 
 // Main runner loop: update physics, spawn obstacles, render, and score.
-function loopRunner() {
+function loopRunner(now) {
   if (state.currentGame !== "runner") return;
-  rFrame++;
+  const dtFrames = rLastTime
+    ? Math.min((now - rLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
+    : 1;
+  rLastTime = now;
   rCtx.fillStyle = "#000";
   rCtx.fillRect(0, 0, 800, 400);
   rCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
@@ -53,8 +61,8 @@ function loopRunner() {
     player.dy = -player.jumpForce;
     player.grounded = false;
   }
-  player.dy += player.gravity;
-  player.y += player.dy;
+  player.dy += player.gravity * dtFrames;
+  player.y += player.dy * dtFrames;
   if (player.y > 300) {
     player.y = 300;
     player.dy = 0;
@@ -62,13 +70,16 @@ function loopRunner() {
   }
   rCtx.fillStyle = "#fff";
   rCtx.fillRect(player.x, player.y, player.w, player.h);
-  if (rFrame % Math.floor(1000 / currentSpeed) === 0) {
+  rSpawnTimer += dtFrames;
+  const spawnInterval = Math.max(40, Math.floor(1000 / currentSpeed));
+  while (rSpawnTimer >= spawnInterval) {
+    rSpawnTimer -= spawnInterval;
     const height = Math.random() > 0.7 ? 60 : 30;
     rObs.push({ x: 800, y: 350 - height, w: 20, h: height });
   }
   for (let i = rObs.length - 1; i >= 0; i--) {
     const o = rObs[i];
-    o.x -= currentSpeed;
+    o.x -= currentSpeed * dtFrames;
     rCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
     rCtx.fillRect(o.x, o.y, o.w, o.h);
     if (
