@@ -867,7 +867,6 @@ const JOB_BOARD = {
   delivery: "jobDeliveryBoard",
   stocker: "jobStockerBoard",
   janitor: "jobJanitorBoard",
-  barista: "jobBaristaBoard",
 };
 
 const activeJobs = { cashier: null, frontdesk: null, delivery: null, stocker: null, janitor: null, barista: null };
@@ -908,44 +907,22 @@ function markJobComplete(type) {
   renderJobs();
 }
 
-function failJob(type, msg) {
+function failJob(type, msg, reset = false) {
   setJobMsg(type, msg);
   setText("jobsMsg", msg);
   beep(120, "sawtooth", 0.35);
+  if (reset) activeJobs[type] = null;
 }
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function spawnTargets(type, labels, goalLabel, count = 6) {
-  const entities = [];
-  const used = new Set();
-  const targetIndex = randInt(0, count - 1);
-  for (let i = 0; i < count; i++) {
-    const id = `${type}-${Date.now()}-${i}-${randInt(1000, 9999)}`;
-    let label = labels[randInt(0, labels.length - 1)];
-    if (i === targetIndex) label = goalLabel;
-    let guard = 0;
-    while (used.has(label + i) && guard++ < 10) label = labels[randInt(0, labels.length - 1)];
-    used.add(label + i);
-    entities.push({
-      id,
-      label,
-      good: label === goalLabel,
-      x: randInt(8, 92),
-      y: randInt(12, 88),
-      size: randInt(44, 72),
-    });
-  }
-  return entities;
-}
-
 function renderBoard(type) {
   const board = document.getElementById(JOB_BOARD[type]);
   if (!board) return;
   const state = activeJobs[type];
-  if (!state || !state.entities) {
+  if (!state || !state.entities || state.entities.length === 0) {
     board.innerHTML = '<div class="job-board-empty">PRESS START SHIFT</div>';
     return;
   }
@@ -960,26 +937,27 @@ function renderBoard(type) {
 function setCashierPrompt() {
   const c = activeJobs.cashier;
   if (!c) return;
-  setText("jobCashierPrompt", `CUSTOMER ${c.count + 1}/${c.goal}: CLICK ${c.target}`);
+  setText("jobCashierPrompt", `CUSTOMER ${c.round + 1}/${c.goal}: ${c.expr} = ?`);
 }
 
 function setFrontdeskPrompt() {
   const f = activeJobs.frontdesk;
   if (!f) return;
-  setText("jobFrontdeskPrompt", `BOOKING ${f.count + 1}/${f.goal}: FIND ${f.target}`);
+  if (f.showing) return setText("jobFrontdeskPrompt", `MEMORIZE: ${f.sequenceLabels.join(" ")}`);
+  setText("jobFrontdeskPrompt", `REPEAT CODE ${f.round + 1}/${f.goal}: STEP ${f.step + 1}/${f.sequence.length}`);
 }
 
 function setDeliveryPrompt() {
   const d = activeJobs.delivery;
   if (!d) return;
   const left = Math.max(0, Math.ceil((d.durationMs - (Date.now() - d.startedAt)) / 1000));
-  setText("jobDeliveryPrompt", `CHECKPOINTS ${d.count}/${d.goal} | TIME ${left}s`);
+  setText("jobDeliveryPrompt", `CHECKPOINTS ${d.count}/${d.goal} | LIVES ${d.lives} | TIME ${left}s`);
 }
 
 function setStockerPrompt() {
-  const s = activeJobs.stocker;
-  if (!s) return;
-  setText("jobStockerPrompt", `AISLE ${s.count + 1}/${s.goal}: STOCK ${s.target}`);
+  const s2 = activeJobs.stocker;
+  if (!s2) return;
+  setText("jobStockerPrompt", `AISLE ${s2.round + 1}/${s2.goal}: PICK ALL ${s2.targetLabel} (${s2.left} LEFT)`);
 }
 
 function setJanitorPrompt() {
@@ -992,78 +970,136 @@ function setJanitorPrompt() {
 function setBaristaPrompt() {
   const b = activeJobs.barista;
   if (!b) return;
-  setText("jobBaristaPrompt", `SHOT ${b.count + 1}/${b.goal}: CLICK ${b.target}`);
-  setText("jobBaristaTemp", `${b.lastTemp == null ? "--" : b.lastTemp}°`);
+  const t = Math.floor((Math.sin((Date.now() - b.startedAt) / b.periodMs) + 1) * 35 + 120);
+  b.currentTemp = t;
+  setText("jobBaristaPrompt", `SHOT ${b.count + 1}/${b.goal}: PULL BETWEEN ${b.targetMin}-${b.targetMax}°`);
+  setText("jobBaristaTemp", `${t}°`);
   const meter = document.getElementById("jobBaristaMeter");
   if (meter) {
-    const pct = b.lastTemp == null ? 0 : Math.max(0, Math.min(100, ((b.lastTemp - 120) / 80) * 100));
+    const pct = Math.max(0, Math.min(100, ((t - 120) / 70) * 100));
     meter.style.width = `${pct}%`;
-    meter.className = `job-meter-fill ${b.lastTemp >= b.targetMin && b.lastTemp <= b.targetMax ? "ok" : "bad"}`;
+    meter.className = `job-meter-fill ${t >= b.targetMin && t <= b.targetMax ? "ok" : "bad"}`;
   }
 }
 
-function rollCashierRound() {
+function spawnCashierRound() {
   const c = activeJobs.cashier;
   if (!c) return;
-  const base = randInt(18, 95);
-  c.target = `$${base}`;
-  const labels = Array.from({ length: 10 }, (_, i) => `$${base - 16 + i * 4}`);
-  c.entities = spawnTargets("cashier", labels, c.target, 6);
+  const a = randInt(6, 30);
+  const b = randInt(4, 25);
+  c.answer = a + b;
+  c.expr = `${a} + ${b}`;
+  const labels = [c.answer, c.answer - 2, c.answer + 2, c.answer - 4, c.answer + 4, c.answer + randInt(5, 9)]
+    .map((n) => `$${Math.max(1, n)}`);
+  const choices = [...new Set(labels)].slice(0, 6);
+  while (choices.length < 6) choices.push(`$${randInt(5, 70)}`);
+  choices.sort(() => Math.random() - 0.5);
+  c.entities = choices.map((label, i) => ({
+    id: `cash-${Date.now()}-${i}`,
+    label,
+    good: label === `$${c.answer}`,
+    x: randInt(10, 90),
+    y: randInt(15, 85),
+    size: randInt(44, 70),
+  }));
   setCashierPrompt();
   renderBoard("cashier");
 }
 
-function rollFrontdeskRound() {
+function spawnFrontdeskRound() {
   const f = activeJobs.frontdesk;
   if (!f) return;
-  const chars = "ABCDEFGHJKLMNP23456789";
-  const code = Array.from({ length: 4 }, () => chars[randInt(0, chars.length - 1)]).join("");
-  f.target = code;
-  const labels = Array.from({ length: 12 }, () =>
-    Array.from({ length: 4 }, () => chars[randInt(0, chars.length - 1)]).join("")
-  );
-  f.entities = spawnTargets("frontdesk", labels, code, 7);
+  const codes = ["A1", "B2", "C3", "D4", "E5", "F6"];
+  f.entities = codes.map((label, i) => ({
+    id: `front-${label}`,
+    label,
+    good: false,
+    x: 20 + (i % 3) * 30,
+    y: 30 + Math.floor(i / 3) * 35,
+    size: 62,
+  }));
+  f.sequence = Array.from({ length: 4 }, () => f.entities[randInt(0, f.entities.length - 1)].id);
+  f.sequenceLabels = f.sequence.map((id) => f.entities.find((e) => e.id === id).label);
+  f.step = 0;
+  f.showing = true;
   setFrontdeskPrompt();
   renderBoard("frontdesk");
+  setTimeout(() => {
+    if (!activeJobs.frontdesk || activeJobs.frontdesk !== f) return;
+    f.showing = false;
+    setFrontdeskPrompt();
+  }, 1700);
 }
 
-function rollDeliveryRound() {
+function spawnDeliveryRound() {
   const d = activeJobs.delivery;
   if (!d) return;
-  d.target = "✅";
-  d.entities = spawnTargets("delivery", ["🚧", "⚠️", "🛑", "⛔", "❌"], "✅", 7);
+  const hazards = ["🚧", "⚠️", "🛑", "⛔", "❌"];
+  d.entities = [{ id: `del-good-${Date.now()}`, label: "✅", good: true, x: randInt(10, 90), y: randInt(15, 85), size: 58 }];
+  for (let i = 0; i < 4; i++) {
+    d.entities.push({
+      id: `del-bad-${Date.now()}-${i}`,
+      label: hazards[randInt(0, hazards.length - 1)],
+      good: false,
+      x: randInt(10, 90),
+      y: randInt(15, 85),
+      size: randInt(44, 60),
+    });
+  }
   setDeliveryPrompt();
   renderBoard("delivery");
 }
 
-function rollStockerRound() {
-  const s = activeJobs.stocker;
-  if (!s) return;
-  const items = ["MILK", "BREAD", "RICE", "JUICE", "SOAP", "PASTA", "EGGS", "TEA"];
-  s.target = items[randInt(0, items.length - 1)];
-  s.entities = spawnTargets("stocker", items, s.target, 7);
+function spawnStockerRound() {
+  const s2 = activeJobs.stocker;
+  if (!s2) return;
+  const categories = {
+    COLD: ["🥛", "🧈", "🧃"],
+    DRY: ["🍞", "🍚", "🥫"],
+    CLEAN: ["🧼", "🧻", "🧽"],
+  };
+  const keys = Object.keys(categories);
+  s2.targetLabel = keys[randInt(0, keys.length - 1)];
+  s2.entities = [];
+  s2.left = 0;
+  for (let i = 0; i < 8; i++) {
+    const cat = keys[randInt(0, keys.length - 1)];
+    const label = categories[cat][randInt(0, categories[cat].length - 1)];
+    const good = cat === s2.targetLabel;
+    if (good) s2.left += 1;
+    s2.entities.push({
+      id: `stock-${Date.now()}-${i}`,
+      label,
+      good,
+      x: randInt(10, 90),
+      y: randInt(15, 85),
+      size: 54,
+    });
+  }
+  if (s2.left === 0) return spawnStockerRound();
   setStockerPrompt();
   renderBoard("stocker");
 }
 
-function rollJanitorRound() {
+function spawnJanitorRound() {
   const j = activeJobs.janitor;
   if (!j) return;
-  j.target = "🧽";
-  j.entities = spawnTargets("janitor", ["🫧", "🟫", "🟧", "🟢", "💧", "🧽"], "🧽", 8);
+  const icons = ["🧽", "🧽", "🫧", "🟫", "🟧", "🟢", "💧"];
+  j.entities = [];
+  for (let i = 0; i < 8; i++) {
+    const label = icons[randInt(0, icons.length - 1)];
+    j.entities.push({
+      id: `jan-${Date.now()}-${i}`,
+      label,
+      good: label === "🧽",
+      x: randInt(10, 90),
+      y: randInt(15, 85),
+      size: randInt(42, 66),
+    });
+  }
+  if (!j.entities.some((e) => e.good)) j.entities[0].good = true;
   setJanitorPrompt();
   renderBoard("janitor");
-}
-
-function rollBaristaRound() {
-  const b = activeJobs.barista;
-  if (!b) return;
-  b.targetMin = 155;
-  b.targetMax = 165;
-  b.target = "☕";
-  b.entities = spawnTargets("barista", ["🥛", "🧋", "🫖", "☕", "🍵"], "☕", 6);
-  setBaristaPrompt();
-  renderBoard("barista");
 }
 
 function renderJobs() {
@@ -1074,22 +1110,20 @@ function renderJobs() {
   setText("jobJanitorStatus", getCooldownText("janitor"));
   setText("jobBaristaStatus", getCooldownText("barista"));
 
-  if (!activeJobs.cashier) setText("jobCashierPrompt", getCooldownText("cashier"));
-  else setCashierPrompt();
+  setText("jobCashierPrompt", activeJobs.cashier ? document.getElementById("jobCashierPrompt").textContent : getCooldownText("cashier"));
+  setText("jobFrontdeskPrompt", activeJobs.frontdesk ? document.getElementById("jobFrontdeskPrompt").textContent : getCooldownText("frontdesk"));
+  setText("jobDeliveryPrompt", activeJobs.delivery ? document.getElementById("jobDeliveryPrompt").textContent : getCooldownText("delivery"));
+  setText("jobStockerPrompt", activeJobs.stocker ? document.getElementById("jobStockerPrompt").textContent : getCooldownText("stocker"));
+  setText("jobJanitorPrompt", activeJobs.janitor ? document.getElementById("jobJanitorPrompt").textContent : getCooldownText("janitor"));
 
-  if (!activeJobs.frontdesk) setText("jobFrontdeskPrompt", getCooldownText("frontdesk"));
-  else setFrontdeskPrompt();
+  if (activeJobs.cashier) setCashierPrompt();
+  if (activeJobs.frontdesk) setFrontdeskPrompt();
+  if (activeJobs.delivery) setDeliveryPrompt();
+  if (activeJobs.stocker) setStockerPrompt();
+  if (activeJobs.janitor) setJanitorPrompt();
 
-  if (!activeJobs.delivery) setText("jobDeliveryPrompt", getCooldownText("delivery"));
-  else setDeliveryPrompt();
-
-  if (!activeJobs.stocker) setText("jobStockerPrompt", getCooldownText("stocker"));
-  else setStockerPrompt();
-
-  if (!activeJobs.janitor) setText("jobJanitorPrompt", getCooldownText("janitor"));
-  else setJanitorPrompt();
-
-  if (!activeJobs.barista) {
+  if (activeJobs.barista) setBaristaPrompt();
+  else {
     setText("jobBaristaPrompt", getCooldownText("barista"));
     setText("jobBaristaTemp", "--°");
     const meter = document.getElementById("jobBaristaMeter");
@@ -1097,9 +1131,9 @@ function renderJobs() {
       meter.style.width = "0%";
       meter.className = "job-meter-fill";
     }
-  } else setBaristaPrompt();
+  }
 
-  ["cashier", "frontdesk", "delivery", "stocker", "janitor", "barista"].forEach((t) => renderBoard(t));
+  ["cashier", "frontdesk", "delivery", "stocker", "janitor"].forEach((type) => renderBoard(type));
 }
 
 export function startJob(type) {
@@ -1111,33 +1145,33 @@ export function startJob(type) {
   if (Date.now() < cooldownEnd) return failJob(type, `${cfg.name} ${getCooldownText(type)}`);
 
   if (type === "cashier") {
-    activeJobs.cashier = { count: 0, goal: 6, entities: [], target: "" };
-    rollCashierRound();
+    activeJobs.cashier = { round: 0, goal: 4, entities: [], answer: 0, expr: "" };
+    spawnCashierRound();
   }
 
   if (type === "frontdesk") {
-    activeJobs.frontdesk = { count: 0, goal: 6, entities: [], target: "" };
-    rollFrontdeskRound();
+    activeJobs.frontdesk = { round: 0, goal: 4, entities: [], sequence: [], sequenceLabels: [], step: 0, showing: true };
+    spawnFrontdeskRound();
   }
 
   if (type === "delivery") {
-    activeJobs.delivery = { count: 0, goal: 9, startedAt: Date.now(), durationMs: 18000, entities: [], target: "✅" };
-    rollDeliveryRound();
+    activeJobs.delivery = { count: 0, goal: 8, lives: 3, startedAt: Date.now(), durationMs: 17000, entities: [] };
+    spawnDeliveryRound();
   }
 
   if (type === "stocker") {
-    activeJobs.stocker = { count: 0, goal: 6, entities: [], target: "" };
-    rollStockerRound();
+    activeJobs.stocker = { round: 0, goal: 4, entities: [], targetLabel: "", left: 0 };
+    spawnStockerRound();
   }
 
   if (type === "janitor") {
-    activeJobs.janitor = { count: 0, goal: 8, startedAt: Date.now(), durationMs: 14000, entities: [], target: "🧽" };
-    rollJanitorRound();
+    activeJobs.janitor = { count: 0, goal: 8, startedAt: Date.now(), durationMs: 14000, entities: [] };
+    spawnJanitorRound();
   }
 
   if (type === "barista") {
-    activeJobs.barista = { count: 0, goal: 6, entities: [], target: "☕", targetMin: 155, targetMax: 165, lastTemp: null };
-    rollBaristaRound();
+    activeJobs.barista = { count: 0, goal: 5, startedAt: Date.now(), periodMs: 360, targetMin: 155, targetMax: 165, currentTemp: 120 };
+    setBaristaPrompt();
   }
 
   setText("jobsMsg", `${cfg.name} STARTED`);
@@ -1151,62 +1185,98 @@ export function submitJob(type, payload = null) {
   const state = activeJobs[type];
   if (!state) return failJob(type, "START SHIFT FIRST");
 
+  if (type === "barista") {
+    setBaristaPrompt();
+    const t = state.currentTemp;
+    if (t >= state.targetMin && t <= state.targetMax) {
+      state.count += 1;
+      if (state.count >= state.goal) return markJobComplete(type);
+      return setJobMsg(type, `PERFECT SHOT ${state.count}/${state.goal}`);
+    }
+    return failJob(type, "SHOT BURNT/WEAK. TIME IT BETTER.");
+  }
+
   if (!payload) return failJob(type, "CLICK A TARGET ON THE BOARD.");
+
+  if ((type === "delivery" || type === "janitor") && Date.now() - state.startedAt > state.durationMs) {
+    activeJobs[type] = null;
+    renderJobs();
+    return failJob(type, "SHIFT ENDED. TIME'S UP.");
+  }
+
   const selected = state.entities?.find((e) => e.id === payload);
   if (!selected) return failJob(type, "TARGET ALREADY GONE.");
 
-  if (type === "delivery" && Date.now() - state.startedAt > state.durationMs) {
-    activeJobs.delivery = null;
-    renderJobs();
-    return failJob(type, "SHIFT ENDED. TOO SLOW.");
-  }
-  if (type === "janitor" && Date.now() - state.startedAt > state.durationMs) {
-    activeJobs.janitor = null;
-    renderJobs();
-    return failJob(type, "SHIFT ENDED. MISSED TOO MANY SPILLS.");
-  }
-
-  if (type === "barista") {
-    state.lastTemp = randInt(120, 190);
-    setBaristaPrompt();
-  }
-
-  if (!selected.good) {
-    if (type === "cashier" || type === "frontdesk") {
-      activeJobs[type] = null;
+  if (type === "cashier") {
+    if (!selected.good) {
+      activeJobs.cashier = null;
       renderJobs();
-      return failJob(type, "WRONG PICK. SHIFT LOST.");
+      return failJob(type, "WRONG TOTAL. CUSTOMER LEFT.");
     }
-    if (type === "delivery") {
-      rollDeliveryRound();
-      return failJob(type, "HAZARD HIT. FIND A SAFE CHECKPOINT.");
-    }
-    if (type === "stocker") {
-      rollStockerRound();
-      return failJob(type, "WRONG CRATE. RE-CHECK THE LABEL.");
-    }
-    if (type === "janitor") {
-      rollJanitorRound();
-      return failJob(type, "MISSED THE SPILL. KEEP CLEANING.");
-    }
-    if (type === "barista") {
-      rollBaristaRound();
-      return failJob(type, "BAD POUR. DIAL IT IN AGAIN.");
-    }
+    state.round += 1;
+    if (state.round >= state.goal) return markJobComplete(type);
+    spawnCashierRound();
+    return setJobMsg(type, `NEXT CUSTOMER ${state.round + 1}/${state.goal}`);
   }
 
-  state.count += 1;
-  if (state.count >= state.goal) return markJobComplete(type);
+  if (type === "frontdesk") {
+    if (state.showing) return failJob(type, "WAIT FOR CODE TO HIDE.");
+    const expected = state.sequence[state.step];
+    if (payload !== expected) {
+      activeJobs.frontdesk = null;
+      renderJobs();
+      return failJob(type, "WRONG KEYCARD. SECURITY ALERT.");
+    }
+    state.step += 1;
+    if (state.step >= state.sequence.length) {
+      state.round += 1;
+      if (state.round >= state.goal) return markJobComplete(type);
+      spawnFrontdeskRound();
+      return setJobMsg(type, `BOOKING CONFIRMED ${state.round}/${state.goal}`);
+    }
+    setFrontdeskPrompt();
+    return setJobMsg(type, `SEQUENCE ${state.step}/${state.sequence.length}`);
+  }
 
-  if (type === "cashier") rollCashierRound();
-  if (type === "frontdesk") rollFrontdeskRound();
-  if (type === "delivery") rollDeliveryRound();
-  if (type === "stocker") rollStockerRound();
-  if (type === "janitor") rollJanitorRound();
-  if (type === "barista") rollBaristaRound();
+  if (type === "delivery") {
+    if (!selected.good) {
+      state.lives -= 1;
+      if (state.lives <= 0) {
+        activeJobs.delivery = null;
+        renderJobs();
+        return failJob(type, "CRASHED VAN. SHIFT FAILED.");
+      }
+      spawnDeliveryRound();
+      return failJob(type, `HAZARD HIT. ${state.lives} LIVES LEFT.`);
+    }
+    state.count += 1;
+    if (state.count >= state.goal) return markJobComplete(type);
+    spawnDeliveryRound();
+    return setJobMsg(type, `CHECKPOINT ${state.count}/${state.goal}`);
+  }
 
-  setJobMsg(type, `${cfg.name}: ${state.count}/${state.goal}`);
-  renderJobs();
+  if (type === "stocker") {
+    if (!selected.good) return failJob(type, "WRONG SECTION. FIND CORRECT AISLE.");
+    state.entities = state.entities.filter((e) => e.id !== payload);
+    state.left -= 1;
+    if (state.left <= 0) {
+      state.round += 1;
+      if (state.round >= state.goal) return markJobComplete(type);
+      spawnStockerRound();
+      return setJobMsg(type, `AISLE CLEARED ${state.round}/${state.goal}`);
+    }
+    setStockerPrompt();
+    renderBoard("stocker");
+    return setJobMsg(type, `${state.left} TARGETS LEFT`);
+  }
+
+  if (type === "janitor") {
+    if (!selected.good) return failJob(type, "THAT'S NOT A SPILL. KEEP LOOKING.");
+    state.count += 1;
+    if (state.count >= state.goal) return markJobComplete(type);
+    spawnJanitorRound();
+    return setJobMsg(type, `SPILLS CLEANED ${state.count}/${state.goal}`);
+  }
 }
 
 // Render the shop list with pricing + purchase state.
