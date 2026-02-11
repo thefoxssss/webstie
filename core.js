@@ -1055,6 +1055,15 @@ export async function adminGrantCash(amount) {
   await saveStats();
 }
 
+export async function adminInjectJackpot() {
+  if (!isGodUser()) return;
+  const jackpot = 5000000;
+  myMoney += jackpot;
+  logTransaction("ADMIN JACKPOT", jackpot);
+  showToast(`JACKPOT INJECTED: +$${jackpot.toLocaleString()}`, "🎰");
+  await saveStats();
+}
+
 export async function adminSetMaxCash() {
   if (!isGodUser()) return;
   const previous = Math.floor(Number(myMoney) || 0);
@@ -1115,6 +1124,31 @@ export async function adminMaxPortfolio() {
   });
   stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
   showToast("PORTFOLIO MAXED OUT", "📊");
+  await saveStats();
+}
+
+function setMarketShift(multiplier) {
+  marketState.stocks.forEach((stock) => {
+    const next = Math.max(3, Number((stock.price * multiplier).toFixed(2)));
+    stock.lastMove = (next - stock.price) / (stock.price || 1);
+    stock.price = next;
+    stock.history.push(next);
+    if (stock.history.length > 80) stock.history.shift();
+  });
+  renderStockMarket();
+}
+
+export async function adminMarketMoonshot() {
+  if (!isGodUser()) return;
+  setMarketShift(1.35);
+  showToast("MARKET SENT TO THE MOON", "🚀");
+  await saveStats();
+}
+
+export async function adminMarketMeltdown() {
+  if (!isGodUser()) return;
+  setMarketShift(0.55);
+  showToast("MARKET MELTDOWN TRIGGERED", "💥");
   await saveStats();
 }
 
