@@ -56,6 +56,7 @@ let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
+const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const GOD_USERS = new Set(["NOOB", "THEFOX"]);
@@ -580,7 +581,11 @@ function ensureStockProfile() {
   stockData = {
     holdings: { ...(safe.holdings || {}) },
     selected: safe.selected || marketState.stocks[0]?.symbol || "GOON",
-    buyMultiplier: [1, 5, 10, 25].includes(Number(safe.buyMultiplier)) ? Number(safe.buyMultiplier) : 1,
+    buyMultiplier: STOCK_MULTIPLIERS.includes(safe.buyMultiplier)
+      ? safe.buyMultiplier
+      : STOCK_MULTIPLIERS.includes(Number(safe.buyMultiplier))
+        ? Number(safe.buyMultiplier)
+        : 1,
   };
 }
 
@@ -673,7 +678,8 @@ function renderStockMarket() {
   });
 
   const holdings = Number(stockData.holdings?.[selected.symbol] || 0);
-  const buyMultiplier = Number(stockData.buyMultiplier || 1);
+  const buyMultiplier = stockData.buyMultiplier || 1;
+  const tradeLabel = buyMultiplier === "MAX" ? "MAX" : buyMultiplier;
   setText("stockDetailName", `${selected.name} (${selected.symbol})`);
   setText("stockDetailPrice", formatStockMoney(selected.price));
   setText(
@@ -682,12 +688,13 @@ function renderStockMarket() {
   );
   const buyBtn = document.getElementById("stockBuyBtn");
   const sellBtn = document.getElementById("stockSellBtn");
-  if (buyBtn) buyBtn.innerText = `BUY ${buyMultiplier}`;
-  if (sellBtn) sellBtn.innerText = "SELL 1";
+  if (buyBtn) buyBtn.innerText = `BUY ${tradeLabel}`;
+  if (sellBtn) sellBtn.innerText = `SELL ${tradeLabel}`;
 
   const multBtns = document.querySelectorAll(".stock-mult-btn");
   multBtns.forEach((btn) => {
-    const mult = Number(btn.dataset.mult || 1);
+    const raw = btn.dataset.mult || "1";
+    const mult = raw === "MAX" ? "MAX" : Number(raw);
     btn.classList.toggle("active", mult === buyMultiplier);
   });
 
@@ -704,8 +711,9 @@ function setupStockMarketUX() {
 
   document.querySelectorAll(".stock-mult-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const nextMultiplier = Number(btn.dataset.mult || 1);
-      if (![1, 5, 10, 25].includes(nextMultiplier)) return;
+      const raw = btn.dataset.mult || "1";
+      const nextMultiplier = raw === "MAX" ? "MAX" : Number(raw);
+      if (!STOCK_MULTIPLIERS.includes(nextMultiplier)) return;
       stockData.buyMultiplier = nextMultiplier;
       renderStockMarket();
       saveStats();
@@ -718,27 +726,40 @@ function tradeStock(isBuy) {
   const stock = getStock(stockData.selected);
   if (!stock) return;
 
+  const selectedMultiplier = stockData.buyMultiplier || 1;
+  const owned = Number(stockData.holdings[stock.symbol] || 0);
+  const tradeShares = selectedMultiplier === "MAX"
+    ? (isBuy ? Math.floor(myMoney / stock.price) : owned)
+    : Number(selectedMultiplier || 1);
+
+  if (tradeShares <= 0) {
+    setText(
+      "stockTradeMsg",
+      isBuy ? "NOT ENOUGH CASH TO BUY SHARES" : "NO SHARES TO SELL"
+    );
+    return;
+  }
+
   if (isBuy) {
-    const multiplier = Number(stockData.buyMultiplier || 1);
-    const totalCost = Number((stock.price * multiplier).toFixed(2));
+    const totalCost = Number((stock.price * tradeShares).toFixed(2));
     if (myMoney < totalCost) {
-      setText("stockTradeMsg", `NOT ENOUGH CASH FOR ${multiplier} SHARES`);
+      setText("stockTradeMsg", `NOT ENOUGH CASH FOR ${tradeShares} SHARES`);
       return;
     }
     myMoney = Number((myMoney - totalCost).toFixed(2));
-    stockData.holdings[stock.symbol] = Number(stockData.holdings[stock.symbol] || 0) + multiplier;
-    logTransaction(`BUY ${stock.symbol} x${multiplier}`, -totalCost);
-    setText("stockTradeMsg", `BOUGHT ${multiplier} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+    stockData.holdings[stock.symbol] = owned + tradeShares;
+    logTransaction(`BUY ${stock.symbol} x${tradeShares}`, -totalCost);
+    setText("stockTradeMsg", `BOUGHT ${tradeShares} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
   } else {
-    const owned = Number(stockData.holdings[stock.symbol] || 0);
-    if (owned <= 0) {
-      setText("stockTradeMsg", "NO SHARES TO SELL");
+    if (owned < tradeShares) {
+      setText("stockTradeMsg", `ONLY ${owned} SHARES AVAILABLE TO SELL`);
       return;
     }
-    stockData.holdings[stock.symbol] = owned - 1;
-    myMoney = Number((myMoney + stock.price).toFixed(2));
-    logTransaction(`SELL ${stock.symbol} SHARE`, stock.price);
-    setText("stockTradeMsg", `SOLD 1 ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+    const totalPayout = Number((stock.price * tradeShares).toFixed(2));
+    stockData.holdings[stock.symbol] = owned - tradeShares;
+    myMoney = Number((myMoney + totalPayout).toFixed(2));
+    logTransaction(`SELL ${stock.symbol} x${tradeShares}`, totalPayout);
+    setText("stockTradeMsg", `SOLD ${tradeShares} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
   }
 
   updateUI();
