@@ -22,10 +22,11 @@ let dFrame = 0;
 let dAnim;
 let spawnRate = 70;
 let sideRate = 200;
-let burstRate = 260;
+let wallRate = 520;
 
 const CANVAS_W = 700;
 const CANVAS_H = 450;
+const FPS = 60;
 
 export function initDodge() {
   state.currentGame = "dodge";
@@ -44,8 +45,8 @@ export function initDodge() {
   dFrame = 0;
   spawnRate = 70;
   sideRate = 200;
-  burstRate = 260;
-  setText("dodgeScore", "SCORE: 0");
+  wallRate = 520;
+  setText("dodgeScore", "TIME: 0s");
   loopDodge();
 }
 
@@ -89,19 +90,53 @@ function spawnDiagonalShard() {
   });
 }
 
-function spawnHomingShard() {
-  const size = 16 + Math.random() * 14;
-  shards.push({
-    x: Math.random() * (CANVAS_W - size),
-    y: -size,
-    w: size,
-    h: size,
-    speed: 1.2 + Math.random() * 1.3 + dScore * 0.015,
-    turnRate: 0.04 + Math.random() * 0.03,
-    vx: (Math.random() - 0.5) * 1.5,
-    vy: 1.5,
-    type: "homing",
-  });
+function spawnWallAttack() {
+  const gapSize = 72;
+  const thickness = 28;
+  const speed = 2.7 + Math.random() * 0.8 + dScore * 0.02;
+  const direction = Math.floor(Math.random() * 4);
+
+  if (direction < 2) {
+    const gapStart = 30 + Math.random() * (CANVAS_W - gapSize - 60);
+    const y = direction === 0 ? -thickness : CANVAS_H + thickness;
+    const type = direction === 0 ? "wall-down" : "wall-up";
+    shards.push({
+      x: 0,
+      y,
+      w: gapStart,
+      h: thickness,
+      speed,
+      type,
+    });
+    shards.push({
+      x: gapStart + gapSize,
+      y,
+      w: CANVAS_W - (gapStart + gapSize),
+      h: thickness,
+      speed,
+      type,
+    });
+  } else {
+    const gapStart = 30 + Math.random() * (CANVAS_H - gapSize - 60);
+    const x = direction === 2 ? -thickness : CANVAS_W + thickness;
+    const type = direction === 2 ? "wall-right" : "wall-left";
+    shards.push({
+      x,
+      y: 0,
+      w: thickness,
+      h: gapStart,
+      speed,
+      type,
+    });
+    shards.push({
+      x,
+      y: gapStart + gapSize,
+      w: thickness,
+      h: CANVAS_H - (gapStart + gapSize),
+      speed,
+      type,
+    });
+  }
 }
 
 function updatePlayer() {
@@ -123,6 +158,16 @@ function drawHud() {
   dCtx.strokeRect(8, 8, CANVAS_W - 16, CANVAS_H - 16);
 }
 
+function updateScoreFromTime() {
+  const timeScore = Math.floor(dFrame / FPS);
+  if (timeScore === dScore) return;
+  dScore = timeScore;
+  updateHighScore("dodge", dScore);
+  setText("dodgeScore", "TIME: " + dScore + "s");
+  if (dScore === 25) unlockAchievement("grid_runner");
+  resetLossStreak();
+}
+
 function loopDodge() {
   if (state.currentGame !== "dodge") return;
   dFrame++;
@@ -131,6 +176,7 @@ function loopDodge() {
 
   updatePlayer();
   drawHud();
+  updateScoreFromTime();
 
   if (dFrame % spawnRate === 0) {
     spawnShard();
@@ -144,10 +190,9 @@ function loopDodge() {
     if (sideRate > 120) sideRate -= 2;
   }
 
-  if (dFrame % burstRate === 0) {
-    spawnHomingShard();
-    if (dScore > 18) spawnHomingShard();
-    if (burstRate > 170) burstRate -= 4;
+  if (dFrame % wallRate === 0) {
+    spawnWallAttack();
+    if (wallRate > 400) wallRate -= 20;
   }
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
@@ -163,25 +208,21 @@ function loopDodge() {
     } else if (s.type === "diag") {
       s.y += s.speed * shardSlowdown;
       s.x += s.drift * shardSlowdown;
-    } else if (s.type === "homing") {
-      const targetX = player.x + player.w / 2;
-      const targetY = player.y + player.h / 2;
-      const centerX = s.x + s.w / 2;
-      const centerY = s.y + s.h / 2;
-      const toTargetX = targetX - centerX;
-      const toTargetY = targetY - centerY;
-      const length = Math.hypot(toTargetX, toTargetY) || 1;
-      const desiredVX = (toTargetX / length) * s.speed * shardSlowdown;
-      const desiredVY = (toTargetY / length) * s.speed * shardSlowdown;
-      s.vx += (desiredVX - s.vx) * s.turnRate;
-      s.vy += (desiredVY - s.vy) * s.turnRate;
-      s.x += s.vx;
-      s.y += s.vy;
+    } else if (s.type === "wall-down") {
+      s.y += s.speed * shardSlowdown;
+    } else if (s.type === "wall-up") {
+      s.y -= s.speed * shardSlowdown;
+    } else if (s.type === "wall-right") {
+      s.x += s.speed * shardSlowdown;
+    } else if (s.type === "wall-left") {
+      s.x -= s.speed * shardSlowdown;
     } else {
       const dir = s.type === "side-left" ? 1 : -1;
       s.x += dir * s.speed * shardSlowdown;
     }
-    dCtx.fillStyle = s.type === "homing" ? "#ff4f4f" : s.type === "diag" ? "#9bf6ff" : "#fff";
+
+    const isWall = s.type.startsWith("wall-");
+    dCtx.fillStyle = isWall ? "#ffd166" : s.type === "diag" ? "#9bf6ff" : "#fff";
     dCtx.fillRect(s.x, s.y, s.w, s.h);
 
     if (
@@ -200,13 +241,8 @@ function loopDodge() {
       return;
     }
 
-    if (s.y > CANVAS_H + 20 || s.x < -CANVAS_W || s.x > CANVAS_W * 2) {
+    if (s.y > CANVAS_H + 40 || s.y < -80 || s.x < -CANVAS_W || s.x > CANVAS_W * 2) {
       shards.splice(i, 1);
-      dScore += 1;
-      updateHighScore("dodge", dScore);
-      setText("dodgeScore", "SCORE: " + dScore);
-      if (dScore === 25) unlockAchievement("grid_runner");
-      resetLossStreak();
     }
   }
 
