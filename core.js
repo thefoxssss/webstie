@@ -53,7 +53,7 @@ let globalVol = 0.5;
 let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
-let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON" };
 
@@ -822,7 +822,7 @@ export function openGame(id) {
   if (el) el.classList.add("active");
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
-  if (id === "overlayJobs" || id === "overlayJobCashier" || id === "overlayJobFrontdesk" || id === "overlayJobDelivery") renderJobs();
+  if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
     renderStockMarket();
@@ -906,7 +906,7 @@ function loadProfile(data) {
   myInventory = data.inventory || [];
   myJoined = data.joined || 0;
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
-  jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+  jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   stockData = data.stockData || { holdings: {}, selected: "GOON" };
   ensureStockProfile();
@@ -987,7 +987,7 @@ async function register(username, pin) {
       money: 1000,
       joined: Date.now(),
       stats: { games: 0, wpm: 0, wins: 0 },
-      jobs: { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } },
+      jobs: { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } },
       stockData: { holdings: {}, selected: "GOON" },
     };
     await setDoc(ref, data);
@@ -1406,8 +1406,20 @@ const JOBS = {
   cashier: { name: "CASHIER RUSH", reward: 120, cooldownMs: 30000 },
   frontdesk: { name: "FRONT DESK MEMORY", reward: 160, cooldownMs: 40000 },
   delivery: { name: "DELIVERY DRIVER RUN", reward: 200, cooldownMs: 45000 },
+  stocker: { name: "STOCK SHELF SORT", reward: 180, cooldownMs: 38000 },
+  janitor: { name: "JANITOR SPOT CHECK", reward: 150, cooldownMs: 32000 },
+  barista: { name: "ARCADE BARISTA", reward: 220, cooldownMs: 42000 },
 };
-const activeJobs = { cashier: null, frontdesk: null, delivery: null };
+
+const JOB_BOARD = {
+  cashier: "jobCashierBoard",
+  frontdesk: "jobFrontdeskBoard",
+  delivery: "jobDeliveryBoard",
+  stocker: "jobStockerBoard",
+  janitor: "jobJanitorBoard",
+};
+
+const activeJobs = { cashier: null, frontdesk: null, delivery: null, stocker: null, janitor: null, barista: null };
 
 function getCooldownText(type) {
   const left = (jobData.cooldowns?.[type] || 0) - Date.now();
@@ -1420,15 +1432,19 @@ function setJobMsg(type, msg) {
     cashier: "jobCashierMsg",
     frontdesk: "jobFrontdeskMsg",
     delivery: "jobDeliveryMsg",
+    stocker: "jobStockerMsg",
+    janitor: "jobJanitorMsg",
+    barista: "jobBaristaMsg",
   };
-  const id = map[type];
-  if (id) setText(id, msg);
+  if (map[type]) setText(map[type], msg);
 }
 
 function markJobComplete(type) {
   const cfg = JOBS[type];
   myMoney += cfg.reward;
-  if (!jobData.completed) jobData.completed = { cashier: 0, frontdesk: 0, delivery: 0 };
+  if (!jobData.completed) {
+    jobData.completed = { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 };
+  }
   jobData.completed[type] = (jobData.completed[type] || 0) + 1;
   if (!jobData.cooldowns) jobData.cooldowns = {};
   jobData.cooldowns[type] = Date.now() + cfg.cooldownMs;
@@ -1441,42 +1457,233 @@ function markJobComplete(type) {
   renderJobs();
 }
 
-function failJob(type, msg) {
+function failJob(type, msg, reset = false) {
   setJobMsg(type, msg);
   setText("jobsMsg", msg);
-  beep(120, "sawtooth", 0.4);
+  beep(120, "sawtooth", 0.35);
+  if (reset) activeJobs[type] = null;
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function renderBoard(type) {
+  const board = document.getElementById(JOB_BOARD[type]);
+  if (!board) return;
+  const state = activeJobs[type];
+  if (!state || !state.entities || state.entities.length === 0) {
+    board.innerHTML = '<div class="job-board-empty">PRESS START SHIFT</div>';
+    return;
+  }
+  board.innerHTML = state.entities
+    .map(
+      (e) =>
+        `<button class="job-target ${type} ${e.good ? "good" : "bad"}" style="left:${e.x}%;top:${e.y}%;width:${e.size}px;height:${e.size}px" onclick="window.submitJob('${type}','${e.id}')">${e.label}</button>`
+    )
+    .join("");
 }
 
 function setCashierPrompt() {
   const c = activeJobs.cashier;
   if (!c) return;
-  const a = Math.floor(Math.random() * 20) + 5;
-  const b = Math.floor(Math.random() * 20) + 3;
-  c.answer = a + b;
-  c.prompt = `CUSTOMER ${c.round + 1}/${c.goal}: ${a} + ${b} = ?`;
-  setText("jobCashierPrompt", c.prompt);
+  setText("jobCashierPrompt", `CUSTOMER ${c.round + 1}/${c.goal}: ${c.expr} = ?`);
+}
+
+function setFrontdeskPrompt() {
+  const f = activeJobs.frontdesk;
+  if (!f) return;
+  if (f.showing) return setText("jobFrontdeskPrompt", `MEMORIZE: ${f.sequenceLabels.join(" ")}`);
+  setText("jobFrontdeskPrompt", `REPEAT CODE ${f.round + 1}/${f.goal}: STEP ${f.step + 1}/${f.sequence.length}`);
 }
 
 function setDeliveryPrompt() {
   const d = activeJobs.delivery;
   if (!d) return;
-  const speed = d.lastSpeed == null ? "--" : d.lastSpeed;
-  setText(
-    "jobDeliveryPrompt",
-    `SPEED ${speed} MPH | SAFE ${d.safeMin}-${d.safeMax} | CHECKPOINT ${d.count}/${d.goal}`
-  );
+  const left = Math.max(0, Math.ceil((d.durationMs - (Date.now() - d.startedAt)) / 1000));
+  setText("jobDeliveryPrompt", `CHECKPOINTS ${d.count}/${d.goal} | LIVES ${d.lives} | TIME ${left}s`);
+}
+
+function setStockerPrompt() {
+  const s2 = activeJobs.stocker;
+  if (!s2) return;
+  setText("jobStockerPrompt", `AISLE ${s2.round + 1}/${s2.goal}: PICK ALL ${s2.targetLabel} (${s2.left} LEFT)`);
+}
+
+function setJanitorPrompt() {
+  const j = activeJobs.janitor;
+  if (!j) return;
+  const left = Math.max(0, Math.ceil((j.durationMs - (Date.now() - j.startedAt)) / 1000));
+  setText("jobJanitorPrompt", `SPILLS CLEANED ${j.count}/${j.goal} | TIME ${left}s`);
+}
+
+function setBaristaPrompt() {
+  const b = activeJobs.barista;
+  if (!b) return;
+  const t = Math.floor((Math.sin((Date.now() - b.startedAt) / b.periodMs) + 1) * 35 + 120);
+  b.currentTemp = t;
+  setText("jobBaristaPrompt", `SHOT ${b.count + 1}/${b.goal}: PULL BETWEEN ${b.targetMin}-${b.targetMax}°`);
+  setText("jobBaristaTemp", `${t}°`);
+  const meter = document.getElementById("jobBaristaMeter");
+  if (meter) {
+    const pct = Math.max(0, Math.min(100, ((t - 120) / 70) * 100));
+    meter.style.width = `${pct}%`;
+    meter.className = `job-meter-fill ${t >= b.targetMin && t <= b.targetMax ? "ok" : "bad"}`;
+  }
+}
+
+function spawnCashierRound() {
+  const c = activeJobs.cashier;
+  if (!c) return;
+  const a = randInt(6, 30);
+  const b = randInt(4, 25);
+  c.answer = a + b;
+  c.expr = `${a} + ${b}`;
+  const labels = [c.answer, c.answer - 2, c.answer + 2, c.answer - 4, c.answer + 4, c.answer + randInt(5, 9)]
+    .map((n) => `$${Math.max(1, n)}`);
+  const choices = [...new Set(labels)].slice(0, 6);
+  while (choices.length < 6) choices.push(`$${randInt(5, 70)}`);
+  choices.sort(() => Math.random() - 0.5);
+  c.entities = choices.map((label, i) => ({
+    id: `cash-${Date.now()}-${i}`,
+    label,
+    good: label === `$${c.answer}`,
+    x: randInt(10, 90),
+    y: randInt(15, 85),
+    size: randInt(44, 70),
+  }));
+  setCashierPrompt();
+  renderBoard("cashier");
+}
+
+function spawnFrontdeskRound() {
+  const f = activeJobs.frontdesk;
+  if (!f) return;
+  const codes = ["A1", "B2", "C3", "D4", "E5", "F6"];
+  f.entities = codes.map((label, i) => ({
+    id: `front-${label}`,
+    label,
+    good: false,
+    x: 20 + (i % 3) * 30,
+    y: 30 + Math.floor(i / 3) * 35,
+    size: 62,
+  }));
+  f.sequence = Array.from({ length: 4 }, () => f.entities[randInt(0, f.entities.length - 1)].id);
+  f.sequenceLabels = f.sequence.map((id) => f.entities.find((e) => e.id === id).label);
+  f.step = 0;
+  f.showing = true;
+  setFrontdeskPrompt();
+  renderBoard("frontdesk");
+  setTimeout(() => {
+    if (!activeJobs.frontdesk || activeJobs.frontdesk !== f) return;
+    f.showing = false;
+    setFrontdeskPrompt();
+  }, 1700);
+}
+
+function spawnDeliveryRound() {
+  const d = activeJobs.delivery;
+  if (!d) return;
+  const hazards = ["🚧", "⚠️", "🛑", "⛔", "❌"];
+  d.entities = [{ id: `del-good-${Date.now()}`, label: "✅", good: true, x: randInt(10, 90), y: randInt(15, 85), size: 58 }];
+  for (let i = 0; i < 4; i++) {
+    d.entities.push({
+      id: `del-bad-${Date.now()}-${i}`,
+      label: hazards[randInt(0, hazards.length - 1)],
+      good: false,
+      x: randInt(10, 90),
+      y: randInt(15, 85),
+      size: randInt(44, 60),
+    });
+  }
+  setDeliveryPrompt();
+  renderBoard("delivery");
+}
+
+function spawnStockerRound() {
+  const s2 = activeJobs.stocker;
+  if (!s2) return;
+  const categories = {
+    COLD: ["🥛", "🧈", "🧃"],
+    DRY: ["🍞", "🍚", "🥫"],
+    CLEAN: ["🧼", "🧻", "🧽"],
+  };
+  const keys = Object.keys(categories);
+  s2.targetLabel = keys[randInt(0, keys.length - 1)];
+  s2.entities = [];
+  s2.left = 0;
+  for (let i = 0; i < 8; i++) {
+    const cat = keys[randInt(0, keys.length - 1)];
+    const label = categories[cat][randInt(0, categories[cat].length - 1)];
+    const good = cat === s2.targetLabel;
+    if (good) s2.left += 1;
+    s2.entities.push({
+      id: `stock-${Date.now()}-${i}`,
+      label,
+      good,
+      x: randInt(10, 90),
+      y: randInt(15, 85),
+      size: 54,
+    });
+  }
+  if (s2.left === 0) return spawnStockerRound();
+  setStockerPrompt();
+  renderBoard("stocker");
+}
+
+function spawnJanitorRound() {
+  const j = activeJobs.janitor;
+  if (!j) return;
+  const icons = ["🧽", "🧽", "🫧", "🟫", "🟧", "🟢", "💧"];
+  j.entities = [];
+  for (let i = 0; i < 8; i++) {
+    const label = icons[randInt(0, icons.length - 1)];
+    j.entities.push({
+      id: `jan-${Date.now()}-${i}`,
+      label,
+      good: label === "🧽",
+      x: randInt(10, 90),
+      y: randInt(15, 85),
+      size: randInt(42, 66),
+    });
+  }
+  if (!j.entities.some((e) => e.good)) j.entities[0].good = true;
+  setJanitorPrompt();
+  renderBoard("janitor");
 }
 
 function renderJobs() {
   setText("jobCashierStatus", getCooldownText("cashier"));
   setText("jobFrontdeskStatus", getCooldownText("frontdesk"));
   setText("jobDeliveryStatus", getCooldownText("delivery"));
+  setText("jobStockerStatus", getCooldownText("stocker"));
+  setText("jobJanitorStatus", getCooldownText("janitor"));
+  setText("jobBaristaStatus", getCooldownText("barista"));
 
-  setText("jobCashierPrompt", activeJobs.cashier?.prompt || getCooldownText("cashier"));
-  setText("jobFrontdeskPrompt", activeJobs.frontdesk?.prompt || getCooldownText("frontdesk"));
+  setText("jobCashierPrompt", activeJobs.cashier ? document.getElementById("jobCashierPrompt").textContent : getCooldownText("cashier"));
+  setText("jobFrontdeskPrompt", activeJobs.frontdesk ? document.getElementById("jobFrontdeskPrompt").textContent : getCooldownText("frontdesk"));
+  setText("jobDeliveryPrompt", activeJobs.delivery ? document.getElementById("jobDeliveryPrompt").textContent : getCooldownText("delivery"));
+  setText("jobStockerPrompt", activeJobs.stocker ? document.getElementById("jobStockerPrompt").textContent : getCooldownText("stocker"));
+  setText("jobJanitorPrompt", activeJobs.janitor ? document.getElementById("jobJanitorPrompt").textContent : getCooldownText("janitor"));
 
-  if (!activeJobs.delivery) setText("jobDeliveryPrompt", getCooldownText("delivery"));
-  else setDeliveryPrompt();
+  if (activeJobs.cashier) setCashierPrompt();
+  if (activeJobs.frontdesk) setFrontdeskPrompt();
+  if (activeJobs.delivery) setDeliveryPrompt();
+  if (activeJobs.stocker) setStockerPrompt();
+  if (activeJobs.janitor) setJanitorPrompt();
+
+  if (activeJobs.barista) setBaristaPrompt();
+  else {
+    setText("jobBaristaPrompt", getCooldownText("barista"));
+    setText("jobBaristaTemp", "--°");
+    const meter = document.getElementById("jobBaristaMeter");
+    if (meter) {
+      meter.style.width = "0%";
+      meter.className = "job-meter-fill";
+    }
+  }
+
+  ["cashier", "frontdesk", "delivery", "stocker", "janitor"].forEach((type) => renderBoard(type));
 }
 
 export function startJob(type) {
@@ -1488,87 +1695,137 @@ export function startJob(type) {
   if (Date.now() < cooldownEnd) return failJob(type, `${cfg.name} ${getCooldownText(type)}`);
 
   if (type === "cashier") {
-    activeJobs.cashier = { round: 0, goal: 3, answer: 0, prompt: "" };
-    setCashierPrompt();
-    document.getElementById("jobCashierInput").value = "";
-    setJobMsg(type, "SHIFT STARTED");
+    activeJobs.cashier = { round: 0, goal: 4, entities: [], answer: 0, expr: "" };
+    spawnCashierRound();
   }
 
   if (type === "frontdesk") {
-    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    const revealMs = 2500;
-    activeJobs.frontdesk = { answer: code, prompt: "" };
-    setText("jobFrontdeskPrompt", `MEMORIZE: ${code} (${(revealMs / 1000).toFixed(1)}s)`);
-    activeJobs.frontdesk.prompt = "TYPE THE BOOKING CODE FROM MEMORY";
-    setTimeout(() => {
-      if (!activeJobs.frontdesk || activeJobs.frontdesk.answer !== code) return;
-      setText("jobFrontdeskPrompt", activeJobs.frontdesk.prompt);
-    }, revealMs);
-    document.getElementById("jobFrontdeskInput").value = "";
-    setJobMsg(type, "SHIFT STARTED");
+    activeJobs.frontdesk = { round: 0, goal: 4, entities: [], sequence: [], sequenceLabels: [], step: 0, showing: true };
+    spawnFrontdeskRound();
   }
 
   if (type === "delivery") {
-    activeJobs.delivery = {
-      count: 0,
-      goal: 8,
-      startedAt: Date.now(),
-      durationMs: 15000,
-      safeMin: 45,
-      safeMax: 55,
-      lastSpeed: null,
-    };
-    setDeliveryPrompt();
-    setJobMsg(type, "SHIFT STARTED");
+    activeJobs.delivery = { count: 0, goal: 8, lives: 3, startedAt: Date.now(), durationMs: 17000, entities: [] };
+    spawnDeliveryRound();
+  }
+
+  if (type === "stocker") {
+    activeJobs.stocker = { round: 0, goal: 4, entities: [], targetLabel: "", left: 0 };
+    spawnStockerRound();
+  }
+
+  if (type === "janitor") {
+    activeJobs.janitor = { count: 0, goal: 8, startedAt: Date.now(), durationMs: 14000, entities: [] };
+    spawnJanitorRound();
+  }
+
+  if (type === "barista") {
+    activeJobs.barista = { count: 0, goal: 5, startedAt: Date.now(), periodMs: 360, targetMin: 155, targetMax: 165, currentTemp: 120 };
+    setBaristaPrompt();
   }
 
   setText("jobsMsg", `${cfg.name} STARTED`);
+  setJobMsg(type, "SHIFT STARTED");
   renderJobs();
 }
 
-export function submitJob(type) {
+export function submitJob(type, payload = null) {
   const cfg = JOBS[type];
   if (!cfg) return;
+  const state = activeJobs[type];
+  if (!state) return failJob(type, "START SHIFT FIRST");
+
+  if (type === "barista") {
+    setBaristaPrompt();
+    const t = state.currentTemp;
+    if (t >= state.targetMin && t <= state.targetMax) {
+      state.count += 1;
+      if (state.count >= state.goal) return markJobComplete(type);
+      return setJobMsg(type, `PERFECT SHOT ${state.count}/${state.goal}`);
+    }
+    return failJob(type, "SHOT BURNT/WEAK. TIME IT BETTER.");
+  }
+
+  if (!payload) return failJob(type, "CLICK A TARGET ON THE BOARD.");
+
+  if ((type === "delivery" || type === "janitor") && Date.now() - state.startedAt > state.durationMs) {
+    activeJobs[type] = null;
+    renderJobs();
+    return failJob(type, "SHIFT ENDED. TIME'S UP.");
+  }
+
+  const selected = state.entities?.find((e) => e.id === payload);
+  if (!selected) return failJob(type, "TARGET ALREADY GONE.");
 
   if (type === "cashier") {
-    const value = Number(document.getElementById("jobCashierInput").value);
-    if (!activeJobs.cashier) return failJob(type, "START SHIFT FIRST");
-    if (value !== activeJobs.cashier.answer) {
+    if (!selected.good) {
       activeJobs.cashier = null;
       renderJobs();
       return failJob(type, "WRONG TOTAL. CUSTOMER LEFT.");
     }
-    activeJobs.cashier.round += 1;
-    if (activeJobs.cashier.round >= activeJobs.cashier.goal) return markJobComplete(type);
-    setCashierPrompt();
-    document.getElementById("jobCashierInput").value = "";
-    return setJobMsg(type, `NICE! NEXT CUSTOMER ${activeJobs.cashier.round + 1}/${activeJobs.cashier.goal}`);
+    state.round += 1;
+    if (state.round >= state.goal) return markJobComplete(type);
+    spawnCashierRound();
+    return setJobMsg(type, `NEXT CUSTOMER ${state.round + 1}/${state.goal}`);
   }
 
   if (type === "frontdesk") {
-    const value = document.getElementById("jobFrontdeskInput").value.trim().toUpperCase();
-    if (!activeJobs.frontdesk) return failJob(type, "START SHIFT FIRST");
-    if (value === activeJobs.frontdesk.answer) return markJobComplete(type);
-    return failJob(type, "WRONG CODE. TRY AGAIN.");
+    if (state.showing) return failJob(type, "WAIT FOR CODE TO HIDE.");
+    const expected = state.sequence[state.step];
+    if (payload !== expected) {
+      activeJobs.frontdesk = null;
+      renderJobs();
+      return failJob(type, "WRONG KEYCARD. SECURITY ALERT.");
+    }
+    state.step += 1;
+    if (state.step >= state.sequence.length) {
+      state.round += 1;
+      if (state.round >= state.goal) return markJobComplete(type);
+      spawnFrontdeskRound();
+      return setJobMsg(type, `BOOKING CONFIRMED ${state.round}/${state.goal}`);
+    }
+    setFrontdeskPrompt();
+    return setJobMsg(type, `SEQUENCE ${state.step}/${state.sequence.length}`);
   }
 
   if (type === "delivery") {
-    if (!activeJobs.delivery) return failJob(type, "START SHIFT FIRST");
-    if (Date.now() - activeJobs.delivery.startedAt > activeJobs.delivery.durationMs) {
-      activeJobs.delivery = null;
-      renderJobs();
-      return failJob(type, "SHIFT ENDED. TOO SLOW.");
+    if (!selected.good) {
+      state.lives -= 1;
+      if (state.lives <= 0) {
+        activeJobs.delivery = null;
+        renderJobs();
+        return failJob(type, "CRASHED VAN. SHIFT FAILED.");
+      }
+      spawnDeliveryRound();
+      return failJob(type, `HAZARD HIT. ${state.lives} LIVES LEFT.`);
     }
-    const speed = Math.floor(Math.random() * 61) + 20;
-    activeJobs.delivery.lastSpeed = speed;
-    if (speed >= activeJobs.delivery.safeMin && speed <= activeJobs.delivery.safeMax) {
-      activeJobs.delivery.count += 1;
-      setDeliveryPrompt();
-      if (activeJobs.delivery.count >= activeJobs.delivery.goal) return markJobComplete(type);
-      return setJobMsg(type, "CLEAN CHECKPOINT. KEEP DRIVING.");
+    state.count += 1;
+    if (state.count >= state.goal) return markJobComplete(type);
+    spawnDeliveryRound();
+    return setJobMsg(type, `CHECKPOINT ${state.count}/${state.goal}`);
+  }
+
+  if (type === "stocker") {
+    if (!selected.good) return failJob(type, "WRONG SECTION. FIND CORRECT AISLE.");
+    state.entities = state.entities.filter((e) => e.id !== payload);
+    state.left -= 1;
+    if (state.left <= 0) {
+      state.round += 1;
+      if (state.round >= state.goal) return markJobComplete(type);
+      spawnStockerRound();
+      return setJobMsg(type, `AISLE CLEARED ${state.round}/${state.goal}`);
     }
-    setDeliveryPrompt();
-    return failJob(type, "MISS! STAY IN SAFE SPEED ZONE.");
+    setStockerPrompt();
+    renderBoard("stocker");
+    return setJobMsg(type, `${state.left} TARGETS LEFT`);
+  }
+
+  if (type === "janitor") {
+    if (!selected.good) return failJob(type, "THAT'S NOT A SPILL. KEEP LOOKING.");
+    state.count += 1;
+    if (state.count >= state.goal) return markJobComplete(type);
+    spawnJanitorRound();
+    return setJobMsg(type, `SPILLS CLEANED ${state.count}/${state.goal}`);
   }
 }
 

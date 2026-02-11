@@ -433,6 +433,39 @@
               <button class="term-btn" onclick="window.openGame('overlayJobDelivery')">PLAY DELIVERY</button>
             </div>
           </div>
+
+          <div class="job-card">
+            <div class="job-head">
+              <span>STOCK SHELF SORT</span><span>$180</span>
+            </div>
+            <div class="job-desc">Decode aisle labels and restock 4 items fast.</div>
+            <div class="job-controls">
+              <div id="jobStockerStatus" class="job-prompt">READY</div>
+              <button class="term-btn" onclick="window.openGame('overlayJobStocker')">PLAY STOCKER</button>
+            </div>
+          </div>
+
+          <div class="job-card">
+            <div class="job-head">
+              <span>JANITOR SPOT CHECK</span><span>$150</span>
+            </div>
+            <div class="job-desc">Clean 8 spills before your shift timer runs out.</div>
+            <div class="job-controls">
+              <div id="jobJanitorStatus" class="job-prompt">READY</div>
+              <button class="term-btn" onclick="window.openGame('overlayJobJanitor')">PLAY JANITOR</button>
+            </div>
+          </div>
+
+          <div class="job-card">
+            <div class="job-head">
+              <span>ARCADE BARISTA</span><span>$220</span>
+            </div>
+            <div class="job-desc">Pull espresso shots in the green heat zone for combo cash.</div>
+            <div class="job-controls">
+              <div id="jobBaristaStatus" class="job-prompt">READY</div>
+              <button class="term-btn" onclick="window.openGame('overlayJobBarista')">PLAY BARISTA</button>
+            </div>
+          </div>
         </div>
         <div id="jobsMsg" class="jobs-msg"></div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
@@ -444,12 +477,13 @@
     <div class="overlay" id="overlayJobCashier">
       <div class="score-box">
         <h2 style="text-align: center">CASHIER RUSH</h2>
-        <div class="jobs-note">SERVE 3 CUSTOMERS WITHOUT A WRONG TOTAL</div>
+        <div class="jobs-note">CLICK THE CORRECT TOTAL TAG FOR EACH CUSTOMER</div>
         <div id="jobCashierPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <input id="jobCashierInput" class="term-input job-input" type="number" placeholder="CUSTOMER TOTAL" />
+        <div id="jobCashierBoard" class="job-board job-board-cashier">
+          <div class="job-board-empty">PRESS START SHIFT</div>
+        </div>
         <div class="job-actions" style="margin-top: 10px">
           <button class="term-btn" onclick="window.startJob('cashier')">START SHIFT</button>
-          <button class="term-btn" onclick="window.submitJob('cashier')">SUBMIT TOTAL</button>
         </div>
         <div id="jobCashierMsg" class="jobs-msg"></div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
@@ -459,12 +493,13 @@
     <div class="overlay" id="overlayJobFrontdesk">
       <div class="score-box">
         <h2 style="text-align: center">FRONT DESK MEMORY</h2>
-        <div class="jobs-note">MEMORIZE THE BOOKING CODE BEFORE IT HIDES</div>
+        <div class="jobs-note">CLICK THE MATCHING KEYCARD CODE</div>
         <div id="jobFrontdeskPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <input id="jobFrontdeskInput" class="term-input job-input" maxlength="8" placeholder="BOOKING CODE" />
+        <div id="jobFrontdeskBoard" class="job-board job-board-frontdesk">
+          <div class="job-board-empty">PRESS START SHIFT</div>
+        </div>
         <div class="job-actions" style="margin-top: 10px">
           <button class="term-btn" onclick="window.startJob('frontdesk')">START SHIFT</button>
-          <button class="term-btn" onclick="window.submitJob('frontdesk')">SUBMIT CODE</button>
         </div>
         <div id="jobFrontdeskMsg" class="jobs-msg"></div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
@@ -474,13 +509,69 @@
     <div class="overlay" id="overlayJobDelivery">
       <div class="score-box">
         <h2 style="text-align: center">DELIVERY DRIVER RUN</h2>
-        <div class="jobs-note">STAY IN SAFE SPEED RANGE FOR 8 CHECKPOINTS</div>
+        <div class="jobs-note">CLICK GREEN CHECKPOINTS, AVOID HAZARDS</div>
         <div id="jobDeliveryPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <div id="jobDeliveryBoard" class="job-board job-board-delivery">
+          <div class="job-board-empty">PRESS START SHIFT</div>
+        </div>
         <div class="job-actions" style="margin-top: 10px">
           <button class="term-btn" onclick="window.startJob('delivery')">START SHIFT</button>
-          <button class="term-btn" onclick="window.submitJob('delivery')">CHECKPOINT</button>
         </div>
         <div id="jobDeliveryMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlayJobStocker">
+      <div class="score-box">
+        <h2 style="text-align: center">STOCK SHELF SORT</h2>
+        <div class="jobs-note">CLICK THE CRATE THAT MATCHES THE REQUESTED ITEM</div>
+        <div id="jobStockerPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <div id="jobStockerBoard" class="job-board job-board-stocker">
+          <div class="job-board-empty">PRESS START SHIFT</div>
+        </div>
+        <div class="job-actions" style="margin-top: 10px">
+          <button class="term-btn" onclick="window.startJob('stocker')">START SHIFT</button>
+        </div>
+        <div id="jobStockerMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlayJobJanitor">
+      <div class="score-box">
+        <h2 style="text-align: center">JANITOR SPOT CHECK</h2>
+        <div class="jobs-note">CLICK RANDOM SPILLS TO CLEAN 8 MESSES BEFORE TIME RUNS OUT</div>
+        <div id="jobJanitorPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <div id="jobJanitorBoard" class="job-board job-board-janitor">
+          <div class="job-board-empty">PRESS START SHIFT</div>
+        </div>
+        <div class="job-actions" style="margin-top: 10px">
+          <button class="term-btn" onclick="window.startJob('janitor')">START SHIFT</button>
+        </div>
+        <div id="jobJanitorMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
+      </div>
+    </div>
+
+
+    <div class="overlay" id="overlayJobBarista">
+      <div class="score-box">
+        <h2 style="text-align: center">ARCADE BARISTA</h2>
+        <div class="jobs-note">CLICK SHOTS IN THE GREEN TEMP RANGE</div>
+        <div id="jobBaristaPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <div class="job-meter">
+          <div id="jobBaristaMeter" class="job-meter-fill"></div>
+        </div>
+        <div id="jobBaristaTemp" class="job-temp">--°</div>
+        <div id="jobBaristaBoard" class="job-board job-board-barista">
+          <div class="job-board-empty">PRESS START SHIFT</div>
+        </div>
+        <div class="job-actions" style="margin-top: 10px">
+          <button class="term-btn" onclick="window.startJob('barista')">START SHIFT</button>
+          <button class="term-btn" onclick="window.submitJob('barista')">PULL SHOT</button>
+        </div>
+        <div id="jobBaristaMsg" class="jobs-msg"></div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
       </div>
     </div>
