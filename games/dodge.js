@@ -22,6 +22,7 @@ let dFrame = 0;
 let dAnim;
 let spawnRate = 70;
 let sideRate = 200;
+let burstRate = 260;
 
 const CANVAS_W = 700;
 const CANVAS_H = 450;
@@ -43,6 +44,7 @@ export function initDodge() {
   dFrame = 0;
   spawnRate = 70;
   sideRate = 200;
+  burstRate = 260;
   setText("dodgeScore", "SCORE: 0");
   loopDodge();
 }
@@ -70,6 +72,35 @@ function spawnSideShard() {
     h: height,
     speed: 3 + Math.random() * 2.5 + dScore * 0.03,
     type: fromLeft ? "side-left" : "side-right",
+  });
+}
+
+function spawnDiagonalShard() {
+  const size = 16 + Math.random() * 16;
+  const fromLeft = Math.random() > 0.5;
+  shards.push({
+    x: fromLeft ? -size : CANVAS_W + size,
+    y: 30 + Math.random() * (CANVAS_H * 0.45),
+    w: size,
+    h: size,
+    speed: 2.8 + Math.random() * 2 + dScore * 0.035,
+    drift: (1.2 + Math.random() * 1.4) * (fromLeft ? 1 : -1),
+    type: "diag",
+  });
+}
+
+function spawnHomingShard() {
+  const size = 16 + Math.random() * 14;
+  shards.push({
+    x: Math.random() * (CANVAS_W - size),
+    y: -size,
+    w: size,
+    h: size,
+    speed: 1.2 + Math.random() * 1.3 + dScore * 0.015,
+    turnRate: 0.04 + Math.random() * 0.03,
+    vx: (Math.random() - 0.5) * 1.5,
+    vy: 1.5,
+    type: "homing",
   });
 }
 
@@ -109,7 +140,14 @@ function loopDodge() {
 
   if (dFrame % sideRate === 0) {
     spawnSideShard();
+    if (dScore > 10 && Math.random() > 0.5) spawnDiagonalShard();
     if (sideRate > 120) sideRate -= 2;
+  }
+
+  if (dFrame % burstRate === 0) {
+    spawnHomingShard();
+    if (dScore > 18) spawnHomingShard();
+    if (burstRate > 170) burstRate -= 4;
   }
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
@@ -122,11 +160,28 @@ function loopDodge() {
     const s = shards[i];
     if (s.type === "fall") {
       s.y += s.speed * shardSlowdown;
+    } else if (s.type === "diag") {
+      s.y += s.speed * shardSlowdown;
+      s.x += s.drift * shardSlowdown;
+    } else if (s.type === "homing") {
+      const targetX = player.x + player.w / 2;
+      const targetY = player.y + player.h / 2;
+      const centerX = s.x + s.w / 2;
+      const centerY = s.y + s.h / 2;
+      const toTargetX = targetX - centerX;
+      const toTargetY = targetY - centerY;
+      const length = Math.hypot(toTargetX, toTargetY) || 1;
+      const desiredVX = (toTargetX / length) * s.speed * shardSlowdown;
+      const desiredVY = (toTargetY / length) * s.speed * shardSlowdown;
+      s.vx += (desiredVX - s.vx) * s.turnRate;
+      s.vy += (desiredVY - s.vy) * s.turnRate;
+      s.x += s.vx;
+      s.y += s.vy;
     } else {
       const dir = s.type === "side-left" ? 1 : -1;
       s.x += dir * s.speed * shardSlowdown;
     }
-    dCtx.fillStyle = "#fff";
+    dCtx.fillStyle = s.type === "homing" ? "#ff4f4f" : s.type === "diag" ? "#9bf6ff" : "#fff";
     dCtx.fillRect(s.x, s.y, s.w, s.h);
 
     if (
