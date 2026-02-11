@@ -55,7 +55,7 @@ let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
-let stockData = { holdings: {}, selected: "GOON" };
+let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const GOD_USERS = new Set(["NOOB", "THEFOX"]);
@@ -580,6 +580,7 @@ function ensureStockProfile() {
   stockData = {
     holdings: { ...(safe.holdings || {}) },
     selected: safe.selected || marketState.stocks[0]?.symbol || "GOON",
+    buyMultiplier: [1, 5, 10, 25].includes(Number(safe.buyMultiplier)) ? Number(safe.buyMultiplier) : 1,
   };
 }
 
@@ -672,12 +673,24 @@ function renderStockMarket() {
   });
 
   const holdings = Number(stockData.holdings?.[selected.symbol] || 0);
+  const buyMultiplier = Number(stockData.buyMultiplier || 1);
   setText("stockDetailName", `${selected.name} (${selected.symbol})`);
   setText("stockDetailPrice", formatStockMoney(selected.price));
   setText(
     "stockDetailMeta",
     `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))}`
   );
+  const buyBtn = document.getElementById("stockBuyBtn");
+  const sellBtn = document.getElementById("stockSellBtn");
+  if (buyBtn) buyBtn.innerText = `BUY ${buyMultiplier}`;
+  if (sellBtn) sellBtn.innerText = "SELL 1";
+
+  const multBtns = document.querySelectorAll(".stock-mult-btn");
+  multBtns.forEach((btn) => {
+    const mult = Number(btn.dataset.mult || 1);
+    btn.classList.toggle("active", mult === buyMultiplier);
+  });
+
   drawStockGraph(selected);
 }
 
@@ -688,6 +701,16 @@ function setupStockMarketUX() {
 
   buyBtn.addEventListener("click", () => tradeStock(true));
   sellBtn.addEventListener("click", () => tradeStock(false));
+
+  document.querySelectorAll(".stock-mult-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const nextMultiplier = Number(btn.dataset.mult || 1);
+      if (![1, 5, 10, 25].includes(nextMultiplier)) return;
+      stockData.buyMultiplier = nextMultiplier;
+      renderStockMarket();
+      saveStats();
+    });
+  });
 }
 
 function tradeStock(isBuy) {
@@ -696,14 +719,16 @@ function tradeStock(isBuy) {
   if (!stock) return;
 
   if (isBuy) {
-    if (myMoney < stock.price) {
-      setText("stockTradeMsg", "NOT ENOUGH CASH FOR SHARE");
+    const multiplier = Number(stockData.buyMultiplier || 1);
+    const totalCost = Number((stock.price * multiplier).toFixed(2));
+    if (myMoney < totalCost) {
+      setText("stockTradeMsg", `NOT ENOUGH CASH FOR ${multiplier} SHARES`);
       return;
     }
-    myMoney = Number((myMoney - stock.price).toFixed(2));
-    stockData.holdings[stock.symbol] = Number(stockData.holdings[stock.symbol] || 0) + 1;
-    logTransaction(`BUY ${stock.symbol} SHARE`, -stock.price);
-    setText("stockTradeMsg", `BOUGHT 1 ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+    myMoney = Number((myMoney - totalCost).toFixed(2));
+    stockData.holdings[stock.symbol] = Number(stockData.holdings[stock.symbol] || 0) + multiplier;
+    logTransaction(`BUY ${stock.symbol} x${multiplier}`, -totalCost);
+    setText("stockTradeMsg", `BOUGHT ${multiplier} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
   } else {
     const owned = Number(stockData.holdings[stock.symbol] || 0);
     if (owned <= 0) {
@@ -908,7 +933,7 @@ function loadProfile(data) {
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
-  stockData = data.stockData || { holdings: {}, selected: "GOON" };
+  stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   ensureStockProfile();
   saveLocalShopToggles();
   updateUI();
@@ -988,7 +1013,7 @@ async function register(username, pin) {
       joined: Date.now(),
       stats: { games: 0, wpm: 0, wins: 0 },
       jobs: { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } },
-      stockData: { holdings: {}, selected: "GOON" },
+      stockData: { holdings: {}, selected: "GOON", buyMultiplier: 1 },
     };
     await setDoc(ref, data);
     loadProfile(data);
