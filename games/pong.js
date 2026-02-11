@@ -21,6 +21,10 @@ let pSc = 0;
 let aiSc = 0;
 let pDiff = 0.08;
 let pAnim;
+let pLastTime = 0;
+
+const BASE_FRAME_MS = 1000 / 60;
+const MAX_DT_FRAMES = 2.5;
 
 export function setPongDiff(level) {
   pDiff = level === "hard" ? 0.14 : 0.055;
@@ -35,8 +39,9 @@ export function initPong() {
   pCtx = pCv.getContext("2d");
   pSc = 0;
   aiSc = 0;
+  pLastTime = 0;
   resetBall();
-  loopPong();
+  loopPong(performance.now());
 }
 
 // Reset ball position and velocity to a new random serve.
@@ -49,20 +54,26 @@ function resetBall() {
 }
 
 // Main animation loop: update paddles, ball, scores, and render.
-function loopPong() {
+function loopPong(now) {
   if (state.currentGame !== "pong") return;
+  const dtFrames = pLastTime
+    ? Math.min((now - pLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
+    : 1;
+  pLastTime = now;
+
   pCtx.fillStyle = "rgba(0,0,0,0.2)";
   pCtx.fillRect(0, 0, 800, 600);
   if (hasActiveItem("item_aimbot")) {
-    p1.y += (ball.y - p1.h / 2 - p1.y) * 0.1;
+    p1.y += (ball.y - p1.h / 2 - p1.y) * (1 - Math.pow(1 - 0.1, dtFrames));
   } else {
-    if (state.keysPressed.w || state.keysPressed.ArrowUp) p1.y -= 8;
-    if (state.keysPressed.s || state.keysPressed.ArrowDown) p1.y += 8;
+    if (state.keysPressed.w || state.keysPressed.ArrowUp) p1.y -= 8 * dtFrames;
+    if (state.keysPressed.s || state.keysPressed.ArrowDown) p1.y += 8 * dtFrames;
   }
   if (p1.y < 0) p1.y = 0;
   if (p1.y > 520) p1.y = 520;
   const aiCatchupDebuff = aiSc - pSc >= 3 ? 0.7 : 1;
-  p2.y += (ball.y - p2.h / 2 - p2.y) * pDiff * aiCatchupDebuff;
+  const aiRate = pDiff * aiCatchupDebuff;
+  p2.y += (ball.y - p2.h / 2 - p2.y) * (1 - Math.pow(1 - aiRate, dtFrames));
   if (p2.y < 0) p2.y = 0;
   if (p2.y > 520) p2.y = 520;
   pCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
@@ -71,8 +82,8 @@ function loopPong() {
   pCtx.beginPath();
   pCtx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
   pCtx.fill();
-  ball.x += ball.dx;
-  ball.y += ball.dy;
+  ball.x += ball.dx * dtFrames;
+  ball.y += ball.dy * dtFrames;
   if (ball.y < 0 || ball.y > 600) ball.dy *= -1;
   if (ball.x < 30 && ball.y > p1.y && ball.y < p1.y + p1.h) {
     ball.dx = Math.min(Math.abs(ball.dx) + 0.4, 9);

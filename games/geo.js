@@ -22,6 +22,10 @@ let gKeyHandler = null;
 let gCanvasRef = null;
 let gOverlayRef = null;
 let gSpawnDistanceRemaining = 0;
+let gLastTime = 0;
+
+const BASE_FRAME_MS = 1000 / 60;
+const MAX_DT_FRAMES = 2.5;
 
 export function initGeometry() {
   state.currentGame = "geo";
@@ -36,28 +40,34 @@ export function initGeometry() {
   gScore = 0;
   gSpeed = 6;
   gSpawnDistanceRemaining = 0;
+  gLastTime = 0;
   setText("geoScore", "SCORE: 0");
   bindGeoControls();
-  loopGeometry(ctx);
+  loopGeometry(ctx, performance.now());
 }
 
 // Main loop for the geometry runner: physics, obstacles, rendering.
-function loopGeometry(ctx) {
+function loopGeometry(ctx, now) {
   if (state.currentGame !== "geo") return;
+  const dtFrames = gLastTime
+    ? Math.min((now - gLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
+    : 1;
+  gLastTime = now;
+
   const cv = document.getElementById("geoCanvas");
   if (!ctx) ctx = cv.getContext("2d");
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
   const currentSpeed = gSpeed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
-  gPlayer.dy += 0.9;
-  gPlayer.y += gPlayer.dy;
+  gPlayer.dy += 0.9 * dtFrames;
+  gPlayer.y += gPlayer.dy * dtFrames;
   if (gPlayer.y > 320) {
     gPlayer.y = 320;
     gPlayer.dy = 0;
     gPlayer.grounded = true;
     gPlayer.ang = Math.round(gPlayer.ang / (Math.PI / 2)) * (Math.PI / 2);
   } else {
-    gPlayer.ang += 0.15;
+    gPlayer.ang += 0.15 * dtFrames;
   }
   ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
   ctx.lineWidth = 2;
@@ -71,7 +81,7 @@ function loopGeometry(ctx) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(-gPlayer.w / 2, -gPlayer.h / 2, gPlayer.w, gPlayer.h);
   ctx.restore();
-  gSpawnDistanceRemaining -= currentSpeed;
+  gSpawnDistanceRemaining -= currentSpeed * dtFrames;
   if (gSpawnDistanceRemaining <= 0 && Math.random() < 0.4) {
     gObs.push({
       x: 800,
@@ -84,7 +94,7 @@ function loopGeometry(ctx) {
   }
   for (let i = gObs.length - 1; i >= 0; i--) {
     const o = gObs[i];
-    o.x -= currentSpeed;
+    o.x -= currentSpeed * dtFrames;
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
     if (o.type === "spike") {
       ctx.beginPath();
@@ -116,7 +126,7 @@ function loopGeometry(ctx) {
       setText("geoScore", "SCORE: " + gScore);
     }
   }
-  gAnim = requestAnimationFrame(() => loopGeometry(ctx));
+  gAnim = requestAnimationFrame((nextNow) => loopGeometry(ctx, nextNow));
 }
 
 // Apply a jump impulse if grounded.
