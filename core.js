@@ -1078,6 +1078,35 @@ async function login(username, pin) {
 }
 
 // Convert money tiers into user-facing rank labels.
+function formatBankAmount(value) {
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) return value.toFixed(2);
+    return String(value);
+  }
+  if (value === null || value === undefined) return "0.00";
+  const raw = String(value).trim();
+  if (!raw) return "0.00";
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed)) return parsed.toFixed(2);
+  return raw;
+}
+
+function getComparableMoney(value) {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) return parsed;
+  if (parsed === Infinity) return Number.MAX_VALUE;
+  if (parsed === -Infinity) return -Number.MAX_VALUE;
+  return 0;
+}
+
+function sanitizeMoneyValue(value, fallback = 0) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(numeric)) return fallback;
+  if (numeric === Infinity || numeric === -Infinity) return numeric;
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
+
 function getRank(money, name = myName) {
   if (isGodUser(name)) return "GOD";
   if (money < 500) return "RAT";
@@ -1113,7 +1142,7 @@ function getRankProgress(money) {
 // Populate local state from stored profile data.
 function loadProfile(data) {
   myName = data.name;
-  myMoney = data.money;
+  myMoney = sanitizeMoneyValue(data.money, 1000);
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
@@ -1149,33 +1178,35 @@ function updateUI() {
   setText("displayUser", myName);
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
-  const currentVal = parseFloat(bankEl.innerText) || 0;
-  if (currentVal !== myMoney) {
-    bankEl.style.color = myMoney > currentVal ? "#0f0" : "#f00";
+  const currentVal = getComparableMoney(bankEl.innerText);
+  const safeMoney = sanitizeMoneyValue(myMoney);
+  const nextVal = getComparableMoney(safeMoney);
+  if (currentVal !== nextVal) {
+    bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
-  bankEl.innerText = Number(myMoney || 0).toFixed(2);
-  if (bankOverlayEl) bankOverlayEl.innerText = Number(myMoney || 0).toFixed(2);
+  bankEl.innerText = formatBankAmount(safeMoney);
+  if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(safeMoney);
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
-  setText("profBank", "$" + myMoney);
+  setText("profBank", "$" + formatBankAmount(safeMoney));
   setText("profWPM", (myStats.wpm || 0) + " WPM");
   setText("profGames", myStats.games || 0);
   setText("profWins", myStats.wins || 0);
   setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
   setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
-  const rank = getRank(myMoney);
+  const rank = getRank(safeMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
   setText("profSummaryRank", "[" + rank + "]");
-  const rankProgress = getRankProgress(myMoney);
+  const rankProgress = getRankProgress(safeMoney);
   setText("profProgressLabel", rankProgress.label);
   const progressFill = document.getElementById("profProgressFill");
   if (progressFill) progressFill.style.width = `${rankProgress.pct}%`;
-  if (myMoney >= 5000) unlockAchievement("diamond_hands");
-  if (myMoney >= 1000000) unlockAchievement("millionaire");
+  if (safeMoney >= 5000) unlockAchievement("diamond_hands");
+  if (safeMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
   updateAdminMenu();
   if (myMoney === 0) {
@@ -1373,8 +1404,8 @@ export async function adminMarketCrashToZero() {
 
 export async function adminMarketTimesThousand() {
   if (!isGodUser()) return;
-  await setMarketShift(1000, 0.01, 1);
-  showToast("MARKET MULTIPLIED x1000", "📈");
+  await setMarketShift(1000000000000000000, 0.01, 1);
+  showToast("MARKET MULTIPLIED x1000000000000000000", "📈");
   await saveStats();
 }
 
@@ -1450,7 +1481,7 @@ export async function saveStats() {
   const snapshot = {
     name: myName,
     pin: localStorage.getItem("goonerPin") || "0000",
-    money: myMoney,
+    money: sanitizeMoneyValue(myMoney),
     joined: myJoined || Date.now(),
     stats: myStats,
     achievements: myAchievements,
@@ -1463,7 +1494,7 @@ export async function saveStats() {
   };
   saveLocalProfileSnapshot(snapshot);
   await updateDoc(doc(db, "gooner_users", myName), {
-    money: myMoney,
+    money: sanitizeMoneyValue(myMoney),
     stats: myStats,
     achievements: myAchievements,
     inventory: myInventory,
@@ -1623,7 +1654,8 @@ export async function tradeMoney() {
   const amountInput = document.getElementById("bankTransferAmount");
   if (!msg || !userInput || !amountInput) return;
 
-  const target = userInput.value.trim().toUpperCase();
+  const rawTarget = userInput.value.trim();
+  const target = rawTarget.toUpperCase();
   const amount = parseInt(amountInput.value, 10);
   if (myName === "ANON") {
     msg.innerText = "LOGIN REQUIRED";
@@ -1645,16 +1677,21 @@ export async function tradeMoney() {
     await runTransaction(db, async (transaction) => {
       const myRef = doc(db, "gooner_users", myName);
       const targetRef = doc(db, "gooner_users", target);
+      const targetRawRef = rawTarget && rawTarget !== target ? doc(db, "gooner_users", rawTarget) : null;
       const mySnap = await transaction.get(myRef);
       const targetSnap = await transaction.get(targetRef);
+      const targetRawSnap = targetRawRef ? await transaction.get(targetRawRef) : null;
+      const receiverSnap = targetSnap.exists() ? targetSnap : targetRawSnap;
+      const receiverRef = targetSnap.exists() ? targetRef : targetRawRef;
 
       if (!mySnap.exists()) throw new Error("PROFILE NOT FOUND");
-      if (!targetSnap.exists()) throw new Error("PLAYER NOT FOUND");
-      const freshMoney = mySnap.data().money ?? 0;
+      if (!receiverSnap?.exists() || !receiverRef) throw new Error("PLAYER NOT FOUND");
+      const freshMoney = sanitizeMoneyValue(mySnap.data().money);
       if (freshMoney < amount) throw new Error("NOT ENOUGH CASH");
 
       transaction.update(myRef, { money: freshMoney - amount });
-      transaction.update(targetRef, { money: (targetSnap.data().money ?? 0) + amount });
+      const receiverMoney = sanitizeMoneyValue(receiverSnap.data().money);
+      transaction.update(receiverRef, { money: receiverMoney + amount });
     });
 
     myMoney -= amount;
