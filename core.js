@@ -1241,11 +1241,23 @@ async function adminApplyGlobalMarketShift(multiplier, successMsg, icon) {
   } catch (e) {
     showToast("GLOBAL MARKET UPDATE FAILED", "⚠️", "Try again.");
   }
+function setMarketShift(multiplier) {
+  marketState.stocks.forEach((stock) => {
+    const next = Math.max(3, Number((stock.price * multiplier).toFixed(2)));
+    stock.lastMove = (next - stock.price) / (stock.price || 1);
+    stock.price = next;
+    stock.history.push(next);
+    if (stock.history.length > 80) stock.history.shift();
+  });
+  renderStockMarket();
 }
 
 export async function adminMarketMoonshot() {
   if (!isGodUser()) return;
   await adminApplyGlobalMarketShift(1.35, "GLOBAL MARKET MOONSHOT APPLIED", "🚀");
+  setMarketShift(1.35);
+  showToast("MARKET SENT TO THE MOON", "🚀");
+  await saveStats();
 }
 
 export async function adminMarketMeltdown() {
@@ -1256,6 +1268,9 @@ export async function adminMarketMeltdown() {
 export async function adminCrashAllPlayerStocksToZero() {
   if (!isGodUser()) return;
   await adminApplyGlobalMarketShift(0.01, "GLOBAL MARKET CRASHED TO NEAR ZERO", "🧨");
+  setMarketShift(0.55);
+  showToast("MARKET MELTDOWN TRIGGERED", "💥");
+  await saveStats();
 }
 
 export async function adminPrestigePack() {
