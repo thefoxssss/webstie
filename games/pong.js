@@ -14,7 +14,7 @@ import {
 let pCtx;
 let pCv;
 let ball = { x: 400, y: 300, dx: 5, dy: 5 };
-let p1 = { y: 250, h: 80 };
+let p1 = { y: 250, h: 100 };
 let p2 = { y: 250, h: 80 };
 let pSc = 0;
 let aiSc = 0;
@@ -22,7 +22,7 @@ let pDiff = 0.08;
 let pAnim;
 
 export function setPongDiff(level) {
-  pDiff = level === "hard" ? 0.15 : 0.08;
+  pDiff = level === "hard" ? 0.14 : 0.055;
   resetBall();
 }
 
@@ -60,7 +60,8 @@ function loopPong() {
   }
   if (p1.y < 0) p1.y = 0;
   if (p1.y > 520) p1.y = 520;
-  p2.y += (ball.y - p2.h / 2 - p2.y) * pDiff;
+  const aiCatchupDebuff = aiSc - pSc >= 3 ? 0.7 : 1;
+  p2.y += (ball.y - p2.h / 2 - p2.y) * pDiff * aiCatchupDebuff;
   if (p2.y < 0) p2.y = 0;
   if (p2.y > 520) p2.y = 520;
   pCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
@@ -73,12 +74,12 @@ function loopPong() {
   ball.y += ball.dy;
   if (ball.y < 0 || ball.y > 600) ball.dy *= -1;
   if (ball.x < 30 && ball.y > p1.y && ball.y < p1.y + p1.h) {
-    ball.dx = Math.abs(ball.dx) + 0.5;
+    ball.dx = Math.min(Math.abs(ball.dx) + 0.4, 9);
     ball.x = 30;
     beep(600);
   }
   if (ball.x > 770 && ball.y > p2.y && ball.y < p2.y + p2.h) {
-    ball.dx = -(Math.abs(ball.dx) + 0.5);
+    ball.dx = -Math.min(Math.abs(ball.dx) + 0.4, 9);
     ball.x = 770;
     beep(600);
   }
@@ -87,7 +88,6 @@ function loopPong() {
     resetBall();
     beep(200);
     checkLossStreak();
-    pSc = 0;
   }
   if (ball.x > 800) {
     pSc++;
