@@ -13,6 +13,8 @@ import {
   startJob,
   submitJob,
   state,
+  adminGrantCash,
+  adminUnlockAllAchievements,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -36,6 +38,8 @@ window.startJob = startJob;
 window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
+window.adminGrantCash = adminGrantCash;
+window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {

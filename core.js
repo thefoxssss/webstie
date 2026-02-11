@@ -56,6 +56,7 @@ let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
+const GOD_USERS = new Set(["NOOB", "THEFOX"]);
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -202,6 +203,19 @@ function applyOwnedVisuals() {
   document.getElementById("btnFlappy").style.display = flappyEnabled
     ? "block"
     : "none";
+}
+
+
+function isGodUser(name = myName) {
+  return GOD_USERS.has(String(name || "").toUpperCase());
+}
+
+function updateAdminMenu() {
+  const adminBtn = document.getElementById("adminMenuBtn");
+  const adminName = document.getElementById("adminName");
+  const hasAccess = isGodUser();
+  if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
+  if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
 }
 
 // Achievements metadata (UI + reward tracking).
@@ -609,6 +623,7 @@ setInterval(() => {
 
 // Open an overlay by id, optionally render its contents.
 export function openGame(id) {
+  if (id === "overlayAdmin" && !isGodUser()) return;
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
@@ -653,7 +668,8 @@ async function login(username, pin) {
 }
 
 // Convert money tiers into user-facing rank labels.
-function getRank(money) {
+function getRank(money, name = myName) {
+  if (isGodUser(name)) return "GOD";
   if (money < 500) return "RAT";
   if (money < 2000) return "SCRIPT KIDDIE";
   if (money < 5000) return "HACKER";
@@ -712,6 +728,7 @@ function loadProfile(data) {
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
+  updateAdminMenu();
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -745,6 +762,7 @@ function updateUI() {
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
+  updateAdminMenu();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -775,6 +793,38 @@ async function register(username, pin) {
   } catch (e) {
     return "REG ERROR";
   }
+}
+
+
+export async function adminGrantCash(amount) {
+  if (!isGodUser()) return;
+  const grant = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!grant) return;
+  myMoney += grant;
+  logTransaction("ADMIN GRANT", grant);
+  showToast(`ADMIN GRANT: +$${grant.toLocaleString()}`, "🛡️");
+  await saveStats();
+}
+
+export async function adminUnlockAllAchievements() {
+  if (!isGodUser()) return;
+  const missing = ACHIEVEMENTS.filter((achievement) => !myAchievements.includes(achievement.id));
+  if (!missing.length) {
+    showToast("ALL ACHIEVEMENTS ALREADY UNLOCKED", "✅");
+    return;
+  }
+
+  let rewardTotal = 0;
+  missing.forEach((achievement) => {
+    myAchievements.push(achievement.id);
+    rewardTotal += achievement.reward || 0;
+  });
+  if (rewardTotal > 0) {
+    myMoney += rewardTotal;
+    logTransaction("ADMIN ACHIEVEMENT SYNC", rewardTotal);
+  }
+  showToast(`UNLOCKED ${missing.length} ACHIEVEMENTS`, "🛡️");
+  await saveStats();
 }
 
 // Persist stats + inventory changes to Firestore.
@@ -1591,7 +1641,7 @@ function loadLeaderboard(game) {
         const data = d.data();
         rows.push({
           name: data.name || d.id,
-          score: data.rank || getRank(Number(data.money) || 0),
+          score: data.rank || getRank(Number(data.money) || 0, data.name),
         });
       });
       renderLeaderboardRows(list, rows);
