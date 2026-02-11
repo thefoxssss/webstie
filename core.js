@@ -1271,13 +1271,13 @@ function takeLoan() {
     return;
   }
 
-  const randomRate = (Math.floor(Math.random() * 36) + 25) / 100;
+  const randomRate = (Math.floor(Math.random() * 19) + 18) / 100;
   const now = Date.now();
   loanData.debt = (loanData.debt || 0) + amount;
   loanData.rate = randomRate;
   loanData.lastInterestAt = now;
   myMoney += amount;
-  logTransaction(`AGGRESSIVE LOAN @ ${Math.round(randomRate * 100)}%`, amount);
+  logTransaction(`HIGH-RISK LOAN @ ${Math.round(randomRate * 100)}% APR`, amount);
   formatLoanStatus(`LOAN APPROVED: +$${amount} @ ${Math.round(randomRate * 100)}%`, "#f80");
   amountInput.value = "";
   updateUI();
@@ -1320,16 +1320,20 @@ function applyLoanInterestTick() {
   if (elapsed < tickMs) return;
 
   const cycles = Math.floor(elapsed / tickMs);
+  const gameTimeScale = 120;
+  const interestPerCycle =
+    Math.pow(1 + loanData.rate, (tickMs / (24 * 60 * 60 * 1000)) * gameTimeScale) - 1;
   let debt = loanData.debt;
   for (let i = 0; i < cycles; i++) {
-    const spike = 1 + loanData.rate * (0.7 + Math.random() * 0.9);
-    debt *= spike;
+    const variableCycleRate = interestPerCycle * (0.9 + Math.random() * 0.2);
+    debt *= 1 + variableCycleRate;
   }
   const growth = Math.round(debt - loanData.debt);
+  if (growth <= 0) return;
   loanData.debt = debt;
   loanData.lastInterestAt = last + cycles * tickMs;
-  logTransaction("LOAN INTEREST SPIKE", -growth);
-  formatLoanStatus(`INTEREST HIT: +$${growth} DEBT`, "#f66");
+  logTransaction("LOAN INTEREST ACCRUED", -growth);
+  formatLoanStatus(`INTEREST ACCRUED: +$${growth} DEBT`, "#f66");
   updateUI();
   saveStats();
 }
