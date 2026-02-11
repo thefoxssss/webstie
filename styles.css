@@ -365,7 +365,7 @@ body::before {
   display: none;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   z-index: 1000;
   overflow-y: auto;
   padding: 20px;
