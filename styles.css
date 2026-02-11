@@ -1349,6 +1349,20 @@ canvas {
   color: #555;
   cursor: not-allowed;
 }
+.shop-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+.shop-toggle-btn {
+  background: #111;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 5px 8px;
+  font-weight: bold;
+  font-family: inherit;
+}
 
 .bank-log {
   max-height: 150px;

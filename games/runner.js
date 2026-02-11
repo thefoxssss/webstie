@@ -10,6 +10,7 @@ import {
   loadHighScores,
   consumeShield,
   state,
+  hasActiveItem,
 } from "../core.js";
 
 let rCtx;
@@ -47,7 +48,7 @@ function loopRunner() {
   rCtx.moveTo(0, 350);
   rCtx.lineTo(800, 350);
   rCtx.stroke();
-  const currentSpeed = rSpeed * (state.myInventory.includes("item_slowmo") ? 0.8 : 1);
+  const currentSpeed = rSpeed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
   if ((state.keysPressed[" "] || state.keysPressed.ArrowUp) && player.grounded) {
     player.dy = -player.jumpForce;
     player.grounded = false;

@@ -6,6 +6,7 @@ import {
   saveStats,
   unlockAchievement,
   state,
+  hasActiveItem,
 } from "../core.js";
 
 let typeText = "";
@@ -162,7 +163,7 @@ document.getElementById("typeHiddenInput").addEventListener("input", (e) => {
       if (wpm > 0 && wpm < 300) setText("typeWPM", wpm);
     }, 100);
   }
-  if (state.myInventory.includes("item_autotype")) {
+  if (hasActiveItem("item_autotype")) {
     if (Math.random() > 0.1) {
       typeText[typeIndex];
     }
@@ -206,7 +207,7 @@ document.getElementById("typeHiddenInput").addEventListener("input", (e) => {
 setInterval(() => {
   if (
     state.currentGame === "type" &&
-    state.myInventory.includes("item_autotype") &&
+    hasActiveItem("item_autotype") &&
     typeText.length > 0
   ) {
     const letters = document.querySelectorAll(".letter");

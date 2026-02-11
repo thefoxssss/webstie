@@ -8,6 +8,7 @@ import {
   showToast,
   consumeShield,
   state,
+  hasActiveItem,
 } from "../core.js";
 
 let gPlayer = {};
@@ -47,7 +48,7 @@ function loopGeometry(ctx) {
   if (!ctx) ctx = cv.getContext("2d");
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
-  const currentSpeed = gSpeed * (state.myInventory.includes("item_slowmo") ? 0.8 : 1);
+  const currentSpeed = gSpeed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
   gPlayer.dy += 0.9;
   gPlayer.y += gPlayer.dy;
   if (gPlayer.y > 320) {
