@@ -55,6 +55,7 @@ let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
+let stockData = { holdings: {}, selected: "GOON" };
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const GOD_USERS = new Set(["NOOB", "THEFOX"]);
@@ -150,6 +151,12 @@ export const state = {
   },
   set loanData(value) {
     loanData = value;
+  },
+  get stockData() {
+    return stockData;
+  },
+  set stockData(value) {
+    stockData = value;
   }
 };
 
@@ -542,6 +549,182 @@ const SHOP_ITEMS = [
   },
 ];
 
+const STOCK_SYMBOLS = [
+  { symbol: "GOON", name: "GOON TECH" },
+  { symbol: "MEME", name: "MEME HOLDINGS" },
+  { symbol: "BYTE", name: "BYTE INDUSTRIES" },
+  { symbol: "NOVA", name: "NOVA ENERGY" },
+  { symbol: "PUMP", name: "PUMP CAPITAL" },
+];
+
+const marketState = {
+  stocks: STOCK_SYMBOLS.map((entry) => {
+    const start = Math.floor(Math.random() * 120) + 40;
+    return {
+      ...entry,
+      price: start,
+      history: Array.from({ length: 40 }, (_, i) =>
+        Number((start * (0.94 + (i / 40) * 0.12)).toFixed(2))
+      ),
+      lastMove: 0,
+    };
+  }),
+};
+
+function getStock(symbol) {
+  return marketState.stocks.find((stock) => stock.symbol === symbol) || marketState.stocks[0];
+}
+
+function ensureStockProfile() {
+  const safe = stockData && typeof stockData === "object" ? stockData : {};
+  stockData = {
+    holdings: { ...(safe.holdings || {}) },
+    selected: safe.selected || marketState.stocks[0]?.symbol || "GOON",
+  };
+}
+
+function getPortfolioValue() {
+  return marketState.stocks.reduce((total, stock) => {
+    const shares = Number(stockData.holdings?.[stock.symbol] || 0);
+    return total + shares * stock.price;
+  }, 0);
+}
+
+function formatStockMoney(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function tickStockMarket() {
+  marketState.stocks.forEach((stock) => {
+    const drift = (Math.random() - 0.49) * 0.09;
+    const momentum = stock.lastMove * 0.35;
+    const swing = (Math.random() - 0.5) * 0.04;
+    const next = Math.max(3, stock.price * (1 + drift + momentum + swing));
+    stock.lastMove = (next - stock.price) / stock.price;
+    stock.price = Number(next.toFixed(2));
+    stock.history.push(stock.price);
+    if (stock.history.length > 80) stock.history.shift();
+  });
+
+  if (document.getElementById("overlayBank")?.classList.contains("active")) {
+    renderStockMarket();
+  }
+}
+
+function drawStockGraph(stock) {
+  const canvas = document.getElementById("stockChart");
+  if (!canvas || !stock) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const { width, height } = canvas;
+  ctx.clearRect(0, 0, width, height);
+
+  const min = Math.min(...stock.history);
+  const max = Math.max(...stock.history);
+  const span = Math.max(0.01, max - min);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  for (let y = 1; y < 4; y += 1) {
+    const yPos = (height / 4) * y;
+    ctx.beginPath();
+    ctx.moveTo(0, yPos);
+    ctx.lineTo(width, yPos);
+    ctx.stroke();
+  }
+
+  const up = stock.history[stock.history.length - 1] >= stock.history[0];
+  ctx.strokeStyle = up ? "#00ff66" : "#ff3d3d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  stock.history.forEach((value, i) => {
+    const x = (i / (stock.history.length - 1 || 1)) * width;
+    const y = height - ((value - min) / span) * (height - 8) - 4;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function renderStockMarket() {
+  ensureStockProfile();
+  const list = document.getElementById("stockList");
+  if (!list) return;
+
+  const selected = getStock(stockData.selected);
+  const portfolioValue = getPortfolioValue();
+  setText("stockPortfolioValue", `PORTFOLIO: ${formatStockMoney(portfolioValue)}`);
+
+  list.innerHTML = "";
+  marketState.stocks.forEach((stock) => {
+    const row = document.createElement("button");
+    row.className = `stock-row ${selected.symbol === stock.symbol ? "active" : ""}`;
+    const shares = Number(stockData.holdings?.[stock.symbol] || 0);
+    const prev = stock.history.length > 1 ? stock.history[stock.history.length - 2] : stock.price;
+    const dayMove = ((stock.price - prev) / (prev || 1)) * 100;
+    row.innerHTML = `<span>${stock.symbol} (${shares})</span><span style="color:${dayMove >= 0 ? "#0f0" : "#f55"}">${formatStockMoney(stock.price)}</span>`;
+    row.addEventListener("click", () => {
+      stockData.selected = stock.symbol;
+      renderStockMarket();
+    });
+    list.appendChild(row);
+  });
+
+  const holdings = Number(stockData.holdings?.[selected.symbol] || 0);
+  setText("stockDetailName", `${selected.name} (${selected.symbol})`);
+  setText("stockDetailPrice", formatStockMoney(selected.price));
+  setText(
+    "stockDetailMeta",
+    `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))}`
+  );
+  drawStockGraph(selected);
+}
+
+function setupStockMarketUX() {
+  const buyBtn = document.getElementById("stockBuyBtn");
+  const sellBtn = document.getElementById("stockSellBtn");
+  if (!buyBtn || !sellBtn) return;
+
+  buyBtn.addEventListener("click", () => tradeStock(true));
+  sellBtn.addEventListener("click", () => tradeStock(false));
+}
+
+function tradeStock(isBuy) {
+  ensureStockProfile();
+  const stock = getStock(stockData.selected);
+  if (!stock) return;
+
+  if (isBuy) {
+    if (myMoney < stock.price) {
+      setText("stockTradeMsg", "NOT ENOUGH CASH FOR SHARE");
+      return;
+    }
+    myMoney = Number((myMoney - stock.price).toFixed(2));
+    stockData.holdings[stock.symbol] = Number(stockData.holdings[stock.symbol] || 0) + 1;
+    logTransaction(`BUY ${stock.symbol} SHARE`, -stock.price);
+    setText("stockTradeMsg", `BOUGHT 1 ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+  } else {
+    const owned = Number(stockData.holdings[stock.symbol] || 0);
+    if (owned <= 0) {
+      setText("stockTradeMsg", "NO SHARES TO SELL");
+      return;
+    }
+    stockData.holdings[stock.symbol] = owned - 1;
+    myMoney = Number((myMoney + stock.price).toFixed(2));
+    logTransaction(`SELL ${stock.symbol} SHARE`, stock.price);
+    setText("stockTradeMsg", `SOLD 1 ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+  }
+
+  updateUI();
+  renderStockMarket();
+  saveStats();
+}
+
+setInterval(() => {
+  tickStockMarket();
+}, 2000);
+
 // Allow games to register a cleanup routine when overlays close.
 export function registerGameStop(stopFn) {
   gameStops.push(stopFn);
@@ -614,6 +797,7 @@ const initAuth = async () => {
 initAuth();
 setupBankTransferUX();
 setupLoanUX();
+setupStockMarketUX();
 onAuthStateChanged(auth, (u) => {
   if (u) {
     myUid = u.uid;
@@ -641,8 +825,10 @@ export function openGame(id) {
   if (id === "overlayJobs" || id === "overlayJobCashier" || id === "overlayJobFrontdesk" || id === "overlayJobDelivery") renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
+    renderStockMarket();
     setText("bankTransferMsg", "");
     setText("bankLoanMsg", "");
+    setText("stockTradeMsg", "");
   }
   if (id === "overlayScores") {
     const activeTab = document.querySelector(".score-tab.active");
@@ -722,6 +908,8 @@ function loadProfile(data) {
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
+  stockData = data.stockData || { holdings: {}, selected: "GOON" };
+  ensureStockProfile();
   saveLocalShopToggles();
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
@@ -748,13 +936,13 @@ function updateUI() {
   setText("displayUser", myName);
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
-  const currentVal = parseInt(bankEl.innerText) || 0;
+  const currentVal = parseFloat(bankEl.innerText) || 0;
   if (currentVal !== myMoney) {
     bankEl.style.color = myMoney > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
-  bankEl.innerText = myMoney;
-  if (bankOverlayEl) bankOverlayEl.innerText = myMoney;
+  bankEl.innerText = Number(myMoney || 0).toFixed(2);
+  if (bankOverlayEl) bankOverlayEl.innerText = Number(myMoney || 0).toFixed(2);
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
@@ -800,6 +988,7 @@ async function register(username, pin) {
       joined: Date.now(),
       stats: { games: 0, wpm: 0, wins: 0 },
       jobs: { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } },
+      stockData: { holdings: {}, selected: "GOON" },
     };
     await setDoc(ref, data);
     loadProfile(data);
@@ -853,6 +1042,7 @@ export async function saveStats() {
     itemToggles: myItemToggles,
     jobs: jobData,
     loanData,
+    stockData,
   });
   updateUI();
 }
