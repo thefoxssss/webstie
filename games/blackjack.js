@@ -8,6 +8,7 @@ import {
   showToast,
   unlockAchievement,
   state,
+  hasActiveItem,
   firebase,
 } from "../core.js";
 
@@ -106,7 +107,7 @@ async function startSoloRound() {
   const dDiv = document.getElementById("bjDealerHand");
   dDiv.innerHTML = "";
   renderNewCard(bjDealerHand[0], "bjDealerHand");
-  const hideDealer = !state.myInventory.includes("item_xray");
+  const hideDealer = !hasActiveItem("item_xray");
   renderNewCard(bjDealerHand[1], "bjDealerHand", hideDealer);
   setText("bjDealerScore", hideDealer ? "" : calcHand(bjDealerHand));
   document.getElementById("bjGameBtns").style.display = "flex";

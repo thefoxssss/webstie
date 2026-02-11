@@ -11,6 +11,7 @@ import {
   loadHighScores,
   consumeShield,
   state,
+  hasActiveItem,
 } from "../core.js";
 
 let dCtx;
@@ -116,7 +117,7 @@ function loopDodge() {
   dCtx.fillStyle = accent;
   dCtx.fillRect(player.x, player.y, player.w, player.h);
 
-  const shardSlowdown = state.myInventory.includes("item_dodge_stabilizer") ? 0.75 : 1;
+  const shardSlowdown = hasActiveItem("item_dodge_stabilizer") ? 0.75 : 1;
 
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
