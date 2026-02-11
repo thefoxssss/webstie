@@ -282,63 +282,42 @@
       </div>
     </div>
 
-    <!-- Scores overlay for local + global leaderboards. -->
+    <!-- Jobs hub + job mini-game overlays. -->
     <div class="overlay" id="overlayJobs">
       <div class="score-box">
-        <h2 style="text-align: center">JOB BOARD</h2>
-        <div class="jobs-note">PLAY REAL-WORLD JOB GAMES TO EARN CASH</div>
+        <h2 style="text-align: center">JOB GAMES</h2>
+        <div class="jobs-note">PLAY EACH JOB LIKE A SEPARATE MINI-GAME TO EARN MONEY</div>
         <div class="jobs-grid">
           <div class="job-card">
             <div class="job-head">
               <span>CASHIER RUSH</span><span>$120</span>
             </div>
-            <div class="job-desc">Serve 3 customers in a row by solving totals fast.</div>
+            <div class="job-desc">Solve 3 customer totals in a row.</div>
             <div class="job-controls">
-              <div id="jobMathPrompt" class="job-prompt">PRESS START</div>
-              <input
-                id="jobMathInput"
-                class="term-input job-input"
-                type="number"
-                placeholder="ANSWER"
-              />
-              <div class="job-actions">
-                <button class="term-btn" onclick="window.startJob('math')">START</button>
-                <button class="term-btn" onclick="window.submitJob('math')">SUBMIT</button>
-              </div>
+              <div id="jobCashierStatus" class="job-prompt">READY</div>
+              <button class="term-btn" onclick="window.openGame('overlayJobCashier')">PLAY CASHIER</button>
             </div>
           </div>
 
           <div class="job-card">
             <div class="job-head">
-              <span>FRONT DESK</span><span>$160</span>
+              <span>FRONT DESK MEMORY</span><span>$160</span>
             </div>
-            <div class="job-desc">Memorize the booking code, then type it from memory.</div>
+            <div class="job-desc">Memorize a code then type it from memory.</div>
             <div class="job-controls">
-              <div id="jobCodePrompt" class="job-prompt">PRESS START</div>
-              <input
-                id="jobCodeInput"
-                class="term-input job-input"
-                maxlength="8"
-                placeholder="TYPE CODE"
-              />
-              <div class="job-actions">
-                <button class="term-btn" onclick="window.startJob('code')">START</button>
-                <button class="term-btn" onclick="window.submitJob('code')">SUBMIT</button>
-              </div>
+              <div id="jobFrontdeskStatus" class="job-prompt">READY</div>
+              <button class="term-btn" onclick="window.openGame('overlayJobFrontdesk')">PLAY FRONT DESK</button>
             </div>
           </div>
 
           <div class="job-card">
             <div class="job-head">
-              <span>DELIVERY DRIVER</span><span>$200</span>
+              <span>DELIVERY DRIVER RUN</span><span>$200</span>
             </div>
-            <div class="job-desc">Hit 8 safe-speed checkpoints before your shift ends.</div>
+            <div class="job-desc">Hit safe-speed checkpoints before shift ends.</div>
             <div class="job-controls">
-              <div id="jobClickPrompt" class="job-prompt">PRESS START</div>
-              <div class="job-actions">
-                <button class="term-btn" onclick="window.startJob('click')">START</button>
-                <button class="term-btn" onclick="window.submitJob('click')">CHECKPOINT</button>
-              </div>
+              <div id="jobDeliveryStatus" class="job-prompt">READY</div>
+              <button class="term-btn" onclick="window.openGame('overlayJobDelivery')">PLAY DELIVERY</button>
             </div>
           </div>
         </div>
@@ -346,6 +325,50 @@
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
           CLOSE
         </button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlayJobCashier">
+      <div class="score-box">
+        <h2 style="text-align: center">CASHIER RUSH</h2>
+        <div class="jobs-note">SERVE 3 CUSTOMERS WITHOUT A WRONG TOTAL</div>
+        <div id="jobCashierPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <input id="jobCashierInput" class="term-input job-input" type="number" placeholder="CUSTOMER TOTAL" />
+        <div class="job-actions" style="margin-top: 10px">
+          <button class="term-btn" onclick="window.startJob('cashier')">START SHIFT</button>
+          <button class="term-btn" onclick="window.submitJob('cashier')">SUBMIT TOTAL</button>
+        </div>
+        <div id="jobCashierMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlayJobFrontdesk">
+      <div class="score-box">
+        <h2 style="text-align: center">FRONT DESK MEMORY</h2>
+        <div class="jobs-note">MEMORIZE THE BOOKING CODE BEFORE IT HIDES</div>
+        <div id="jobFrontdeskPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <input id="jobFrontdeskInput" class="term-input job-input" maxlength="8" placeholder="BOOKING CODE" />
+        <div class="job-actions" style="margin-top: 10px">
+          <button class="term-btn" onclick="window.startJob('frontdesk')">START SHIFT</button>
+          <button class="term-btn" onclick="window.submitJob('frontdesk')">SUBMIT CODE</button>
+        </div>
+        <div id="jobFrontdeskMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlayJobDelivery">
+      <div class="score-box">
+        <h2 style="text-align: center">DELIVERY DRIVER RUN</h2>
+        <div class="jobs-note">STAY IN SAFE SPEED RANGE FOR 8 CHECKPOINTS</div>
+        <div id="jobDeliveryPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
+        <div class="job-actions" style="margin-top: 10px">
+          <button class="term-btn" onclick="window.startJob('delivery')">START SHIFT</button>
+          <button class="term-btn" onclick="window.submitJob('delivery')">CHECKPOINT</button>
+        </div>
+        <div id="jobDeliveryMsg" class="jobs-msg"></div>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
       </div>
     </div>
 
