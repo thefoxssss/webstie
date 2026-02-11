@@ -54,6 +54,7 @@ let currentGame = null;
 let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 
@@ -142,6 +143,12 @@ export const state = {
   },
   set jobData(value) {
     jobData = value;
+  },
+  get loanData() {
+    return loanData;
+  },
+  set loanData(value) {
+    loanData = value;
   }
 };
 
@@ -591,6 +598,7 @@ const initAuth = async () => {
 };
 initAuth();
 setupBankTransferUX();
+setupLoanUX();
 onAuthStateChanged(auth, (u) => {
   if (u) {
     myUid = u.uid;
@@ -618,6 +626,7 @@ export function openGame(id) {
   if (id === "overlayBank") {
     updateBankLog();
     setText("bankTransferMsg", "");
+    setText("bankLoanMsg", "");
   }
   if (id === "overlayScores") {
     const activeTab = document.querySelector(".score-tab.active");
@@ -694,6 +703,7 @@ function loadProfile(data) {
   myJoined = data.joined || 0;
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { math: 0, code: 0, click: 0 } };
+  loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   saveLocalShopToggles();
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
@@ -726,6 +736,8 @@ function updateUI() {
   }
   bankEl.innerText = myMoney;
   if (bankOverlayEl) bankOverlayEl.innerText = myMoney;
+  setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
+  setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);
   setText("profBank", "$" + myMoney);
   setText("profWPM", (myStats.wpm || 0) + " WPM");
@@ -788,9 +800,114 @@ export async function saveStats() {
     inventory: myInventory,
     itemToggles: myItemToggles,
     jobs: jobData,
+    loanData,
   });
   updateUI();
 }
+
+function formatLoanStatus(msg, color = "#aaa") {
+  const el = document.getElementById("bankLoanMsg");
+  if (!el) return;
+  el.innerText = msg;
+  el.style.color = color;
+}
+
+function setupLoanUX() {
+  const amountInput = document.getElementById("loanAmount");
+  const takeBtn = document.getElementById("loanTakeBtn");
+  const repayBtn = document.getElementById("loanRepayBtn");
+  if (!amountInput || !takeBtn || !repayBtn) return;
+
+  amountInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      takeLoan();
+    }
+  });
+
+  takeBtn.addEventListener("click", () => takeLoan());
+  repayBtn.addEventListener("click", () => repayLoan());
+}
+
+function takeLoan() {
+  const amountInput = document.getElementById("loanAmount");
+  if (!amountInput) return;
+  if (myName === "ANON") {
+    formatLoanStatus("LOGIN REQUIRED", "#f66");
+    return;
+  }
+  const amount = parseInt(amountInput.value, 10);
+  if (Number.isNaN(amount) || amount < 100) {
+    formatLoanStatus("MIN LOAN IS $100", "#f66");
+    return;
+  }
+
+  const randomRate = (Math.floor(Math.random() * 36) + 25) / 100;
+  const now = Date.now();
+  loanData.debt = (loanData.debt || 0) + amount;
+  loanData.rate = randomRate;
+  loanData.lastInterestAt = now;
+  myMoney += amount;
+  logTransaction(`AGGRESSIVE LOAN @ ${Math.round(randomRate * 100)}%`, amount);
+  formatLoanStatus(`LOAN APPROVED: +$${amount} @ ${Math.round(randomRate * 100)}%`, "#f80");
+  amountInput.value = "";
+  updateUI();
+  saveStats();
+}
+
+function repayLoan() {
+  if (!loanData.debt || loanData.debt <= 0) {
+    formatLoanStatus("NO ACTIVE LOAN", "#aaa");
+    return;
+  }
+  const pay = Math.min(myMoney, Math.ceil(loanData.debt));
+  if (pay <= 0) {
+    formatLoanStatus("NOT ENOUGH CASH TO REPAY", "#f66");
+    return;
+  }
+
+  loanData.debt = Math.max(0, loanData.debt - pay);
+  myMoney -= pay;
+  logTransaction("LOAN REPAYMENT", -pay);
+  if (loanData.debt <= 0) {
+    loanData.debt = 0;
+    loanData.rate = 0;
+    loanData.lastInterestAt = 0;
+    formatLoanStatus("DEBT CLEARED", "#0f0");
+  } else {
+    formatLoanStatus(`PAID $${pay}. REMAINING: $${Math.ceil(loanData.debt)}`, "#ff0");
+  }
+  updateUI();
+  saveStats();
+}
+
+function applyLoanInterestTick() {
+  if (myName === "ANON") return;
+  if (!loanData.debt || loanData.debt <= 0 || !loanData.rate) return;
+  const now = Date.now();
+  const last = loanData.lastInterestAt || now;
+  const elapsed = now - last;
+  const tickMs = 15000;
+  if (elapsed < tickMs) return;
+
+  const cycles = Math.floor(elapsed / tickMs);
+  let debt = loanData.debt;
+  for (let i = 0; i < cycles; i++) {
+    const spike = 1 + loanData.rate * (0.7 + Math.random() * 0.9);
+    debt *= spike;
+  }
+  const growth = Math.round(debt - loanData.debt);
+  loanData.debt = debt;
+  loanData.lastInterestAt = last + cycles * tickMs;
+  logTransaction("LOAN INTEREST SPIKE", -growth);
+  formatLoanStatus(`INTEREST HIT: +$${growth} DEBT`, "#f66");
+  updateUI();
+  saveStats();
+}
+
+setInterval(() => {
+  applyLoanInterestTick();
+}, 3000);
 
 // Send money to another player account using a transaction for consistency.
 function setupBankTransferUX() {

@@ -273,6 +273,26 @@
           <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
           <div id="bankTransferMsg" class="bank-transfer-msg"></div>
         </div>
+        <div class="bank-loan">
+          <div class="bank-loan-title">HIGH-RISK LOANS</div>
+          <div class="bank-loan-stats">
+            <span>DEBT: <strong id="loanDebt">$0</strong></span>
+            <span>RATE: <strong id="loanRate">0%</strong></span>
+          </div>
+          <input
+            class="term-input bank-transfer-input"
+            id="loanAmount"
+            type="number"
+            min="100"
+            step="50"
+            placeholder="LOAN AMOUNT ($100 MIN)"
+          />
+          <div class="bank-loan-actions">
+            <button class="term-btn" id="loanTakeBtn">TAKE LOAN</button>
+            <button class="term-btn" id="loanRepayBtn">REPAY ALL</button>
+          </div>
+          <div id="bankLoanMsg" class="bank-transfer-msg"></div>
+        </div>
         <div class="bank-log" id="bankLog"></div>
         <button
           class="term-btn"
