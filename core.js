@@ -46,6 +46,8 @@ let myMoney = 1000;
 let myStats = { games: 0, wpm: 0, wins: 0 };
 let myAchievements = [];
 let myInventory = [];
+let myJoined = 0;
+let myItemToggles = {};
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
@@ -96,6 +98,12 @@ export const state = {
   },
   set myInventory(value) {
     myInventory = value;
+  },
+  get myItemToggles() {
+    return myItemToggles;
+  },
+  set myItemToggles(value) {
+    myItemToggles = value;
   },
   get transactionLog() {
     return transactionLog;
@@ -152,6 +160,27 @@ export const firebase = {
   deleteDoc,
   getDocs
 };
+
+export function hasActiveItem(id) {
+  const owned = myInventory.includes(id);
+  if (!owned) return false;
+  return myItemToggles[id] !== false;
+}
+
+function setItemToggle(id, enabled) {
+  if (!myInventory.includes(id)) return;
+  myItemToggles[id] = enabled;
+}
+
+function applyOwnedVisuals() {
+  const rainbowEnabled = hasActiveItem("item_rainbow");
+  document.body.classList.toggle("rainbow-mode", rainbowEnabled);
+
+  const flappyEnabled = hasActiveItem("item_flappy");
+  document.getElementById("btnFlappy").style.display = flappyEnabled
+    ? "block"
+    : "none";
+}
 
 // Achievements metadata (UI + reward tracking).
 const ACHIEVEMENTS = [
@@ -611,6 +640,28 @@ function getRank(money) {
   return "KINGPIN";
 }
 
+function getRankProgress(money) {
+  const tiers = [
+    { label: "RAT", min: 0, max: 500 },
+    { label: "SCRIPT KIDDIE", min: 500, max: 2000 },
+    { label: "HACKER", min: 2000, max: 5000 },
+    { label: "GOONER", min: 5000, max: 10000 },
+    { label: "CYBER LORD", min: 10000, max: 50000 },
+    { label: "KINGPIN", min: 50000, max: Infinity },
+  ];
+  const currentTier = tiers.find((tier) => money >= tier.min && money < tier.max) || tiers[0];
+  if (!Number.isFinite(currentTier.max)) {
+    return { label: "MAX RANK UNLOCKED", pct: 100 };
+  }
+  const span = currentTier.max - currentTier.min;
+  const earned = money - currentTier.min;
+  const pct = Math.max(0, Math.min(100, Math.round((earned / span) * 100)));
+  return {
+    label: `$${Math.max(0, currentTier.max - money)} TO ${tiers[tiers.indexOf(currentTier) + 1].label}`,
+    pct,
+  };
+}
+
 // Populate local state from stored profile data.
 function loadProfile(data) {
   myName = data.name;
@@ -618,19 +669,18 @@ function loadProfile(data) {
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
-  jobData =
-    data.jobs ||
-    { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
+  myJoined = data.joined || 0;
+  myItemToggles = data.itemToggles || {};
+  jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   updateUI();
   document.getElementById("overlayLogin").classList.remove("active");
   localStorage.setItem("goonerUser", myName);
   localStorage.setItem("goonerPin", data.pin);
-  if (myInventory.includes("item_matrix")) {
+  if (hasActiveItem("item_matrix")) {
     setMatrixMode(true);
     document.documentElement.style.setProperty("--accent", "#00ff00");
   }
-  if (myInventory.includes("item_rainbow")) document.body.classList.add("rainbow-mode");
-  if (myInventory.includes("item_flappy")) document.getElementById("btnFlappy").style.display = "block";
+  applyOwnedVisuals();
   const lastLogin = data.lastLogin || 0;
   const now = Date.now();
   if (now - lastLogin > 86400000) {
@@ -657,10 +707,18 @@ function updateUI() {
   setText("profBank", "$" + myMoney);
   setText("profWPM", (myStats.wpm || 0) + " WPM");
   setText("profGames", myStats.games || 0);
+  setText("profWins", myStats.wins || 0);
+  setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
+  setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
   const rank = getRank(myMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
+  setText("profSummaryRank", "[" + rank + "]");
+  const rankProgress = getRankProgress(myMoney);
+  setText("profProgressLabel", rankProgress.label);
+  const progressFill = document.getElementById("profProgressFill");
+  if (progressFill) progressFill.style.width = `${rankProgress.pct}%`;
   if (myMoney >= 5000) unlockAchievement("diamond_hands");
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
@@ -704,6 +762,7 @@ export async function saveStats() {
     stats: myStats,
     achievements: myAchievements,
     inventory: myInventory,
+    itemToggles: myItemToggles,
     jobs: jobData,
   });
   updateUI();
@@ -799,6 +858,7 @@ export async function tradeMoney() {
 
 // Consume exactly one shield charge if available.
 export function consumeShield() {
+  if (!hasActiveItem("item_shield")) return false;
   const shieldIndex = myInventory.indexOf("item_shield");
   if (shieldIndex === -1) return false;
   myInventory.splice(shieldIndex, 1);
@@ -1147,19 +1207,29 @@ function renderShop() {
   SHOP_ITEMS.forEach((item) => {
     const div = document.createElement("div");
     div.className = "shop-item";
+    const ownedCount = myInventory.filter((ownedId) => ownedId === item.id).length;
+    const isOwned = ownedCount > 0;
+    const isEnabled = hasActiveItem(item.id);
     let label = "$" + item.cost;
     let btnText = "BUY";
     let disabled = myMoney < item.cost;
-    if (myInventory.includes(item.id) && item.type !== "consumable") {
-      label = "OWNED";
-      btnText = "ACTIVE";
-      disabled = true;
+    if (isOwned) {
+      label = item.type === "consumable" ? `OWNED x${ownedCount}` : "OWNED";
+      if (item.type !== "consumable") {
+        btnText = "OWNED";
+        disabled = true;
+      }
     }
+    const toggleBtn = isOwned
+      ? `<button class="shop-toggle-btn" onclick="window.toggleItem('${item.id}')">${
+          isEnabled ? "ON" : "OFF"
+        }</button>`
+      : "";
     div.innerHTML = `<div>${item.name}<div style="font-size:8px;opacity:0.7">${
       item.desc
-    }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><button class="shop-buy-btn" onclick="window.buyItem('${
+    }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><div class="shop-item-actions"><button class="shop-buy-btn" onclick="window.buyItem('${
       item.id
-    }')" ${disabled ? "disabled" : ""}>${btnText}</button></div>`;
+    }')" ${disabled ? "disabled" : ""}>${btnText}</button>${toggleBtn}</div></div>`;
     list.appendChild(div);
   });
 }
@@ -1169,11 +1239,10 @@ export function buyItem(id) {
   const item = SHOP_ITEMS.find((i) => i.id === id);
   if (myMoney >= item.cost) {
     myMoney -= item.cost;
-    if (item.type !== "consumable") myInventory.push(id);
-    else myInventory.push(id);
-    if (id === "item_rainbow") document.body.classList.add("rainbow-mode");
+    myInventory.push(id);
+    setItemToggle(id, true);
+    applyOwnedVisuals();
     if (id === "item_flappy") {
-      document.getElementById("btnFlappy").style.display = "block";
       showToast("NEW GAME UNLOCKED", "🎮");
     }
     if (myInventory.filter((i) => i !== "item_shield").length >= 3) {
@@ -1191,6 +1260,21 @@ export function buyItem(id) {
     playSuccessSound();
     showToast(`BOUGHT: ${item.name}`, "🛒");
   }
+}
+
+export function toggleItem(id) {
+  if (!myInventory.includes(id)) return;
+  const enabled = !hasActiveItem(id);
+  setItemToggle(id, enabled);
+  if (id === "item_matrix" && !enabled) {
+    setMatrixMode(false);
+  }
+  applyOwnedVisuals();
+  updateMatrixToggle();
+  saveStats();
+  renderShop();
+  const itemName = SHOP_ITEMS.find((item) => item.id === id)?.name || "ITEM";
+  showToast(`${enabled ? "ENABLED" : "DISABLED"}: ${itemName}`, enabled ? "🟢" : "🔴");
 }
 
 // Display a toast notification with optional subtitle.
@@ -1260,14 +1344,14 @@ function updateMatrixToggle() {
   const toggle = document.getElementById("matrixToggle");
   const canvas = document.getElementById("matrixCanvas");
   if (!toggle || !canvas) return;
-  const hasAccess = myInventory.includes("item_matrix");
+  const hasAccess = hasActiveItem("item_matrix");
   const enabled = canvas.classList.contains("active");
   toggle.disabled = !hasAccess;
   toggle.innerText = hasAccess ? (enabled ? "ON" : "OFF") : "LOCKED";
 }
 // Toggle Matrix mode on user click (if unlocked).
 document.getElementById("matrixToggle").onclick = () => {
-  if (!myInventory.includes("item_matrix")) {
+  if (!hasActiveItem("item_matrix")) {
     showToast("MATRIX LOCKED", "🔒", "Buy Matrix Mode in the shop.");
     updateMatrixToggle();
     return;
@@ -1334,6 +1418,7 @@ document.addEventListener("keydown", (e) => {
 function activateMatrixHack() {
   if (myName === "ANON") return alert("LOGIN FIRST");
   if (!myInventory.includes("item_matrix")) myInventory.push("item_matrix");
+  setItemToggle("item_matrix", true);
   document.documentElement.style.setProperty("--accent", "#00ff00");
   setMatrixMode(true);
   showToast("MATRIX MODE ACTIVATED", "🐇");
