@@ -57,6 +57,9 @@ let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
+const GLOBAL_MARKET_COLLECTION = "gooner_meta";
+const GLOBAL_MARKET_DOC_ID = "stock_market";
+const STOCK_TICK_MS = 2000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
@@ -586,19 +589,156 @@ const STOCK_SYMBOLS = [
   { symbol: "PUMP", name: "PUMP CAPITAL" },
 ];
 
-const marketState = {
-  stocks: STOCK_SYMBOLS.map((entry) => {
-    const start = Math.floor(Math.random() * 120) + 40;
+const STOCK_BASE_PRICES = {
+  GOON: 140,
+  MEME: 92,
+  BYTE: 118,
+  NOVA: 76,
+  PUMP: 64,
+};
+
+let stopMarketSync = null;
+
+function buildInitialStockState() {
+  return STOCK_SYMBOLS.map((entry) => {
+    const start = STOCK_BASE_PRICES[entry.symbol] || 100;
     return {
       ...entry,
       price: start,
-      history: Array.from({ length: 40 }, (_, i) =>
-        Number((start * (0.94 + (i / 40) * 0.12)).toFixed(2))
-      ),
+      history: Array.from({ length: 40 }, (_, i) => {
+        const angle = (i / 39) * Math.PI * 2;
+        return Number((start * (1 + Math.sin(angle) * 0.05)).toFixed(2));
+      }),
       lastMove: 0,
     };
-  }),
+  });
+}
+
+const marketState = {
+  stocks: buildInitialStockState(),
 };
+
+function marketDocRef() {
+  return doc(db, GLOBAL_MARKET_COLLECTION, GLOBAL_MARKET_DOC_ID);
+}
+
+function normalizeMarketStocks(inputStocks = []) {
+  const bySymbol = new Map();
+  inputStocks.forEach((stock) => {
+    if (!stock?.symbol) return;
+    bySymbol.set(String(stock.symbol).toUpperCase(), stock);
+  });
+
+  return STOCK_SYMBOLS.map((entry) => {
+    const source = bySymbol.get(entry.symbol) || {};
+    const parsedPrice = Number(source.price);
+    const price = Number.isFinite(parsedPrice) ? Math.max(3, parsedPrice) : (STOCK_BASE_PRICES[entry.symbol] || 100);
+    const parsedHistory = Array.isArray(source.history)
+      ? source.history.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0)
+      : [];
+    const history = (parsedHistory.length ? parsedHistory : [price]).slice(-80).map((value) => Number(value.toFixed(2)));
+    const parsedMove = Number(source.lastMove);
+    return {
+      ...entry,
+      price: Number(price.toFixed(2)),
+      history,
+      lastMove: Number.isFinite(parsedMove) ? parsedMove : 0,
+    };
+  });
+}
+
+function getInitialMarketPayload() {
+  return {
+    version: 1,
+    updatedAt: Date.now(),
+    lastTickAt: Date.now(),
+    stocks: buildInitialStockState().map((stock) => ({
+      symbol: stock.symbol,
+      price: stock.price,
+      history: stock.history,
+      lastMove: stock.lastMove,
+    })),
+  };
+}
+
+function applyMarketPayload(payload) {
+  const stocks = normalizeMarketStocks(payload?.stocks);
+  marketState.stocks = stocks;
+  if (document.getElementById("overlayBank")?.classList.contains("active")) {
+    renderStockMarket();
+  }
+}
+
+function evolveMarketStocks(stocks) {
+  return stocks.map((stock) => {
+    const drift = (Math.random() - 0.49) * 0.09;
+    const momentum = (Number(stock.lastMove) || 0) * 0.35;
+    const swing = (Math.random() - 0.5) * 0.04;
+    const current = Math.max(3, Number(stock.price) || 3);
+    const next = Math.max(3, current * (1 + drift + momentum + swing));
+    const lastMove = (next - current) / current;
+    const history = [...(Array.isArray(stock.history) ? stock.history : []), Number(next.toFixed(2))].slice(-80);
+    return {
+      ...stock,
+      price: Number(next.toFixed(2)),
+      lastMove,
+      history,
+    };
+  });
+}
+
+async function ensureGlobalMarket() {
+  const ref = marketDocRef();
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    applyMarketPayload(snap.data());
+    return;
+  }
+  const initial = getInitialMarketPayload();
+  await setDoc(ref, initial).catch(() => {});
+  applyMarketPayload(initial);
+}
+
+function subscribeToGlobalMarket() {
+  if (stopMarketSync) return;
+  const ref = marketDocRef();
+  stopMarketSync = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    applyMarketPayload(snap.data());
+  }, () => {});
+}
+
+async function tickStockMarket() {
+  const ref = marketDocRef();
+  try {
+    await runTransaction(db, async (t) => {
+      const snap = await t.get(ref);
+      const payload = snap.exists() ? snap.data() : getInitialMarketPayload();
+      const normalizedStocks = normalizeMarketStocks(payload.stocks);
+      const now = Date.now();
+      const lastTick = Number(payload.lastTickAt) || 0;
+      if (now - lastTick < STOCK_TICK_MS) return;
+      const evolvedStocks = evolveMarketStocks(normalizedStocks);
+      t.set(ref, {
+        version: 1,
+        updatedAt: now,
+        lastTickAt: now,
+        stocks: evolvedStocks.map((stock) => ({
+          symbol: stock.symbol,
+          price: stock.price,
+          history: stock.history,
+          lastMove: stock.lastMove,
+        })),
+      });
+    });
+  } catch {
+    // Keep gameplay responsive offline by simulating locally until sync recovers.
+    marketState.stocks = evolveMarketStocks(marketState.stocks);
+    if (document.getElementById("overlayBank")?.classList.contains("active")) {
+      renderStockMarket();
+    }
+  }
+}
 
 function getStock(symbol) {
   return marketState.stocks.find((stock) => stock.symbol === symbol) || marketState.stocks[0];
@@ -626,23 +766,6 @@ function getPortfolioValue() {
 
 function formatStockMoney(value) {
   return `$${Number(value || 0).toFixed(2)}`;
-}
-
-function tickStockMarket() {
-  marketState.stocks.forEach((stock) => {
-    const drift = (Math.random() - 0.49) * 0.09;
-    const momentum = stock.lastMove * 0.35;
-    const swing = (Math.random() - 0.5) * 0.04;
-    const next = Math.max(3, stock.price * (1 + drift + momentum + swing));
-    stock.lastMove = (next - stock.price) / stock.price;
-    stock.price = Number(next.toFixed(2));
-    stock.history.push(stock.price);
-    if (stock.history.length > 80) stock.history.shift();
-  });
-
-  if (document.getElementById("overlayBank")?.classList.contains("active")) {
-    renderStockMarket();
-  }
 }
 
 function drawStockGraph(stock) {
@@ -872,9 +995,11 @@ initAuth();
 setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
-onAuthStateChanged(auth, (u) => {
+onAuthStateChanged(auth, async (u) => {
   if (u) {
     myUid = u.uid;
+    await ensureGlobalMarket();
+    subscribeToGlobalMarket();
     initChat();
   }
 });
@@ -1177,27 +1302,62 @@ export async function adminMaxPortfolio() {
   await saveStats();
 }
 
-function setMarketShift(multiplier) {
-  marketState.stocks.forEach((stock) => {
-    const next = Math.max(3, Number((stock.price * multiplier).toFixed(2)));
-    stock.lastMove = (next - stock.price) / (stock.price || 1);
-    stock.price = next;
-    stock.history.push(next);
-    if (stock.history.length > 80) stock.history.shift();
-  });
-  renderStockMarket();
+async function setMarketShift(multiplier) {
+  const ref = marketDocRef();
+  try {
+    await runTransaction(db, async (t) => {
+      const snap = await t.get(ref);
+      const payload = snap.exists() ? snap.data() : getInitialMarketPayload();
+      const shifted = normalizeMarketStocks(payload.stocks).map((stock) => {
+        const current = Math.max(3, Number(stock.price) || 3);
+        const next = Math.max(3, Number((current * multiplier).toFixed(2)));
+        const history = [...(Array.isArray(stock.history) ? stock.history : []), next].slice(-80);
+        return {
+          ...stock,
+          price: next,
+          lastMove: (next - current) / current,
+          history,
+        };
+      });
+      const now = Date.now();
+      t.set(ref, {
+        version: 1,
+        updatedAt: now,
+        lastTickAt: now,
+        stocks: shifted.map((stock) => ({
+          symbol: stock.symbol,
+          price: stock.price,
+          history: stock.history,
+          lastMove: stock.lastMove,
+        })),
+      });
+    });
+  } catch {
+    marketState.stocks = normalizeMarketStocks(marketState.stocks).map((stock) => {
+      const current = Math.max(3, Number(stock.price) || 3);
+      const next = Math.max(3, Number((current * multiplier).toFixed(2)));
+      const history = [...(Array.isArray(stock.history) ? stock.history : []), next].slice(-80);
+      return {
+        ...stock,
+        price: next,
+        lastMove: (next - current) / current,
+        history,
+      };
+    });
+    renderStockMarket();
+  }
 }
 
 export async function adminMarketMoonshot() {
   if (!isGodUser()) return;
-  setMarketShift(1.35);
+  await setMarketShift(1.35);
   showToast("MARKET SENT TO THE MOON", "🚀");
   await saveStats();
 }
 
 export async function adminMarketMeltdown() {
   if (!isGodUser()) return;
-  setMarketShift(0.55);
+  await setMarketShift(0.55);
   showToast("MARKET MELTDOWN TRIGGERED", "💥");
   await saveStats();
 }
