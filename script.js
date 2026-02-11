@@ -14,6 +14,13 @@ import {
   submitJob,
   state,
   adminGrantCash,
+  adminSetMaxCash,
+  adminGrantAllShopItems,
+  adminClearDebtAndCooldowns,
+  adminBoostStats,
+  adminMaxPortfolio,
+  adminPrestigePack,
+  adminBanWave,
   adminUnlockAllAchievements,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
@@ -39,6 +46,13 @@ window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 window.adminGrantCash = adminGrantCash;
+window.adminSetMaxCash = adminSetMaxCash;
+window.adminGrantAllShopItems = adminGrantAllShopItems;
+window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
+window.adminBoostStats = adminBoostStats;
+window.adminMaxPortfolio = adminMaxPortfolio;
+window.adminPrestigePack = adminPrestigePack;
+window.adminBanWave = adminBanWave;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
