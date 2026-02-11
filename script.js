@@ -22,6 +22,8 @@ import {
   adminMaxPortfolio,
   adminMarketMoonshot,
   adminMarketMeltdown,
+  adminMarketCrashToZero,
+  adminMarketTimesThousand,
   adminPrestigePack,
   adminBanWave,
   adminUnlockAllAchievements,
@@ -57,6 +59,8 @@ window.adminBoostStats = adminBoostStats;
 window.adminMaxPortfolio = adminMaxPortfolio;
 window.adminMarketMoonshot = adminMarketMoonshot;
 window.adminMarketMeltdown = adminMarketMeltdown;
+window.adminMarketCrashToZero = adminMarketCrashToZero;
+window.adminMarketTimesThousand = adminMarketTimesThousand;
 window.adminPrestigePack = adminPrestigePack;
 window.adminBanWave = adminBanWave;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;

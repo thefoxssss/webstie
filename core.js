@@ -1302,20 +1302,22 @@ export async function adminMaxPortfolio() {
   await saveStats();
 }
 
-async function setMarketShift(multiplier) {
+async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = minimumPrice) {
   const ref = marketDocRef();
+  const floor = Math.max(0, Number(minimumPrice) || 0);
+  const fallback = Math.max(floor, Number(fallbackPrice) || floor);
   try {
     await runTransaction(db, async (t) => {
       const snap = await t.get(ref);
       const payload = snap.exists() ? snap.data() : getInitialMarketPayload();
       const shifted = normalizeMarketStocks(payload.stocks).map((stock) => {
-        const current = Math.max(3, Number(stock.price) || 3);
-        const next = Math.max(3, Number((current * multiplier).toFixed(2)));
+        const current = Math.max(floor, Number(stock.price) || fallback);
+        const next = Math.max(floor, Number((current * multiplier).toFixed(2)));
         const history = [...(Array.isArray(stock.history) ? stock.history : []), next].slice(-80);
         return {
           ...stock,
           price: next,
-          lastMove: (next - current) / current,
+          lastMove: current > 0 ? (next - current) / current : 0,
           history,
         };
       });
@@ -1334,13 +1336,13 @@ async function setMarketShift(multiplier) {
     });
   } catch {
     marketState.stocks = normalizeMarketStocks(marketState.stocks).map((stock) => {
-      const current = Math.max(3, Number(stock.price) || 3);
-      const next = Math.max(3, Number((current * multiplier).toFixed(2)));
+      const current = Math.max(floor, Number(stock.price) || fallback);
+      const next = Math.max(floor, Number((current * multiplier).toFixed(2)));
       const history = [...(Array.isArray(stock.history) ? stock.history : []), next].slice(-80);
       return {
         ...stock,
         price: next,
-        lastMove: (next - current) / current,
+        lastMove: current > 0 ? (next - current) / current : 0,
         history,
       };
     });
@@ -1359,6 +1361,20 @@ export async function adminMarketMeltdown() {
   if (!isGodUser()) return;
   await setMarketShift(0.55);
   showToast("MARKET MELTDOWN TRIGGERED", "💥");
+  await saveStats();
+}
+
+export async function adminMarketCrashToZero() {
+  if (!isGodUser()) return;
+  await setMarketShift(0, 0.01, 0.01);
+  showToast("MARKET CRASHED TO ZERO", "📉");
+  await saveStats();
+}
+
+export async function adminMarketTimesThousand() {
+  if (!isGodUser()) return;
+  await setMarketShift(1000, 0.01, 1);
+  showToast("MARKET MULTIPLIED x1000", "📈");
   await saveStats();
 }
 
