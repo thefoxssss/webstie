@@ -325,6 +325,26 @@
           </div>
           <div id="bankLoanMsg" class="bank-transfer-msg"></div>
         </div>
+        <div class="stock-market">
+          <div class="stock-market-header">
+            <div>SIM STOCK MARKET</div>
+            <div id="stockPortfolioValue">PORTFOLIO: $0</div>
+          </div>
+          <div class="stock-market-grid">
+            <div id="stockList" class="stock-list"></div>
+            <div class="stock-detail">
+              <div id="stockDetailName" class="stock-detail-title">SELECT A STOCK</div>
+              <div id="stockDetailPrice" class="stock-detail-price">$0.00</div>
+              <canvas id="stockChart" width="420" height="170"></canvas>
+              <div id="stockDetailMeta" class="stock-detail-meta">NO DATA</div>
+              <div class="stock-actions">
+                <button class="term-btn" id="stockBuyBtn">BUY 1</button>
+                <button class="term-btn" id="stockSellBtn">SELL 1</button>
+              </div>
+              <div id="stockTradeMsg" class="bank-transfer-msg"></div>
+            </div>
+          </div>
+        </div>
         <div class="bank-log" id="bankLog"></div>
         <button
           class="term-btn"
