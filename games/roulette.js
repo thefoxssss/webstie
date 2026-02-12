@@ -6,6 +6,11 @@ const ROULETTE_NUMBERS = [
   5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
 ];
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const WHEEL_COLOR_MAP = {
+  red: "#a11a1a",
+  black: "#1f1f1f",
+  green: "#0c8b3e",
+};
 
 let wheelEl;
 let historyEl;
@@ -28,6 +33,17 @@ function getNumberColor(number) {
 
 function getTotalBet() {
   return bets.red + bets.black + bets.green;
+}
+
+function buildWheelGradient() {
+  const sliceAngle = 360 / ROULETTE_NUMBERS.length;
+  const colorStops = ROULETTE_NUMBERS.map((number, idx) => {
+    const color = getNumberColor(number);
+    const start = (idx * sliceAngle).toFixed(2);
+    const end = ((idx + 1) * sliceAngle).toFixed(2);
+    return `${WHEEL_COLOR_MAP[color]} ${start}deg ${end}deg`;
+  }).join(",\n    ");
+  return `conic-gradient(\n    ${colorStops}\n  )`;
 }
 
 function updateBank() {
@@ -136,7 +152,7 @@ function spin() {
   const winningNumber = ROULETTE_NUMBERS[winningIndex];
   const winningColor = getNumberColor(winningNumber);
   const sliceAngle = 360 / ROULETTE_NUMBERS.length;
-  const targetAngle = -(winningIndex * sliceAngle);
+  const targetAngle = -((winningIndex + 0.5) * sliceAngle);
   const currentBase = Math.floor(wheelRotation / 360) * 360;
   wheelRotation = currentBase - 1800 + targetAngle;
 
@@ -158,8 +174,9 @@ function bindWheelNumbers() {
   ROULETTE_NUMBERS.forEach((num, idx) => {
     const marker = document.createElement("div");
     marker.className = "roulette-marker";
-    marker.style.transform = `rotate(${(idx * 360) / ROULETTE_NUMBERS.length}deg)`;
-    marker.innerHTML = `<span>${num}</span>`;
+    marker.style.transform = `rotate(${((idx + 0.5) * 360) / ROULETTE_NUMBERS.length}deg)`;
+    const color = getNumberColor(num);
+    marker.innerHTML = `<span class="${color}">${num}</span>`;
     ring.appendChild(marker);
   });
 }
@@ -176,6 +193,7 @@ export function initRoulette() {
   if (!wheelEl || !historyEl || !messageEl || !betInputEl || !spinButtonEl || !clearButtonEl) return;
 
   bindWheelNumbers();
+  wheelEl.style.background = buildWheelGradient();
   wheelEl.style.transitionDuration = "0ms";
   wheelEl.style.transform = `rotate(${wheelRotation}deg)`;
   betInputEl.value = betAmount;
