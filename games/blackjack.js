@@ -514,7 +514,6 @@ function calcHand(h) {
   let s = 0;
   let a = 0;
   h.forEach((c) => {
-    if (c.h) return;
     if (["J", "Q", "K"].includes(c.v)) s += 10;
     else if (c.v === "A") {
       s += 11;
