@@ -1717,7 +1717,8 @@ canvas {
 .roulette-wheel-wrap {
   position: relative;
   width: min(82vw, 360px);
-  height: min(82vw, 360px);
+  aspect-ratio: 1 / 1;
+  height: auto;
   margin: 8px auto 12px;
 }
 
@@ -1738,6 +1739,7 @@ canvas {
 .roulette-wheel-rim {
   position: absolute;
   inset: 0;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   border: 8px solid #111;
   box-shadow:
@@ -1749,6 +1751,7 @@ canvas {
 .roulette-wheel {
   position: absolute;
   inset: 10px;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   overflow: hidden;
   z-index: 2;
