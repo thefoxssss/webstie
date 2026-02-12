@@ -25,7 +25,9 @@ import {
   adminMarketCrashToZero,
   adminMarketTimesThousand,
   adminPrestigePack,
-  adminBanWave,
+  adminRefreshTargetUsers,
+  adminGrantCashToUser,
+  adminForgiveInterestForUser,
   adminUnlockAllAchievements,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
@@ -64,7 +66,9 @@ window.adminMarketMeltdown = adminMarketMeltdown;
 window.adminMarketCrashToZero = adminMarketCrashToZero;
 window.adminMarketTimesThousand = adminMarketTimesThousand;
 window.adminPrestigePack = adminPrestigePack;
-window.adminBanWave = adminBanWave;
+window.adminRefreshTargetUsers = adminRefreshTargetUsers;
+window.adminGrantCashToUser = adminGrantCashToUser;
+window.adminForgiveInterestForUser = adminForgiveInterestForUser;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 
 // Launch a game by name, activate its overlay, and kick off its init routine.

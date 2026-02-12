@@ -99,6 +99,25 @@
         </p>
         <div class="admin-actions">
           <div class="admin-section">
+            <p class="admin-section-title">TARGETED ACTIONS</p>
+            <select class="term-input" id="adminTargetUser">
+              <option value="">SELECT USER</option>
+            </select>
+            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">
+              REFRESH USER LIST
+            </button>
+            <button class="term-btn" onclick="window.adminGrantCashToUser(1000)">
+              GIVE SELECTED USER +$1,000
+            </button>
+            <button class="term-btn" onclick="window.adminGrantCashToUser(10000)">
+              GIVE SELECTED USER +$10,000
+            </button>
+            <button class="term-btn" onclick="window.adminForgiveInterestForUser()">
+              FORGIVE INTEREST (SELECTED USER)
+            </button>
+          </div>
+
+          <div class="admin-section">
             <p class="admin-section-title">ECONOMY</p>
             <button class="term-btn" onclick="window.adminGrantCash(1000)">
               GRANT +$1,000
@@ -155,12 +174,6 @@
             </button>
           </div>
 
-          <div class="admin-section admin-section-danger">
-            <p class="admin-section-title">ACCOUNT ENFORCEMENT</p>
-            <button class="term-btn" onclick="window.adminBanWave()">
-              BAN WAVE (DELETE ALL NON-GOD ACCOUNTS)
-            </button>
-          </div>
         </div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
           CLOSE
