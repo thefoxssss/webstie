@@ -39,6 +39,7 @@ import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
 import { initRoulette } from "./games/roulette.js";
+import { initBonkArena } from "./games/bonkarena.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -87,6 +88,7 @@ window.launchGame = (game) => {
   if (game === "flappy") initFlappy();
   if (game === "dodge") initDodge();
   if (game === "roulette") initRoulette();
+  if (game === "bonk") initBonkArena();
   unlockAchievement("noob");
 };
 

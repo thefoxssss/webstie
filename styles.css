@@ -1967,3 +1967,43 @@ canvas {
   gap: 8px;
   margin-top: 10px;
 }
+
+/* --- BONK ARENA --- */
+.bonk-sub {
+  font-size: 10px;
+  margin-bottom: 16px;
+  opacity: 0.9;
+}
+
+.bonk-wrap {
+  width: min(840px, 95vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.bonk-hud {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#baCanvas {
+  width: min(780px, 94vw);
+  height: auto;
+  max-height: 62vh;
+  border: 2px solid var(--accent);
+  background: radial-gradient(circle at 50% 45%, #111 0%, #050505 65%);
+  box-shadow: 0 0 20px var(--accent-dim);
+}
+
+.bonk-winner {
+  min-height: 18px;
+  font-size: 13px;
+  color: #00ff9d;
+}

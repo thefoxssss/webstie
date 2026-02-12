@@ -80,6 +80,7 @@
       </button>
       <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
       <button onclick="window.launchGame('hangman')">HANGMAN (PVP)</button>
+      <button onclick="window.launchGame('bonk')">BONK ARENA (PVP)</button>
       <button
         onclick="window.launchGame('flappy')"
         id="btnFlappy"
@@ -1124,6 +1125,49 @@
           </div>
         </div>
       </div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Firebase multiplayer physics arena game. -->
+    <div class="overlay" id="overlayBonk">
+      <h1>BONK ARENA</h1>
+      <div class="bonk-sub">CUSTOM MULTIPLAYER PHYSICS BRAWL</div>
+
+      <div id="baMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateBA">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input
+          type="text"
+          id="joinBACode"
+          class="term-input"
+          placeholder="ROOM CODE"
+          maxlength="4"
+        />
+        <button class="term-btn" id="btnJoinBA">JOIN ROOM</button>
+      </div>
+
+      <div id="baLobby" class="menu-box" style="display: none">
+        <h2>ROOM: <span id="baRoomId">----</span></h2>
+        <div id="baPList" style="text-align: left; margin: 16px 0"></div>
+        <button class="term-btn" id="baStartBtn" style="display: none">
+          START ROUND
+        </button>
+        <div id="baLobbyStatus" style="font-size: 10px">WAITING...</div>
+      </div>
+
+      <div id="baGame" class="bonk-wrap" style="display: none">
+        <div class="bonk-hud">
+          <span id="baStatus">SURVIVE</span>
+          <span>RING: <span id="baRadius">230</span></span>
+          <span id="baHint">BUMP ENEMIES OUTSIDE</span>
+        </div>
+        <canvas id="baCanvas" width="780" height="460"></canvas>
+        <div id="baWinner" class="bonk-winner"></div>
+        <button class="menu-btn" id="baReplayBtn">REPLAY (HOST)</button>
+      </div>
+
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>
