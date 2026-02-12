@@ -114,6 +114,7 @@ const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
 const STOCK_TICK_MS = 2000;
+const IS_LOCALHOST = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
@@ -742,6 +743,10 @@ function evolveMarketStocks(stocks) {
 }
 
 async function ensureGlobalMarket() {
+  if (IS_LOCALHOST) {
+    applyMarketPayload(getInitialMarketPayload());
+    return;
+  }
   const ref = marketDocRef();
   const snap = await getDoc(ref);
   if (snap.exists()) {
@@ -754,6 +759,7 @@ async function ensureGlobalMarket() {
 }
 
 function subscribeToGlobalMarket() {
+  if (IS_LOCALHOST) return;
   if (stopMarketSync) return;
   const ref = marketDocRef();
   stopMarketSync = onSnapshot(ref, (snap) => {
@@ -763,34 +769,11 @@ function subscribeToGlobalMarket() {
 }
 
 async function tickStockMarket() {
-  const ref = marketDocRef();
-  try {
-    await runTransaction(db, async (t) => {
-      const snap = await t.get(ref);
-      const payload = snap.exists() ? snap.data() : getInitialMarketPayload();
-      const normalizedStocks = normalizeMarketStocks(payload.stocks);
-      const now = Date.now();
-      const lastTick = Number(payload.lastTickAt) || 0;
-      if (now - lastTick < STOCK_TICK_MS) return;
-      const evolvedStocks = evolveMarketStocks(normalizedStocks);
-      t.set(ref, {
-        version: 1,
-        updatedAt: now,
-        lastTickAt: now,
-        stocks: evolvedStocks.map((stock) => ({
-          symbol: stock.symbol,
-          price: stock.price,
-          history: stock.history,
-          lastMove: stock.lastMove,
-        })),
-      });
-    });
-  } catch {
-    // Keep gameplay responsive offline by simulating locally until sync recovers.
-    marketState.stocks = evolveMarketStocks(marketState.stocks);
-    if (document.getElementById("overlayBank")?.classList.contains("active")) {
-      renderStockMarket();
-    }
+  // Simulate the stock market entirely client-side to avoid high-frequency
+  // Firestore writes from every connected player.
+  marketState.stocks = evolveMarketStocks(marketState.stocks);
+  if (document.getElementById("overlayBank")?.classList.contains("active")) {
+    renderStockMarket();
   }
 }
 
@@ -974,7 +957,7 @@ function tradeStock(isBuy) {
 
 setInterval(() => {
   tickStockMarket();
-}, 2000);
+}, STOCK_TICK_MS);
 
 // Allow games to register a cleanup routine when overlays close.
 export function registerGameStop(stopFn) {
@@ -1039,6 +1022,11 @@ export function updateBankLog() {
 
 // Kick off anonymous auth so we can load/save data immediately.
 const initAuth = async () => {
+  if (IS_LOCALHOST) {
+    myUid = `local-${Date.now().toString(36)}`;
+    await ensureGlobalMarket();
+    return;
+  }
   try {
     await signInAnonymously(auth);
   } catch (e) {
@@ -1051,6 +1039,7 @@ setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
 onAuthStateChanged(auth, async (u) => {
+  if (IS_LOCALHOST) return;
   if (u) {
     myUid = u.uid;
     await ensureGlobalMarket();
