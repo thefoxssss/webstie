@@ -13,6 +13,9 @@ const GRAVITY = 0.65;
 const JUMP_FORCE = 11.5;
 const BUMP_FORCE = 2.3;
 const BOUNCE_RESTITUTION = 0.88;
+const ARROW_SPEED = 11;
+const ARROW_LIFE_TICKS = 55;
+const ABILITY_COOLDOWN_TICKS = 14;
 const START_RADIUS = 280;
 const SHRINK_PER_SEC = 3.1;
 const PLAYER_RADIUS = 16;
@@ -63,6 +66,8 @@ function makePlayer(uid, name, index) {
     vy: 0,
     radius: PLAYER_RADIUS,
     grounded: false,
+    facing: 1,
+    abilityCd: 0,
     alive: true,
     score: 0,
   };
@@ -110,6 +115,8 @@ async function createRoom() {
     startedAt: 0,
     arenaRadius: START_RADIUS,
     winner: "",
+    mode: "classic",
+    projectiles: [],
     players: {
       p1: makePlayer(state.myUid, state.myName, 0),
     },
@@ -121,6 +128,7 @@ async function createRoom() {
 }
 
 async function joinRoomByCode() {
+  if (!state.myUid) return alert("OFFLINE");
   const code = String(document.getElementById("joinBACode").value || "").trim();
   if (!code) return;
   const ref = roomRef(code);
@@ -140,9 +148,9 @@ async function joinRoomByCode() {
     const inputs = data.inputs || {};
     inputs[pid] = { up: false, down: false, left: false, right: false, ts: Date.now() };
     t.update(ref, { players, inputs });
-    myPlayerId = pid;
-  }).then(() => {
-    joinRoom(code, myPlayerId, false);
+    return pid;
+  }).then((pid) => {
+    joinRoom(code, pid, false);
   }).catch((err) => {
     const msg = String(err?.message || "JOIN_FAILED");
     if (msg.includes("ROOM_404")) return alert("ROOM NOT FOUND");
@@ -159,6 +167,8 @@ function joinRoom(code, pid, host) {
   document.getElementById("baMenu").style.display = "none";
   document.getElementById("baLobby").style.display = "flex";
   setText("baRoomId", code);
+  const sel = document.getElementById("baModeSelect");
+  if (sel) sel.disabled = !host;
   subscribeRoom();
 }
 
@@ -198,14 +208,22 @@ function renderState(data) {
     const canStart = isHost && Object.keys(players).length >= 2;
     document.getElementById("baStartBtn").style.display = canStart ? "inline-block" : "none";
     setText("baLobbyStatus", canStart ? "HOST CAN START" : "WAITING FOR PLAYERS");
+    const mode = data.mode || "classic";
+    const sel = document.getElementById("baModeSelect");
+    if (sel) {
+      sel.value = mode;
+      sel.disabled = !isHost;
+    }
+    setText("baModeLabel", `MODE: ${mode.toUpperCase()}`);
     return;
   }
 
   document.getElementById("baLobby").style.display = "none";
   document.getElementById("baGame").style.display = "flex";
   const aliveCount = Object.values(players).filter((p) => p.alive).length;
-  setText("baStatus", aliveCount > 1 ? "BOUNCE + SURVIVE" : "ROUND COMPLETE");
-  setText("baHint", "LEFT/RIGHT TO MOVE • UP TO JUMP • KNOCK OTHERS OUT");
+  const mode = data.mode || "classic";
+  setText("baStatus", aliveCount > 1 ? `${mode.toUpperCase()} • BOUNCE + SURVIVE` : "ROUND COMPLETE");
+  setText("baHint", modeHint(mode));
   setText("baWinner", data.winner ? `WINNER: ${data.winner}` : "");
   setText("baRadius", Math.max(0, Math.floor(data.arenaRadius || 0)));
   drawArena(data);
@@ -244,6 +262,8 @@ function drawArena(data) {
     ctx.fillRect(x, FLOOR_Y + 4, 18, 3);
   }
 
+  drawProjectiles(ctx, drawState.projectiles || []);
+
   Object.entries(drawState.players || {}).forEach(([id, p], idx) => {
     const mine = id === myPlayerId;
     const px = p.x || 0;
@@ -263,6 +283,26 @@ function drawArena(data) {
     ctx.font = "12px 'Roboto Mono'";
     ctx.fillStyle = "#fff";
     ctx.fillText(p.name || id, px - 22, py - bodyH - 20);
+  });
+}
+
+
+function modeHint(mode) {
+  if (mode === "arrows") return "LEFT/RIGHT MOVE • UP JUMP • DOWN SHOOTS ARROWS";
+  if (mode === "grapple") return "LEFT/RIGHT MOVE • UP JUMP • DOWN GRAPPLES ENEMY";
+  return "LEFT/RIGHT TO MOVE • UP TO JUMP • KNOCK OTHERS OUT";
+}
+
+function drawProjectiles(ctx, projectiles) {
+  projectiles.forEach((a) => {
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(Math.atan2(a.vy, a.vx));
+    ctx.fillStyle = "#f5f5f5";
+    ctx.fillRect(-9, -2, 18, 4);
+    ctx.fillStyle = "#ff7070";
+    ctx.fillRect(6, -2, 4, 4);
+    ctx.restore();
   });
 }
 
@@ -297,6 +337,8 @@ async function startRound() {
         vx: 0,
         vy: 0,
         grounded: false,
+        abilityCd: 0,
+        facing: 1,
         alive: true,
       };
     });
@@ -305,6 +347,7 @@ async function startRound() {
       startedAt: Date.now(),
       arenaRadius: START_RADIUS,
       winner: "",
+      projectiles: [],
       players,
     });
   });
@@ -318,6 +361,7 @@ function startHostSim() {
     try {
       await updateDoc(roomRef(roomCode), {
         players: next.players,
+        projectiles: next.projectiles,
         arenaRadius: next.arenaRadius,
         winner: next.winner,
         status: next.status,
@@ -331,6 +375,8 @@ function startHostSim() {
 function simulateTick(data) {
   const players = structuredClone(data.players || {});
   const inputs = data.inputs || {};
+  const mode = data.mode || "classic";
+  const projectiles = structuredClone(data.projectiles || []);
   const radius = Math.max(40, (data.arenaRadius || START_RADIUS) - SHRINK_PER_SEC / 30);
   const { x: cx } = arenaCenter();
   const leftBound = Math.max(LEFT_WALL, cx - radius);
@@ -340,7 +386,10 @@ function simulateTick(data) {
     const p = players[id];
     if (!p.alive) return;
     const input = inputs[id] || {};
+    if (typeof p.abilityCd !== "number") p.abilityCd = 0;
+    if (p.abilityCd > 0) p.abilityCd -= 1;
     simulatePlayerStep(p, input, 1, radius);
+    handleAbility(mode, id, p, input, players, projectiles);
 
     if (p.x - p.radius < leftBound) {
       p.x = leftBound + p.radius;
@@ -382,6 +431,27 @@ function simulateTick(data) {
     }
   }
 
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const arrow = projectiles[i];
+    arrow.x += arrow.vx;
+    arrow.y += arrow.vy;
+    arrow.life -= 1;
+    if (arrow.life <= 0 || arrow.x < LEFT_WALL || arrow.x > RIGHT_WALL || arrow.y < CEIL_Y || arrow.y > FLOOR_Y + 20) {
+      projectiles.splice(i, 1);
+      continue;
+    }
+    for (const id of ids) {
+      const p = players[id];
+      if (!p.alive || id === arrow.owner) continue;
+      const hit = Math.hypot(arrow.x - p.x, arrow.y - (p.y - p.radius)) < p.radius + 5;
+      if (!hit) continue;
+      p.vx += arrow.vx * 0.35;
+      p.vy -= 2.2;
+      projectiles.splice(i, 1);
+      break;
+    }
+  }
+
   ids.forEach((id) => {
     const p = players[id];
     if (!p.alive) return;
@@ -402,13 +472,57 @@ function simulateTick(data) {
     winner = survivors[0]?.name || "NO ONE";
   }
 
-  return { players, arenaRadius: radius, winner, status };
+  return { players, projectiles, arenaRadius: radius, winner, status };
+}
+
+
+function handleAbility(mode, id, player, input, players, projectiles) {
+  if (!input.down || player.abilityCd > 0 || !player.alive) return;
+
+  if (mode === "arrows") {
+    const dir = player.facing || 1;
+    projectiles.push({
+      owner: id,
+      x: player.x + dir * (player.radius + 4),
+      y: player.y - player.radius,
+      vx: dir * ARROW_SPEED + player.vx * 0.35,
+      vy: -0.4,
+      life: ARROW_LIFE_TICKS,
+    });
+    player.abilityCd = ABILITY_COOLDOWN_TICKS;
+    return;
+  }
+
+  if (mode === "grapple") {
+    let target = null;
+    let minDist = 999999;
+    Object.entries(players).forEach(([oid, other]) => {
+      if (oid === id || !other.alive) return;
+      const dist = Math.hypot(other.x - player.x, other.y - player.y);
+      if (dist < minDist) {
+        minDist = dist;
+        target = other;
+      }
+    });
+    if (!target || minDist > 260) {
+      player.abilityCd = 6;
+      return;
+    }
+    const nx = (target.x - player.x) / Math.max(minDist, 1);
+    const ny = (target.y - player.y) / Math.max(minDist, 1);
+    player.vx += nx * 3.2;
+    player.vy += ny * 1.6;
+    target.vx -= nx * 1.5;
+    target.vy -= ny * 0.8;
+    player.abilityCd = ABILITY_COOLDOWN_TICKS;
+  }
 }
 
 function simulatePlayerStep(player, input, dt, radius) {
   const move = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   const control = player.grounded ? MOVE_ACCEL : AIR_CONTROL;
   player.vx += move * control * dt;
+  if (move !== 0) player.facing = move > 0 ? 1 : -1;
   player.vx *= Math.pow(FRICTION, dt);
 
   if (input.up && player.grounded) {
@@ -477,6 +591,15 @@ document.addEventListener("keyup", (e) => onKeyChange(false, e.key));
 document.getElementById("btnCreateBA").onclick = createRoom;
 document.getElementById("btnJoinBA").onclick = joinRoomByCode;
 document.getElementById("baStartBtn").onclick = startRound;
+document.getElementById("baModeSelect").onchange = async (e) => {
+  if (!isHost || !roomCode) return;
+  try {
+    await updateDoc(roomRef(roomCode), { mode: String(e.target.value || "classic"), projectiles: [] });
+  } catch {
+    showToast("MODE UPDATE FAILED", "⚠️");
+  }
+};
+
 document.getElementById("baReplayBtn").onclick = async () => {
   if (!isHost || !roomCode) return;
   await startRound();
