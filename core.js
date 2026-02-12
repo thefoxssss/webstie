@@ -63,7 +63,7 @@ const STOCK_TICK_MS = 2000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
-const GOD_USERS = new Set(["NOOB", "THEFOX"]);
+const GOD_USERS = new Set(["NOOB", "THEFOX", "ICEC"]);
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
