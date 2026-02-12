@@ -423,7 +423,6 @@ document.getElementById("bjDeck").onclick = async () => {
       ns.forEach((s) => {
         if (s) {
           s.hand = [deck.pop(), deck.pop()];
-          if (s.uid === state.myUid) s.hand[1].h = true;
         }
       });
       await updateDoc(ref, { seats: ns, deck: deck, phase: "playing", activeSeat: 0 });
@@ -474,7 +473,6 @@ async function passTurn(ref, curr, seats, deck) {
   let next = curr + 1;
   while (next < 4 && seats[next] === null) next++;
   if (next >= 4) {
-    seats[0].hand[1].h = false;
     let best = 0;
     seats.forEach((s) => {
       if (s && s.status !== "bust") {
@@ -514,7 +512,6 @@ function calcHand(h) {
   let s = 0;
   let a = 0;
   h.forEach((c) => {
-    if (c.h) return;
     if (["J", "Q", "K"].includes(c.v)) s += 10;
     else if (c.v === "A") {
       s += 11;
