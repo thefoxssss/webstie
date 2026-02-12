@@ -18,6 +18,9 @@ const ARROW_LIFE_TICKS = 55;
 const ABILITY_COOLDOWN_TICKS = 14;
 const START_RADIUS = 280;
 const SHRINK_PER_SEC = 3.1;
+const EDGE_PULSE_HZ = 1.8;
+const EDGE_PUSH_ZONE = 86;
+const EDGE_PUSH_FORCE = 1.2;
 const PLAYER_RADIUS = 16;
 const FLOOR_Y = 388;
 const CEIL_Y = 46;
@@ -241,12 +244,26 @@ function drawArena(data) {
   ctx.fillRect(0, 0, cv.width, cv.height);
 
   const safeRadius = drawState.arenaRadius || START_RADIUS;
+  const pulse = getEdgePulse(drawState);
+  const edgeGlowWidth = 16 + pulse * 40;
   const leftBound = Math.max(LEFT_WALL, arenaCenter().x - safeRadius);
   const rightBound = Math.min(RIGHT_WALL, arenaCenter().x + safeRadius);
 
   ctx.fillStyle = "rgba(255, 10, 10, 0.12)";
   ctx.fillRect(LEFT_WALL, CEIL_Y, leftBound - LEFT_WALL, FLOOR_Y - CEIL_Y + 28);
   ctx.fillRect(rightBound, CEIL_Y, RIGHT_WALL - rightBound, FLOOR_Y - CEIL_Y + 28);
+
+  const leftPulse = ctx.createLinearGradient(leftBound, 0, leftBound + edgeGlowWidth, 0);
+  leftPulse.addColorStop(0, `rgba(255, 90, 90, ${0.4 + pulse * 0.35})`);
+  leftPulse.addColorStop(1, "rgba(255, 90, 90, 0)");
+  ctx.fillStyle = leftPulse;
+  ctx.fillRect(leftBound, CEIL_Y, edgeGlowWidth, FLOOR_Y - CEIL_Y);
+
+  const rightPulse = ctx.createLinearGradient(rightBound, 0, rightBound - edgeGlowWidth, 0);
+  rightPulse.addColorStop(0, `rgba(255, 90, 90, ${0.4 + pulse * 0.35})`);
+  rightPulse.addColorStop(1, "rgba(255, 90, 90, 0)");
+  ctx.fillStyle = rightPulse;
+  ctx.fillRect(rightBound - edgeGlowWidth, CEIL_Y, edgeGlowWidth, FLOOR_Y - CEIL_Y);
 
   ctx.strokeStyle = "#ff2222";
   ctx.lineWidth = 3;
@@ -378,6 +395,7 @@ function simulateTick(data) {
   const mode = data.mode || "classic";
   const projectiles = structuredClone(data.projectiles || []);
   const radius = Math.max(40, (data.arenaRadius || START_RADIUS) - SHRINK_PER_SEC / 30);
+  const pulse = getEdgePulse(data);
   const { x: cx } = arenaCenter();
   const leftBound = Math.max(LEFT_WALL, cx - radius);
   const rightBound = Math.min(RIGHT_WALL, cx + radius);
@@ -402,6 +420,17 @@ function simulateTick(data) {
     if (p.y - p.radius < CEIL_Y) {
       p.y = CEIL_Y + p.radius;
       p.vy = Math.abs(p.vy) * 0.65;
+    }
+
+    const leftDist = p.x - p.radius - leftBound;
+    if (leftDist >= 0 && leftDist < EDGE_PUSH_ZONE) {
+      const influence = 1 - leftDist / EDGE_PUSH_ZONE;
+      p.vx += influence * (0.3 + pulse) * EDGE_PUSH_FORCE;
+    }
+    const rightDist = rightBound - (p.x + p.radius);
+    if (rightDist >= 0 && rightDist < EDGE_PUSH_ZONE) {
+      const influence = 1 - rightDist / EDGE_PUSH_ZONE;
+      p.vx -= influence * (0.3 + pulse) * EDGE_PUSH_FORCE;
     }
   });
 
@@ -473,6 +502,12 @@ function simulateTick(data) {
   }
 
   return { players, projectiles, arenaRadius: radius, winner, status };
+}
+
+function getEdgePulse(data) {
+  if (!data?.startedAt) return 0;
+  const seconds = Math.max(0, (Date.now() - data.startedAt) / 1000);
+  return (Math.sin(seconds * Math.PI * 2 * EDGE_PULSE_HZ) + 1) / 2;
 }
 
 
