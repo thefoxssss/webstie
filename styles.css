@@ -1718,7 +1718,9 @@ canvas {
   position: relative;
   width: min(82vw, 360px);
   height: min(82vw, 360px);
+  aspect-ratio: 1 / 1;
   margin: 8px auto 12px;
+  flex: 0 0 auto;
 }
 
 .roulette-pointer {
@@ -1811,6 +1813,18 @@ canvas {
 .roulette-marker span {
   font-size: 10px;
   text-shadow: 0 1px 2px #000;
+}
+
+.roulette-marker span.red {
+  color: #ff8a8a;
+}
+
+.roulette-marker span.black {
+  color: #f5f5f5;
+}
+
+.roulette-marker span.green {
+  color: #8fffbc;
 }
 
 .roulette-wheel-center {
