@@ -1718,7 +1718,9 @@ canvas {
   position: relative;
   width: min(82vw, 360px);
   height: min(82vw, 360px);
+  aspect-ratio: 1 / 1;
   margin: 8px auto 12px;
+  flex: 0 0 auto;
 }
 
 .roulette-pointer {
