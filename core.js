@@ -24,7 +24,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Firebase project configuration.
-const firebaseConfig = {
+const defaultFirebaseConfig = {
   apiKey: "AIzaSyAoXwDA6KtqSD4yfGprus8C8Mi_--1KwSw",
   authDomain: "funnys-18ff7.firebaseapp.com",
   projectId: "funnys-18ff7",
@@ -34,7 +34,61 @@ const firebaseConfig = {
   measurementId: "G-6PE47RLP8V",
 };
 
+function readFirebaseOverrides() {
+  try {
+    const stored = localStorage.getItem("goonerFirebaseConfig");
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    console.warn("Invalid goonerFirebaseConfig override, ignoring.", err);
+    return {};
+  }
+}
+
+function sanitizeFirebaseConfig(config) {
+  const merged = { ...defaultFirebaseConfig, ...config };
+  if (!/^AIza[\w-]{20,}$/.test(String(merged.apiKey || ""))) {
+    console.warn("Firebase apiKey override is invalid, falling back to default key.");
+    merged.apiKey = defaultFirebaseConfig.apiKey;
+  }
+  return merged;
+}
+
+const firebaseConfig = sanitizeFirebaseConfig({
+  ...(window.__FIREBASE_CONFIG__ || {}),
+  ...readFirebaseOverrides(),
+});
+
 // Firebase service handles.
+
+function getFirebaseErrorCode(error) {
+  const code = String(error?.code || "").toLowerCase();
+  return code.startsWith("firebase/") ? code.replace("firebase/", "") : code;
+}
+
+export function isFirebaseQuotaError(error) {
+  const code = getFirebaseErrorCode(error);
+  return code === "resource-exhausted" || code === "auth/quota-exceeded";
+}
+
+export function handleFirebaseError(error, context = "FIREBASE", fallback = "") {
+  const code = getFirebaseErrorCode(error);
+  if (code === "auth/invalid-api-key") {
+    showToast("FIREBASE API KEY REJECTED", "⚠️", "Check runtime config.");
+    return true;
+  }
+  if (isFirebaseQuotaError(error)) {
+    showToast("FIREBASE AT CAPACITY", "⏳", "Online features will retry later.");
+    return true;
+  }
+  if (code === "unavailable") {
+    showToast("FIREBASE UNAVAILABLE", "📡", "Check your connection and retry.");
+    return true;
+  }
+  if (fallback) showToast(context, "⚠️", fallback);
+  return false;
+}
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -989,6 +1043,7 @@ const initAuth = async () => {
     await signInAnonymously(auth);
   } catch (e) {
     console.error(e);
+    handleFirebaseError(e, "AUTH", "Login services are temporarily offline.");
   }
 };
 initAuth();
