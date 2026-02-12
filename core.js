@@ -24,7 +24,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Firebase project configuration.
-const firebaseConfig = {
+const defaultFirebaseConfig = {
   apiKey: "AIzaSyAoXwDA6KtqSD4yfGprus8C8Mi_--1KwSw",
   authDomain: "funnys-18ff7.firebaseapp.com",
   projectId: "funnys-18ff7",
@@ -33,6 +33,32 @@ const firebaseConfig = {
   appId: "1:368675604960:web:24c5dcd6a5329c9fd94385",
   measurementId: "G-6PE47RLP8V",
 };
+
+function readFirebaseOverrides() {
+  try {
+    const stored = localStorage.getItem("goonerFirebaseConfig");
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    console.warn("Invalid goonerFirebaseConfig override, ignoring.", err);
+    return {};
+  }
+}
+
+function sanitizeFirebaseConfig(config) {
+  const merged = { ...defaultFirebaseConfig, ...config };
+  if (!/^AIza[\w-]{20,}$/.test(String(merged.apiKey || ""))) {
+    console.warn("Firebase apiKey override is invalid, falling back to default key.");
+    merged.apiKey = defaultFirebaseConfig.apiKey;
+  }
+  return merged;
+}
+
+const firebaseConfig = sanitizeFirebaseConfig({
+  ...(window.__FIREBASE_CONFIG__ || {}),
+  ...readFirebaseOverrides(),
+});
 
 // Firebase service handles.
 const app = initializeApp(firebaseConfig);
@@ -989,6 +1015,9 @@ const initAuth = async () => {
     await signInAnonymously(auth);
   } catch (e) {
     console.error(e);
+    if (e?.code === "auth/invalid-api-key") {
+      showToast("Firebase API key rejected. Update goonerFirebaseConfig in localStorage.");
+    }
   }
 };
 initAuth();
