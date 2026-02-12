@@ -1019,6 +1019,7 @@ export function openGame(id) {
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
+  if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
@@ -1272,6 +1273,111 @@ export async function adminGrantCash(amount) {
   await saveStats();
 }
 
+function getAdminTargetUser() {
+  const userSelect = document.getElementById("adminTargetUser");
+  return String(userSelect?.value || "")
+    .trim()
+    .toUpperCase();
+}
+
+export async function adminRefreshTargetUsers() {
+  if (!isGodUser()) return;
+  const userSelect = document.getElementById("adminTargetUser");
+  if (!userSelect) return;
+
+  const previous = String(userSelect.value || "")
+    .trim()
+    .toUpperCase();
+  userSelect.innerHTML = '<option value="">SELECT USER</option>';
+
+  try {
+    const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
+    const names = [];
+    snap.forEach((playerDoc) => {
+      const playerName = String(playerDoc.data()?.name || playerDoc.id || "")
+        .trim()
+        .toUpperCase();
+      if (playerName) names.push(playerName);
+    });
+
+    names
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.innerText = name;
+        userSelect.appendChild(option);
+      });
+
+    if (previous && names.includes(previous)) userSelect.value = previous;
+    showToast(`TARGET LIST READY (${names.length})`, "🎯");
+  } catch {
+    showToast("FAILED TO LOAD TARGETS", "⚠️", "Check connection.");
+  }
+}
+
+export async function adminGrantCashToUser(amount) {
+  if (!isGodUser()) return;
+  const target = getAdminTargetUser();
+  const grant = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!target || !grant) {
+    showToast("SELECT USER + VALID AMOUNT", "⚠️");
+    return;
+  }
+
+  try {
+    const targetRef = doc(db, "gooner_users", target);
+    await runTransaction(db, async (transaction) => {
+      const targetSnap = await transaction.get(targetRef);
+      if (!targetSnap.exists()) throw new Error("TARGET_NOT_FOUND");
+      const nextMoney = Math.max(0, Number(targetSnap.data()?.money) || 0) + grant;
+      transaction.update(targetRef, { money: nextMoney });
+    });
+
+    if (target === myName) {
+      myMoney += grant;
+      logTransaction("ADMIN TARGET GRANT", grant);
+      await saveStats();
+    }
+    showToast(`GAVE ${target} +$${grant.toLocaleString()}`, "💸");
+  } catch {
+    showToast("TARGETED GRANT FAILED", "⚠️", "Confirm selected player exists.");
+  }
+}
+
+export async function adminForgiveInterestForUser() {
+  if (!isGodUser()) return;
+  const target = getAdminTargetUser();
+  if (!target) {
+    showToast("SELECT USER FIRST", "⚠️");
+    return;
+  }
+
+  const now = Date.now();
+  try {
+    const targetRef = doc(db, "gooner_users", target);
+    await runTransaction(db, async (transaction) => {
+      const targetSnap = await transaction.get(targetRef);
+      if (!targetSnap.exists()) throw new Error("TARGET_NOT_FOUND");
+      const nextLoans = {
+        ...(targetSnap.data()?.loans || {}),
+        rate: 0,
+        lastInterestAt: now,
+      };
+      transaction.update(targetRef, { loans: nextLoans });
+    });
+
+    if (target === myName) {
+      loanData.rate = 0;
+      loanData.lastInterestAt = now;
+      await saveStats();
+    }
+    showToast(`INTEREST FORGIVEN FOR ${target}`, "🕊️");
+  } catch {
+    showToast("INTEREST FORGIVENESS FAILED", "⚠️", "Confirm selected player exists.");
+  }
+}
+
 export async function adminInjectJackpot() {
   if (!isGodUser()) return;
   const jackpot = 5000000;
@@ -1445,23 +1551,6 @@ export async function adminPrestigePack() {
   applyOwnedVisuals();
   showToast("PRESTIGE PACK DEPLOYED", "👑");
   await saveStats();
-}
-
-export async function adminBanWave() {
-  if (!isGodUser()) return;
-  try {
-    const snap = await getDocs(collection(db, "gooner_users"));
-    const removals = [];
-    snap.forEach((playerDoc) => {
-      const playerName = String(playerDoc.id || "").toUpperCase();
-      if (!playerName || isGodUser(playerName)) return;
-      removals.push(deleteDoc(doc(db, "gooner_users", playerName)));
-    });
-    await Promise.all(removals);
-    showToast(`BAN WAVE COMPLETE: ${removals.length} REMOVED`, "☠️");
-  } catch (e) {
-    showToast("BAN WAVE FAILED", "⚠️", "Try again.");
-  }
 }
 
 export async function adminUnlockAllAchievements() {
