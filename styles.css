@@ -356,6 +356,36 @@ body::before {
   text-align: center;
 }
 
+.update-log {
+  margin-top: 24px;
+  width: min(90vw, 680px);
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 14px 16px;
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.12);
+  text-align: left;
+}
+
+.update-log h2 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.update-log ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 8px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.update-log li span {
+  color: var(--accent);
+}
+
 /* --- 6. OVERLAYS & MODALS --- */
 /* Overlay container for modals and game screens. */
 .overlay {
