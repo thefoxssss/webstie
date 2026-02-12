@@ -136,7 +136,7 @@ function spin() {
   const winningNumber = ROULETTE_NUMBERS[winningIndex];
   const winningColor = getNumberColor(winningNumber);
   const sliceAngle = 360 / ROULETTE_NUMBERS.length;
-  const targetAngle = -(winningIndex * sliceAngle);
+  const targetAngle = -(winningIndex * sliceAngle + sliceAngle / 2);
   const currentBase = Math.floor(wheelRotation / 360) * 360;
   wheelRotation = currentBase - 1800 + targetAngle;
 
@@ -154,11 +154,12 @@ function spin() {
 function bindWheelNumbers() {
   const ring = document.getElementById("rouletteWheelNumbers");
   if (!ring) return;
+  const sliceAngle = 360 / ROULETTE_NUMBERS.length;
   ring.innerHTML = "";
   ROULETTE_NUMBERS.forEach((num, idx) => {
     const marker = document.createElement("div");
     marker.className = "roulette-marker";
-    marker.style.transform = `rotate(${(idx * 360) / ROULETTE_NUMBERS.length}deg)`;
+    marker.style.transform = `rotate(${idx * sliceAngle + sliceAngle / 2}deg)`;
     marker.innerHTML = `<span>${num}</span>`;
     ring.appendChild(marker);
   });
