@@ -6,6 +6,7 @@ const ROULETTE_NUMBERS = [
   5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
 ];
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const SLICE_ANGLE = 360 / ROULETTE_NUMBERS.length;
 
 let wheelEl;
 let historyEl;
@@ -26,13 +27,22 @@ function getNumberColor(number) {
   return RED_NUMBERS.has(number) ? "red" : "black";
 }
 
+function formatMoneyValue(value) {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) return parsed.toFixed(2);
+  if (parsed === Infinity) return "∞";
+  if (parsed === -Infinity) return "-∞";
+  return String(value ?? "0.00");
+}
+
 function getTotalBet() {
   return bets.red + bets.black + bets.green;
 }
 
 function updateBank() {
-  setText("globalBank", Number(state.myMoney || 0).toFixed(2));
-  setText("rouletteBalance", Number(state.myMoney || 0).toFixed(2));
+  const formatted = formatMoneyValue(state.myMoney);
+  setText("globalBank", formatted);
+  setText("rouletteBalance", formatted);
 }
 
 function setMessage(text, tone = "neutral") {
@@ -135,20 +145,39 @@ function spin() {
   const winningIndex = Math.floor(Math.random() * ROULETTE_NUMBERS.length);
   const winningNumber = ROULETTE_NUMBERS[winningIndex];
   const winningColor = getNumberColor(winningNumber);
-  const sliceAngle = 360 / ROULETTE_NUMBERS.length;
-  const targetAngle = -(winningIndex * sliceAngle);
+
+  // Aim for the center of the selected slice so results don't look like they land on boundaries.
+  const centeredTarget = -(winningIndex * SLICE_ANGLE + SLICE_ANGLE / 2);
+  // Keep wheel movement always forward with varied spin count + tiny overshoot jitter for natural feel.
   const currentBase = Math.floor(wheelRotation / 360) * 360;
-  wheelRotation = currentBase - 1800 + targetAngle;
+  const fullSpins = 6 + Math.floor(Math.random() * 5);
+  const jitter = (Math.random() - 0.5) * (SLICE_ANGLE * 0.2);
+  wheelRotation = currentBase - fullSpins * 360 + centeredTarget + jitter;
 
   if (wheelEl) {
-    wheelEl.style.transitionDuration = "4000ms";
+    const durationMs = 3600 + Math.floor(Math.random() * 1800);
+    wheelEl.style.transitionDuration = `${durationMs}ms`;
     wheelEl.style.transform = `rotate(${wheelRotation}deg)`;
+
+    spinTimer = setTimeout(() => {
+      settleRound(winningNumber, winningColor);
+      spinTimer = null;
+    }, durationMs);
+    return;
   }
 
-  spinTimer = setTimeout(() => {
-    settleRound(winningNumber, winningColor);
-    spinTimer = null;
-  }, 4000);
+  settleRound(winningNumber, winningColor);
+}
+
+function buildWheelGradient() {
+  const slices = ROULETTE_NUMBERS.map((num, idx) => {
+    const color = getNumberColor(num);
+    const css = color === "green" ? "#0c8b3e" : color === "red" ? "#a11a1a" : "#1a1a1a";
+    const start = idx * SLICE_ANGLE;
+    const end = (idx + 1) * SLICE_ANGLE;
+    return `${css} ${start}deg ${end}deg`;
+  });
+  return `conic-gradient(${slices.join(", ")})`;
 }
 
 function bindWheelNumbers() {
@@ -158,8 +187,9 @@ function bindWheelNumbers() {
   ROULETTE_NUMBERS.forEach((num, idx) => {
     const marker = document.createElement("div");
     marker.className = "roulette-marker";
-    marker.style.transform = `rotate(${(idx * 360) / ROULETTE_NUMBERS.length}deg)`;
-    marker.innerHTML = `<span>${num}</span>`;
+    const angle = idx * SLICE_ANGLE + SLICE_ANGLE / 2;
+    marker.style.transform = `rotate(${angle}deg)`;
+    marker.innerHTML = `<span style="transform: rotate(${-angle}deg)">${num}</span>`;
     ring.appendChild(marker);
   });
 }
@@ -176,6 +206,7 @@ export function initRoulette() {
   if (!wheelEl || !historyEl || !messageEl || !betInputEl || !spinButtonEl || !clearButtonEl) return;
 
   bindWheelNumbers();
+  wheelEl.style.background = buildWheelGradient();
   wheelEl.style.transitionDuration = "0ms";
   wheelEl.style.transform = `rotate(${wheelRotation}deg)`;
   betInputEl.value = betAmount;
