@@ -1044,15 +1044,31 @@ export function closeOverlays() {
   document.getElementById("menuDropdown").classList.remove("show");
 }
 
+function normalizeUsername(username) {
+  return String(username || "").trim().toUpperCase();
+}
+
+function normalizePin(pin) {
+  return String(pin || "").trim();
+}
+
+function isValidCredentials(username, pin) {
+  return /^[A-Z0-9_]{3,10}$/.test(username) && /^\d{4}$/.test(pin);
+}
+
 // Attempt to log in with username + PIN and load their profile.
 async function login(username, pin) {
-  const normalized = String(username || "").toUpperCase();
+  const normalized = normalizeUsername(username);
+  const normalizedPin = normalizePin(pin);
+  if (!isValidCredentials(normalized, normalizedPin)) {
+    return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
+  }
   try {
     const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
     if (snap.exists()) {
       const profile = snap.data();
-      if (profile.pin === pin) {
+      if (normalizePin(profile.pin) === normalizedPin) {
         saveLocalProfileSnapshot(profile);
         loadProfile(profile);
         return true;
@@ -1061,7 +1077,7 @@ async function login(username, pin) {
     }
     const localProfile = getLocalProfile(normalized);
     if (localProfile) {
-      if (localProfile.pin !== pin) return "INVALID PIN";
+      if (normalizePin(localProfile.pin) !== normalizedPin) return "INVALID PIN";
       loadProfile(localProfile);
       return true;
     }
@@ -1069,7 +1085,7 @@ async function login(username, pin) {
   } catch (e) {
     const localProfile = getLocalProfile(normalized);
     if (localProfile) {
-      if (localProfile.pin !== pin) return "INVALID PIN";
+      if (normalizePin(localProfile.pin) !== normalizedPin) return "INVALID PIN";
       loadProfile(localProfile);
       return true;
     }
@@ -1211,10 +1227,14 @@ function updateUI() {
 
 // Create a new user profile in Firestore.
 async function register(username, pin) {
-  const normalized = String(username || "").toUpperCase();
+  const normalized = normalizeUsername(username);
+  const normalizedPin = normalizePin(pin);
+  if (!isValidCredentials(normalized, normalizedPin)) {
+    return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
+  }
   const data = {
     name: normalized,
-    pin: pin,
+    pin: normalizedPin,
     money: 1000,
     joined: Date.now(),
     stats: { games: 0, wpm: 0, wins: 0 },
@@ -2277,9 +2297,8 @@ if (localStorage.getItem("goonerUser")) {
 }
 // Login form handlers.
 document.getElementById("btnLogin").onclick = async () => {
-  const u = document.getElementById("usernameInput").value.trim();
-  const p = document.getElementById("pinInput").value.trim();
-  if (u.length < 3 || p.length < 4) return beep(200, "sawtooth", 0.5);
+  const u = normalizeUsername(document.getElementById("usernameInput").value);
+  const p = normalizePin(document.getElementById("pinInput").value);
   const res = await login(u, p);
   if (res === true) beep(600, "square", 0.1);
   else {
@@ -2289,9 +2308,8 @@ document.getElementById("btnLogin").onclick = async () => {
 };
 // Registration form handler.
 document.getElementById("btnRegister").onclick = async () => {
-  const u = document.getElementById("usernameInput").value.trim();
-  const p = document.getElementById("pinInput").value.trim();
-  if (u.length < 3 || p.length < 4) return;
+  const u = normalizeUsername(document.getElementById("usernameInput").value);
+  const p = normalizePin(document.getElementById("pinInput").value);
   const res = await register(u, p);
   if (res === true) beep(600, "square", 0.1);
   else {
@@ -2299,6 +2317,14 @@ document.getElementById("btnRegister").onclick = async () => {
     beep(100, "sawtooth", 0.5);
   }
 };
+
+document.getElementById("usernameInput").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") document.getElementById("btnLogin").click();
+});
+
+document.getElementById("pinInput").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") document.getElementById("btnLogin").click();
+});
 // Logout resets local storage + reloads the app.
 document.getElementById("btnLogout").onclick = () => {
   localStorage.clear();

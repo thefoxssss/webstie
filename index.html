@@ -71,6 +71,7 @@
       <button onclick="window.launchGame('snake')">SNAKE</button>
       <button onclick="window.launchGame('runner')">RUNNER (V2)</button>
       <button onclick="window.launchGame('dodge')">DODGE GRID</button>
+      <button onclick="window.launchGame('roulette')">ROULETTE</button>
       <button
         onclick="window.launchGame('blackjack')"
         style="border-top: 1px solid #444"
@@ -804,6 +805,69 @@
       <div class="mobile-hint active" style="margin-top: 20px">
         ARROWS OR WASD TO EVADE
       </div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+
+    <!-- Roulette mini-game overlay. -->
+    <div class="overlay" id="overlayRoulette">
+      <h1>ROULETTE</h1>
+      <div class="roulette-balance">BANK: $<span id="rouletteBalance">0.00</span></div>
+
+      <div class="roulette-history-wrap">
+        <div class="roulette-label">HISTORY</div>
+        <div class="roulette-history" id="rouletteHistory"></div>
+      </div>
+
+      <div class="roulette-wheel-wrap">
+        <div class="roulette-pointer"></div>
+        <div class="roulette-wheel-rim"></div>
+        <div class="roulette-wheel" id="rouletteWheel">
+          <div class="roulette-wheel-numbers" id="rouletteWheelNumbers"></div>
+          <div class="roulette-wheel-center">SPIN</div>
+        </div>
+      </div>
+
+      <div class="roulette-status">
+        <span>LAST: <span id="rouletteLast">--</span></span>
+        <span>TOTAL BET: $<span id="rouletteTotalBet">0</span></span>
+      </div>
+      <div class="roulette-message" id="rouletteMessage">PLACE YOUR BETS.</div>
+
+      <div class="roulette-controls">
+        <div class="roulette-bet-row">
+          <label class="roulette-label" for="rouletteBetInput">BET</label>
+          <input type="number" min="1" id="rouletteBetInput" class="term-input" value="10" />
+        </div>
+        <div class="roulette-presets">
+          <button class="menu-btn" onclick="window.rouletteSetBet(10)">$10</button>
+          <button class="menu-btn" onclick="window.rouletteSetBet(50)">$50</button>
+          <button class="menu-btn" onclick="window.rouletteSetBet(100)">$100</button>
+          <button class="menu-btn" onclick="window.rouletteChangeBet(0.5)">1/2</button>
+          <button class="menu-btn" onclick="window.rouletteChangeBet(2)">x2</button>
+          <button class="menu-btn" onclick="window.rouletteMaxBet()">MAX</button>
+        </div>
+
+        <div class="roulette-board">
+          <button class="roulette-bet red" onclick="window.roulettePlace('red')">
+            RED 2X <span>$<span id="rouletteBetRed">0</span></span>
+          </button>
+          <button class="roulette-bet black" onclick="window.roulettePlace('black')">
+            BLACK 2X <span>$<span id="rouletteBetBlack">0</span></span>
+          </button>
+          <button class="roulette-bet green" onclick="window.roulettePlace('green')">
+            GREEN 14X <span>$<span id="rouletteBetGreen">0</span></span>
+          </button>
+        </div>
+
+        <div class="roulette-actions">
+          <button class="menu-btn" id="rouletteClearBtn" onclick="window.rouletteClear()">CLEAR</button>
+          <button class="term-btn" id="rouletteSpinBtn" onclick="window.rouletteSpin()">SPIN</button>
+        </div>
+      </div>
+
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>

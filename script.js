@@ -38,6 +38,7 @@ import { initDodge } from "./games/dodge.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
+import { initRoulette } from "./games/roulette.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -85,6 +86,7 @@ window.launchGame = (game) => {
   if (game === "hangman") initHangman();
   if (game === "flappy") initFlappy();
   if (game === "dodge") initDodge();
+  if (game === "roulette") initRoulette();
   unlockAchievement("noob");
 };
 
@@ -98,6 +100,10 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "geo") initGeometry();
   if (state.currentGame === "flappy") initFlappy();
   if (state.currentGame === "dodge") initDodge();
+  if (state.currentGame === "roulette") {
+    initRoulette();
+    document.getElementById("overlayRoulette").classList.add("active");
+  }
   if (state.currentGame === "blackjack") {
     state.myMoney = 1000;
     initBJ();
