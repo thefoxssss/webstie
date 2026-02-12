@@ -61,6 +61,34 @@ const firebaseConfig = sanitizeFirebaseConfig({
 });
 
 // Firebase service handles.
+
+function getFirebaseErrorCode(error) {
+  const code = String(error?.code || "").toLowerCase();
+  return code.startsWith("firebase/") ? code.replace("firebase/", "") : code;
+}
+
+export function isFirebaseQuotaError(error) {
+  const code = getFirebaseErrorCode(error);
+  return code === "resource-exhausted" || code === "auth/quota-exceeded";
+}
+
+export function handleFirebaseError(error, context = "FIREBASE", fallback = "") {
+  const code = getFirebaseErrorCode(error);
+  if (code === "auth/invalid-api-key") {
+    showToast("FIREBASE API KEY REJECTED", "⚠️", "Check runtime config.");
+    return true;
+  }
+  if (isFirebaseQuotaError(error)) {
+    showToast("FIREBASE AT CAPACITY", "⏳", "Online features will retry later.");
+    return true;
+  }
+  if (code === "unavailable") {
+    showToast("FIREBASE UNAVAILABLE", "📡", "Check your connection and retry.");
+    return true;
+  }
+  if (fallback) showToast(context, "⚠️", fallback);
+  return false;
+}
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -1015,9 +1043,7 @@ const initAuth = async () => {
     await signInAnonymously(auth);
   } catch (e) {
     console.error(e);
-    if (e?.code === "auth/invalid-api-key") {
-      showToast("Firebase API key rejected. Update goonerFirebaseConfig in localStorage.");
-    }
+    handleFirebaseError(e, "AUTH", "Login services are temporarily offline.");
   }
 };
 initAuth();

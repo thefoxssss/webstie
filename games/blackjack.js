@@ -10,6 +10,7 @@ import {
   state,
   hasActiveItem,
   firebase,
+  handleFirebaseError,
 } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
@@ -203,7 +204,7 @@ function getBJRef(code) {
 
 // Create a new multiplayer Blackjack room as seat 0.
 document.getElementById("btnCreateBJ").onclick = async () => {
-  if (!state.myUid) return alert("Offline");
+  if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
   const code = Math.floor(1000 + Math.random() * 9000).toString();
   const seats = [
     { uid: state.myUid, name: state.myName, hand: [], status: "waiting", bet: 0, ready: false },
@@ -240,7 +241,9 @@ document.getElementById("btnJoinBJ").onclick = async () => {
     };
     t.update(ref, { seats: ns });
     joinBJ(code, idx);
-  }).catch((e) => alert(e));
+  }).catch((e) => {
+    if (!handleFirebaseError(e, "BLACKJACK JOIN", "Could not join room.")) alert("FAILED TO JOIN ROOM");
+  });
 };
 
 // Join a room and subscribe to live updates.
@@ -251,9 +254,13 @@ function joinBJ(code, idx) {
   document.getElementById("bjLobby").style.display = "flex";
   setText("bjRoomId", code);
   if (bjRoomUnsub) bjRoomUnsub();
-  bjRoomUnsub = onSnapshot(getBJRef(code), (s) => {
-    if (s.exists()) handleBJUpdate(s.data());
-  });
+  bjRoomUnsub = onSnapshot(
+    getBJRef(code),
+    (s) => {
+      if (s.exists()) handleBJUpdate(s.data());
+    },
+    (e) => handleFirebaseError(e, "BLACKJACK SYNC", "Live sync paused.")
+  );
 }
 
 // Render lobby/table state based on current phase.

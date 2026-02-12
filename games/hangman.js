@@ -1,5 +1,5 @@
 // Multiplayer hangman mode with lobby, turn order, and chat.
-import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
+import { registerGameStop, setText, showToast, handleFirebaseError, state, firebase } from "../core.js";
 
 const { doc, setDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -50,7 +50,7 @@ export function initHangman() {
 
 // Create a new hangman room and become the host.
 document.getElementById("btnCreateHM").onclick = async () => {
-  if (!state.myUid) return alert("Offline");
+  if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
   const rawWord = document.getElementById("hmWordInput").value;
   const word = sanitizeWord(rawWord);
   if (!word) return showToast("ENTER A WORD", "⚠️");
@@ -106,7 +106,9 @@ document.getElementById("btnJoinHM").onclick = async () => {
       t.update(ref, { players, chat });
     }
     joinHM(code, data.hostUid === state.myUid);
-  }).catch((e) => alert(e));
+  }).catch((e) => {
+    if (!handleFirebaseError(e, "HANGMAN JOIN", "Could not join room.")) alert("FAILED TO JOIN ROOM");
+  });
 };
 
 // Subscribe to room updates and toggle lobby/game UI.
@@ -117,9 +119,13 @@ function joinHM(code, isHost) {
   document.getElementById("hmLobby").style.display = "flex";
   setText("hmRoomId", code);
   if (hmRoomUnsub) hmRoomUnsub();
-  hmRoomUnsub = onSnapshot(getHMRef(code), (snap) => {
-    if (snap.exists()) handleHMUpdate(snap.data());
-  });
+  hmRoomUnsub = onSnapshot(
+    getHMRef(code),
+    (snap) => {
+      if (snap.exists()) handleHMUpdate(snap.data());
+    },
+    (e) => handleFirebaseError(e, "HANGMAN SYNC", "Live sync paused.")
+  );
 }
 
 // Handle UI updates for lobby state, turn display, and chat.
