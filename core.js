@@ -38,6 +38,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const authReady = new Promise((resolve) => {
+  onAuthStateChanged(
+    auth,
+    (user) => {
+      if (user) resolve(user);
+    },
+    () => resolve(null)
+  );
+});
 
 // Local player state (mirrors Firestore on sync).
 let myUid = null;
@@ -1063,6 +1072,7 @@ async function login(username, pin) {
   if (!isValidCredentials(normalized, normalizedPin)) {
     return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
   }
+  await authReady;
   try {
     const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
@@ -1244,6 +1254,8 @@ async function register(username, pin) {
 
   const localProfile = getLocalProfile(normalized);
   if (localProfile) return "USERNAME TAKEN";
+
+  await authReady;
 
   try {
     if (!myUid) throw new Error("OFFLINE");
