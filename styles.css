@@ -2007,3 +2007,24 @@ canvas {
   font-size: 13px;
   color: #00ff9d;
 }
+
+/* --- NEON DRIFT --- */
+.drift-hud {
+  width: min(780px, 94vw);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+
+#driftCanvas {
+  width: min(780px, 94vw);
+  height: auto;
+  max-height: 62vh;
+  border: 2px solid #43f0ff;
+  box-shadow: 0 0 22px rgba(67, 240, 255, 0.35);
+  background: #070a14;
+}

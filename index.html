@@ -81,6 +81,7 @@
       <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
       <button onclick="window.launchGame('hangman')">HANGMAN (PVP)</button>
       <button onclick="window.launchGame('bonk')">BONK ARENA (PVP)</button>
+      <button onclick="window.launchGame('drift')">NEON DRIFT (PVP)</button>
       <button
         onclick="window.launchGame('flappy')"
         id="btnFlappy"
@@ -1203,6 +1204,45 @@
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>
+    </div>
+
+    <!-- Firebase multiplayer top-down drift racing game. -->
+    <div class="overlay" id="overlayDrift">
+      <h1>NEON DRIFT</h1>
+      <div class="bonk-sub">ONLINE 2D DRIFT DUELS</div>
+
+      <div id="driftMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateDrift">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input
+          type="text"
+          id="joinDriftCode"
+          class="term-input"
+          placeholder="ROOM CODE"
+          maxlength="4"
+        />
+        <button class="term-btn" id="btnJoinDrift">JOIN ROOM</button>
+      </div>
+
+      <div id="driftLobby" class="menu-box" style="display: none">
+        <h2>ROOM: <span id="driftRoomId">----</span></h2>
+        <div id="driftPlayers" style="margin: 12px 0"></div>
+        <button class="term-btn" id="driftStartBtn" style="display: none">START RACE</button>
+        <div id="driftLobbyStatus" style="font-size: 10px">WAITING FOR PLAYERS</div>
+      </div>
+
+      <div id="driftRace" style="display: none">
+        <div class="drift-hud">
+          <span id="driftRaceStatus">LINE UP</span>
+          <span>LAP: <span id="driftLap">0/3</span></span>
+          <span>BOOST: <span id="driftBoost">0%</span></span>
+          <span id="driftLeader">LEADER: --</span>
+        </div>
+        <canvas id="driftCanvas" width="780" height="460"></canvas>
+        <div id="driftWinner" class="bonk-winner"></div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Game-over modal shared across mini-games. -->
