@@ -1572,34 +1572,50 @@ function getComparableMoney(value) {
   return 0;
 }
 
+const RANK_TIERS = [
+  { key: "iron", label: "IRON", min: 0, max: 1500, badge: "⬢", className: "rank-iron" },
+  { key: "bronze", label: "BRONZE", min: 1500, max: 5000, badge: "⬡", className: "rank-bronze" },
+  { key: "silver", label: "SILVER", min: 5000, max: 15000, badge: "◈", className: "rank-silver" },
+  { key: "gold", label: "GOLD", min: 15000, max: 40000, badge: "✦", className: "rank-gold" },
+  { key: "platinum", label: "PLATINUM", min: 40000, max: 90000, badge: "✧", className: "rank-platinum" },
+  { key: "diamond", label: "DIAMOND", min: 90000, max: 175000, badge: "💎", className: "rank-diamond" },
+  { key: "ascendant", label: "ASCENDANT", min: 175000, max: 300000, badge: "⬣", className: "rank-ascendant" },
+  { key: "immortal", label: "IMMORTAL", min: 300000, max: 500000, badge: "👑", className: "rank-immortal" },
+  { key: "radiant", label: "RADIANT", min: 500000, max: Infinity, badge: "☀", className: "rank-radiant" },
+];
+
+function getRankTier(money) {
+  return RANK_TIERS.find((tier) => money >= tier.min && money < tier.max) || RANK_TIERS[0];
+}
+
+function getRankData(money, name = myName) {
+  if (isGodUser(name)) {
+    return {
+      label: "GOD",
+      badge: "⚡",
+      className: "rank-god",
+      min: Number.MAX_SAFE_INTEGER,
+      max: Number.MAX_SAFE_INTEGER,
+    };
+  }
+  return getRankTier(Number(money) || 0);
+}
+
 function getRank(money, name = myName) {
-  if (isGodUser(name)) return "GOD";
-  if (money < 500) return "RAT";
-  if (money < 2000) return "SCRIPT KIDDIE";
-  if (money < 5000) return "HACKER";
-  if (money < 10000) return "GOONER";
-  if (money < 50000) return "CYBER LORD";
-  return "KINGPIN";
+  return getRankData(money, name).label;
 }
 
 function getRankProgress(money) {
-  const tiers = [
-    { label: "RAT", min: 0, max: 500 },
-    { label: "SCRIPT KIDDIE", min: 500, max: 2000 },
-    { label: "HACKER", min: 2000, max: 5000 },
-    { label: "GOONER", min: 5000, max: 10000 },
-    { label: "CYBER LORD", min: 10000, max: 50000 },
-    { label: "KINGPIN", min: 50000, max: Infinity },
-  ];
-  const currentTier = tiers.find((tier) => money >= tier.min && money < tier.max) || tiers[0];
+  const currentTier = getRankTier(Number(money) || 0);
   if (!Number.isFinite(currentTier.max)) {
-    return { label: "MAX RANK UNLOCKED", pct: 100 };
+    return { label: "RADIANT // MAX RANK", pct: 100 };
   }
+  const nextTier = RANK_TIERS[RANK_TIERS.indexOf(currentTier) + 1];
   const span = currentTier.max - currentTier.min;
   const earned = money - currentTier.min;
   const pct = Math.max(0, Math.min(100, Math.round((earned / span) * 100)));
   return {
-    label: `$${Math.max(0, currentTier.max - money)} TO ${tiers[tiers.indexOf(currentTier) + 1].label}`,
+    label: `$${Math.max(0, currentTier.max - money).toLocaleString()} TO ${nextTier.label}`,
     pct,
   };
 }
@@ -1688,9 +1704,18 @@ function updateUI() {
   renderSeasonPanel();
   renderLiveOps();
   const rank = getRank(myMoney);
+  const rankData = getRankData(myMoney);
   setText("displayRank", "[" + rank + "]");
+  setText("displayRankBadge", rankData.badge);
   setText("profRank", rank);
+  setText("profRankBadge", rankData.badge);
   setText("profSummaryRank", "[" + rank + "]");
+  const rankBadgeEls = [document.getElementById("displayRankBadge"), document.getElementById("profRankBadge")];
+  rankBadgeEls.forEach((el) => {
+    if (!el) return;
+    el.className = `rank-badge ${rankData.className}`;
+    el.title = `${rankData.label} RANK BADGE`;
+  });
   const rankProgress = getRankProgress(myMoney);
   setText("profProgressLabel", rankProgress.label);
   const progressFill = document.getElementById("profProgressFill");
@@ -3314,6 +3339,14 @@ const renderLeaderboardRows = (
     const name = document.createElement("span");
     name.innerText = row.name;
 
+    if (row.rankData) {
+      const badge = document.createElement("span");
+      badge.className = `rank-badge inline ${row.rankData.className}`;
+      badge.innerText = row.rankData.badge;
+      badge.title = row.rankData.label;
+      name.prepend(badge);
+    }
+
     const value = document.createElement("span");
     value.innerText = `${valuePrefix}${row.score}`;
 
@@ -3362,6 +3395,7 @@ function loadLeaderboard(game) {
         rows.push({
           name: playerName,
           score: data.rank || getRank(Number(data.money) || 0, playerName),
+          rankData: getRankData(Number(data.money) || 0, playerName),
           canRemove: playerName !== myName && !isGodUser(playerName),
         });
       });
