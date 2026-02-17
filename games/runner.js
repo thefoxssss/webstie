@@ -1,4 +1,4 @@
-// Endless runner with obstacles, jump physics, and speed scaling.
+// Endless runner rebuilt around a data-oriented kernel with fixed-step simulation.
 import {
   registerGameStop,
   checkLossStreak,
@@ -11,113 +11,203 @@ import {
   consumeShield,
   state,
   hasActiveItem,
+  EngineKernel,
+  DrawSystem,
+  InputBuffer,
 } from "../core.js";
 
-let rCtx;
-let rCv;
-let player = {};
-let rObs = [];
-let rSpeed = 5;
-let rScore = 0;
-let rAnim;
-let rSpawnTimer = 0;
-let rLastTime = 0;
+const WIDTH = 800;
+const HEIGHT = 400;
+const GROUND_Y = 350;
+const PLAYER_W = 30;
+const PLAYER_H = 50;
+const PLAYER_X = 50;
+const PLAYER_START_Y = 300;
+const PLAYER_JUMP_FORCE = 12;
+const PLAYER_GRAVITY = 0.6;
+const MAX_OBSTACLES = 96;
 
-const BASE_FRAME_MS = 1000 / 60;
-const MAX_DT_FRAMES = 2.5;
+const obstacleX = new Float32Array(MAX_OBSTACLES);
+const obstacleY = new Float32Array(MAX_OBSTACLES);
+const obstacleW = new Float32Array(MAX_OBSTACLES);
+const obstacleH = new Float32Array(MAX_OBSTACLES);
+const obstacleActive = new Uint8Array(MAX_OBSTACLES);
+const obstaclePrevX = new Float32Array(MAX_OBSTACLES);
 
-export function initRunner() {
-  state.currentGame = "runner";
-  loadHighScores();
-  rCv = document.getElementById("runnerCanvas");
-  rCtx = rCv.getContext("2d");
-  player = { x: 50, y: 300, w: 30, h: 50, dy: 0, grounded: true, jumpForce: 12, gravity: 0.6 };
-  rObs = [];
-  rSpeed = 5;
-  rScore = 0;
-  rSpawnTimer = 0;
-  rLastTime = 0;
-  setText("runnerScoreBoard", "SCORE: 0");
-  loopRunner(performance.now());
+const freeList = new Uint16Array(MAX_OBSTACLES);
+let freeTop = 0;
+
+const player = {
+  y: PLAYER_START_Y,
+  prevY: PLAYER_START_Y,
+  dy: 0,
+  grounded: 1,
+};
+
+let ctx;
+let drawSystem;
+let kernel;
+let inputBuffer;
+let score = 0;
+let speed = 5;
+let spawnTicks = 0;
+let groundColor = "#0f0";
+
+function resetPool() {
+  freeTop = MAX_OBSTACLES;
+  for (let i = 0; i < MAX_OBSTACLES; i++) {
+    obstacleActive[i] = 0;
+    freeList[i] = MAX_OBSTACLES - 1 - i;
+  }
 }
 
-// Main runner loop: update physics, spawn obstacles, render, and score.
-function loopRunner(now) {
+function allocObstacle() {
+  if (freeTop <= 0) return -1;
+  const idx = freeList[--freeTop];
+  obstacleActive[idx] = 1;
+  return idx;
+}
+
+function freeObstacle(i) {
+  obstacleActive[i] = 0;
+  freeList[freeTop++] = i;
+}
+
+function queueJump(now = performance.now()) {
+  inputBuffer.push("JUMP", now);
+}
+
+function spawnObstacle() {
+  const idx = allocObstacle();
+  if (idx === -1) return;
+  const tall = Math.random() > 0.7;
+  const h = tall ? 60 : 30;
+  obstacleX[idx] = WIDTH;
+  obstaclePrevX[idx] = WIDTH;
+  obstacleY[idx] = GROUND_Y - h;
+  obstacleW[idx] = 20;
+  obstacleH[idx] = h;
+}
+
+function intersects(x, y, w, h, ox, oy, ow, oh) {
+  return x < ox + ow && x + w > ox && y < oy + oh && y + h > oy;
+}
+
+function onTick(dt) {
   if (state.currentGame !== "runner") return;
-  const dtFrames = rLastTime
-    ? Math.min((now - rLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
-    : 1;
-  rLastTime = now;
-  rCtx.fillStyle = "#000";
-  rCtx.fillRect(0, 0, 800, 400);
-  rCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
-  rCtx.lineWidth = 2;
-  rCtx.beginPath();
-  rCtx.moveTo(0, 350);
-  rCtx.lineTo(800, 350);
-  rCtx.stroke();
-  const currentSpeed = rSpeed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
-  if ((state.keysPressed[" "] || state.keysPressed.ArrowUp) && player.grounded) {
-    player.dy = -player.jumpForce;
-    player.grounded = false;
+
+  spawnTicks += 1;
+  const currentSpeed = speed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
+  const spawnIntervalTicks = Math.max(24, Math.floor(60 / currentSpeed));
+
+  const bufferedJump = inputBuffer.consume("JUMP", performance.now() - 120);
+  if (bufferedJump && player.grounded) {
+    player.dy = -PLAYER_JUMP_FORCE;
+    player.grounded = 0;
   }
-  player.dy += player.gravity * dtFrames;
-  player.y += player.dy * dtFrames;
-  if (player.y > 300) {
-    player.y = 300;
+
+  player.prevY = player.y;
+  player.dy += PLAYER_GRAVITY;
+  player.y += player.dy;
+  if (player.y > PLAYER_START_Y) {
+    player.y = PLAYER_START_Y;
     player.dy = 0;
-    player.grounded = true;
+    player.grounded = 1;
   }
-  rCtx.fillStyle = "#fff";
-  rCtx.fillRect(player.x, player.y, player.w, player.h);
-  rSpawnTimer += dtFrames;
-  const spawnInterval = Math.max(40, Math.floor(1000 / currentSpeed));
-  while (rSpawnTimer >= spawnInterval) {
-    rSpawnTimer -= spawnInterval;
-    const height = Math.random() > 0.7 ? 60 : 30;
-    rObs.push({ x: 800, y: 350 - height, w: 20, h: height });
+
+  if (spawnTicks >= spawnIntervalTicks) {
+    spawnTicks = 0;
+    spawnObstacle();
   }
-  for (let i = rObs.length - 1; i >= 0; i--) {
-    const o = rObs[i];
-    o.x -= currentSpeed * dtFrames;
-    rCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
-    rCtx.fillRect(o.x, o.y, o.w, o.h);
+
+  for (let i = 0; i < MAX_OBSTACLES; i++) {
+    if (!obstacleActive[i]) continue;
+    obstaclePrevX[i] = obstacleX[i];
+    obstacleX[i] -= currentSpeed * (dt * 60);
+
     if (
-      player.x < o.x + o.w &&
-      player.x + player.w > o.x &&
-      player.y < o.y + o.h &&
-      player.y + player.h > o.y
+      intersects(
+        PLAYER_X,
+        player.y,
+        PLAYER_W,
+        PLAYER_H,
+        obstacleX[i],
+        obstacleY[i],
+        obstacleW[i],
+        obstacleH[i]
+      )
     ) {
       if (consumeShield()) {
-        rObs.splice(i, 1);
+        freeObstacle(i);
         showToast("SHIELD USED", "🛡️");
         continue;
       }
       checkLossStreak();
-      showGameOver("runner", Math.floor(rScore));
+      showGameOver("runner", Math.floor(score));
       return;
     }
-    if (o.x < -30) {
-      rObs.splice(i, 1);
-      rScore += 1;
-      updateHighScore("runner", rScore);
-      setText("runnerScoreBoard", "SCORE: " + rScore);
-      if (rScore % 5 === 0) rSpeed += 0.5;
+
+    if (obstacleX[i] < -30) {
+      freeObstacle(i);
+      score += 1;
+      updateHighScore("runner", score);
+      setText("runnerScoreBoard", `SCORE: ${score}`);
+      if (score % 5 === 0) speed += 0.5;
       resetLossStreak();
     }
   }
-  rAnim = requestAnimationFrame(loopRunner);
 }
 
-// Mouse/tap jump support on the canvas.
-document.getElementById("runnerCanvas").onclick = () => {
-  if (state.currentGame === "runner" && player.grounded) {
-    player.dy = -player.jumpForce;
-    player.grounded = false;
+function onRender(alpha) {
+  if (state.currentGame !== "runner") return;
+  drawSystem.clear("#000", 0, 0, WIDTH, HEIGHT);
+  drawSystem.line(groundColor, 2, 0, GROUND_Y, WIDTH, GROUND_Y);
+
+  const py = player.prevY + (player.y - player.prevY) * alpha;
+  drawSystem.rect("#fff", PLAYER_X, py, PLAYER_W, PLAYER_H);
+
+  for (let i = 0; i < MAX_OBSTACLES; i++) {
+    if (!obstacleActive[i]) continue;
+    const ox = obstaclePrevX[i] + (obstacleX[i] - obstaclePrevX[i]) * alpha;
+    drawSystem.rect(groundColor, ox, obstacleY[i], obstacleW[i], obstacleH[i]);
   }
+
+  drawSystem.flush();
+}
+
+export function initRunner() {
+  state.currentGame = "runner";
+  loadHighScores();
+
+  const canvas = document.getElementById("runnerCanvas");
+  ctx = canvas.getContext("2d");
+  drawSystem = new DrawSystem(ctx);
+  kernel = new EngineKernel({ fixedHz: 60 });
+  inputBuffer = new InputBuffer(32);
+
+  score = 0;
+  speed = 5;
+  spawnTicks = 0;
+  player.y = PLAYER_START_Y;
+  player.prevY = PLAYER_START_Y;
+  player.dy = 0;
+  player.grounded = 1;
+  groundColor = getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#0f0";
+  resetPool();
+
+  setText("runnerScoreBoard", "SCORE: 0");
+  kernel.start(onTick, onRender);
+}
+
+document.getElementById("runnerCanvas").onclick = () => {
+  if (state.currentGame === "runner") queueJump();
 };
 
-// Stop the animation when leaving the game.
+document.addEventListener("keydown", (event) => {
+  if (state.currentGame !== "runner") return;
+  if (event.key === " " || event.key === "ArrowUp") queueJump();
+});
+
 registerGameStop(() => {
-  if (rAnim) cancelAnimationFrame(rAnim);
+  kernel?.stop();
 });

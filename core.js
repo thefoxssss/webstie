@@ -160,12 +160,20 @@ const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
 const LOCAL_CREW_STORAGE_KEY = "goonerCrewData";
 const LOCAL_SEASON_STORAGE_KEY = "goonerSeasonData";
 let hasAdminClaim = false;
+let permissionMask = 0;
 const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
 const CHAT_MUTED_KEY = "goonerChatMuted";
 const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+export const PermissionBits = Object.freeze({
+  ADMIN: 1 << 0,
+  GOD_MODE: 1 << 1,
+  ECONOMY_WRITE: 1 << 2,
+  MODERATE_CHAT: 1 << 3,
+});
 
 // Register per-game cleanup hooks (each game adds a stop function).
 const gameStops = [];
@@ -302,30 +310,141 @@ export function dispatch(action) {
   }
 }
 
+export class EngineKernel {
+  constructor({ fixedHz = 60, maxCatchupTicks = 5 } = {}) {
+    this.fixedHz = fixedHz;
+    this.fixedDt = 1 / fixedHz;
+    this.maxCatchupTicks = maxCatchupTicks;
+    this.accumulator = 0;
+    this.lastTs = 0;
+    this.rafId = 0;
+    this.running = false;
+    this.onTick = null;
+    this.onRender = null;
+  }
+
+  start(onTick, onRender) {
+    this.stop();
+    this.onTick = onTick;
+    this.onRender = onRender;
+    this.accumulator = 0;
+    this.lastTs = 0;
+    this.running = true;
+    const frame = (ts) => {
+      if (!this.running) return;
+      if (!this.lastTs) this.lastTs = ts;
+      const frameDt = Math.min((ts - this.lastTs) / 1000, 0.1);
+      this.lastTs = ts;
+      this.accumulator += frameDt;
+      let ticks = 0;
+      while (this.accumulator >= this.fixedDt && ticks < this.maxCatchupTicks) {
+        this.onTick?.(this.fixedDt, ts);
+        this.accumulator -= this.fixedDt;
+        ticks += 1;
+      }
+      if (this.accumulator > this.fixedDt * this.maxCatchupTicks) {
+        this.accumulator = this.fixedDt;
+      }
+      this.onRender?.(this.accumulator / this.fixedDt, ts);
+      this.rafId = requestAnimationFrame(frame);
+    };
+    this.rafId = requestAnimationFrame(frame);
+  }
+
+  stop() {
+    this.running = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = 0;
+  }
+}
+
+export class InputBuffer {
+  constructor(maxEntries = 64) {
+    this.maxEntries = maxEntries;
+    this.entries = [];
+  }
+
+  push(command, ts = performance.now(), payload = null) {
+    this.entries.push({ command, ts, payload });
+    if (this.entries.length > this.maxEntries) this.entries.shift();
+  }
+
+  consume(command, sinceTs = -Infinity) {
+    const idx = this.entries.findIndex((entry) => entry.command === command && entry.ts >= sinceTs);
+    if (idx === -1) return null;
+    return this.entries.splice(idx, 1)[0];
+  }
+
+  clear() {
+    this.entries.length = 0;
+  }
+}
+
+export class DrawSystem {
+  constructor(ctx) {
+    this.ctx = ctx;
+    this.commands = [];
+  }
+
+  clear(color, x, y, w, h) {
+    this.commands.push({ kind: "clear", color, x, y, w, h });
+  }
+
+  rect(color, x, y, w, h) {
+    this.commands.push({ kind: "rect", color, x, y, w, h });
+  }
+
+  line(color, width, x1, y1, x2, y2) {
+    this.commands.push({ kind: "line", color, width, x1, y1, x2, y2 });
+  }
+
+  flush() {
+    const ctx = this.ctx;
+    let fillStyle = "";
+    let strokeStyle = "";
+    let lineWidth = 1;
+    for (const cmd of this.commands) {
+      if (cmd.kind === "clear" || cmd.kind === "rect") {
+        if (fillStyle !== cmd.color) {
+          fillStyle = cmd.color;
+          ctx.fillStyle = fillStyle;
+        }
+        ctx.fillRect(cmd.x, cmd.y, cmd.w, cmd.h);
+        continue;
+      }
+      if (strokeStyle !== cmd.color) {
+        strokeStyle = cmd.color;
+        ctx.strokeStyle = strokeStyle;
+      }
+      if (lineWidth !== cmd.width) {
+        lineWidth = cmd.width;
+        ctx.lineWidth = lineWidth;
+      }
+      ctx.beginPath();
+      ctx.moveTo(cmd.x1, cmd.y1);
+      ctx.lineTo(cmd.x2, cmd.y2);
+      ctx.stroke();
+    }
+    this.commands.length = 0;
+  }
+}
+
 const loopSubscribers = new Map();
-let loopRafId = null;
-let loopLastTs = 0;
+const sharedKernel = new EngineKernel({ fixedHz: 60 });
 export function subscribeToGameLoop(id, callback) {
   loopSubscribers.set(id, callback);
-  if (loopRafId) return;
-  loopLastTs = 0;
-  const frame = (ts) => {
-    const rawDt = loopLastTs ? (ts - loopLastTs) / 1000 : 1 / 60;
-    const dt = Math.min(rawDt, 0.05);
-    loopLastTs = ts;
-    for (const cb of loopSubscribers.values()) cb(dt, ts);
-    loopRafId = loopSubscribers.size ? requestAnimationFrame(frame) : null;
-  };
-  loopRafId = requestAnimationFrame(frame);
+  if (loopSubscribers.size > 1) return;
+  sharedKernel.start(
+    (dt, ts) => {
+      for (const cb of loopSubscribers.values()) cb(dt, ts);
+    },
+    () => {}
+  );
 }
 
 export function unsubscribeFromGameLoop(id) {
   loopSubscribers.delete(id);
-  if (loopSubscribers.size === 0 && loopRafId) {
-    cancelAnimationFrame(loopRafId);
-    loopRafId = null;
-    loopLastTs = 0;
-  }
+  if (loopSubscribers.size === 0) sharedKernel.stop();
 }
 
 async function runFirestoreTask(task, context, fallback) {
@@ -427,15 +546,24 @@ function applyOwnedVisuals() {
 async function refreshAdminClaim() {
   try {
     const claims = await auth.currentUser?.getIdTokenResult(true);
-    hasAdminClaim = claims?.claims?.admin === true;
+    const tokenClaims = claims?.claims || {};
+    const tokenMask = Number(tokenClaims.perms ?? tokenClaims.permissionMask ?? 0) || 0;
+    const godByClaim = tokenClaims.admin === true || tokenClaims.godMode === true;
+    permissionMask = tokenMask | (godByClaim ? PermissionBits.ADMIN | PermissionBits.GOD_MODE : 0);
+    hasAdminClaim = (permissionMask & PermissionBits.ADMIN) !== 0;
   } catch {
     hasAdminClaim = false;
+    permissionMask = 0;
   }
+}
+
+export function hasPermission(bit) {
+  return (permissionMask & bit) === bit;
 }
 
 function isGodUser(name = myName) {
   if (String(name || "").toUpperCase() !== String(myName || "").toUpperCase()) return false;
-  return hasAdminClaim;
+  return hasPermission(PermissionBits.GOD_MODE) || hasAdminClaim;
 }
 
 function updateAdminMenu() {
@@ -1117,19 +1245,36 @@ export function stopAllGames() {
   window.removeEventListener("keydown", quickRestartListener);
 }
 
+export class Synth {
+  constructor(context) {
+    this.context = context;
+    this.master = context.createGain();
+    this.master.gain.value = 0.8;
+    this.master.connect(context.destination);
+  }
+
+  play({ freq = 440, type = "square", len = 0.1, attack = 0.002, decay = 0.08 } = {}) {
+    if (this.context.state === "suspended") this.context.resume();
+    const now = this.context.currentTime;
+    const osc = this.context.createOscillator();
+    const env = this.context.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.exponentialRampToValueAtTime(0.07 * globalVol, now + attack);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(attack + decay, len));
+    osc.connect(env);
+    env.connect(this.master);
+    osc.start(now);
+    osc.stop(now + Math.max(attack + decay, len));
+  }
+}
+
+const synth = new Synth(audioCtx);
+
 // Simple synth beep helper used across the UI for feedback.
 export function beep(freq = 440, type = "square", len = 0.1) {
-  if (audioCtx.state === "suspended") audioCtx.resume();
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, audioCtx.currentTime);
-  g.gain.setValueAtTime(0.05 * globalVol, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + len);
-  o.connect(g);
-  g.connect(audioCtx.destination);
-  o.start();
-  o.stop(audioCtx.currentTime + len);
+  synth.play({ freq, type, len });
 }
 
 // "Success" melody used after achievements or purchases.
