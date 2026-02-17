@@ -103,6 +103,7 @@ window.launchGame = (game) => {
   if (game === "neondefender") initNeonDefender();
   if (game === "voidminer") initVoidMiner();
   if (game === "emulator") initEmulator();
+  resizeAllGameCanvases();
   unlockAchievement("noob");
 };
 
@@ -127,6 +128,50 @@ const GAME_OVERLAY_IDS = [
   "overlayDrift",
   "overlayEmulator",
 ];
+
+
+const CANVAS_UI_PADDING = 230;
+
+function sizeCanvasToViewport(canvas) {
+  if (!canvas) return;
+  const intrinsicW = Number(canvas.getAttribute("width")) || canvas.width || 800;
+  const intrinsicH = Number(canvas.getAttribute("height")) || canvas.height || 450;
+  const isFullscreen = document.fullscreenElement === canvas;
+  const availW = (isFullscreen ? window.innerWidth : window.innerWidth * 0.95);
+  const availH = Math.max(120, (isFullscreen ? window.innerHeight : window.innerHeight - CANVAS_UI_PADDING));
+  const scale = Math.max(0.1, Math.min(availW / intrinsicW, availH / intrinsicH));
+  canvas.style.width = `${Math.round(intrinsicW * scale)}px`;
+  canvas.style.height = `${Math.round(intrinsicH * scale)}px`;
+}
+
+function resizeAllGameCanvases() {
+  GAME_OVERLAY_IDS.forEach((id) => {
+    const overlay = document.getElementById(id);
+    const canvas = overlay?.querySelector("canvas");
+    if (!canvas) return;
+    sizeCanvasToViewport(canvas);
+  });
+}
+
+function initGameCanvasSizing() {
+  resizeAllGameCanvases();
+  window.addEventListener("resize", resizeAllGameCanvases);
+  document.addEventListener("fullscreenchange", resizeAllGameCanvases);
+}
+
+function pauseGamesWhenHidden() {
+  const activeGameOverlay = GAME_OVERLAY_IDS.some((id) => document.getElementById(id)?.classList.contains("active"));
+  if (!activeGameOverlay) return;
+  if (document.hidden) {
+    stopAllGames();
+    GAME_OVERLAY_IDS.forEach((id) => document.getElementById(id)?.classList.remove("active"));
+  }
+}
+
+function initGameVisibilityGuards() {
+  document.addEventListener("visibilitychange", pauseGamesWhenHidden);
+  window.addEventListener("blur", pauseGamesWhenHidden);
+}
 
 function getFullscreenTarget(overlay) {
   return overlay.querySelector("canvas, iframe") || overlay;
@@ -174,6 +219,8 @@ function initGameFullscreenControls() {
 }
 
 initGameFullscreenControls();
+initGameCanvasSizing();
+initGameVisibilityGuards();
 
 // Restart the last game from the game-over modal.
 document.getElementById("goRestart").onclick = () => {
