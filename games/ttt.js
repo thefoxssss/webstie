@@ -1,5 +1,5 @@
 // Multiplayer Tic-Tac-Toe using Firestore for shared state.
-import { registerGameStop, setText, state, firebase } from "../core.js";
+import { registerGameStop, setText, state, firebase, showToast } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -16,7 +16,10 @@ export function initTTT() {
 
 // Create a new TTT room with a random 4-digit code.
 document.getElementById("btnCreateTTT").onclick = async () => {
-  if (!state.myUid) return alert("Offline");
+  if (!state.myUid) {
+    showToast("OFFLINE", "📡", "Connect before creating a room.");
+    return;
+  }
   const code = Math.floor(1000 + Math.random() * 9000).toString();
   await setDoc(getTTTRef(code), {
     board: Array(9).fill(null),
@@ -31,11 +34,27 @@ document.getElementById("btnCreateTTT").onclick = async () => {
 document.getElementById("btnJoinTTT").onclick = async () => {
   const code = document.getElementById("joinTTTCode").value;
   const ref = getTTTRef(code);
-  const s = await getDoc(ref);
-  if (!s.exists()) return alert("404");
-  if (!s.data().players.O) {
-    await updateDoc(ref, { ["players.O"]: state.myUid, ["names.O"]: state.myName });
-    joinTTT(code, "O");
+  try {
+    const seat = await runTransaction(firebase.db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) throw new Error("ROOM_404");
+      const data = snap.data();
+      if (!data.players.X) {
+        transaction.update(ref, { ["players.X"]: state.myUid, ["names.X"]: state.myName });
+        return "X";
+      }
+      if (!data.players.O) {
+        transaction.update(ref, { ["players.O"]: state.myUid, ["names.O"]: state.myName });
+        return "O";
+      }
+      throw new Error("ROOM_FULL");
+    });
+    joinTTT(code, seat);
+  } catch (error) {
+    const reason = String(error?.message || "");
+    if (reason === "ROOM_404") showToast("ROOM NOT FOUND", "⚠️");
+    else if (reason === "ROOM_FULL") showToast("ROOM FULL", "⚠️");
+    else showToast("JOIN FAILED", "⚠️", "Retry in a moment.");
   }
 };
 

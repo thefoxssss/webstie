@@ -38,6 +38,7 @@ body.rainbow-mode {
   animation: rgbLoop 5s linear infinite;
   --accent-dim: rgba(255, 255, 255, 0.2);
   --accent-glow: rgba(255, 255, 255, 0.5);
+  will-change: color, text-shadow;
 }
 
 * {
@@ -133,6 +134,8 @@ body::before {
     3px 100%;
   pointer-events: none;
   opacity: var(--scanline-opacity);
+  will-change: opacity, transform;
+  transform: translateZ(0);
 }
 /* Subtle flicker vignette when flicker mode is enabled. */
 .flicker-on::after {
