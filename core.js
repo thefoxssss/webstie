@@ -992,18 +992,40 @@ function applyMarketPayload(payload) {
 
 function evolveMarketStocks(stocks) {
   return stocks.map((stock) => {
-    const drift = (Math.random() - 0.49) * 0.09;
-    const momentum = (Number(stock.lastMove) || 0) * 0.35;
-    const swing = (Math.random() - 0.5) * 0.04;
-    const current = Math.max(3, Number(stock.price) || 3);
-    const next = Math.max(3, current * (1 + drift + momentum + swing));
-    const lastMove = (next - current) / current;
-    const history = [...(Array.isArray(stock.history) ? stock.history : []), Number(next.toFixed(2))].slice(-80);
+    const history = Array.isArray(stock.history) && stock.history.length
+      ? stock.history
+      : [Number(stock.price) || 100];
+    const current = Math.max(3, Number(stock.price) || history[history.length - 1] || 3);
+    const symbolSeed = String(stock.symbol || "GOON")
+      .split("")
+      .reduce((total, char) => total + char.charCodeAt(0), 0);
+    const tick = history.length + 1;
+
+    const baseWave = Math.sin((tick + symbolSeed) * 0.31) * 0.013;
+    const secondaryWave = Math.cos((tick * 0.17) + symbolSeed * 0.07) * 0.009;
+    const momentum = (Number(stock.lastMove) || 0) * 0.32;
+
+    const averagePrice = history.reduce((total, value) => total + Number(value || 0), 0) / history.length;
+    const meanReversion = averagePrice > 0 ? ((averagePrice - current) / averagePrice) * 0.08 : 0;
+
+    const recent = history.slice(-10);
+    const realizedVolatility = recent.length > 1
+      ? recent.slice(1).reduce((total, value, idx) => {
+          const prev = Number(recent[idx]) || 1;
+          return total + Math.abs((Number(value) - prev) / prev);
+        }, 0) / (recent.length - 1)
+      : 0;
+    const volatilityGuard = Math.max(0.55, 1 - realizedVolatility * 5);
+
+    const nextMove = Math.max(-0.06, Math.min(0.06, (baseWave + secondaryWave + momentum + meanReversion) * volatilityGuard));
+    const next = Math.max(3, current * (1 + nextMove));
+    const updatedHistory = [...history, Number(next.toFixed(2))].slice(-80);
+
     return {
       ...stock,
       price: Number(next.toFixed(2)),
-      lastMove,
-      history,
+      lastMove: nextMove,
+      history: updatedHistory,
     };
   });
 }
@@ -1113,7 +1135,7 @@ function drawStockGraph(stock) {
   }
 
   const up = stock.history[stock.history.length - 1] >= stock.history[0];
-  ctx.strokeStyle = up ? "#00ff66" : "#ff3d3d";
+  ctx.strokeStyle = up ? "#ff8b8b" : "#ff2e2e";
   ctx.lineWidth = 2;
   ctx.beginPath();
   stock.history.forEach((value, i) => {
@@ -1141,7 +1163,7 @@ function renderStockMarket() {
     const shares = Number(stockData.holdings?.[stock.symbol] || 0);
     const prev = stock.history.length > 1 ? stock.history[stock.history.length - 2] : stock.price;
     const dayMove = ((stock.price - prev) / (prev || 1)) * 100;
-    row.innerHTML = `<span>${stock.symbol} (${shares})</span><span style="color:${dayMove >= 0 ? "#0f0" : "#f55"}">${formatStockMoney(stock.price)}</span>`;
+    row.innerHTML = `<span>${stock.symbol} (${shares})</span><span style="color:${dayMove >= 0 ? "#ff8b8b" : "#ff4c4c"}">${formatStockMoney(stock.price)}</span>`;
     row.addEventListener("click", () => {
       stockData.selected = stock.symbol;
       renderStockMarket();
@@ -1154,9 +1176,11 @@ function renderStockMarket() {
   const tradeLabel = buyMultiplier === "MAX" ? "MAX" : buyMultiplier;
   setText("stockDetailName", `${selected.name} (${selected.symbol})`);
   setText("stockDetailPrice", formatStockMoney(selected.price));
+  const avgPrice = selected.history.reduce((total, value) => total + value, 0) / Math.max(1, selected.history.length);
+  const trendBias = ((selected.price - avgPrice) / Math.max(1, avgPrice)) * 100;
   setText(
     "stockDetailMeta",
-    `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))}`
+    `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))} | TREND: ${trendBias >= 0 ? "+" : ""}${trendBias.toFixed(2)}%`
   );
   const buyBtn = document.getElementById("stockBuyBtn");
   const sellBtn = document.getElementById("stockSellBtn");

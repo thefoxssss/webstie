@@ -1,286 +1,256 @@
-const state = {
-  credits: 4200,
-  activeGame: "pulse",
-  boardFilter: "daily",
-  marketTick: 0,
-  portfolioCap: 0.2,
+// Central game launcher wiring for the UI buttons and overlays.
+// This file acts as the "glue" between the DOM and each game module.
+import {
+  buyItem,
+  toggleItem,
+  tradeMoney,
+  clearRestartListener,
+  closeOverlays,
+  openGame,
+  showGameOver,
+  stopAllGames,
+  unlockAchievement,
+  startJob,
+  submitJob,
+  state,
+  adminGrantCash,
+  adminInjectJackpot,
+  adminSetMaxCash,
+  adminGrantAllShopItems,
+  adminClearDebtAndCooldowns,
+  adminBoostStats,
+  adminMaxPortfolio,
+  adminMarketMoonshot,
+  adminMarketMeltdown,
+  adminMarketCrashToZero,
+  adminMarketTimesThousand,
+  adminPrestigePack,
+  adminRefreshTargetUsers,
+  adminGrantCashToUser,
+  adminForgiveInterestForUser,
+  adminUnlockAllAchievements,
+  trackGamePlay,
+} from "./core.js";
+import { initGeometry } from "./games/geo.js";
+import { initFlappy } from "./games/flappy.js";
+import { initTypeGame } from "./games/type.js";
+import { initPong, setPongDiff } from "./games/pong.js";
+import { initSnake } from "./games/snake.js";
+import { initRunner } from "./games/runner.js";
+import { initDodge } from "./games/dodge.js";
+import { initBJ } from "./games/blackjack.js";
+import { initTTT } from "./games/ttt.js";
+import { initHangman } from "./games/hangman.js";
+import { initRoulette } from "./games/roulette.js";
+import { initBonkArena } from "./games/bonkarena.js";
+import { initDrift } from "./games/drift.js";
+import { initCoreBreaker } from "./games/corebreaker.js";
+import { initNeonDefender } from "./games/neondefender.js";
+import { initVoidMiner } from "./games/voidminer.js";
+import { initEmulator } from "./games/emulator.js";
+
+// Expose select helpers globally for inline HTML event handlers.
+window.openGame = openGame;
+window.closeOverlays = closeOverlays;
+window.showGameOver = showGameOver;
+window.buyItem = buyItem;
+window.toggleItem = toggleItem;
+window.tradeMoney = tradeMoney;
+window.startJob = startJob;
+window.submitJob = submitJob;
+window.initTypeGame = initTypeGame;
+window.setPongDiff = setPongDiff;
+window.adminGrantCash = adminGrantCash;
+window.adminInjectJackpot = adminInjectJackpot;
+window.adminSetMaxCash = adminSetMaxCash;
+window.adminGrantAllShopItems = adminGrantAllShopItems;
+window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
+window.adminBoostStats = adminBoostStats;
+window.adminMaxPortfolio = adminMaxPortfolio;
+window.adminMarketMoonshot = adminMarketMoonshot;
+window.adminMarketMeltdown = adminMarketMeltdown;
+window.adminMarketCrashToZero = adminMarketCrashToZero;
+window.adminMarketTimesThousand = adminMarketTimesThousand;
+window.adminPrestigePack = adminPrestigePack;
+window.adminRefreshTargetUsers = adminRefreshTargetUsers;
+window.adminGrantCashToUser = adminGrantCashToUser;
+window.adminForgiveInterestForUser = adminForgiveInterestForUser;
+window.adminUnlockAllAchievements = adminUnlockAllAchievements;
+
+// Launch a game by name, activate its overlay, and kick off its init routine.
+window.launchGame = (game) => {
+  window.closeOverlays();
+  const overlayId =
+    "overlay" +
+    (game === "ttt"
+      ? game.toUpperCase()
+      : game.charAt(0).toUpperCase() + game.slice(1));
+  const el = document.getElementById(overlayId);
+  if (el) el.classList.add("active");
+  if (game === "pong") initPong();
+  if (game === "snake") initSnake();
+  if (game === "runner") initRunner();
+  if (game === "geo") initGeometry();
+  if (game === "type") initTypeGame();
+  if (game === "blackjack") initBJ();
+  if (game === "ttt") initTTT();
+  if (game === "hangman") initHangman();
+  if (game === "flappy") initFlappy();
+  if (game === "dodge") initDodge();
+  if (game === "roulette") initRoulette();
+  if (game === "bonk") initBonkArena();
+  if (game === "drift") initDrift();
+  if (game === "corebreaker") initCoreBreaker();
+  if (game === "neondefender") initNeonDefender();
+  if (game === "voidminer") initVoidMiner();
+  if (game === "emulator") initEmulator();
+  resizeAllGameCanvases();
+  trackGamePlay(game);
+  unlockAchievement("noob");
 };
 
-const gameData = {
-  pulse: {
-    title: "Pulse Runner",
-    description: "Rhythm-reactive runner where lane swaps are tied to perfect beat windows.",
-    tags: ["High APM", "Execution", "Reactive"],
-    abilities: [
-      { name: "Echo Step", rarity: "Rare", text: "Perfect dodges generate a one-hit shield for 3s." },
-      { name: "Phase Vault", rarity: "Epic", text: "Bank combo energy into one controlled time-slow burst." },
-      { name: "Apex Surge", rarity: "Legendary", text: "Single-use finisher that doubles score on flawless segment." },
-    ],
-  },
-  rift: {
-    title: "Rift Tactics",
-    description: "Grid tactics duel emphasizing counterplay, terrain control, and order timing.",
-    tags: ["Turn Strategy", "Prediction", "Counterplay"],
-    abilities: [
-      { name: "Anchor Beacon", rarity: "Rare", text: "Locks one tile and denies displacement for two rounds." },
-      { name: "Mirror Feint", rarity: "Epic", text: "Copies last enemy utility with 60% potency." },
-      { name: "Singularity Net", rarity: "Legendary", text: "Pull effect with strict cooldown and anti-chain rule." },
-    ],
-  },
-  forge: {
-    title: "Forge Tycoon",
-    description: "Production optimization game with capped automation and heat management.",
-    tags: ["Optimization", "Economy", "Macro Decisions"],
-    abilities: [
-      { name: "Smart Queue", rarity: "Common", text: "Auto-sorts tasks by margin-per-minute." },
-      { name: "Coolant Swap", rarity: "Rare", text: "Prevents one overheat cycle penalty." },
-      { name: "Quantum Draft", rarity: "Epic", text: "Converts excess stock into a temporary efficiency spike." },
-    ],
-  },
-  cipher: {
-    title: "Cipher Clash",
-    description: "PvP pattern-breaker where reading opponents beats pure reaction speed.",
-    tags: ["Mindgame", "PvP", "Pattern Reads"],
-    abilities: [
-      { name: "Trace Leak", rarity: "Rare", text: "Reveals one upcoming opponent sequence branch." },
-      { name: "False Key", rarity: "Epic", text: "Injects a decoy branch once per round." },
-      { name: "Null Pulse", rarity: "Legendary", text: "Hard counter to one enemy ultimate (long cooldown)." },
-    ],
-  },
-};
 
-const shopItems = [
-  { name: "Nebula Trail", rarity: "rare", type: "VFX", price: 450 },
-  { name: "Chrono Frame", rarity: "epic", type: "Profile Border", price: 920 },
-  { name: "Titanium Emote Pack", rarity: "common", type: "Emote", price: 260 },
-  { name: "Founder's Title: Riftborn", rarity: "legendary", type: "Title", price: 1500 },
-  { name: "Drift HUD Skin", rarity: "rare", type: "Interface Skin", price: 520 },
-  { name: "Victory Animation: Starlance", rarity: "epic", type: "Animation", price: 1100 },
+const GAME_OVERLAY_IDS = [
+  "overlayGeo",
+  "overlayType",
+  "overlayPong",
+  "overlaySnake",
+  "overlayRunner",
+  "overlayCorebreaker",
+  "overlayNeondefender",
+  "overlayVoidminer",
+  "overlayShadowassassin",
+  "overlayDodge",
+  "overlayRoulette",
+  "overlayTTT",
+  "overlayHangman",
+  "overlayBlackjack",
+  "overlayBonk",
+  "overlayFlappy",
+  "overlayDrift",
+  "overlayEmulator",
 ];
 
-const marketAssets = [
-  { symbol: "ARC", name: "Arcology Metals", price: 101, trend: 0.9, volatility: 2.4 },
-  { symbol: "NVA", name: "Nova Logistics", price: 86, trend: 0.4, volatility: 1.9 },
-  { symbol: "QNT", name: "Quantum Grid", price: 125, trend: -0.2, volatility: 2.6 },
-];
 
-const crews = [
-  { name: "Solar Lynx", members: 24, objective: "Complete 150 flawless runs", progress: 68, bonus: "+4% seasonal cosmetics drop chance" },
-  { name: "Iron Comet", members: 12, objective: "Win 80 tactical duels", progress: 52, bonus: "+6% crew badge shards" },
-  { name: "Vanta Bloom", members: 8, objective: "Contribute 20k market insight points", progress: 39, bonus: "Unique banner colorway unlock" },
-];
+const CANVAS_UI_PADDING = 230;
 
-const boardData = {
-  daily: [
-    ["Nyra", 1840, "Gold"],
-    ["Vael", 1794, "Gold"],
-    ["Kiro", 1688, "Silver"],
-    ["Sumi", 1620, "Silver"],
-  ],
-  weekly: [
-    ["Nyra", 9280, "Platinum"],
-    ["Omen", 9070, "Platinum"],
-    ["Rika", 8815, "Gold"],
-    ["Kiro", 8490, "Gold"],
-  ],
-  all: [
-    ["Omen", 63200, "Diamond"],
-    ["Nyra", 62140, "Diamond"],
-    ["Rika", 59450, "Platinum"],
-    ["Vael", 58020, "Platinum"],
-  ],
-};
-
-function formatCredits(value) {
-  return value.toLocaleString("en-US");
+function sizeCanvasToViewport(canvas) {
+  if (!canvas) return;
+  const intrinsicW = Number(canvas.getAttribute("width")) || canvas.width || 800;
+  const intrinsicH = Number(canvas.getAttribute("height")) || canvas.height || 450;
+  const isFullscreen = document.fullscreenElement === canvas;
+  const availW = (isFullscreen ? window.innerWidth : window.innerWidth * 0.95);
+  const availH = Math.max(120, (isFullscreen ? window.innerHeight : window.innerHeight - CANVAS_UI_PADDING));
+  const scale = Math.max(0.1, Math.min(availW / intrinsicW, availH / intrinsicH));
+  canvas.style.width = `${Math.round(intrinsicW * scale)}px`;
+  canvas.style.height = `${Math.round(intrinsicH * scale)}px`;
 }
 
-function pushToast(message) {
-  const toast = document.createElement("div");
-  toast.className = "toast";
-  toast.textContent = message;
-  document.getElementById("toastStack").append(toast);
-  setTimeout(() => toast.remove(), 2800);
-}
-
-function renderHeader() {
-  document.getElementById("creditsValue").textContent = formatCredits(state.credits);
-}
-
-function renderGame() {
-  const data = gameData[state.activeGame];
-  document.getElementById("gameTitle").textContent = data.title;
-  document.getElementById("gameDesc").textContent = data.description;
-
-  const tagRoot = document.getElementById("gameTags");
-  tagRoot.innerHTML = data.tags.map((tag) => `<span class="tag">${tag}</span>`).join("");
-
-  const abilityRoot = document.getElementById("abilityGrid");
-  abilityRoot.innerHTML = data.abilities
-    .map(
-      (ability) => `
-        <article class="ability-card">
-          <small>${ability.rarity}</small>
-          <h4>${ability.name}</h4>
-          <p>${ability.text}</p>
-        </article>`,
-    )
-    .join("");
-}
-
-function renderShop() {
-  const root = document.getElementById("shopGrid");
-  root.innerHTML = shopItems
-    .map(
-      (item) => `
-      <article class="shop-item">
-        <span class="rarity ${item.rarity}">${item.rarity}</span>
-        <h4>${item.name}</h4>
-        <p>${item.type}</p>
-        <div class="button-row">
-          <strong>${formatCredits(item.price)} cr</strong>
-          <button class="btn btn-secondary" data-buy="${item.name}">Purchase</button>
-        </div>
-      </article>`,
-    )
-    .join("");
-}
-
-function advanceMarketTick() {
-  state.marketTick += 1;
-  marketAssets.forEach((asset) => {
-    const cycle = Math.sin((state.marketTick + asset.price) / 3.5) * asset.volatility;
-    const directional = asset.trend + cycle;
-    const cappedMove = Math.max(-4.5, Math.min(4.5, directional));
-    asset.price = Math.max(20, Number((asset.price + cappedMove).toFixed(2)));
-    asset.delta = cappedMove;
+function resizeAllGameCanvases() {
+  GAME_OVERLAY_IDS.forEach((id) => {
+    const overlay = document.getElementById(id);
+    const canvas = overlay?.querySelector("canvas");
+    if (!canvas) return;
+    sizeCanvasToViewport(canvas);
   });
-  renderMarket();
 }
 
-function renderMarket() {
-  const root = document.getElementById("marketList");
-  root.innerHTML = marketAssets
-    .map((asset) => {
-      const delta = asset.delta ?? 0;
-      const deltaClass = delta >= 0 ? "up" : "down";
-      return `
-      <article class="market-row">
-        <div>
-          <strong>${asset.symbol}</strong>
-          <p>${asset.name}</p>
-        </div>
-        <strong>${asset.price.toFixed(2)} cr</strong>
-        <span class="delta ${deltaClass}">${delta >= 0 ? "+" : ""}${delta.toFixed(2)}%</span>
-      </article>`;
-    })
-    .join("");
+function initGameCanvasSizing() {
+  resizeAllGameCanvases();
+  window.addEventListener("resize", resizeAllGameCanvases);
+  document.addEventListener("fullscreenchange", resizeAllGameCanvases);
 }
 
-function renderCrews() {
-  const root = document.getElementById("crewGrid");
-  root.innerHTML = crews
-    .map(
-      (crew) => `
-      <article class="crew-card">
-        <h4>${crew.name}</h4>
-        <p>${crew.members} members · ${crew.objective}</p>
-        <p>Progress: ${crew.progress}%</p>
-        <p><strong>Reward:</strong> ${crew.bonus}</p>
-      </article>`,
-    )
-    .join("");
+function pauseGamesWhenHidden() {
+  const activeGameOverlay = GAME_OVERLAY_IDS.some((id) => document.getElementById(id)?.classList.contains("active"));
+  if (!activeGameOverlay) return;
+  if (document.hidden) {
+    stopAllGames();
+    GAME_OVERLAY_IDS.forEach((id) => document.getElementById(id)?.classList.remove("active"));
+  }
 }
 
-function renderBoard() {
-  const rows = boardData[state.boardFilter];
-  document.getElementById("boardTable").innerHTML = rows
-    .map(
-      (row, idx) => `
-      <article class="board-row">
-        <strong>#${idx + 1}</strong>
-        <span>${row[0]}</span>
-        <strong>${formatCredits(row[1])}</strong>
-        <span class="tier">${row[2]}</span>
-      </article>`,
-    )
-    .join("");
+function initGameVisibilityGuards() {
+  document.addEventListener("visibilitychange", pauseGamesWhenHidden);
+  window.addEventListener("blur", pauseGamesWhenHidden);
 }
 
-function simulateRankedRun() {
-  const skillScore = Math.floor(540 + Math.random() * 620);
-  const normalized = Math.floor(skillScore * 0.85);
-  const reward = Math.floor(120 + normalized * 0.08);
-  state.credits += reward;
-  renderHeader();
-  pushToast(`Ranked run complete: ${normalized} normalized score, +${reward} credits.`);
+function getFullscreenTarget(overlay) {
+  return overlay.querySelector("canvas, iframe") || overlay;
 }
 
-function claimDailyReward() {
-  const reward = 180;
-  state.credits += reward;
-  renderHeader();
-  pushToast(`Daily objective completed. +${reward} credits (non-stacking cap).`);
+async function toggleGameFullscreen(overlay, button) {
+  const target = getFullscreenTarget(overlay);
+  if (!document.fullscreenElement) {
+    await target.requestFullscreen();
+  } else {
+    await document.exitFullscreen();
+  }
+  button.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
 }
 
-function setupInteractions() {
-  document.body.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+function initGameFullscreenControls() {
+  const overlays = GAME_OVERLAY_IDS
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
 
-    const nextGame = target.dataset.game;
-    if (nextGame) {
-      state.activeGame = nextGame;
-      document.querySelectorAll(".btn-tab").forEach((button) => button.classList.toggle("active", button.dataset.game === nextGame));
-      renderGame();
-    }
+  overlays.forEach((overlay) => {
+    const exitBtn = overlay.querySelector(".exit-btn-fixed");
+    if (!exitBtn || overlay.querySelector(".fullscreen-btn-fixed")) return;
 
-    const nextFilter = target.dataset.boardFilter;
-    if (nextFilter) {
-      state.boardFilter = nextFilter;
-      document.querySelectorAll(".btn-chip").forEach((button) => button.classList.toggle("active", button.dataset.boardFilter === nextFilter));
-      renderBoard();
-    }
-
-    const itemName = target.dataset.buy;
-    if (itemName) {
-      const item = shopItems.find((entry) => entry.name === itemName);
-      if (!item) return;
-      if (state.credits < item.price) {
-        pushToast("Not enough credits.");
-        return;
+    const fsButton = document.createElement("button");
+    fsButton.className = "fullscreen-btn-fixed";
+    fsButton.type = "button";
+    fsButton.textContent = "FULLSCREEN";
+    fsButton.addEventListener("click", async () => {
+      try {
+        await toggleGameFullscreen(overlay, fsButton);
+      } catch (error) {
+        console.warn("Fullscreen toggle failed", error);
       }
-      state.credits -= item.price;
-      renderHeader();
-      pushToast(`${itemName} purchased. Cosmetic inventory updated.`);
-    }
-
-    const modalId = target.dataset.openModal;
-    if (modalId) document.getElementById(modalId)?.showModal();
-
-    const closeId = target.dataset.closeModal;
-    if (closeId) document.getElementById(closeId)?.close();
-
-    const scrollId = target.dataset.scroll;
-    if (scrollId) document.getElementById(scrollId)?.scrollIntoView({ behavior: "smooth" });
+    });
+    exitBtn.insertAdjacentElement("beforebegin", fsButton);
   });
 
-  document.getElementById("simulateRunBtn").addEventListener("click", simulateRankedRun);
-  document.getElementById("claimRewardBtn").addEventListener("click", claimDailyReward);
-  document.getElementById("tickMarketBtn").addEventListener("click", () => {
-    advanceMarketTick();
-    pushToast("Market tick advanced. Circuit-breaker checks passed.");
+  document.addEventListener("fullscreenchange", () => {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    document.querySelectorAll(".fullscreen-btn-fixed").forEach((button) => {
+      button.textContent = isFullscreen ? "EXIT FULLSCREEN" : "FULLSCREEN";
+    });
   });
 }
 
-function init() {
-  renderHeader();
-  renderGame();
-  renderShop();
-  renderMarket();
-  renderCrews();
-  renderBoard();
-  setupInteractions();
-}
+initGameFullscreenControls();
+initGameCanvasSizing();
+initGameVisibilityGuards();
 
-init();
+// Restart the last game from the game-over modal.
+document.getElementById("goRestart").onclick = () => {
+  document.getElementById("modalGameOver").classList.remove("active");
+  clearRestartListener();
+  if (state.currentGame === "snake") initSnake();
+  if (state.currentGame === "pong") initPong();
+  if (state.currentGame === "runner") initRunner();
+  if (state.currentGame === "geo") initGeometry();
+  if (state.currentGame === "flappy") initFlappy();
+  if (state.currentGame === "dodge") initDodge();
+  if (state.currentGame === "corebreaker") initCoreBreaker();
+  if (state.currentGame === "neondefender") initNeonDefender();
+  if (state.currentGame === "voidminer") initVoidMiner();
+  if (state.currentGame === "roulette") {
+    initRoulette();
+    document.getElementById("overlayRoulette").classList.add("active");
+  }
+  if (state.currentGame === "blackjack") {
+    state.myMoney = 1000;
+    initBJ();
+    document.getElementById("overlayBlackjack").classList.add("active");
+  }
+};
+
+// Exit the current game and close all overlays.
+document.getElementById("goExit").onclick = () => {
+  stopAllGames();
+  closeOverlays();
+  document.getElementById("modalGameOver").classList.remove("active");
+};
