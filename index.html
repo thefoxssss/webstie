@@ -79,6 +79,7 @@
       <button onclick="window.launchGame('corebreaker')">CORE BREAKER</button>
       <button onclick="window.launchGame('neondefender')">NEON DEFENDER</button>
       <button onclick="window.launchGame('voidminer')">VOID MINER</button>
+      <button onclick="window.launchGame('shadowassassin')">SHADOW ASSASSIN</button>
       <button onclick="window.launchGame('dodge')">DODGE GRID</button>
       <button onclick="window.launchGame('roulette')">ROULETTE</button>
       <button
@@ -924,6 +925,19 @@
       <canvas id="voidMinerCanvas" width="800" height="500"></canvas>
       <div class="mobile-hint active" style="margin-top: 12px">W/↑ THRUST • A,D / ←,→ ROTATE</div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <!-- Shadow Assassin embedded mini-game overlay. -->
+    <div class="overlay" id="overlayShadowassassin">
+      <h1>SHADOW ASSASSIN</h1>
+      <iframe
+        class="embedded-game-frame"
+        src="games/shadow-assassin-safe-rooms.html"
+        title="Shadow Assassin"
+      ></iframe>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
     </div>
 
     <!-- Dodge Grid mini-game overlay. -->

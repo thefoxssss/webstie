@@ -567,6 +567,15 @@ canvas {
   image-rendering: pixelated;
   margin-bottom: 10px;
 }
+
+.embedded-game-frame {
+  width: min(1200px, 95vw);
+  height: min(800px, 75vh);
+  border: 3px solid var(--accent);
+  background: #000;
+  box-shadow: 0 0 20px var(--accent-dim);
+}
+
 .exit-btn-fixed {
   position: fixed;
   bottom: 30px;
