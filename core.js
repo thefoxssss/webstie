@@ -110,6 +110,8 @@ let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
+let crewData = { tag: "", bank: 0, wins: 0, members: [] };
+let seasonData = { id: "", xp: 0, hall: [] };
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
@@ -117,7 +119,12 @@ const STOCK_TICK_MS = 2000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
+const LOCAL_CREW_STORAGE_KEY = "goonerCrewData";
+const LOCAL_SEASON_STORAGE_KEY = "goonerSeasonData";
 const GOD_USERS = new Set(["NOOB", "THEFOX", "ICEC"]);
+const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
+const CHAT_MUTED_KEY = "goonerChatMuted";
+const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1017,6 +1024,186 @@ export function setText(id, txt) {
   if (el) el.innerText = txt;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function normalizeCrewTag(tag) {
+  return String(tag || "").trim().toUpperCase();
+}
+
+function getSeasonId() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function loadCrewData() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_CREW_STORAGE_KEY) || "{}");
+    if (parsed && typeof parsed === "object") crewData = { tag: "", bank: 0, wins: 0, members: [], ...parsed };
+  } catch {}
+}
+
+function saveCrewData() {
+  localStorage.setItem(LOCAL_CREW_STORAGE_KEY, JSON.stringify(crewData));
+}
+
+function loadSeasonData() {
+  const fallback = { id: getSeasonId(), xp: 0, hall: [] };
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_SEASON_STORAGE_KEY) || "null");
+    if (!parsed || parsed.id !== getSeasonId()) {
+      seasonData = fallback;
+      saveSeasonData();
+      return;
+    }
+    seasonData = { ...fallback, ...parsed };
+  } catch {
+    seasonData = fallback;
+  }
+}
+
+function saveSeasonData() {
+  localStorage.setItem(LOCAL_SEASON_STORAGE_KEY, JSON.stringify(seasonData));
+}
+
+function getChatSet(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map((v) => String(v || "").toUpperCase()) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setChatSet(key, setValue) {
+  localStorage.setItem(key, JSON.stringify(Array.from(setValue)));
+}
+
+function filterChatMessage(txt) {
+  let out = String(txt || "");
+  CHAT_BAD_WORDS.forEach((badWord) => {
+    const rx = new RegExp("\\b" + badWord + "\\b", "gi");
+    out = out.replace(rx, "***");
+  });
+  return out;
+}
+
+function renderLiveOps() {
+  const entries = [
+    { now: "DOUBLE XP // FIRST WIN OF THE DAY", mode: "WEEKLY SEASON PUSH", reward: "+25% XP", featured: "NEON DRIFT", room: "DRFT" },
+    { now: "CREW BANK RUSH // DONATE FOR BONUS", mode: "SQUAD ECON", reward: "$750 CACHE", featured: "BLACKJACK PVP", room: "BJ22" },
+    { now: "CHAT SIGNAL // COMMAND HUNT ACTIVE", mode: "SOCIAL OPS", reward: "SECRET BADGE", featured: "TYPE RUNNER", room: "TYPE" },
+  ];
+  const item = entries[Math.floor(Date.now() / 15000) % entries.length];
+  setText("liveOpsNow", item.now);
+  setText("liveOpsMode", item.mode);
+  setText("liveOpsReward", item.reward);
+  setText("liveOpsFeatured", item.featured);
+  setText("liveOpsRoom", item.room);
+}
+
+function renderSeasonPanel() {
+  const target = 1000;
+  const pct = Math.max(0, Math.min(100, Math.floor((seasonData.xp / target) * 100)));
+  setText("seasonName", `SEASON ${seasonData.id}`);
+  setText("seasonProgressLabel", `${seasonData.xp} / ${target} XP`);
+  const fill = document.getElementById("seasonProgressFill");
+  if (fill) fill.style.width = `${pct}%`;
+
+  const missions = [
+    { id: "games", label: "PLAY 5 GAMES", done: (myStats.games || 0) >= 5, xp: 250 },
+    { id: "chat", label: "SEND 10 CHAT MESSAGES", done: chatCount >= 10, xp: 250 },
+    { id: "bank", label: "REACH $5000 BANK", done: Number(myMoney) >= 5000, xp: 250 },
+    { id: "wins", label: "WIN 3 MATCHES", done: (myStats.wins || 0) >= 3, xp: 250 },
+  ];
+  const wrap = document.getElementById("seasonMissions");
+  if (wrap) {
+    wrap.innerHTML = missions
+      .map((mission) => `<div class="score-item ${mission.done ? "season-mission-done" : ""}">${mission.done ? "✅" : "⬜"} ${mission.label} <span style="opacity:.7">+${mission.xp} XP</span></div>`)
+      .join("");
+  }
+
+  const hall = document.getElementById("seasonHall");
+  if (hall) {
+    if (!seasonData.hall.length) {
+      hall.innerHTML = '<div class="score-item">HALL OF FAME EMPTY</div>';
+    } else {
+      hall.innerHTML = seasonData.hall
+        .slice(-5)
+        .reverse()
+        .map((entry) => `<div class="score-item">${escapeHtml(entry.id)} // ${escapeHtml(entry.name)} // XP ${entry.xp}</div>`)
+        .join("");
+    }
+  }
+}
+
+function maybeAdvanceSeason() {
+  if (seasonData.xp < 1000) return;
+  seasonData.hall.push({ id: seasonData.id, name: myName, xp: seasonData.xp });
+  seasonData.id = getSeasonId();
+  seasonData.xp = 0;
+  saveSeasonData();
+  showToast("SEASON CYCLE COMPLETE", "🏆", "Hall of fame entry archived.");
+}
+
+function grantSeasonXp(amount) {
+  if (myName === "ANON") return;
+  seasonData.xp += Math.max(0, Math.floor(amount));
+  maybeAdvanceSeason();
+  saveSeasonData();
+  renderSeasonPanel();
+}
+
+function renderCrewPanel() {
+  setText("crewName", crewData.tag || "NONE");
+  setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
+  setText("crewWins", Math.round(crewData.wins || 0));
+  setText("crewMembers", (crewData.members || []).length);
+}
+
+function initCrewUx() {
+  const createBtn = document.getElementById("crewCreateBtn");
+  const leaveBtn = document.getElementById("crewLeaveBtn");
+  const contributeBtn = document.getElementById("crewContributeBtn");
+  const input = document.getElementById("crewInput");
+  if (!createBtn || !leaveBtn || !contributeBtn || !input) return;
+  createBtn.onclick = () => {
+    const tag = normalizeCrewTag(input.value);
+    if (!/^[A-Z0-9_]{3,8}$/.test(tag)) {
+      setText("crewMsg", "USE 3-8 LETTER/NUMBER TAG");
+      return;
+    }
+    crewData.tag = tag;
+    crewData.members = Array.from(new Set([...(crewData.members || []), myName]));
+    saveCrewData();
+    renderCrewPanel();
+    setText("crewMsg", `LINKED TO CREW ${tag}`);
+    showToast("CREW LINK ESTABLISHED", "🛰️", tag);
+  };
+  leaveBtn.onclick = () => {
+    crewData = { tag: "", bank: 0, wins: 0, members: [] };
+    saveCrewData();
+    renderCrewPanel();
+    setText("crewMsg", "LEFT CREW CHANNEL");
+  };
+  contributeBtn.onclick = async () => {
+    if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+    if (myMoney < 500) return setText("crewMsg", "NEED $500 TO DONATE");
+    myMoney -= 500;
+    crewData.bank += 500;
+    saveCrewData();
+    await saveStats();
+    renderCrewPanel();
+    setText("crewMsg", "DONATED $500");
+  };
+}
+
 // Track recent money changes for the bank log.
 export function logTransaction(msg, amount) {
   transactionLog.unshift({ msg, amount, ts: new Date().toLocaleTimeString() });
@@ -1047,9 +1234,14 @@ const initAuth = async () => {
   }
 };
 initAuth();
+loadCrewData();
+loadSeasonData();
+renderLiveOps();
 setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
+initCrewUx();
+setInterval(renderLiveOps, 15000);
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     myUid = u.uid;
@@ -1077,6 +1269,8 @@ export function openGame(id) {
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
+  if (id === "overlaySeason") renderSeasonPanel();
+  if (id === "overlayCrew") renderCrewPanel();
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
@@ -1215,6 +1409,8 @@ function loadProfile(data) {
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
+  crewData = data.crewData || crewData;
+  seasonData = data.seasonData || seasonData;
   ensureStockProfile();
   saveLocalShopToggles();
   updateUI();
@@ -1260,6 +1456,14 @@ function updateUI() {
   setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
   setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
+  if (crewData.tag) {
+    crewData.wins = Math.max(Number(crewData.wins) || 0, Number(myStats.wins) || 0);
+    if (!crewData.members.includes(myName)) crewData.members.push(myName);
+    saveCrewData();
+  }
+  renderCrewPanel();
+  renderSeasonPanel();
+  renderLiveOps();
   const rank = getRank(myMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
@@ -1645,6 +1849,8 @@ export async function saveStats() {
     jobs: jobData,
     loanData,
     stockData,
+    crewData,
+    seasonData,
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
@@ -1657,6 +1863,8 @@ export async function saveStats() {
     jobs: jobData,
     loanData,
     stockData,
+    crewData,
+    seasonData,
   }).catch(() => {});
   updateUI();
 }
@@ -1882,6 +2090,7 @@ export function unlockAchievement(id) {
     logTransaction(`ACHIEVEMENT: ${badge.title}`, badge.reward);
     showToast(`UNLOCKED: ${badge.title}`, badge.icon, `+$${badge.reward}`);
   }
+  grantSeasonXp(80);
   saveStats();
   playSuccessSound();
 }
@@ -2706,19 +2915,25 @@ if (clockEl) {
 }
 
 let chatCount = 0;
+let lastChatAt = 0;
+let lastChatMsg = "";
 // Initialize realtime chat streaming and input handling.
 function initChat() {
   const chatRef = collection(db, "gooner_global_chat");
-  const q = query(chatRef, orderBy("ts", "desc"), limit(15));
+  const q = query(chatRef, orderBy("ts", "desc"), limit(25));
   onSnapshot(q, (snap) => {
     const list = document.getElementById("chatHistory");
     list.innerHTML = "";
+    const blocklist = getChatSet(CHAT_BLOCKLIST_KEY);
+    const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
     snap.forEach((d) => msgs.push(d.data()));
     msgs.reverse().forEach((m) => {
+      const user = String(m.user || "ANON").toUpperCase();
+      if (blocklist.has(user) || muted.has(user)) return;
       const d = document.createElement("div");
       d.className = "chat-msg";
-      d.innerHTML = `<span class="chat-user">${m.user}:</span> ${m.msg}`;
+      d.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       list.appendChild(d);
     });
     list.scrollTop = list.scrollHeight;
@@ -2746,6 +2961,9 @@ function initChat() {
     }
     if (txt === "/help") {
       unlockAchievement("architect");
+      showToast("CHAT OPS", "🛠️", "/mute USER /unmute USER /block USER");
+      e.target.value = "";
+      return;
     }
     if (txt === "/ghost") {
       unlockAchievement("ghost_signal");
@@ -2754,10 +2972,43 @@ function initChat() {
       return;
     }
 
+    if (txt.toLowerCase().startsWith("/mute ") || txt.toLowerCase().startsWith("/block ")) {
+      const user = normalizeUsername(txt.split(/\s+/)[1]);
+      const muted = getChatSet(CHAT_MUTED_KEY);
+      muted.add(user);
+      setChatSet(CHAT_MUTED_KEY, muted);
+      showToast("MUTED USER", "🔇", user);
+      e.target.value = "";
+      return;
+    }
+    if (txt.toLowerCase().startsWith("/unmute ")) {
+      const user = normalizeUsername(txt.split(/\s+/)[1]);
+      const muted = getChatSet(CHAT_MUTED_KEY);
+      muted.delete(user);
+      setChatSet(CHAT_MUTED_KEY, muted);
+      showToast("UNMUTED USER", "🔊", user);
+      e.target.value = "";
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastChatAt < 1000) {
+      showToast("RATE LIMITED", "⏳", "Wait 1 second between messages.");
+      return;
+    }
+    if (txt.toLowerCase() === lastChatMsg.toLowerCase()) {
+      showToast("DUPLICATE BLOCKED", "🧱", "Send a different message.");
+      return;
+    }
+
     // Normal message flow.
+    const clean = filterChatMessage(txt).slice(0, 30);
+    lastChatAt = now;
+    lastChatMsg = clean;
     chatCount++;
+    grantSeasonXp(10);
     if (chatCount === 10) unlockAchievement("chatterbox");
-    await addDoc(chatRef, { user: myName, msg: txt, ts: Date.now() });
+    await addDoc(chatRef, { user: myName, msg: clean, ts: Date.now() });
     e.target.value = "";
   });
 }

@@ -386,6 +386,55 @@ body::before {
   color: var(--accent);
 }
 
+.live-ops {
+  margin-top: 14px;
+  width: min(90vw, 680px);
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.live-ops h2 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.live-ops-line {
+  font-size: 9px;
+  margin-bottom: 10px;
+  color: var(--accent);
+}
+
+.live-ops-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.live-ops-grid div {
+  border: 1px solid var(--accent-dim);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.live-ops-grid span {
+  font-size: 8px;
+  opacity: 0.8;
+}
+
+.live-ops-grid strong {
+  font-size: 9px;
+  color: #fff;
+}
+
+.season-mission-done {
+  color: #0f0;
+}
+
 /* --- 6. OVERLAYS & MODALS --- */
 /* Overlay container for modals and game screens. */
 .overlay {
