@@ -113,7 +113,10 @@ let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
+const GLOBAL_SEASON_DOC_ID = "season_state";
 const STOCK_TICK_MS = 2000;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const WEEKLY_RESET_START_MONEY = 1000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
@@ -1053,6 +1056,7 @@ setupStockMarketUX();
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     myUid = u.uid;
+    await ensureWeeklyMoneyReset().catch(() => {});
     await ensureGlobalMarket();
     subscribeToGlobalMarket();
     initChat();
@@ -1169,6 +1173,64 @@ function getComparableMoney(value) {
   if (parsed === Infinity) return Number.MAX_VALUE;
   if (parsed === -Infinity) return -Number.MAX_VALUE;
   return 0;
+}
+
+function getWeeklySeasonId(timestamp = Date.now()) {
+  return Math.floor(Number(timestamp) / WEEK_MS);
+}
+
+function getSeasonByMoney(money) {
+  if (money < 500) return "SEASON BRONZE";
+  if (money < 2000) return "SEASON SILVER";
+  if (money < 5000) return "SEASON GOLD";
+  if (money < 10000) return "SEASON PLATINUM";
+  if (money < 50000) return "SEASON DIAMOND";
+  return "SEASON LEGEND";
+}
+
+async function ensureWeeklyMoneyReset() {
+  if (!myUid) return;
+  const now = Date.now();
+  const seasonId = getWeeklySeasonId(now);
+  const seasonRef = doc(db, GLOBAL_MARKET_COLLECTION, GLOBAL_SEASON_DOC_ID);
+  let shouldReset = false;
+
+  await runTransaction(db, async (transaction) => {
+    const seasonSnap = await transaction.get(seasonRef);
+    const lastResetSeasonId = Number(seasonSnap.data()?.lastResetSeasonId ?? -1);
+    if (lastResetSeasonId === seasonId) return;
+    shouldReset = true;
+    transaction.set(
+      seasonRef,
+      {
+        lastResetSeasonId: seasonId,
+        lastResetAt: now,
+      },
+      { merge: true }
+    );
+  });
+
+  if (!shouldReset) return;
+
+  const usersSnap = await getDocs(collection(db, "gooner_users"));
+  const resetWrites = [];
+  usersSnap.forEach((userDoc) => {
+    resetWrites.push(
+      updateDoc(userDoc.ref, {
+        money: WEEKLY_RESET_START_MONEY,
+        seasonId,
+        seasonResetAt: now,
+      })
+    );
+  });
+  await Promise.allSettled(resetWrites);
+
+  if (myName !== "ANON") {
+    const previousMoney = myMoney;
+    myMoney = WEEKLY_RESET_START_MONEY;
+    logTransaction("WEEKLY SEASON RESET", myMoney - previousMoney);
+    updateUI();
+  }
 }
 
 function getRank(money, name = myName) {
@@ -2875,9 +2937,10 @@ function loadLeaderboard(game) {
       snap.forEach((d) => {
         const data = d.data();
         const playerName = data.name || d.id;
+        const money = Number(data.money) || 0;
         rows.push({
           name: playerName,
-          score: data.rank || getRank(Number(data.money) || 0, playerName),
+          score: `${getSeasonByMoney(money)} • ${getRank(money, playerName)}`,
           canRemove: playerName !== myName && !isGodUser(playerName),
         });
       });
