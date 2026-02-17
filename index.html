@@ -91,6 +91,9 @@
       <button onclick="window.launchGame('hangman')">HANGMAN (PVP)</button>
       <button onclick="window.launchGame('bonk')">BONK ARENA (PVP)</button>
       <button onclick="window.launchGame('drift')">NEON DRIFT (PVP)</button>
+      <button onclick="window.launchGame('emulator')" style="border-top: 1px solid #444">
+        CPU EMULATOR
+      </button>
       <button
         onclick="window.launchGame('flappy')"
         id="btnFlappy"
@@ -1349,6 +1352,43 @@
         <div id="driftWinner" class="bonk-winner"></div>
       </div>
 
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <!-- Custom 16-bit CPU emulator overlay. -->
+    <div class="overlay" id="overlayEmulator">
+      <h1>CPU EMULATOR</h1>
+      <div class="emu-layout">
+        <div class="emu-panel">
+          <p class="emu-label">PROGRAM HEX (LOADED TO 0x0500)</p>
+          <textarea
+            id="emuProgram"
+            class="emu-program"
+            spellcheck="false"
+            placeholder="01 10 00 2A ..."
+          ></textarea>
+          <div class="emu-controls">
+            <button class="term-btn" id="emuLoad">LOAD</button>
+            <button class="term-btn" id="emuStep">STEP</button>
+            <button class="term-btn" id="emuRun">RUN</button>
+            <button class="term-btn" id="emuStop">STOP</button>
+            <button class="term-btn" id="emuReset">RESET</button>
+          </div>
+        </div>
+        <div class="emu-panel">
+          <p class="emu-label">REGISTERS</p>
+          <pre id="emuRegisters" class="emu-output"></pre>
+        </div>
+        <div class="emu-panel">
+          <p class="emu-label">CPU FLAGS / MEMORY</p>
+          <pre id="emuFlags" class="emu-output"></pre>
+          <pre id="emuMemory" class="emu-output"></pre>
+        </div>
+        <div class="emu-panel">
+          <p class="emu-label">EXECUTION LOG</p>
+          <pre id="emuLog" class="emu-output"></pre>
+        </div>
+      </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 

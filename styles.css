@@ -2130,3 +2130,56 @@ canvas {
   box-shadow: 0 0 22px rgba(67, 240, 255, 0.35);
   background: #070a14;
 }
+
+
+/* CPU emulator overlay layout. */
+.emu-layout {
+  width: min(1100px, 94vw);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.emu-panel {
+  border: 1px solid var(--accent);
+  background: rgba(0, 0, 0, 0.65);
+  padding: 10px;
+  min-height: 180px;
+}
+.emu-label {
+  font-size: 9px;
+  margin: 0 0 8px;
+}
+.emu-program {
+  width: 100%;
+  min-height: 140px;
+  background: #000;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-family: var(--font-type);
+  font-size: 12px;
+  padding: 8px;
+  resize: vertical;
+}
+.emu-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.emu-output {
+  margin: 0 0 8px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.55);
+  padding: 8px;
+  min-height: 80px;
+  white-space: pre-wrap;
+  font-family: var(--font-type);
+  font-size: 11px;
+  color: #fff;
+  text-shadow: none;
+}
+@media (max-width: 900px) {
+  .emu-layout {
+    grid-template-columns: 1fr;
+  }
+}
