@@ -165,6 +165,13 @@ const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
 const CHAT_MUTED_KEY = "goonerChatMuted";
 const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
 
+const ADMIN_ALLOWLIST = new Set([
+  "ICEC",
+  "THEFOX",
+  "NOOB",
+]);
+
+
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -562,7 +569,11 @@ export function hasPermission(bit) {
 }
 
 function isGodUser(name = myName) {
-  if (String(name || "").toUpperCase() !== String(myName || "").toUpperCase()) return false;
+  const normalized = String(name || "").trim().toUpperCase();
+  if (!normalized) return false;
+  if (ADMIN_ALLOWLIST.has(normalized)) return true;
+  const isSelf = normalized === String(myName || "").trim().toUpperCase();
+  if (!isSelf) return false;
   return hasPermission(PermissionBits.GOD_MODE) || hasAdminClaim;
 }
 
