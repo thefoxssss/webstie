@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CPU Emulator Docs</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { padding: 20px; }
+      .doc-wrap { max-width: 900px; margin: 0 auto; }
+      .doc-wrap h1, .doc-wrap h2 { color: var(--accent); }
+      .doc-wrap code { color: #7fffd4; }
+      .doc-card { border: 1px solid var(--accent); background: rgba(0,0,0,.65); padding: 14px; margin-bottom: 14px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      th, td { border: 1px solid #245; padding: 6px; text-align: left; vertical-align: top; }
+      th { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="doc-wrap">
+      <h1>CPU Emulator + Assembler Documentation</h1>
+      <div class="doc-card">
+        <h2>Quick Start</h2>
+        <ol>
+          <li>Open <code>CPU EMULATOR</code> from the GAMES menu.</li>
+          <li>Write assembly in the <code>ASSEMBLY SOURCE</code> panel.</li>
+          <li>Click <code>ASSEMBLE + LOAD</code>.</li>
+          <li>Use <code>STEP</code> or <code>RUN</code> to execute from <code>0x0500</code>.</li>
+        </ol>
+      </div>
+      <div class="doc-card">
+        <h2>Assembly Syntax</h2>
+        <ul>
+          <li>Registers: <code>R0</code> to <code>RF</code>.</li>
+          <li>Immediates: decimal (<code>42</code>) or hex (<code>0x002A</code>).</li>
+          <li>Comments: start with <code>;</code> or <code>#</code>.</li>
+          <li>Labels: <code>LOOP:</code> on their own line or before an instruction.</li>
+          <li>Instruction formats:
+            <ul>
+              <li><code>OP</code></li>
+              <li><code>OP Rn</code></li>
+              <li><code>OP Rn, Rm</code></li>
+              <li><code>OP Rn, imm</code></li>
+              <li><code>OP imm</code></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h2>Example Program</h2>
+<pre class="emu-output">START:
+  LFI R1, 0x0005
+  LFI R2, 0x0003
+  ADD R1, R2
+  HALT</pre>
+      </div>
+      <div class="doc-card">
+        <h2>Instruction Set</h2>
+        <table>
+          <thead><tr><th>Opcode</th><th>Mnemonic</th><th>Operands</th></tr></thead>
+          <tbody>
+            <tr><td>0x00</td><td>NOOP</td><td>-</td></tr><tr><td>0x01</td><td>LFI</td><td>Rn, imm</td></tr><tr><td>0x02</td><td>LFA</td><td>Rn, Rm</td></tr><tr><td>0x03</td><td>LFAL</td><td>Rn, Rm</td></tr><tr><td>0x04</td><td>LFAH</td><td>Rn, Rm</td></tr><tr><td>0x05</td><td>STO</td><td>Rn, Rm</td></tr><tr><td>0x06</td><td>STOL</td><td>Rn, Rm</td></tr><tr><td>0x07</td><td>STOH</td><td>Rn, Rm</td></tr><tr><td>0x08</td><td>MVR</td><td>Rn, Rm</td></tr><tr><td>0x09</td><td>SWR</td><td>Rn, Rm</td></tr><tr><td>0x0A</td><td>SWP</td><td>Rn, Rm</td></tr><tr><td>0x0B</td><td>NOT</td><td>Rn, Rm</td></tr><tr><td>0x0C</td><td>AND</td><td>Rn, Rm</td></tr><tr><td>0x0D</td><td>OR</td><td>Rn, Rm</td></tr><tr><td>0x0E</td><td>XOR</td><td>Rn, Rm</td></tr><tr><td>0x0F</td><td>NOR</td><td>Rn, Rm</td></tr><tr><td>0x10</td><td>SHR</td><td>Rn, Rm</td></tr><tr><td>0x11</td><td>SHL</td><td>Rn, Rm</td></tr><tr><td>0x12</td><td>ROR</td><td>Rn, Rm</td></tr><tr><td>0x13</td><td>ROL</td><td>Rn, Rm</td></tr><tr><td>0x14</td><td>ADD</td><td>Rn, Rm</td></tr><tr><td>0x15</td><td>SUB</td><td>Rn, Rm</td></tr><tr><td>0x16</td><td>MUL</td><td>Rn, Rm</td></tr><tr><td>0x17</td><td>DEV</td><td>Rn, Rm</td></tr><tr><td>0x18</td><td>EVE</td><td>Rn, Rm</td></tr><tr><td>0x19</td><td>EVGT</td><td>Rn, Rm</td></tr><tr><td>0x1A</td><td>EVLT</td><td>Rn, Rm</td></tr><tr><td>0x1B</td><td>EVGTE</td><td>Rn, Rm</td></tr><tr><td>0x1C</td><td>EVLTE</td><td>Rn, Rm</td></tr><tr><td>0x1D</td><td>EVNOT</td><td>-</td></tr><tr><td>0x1E</td><td>EVST</td><td>-</td></tr><tr><td>0x1F</td><td>EVSF</td><td>-</td></tr><tr><td>0x20</td><td>EVOF</td><td>-</td></tr><tr><td>0x21</td><td>EVZF</td><td>-</td></tr><tr><td>0x22</td><td>EVCA</td><td>-</td></tr><tr><td>0x23</td><td>JMP</td><td>Rn, Rm</td></tr><tr><td>0x24</td><td>JMPC</td><td>Rn, Rm</td></tr><tr><td>0x25</td><td>JRA</td><td>Rn, Rm</td></tr><tr><td>0x26</td><td>JRS</td><td>Rn, Rm</td></tr><tr><td>0x27</td><td>JRAC</td><td>Rn, Rm</td></tr><tr><td>0x28</td><td>JRSC</td><td>Rn, Rm</td></tr><tr><td>0x29</td><td>JRIA</td><td>imm</td></tr><tr><td>0x2A</td><td>JRIS</td><td>imm</td></tr><tr><td>0x2B</td><td>JRIAC</td><td>imm</td></tr><tr><td>0x2C</td><td>JRISC</td><td>imm</td></tr><tr><td>0x2D</td><td>JTSR</td><td>Rn, Rm</td></tr><tr><td>0x2E</td><td>JTSRC</td><td>Rn, Rm</td></tr><tr><td>0x2F</td><td>RFSR</td><td>-</td></tr><tr><td>0x30</td><td>RFSRC</td><td>-</td></tr><tr><td>0x31</td><td>HALT</td><td>-</td></tr><tr><td>0x32</td><td>INT</td><td>Rn, Rm</td></tr><tr><td>0x33</td><td>INTI</td><td>imm</td></tr><tr><td>0x34</td><td>RFI</td><td>-</td></tr><tr><td>0x35</td><td>SBI</td><td>-</td></tr><tr><td>0x36</td><td>CBI</td><td>-</td></tr><tr><td>0x37</td><td>SPF</td><td>-</td></tr><tr><td>0x38</td><td>CPF</td><td>-</td></tr><tr><td>0x39</td><td>SLMB</td><td>Rn, Rm</td></tr><tr><td>0x3A</td><td>SLME</td><td>Rn, Rm</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

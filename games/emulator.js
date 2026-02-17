@@ -65,6 +65,34 @@ const OPCODE_META = {
   0x3a: { rr: true, im: false, name: "SLME" },
 };
 
+
+const MNEMONIC_TO_OPCODE = Object.fromEntries(
+  Object.entries(OPCODE_META).map(([opcode, meta]) => [meta.name, Number(opcode)]),
+);
+
+function splitAssemblerOperands(rawOperands) {
+  if (!rawOperands) return [];
+  return rawOperands
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function parseRegisterToken(token, lineNumber) {
+  const match = /^R([0-9A-F])$/i.exec(token);
+  if (!match) {
+    throw new Error(`Line ${lineNumber}: expected register token (R0-RF), got "${token}".`);
+  }
+  return Number.parseInt(match[1], 16);
+}
+
+function parseImmediateToken(token, labels, lineNumber) {
+  if (token in labels) return labels[token];
+  if (/^0x[\da-f]+$/i.test(token)) return Number.parseInt(token.slice(2), 16) & WORD_MASK;
+  if (/^-?\d+$/.test(token)) return Number.parseInt(token, 10) & WORD_MASK;
+  throw new Error(`Line ${lineNumber}: invalid immediate/label token "${token}".`);
+}
+
 class Emulator {
   constructor() {
     this.registers = new Uint16Array(16);
@@ -106,6 +134,90 @@ class Emulator {
     for (let i = 0; i < cleaned.length; i += 2) {
       bytes.push(Number.parseInt(cleaned.slice(i, i + 2), 16));
     }
+    return bytes;
+  }
+
+  bytesToHex(bytes) {
+    return bytes.map((value) => value.toString(16).toUpperCase().padStart(2, "0")).join(" ");
+  }
+
+  assembleProgram(assemblyText) {
+    const lines = assemblyText.split(/\r?\n/);
+    const parsed = [];
+    const labels = {};
+    let address = PROGRAM_START;
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const lineNumber = index + 1;
+      const noComment = lines[index].replace(/[#;].*$/, "").trim();
+      if (!noComment) continue;
+
+      let working = noComment;
+      while (working.includes(":")) {
+        const labelMatch = /^([A-Za-z_][\w]*):\s*(.*)$/.exec(working);
+        if (!labelMatch) break;
+        const label = labelMatch[1];
+        if (labels[label] !== undefined) {
+          throw new Error(`Line ${lineNumber}: duplicate label "${label}".`);
+        }
+        labels[label] = address & WORD_MASK;
+        working = labelMatch[2].trim();
+        if (!working) break;
+      }
+      if (!working) continue;
+
+      const firstSpace = working.search(/\s/);
+      const mnemonic = (firstSpace === -1 ? working : working.slice(0, firstSpace)).toUpperCase();
+      const rawOperands = firstSpace === -1 ? "" : working.slice(firstSpace + 1).trim();
+      const operands = splitAssemblerOperands(rawOperands);
+      const opcode = MNEMONIC_TO_OPCODE[mnemonic];
+      if (opcode === undefined) {
+        throw new Error(`Line ${lineNumber}: unknown opcode "${mnemonic}".`);
+      }
+
+      const size = this.instructionSize(opcode);
+      parsed.push({ lineNumber, opcode, mnemonic, operands, address: address & WORD_MASK });
+      address = (address + size) & WORD_MASK;
+    }
+
+    const bytes = [];
+    for (const instruction of parsed) {
+      const meta = OPCODE_META[instruction.opcode];
+      const { operands, lineNumber } = instruction;
+      let r1 = 0;
+      let r2 = 0;
+      let immediate;
+
+      if (meta.rr && meta.im) {
+        if (operands.length < 2 || operands.length > 3) {
+          throw new Error(`Line ${lineNumber}: ${instruction.mnemonic} expects Rn, imm (optional second register).`);
+        }
+        r1 = parseRegisterToken(operands[0], lineNumber);
+        immediate = parseImmediateToken(operands[1], labels, lineNumber);
+        if (operands[2]) r2 = parseRegisterToken(operands[2], lineNumber);
+      } else if (meta.rr) {
+        if (operands.length < 1 || operands.length > 2) {
+          throw new Error(`Line ${lineNumber}: ${instruction.mnemonic} expects Rn or Rn, Rm.`);
+        }
+        r1 = parseRegisterToken(operands[0], lineNumber);
+        if (operands[1]) r2 = parseRegisterToken(operands[1], lineNumber);
+      } else if (meta.im) {
+        if (operands.length !== 1) {
+          throw new Error(`Line ${lineNumber}: ${instruction.mnemonic} expects one immediate operand.`);
+        }
+        immediate = parseImmediateToken(operands[0], labels, lineNumber);
+      } else if (operands.length !== 0) {
+        throw new Error(`Line ${lineNumber}: ${instruction.mnemonic} takes no operands.`);
+      }
+
+      bytes.push(instruction.opcode & 0xff);
+      if (meta.rr) bytes.push(((r1 & 0xf) << 4) | (r2 & 0xf));
+      if (meta.im) {
+        const value = immediate & WORD_MASK;
+        bytes.push((value >> 8) & 0xff, value & 0xff);
+      }
+    }
+
     return bytes;
   }
 
@@ -429,11 +541,13 @@ export function initEmulator() {
   }
 
   const loadBtn = document.getElementById("emuLoad");
+  const assembleBtn = document.getElementById("emuAssemble");
   const stepBtn = document.getElementById("emuStep");
   const runBtn = document.getElementById("emuRun");
   const stopBtn = document.getElementById("emuStop");
   const resetBtn = document.getElementById("emuReset");
   const programInput = document.getElementById("emuProgram");
+  const assemblyInput = document.getElementById("emuAssembly");
 
   loadBtn.onclick = () => {
     try {
@@ -441,6 +555,21 @@ export function initEmulator() {
       renderState();
     } catch (error) {
       emulator.log(`Load error: ${error.message}`);
+      renderState();
+    }
+  };
+
+
+  assembleBtn.onclick = () => {
+    try {
+      const bytes = emulator.assembleProgram(assemblyInput.value);
+      const hexProgram = emulator.bytesToHex(bytes);
+      programInput.value = hexProgram;
+      emulator.loadProgram(hexProgram);
+      emulator.log(`Assembled ${bytes.length} bytes successfully.`);
+      renderState();
+    } catch (error) {
+      emulator.log(`Assembler error: ${error.message}`);
       renderState();
     }
   };
@@ -465,7 +594,13 @@ export function initEmulator() {
     renderState();
   };
 
-  programInput.value = "01 10 05 00 01 20 00 03 14 12 31";
+  assemblyInput.value = `START:
+  LFI R1, 0x0005
+  LFI R2, 0x0003
+  ADD R1, R2
+  HALT`;
+  const bootBytes = emulator.assembleProgram(assemblyInput.value);
+  programInput.value = emulator.bytesToHex(bootBytes);
   emulator.loadProgram(programInput.value);
   renderState();
   initialized = true;
