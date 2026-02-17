@@ -2,1463 +2,168 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1"
-    />
-    <meta name="app-version" content="dev" />
-    <title>GOONER TERMINAL V32 [PVP FIX]</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astra Arcade Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
       rel="stylesheet"
     />
-
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="flicker-on">
-    <!-- Matrix canvas + boot overlay effects (toggled by JS). -->
-    <canvas id="matrixCanvas"></canvas>
-    <div id="hackOverlay">
-      <div>ROOT ACCESS REQUESTED...</div>
-      <div>BYPASSING FIREWALL...</div>
-      <div>ACCESS GRANTED.</div>
-    </div>
-    <!-- Toast container for transient notifications. -->
-    <div id="toastBox"></div>
-
-    <!-- Global top navigation + system status. -->
-    <div class="top-bar">
-      <button class="menu-btn" onclick="window.openGame('overlayConfig')">
-        CONFIG
-      </button>
-      <div class="sys-info">
-        <span id="sysClock">00:00:00</span> | PING:
-        <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
-      </div>
-      <div style="display: flex; gap: 10px">
-        <button class="menu-btn" onclick="window.openGame('overlayBank')">
-          BANK
-        </button>
-        <button class="menu-btn" onclick="window.openGame('overlayShop')">
-          SHOP
-        </button>
-        <button class="menu-btn" onclick="window.openGame('overlayJobs')">
-          JOBS
-        </button>
-        <button class="menu-btn" onclick="window.openGame('overlayProfile')">
-          PROFILE
-        </button>
-        <button class="menu-btn" onclick="window.openGame('overlayScores')">
-          SCORES
-        </button>
-        <button class="menu-btn" onclick="window.openGame('overlaySeason')">
-          SEASON
-        </button>
-        <button class="menu-btn" onclick="window.openGame('overlayCrew')">
-          CREW
-        </button>
-        <button
-          class="menu-btn"
-          id="adminMenuBtn"
-          onclick="window.openGame('overlayAdmin')"
-          style="display: none; border-color: #ffd700; color: #ffd700"
-        >
-          ADMIN
-        </button>
-        <button class="menu-btn" id="menuToggle">GAMES</button>
-      </div>
-    </div>
-
-    <div class="dropdown-content" id="menuDropdown"></div>
-
-    <!-- Dedicated games directory overlay. -->
-    <div class="overlay" id="overlayGames">
-      <h1>GAMES DIRECTORY</h1>
-      <div class="games-grid">
-        <button class="game-card" onclick="window.launchGame('geo')"><span>🟨</span><strong>GEO DASH</strong><small>Dodge spikes and survive speed ramps.</small></button>
-        <button class="game-card" onclick="window.launchGame('type')"><span>⌨️</span><strong>TYPE RUNNER</strong><small>Type fast to outrun incoming threats.</small></button>
-        <button class="game-card" onclick="window.launchGame('pong')"><span>🏓</span><strong>PONG</strong><small>Retro paddle battle with adjustable difficulty.</small></button>
-        <button class="game-card" onclick="window.launchGame('snake')"><span>🐍</span><strong>SNAKE</strong><small>Grow longer while avoiding walls and yourself.</small></button>
-        <button class="game-card" onclick="window.launchGame('runner')"><span>🏃</span><strong>RUNNER V2</strong><small>Endless sprint with jump timing focus.</small></button>
-        <button class="game-card" onclick="window.launchGame('corebreaker')"><span>🧱</span><strong>CORE BREAKER</strong><small>Break glowing blocks and protect your core.</small></button>
-        <button class="game-card" onclick="window.launchGame('neondefender')"><span>🎯</span><strong>NEON DEFENDER</strong><small>Aim, auto-fire, and hold the line.</small></button>
-        <button class="game-card" onclick="window.launchGame('voidminer')"><span>🚀</span><strong>VOID MINER</strong><small>Thrust through deep space for score.</small></button>
-        <button class="game-card" onclick="window.launchGame('shadowassassin')"><span>🗡️</span><strong>SHADOW ASSASSIN</strong><small>Castle infiltration with boss encounters.</small></button>
-        <button class="game-card" onclick="window.launchGame('dodge')"><span>⚡</span><strong>DODGE GRID</strong><small>Stay alive in a high-speed hazard field.</small></button>
-        <button class="game-card" onclick="window.launchGame('roulette')"><span>🎡</span><strong>ROULETTE</strong><small>Bet, spin, and chase streaks.</small></button>
-        <button class="game-card" onclick="window.launchGame('blackjack')"><span>🂡</span><strong>BLACKJACK (PVP)</strong><small>Card table duels with live opponents.</small></button>
-        <button class="game-card" onclick="window.launchGame('ttt')"><span>❎</span><strong>TIC TAC TOE</strong><small>Classic 3x3 tactical showdown.</small></button>
-        <button class="game-card" onclick="window.launchGame('hangman')"><span>🧠</span><strong>HANGMAN (PVP)</strong><small>Guess words before the timer expires.</small></button>
-        <button class="game-card" onclick="window.launchGame('bonk')"><span>🥊</span><strong>BONK ARENA (PVP)</strong><small>Fast arena knockouts and dodges.</small></button>
-        <button class="game-card" onclick="window.launchGame('drift')"><span>🏎️</span><strong>NEON DRIFT (PVP)</strong><small>Slide corners and chain clean laps.</small></button>
-        <button class="game-card" onclick="window.launchGame('emulator')"><span>🖥️</span><strong>CPU EMULATOR</strong><small>Program-like puzzle sandbox challenge.</small></button>
-        <button class="game-card" id="btnFlappy" onclick="window.launchGame('flappy')" style="display: none"><span>🐤</span><strong>FLAPPY GOON</strong><small>Secret bonus mode: tap to survive.</small></button>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
-
-    <!-- God-tier operator controls. Visible only to allowlisted users. -->
-    <div class="overlay" id="overlayAdmin">
-      <div class="score-box" style="border-color: #ffd700">
-        <h2 style="text-align: center; color: #ffd700">ADMIN MENU</h2>
-        <p style="text-align: center; font-size: 10px">
-          GOD ACCESS: <span id="adminName">UNKNOWN</span>
-        </p>
-        <div class="admin-actions">
-          <div class="admin-section">
-            <p class="admin-section-title">TARGETED ACTIONS</p>
-            <select class="term-input" id="adminTargetScope">
-              <option value="selected">TARGET: SELECTED PLAYER</option>
-              <option value="all">TARGET: ALL PLAYERS</option>
-              <option value="others">TARGET: OTHERS (EXCLUDING YOU)</option>
-              <option value="self">TARGET: SELF ONLY</option>
-            </select>
-            <select class="term-input" id="adminTargetUser">
-              <option value="">SELECT USER</option>
-            </select>
-            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">
-              REFRESH USER LIST
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCashToUser(1000)">
-              GIVE SELECTED USER +$1,000
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCashToUser(10000)">
-              GIVE SELECTED USER +$10,000
-            </button>
-            <button class="term-btn" onclick="window.adminForgiveInterestForUser()">
-              FORGIVE INTEREST (SELECTED USER)
-            </button>
+  <body>
+    <div class="app-shell">
+      <header class="top-nav card-glass">
+        <div class="brand">
+          <span class="logo-dot"></span>
+          <div>
+            <p class="label">UNIFIED GAMEVERSE</p>
+            <h1>Astra Arcade</h1>
           </div>
-
-          <div class="admin-section">
-            <p class="admin-section-title">ECONOMY</p>
-            <button class="term-btn" onclick="window.adminGrantCash(1000)">
-              GRANT +$1,000
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCash(10000)">
-              GRANT +$10,000
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCash(100000)">
-              GRANT +$100,000
-            </button>
-            <button class="term-btn" onclick="window.adminInjectJackpot()">
-              INJECT JACKPOT (+$5,000,000)
-            </button>
-            <button class="term-btn" onclick="window.adminSetMaxCash()">
-              SET BANK TO $999,999,999
-            </button>
-            <button class="term-btn" onclick="window.adminMaxPortfolio()">
-              MAX STOCK PORTFOLIO (9,999 SHARES EACH)
-            </button>
-          </div>
-
-          <div class="admin-section">
-            <p class="admin-section-title">PROGRESSION</p>
-            <button class="term-btn" onclick="window.adminGrantAllShopItems()">
-              UNLOCK + ENABLE ALL SHOP ITEMS
-            </button>
-            <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">
-              CLEAR DEBT + RESET JOB COOLDOWNS
-            </button>
-            <button class="term-btn" onclick="window.adminBoostStats()">
-              BOOST STATS (+100 WINS / +250 GAMES)
-            </button>
-            <button class="term-btn" onclick="window.adminPrestigePack()">
-              PRESTIGE PACK (MONEY + ITEMS + ACHIEVEMENTS)
-            </button>
-            <button class="term-btn" onclick="window.adminUnlockAllAchievements()">
-              UNLOCK ALL ACHIEVEMENTS
-            </button>
-          </div>
-
-          <div class="admin-section">
-            <p class="admin-section-title">MARKET CONTROL</p>
-            <button class="term-btn" onclick="window.adminMarketMoonshot()">
-              MARKET MOONSHOT (+35% ALL STOCKS)
-            </button>
-            <button class="term-btn" onclick="window.adminMarketMeltdown()">
-              MARKET MELTDOWN (-45% ALL STOCKS)
-            </button>
-            <button class="term-btn" onclick="window.adminMarketCrashToZero()">
-              CRASH MARKET TO ZERO
-            </button>
-            <button class="term-btn" onclick="window.adminMarketTimesThousand()">
-              MULTIPLY MARKET x1000000000000000000
-            </button>
-          </div>
-
         </div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <!-- Global text chat dock (always visible on home). -->
-    <div id="globalChat" class="home-chat">
-      <div class="chat-header">GLOBAL CHAT</div>
-      <div id="chatHistory"></div>
-      <input
-        type="text"
-        id="chatInput"
-        placeholder="TYPE MESSAGE..."
-        maxlength="30"
-      />
-    </div>
-
-    <!-- Landing splash section + operator info. -->
-    <div class="wrap">
-      <div class="gooner-btn" id="mainBtn">GOONER</div>
-      <div class="subtitle">TERMINAL ONLINE</div>
-      <div style="margin-top: 20px; font-size: 10px">
-        OPERATOR: <span id="displayUser">ANON</span>
-        <span id="displayRankBadge" class="rank-badge rank-iron">⬢</span>
-        <span
-          id="displayRank"
-          style="color: #fff; background: var(--accent-dim); padding: 2px 5px"
-          >[IRON]</span
-        >
-      </div>
-      <div style="margin-top: 12px; font-size: 10px">
-        <a class="menu-btn" href="instruction-system-docs.html" target="_blank" rel="noopener">INSTRUCTION DOCS</a>
-      </div>
-      <section class="trending-games" aria-label="Trending games">
-        <h2>TRENDING GAMES // LAST 24H</h2>
-        <div class="trending-meta" id="trendingGamesMeta">SCANNING PLAYER TRAFFIC...</div>
-        <div class="trending-games-list" id="trendingGamesList">
-          <div class="trending-empty">NO TRAFFIC SIGNAL YET.</div>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#games">Games</a>
+          <a href="#shop">Shop</a>
+          <a href="#market">Market</a>
+          <a href="#crews">Crews</a>
+          <a href="#leaderboards">Leaderboards</a>
+        </nav>
+        <div class="player-chip">
+          <div>
+            <p class="label">SEASON</p>
+            <strong id="seasonLabel">S12: Neon Uprising</strong>
+          </div>
+          <div>
+            <p class="label">Credits</p>
+            <strong id="creditsValue">0</strong>
+          </div>
         </div>
-      </section>
-      <section class="update-log" aria-label="Update log">
-        <h2>UPDATE LOG</h2>
+      </header>
+
+      <main class="main-grid">
+        <section class="hero card-glass">
+          <div>
+            <p class="eyebrow">Platform redesign complete</p>
+            <h2>Skill-first progression. Shared identity. Distinct gameplay loops.</h2>
+            <p>
+              Every system is rebuilt under one design language: fair economy,
+              seasonal competition, strategic mechanics, and no pay-to-win power.
+            </p>
+            <div class="button-row">
+              <button class="btn btn-primary" data-open-modal="overviewModal">View architecture</button>
+              <button class="btn btn-secondary" data-scroll="games">Play now</button>
+            </div>
+          </div>
+          <div class="hero-metrics">
+            <article class="metric-card">
+              <span>Games</span>
+              <strong>4 Core Modes</strong>
+              <small>Distinct mechanics + shared progression rails</small>
+            </article>
+            <article class="metric-card">
+              <span>Economy</span>
+              <strong>Inflation capped</strong>
+              <small>Diminishing returns + score normalization</small>
+            </article>
+            <article class="metric-card">
+              <span>Competitive</span>
+              <strong>Tiered seasons</strong>
+              <small>Daily / weekly / all-time ladders</small>
+            </article>
+          </div>
+        </section>
+
+        <section id="games" class="panel card-glass">
+          <div class="section-head">
+            <h3>Games Hub</h3>
+            <p>Unified UX frame, distinct mechanics, meaningful build choices.</p>
+          </div>
+          <div class="game-tabs" role="tablist">
+            <button class="btn btn-tab active" data-game="pulse">Pulse Runner</button>
+            <button class="btn btn-tab" data-game="rift">Rift Tactics</button>
+            <button class="btn btn-tab" data-game="forge">Forge Tycoon</button>
+            <button class="btn btn-tab" data-game="cipher">Cipher Clash</button>
+          </div>
+          <article class="game-surface">
+            <div>
+              <h4 id="gameTitle"></h4>
+              <p id="gameDesc"></p>
+              <div class="tag-row" id="gameTags"></div>
+            </div>
+            <div class="ability-grid" id="abilityGrid"></div>
+          </article>
+          <div class="button-row">
+            <button class="btn btn-primary" id="simulateRunBtn">Simulate ranked run</button>
+            <button class="btn btn-secondary" id="claimRewardBtn">Claim daily challenge reward</button>
+          </div>
+        </section>
+
+        <section id="shop" class="panel card-glass">
+          <div class="section-head">
+            <h3>Cosmetic Shop</h3>
+            <p>Personalization only. No competitive stat power sold here.</p>
+          </div>
+          <div class="shop-grid" id="shopGrid"></div>
+        </section>
+
+        <section id="market" class="panel card-glass">
+          <div class="section-head">
+            <h3>Stock Market</h3>
+            <p>Risk-managed trading with anti-exploit safeguards and hard caps.</p>
+          </div>
+          <div class="market-layout">
+            <div class="market-list" id="marketList"></div>
+            <div class="market-panel card-subtle">
+              <h4>Risk Controls</h4>
+              <ul>
+                <li>Max 20% of portfolio per asset.</li>
+                <li>Progressive transaction fee on rapid flips.</li>
+                <li>Circuit breaker pauses during extreme spikes.</li>
+              </ul>
+              <button class="btn btn-secondary" id="tickMarketBtn">Advance market tick</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="crews" class="panel card-glass">
+          <div class="section-head">
+            <h3>Crews & Seasonal Objectives</h3>
+            <p>Cooperative progression without snowballing dominance.</p>
+          </div>
+          <div class="crew-grid" id="crewGrid"></div>
+        </section>
+
+        <section id="leaderboards" class="panel card-glass">
+          <div class="section-head">
+            <h3>Leaderboards</h3>
+            <p>Filterable ladders with normalized scoring and tier divisions.</p>
+          </div>
+          <div class="filter-row">
+            <button class="btn btn-chip active" data-board-filter="daily">Daily</button>
+            <button class="btn btn-chip" data-board-filter="weekly">Weekly</button>
+            <button class="btn btn-chip" data-board-filter="all">All-time</button>
+          </div>
+          <div class="board-table" id="boardTable"></div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="toast-stack" id="toastStack" aria-live="polite"></aside>
+
+    <dialog id="overviewModal" class="modal">
+      <article>
+        <h3>Redesign Architecture Snapshot</h3>
         <ul>
-          <li><span>v32.1</span> Added home-screen update log for patch tracking.</li>
-          <li><span>v32.0</span> Stabilized PVP modes and performance tuning pass.</li>
-          <li><span>v31.8</span> Added stock market controls and transfer quality-of-life upgrades.</li>
+          <li>Single tokenized design system (colors, spacing, typography, states).</li>
+          <li>Component-driven sections with shared card/button/modal primitives.</li>
+          <li>Rebalanced economy loops: capped growth, transparent rarity, seasonal resets.</li>
+          <li>Performance-first rendering: diffed updates + event delegation.</li>
         </ul>
-      </section>
-      <section class="live-ops" aria-label="Live operations">
-        <h2>LIVE OPS</h2>
-        <div class="live-ops-line" id="liveOpsNow">LOADING EVENT...</div>
-        <div class="live-ops-grid">
-          <div><span>MODE</span><strong id="liveOpsMode">SYNCING...</strong></div>
-          <div><span>REWARD</span><strong id="liveOpsReward">SYNCING...</strong></div>
-          <div><span>FEATURED</span><strong id="liveOpsFeatured">SYNCING...</strong></div>
-          <div><span>HOT ROOM</span><strong id="liveOpsRoom">----</strong></div>
-        </div>
-      </section>
-    </div>
+        <button class="btn btn-primary" data-close-modal="overviewModal">Close</button>
+      </article>
+    </dialog>
 
-    <!-- Login overlay shown on initial load or when logged out. -->
-    <div class="overlay active" id="overlayLogin">
-      <div class="login-box">
-        <h1 style="margin-bottom: 30px">SECURE LOGIN</h1>
-        <input
-          type="text"
-          id="usernameInput"
-          class="term-input"
-          placeholder="CODENAME"
-          maxlength="10"
-        />
-        <input
-          type="password"
-          id="pinInput"
-          class="term-input"
-          placeholder="4-DIGIT PIN"
-          maxlength="4"
-          style="letter-spacing: 5px"
-        />
-        <div style="display: flex; gap: 10px">
-          <button class="term-btn" id="btnLogin">LOGIN</button>
-          <button
-            class="term-btn"
-            id="btnRegister"
-            style="border-color: #0f0; color: #0f0"
-          >
-            REGISTER
-          </button>
-        </div>
-        <p
-          id="loginMsg"
-          style="font-size: 10px; margin-top: 20px; color: yellow"
-        ></p>
-      </div>
-    </div>
-
-    <!-- Profile overlay with stats + achievements. -->
-    <div class="overlay" id="overlayProfile">
-      <div class="score-box">
-        <h2 style="text-align: center">OPERATOR PROFILE</h2>
-        <div class="profile-summary">
-          <div class="profile-summary-rank" id="profSummaryRank">[IRON]</div>
-          <div class="profile-progress-wrap">
-            <div class="profile-progress-label" id="profProgressLabel">
-              $0 TO BRONZE
-            </div>
-            <div class="profile-progress-track">
-              <div class="profile-progress-fill" id="profProgressFill"></div>
-            </div>
-          </div>
-        </div>
-        <div class="profile-stats">
-          <div class="stat-row">
-            <span>CODENAME</span><span id="profName">...</span>
-          </div>
-          <div class="stat-row">
-            <span>RANK</span><span><span id="profRankBadge" class="rank-badge rank-iron">⬢</span><span id="profRank">...</span></span>
-          </div>
-          <div class="stat-row">
-            <span>NET WORTH</span><span id="profBank">$0</span>
-          </div>
-          <div class="stat-row">
-            <span>TYPING SPEED</span><span id="profWPM">0 WPM</span>
-          </div>
-          <div class="stat-row">
-            <span>GAMES PLAYED</span><span id="profGames">0</span>
-          </div>
-          <div class="stat-row">
-            <span>TOTAL WINS</span><span id="profWins">0</span>
-          </div>
-          <div class="stat-row">
-            <span>ACHIEVEMENTS</span><span id="profAch">0 / 0</span>
-          </div>
-          <div class="stat-row">
-            <span>MEMBER SINCE</span><span id="profJoined">UNKNOWN</span>
-          </div>
-          <div class="stat-row">
-            <span>ACCOUNT ID</span><span id="profUid">...</span>
-          </div>
-        </div>
-        <div
-          style="
-            border-top: 1px dashed var(--accent-dim);
-            margin-top: 15px;
-            padding-top: 10px;
-          "
-        >
-          <div style="text-align: center; font-size: 10px; margin-bottom: 10px">
-            ACHIEVEMENTS (CLICK TO INSPECT)
-          </div>
-          <div class="badge-grid" id="badgeGrid"></div>
-        </div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <!-- Achievement detail modal. -->
-    <div class="overlay" id="modalBadgeDetail">
-      <div class="score-box" style="border-color: #fff">
-        <span id="bdIcon">🔒</span>
-        <h2 id="bdTitle">UNKNOWN</h2>
-        <div id="bdRarity">COMMON</div>
-        <p id="bdDesc">This achievement is locked.</p>
-        <div id="bdReward">REWARD: $???</div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="
-            document
-              .getElementById('modalBadgeDetail')
-              .classList.remove('active')
-          "
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <!-- Bank overlay with transaction log. -->
-    <div class="overlay" id="overlayBank">
-      <div class="score-box">
-        <h2 style="text-align: center">THE BANK</h2>
-        <div
-          style="
-            text-align: center;
-            font-size: 20px;
-            margin: 20px 0;
-            color: #0f0;
-          "
-        >
-          $<span id="bankDisplay">0</span>
-        </div>
-        <div style="text-align: center; font-size: 10px; margin-bottom: 10px">
-          RECENT TRANSACTIONS
-        </div>
-        <div class="bank-transfer">
-          <input
-            class="term-input bank-transfer-input"
-            id="bankTransferUser"
-            type="text"
-            maxlength="20"
-            placeholder="PLAYER NAME"
-          />
-          <input
-            class="term-input bank-transfer-input"
-            id="bankTransferAmount"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="AMOUNT ($)"
-          />
-          <div class="bank-transfer-presets" id="bankTransferPresets">
-            <button class="term-btn bank-preset-btn" data-amount="100">$100</button>
-            <button class="term-btn bank-preset-btn" data-amount="500">$500</button>
-            <button class="term-btn bank-preset-btn" data-amount="1000">$1000</button>
-            <button class="term-btn bank-preset-btn" data-amount="max">MAX</button>
-          </div>
-          <button class="term-btn" id="bankTransferSend">SEND MONEY</button>
-          <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
-          <div id="bankTransferMsg" class="bank-transfer-msg"></div>
-        </div>
-        <div class="bank-loan">
-          <div class="bank-loan-title">HIGH-RISK LOANS</div>
-          <div class="bank-loan-stats">
-            <span>DEBT: <strong id="loanDebt">$0</strong></span>
-            <span>RATE: <strong id="loanRate">0%</strong></span>
-          </div>
-          <input
-            class="term-input bank-transfer-input"
-            id="loanAmount"
-            type="number"
-            min="100"
-            max="10000"
-            step="50"
-            placeholder="LOAN AMOUNT ($100-$10,000)"
-          />
-          <div class="bank-loan-actions">
-            <button class="term-btn" id="loanTakeBtn">TAKE LOAN</button>
-            <button class="term-btn" id="loanRepayBtn">REPAY ALL</button>
-          </div>
-          <div id="bankLoanMsg" class="bank-transfer-msg"></div>
-        </div>
-        <div class="stock-market">
-          <div class="stock-market-header">
-            <div>SIM STOCK MARKET</div>
-            <div id="stockPortfolioValue">PORTFOLIO: $0</div>
-          </div>
-          <div class="stock-market-grid">
-            <div id="stockList" class="stock-list"></div>
-            <div class="stock-detail">
-              <div id="stockDetailName" class="stock-detail-title">SELECT A STOCK</div>
-              <div id="stockDetailPrice" class="stock-detail-price">$0.00</div>
-              <canvas id="stockChart" width="420" height="170"></canvas>
-              <div id="stockDetailMeta" class="stock-detail-meta">NO DATA</div>
-              <div class="stock-multipliers" id="stockMultiplierBtns">
-                <button class="term-btn stock-mult-btn active" data-mult="1">x1</button>
-                <button class="term-btn stock-mult-btn" data-mult="5">x5</button>
-                <button class="term-btn stock-mult-btn" data-mult="10">x10</button>
-                <button class="term-btn stock-mult-btn" data-mult="25">x25</button>
-                <button class="term-btn stock-mult-btn" data-mult="MAX">MAX</button>
-              </div>
-              <div class="stock-actions">
-                <button class="term-btn" id="stockBuyBtn">BUY 1</button>
-                <button class="term-btn" id="stockSellBtn">SELL 1</button>
-              </div>
-              <div id="stockTradeMsg" class="bank-transfer-msg"></div>
-            </div>
-          </div>
-        </div>
-        <div class="bank-log" id="bankLog"></div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <!-- Shop overlay for perks and cosmetics. -->
-    <div class="overlay" id="overlayShop">
-      <div class="score-box">
-        <h2 style="text-align: center">BLACK MARKET</h2>
-        <div style="text-align: center; font-size: 10px; margin-bottom: 10px">
-          BALANCE: $<span id="shopBank">0</span>
-        </div>
-        <div class="shop-list" id="shopList"></div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <!-- Jobs hub + job mini-game overlays. -->
-    <div class="overlay" id="overlayJobs">
-      <div class="score-box">
-        <h2 style="text-align: center">JOB GAMES</h2>
-        <div class="jobs-note">PLAY EACH JOB LIKE A SEPARATE MINI-GAME TO EARN MONEY</div>
-        <div class="jobs-grid">
-          <div class="job-card">
-            <div class="job-head">
-              <span>CASHIER RUSH</span><span>$120</span>
-            </div>
-            <div class="job-desc">Solve 3 customer totals in a row.</div>
-            <div class="job-controls">
-              <div id="jobCashierStatus" class="job-prompt">READY</div>
-              <button class="term-btn" onclick="window.openGame('overlayJobCashier')">PLAY CASHIER</button>
-            </div>
-          </div>
-
-          <div class="job-card">
-            <div class="job-head">
-              <span>FRONT DESK MEMORY</span><span>$160</span>
-            </div>
-            <div class="job-desc">Memorize a code then type it from memory.</div>
-            <div class="job-controls">
-              <div id="jobFrontdeskStatus" class="job-prompt">READY</div>
-              <button class="term-btn" onclick="window.openGame('overlayJobFrontdesk')">PLAY FRONT DESK</button>
-            </div>
-          </div>
-
-          <div class="job-card">
-            <div class="job-head">
-              <span>DELIVERY DRIVER RUN</span><span>$200</span>
-            </div>
-            <div class="job-desc">Hit safe-speed checkpoints before shift ends.</div>
-            <div class="job-controls">
-              <div id="jobDeliveryStatus" class="job-prompt">READY</div>
-              <button class="term-btn" onclick="window.openGame('overlayJobDelivery')">PLAY DELIVERY</button>
-            </div>
-          </div>
-
-          <div class="job-card">
-            <div class="job-head">
-              <span>STOCK SHELF SORT</span><span>$180</span>
-            </div>
-            <div class="job-desc">Decode aisle labels and restock 4 items fast.</div>
-            <div class="job-controls">
-              <div id="jobStockerStatus" class="job-prompt">READY</div>
-              <button class="term-btn" onclick="window.openGame('overlayJobStocker')">PLAY STOCKER</button>
-            </div>
-          </div>
-
-          <div class="job-card">
-            <div class="job-head">
-              <span>JANITOR SPOT CHECK</span><span>$150</span>
-            </div>
-            <div class="job-desc">Clean 8 spills before your shift timer runs out.</div>
-            <div class="job-controls">
-              <div id="jobJanitorStatus" class="job-prompt">READY</div>
-              <button class="term-btn" onclick="window.openGame('overlayJobJanitor')">PLAY JANITOR</button>
-            </div>
-          </div>
-
-          <div class="job-card">
-            <div class="job-head">
-              <span>ARCADE BARISTA</span><span>$220</span>
-            </div>
-            <div class="job-desc">Pull espresso shots in the green heat zone for combo cash.</div>
-            <div class="job-controls">
-              <div id="jobBaristaStatus" class="job-prompt">READY</div>
-              <button class="term-btn" onclick="window.openGame('overlayJobBarista')">PLAY BARISTA</button>
-            </div>
-          </div>
-        </div>
-        <div id="jobsMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlayJobCashier">
-      <div class="score-box">
-        <h2 style="text-align: center">CASHIER RUSH</h2>
-        <div class="jobs-note">CLICK THE CORRECT TOTAL TAG FOR EACH CUSTOMER</div>
-        <div id="jobCashierPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <div id="jobCashierBoard" class="job-board job-board-cashier">
-          <div class="job-board-empty">PRESS START SHIFT</div>
-        </div>
-        <div class="job-actions" style="margin-top: 10px">
-          <button class="term-btn" onclick="window.startJob('cashier')">START SHIFT</button>
-        </div>
-        <div id="jobCashierMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlayJobFrontdesk">
-      <div class="score-box">
-        <h2 style="text-align: center">FRONT DESK MEMORY</h2>
-        <div class="jobs-note">CLICK THE MATCHING KEYCARD CODE</div>
-        <div id="jobFrontdeskPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <div id="jobFrontdeskBoard" class="job-board job-board-frontdesk">
-          <div class="job-board-empty">PRESS START SHIFT</div>
-        </div>
-        <div class="job-actions" style="margin-top: 10px">
-          <button class="term-btn" onclick="window.startJob('frontdesk')">START SHIFT</button>
-        </div>
-        <div id="jobFrontdeskMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlayJobDelivery">
-      <div class="score-box">
-        <h2 style="text-align: center">DELIVERY DRIVER RUN</h2>
-        <div class="jobs-note">CLICK GREEN CHECKPOINTS, AVOID HAZARDS</div>
-        <div id="jobDeliveryPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <div id="jobDeliveryBoard" class="job-board job-board-delivery">
-          <div class="job-board-empty">PRESS START SHIFT</div>
-        </div>
-        <div class="job-actions" style="margin-top: 10px">
-          <button class="term-btn" onclick="window.startJob('delivery')">START SHIFT</button>
-        </div>
-        <div id="jobDeliveryMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlayJobStocker">
-      <div class="score-box">
-        <h2 style="text-align: center">STOCK SHELF SORT</h2>
-        <div class="jobs-note">CLICK THE CRATE THAT MATCHES THE REQUESTED ITEM</div>
-        <div id="jobStockerPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <div id="jobStockerBoard" class="job-board job-board-stocker">
-          <div class="job-board-empty">PRESS START SHIFT</div>
-        </div>
-        <div class="job-actions" style="margin-top: 10px">
-          <button class="term-btn" onclick="window.startJob('stocker')">START SHIFT</button>
-        </div>
-        <div id="jobStockerMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlayJobJanitor">
-      <div class="score-box">
-        <h2 style="text-align: center">JANITOR SPOT CHECK</h2>
-        <div class="jobs-note">CLICK RANDOM SPILLS TO CLEAN 8 MESSES BEFORE TIME RUNS OUT</div>
-        <div id="jobJanitorPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <div id="jobJanitorBoard" class="job-board job-board-janitor">
-          <div class="job-board-empty">PRESS START SHIFT</div>
-        </div>
-        <div class="job-actions" style="margin-top: 10px">
-          <button class="term-btn" onclick="window.startJob('janitor')">START SHIFT</button>
-        </div>
-        <div id="jobJanitorMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
-      </div>
-    </div>
-
-
-    <div class="overlay" id="overlayJobBarista">
-      <div class="score-box">
-        <h2 style="text-align: center">ARCADE BARISTA</h2>
-        <div class="jobs-note">CLICK SHOTS IN THE GREEN TEMP RANGE</div>
-        <div id="jobBaristaPrompt" class="job-prompt" style="margin-bottom: 12px">PRESS START SHIFT</div>
-        <div class="job-meter">
-          <div id="jobBaristaMeter" class="job-meter-fill"></div>
-        </div>
-        <div id="jobBaristaTemp" class="job-temp">--°</div>
-        <div id="jobBaristaBoard" class="job-board job-board-barista">
-          <div class="job-board-empty">PRESS START SHIFT</div>
-        </div>
-        <div class="job-actions" style="margin-top: 10px">
-          <button class="term-btn" onclick="window.startJob('barista')">START SHIFT</button>
-          <button class="term-btn" onclick="window.submitJob('barista')">PULL SHOT</button>
-        </div>
-        <div id="jobBaristaMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.openGame('overlayJobs')">BACK TO JOB BOARD</button>
-      </div>
-    </div>
-
-    <!-- Scores overlay for local + global leaderboards. -->
-    <div class="overlay" id="overlayScores">
-      <div class="score-box">
-        <h2 style="text-align: center; margin-bottom: 20px">
-          GLOBAL LEADERBOARD
-        </h2>
-        <div class="score-tabs">
-          <div class="score-tab" data-tab="players">PLAYERS</div>
-          <div class="score-tab active" data-tab="richest">RICHEST</div>
-          <div class="score-tab" data-tab="geo">GEO DASH</div>
-          <div class="score-tab" data-tab="type">TYPER</div>
-          <div class="score-tab" data-tab="snake">SNAKE</div>
-          <div class="score-tab" data-tab="pong">PONG</div>
-          <div class="score-tab" data-tab="runner">RUNNER</div>
-          <div class="score-tab" data-tab="corebreaker">CORE BREAKER</div>
-          <div class="score-tab" data-tab="neondefender">NEON DEFENDER</div>
-          <div class="score-tab" data-tab="voidminer">VOID MINER</div>
-          <div class="score-tab" data-tab="dodge">DODGE</div>
-          <div class="score-tab" data-tab="flappy">FLAPPY</div>
-        </div>
-        <div class="score-list" id="scoreList">
-          <div class="score-item">LOADING DATA...</div>
-        </div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlaySeason">
-      <div class="score-box">
-        <h2 style="text-align: center">SEASON PROTOCOL</h2>
-        <p id="seasonName" style="text-align: center; font-size: 10px">SEASON // INIT</p>
-        <div class="profile-progress-wrap" style="margin-bottom: 14px">
-          <div class="profile-progress-label" id="seasonProgressLabel">0 / 1000 XP</div>
-          <div class="profile-progress-track">
-            <div class="profile-progress-fill" id="seasonProgressFill"></div>
-          </div>
-        </div>
-        <div class="score-list" id="seasonMissions"></div>
-        <div class="season-tab-block">
-          <div class="score-tabs" id="seasonTabs"></div>
-          <div class="score-tabs season-subtabs" id="seasonSubTabs">
-            <div class="score-tab active" data-season-subtab="solo">SOLO SCORES</div>
-            <div class="score-tab" data-season-subtab="gang">GANG SCORES</div>
-          </div>
-          <h3 class="season-board-title" id="seasonBoardTitle">SEASON BOARD</h3>
-          <div class="score-list" id="seasonBoardList"></div>
-        </div>
-        <div class="score-list" id="seasonHall"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">CLOSE</button>
-      </div>
-    </div>
-
-    <div class="overlay" id="overlayCrew">
-      <div class="score-box">
-        <h2 style="text-align: center">CREW TERMINAL</h2>
-        <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
-        <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
-        <div class="stat-row"><span>CREW BANK</span><span id="crewBank">$0</span></div>
-        <div class="stat-row"><span>WEEKLY WINS</span><span id="crewWins">0</span></div>
-        <div class="stat-row"><span>WEEKLY MONEY</span><span id="crewXp">0</span></div>
-        <div class="stat-row"><span>MEMBERS</span><span id="crewMembers">0</span></div>
-        <input class="term-input" id="crewInput" placeholder="CREW TAG (3-8)" maxlength="8" />
-        <input class="term-input" id="crewMottoInput" placeholder="CREW MOTTO (MAX 24)" maxlength="24" />
-        <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
-        <div class="stat-row"><span>RECRUITMENT</span><span id="crewRecruitment">OPEN</span></div>
-        <div class="stat-row"><span>WEEKLY GOAL</span><span id="crewGoal">$5000</span></div>
-        <input class="term-input" id="crewDonateAmount" placeholder="DONATE AMOUNT" maxlength="7" />
-        <div class="crew-actions">
-          <button class="term-btn" id="crewCreateBtn">CREATE / JOIN CREW</button>
-          <button class="term-btn" id="crewContributeBtn">DONATE TO CREW BANK</button>
-          <button class="term-btn" id="crewMottoBtn">UPDATE MOTTO</button>
-          <button class="term-btn" id="crewRecruitmentBtn">TOGGLE RECRUITMENT</button>
-          <button class="term-btn" id="crewGoalBtn">CYCLE WEEKLY GOAL</button>
-          <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00">LEAVE CREW</button>
-        </div>
-        <p id="crewMsg" style="font-size: 10px; color: #aaa; margin-top: 10px"></p>
-        <button class="term-btn" style="margin-top: 14px" onclick="window.closeOverlays()">CLOSE</button>
-      </div>
-    </div>
-
-    <!-- Configuration overlay for display/audio toggles. -->
-    <div class="overlay" id="overlayConfig">
-      <div class="config-box">
-        <h2
-          style="
-            text-align: center;
-            border-bottom: 1px solid var(--accent);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-          "
-        >
-          CONFIG
-        </h2>
-        <div class="config-row">
-          <span>THEME</span
-          ><input type="color" id="themeColor" value="#ff0606" />
-        </div>
-        <div class="config-row">
-          <span>MATRIX</span
-          ><button class="menu-btn" id="matrixToggle">OFF</button>
-        </div>
-        <div class="config-row">
-          <span>SCANLINES</span
-          ><input type="range" id="scanSlider" min="0" max="100" value="50" />
-        </div>
-        <div class="config-row">
-          <span>FLICKER</span
-          ><button class="menu-btn" id="flickerToggle">ON</button>
-        </div>
-        <div class="config-row">
-          <span>VOLUME</span
-          ><input type="range" id="volSlider" min="0" max="100" value="50" />
-        </div>
-        <div class="config-row">
-          <span>FULLSCREEN</span
-          ><button class="menu-btn" id="fsToggle">TOGGLE</button>
-        </div>
-        <button
-          class="term-btn"
-          id="btnLogout"
-          style="border-color: red; color: red; margin-top: 10px"
-        >
-          LOGOUT
-        </button>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
-    <!-- Geometry Dash style runner. -->
-    <div class="overlay" id="overlayGeo">
-      <h1>GEO DASH</h1>
-      <div class="high-score-display">HIGH: <span id="hsGeo">0</span></div>
-      <div style="margin-bottom: 10px" id="geoScore">SCORE: 0</div>
-      <canvas id="geoCanvas" width="800" height="400"></canvas>
-      <div class="mobile-hint active" style="margin-top: 20px">
-        CLICK OR SPACE TO JUMP
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Typing speed mini-game. -->
-    <div class="overlay" id="overlayType">
-      <h1>TYPE RUNNER</h1>
-      <div class="type-stats">
-        <span>TIME: <span id="typeTimer">0</span>s</span
-        ><span>WPM: <span id="typeWPM">0</span></span>
-      </div>
-      <div
-        id="typeGameArea"
-        onclick="document.getElementById('typeHiddenInput').focus()"
-      >
-        <div id="typeTextBox">CLICK TO START</div>
-        <input type="text" id="typeHiddenInput" autocomplete="off" />
-      </div>
-      <button
-        class="menu-btn"
-        onclick="window.initTypeGame()"
-        style="margin-bottom: 20px"
-      >
-        RESTART
-      </button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Pong mini-game. -->
-    <div class="overlay" id="overlayPong">
-      <h1>PONG</h1>
-      <div class="high-score-display">HIGH: <span id="hsPong">0</span></div>
-      <div style="margin-bottom: 10px">
-        SCORE: <span id="pongScore">0 : 0</span>
-      </div>
-      <canvas id="pongCanvas" width="800" height="600"></canvas>
-      <div>
-        <button class="menu-btn" onclick="window.setPongDiff('easy')">
-          EASY</button
-        ><button class="menu-btn" onclick="window.setPongDiff('hard')">
-          HARD
-        </button>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Snake mini-game. -->
-    <div class="overlay" id="overlaySnake">
-      <h1>SNAKE</h1>
-      <div class="high-score-display">HIGH: <span id="hsSnake">0</span></div>
-      <div style="margin-bottom: 10px">
-        SCORE: <span id="snakeScoreVal">0</span>
-      </div>
-      <canvas id="snakeCanvas" width="600" height="400"></canvas>
-      <div class="touch-controls active" id="snakeControls">
-        <div></div>
-        <div class="touch-btn" data-sk="up">▲</div>
-        <div></div>
-        <div class="touch-btn" data-sk="left">◀</div>
-        <div class="touch-btn" data-sk="down">▼</div>
-        <div class="touch-btn" data-sk="right">▶</div>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Endless runner mini-game. -->
-    <div class="overlay" id="overlayRunner">
-      <h1>RUNNER</h1>
-      <div class="high-score-display">HIGH: <span id="hsRunner">0</span></div>
-      <div style="margin-bottom: 10px" id="runnerScoreBoard">SCORE: 0</div>
-      <canvas id="runnerCanvas" width="800" height="400"></canvas>
-      <div class="mobile-hint active" style="margin-top: 20px">
-        PRESS SPACE TO JUMP
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Core Breaker mini-game overlay. -->
-    <div class="overlay" id="overlayCorebreaker">
-      <h1>CORE BREAKER</h1>
-      <div class="high-score-display">HIGH: <span id="hsCorebreaker">0</span></div>
-      <div style="margin-bottom: 10px" id="coreBreakerScore">SCORE: 0 | LIVES: 3</div>
-      <canvas id="coreBreakerCanvas" width="800" height="450"></canvas>
-      <div class="mobile-hint active" style="margin-top: 12px">A/D OR ←/→ TO MOVE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
-
-    <!-- Neon Defender mini-game overlay. -->
-    <div class="overlay" id="overlayNeondefender">
-      <h1>NEON DEFENDER</h1>
-      <div class="high-score-display">HIGH: <span id="hsNeondefender">0</span></div>
-      <div style="margin-bottom: 10px" id="neonDefenderScore">SCORE: 0</div>
-      <canvas id="neonDefenderCanvas" width="800" height="450"></canvas>
-      <div class="mobile-hint active" style="margin-top: 12px">MOVE MOUSE TO AIM AUTO-FIRE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
-
-    <!-- Void Miner mini-game overlay. -->
-    <div class="overlay" id="overlayVoidminer">
-      <h1>VOID MINER</h1>
-      <div class="high-score-display">HIGH: <span id="hsVoidminer">0</span></div>
-      <div style="margin-bottom: 10px" id="voidMinerHud">FUEL: 100 | VX: 0.0 | VY: 0.0 | SCORE: 0</div>
-      <canvas id="voidMinerCanvas" width="800" height="500"></canvas>
-      <div class="mobile-hint active" style="margin-top: 12px">W/↑ THRUST • A,D / ←,→ ROTATE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
-
-    <!-- Shadow Assassin embedded mini-game overlay. -->
-    <div class="overlay" id="overlayShadowassassin">
-      <h1>SHADOW ASSASSIN</h1>
-      <iframe
-        class="embedded-game-frame"
-        src="games/shadow-assassin-safe-rooms.html"
-        title="Shadow Assassin"
-        allowfullscreen
-      ></iframe>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Dodge Grid mini-game overlay. -->
-    <div class="overlay" id="overlayDodge">
-      <h1>DODGE GRID</h1>
-      <div class="high-score-display">HIGH: <span id="hsDodge">0</span></div>
-      <div style="margin-bottom: 10px" id="dodgeScore">SCORE: 0</div>
-      <canvas id="dodgeCanvas" width="700" height="450"></canvas>
-      <div class="mobile-hint active" style="margin-top: 20px">
-        ARROWS OR WASD TO EVADE
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-
-    <!-- Roulette mini-game overlay. -->
-    <div class="overlay" id="overlayRoulette">
-      <h1>ROULETTE</h1>
-      <div class="roulette-balance">BANK: $<span id="rouletteBalance">0.00</span></div>
-
-      <div class="roulette-history-wrap">
-        <div class="roulette-label">HISTORY</div>
-        <div class="roulette-history" id="rouletteHistory"></div>
-      </div>
-
-      <div class="roulette-wheel-wrap">
-        <div class="roulette-pointer"></div>
-        <div class="roulette-wheel-rim"></div>
-        <div class="roulette-wheel" id="rouletteWheel">
-          <div class="roulette-wheel-numbers" id="rouletteWheelNumbers"></div>
-          <div class="roulette-wheel-center">SPIN</div>
-        </div>
-      </div>
-
-      <div class="roulette-status">
-        <span>LAST: <span id="rouletteLast">--</span></span>
-        <span>TOTAL BET: $<span id="rouletteTotalBet">0</span></span>
-      </div>
-      <div class="roulette-message" id="rouletteMessage">PLACE YOUR BETS.</div>
-
-      <div class="roulette-controls">
-        <div class="roulette-bet-row">
-          <label class="roulette-label" for="rouletteBetInput">BET</label>
-          <input type="number" min="1" id="rouletteBetInput" class="term-input" value="10" />
-        </div>
-        <div class="roulette-presets">
-          <button class="menu-btn" onclick="window.rouletteSetBet(10)">$10</button>
-          <button class="menu-btn" onclick="window.rouletteSetBet(50)">$50</button>
-          <button class="menu-btn" onclick="window.rouletteSetBet(100)">$100</button>
-          <button class="menu-btn" onclick="window.rouletteChangeBet(0.5)">1/2</button>
-          <button class="menu-btn" onclick="window.rouletteChangeBet(2)">x2</button>
-          <button class="menu-btn" onclick="window.rouletteMaxBet()">MAX</button>
-        </div>
-
-        <div class="roulette-board">
-          <button class="roulette-bet red" onclick="window.roulettePlace('red')">
-            RED 2X <span>$<span id="rouletteBetRed">0</span></span>
-          </button>
-          <button class="roulette-bet black" onclick="window.roulettePlace('black')">
-            BLACK 2X <span>$<span id="rouletteBetBlack">0</span></span>
-          </button>
-          <button class="roulette-bet green" onclick="window.roulettePlace('green')">
-            GREEN 14X <span>$<span id="rouletteBetGreen">0</span></span>
-          </button>
-        </div>
-
-        <div class="roulette-actions">
-          <button class="menu-btn" id="rouletteClearBtn" onclick="window.rouletteClear()">CLEAR</button>
-          <button class="term-btn" id="rouletteSpinBtn" onclick="window.rouletteSpin()">SPIN</button>
-        </div>
-      </div>
-
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Multiplayer Tic Tac Toe overlay. -->
-    <div class="overlay" id="overlayTTT">
-      <h1>TIC TAC TOE</h1>
-      <div id="tttMenu" class="menu-box">
-        <button class="term-btn" id="btnCreateTTT">CREATE ROOM</button>
-        <p>- OR -</p>
-        <input
-          type="text"
-          id="joinTTTCode"
-          class="term-input"
-          placeholder="CODE"
-          maxlength="4"
-        />
-        <button class="term-btn" id="btnJoinTTT">JOIN ROOM</button>
-      </div>
-      <div id="tttLobby" class="menu-box" style="display: none">
-        <h2>ROOM: <span id="tttRoomId">????</span></h2>
-        <div id="tttPList" style="text-align: left; margin: 20px 0"></div>
-        <button
-          class="term-btn"
-          id="tttStartBtn"
-          style="display: none; color: #0f0; border: 1px solid #0f0"
-        >
-          START GAME
-        </button>
-        <div id="tttWait" style="font-size: 10px">WAITING...</div>
-      </div>
-      <div id="tttGame" style="display: none; text-align: center">
-        <div id="tttStatus" style="margin-bottom: 10px">PLAYING</div>
-        <div class="ttt-grid" id="tttGrid">
-          <div class="ttt-cell" data-i="0"></div>
-          <div class="ttt-cell" data-i="1"></div>
-          <div class="ttt-cell" data-i="2"></div>
-          <div class="ttt-cell" data-i="3"></div>
-          <div class="ttt-cell" data-i="4"></div>
-          <div class="ttt-cell" data-i="5"></div>
-          <div class="ttt-cell" data-i="6"></div>
-          <div class="ttt-cell" data-i="7"></div>
-          <div class="ttt-cell" data-i="8"></div>
-        </div>
-        <button
-          class="term-btn"
-          id="tttReplay"
-          style="display: none; margin-top: 20px"
-        >
-          PLAY AGAIN
-        </button>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Multiplayer Hangman overlay. -->
-    <div class="overlay" id="overlayHangman">
-      <h1>HANGMAN</h1>
-      <div id="hmMenu" class="menu-box">
-        <input
-          type="text"
-          id="hmWordInput"
-          class="term-input"
-          placeholder="SECRET WORD"
-          maxlength="16"
-        />
-        <button class="term-btn" id="btnCreateHM">CREATE ROOM</button>
-        <p>- OR -</p>
-        <input
-          type="text"
-          id="joinHMCode"
-          class="term-input"
-          placeholder="CODE"
-          maxlength="4"
-        />
-        <button class="term-btn" id="btnJoinHM">JOIN ROOM</button>
-      </div>
-      <div id="hmLobby" class="menu-box" style="display: none">
-        <h2>ROOM: <span id="hmRoomId">????</span></h2>
-        <div id="hmPList" style="text-align: left; margin: 20px 0"></div>
-        <button
-          class="term-btn"
-          id="hmStartBtn"
-          style="display: none; color: #0f0; border: 1px solid #0f0"
-        >
-          START GAME
-        </button>
-        <div id="hmWait" style="font-size: 10px">WAITING...</div>
-      </div>
-      <div id="hmGame" class="hangman-room" style="display: none">
-        <div class="hangman-sidebar">
-          <div class="hangman-panel">
-            <div class="hangman-section-title">OPERATORS</div>
-            <div id="hmPListLive"></div>
-            <div class="hangman-turn">
-              TURN: <span id="hmTurnName">...</span>
-            </div>
-            <div class="hangman-row">
-              REMAINING: <span id="hmRemaining">6</span>
-            </div>
-          </div>
-          <div class="hangman-panel">
-            <div class="hangman-section-title">GUESSES</div>
-            <div class="hangman-letters" id="hmGuesses"></div>
-          </div>
-        </div>
-        <div class="hangman-stage">
-          <div id="hmStatus" class="hangman-status">DECRYPTING...</div>
-          <div class="hangman-figure" id="hmFigure" data-stage="0">
-            <div class="hangman-gallows">
-              <div class="hangman-base"></div>
-              <div class="hangman-post"></div>
-              <div class="hangman-beam"></div>
-              <div class="hangman-rope"></div>
-            </div>
-            <div class="hangman-man">
-              <div class="hangman-head"></div>
-              <div class="hangman-body"></div>
-              <div class="hangman-arm left"></div>
-              <div class="hangman-arm right"></div>
-              <div class="hangman-leg left"></div>
-              <div class="hangman-leg right"></div>
-            </div>
-          </div>
-          <div class="hangman-word" id="hmMasked">_ _ _ _</div>
-        </div>
-        <div class="hangman-chat">
-          <div class="hangman-panel hangman-chat-log" id="hmChatLog"></div>
-          <div class="hangman-chat-input">
-            <input
-              type="text"
-              id="hmGuessInput"
-              class="term-input"
-              placeholder="GUESS LETTER OR WORD"
-              maxlength="24"
-            />
-            <button class="term-btn" id="hmGuessBtn">SEND</button>
-          </div>
-          <div class="hangman-hint">
-            GUESS A LETTER OR ATTEMPT THE FULL WORD. TURN-BASED.
-          </div>
-        </div>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Solo + multiplayer Blackjack overlay. -->
-    <div class="overlay" id="overlayBlackjack">
-      <h1>BLACKJACK</h1>
-      <div id="bjMode" class="menu-box">
-        <button class="term-btn" onclick="window.bjSelect('solo')">
-          SOLO (VS DEALER)
-        </button>
-        <br /><br />
-        <button class="term-btn" onclick="window.bjSelect('multi')">
-          PVP (4 PLAYER)
-        </button>
-      </div>
-      <div id="bjNetMenu" class="menu-box" style="display: none">
-        <button class="term-btn" id="btnCreateBJ">CREATE TABLE</button>
-        <p>- OR -</p>
-        <input
-          type="text"
-          id="joinBJCode"
-          class="term-input"
-          placeholder="CODE"
-          maxlength="4"
-        />
-        <button class="term-btn" id="btnJoinBJ">JOIN TABLE</button>
-      </div>
-      <div id="bjLobby" class="menu-box" style="display: none">
-        <h2>ROOM: <span id="bjRoomId">????</span></h2>
-        <div id="bjPList" style="text-align: left; margin: 20px 0"></div>
-        <button
-          class="term-btn"
-          id="bjStartBtn"
-          style="display: none; color: #0f0"
-        >
-          START GAME
-        </button>
-        <div id="bjWait" style="font-size: 10px">WAITING...</div>
-      </div>
-      <div id="bjTable" class="bj-table" style="display: none">
-        <div class="bj-pot-display">POT: $<span id="bjPot">0</span></div>
-        <div class="bj-side-table" id="bjSide"></div>
-        <div class="bj-area" id="bjSeat0" style="margin-bottom: 10px">
-          <span class="bj-label" id="bjHostLabel">OPPONENT</span>
-          <div class="bj-hand" id="bjDealerHand"></div>
-          <div class="bj-score" id="bjDealerScore"></div>
-        </div>
-        <div
-          style="display: flex; align-items: center; gap: 20px; margin: 10px"
-        >
-          <div class="bj-deck-container" id="bjDeck">
-            <div class="bj-deck-card"></div>
-            <div class="bj-deck-card"></div>
-            <div
-              style="
-                position: absolute;
-                background: #000;
-                padding: 2px;
-                font-size: 10px;
-                z-index: 5;
-              "
-            >
-              ACTION
-            </div>
-          </div>
-          <div
-            id="bjMessage"
-            style="width: 150px; text-align: center; font-size: 10px"
-          >
-            PLACE BET
-          </div>
-        </div>
-        <div class="bj-area active-seat" id="bjMySeat">
-          <span class="bj-label">YOU</span>
-          <div class="bj-hand" id="bjPlayerHand"></div>
-          <div class="bj-score" id="bjPlayerScore"></div>
-        </div>
-        <div class="bj-controls" id="bjGameBtns" style="display: none">
-          <button class="term-btn" id="bjHit">HIT</button
-          ><button class="term-btn" id="bjStand">STAND</button>
-        </div>
-        <div id="bjBetBtns">
-          <div style="text-align: center; margin-bottom: 5px">
-            BET: $<span id="bjBetVal">0</span>
-          </div>
-          <div class="bj-chip-rack">
-            <div class="bj-chip" data-v="10">10</div>
-            <div class="bj-chip" data-v="50">50</div>
-            <div class="bj-chip" data-v="100">100</div>
-            <div class="bj-chip bj-all-in" id="bjAllIn">ALL</div>
-            <div
-              class="bj-chip"
-              id="bjClear"
-              style="border-color: #fff; color: #fff"
-            >
-              CLR
-            </div>
-          </div>
-        </div>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Firebase multiplayer physics arena game. -->
-    <div class="overlay" id="overlayBonk">
-      <h1>BONK ARENA</h1>
-      <div class="bonk-sub">CUSTOM MULTIPLAYER PHYSICS BRAWL</div>
-
-      <div id="baMenu" class="menu-box">
-        <button class="term-btn" id="btnCreateBA">CREATE ROOM</button>
-        <p>- OR -</p>
-        <input
-          type="text"
-          id="joinBACode"
-          class="term-input"
-          placeholder="ROOM CODE"
-          maxlength="4"
-        />
-        <button class="term-btn" id="btnJoinBA">JOIN ROOM</button>
-      </div>
-
-      <div id="baLobby" class="menu-box" style="display: none">
-        <h2>ROOM: <span id="baRoomId">----</span></h2>
-        <div id="baPList" style="text-align: left; margin: 16px 0"></div>
-        <label for="baModeSelect" style="font-size: 10px; opacity: 0.9">GAME MODE</label>
-        <select id="baModeSelect" class="term-input" style="width: 180px; text-align: center; margin-bottom: 10px">
-          <option value="classic">CLASSIC</option>
-          <option value="arrows">ARROWS</option>
-          <option value="grapple">GRAPPLE</option>
-        </select>
-        <div id="baModeLabel" style="font-size: 10px; margin-bottom: 10px">MODE: CLASSIC</div>
-        <button class="term-btn" id="baStartBtn" style="display: none">
-          START ROUND
-        </button>
-        <div id="baLobbyStatus" style="font-size: 10px">WAITING...</div>
-      </div>
-
-      <div id="baGame" class="bonk-wrap" style="display: none">
-        <div class="bonk-hud">
-          <span id="baStatus">SURVIVE</span>
-          <span>RING: <span id="baRadius">230</span></span>
-          <span id="baHint">BUMP ENEMIES OUTSIDE</span>
-        </div>
-        <canvas id="baCanvas" width="780" height="460"></canvas>
-        <div id="baWinner" class="bonk-winner"></div>
-        <button class="menu-btn" id="baReplayBtn">REPLAY (HOST)</button>
-      </div>
-
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Flappy Goon mini-game overlay. -->
-    <div class="overlay" id="overlayFlappy">
-      <h1>FLAPPY GOON</h1>
-      <div class="high-score-display">HIGH: <span id="hsFlappy">0</span></div>
-      <div style="margin-bottom: 10px" id="flappyScore">SCORE: 0</div>
-      <canvas id="flappyCanvas" width="400" height="600"></canvas>
-      <div class="mobile-hint active">TAP TO FLAP</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
-    </div>
-
-    <!-- Firebase multiplayer top-down drift racing game. -->
-    <div class="overlay" id="overlayDrift">
-      <h1>NEON DRIFT</h1>
-      <div class="bonk-sub">ONLINE 2D DRIFT DUELS</div>
-
-      <div id="driftMenu" class="menu-box">
-        <button class="term-btn" id="btnCreateDrift">CREATE ROOM</button>
-        <p>- OR -</p>
-        <input
-          type="text"
-          id="joinDriftCode"
-          class="term-input"
-          placeholder="ROOM CODE"
-          maxlength="4"
-        />
-        <button class="term-btn" id="btnJoinDrift">JOIN ROOM</button>
-      </div>
-
-      <div id="driftLobby" class="menu-box" style="display: none">
-        <h2>ROOM: <span id="driftRoomId">----</span></h2>
-        <div id="driftPlayers" style="margin: 12px 0"></div>
-        <button class="term-btn" id="driftStartBtn" style="display: none">START RACE</button>
-        <div id="driftLobbyStatus" style="font-size: 10px">WAITING FOR PLAYERS</div>
-      </div>
-
-      <div id="driftRace" style="display: none">
-        <div class="drift-hud">
-          <span id="driftRaceStatus">LINE UP</span>
-          <span>LAP: <span id="driftLap">0/3</span></span>
-          <span>BOOST: <span id="driftBoost">0%</span></span>
-          <span id="driftLeader">LEADER: --</span>
-        </div>
-        <canvas id="driftCanvas" width="780" height="460"></canvas>
-        <div id="driftWinner" class="bonk-winner"></div>
-      </div>
-
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
-
-    <!-- Custom 16-bit CPU emulator overlay. -->
-    <div class="overlay" id="overlayEmulator">
-      <h1>CPU EMULATOR</h1>
-      <div class="emu-layout">
-        <div class="emu-panel">
-          <p class="emu-label">PROGRAM HEX (LOADED TO 0x0500)</p>
-          <textarea
-            id="emuProgram"
-            class="emu-program"
-            spellcheck="false"
-            placeholder="01 10 00 2A ..."
-          ></textarea>
-          <div class="emu-controls">
-            <button class="term-btn" id="emuLoad">LOAD</button>
-            <button class="term-btn" id="emuAssemble">ASSEMBLE + LOAD</button>
-            <button class="term-btn" id="emuStep">STEP</button>
-            <button class="term-btn" id="emuRun">RUN</button>
-            <button class="term-btn" id="emuStop">STOP</button>
-            <button class="term-btn" id="emuReset">RESET</button>
-            <a class="term-btn emu-doc-link" href="cpu-emulator-docs.html" target="_blank" rel="noopener noreferrer">DOCS</a>
-          </div>
-          <p class="emu-label" style="margin-top: 12px">ASSEMBLY SOURCE</p>
-          <textarea
-            id="emuAssembly"
-            class="emu-program"
-            spellcheck="false"
-            placeholder="START:\n  LFI R1, 0x0005\n  LFI R2, 0x0003\n  ADD R1, R2\n  HALT"
-          ></textarea>
-        </div>
-        <div class="emu-panel">
-          <p class="emu-label">REGISTERS</p>
-          <pre id="emuRegisters" class="emu-output"></pre>
-        </div>
-        <div class="emu-panel">
-          <p class="emu-label">CPU FLAGS / MEMORY</p>
-          <pre id="emuFlags" class="emu-output"></pre>
-          <pre id="emuMemory" class="emu-output"></pre>
-        </div>
-        <div class="emu-panel">
-          <p class="emu-label">EXECUTION LOG</p>
-          <pre id="emuLog" class="emu-output"></pre>
-          <p class="emu-label" style="margin-top: 12px">TERMINAL I/O</p>
-          <div class="emu-terminal-controls">
-            <textarea
-              id="emuTerminalInput"
-              class="emu-terminal-input"
-              maxlength="120"
-              placeholder="TYPE INPUT (PRESS ENTER TO SEND, SHIFT+ENTER FOR NEW LINE)"
-              rows="2"
-            ></textarea>
-            <button class="term-btn" id="emuTerminalSend">SEND</button>
-          </div>
-          <pre id="emuTerminalOutput" class="emu-output"></pre>
-        </div>
-      </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
-
-    <!-- Game-over modal shared across mini-games. -->
-    <div
-      class="overlay"
-      id="modalGameOver"
-      style="background: rgba(0, 0, 0, 0.9); z-index: 9000"
-    >
-      <h1 style="color: red; font-size: 30px; margin-bottom: 20px">
-        SYSTEM FAILURE
-      </h1>
-      <p id="gameOverText" style="margin-bottom: 30px; font-size: 14px">
-        SCORE: 0
-      </p>
-      <button class="term-btn" id="goRestart" style="width: 200px">
-        REBOOT SYSTEM
-      </button>
-      <div class="restart-hint">[ PRESS SPACE TO REBOOT ]</div>
-      <button class="menu-btn" id="goExit" style="margin-top: 20px">
-        EXIT TO MENU
-      </button>
-    </div>
-
-    <!-- Main entrypoint script (loads all game modules). -->
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>
