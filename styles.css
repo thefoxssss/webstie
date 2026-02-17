@@ -259,6 +259,38 @@ body::before {
   padding-left: 20px;
 }
 
+.trending-games {
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.trending-games h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+#trendingGamesMeta {
+  margin: 0 0 8px;
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+#trendingGamesList {
+  display: grid;
+  gap: 4px;
+  font-size: 9px;
+}
+
+.trending-game-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* --- 4. CHAT --- */
 /* Global chat dock on the home screen. */
 #globalChat {

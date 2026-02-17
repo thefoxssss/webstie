@@ -48,6 +48,96 @@ import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
 import { initEmulator } from "./games/emulator.js";
 
+
+const TRENDING_STORAGE_KEY = "goonerGamePlayHistory";
+const TRENDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_HISTORY_EVENTS = 500;
+
+const GAME_NAMES = Object.freeze({
+  geo: "GEO DASH",
+  type: "TYPE RUNNER",
+  pong: "PONG",
+  snake: "SNAKE",
+  runner: "RUNNER V2",
+  corebreaker: "CORE BREAKER",
+  neondefender: "NEON DEFENDER",
+  voidminer: "VOID MINER",
+  shadowassassin: "SHADOW ASSASSIN",
+  dodge: "DODGE GRID",
+  roulette: "ROULETTE",
+  blackjack: "BLACKJACK (PVP)",
+  ttt: "TIC TAC TOE",
+  hangman: "HANGMAN (PVP)",
+  bonk: "BONK ARENA (PVP)",
+  drift: "NEON DRIFT (PVP)",
+  emulator: "CPU EMULATOR",
+  flappy: "FLAPPY GOON",
+});
+
+function getGamePlayHistory() {
+  try {
+    const raw = localStorage.getItem(TRENDING_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Failed to load trending history", error);
+    return [];
+  }
+}
+
+function saveGamePlayHistory(events) {
+  localStorage.setItem(TRENDING_STORAGE_KEY, JSON.stringify(events));
+}
+
+function recordGamePlay(game) {
+  const now = Date.now();
+  const cutoff = now - TRENDING_WINDOW_MS;
+  const normalized = getGamePlayHistory().filter(
+    (event) => event && typeof event.game === "string" && Number(event.playedAt) >= cutoff
+  );
+  normalized.push({ game, playedAt: now });
+  saveGamePlayHistory(normalized.slice(-MAX_HISTORY_EVENTS));
+}
+
+function renderTrendingGames() {
+  const list = document.getElementById("trendingGamesList");
+  const meta = document.getElementById("trendingGamesMeta");
+  if (!list || !meta) return;
+
+  const now = Date.now();
+  const cutoff = now - TRENDING_WINDOW_MS;
+  const counts = new Map();
+
+  const recent = getGamePlayHistory().filter(
+    (event) => event && typeof event.game === "string" && Number(event.playedAt) >= cutoff
+  );
+
+  saveGamePlayHistory(recent.slice(-MAX_HISTORY_EVENTS));
+
+  recent.forEach((event) => {
+    const key = event.game;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  const ranked = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  if (!ranked.length) {
+    list.textContent = "No plays tracked yet.";
+    return;
+  }
+
+  list.innerHTML = ranked
+    .map(
+      ([game, plays], index) =>
+        `<div class="trending-game-item"><span>${index + 1}. ${GAME_NAMES[game] || game.toUpperCase()}</span><strong>${plays} PLAY${plays === 1 ? "" : "S"}</strong></div>`
+    )
+    .join("");
+
+  meta.textContent = `Most played in the last ${Math.round(TRENDING_WINDOW_MS / (60 * 60 * 1000))} hours.`;
+}
+
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
 window.closeOverlays = closeOverlays;
@@ -104,6 +194,8 @@ window.launchGame = (game) => {
   if (game === "voidminer") initVoidMiner();
   if (game === "emulator") initEmulator();
   unlockAchievement("noob");
+  recordGamePlay(game);
+  renderTrendingGames();
 };
 
 
@@ -174,6 +266,7 @@ function initGameFullscreenControls() {
 }
 
 initGameFullscreenControls();
+renderTrendingGames();
 
 // Restart the last game from the game-over modal.
 document.getElementById("goRestart").onclick = () => {
