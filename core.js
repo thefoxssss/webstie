@@ -133,6 +133,9 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 // Register per-game cleanup hooks (each game adds a stop function).
 const gameStops = [];
 let seasonBoardUnsub = null;
+let activeSeasonTab = "";
+let activeSeasonSubTab = "solo";
+let cachedSeasonBoards = { solo: [], gang: [] };
 
 // Centralized mutable state wrapper (keeps consumers consistent).
 export const state = {
@@ -1126,6 +1129,96 @@ function renderLiveOps() {
   setText("liveOpsRoom", item.room);
 }
 
+function getAvailableSeasonIds() {
+  const ids = [String(seasonData.id || "").toUpperCase(), ...(seasonData.hall || []).map((entry) => String(entry.id || "").toUpperCase())]
+    .filter(Boolean);
+  return Array.from(new Set(ids));
+}
+
+function renderSeasonTabs() {
+  const tabWrap = document.getElementById("seasonTabs");
+  if (!tabWrap) return;
+  const seasonIds = getAvailableSeasonIds();
+  if (!seasonIds.length) {
+    tabWrap.innerHTML = '<div class="score-item">NO SEASONS AVAILABLE</div>';
+    return;
+  }
+  if (!seasonIds.includes(activeSeasonTab)) activeSeasonTab = seasonIds[0];
+  tabWrap.innerHTML = seasonIds
+    .map((id) => `<div class="score-tab ${id === activeSeasonTab ? "active" : ""}" data-season-tab="${escapeHtml(id)}">SEASON ${escapeHtml(id)}</div>`)
+    .join("");
+  tabWrap.querySelectorAll("[data-season-tab]").forEach((el) => {
+    el.onclick = () => {
+      activeSeasonTab = el.dataset.seasonTab || seasonIds[0];
+      renderSeasonTabs();
+      renderSeasonBoard();
+    };
+  });
+}
+
+function renderSeasonSubTabs() {
+  const subWrap = document.getElementById("seasonSubTabs");
+  if (!subWrap) return;
+  subWrap.querySelectorAll("[data-season-subtab]").forEach((el) => {
+    el.classList.toggle("active", (el.dataset.seasonSubtab || "solo") === activeSeasonSubTab);
+    el.onclick = () => {
+      activeSeasonSubTab = el.dataset.seasonSubtab || "solo";
+      renderSeasonSubTabs();
+      renderSeasonBoard();
+    };
+  });
+}
+
+function renderSeasonBoard() {
+  const boardList = document.getElementById("seasonBoardList");
+  const title = document.getElementById("seasonBoardTitle");
+  if (!boardList || !title) return;
+  const modeLabel = activeSeasonSubTab === "gang" ? "GANG SCORES" : "SOLO SCORES";
+  title.innerText = `SEASON ${activeSeasonTab || "--"} // ${modeLabel}`;
+
+  if (!activeSeasonTab) {
+    boardList.innerHTML = '<div class="score-item">NO SEASON DATA</div>';
+    return;
+  }
+
+  if (activeSeasonTab === String(seasonData.id || "").toUpperCase()) {
+    const rows = cachedSeasonBoards[activeSeasonSubTab] || [];
+    boardList.innerHTML = rows.length
+      ? rows
+          .map((row, idx) => activeSeasonSubTab === "gang"
+            ? `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // $${Math.round(row.money)} // ${row.members} OPS</div>`
+            : `<div class="score-item">#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${escapeHtml(row.crewTag)}</span> // $${Math.round(row.money)}</div>`)
+          .join("")
+      : `<div class="score-item">LOADING ${modeLabel}...</div>`;
+    return;
+  }
+
+  const archivedEntries = (seasonData.hall || [])
+    .filter((entry) => String(entry.id || "").toUpperCase() === activeSeasonTab)
+    .sort((a, b) => Number(b.money || 0) - Number(a.money || 0))
+    .slice(0, 10);
+
+  if (activeSeasonSubTab === "gang") {
+    const crewTotals = {};
+    archivedEntries.forEach((entry) => {
+      const crewTag = String(entry.crewTag || "SOLO").toUpperCase();
+      if (crewTag === "SOLO") return;
+      if (!crewTotals[crewTag]) crewTotals[crewTag] = { tag: crewTag, money: 0, members: 0 };
+      crewTotals[crewTag].money += Number(entry.money || 0);
+      crewTotals[crewTag].members += 1;
+    });
+    const crewRows = Object.values(crewTotals).sort((a, b) => b.money - a.money).slice(0, 10);
+    boardList.innerHTML = crewRows.length
+      ? crewRows.map((row, idx) => `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // $${Math.round(row.money)} // ${row.members} OPS</div>`).join("")
+      : '<div class="score-item">NO ARCHIVED GANG SCORES FOR THIS SEASON</div>';
+    return;
+  }
+
+  boardList.innerHTML = archivedEntries.length
+    ? archivedEntries.map((entry, idx) => `<div class="score-item">#${idx + 1} ${escapeHtml(entry.name)} <span style="opacity:.7">${escapeHtml(String(entry.crewTag || "SOLO").toUpperCase())}</span> // $${Math.round(Number(entry.money || entry.xp) || 0)}</div>`).join("")
+    : '<div class="score-item">NO ARCHIVED SOLO SCORES FOR THIS SEASON</div>';
+}
+
 function renderSeasonPanel() {
   ensureCurrentSeason();
   const target = 10000;
@@ -1161,6 +1254,10 @@ function renderSeasonPanel() {
         .join("");
     }
   }
+
+  renderSeasonTabs();
+  renderSeasonSubTabs();
+  renderSeasonBoard();
   loadSeasonLeaderboards();
 }
 
@@ -1169,7 +1266,7 @@ function ensureCurrentSeason() {
   const currentId = getSeasonId();
   if (seasonData.id === currentId) return;
   if (Number(myMoney || 0) > 0) {
-    seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, money: Number(myMoney || 0) }].slice(-20);
+    seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, money: Number(myMoney || 0), crewTag: crewData.tag || "SOLO" }].slice(-20);
   }
   seasonData.id = currentId;
   seasonData.xp = 0;
@@ -1188,9 +1285,8 @@ function grantSeasonXp(amount) {
 }
 
 function loadSeasonLeaderboards() {
-  const playerBoard = document.getElementById("seasonPlayerBoard");
-  const crewBoard = document.getElementById("seasonCrewBoard");
-  if (!playerBoard || !crewBoard) return;
+  const boardList = document.getElementById("seasonBoardList");
+  if (!boardList) return;
   if (seasonBoardUnsub) seasonBoardUnsub();
 
   const q = query(collection(db, "gooner_users"), limit(200));
@@ -1212,15 +1308,9 @@ function loadSeasonLeaderboards() {
       }
     });
 
-    const topPlayers = players.sort((a, b) => b.money - a.money).slice(0, 10);
-    playerBoard.innerHTML = topPlayers.length
-      ? topPlayers.map((row, idx) => `<div class="score-item">#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${escapeHtml(row.crewTag)}</span> // $${Math.round(row.money)}</div>`).join("")
-      : '<div class="score-item">NO DATA</div>';
-
-    const topCrews = Object.values(crews).sort((a, b) => b.money - a.money).slice(0, 10);
-    crewBoard.innerHTML = topCrews.length
-      ? topCrews.map((row, idx) => `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // $${Math.round(row.money)} // ${row.members} OPS</div>`).join("")
-      : '<div class="score-item">NO CREWS YET</div>';
+    cachedSeasonBoards.solo = players.sort((a, b) => b.money - a.money).slice(0, 10);
+    cachedSeasonBoards.gang = Object.values(crews).sort((a, b) => b.money - a.money).slice(0, 10);
+    renderSeasonBoard();
   });
 }
 
@@ -1529,7 +1619,7 @@ function loadProfile(data) {
   const currentSeasonId = getSeasonId();
   if (seasonData.id !== currentSeasonId) {
     if (Number(data.money || 0) > 0) {
-      seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, money: Number(data.money || 0) }].slice(-20);
+      seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, money: Number(data.money || 0), crewTag: crewData.tag || "SOLO" }].slice(-20);
     }
     seasonData.id = currentSeasonId;
     seasonData.xp = 0;
@@ -3177,10 +3267,10 @@ export async function saveGlobalScore(game, score) {
 }
 
 // Scoreboard tab switching.
-document.querySelectorAll(".score-tab").forEach((t) => {
+document.querySelectorAll("#overlayScores .score-tab[data-tab]").forEach((t) => {
   t.onclick = () => {
     document
-      .querySelectorAll(".score-tab")
+      .querySelectorAll("#overlayScores .score-tab[data-tab]")
       .forEach((x) => x.classList.remove("active"));
     t.classList.add("active");
     loadLeaderboard(t.dataset.tab);
