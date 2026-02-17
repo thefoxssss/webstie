@@ -1407,6 +1407,18 @@
         <div class="emu-panel">
           <p class="emu-label">EXECUTION LOG</p>
           <pre id="emuLog" class="emu-output"></pre>
+          <p class="emu-label" style="margin-top: 12px">TERMINAL I/O</p>
+          <div class="emu-terminal-controls">
+            <input
+              type="text"
+              id="emuTerminalInput"
+              class="term-input"
+              maxlength="120"
+              placeholder="TYPE INPUT AND PRESS SEND"
+            />
+            <button class="term-btn" id="emuTerminalSend">SEND</button>
+          </div>
+          <pre id="emuTerminalOutput" class="emu-output"></pre>
         </div>
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>

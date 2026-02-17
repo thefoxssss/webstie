@@ -2,6 +2,10 @@ const WORD_MASK = 0xffff;
 const MEMORY_SIZE = 0x10000;
 const PROGRAM_START = 0x0500;
 const CONTEXT_BASE = 0x0400;
+const IO_INPUT_STATUS = 0x00f0;
+const IO_INPUT_DATA = 0x00f1;
+const IO_OUTPUT_DATA = 0x00f2;
+const IO_OUTPUT_CLEAR = 0x00f3;
 
 const OPCODE_META = {
   0x00: { rr: false, im: false, name: "NOOP" },
@@ -116,6 +120,8 @@ class Emulator {
     this.localMemoryEnd = WORD_MASK;
     this.halted = false;
     this.logs = [];
+    this.terminalOutput = "";
+    this.inputQueue = [];
     this.memory[0x0001] = 0;
   }
 
@@ -234,11 +240,32 @@ class Emulator {
     return (value & WORD_MASK).toString(16).toUpperCase().padStart(width, "0");
   }
 
+  appendTerminalOutput(value) {
+    const char = String.fromCharCode(value & 0xff);
+    this.terminalOutput = (this.terminalOutput + char).slice(-1200);
+  }
+
+  enqueueTerminalInput(text) {
+    if (!text) return;
+    for (const char of text) {
+      this.inputQueue.push(char.charCodeAt(0) & 0xff);
+    }
+    this.inputQueue.push(0x0a);
+    this.log(`TERM IN <= "${text}"`);
+  }
+
   readByte(address, privilegedBypass = false) {
     const addr = address & WORD_MASK;
     if (!privilegedBypass && !this.canAccess(addr)) {
       this.handleInterrupt(0x00);
       throw new Error(`Memory access violation @0x${this.hex(addr)}`);
+    }
+
+    if (addr === IO_INPUT_STATUS) {
+      return this.inputQueue.length > 0 ? 1 : 0;
+    }
+    if (addr === IO_INPUT_DATA) {
+      return this.inputQueue.length > 0 ? this.inputQueue.shift() : 0;
     }
     return this.memory[addr];
   }
@@ -249,6 +276,16 @@ class Emulator {
       this.handleInterrupt(0x00);
       throw new Error(`Memory access violation @0x${this.hex(addr)}`);
     }
+
+    if (addr === IO_OUTPUT_DATA) {
+      this.appendTerminalOutput(value);
+      return;
+    }
+    if (addr === IO_OUTPUT_CLEAR) {
+      this.terminalOutput = "";
+      return;
+    }
+
     this.memory[addr] = value & 0xff;
   }
 
@@ -513,6 +550,7 @@ function renderState() {
   document.getElementById("emuFlags").textContent = flagsText;
   document.getElementById("emuMemory").textContent = memoryView.join("\n");
   document.getElementById("emuLog").textContent = emulator.logs.join("\n");
+  document.getElementById("emuTerminalOutput").textContent = emulator.terminalOutput || "[NO OUTPUT YET]";
 }
 
 function stopRunLoop() {
@@ -548,6 +586,8 @@ export function initEmulator() {
   const resetBtn = document.getElementById("emuReset");
   const programInput = document.getElementById("emuProgram");
   const assemblyInput = document.getElementById("emuAssembly");
+  const terminalInput = document.getElementById("emuTerminalInput");
+  const terminalSendBtn = document.getElementById("emuTerminalSend");
 
   loadBtn.onclick = () => {
     try {
@@ -593,6 +633,18 @@ export function initEmulator() {
     emulator.reset();
     renderState();
   };
+
+  terminalSendBtn.onclick = () => {
+    emulator.enqueueTerminalInput(terminalInput.value.trim());
+    terminalInput.value = "";
+    renderState();
+  };
+
+  terminalInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    terminalSendBtn.click();
+  });
 
   assemblyInput.value = `START:
   LFI R1, 0x0005
