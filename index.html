@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+      content="width=device-width, initial-scale=1"
     />
     <meta name="app-version" content="dev" />
     <title>GOONER TERMINAL V32 [PVP FIX]</title>
@@ -65,43 +65,36 @@
         >
           ADMIN
         </button>
-        <button class="menu-btn" id="menuToggle">GAMES ▼</button>
+        <button class="menu-btn" id="menuToggle">GAMES</button>
       </div>
     </div>
 
-    <!-- Dropdown game menu (toggled from the top bar). -->
-    <div class="dropdown-content" id="menuDropdown">
-      <button onclick="window.launchGame('geo')">GEO DASH</button>
-      <button onclick="window.launchGame('type')">TYPE RUNNER</button>
-      <button onclick="window.launchGame('pong')">PONG</button>
-      <button onclick="window.launchGame('snake')">SNAKE</button>
-      <button onclick="window.launchGame('runner')">RUNNER (V2)</button>
-      <button onclick="window.launchGame('corebreaker')">CORE BREAKER</button>
-      <button onclick="window.launchGame('neondefender')">NEON DEFENDER</button>
-      <button onclick="window.launchGame('voidminer')">VOID MINER</button>
-      <button onclick="window.launchGame('shadowassassin')">SHADOW ASSASSIN</button>
-      <button onclick="window.launchGame('dodge')">DODGE GRID</button>
-      <button onclick="window.launchGame('roulette')">ROULETTE</button>
-      <button
-        onclick="window.launchGame('blackjack')"
-        style="border-top: 1px solid #444"
-      >
-        BLACKJACK (PVP)
-      </button>
-      <button onclick="window.launchGame('ttt')">TIC TAC TOE</button>
-      <button onclick="window.launchGame('hangman')">HANGMAN (PVP)</button>
-      <button onclick="window.launchGame('bonk')">BONK ARENA (PVP)</button>
-      <button onclick="window.launchGame('drift')">NEON DRIFT (PVP)</button>
-      <button onclick="window.launchGame('emulator')" style="border-top: 1px solid #444">
-        CPU EMULATOR
-      </button>
-      <button
-        onclick="window.launchGame('flappy')"
-        id="btnFlappy"
-        style="display: none; color: gold"
-      >
-        FLAPPY GOON
-      </button>
+    <div class="dropdown-content" id="menuDropdown"></div>
+
+    <!-- Dedicated games directory overlay. -->
+    <div class="overlay" id="overlayGames">
+      <h1>GAMES DIRECTORY</h1>
+      <div class="games-grid">
+        <button class="game-card" onclick="window.launchGame('geo')"><span>🟨</span><strong>GEO DASH</strong><small>Dodge spikes and survive speed ramps.</small></button>
+        <button class="game-card" onclick="window.launchGame('type')"><span>⌨️</span><strong>TYPE RUNNER</strong><small>Type fast to outrun incoming threats.</small></button>
+        <button class="game-card" onclick="window.launchGame('pong')"><span>🏓</span><strong>PONG</strong><small>Retro paddle battle with adjustable difficulty.</small></button>
+        <button class="game-card" onclick="window.launchGame('snake')"><span>🐍</span><strong>SNAKE</strong><small>Grow longer while avoiding walls and yourself.</small></button>
+        <button class="game-card" onclick="window.launchGame('runner')"><span>🏃</span><strong>RUNNER V2</strong><small>Endless sprint with jump timing focus.</small></button>
+        <button class="game-card" onclick="window.launchGame('corebreaker')"><span>🧱</span><strong>CORE BREAKER</strong><small>Break glowing blocks and protect your core.</small></button>
+        <button class="game-card" onclick="window.launchGame('neondefender')"><span>🎯</span><strong>NEON DEFENDER</strong><small>Aim, auto-fire, and hold the line.</small></button>
+        <button class="game-card" onclick="window.launchGame('voidminer')"><span>🚀</span><strong>VOID MINER</strong><small>Thrust through deep space for score.</small></button>
+        <button class="game-card" onclick="window.launchGame('shadowassassin')"><span>🗡️</span><strong>SHADOW ASSASSIN</strong><small>Castle infiltration with boss encounters.</small></button>
+        <button class="game-card" onclick="window.launchGame('dodge')"><span>⚡</span><strong>DODGE GRID</strong><small>Stay alive in a high-speed hazard field.</small></button>
+        <button class="game-card" onclick="window.launchGame('roulette')"><span>🎡</span><strong>ROULETTE</strong><small>Bet, spin, and chase streaks.</small></button>
+        <button class="game-card" onclick="window.launchGame('blackjack')"><span>🂡</span><strong>BLACKJACK (PVP)</strong><small>Card table duels with live opponents.</small></button>
+        <button class="game-card" onclick="window.launchGame('ttt')"><span>❎</span><strong>TIC TAC TOE</strong><small>Classic 3x3 tactical showdown.</small></button>
+        <button class="game-card" onclick="window.launchGame('hangman')"><span>🧠</span><strong>HANGMAN (PVP)</strong><small>Guess words before the timer expires.</small></button>
+        <button class="game-card" onclick="window.launchGame('bonk')"><span>🥊</span><strong>BONK ARENA (PVP)</strong><small>Fast arena knockouts and dodges.</small></button>
+        <button class="game-card" onclick="window.launchGame('drift')"><span>🏎️</span><strong>NEON DRIFT (PVP)</strong><small>Slide corners and chain clean laps.</small></button>
+        <button class="game-card" onclick="window.launchGame('emulator')"><span>🖥️</span><strong>CPU EMULATOR</strong><small>Program-like puzzle sandbox challenge.</small></button>
+        <button class="game-card" id="btnFlappy" onclick="window.launchGame('flappy')" style="display: none"><span>🐤</span><strong>FLAPPY GOON</strong><small>Secret bonus mode: tap to survive.</small></button>
+      </div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- God-tier operator controls. Visible only to allowlisted users. -->

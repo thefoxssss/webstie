@@ -1794,7 +1794,8 @@ export function closeOverlays() {
   document
     .querySelectorAll(".overlay")
     .forEach((o) => o.classList.remove("active"));
-  document.getElementById("menuDropdown").classList.remove("show");
+  const menuDropdown = document.getElementById("menuDropdown");
+  if (menuDropdown) menuDropdown.classList.remove("show");
 }
 
 function normalizeUsername(username) {
@@ -3240,15 +3241,24 @@ document.getElementById("btnLogout").onclick = () => {
   localStorage.clear();
   location.reload();
 };
-// Toggle the hamburger menu dropdown.
-document.getElementById("menuToggle").onclick = (e) => {
-  e.stopPropagation();
-  document.getElementById("menuDropdown").classList.toggle("show");
-  registerMenuMash();
-};
-// Click outside closes the dropdown menu.
+// Open the games directory from top navigation and keep menu-mash tracking.
+const menuToggleBtn = document.getElementById("menuToggle");
+const menuDropdownEl = document.getElementById("menuDropdown");
+if (menuToggleBtn) {
+  menuToggleBtn.onclick = (e) => {
+    e.stopPropagation();
+    registerMenuMash();
+    if (menuDropdownEl && menuDropdownEl.children.length) {
+      menuDropdownEl.classList.toggle("show");
+      return;
+    }
+    openGame("overlayGames");
+  };
+}
+// Click outside closes the dropdown menu if the legacy dropdown exists.
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#menuToggle")) document.getElementById("menuDropdown").classList.remove("show");
+  if (!menuDropdownEl || !menuDropdownEl.children.length) return;
+  if (!e.target.closest("#menuToggle")) menuDropdownEl.classList.remove("show");
 });
 // Enable/disable matrix canvas rendering.
 function setMatrixMode(enabled) {
