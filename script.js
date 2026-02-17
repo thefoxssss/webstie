@@ -106,6 +106,75 @@ window.launchGame = (game) => {
   unlockAchievement("noob");
 };
 
+
+const GAME_OVERLAY_IDS = [
+  "overlayGeo",
+  "overlayType",
+  "overlayPong",
+  "overlaySnake",
+  "overlayRunner",
+  "overlayCorebreaker",
+  "overlayNeondefender",
+  "overlayVoidminer",
+  "overlayShadowassassin",
+  "overlayDodge",
+  "overlayRoulette",
+  "overlayTTT",
+  "overlayHangman",
+  "overlayBlackjack",
+  "overlayBonk",
+  "overlayFlappy",
+  "overlayDrift",
+  "overlayEmulator",
+];
+
+function getFullscreenTarget(overlay) {
+  return overlay.querySelector("canvas, iframe") || overlay;
+}
+
+async function toggleGameFullscreen(overlay, button) {
+  const target = getFullscreenTarget(overlay);
+  if (!document.fullscreenElement) {
+    await target.requestFullscreen();
+  } else {
+    await document.exitFullscreen();
+  }
+  button.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
+}
+
+function initGameFullscreenControls() {
+  const overlays = GAME_OVERLAY_IDS
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+
+  overlays.forEach((overlay) => {
+    const exitBtn = overlay.querySelector(".exit-btn-fixed");
+    if (!exitBtn || overlay.querySelector(".fullscreen-btn-fixed")) return;
+
+    const fsButton = document.createElement("button");
+    fsButton.className = "fullscreen-btn-fixed";
+    fsButton.type = "button";
+    fsButton.textContent = "FULLSCREEN";
+    fsButton.addEventListener("click", async () => {
+      try {
+        await toggleGameFullscreen(overlay, fsButton);
+      } catch (error) {
+        console.warn("Fullscreen toggle failed", error);
+      }
+    });
+    exitBtn.insertAdjacentElement("beforebegin", fsButton);
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    document.querySelectorAll(".fullscreen-btn-fixed").forEach((button) => {
+      button.textContent = isFullscreen ? "EXIT FULLSCREEN" : "FULLSCREEN";
+    });
+  });
+}
+
+initGameFullscreenControls();
+
 // Restart the last game from the game-over modal.
 document.getElementById("goRestart").onclick = () => {
   document.getElementById("modalGameOver").classList.remove("active");
