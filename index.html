@@ -1415,13 +1415,13 @@
           <pre id="emuLog" class="emu-output"></pre>
           <p class="emu-label" style="margin-top: 12px">TERMINAL I/O</p>
           <div class="emu-terminal-controls">
-            <input
-              type="text"
+            <textarea
               id="emuTerminalInput"
-              class="term-input"
+              class="emu-terminal-input"
               maxlength="120"
-              placeholder="TYPE INPUT AND PRESS SEND"
-            />
+              placeholder="TYPE INPUT (PRESS ENTER TO SEND, SHIFT+ENTER FOR NEW LINE)"
+              rows="2"
+            ></textarea>
             <button class="term-btn" id="emuTerminalSend">SEND</button>
           </div>
           <pre id="emuTerminalOutput" class="emu-output"></pre>
