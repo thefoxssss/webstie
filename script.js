@@ -117,6 +117,7 @@ const GAME_OVERLAY_IDS = [
   "overlayNeondefender",
   "overlayVoidminer",
   "overlayShadowassassin",
+  "overlayShadowtop",
   "overlayDodge",
   "overlayRoulette",
   "overlayTTT",

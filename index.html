@@ -83,7 +83,8 @@
         <button class="game-card" onclick="window.launchGame('corebreaker')"><span>🧱</span><strong>CORE BREAKER</strong><small>Break glowing blocks and protect your core.</small></button>
         <button class="game-card" onclick="window.launchGame('neondefender')"><span>🎯</span><strong>NEON DEFENDER</strong><small>Aim, auto-fire, and hold the line.</small></button>
         <button class="game-card" onclick="window.launchGame('voidminer')"><span>🚀</span><strong>VOID MINER</strong><small>Thrust through deep space for score.</small></button>
-        <button class="game-card" onclick="window.launchGame('shadowassassin')"><span>🗡️</span><strong>SHADOW ASSASSIN</strong><small>Castle infiltration with boss encounters.</small></button>
+        <button class="game-card" onclick="window.launchGame('shadowassassin')"><span>⚔️</span><strong>SHADOW ASSASSIN (FRONT VIEW)</strong><small>Original castle infiltration experience.</small></button>
+        <button class="game-card" onclick="window.launchGame('shadowtop')"><span>🗡️</span><strong>SHADOW ASSASSIN: TOP VIEW</strong><small>Modernized top-down combat and progression.</small></button>
         <button class="game-card" onclick="window.launchGame('dodge')"><span>⚡</span><strong>DODGE GRID</strong><small>Stay alive in a high-speed hazard field.</small></button>
         <button class="game-card" onclick="window.launchGame('roulette')"><span>🎡</span><strong>ROULETTE</strong><small>Bet, spin, and chase streaks.</small></button>
         <button class="game-card" onclick="window.launchGame('blackjack')"><span>🂡</span><strong>BLACKJACK (PVP)</strong><small>Card table duels with live opponents.</small></button>
@@ -933,6 +934,21 @@
         class="embedded-game-frame"
         src="games/shadow-assassin-safe-rooms.html"
         title="Shadow Assassin"
+        allowfullscreen
+      ></iframe>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+
+    <!-- Shadow Assassin top-view mini-game overlay. -->
+    <div class="overlay" id="overlayShadowtop">
+      <h1>SHADOW ASSASSIN: TOP VIEW</h1>
+      <iframe
+        class="embedded-game-frame"
+        src="games/shadow-assassin-topdown.html"
+        title="Shadow Assassin Top View"
         allowfullscreen
       ></iframe>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
