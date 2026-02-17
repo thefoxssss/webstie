@@ -62,6 +62,7 @@
           <li>Click <code>ASSEMBLE + LOAD</code> (program loads at <code>0x0500</code>).</li>
           <li>Use <code>STEP</code> for single-instruction execution or <code>RUN</code> for continuous execution.</li>
           <li>Use <code>STOP</code> to halt the run loop and <code>RESET</code> to reset CPU/memory state.</li>
+          <li>Use <code>TERMINAL I/O</code> to queue keyboard input for memory-mapped reads and inspect character output.</li>
         </ol>
       </div>
 
@@ -97,6 +98,10 @@
           </thead>
           <tbody>
             <tr><td><code>0x0001</code></td><td>JSR software-stack pointer byte (stack base is <code>0x0200</code>).</td></tr>
+            <tr><td><code>0x00F0</code></td><td>Terminal input status register (<code>1</code> when input bytes are queued).</td></tr>
+            <tr><td><code>0x00F1</code></td><td>Terminal input data register (read pops one queued byte).</td></tr>
+            <tr><td><code>0x00F2</code></td><td>Terminal output register (write byte/ASCII char to append terminal output).</td></tr>
+            <tr><td><code>0x00F3</code></td><td>Terminal output clear register (write any value to clear output).</td></tr>
             <tr><td><code>0x0100-0x01FF</code></td><td>Interrupt vector table; each vector entry is a 16-bit handler address.</td></tr>
             <tr><td><code>0x0200-0x02FF</code></td><td>Internal JSR return-address stack storage.</td></tr>
             <tr><td><code>0x0400-0x042A</code></td><td>Saved execution context during interrupt handling.</td></tr>
