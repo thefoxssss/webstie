@@ -6,28 +6,105 @@
     <title>CPU Emulator Docs</title>
     <link rel="stylesheet" href="styles.css" />
     <style>
-      body { padding: 20px; }
-      .doc-wrap { max-width: 900px; margin: 0 auto; }
-      .doc-wrap h1, .doc-wrap h2 { color: var(--accent); }
-      .doc-wrap code { color: #7fffd4; }
-      .doc-card { border: 1px solid var(--accent); background: rgba(0,0,0,.65); padding: 14px; margin-bottom: 14px; }
-      table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      th, td { border: 1px solid #245; padding: 6px; text-align: left; vertical-align: top; }
-      th { color: var(--accent); }
+      html,
+      body {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+      }
+      body {
+        padding: 20px;
+      }
+      .doc-wrap {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+      .doc-wrap h1,
+      .doc-wrap h2,
+      .doc-wrap h3 {
+        color: var(--accent);
+      }
+      .doc-wrap code {
+        color: #7fffd4;
+      }
+      .doc-card {
+        border: 1px solid var(--accent);
+        background: rgba(0, 0, 0, 0.65);
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      th,
+      td {
+        border: 1px solid #245;
+        padding: 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: var(--accent);
+      }
     </style>
   </head>
   <body>
     <div class="doc-wrap">
       <h1>CPU Emulator + Assembler Documentation</h1>
+
       <div class="doc-card">
         <h2>Quick Start</h2>
         <ol>
           <li>Open <code>CPU EMULATOR</code> from the GAMES menu.</li>
-          <li>Write assembly in the <code>ASSEMBLY SOURCE</code> panel.</li>
-          <li>Click <code>ASSEMBLE + LOAD</code>.</li>
-          <li>Use <code>STEP</code> or <code>RUN</code> to execute from <code>0x0500</code>.</li>
+          <li>Write assembly in <code>ASSEMBLY SOURCE</code>.</li>
+          <li>Click <code>ASSEMBLE + LOAD</code> (program loads at <code>0x0500</code>).</li>
+          <li>Use <code>STEP</code> for single-instruction execution or <code>RUN</code> for continuous execution.</li>
+          <li>Use <code>STOP</code> to halt the run loop and <code>RESET</code> to reset CPU/memory state.</li>
         </ol>
       </div>
+
+      <div class="doc-card">
+        <h2>Architecture Overview</h2>
+        <ul>
+          <li>16-bit CPU, 16 general-purpose registers: <code>R0</code>-<code>RF</code>.</li>
+          <li>64 KB byte-addressable memory: <code>0x0000</code>-<code>0xFFFF</code>.</li>
+          <li>Program counter defaults to <code>0x0500</code> after reset.</li>
+          <li>Instruction encoding is variable length (1 to 4 bytes): opcode + optional RR byte + optional 16-bit immediate.</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>Flags and Execution State</h2>
+        <ul>
+          <li><code>CF</code>: comparison/conditional flag used by conditional branches and returns.</li>
+          <li><code>PF</code>: privileged-memory access flag (<code>1</code>=full memory access).</li>
+          <li><code>IF</code>: interrupt-in-progress flag.</li>
+          <li><code>BIF</code>: block interrupts when set.</li>
+          <li><code>OV</code>: signed arithmetic overflow flag.</li>
+          <li><code>CA</code>: carry/borrow flag.</li>
+          <li><code>ZF</code>: zero-result flag.</li>
+          <li><code>LMB</code>/<code>LME</code>: local memory begin/end region used when <code>PF=0</code>.</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>Memory Map (conventions used by emulator)</h2>
+        <table>
+          <thead>
+            <tr><th>Range</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>0x0001</code></td><td>JSR software-stack pointer byte (stack base is <code>0x0200</code>).</td></tr>
+            <tr><td><code>0x0100-0x01FF</code></td><td>Interrupt vector table; each vector entry is a 16-bit handler address.</td></tr>
+            <tr><td><code>0x0200-0x02FF</code></td><td>Internal JSR return-address stack storage.</td></tr>
+            <tr><td><code>0x0400-0x042A</code></td><td>Saved execution context during interrupt handling.</td></tr>
+            <tr><td><code>0x0500...</code></td><td>Default program load/execution region.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="doc-card">
         <h2>Assembly Syntax</h2>
         <ul>
@@ -35,7 +112,8 @@
           <li>Immediates: decimal (<code>42</code>) or hex (<code>0x002A</code>).</li>
           <li>Comments: start with <code>;</code> or <code>#</code>.</li>
           <li>Labels: <code>LOOP:</code> on their own line or before an instruction.</li>
-          <li>Instruction formats:
+          <li>Label immediates are supported (e.g. <code>LFI R1, LOOP</code>).</li>
+          <li>Accepted operand forms:
             <ul>
               <li><code>OP</code></li>
               <li><code>OP Rn</code></li>
@@ -46,20 +124,87 @@
           </li>
         </ul>
       </div>
+
       <div class="doc-card">
-        <h2>Example Program</h2>
+        <h2>Sample Program</h2>
 <pre class="emu-output">START:
   LFI R1, 0x0005
   LFI R2, 0x0003
   ADD R1, R2
   HALT</pre>
       </div>
+
       <div class="doc-card">
-        <h2>Instruction Set</h2>
+        <h2>Complete Instruction Reference</h2>
         <table>
-          <thead><tr><th>Opcode</th><th>Mnemonic</th><th>Operands</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Opcode</th>
+              <th>Mnemonic</th>
+              <th>Operands</th>
+              <th>Behavior</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr><td>0x00</td><td>NOOP</td><td>-</td></tr><tr><td>0x01</td><td>LFI</td><td>Rn, imm</td></tr><tr><td>0x02</td><td>LFA</td><td>Rn, Rm</td></tr><tr><td>0x03</td><td>LFAL</td><td>Rn, Rm</td></tr><tr><td>0x04</td><td>LFAH</td><td>Rn, Rm</td></tr><tr><td>0x05</td><td>STO</td><td>Rn, Rm</td></tr><tr><td>0x06</td><td>STOL</td><td>Rn, Rm</td></tr><tr><td>0x07</td><td>STOH</td><td>Rn, Rm</td></tr><tr><td>0x08</td><td>MVR</td><td>Rn, Rm</td></tr><tr><td>0x09</td><td>SWR</td><td>Rn, Rm</td></tr><tr><td>0x0A</td><td>SWP</td><td>Rn, Rm</td></tr><tr><td>0x0B</td><td>NOT</td><td>Rn, Rm</td></tr><tr><td>0x0C</td><td>AND</td><td>Rn, Rm</td></tr><tr><td>0x0D</td><td>OR</td><td>Rn, Rm</td></tr><tr><td>0x0E</td><td>XOR</td><td>Rn, Rm</td></tr><tr><td>0x0F</td><td>NOR</td><td>Rn, Rm</td></tr><tr><td>0x10</td><td>SHR</td><td>Rn, Rm</td></tr><tr><td>0x11</td><td>SHL</td><td>Rn, Rm</td></tr><tr><td>0x12</td><td>ROR</td><td>Rn, Rm</td></tr><tr><td>0x13</td><td>ROL</td><td>Rn, Rm</td></tr><tr><td>0x14</td><td>ADD</td><td>Rn, Rm</td></tr><tr><td>0x15</td><td>SUB</td><td>Rn, Rm</td></tr><tr><td>0x16</td><td>MUL</td><td>Rn, Rm</td></tr><tr><td>0x17</td><td>DEV</td><td>Rn, Rm</td></tr><tr><td>0x18</td><td>EVE</td><td>Rn, Rm</td></tr><tr><td>0x19</td><td>EVGT</td><td>Rn, Rm</td></tr><tr><td>0x1A</td><td>EVLT</td><td>Rn, Rm</td></tr><tr><td>0x1B</td><td>EVGTE</td><td>Rn, Rm</td></tr><tr><td>0x1C</td><td>EVLTE</td><td>Rn, Rm</td></tr><tr><td>0x1D</td><td>EVNOT</td><td>-</td></tr><tr><td>0x1E</td><td>EVST</td><td>-</td></tr><tr><td>0x1F</td><td>EVSF</td><td>-</td></tr><tr><td>0x20</td><td>EVOF</td><td>-</td></tr><tr><td>0x21</td><td>EVZF</td><td>-</td></tr><tr><td>0x22</td><td>EVCA</td><td>-</td></tr><tr><td>0x23</td><td>JMP</td><td>Rn, Rm</td></tr><tr><td>0x24</td><td>JMPC</td><td>Rn, Rm</td></tr><tr><td>0x25</td><td>JRA</td><td>Rn, Rm</td></tr><tr><td>0x26</td><td>JRS</td><td>Rn, Rm</td></tr><tr><td>0x27</td><td>JRAC</td><td>Rn, Rm</td></tr><tr><td>0x28</td><td>JRSC</td><td>Rn, Rm</td></tr><tr><td>0x29</td><td>JRIA</td><td>imm</td></tr><tr><td>0x2A</td><td>JRIS</td><td>imm</td></tr><tr><td>0x2B</td><td>JRIAC</td><td>imm</td></tr><tr><td>0x2C</td><td>JRISC</td><td>imm</td></tr><tr><td>0x2D</td><td>JTSR</td><td>Rn, Rm</td></tr><tr><td>0x2E</td><td>JTSRC</td><td>Rn, Rm</td></tr><tr><td>0x2F</td><td>RFSR</td><td>-</td></tr><tr><td>0x30</td><td>RFSRC</td><td>-</td></tr><tr><td>0x31</td><td>HALT</td><td>-</td></tr><tr><td>0x32</td><td>INT</td><td>Rn, Rm</td></tr><tr><td>0x33</td><td>INTI</td><td>imm</td></tr><tr><td>0x34</td><td>RFI</td><td>-</td></tr><tr><td>0x35</td><td>SBI</td><td>-</td></tr><tr><td>0x36</td><td>CBI</td><td>-</td></tr><tr><td>0x37</td><td>SPF</td><td>-</td></tr><tr><td>0x38</td><td>CPF</td><td>-</td></tr><tr><td>0x39</td><td>SLMB</td><td>Rn, Rm</td></tr><tr><td>0x3A</td><td>SLME</td><td>Rn, Rm</td></tr>
+            <tr><td>0x00</td><td>NOOP</td><td>-</td><td>No operation.</td></tr>
+            <tr><td>0x01</td><td>LFI</td><td>Rn, imm</td><td>Load 16-bit immediate into <code>Rn</code>.</td></tr>
+            <tr><td>0x02</td><td>LFA</td><td>Rn, Rm</td><td>Load 16-bit word from address in <code>Rm</code> into <code>Rn</code>.</td></tr>
+            <tr><td>0x03</td><td>LFAL</td><td>Rn, Rm</td><td>Load byte at address in <code>Rm</code> into low byte of <code>Rn</code>.</td></tr>
+            <tr><td>0x04</td><td>LFAH</td><td>Rn, Rm</td><td>Load byte at address in <code>Rm</code> into high byte of <code>Rn</code>.</td></tr>
+            <tr><td>0x05</td><td>STO</td><td>Rn, Rm</td><td>Store 16-bit word from <code>Rn</code> to address in <code>Rm</code>.</td></tr>
+            <tr><td>0x06</td><td>STOL</td><td>Rn, Rm</td><td>Store low byte of <code>Rn</code> to address in <code>Rm</code>.</td></tr>
+            <tr><td>0x07</td><td>STOH</td><td>Rn, Rm</td><td>Store high byte of <code>Rn</code> to address in <code>Rm</code>.</td></tr>
+            <tr><td>0x08</td><td>MVR</td><td>Rn, Rm</td><td>Move <code>Rm</code> into <code>Rn</code>.</td></tr>
+            <tr><td>0x09</td><td>SWR</td><td>Rn, Rm</td><td>Swap full 16-bit values of <code>Rn</code> and <code>Rm</code>.</td></tr>
+            <tr><td>0x0A</td><td>SWP</td><td>Rn</td><td>Swap high/low bytes within <code>Rn</code>.</td></tr>
+            <tr><td>0x0B</td><td>NOT</td><td>Rn</td><td>Bitwise NOT on <code>Rn</code>; updates <code>ZF</code>.</td></tr>
+            <tr><td>0x0C</td><td>AND</td><td>Rn, Rm</td><td><code>Rn = Rn &amp; Rm</code>; updates <code>ZF</code>.</td></tr>
+            <tr><td>0x0D</td><td>OR</td><td>Rn, Rm</td><td><code>Rn = Rn | Rm</code>; updates <code>ZF</code>.</td></tr>
+            <tr><td>0x0E</td><td>XOR</td><td>Rn, Rm</td><td><code>Rn = Rn ^ Rm</code>; updates <code>ZF</code>.</td></tr>
+            <tr><td>0x0F</td><td>NOR</td><td>Rn, Rm</td><td><code>Rn = ~(Rn | Rm)</code>; updates <code>ZF</code>.</td></tr>
+            <tr><td>0x10</td><td>SHR</td><td>Rn, Rm</td><td>Logical right shift <code>Rn</code> by <code>Rm &amp; 0xF</code>; updates <code>ZF</code>.</td></tr>
+            <tr><td>0x11</td><td>SHL</td><td>Rn, Rm</td><td>Left shift <code>Rn</code> by <code>Rm &amp; 0xF</code>; updates <code>ZF</code> and <code>CA</code>.</td></tr>
+            <tr><td>0x12</td><td>ROR</td><td>Rn, Rm</td><td>Rotate <code>Rn</code> right by <code>Rm &amp; 0xF</code>.</td></tr>
+            <tr><td>0x13</td><td>ROL</td><td>Rn, Rm</td><td>Rotate <code>Rn</code> left by <code>Rm &amp; 0xF</code>.</td></tr>
+            <tr><td>0x14</td><td>ADD</td><td>Rn, Rm</td><td><code>Rn = Rn + Rm</code>; updates <code>CA</code>, <code>OV</code>, <code>ZF</code>.</td></tr>
+            <tr><td>0x15</td><td>SUB</td><td>Rn, Rm</td><td><code>Rn = Rn - Rm</code>; updates <code>CA</code>, <code>OV</code>, <code>ZF</code>.</td></tr>
+            <tr><td>0x16</td><td>MUL</td><td>Rn, Rm</td><td>Multiply; low 16 bits in <code>Rn</code>, sets <code>CA/OV</code> if wide result overflows.</td></tr>
+            <tr><td>0x17</td><td>DEV</td><td>Rn, Rm</td><td>Divide: quotient to <code>Rn</code>, remainder to <code>Rm</code>; divide-by-zero triggers interrupt 0x00.</td></tr>
+            <tr><td>0x18</td><td>EVE</td><td>Rn, Rm</td><td>Set <code>CF</code> if equal.</td></tr>
+            <tr><td>0x19</td><td>EVGT</td><td>Rn, Rm</td><td>Set <code>CF</code> if <code>Rn &gt; Rm</code>.</td></tr>
+            <tr><td>0x1A</td><td>EVLT</td><td>Rn, Rm</td><td>Set <code>CF</code> if <code>Rn &lt; Rm</code>.</td></tr>
+            <tr><td>0x1B</td><td>EVGTE</td><td>Rn, Rm</td><td>Set <code>CF</code> if <code>Rn &gt;= Rm</code>.</td></tr>
+            <tr><td>0x1C</td><td>EVLTE</td><td>Rn, Rm</td><td>Set <code>CF</code> if <code>Rn &lt;= Rm</code>.</td></tr>
+            <tr><td>0x1D</td><td>EVNOT</td><td>-</td><td>Invert <code>CF</code>.</td></tr>
+            <tr><td>0x1E</td><td>EVST</td><td>-</td><td>Set <code>CF = 1</code>.</td></tr>
+            <tr><td>0x1F</td><td>EVSF</td><td>-</td><td>Set <code>CF = 0</code>.</td></tr>
+            <tr><td>0x20</td><td>EVOF</td><td>-</td><td>Copy <code>OV</code> into <code>CF</code>.</td></tr>
+            <tr><td>0x21</td><td>EVZF</td><td>-</td><td>Copy <code>ZF</code> into <code>CF</code>.</td></tr>
+            <tr><td>0x22</td><td>EVCA</td><td>-</td><td>Copy <code>CA</code> into <code>CF</code>.</td></tr>
+            <tr><td>0x23</td><td>JMP</td><td>Rn</td><td>Absolute jump to address in <code>Rn</code>.</td></tr>
+            <tr><td>0x24</td><td>JMPC</td><td>Rn</td><td>Jump to <code>Rn</code> if <code>CF=1</code>.</td></tr>
+            <tr><td>0x25</td><td>JRA</td><td>Rn</td><td>Relative jump ahead by <code>Rn</code> from current instruction address.</td></tr>
+            <tr><td>0x26</td><td>JRS</td><td>Rn</td><td>Relative jump back by <code>Rn</code> from current instruction address.</td></tr>
+            <tr><td>0x27</td><td>JRAC</td><td>Rn</td><td>Conditional relative jump ahead by <code>Rn</code> if <code>CF=1</code>.</td></tr>
+            <tr><td>0x28</td><td>JRSC</td><td>Rn</td><td>Conditional relative jump back by <code>Rn</code> if <code>CF=1</code>.</td></tr>
+            <tr><td>0x29</td><td>JRIA</td><td>imm</td><td>Relative jump ahead by immediate.</td></tr>
+            <tr><td>0x2A</td><td>JRIS</td><td>imm</td><td>Relative jump back by immediate.</td></tr>
+            <tr><td>0x2B</td><td>JRIAC</td><td>imm</td><td>Conditional relative jump ahead by immediate if <code>CF=1</code>.</td></tr>
+            <tr><td>0x2C</td><td>JRISC</td><td>imm</td><td>Conditional relative jump back by immediate if <code>CF=1</code>.</td></tr>
+            <tr><td>0x2D</td><td>JTSR</td><td>Rn</td><td>Call subroutine at <code>Rn</code>; pushes return address.</td></tr>
+            <tr><td>0x2E</td><td>JTSRC</td><td>Rn</td><td>Conditional call if <code>CF=1</code>.</td></tr>
+            <tr><td>0x2F</td><td>RFSR</td><td>-</td><td>Return from subroutine (pop return address).</td></tr>
+            <tr><td>0x30</td><td>RFSRC</td><td>-</td><td>Conditional return if <code>CF=1</code>.</td></tr>
+            <tr><td>0x31</td><td>HALT</td><td>-</td><td>Stop execution.</td></tr>
+            <tr><td>0x32</td><td>INT</td><td>Rn</td><td>Trigger interrupt with low byte of <code>Rn</code> as ID.</td></tr>
+            <tr><td>0x33</td><td>INTI</td><td>imm</td><td>Trigger interrupt with immediate low byte as ID.</td></tr>
+            <tr><td>0x34</td><td>RFI</td><td>-</td><td>Return from interrupt by restoring saved context.</td></tr>
+            <tr><td>0x35</td><td>SBI</td><td>-</td><td>Set interrupt block (<code>BIF=1</code>).</td></tr>
+            <tr><td>0x36</td><td>CBI</td><td>-</td><td>Clear interrupt block (<code>BIF=0</code>).</td></tr>
+            <tr><td>0x37</td><td>SPF</td><td>-</td><td>Enable privileged memory access (<code>PF=1</code>).</td></tr>
+            <tr><td>0x38</td><td>CPF</td><td>-</td><td>Disable privileged memory access (<code>PF=0</code>).</td></tr>
+            <tr><td>0x39</td><td>SLMB</td><td>Rn</td><td>Set local memory begin from <code>Rn</code>.</td></tr>
+            <tr><td>0x3A</td><td>SLME</td><td>Rn</td><td>Set local memory end from <code>Rn</code>.</td></tr>
           </tbody>
         </table>
       </div>
