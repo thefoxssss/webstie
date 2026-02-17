@@ -29,6 +29,7 @@ import {
   adminGrantCashToUser,
   adminForgiveInterestForUser,
   adminUnlockAllAchievements,
+  trackGamePlay,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -104,6 +105,7 @@ window.launchGame = (game) => {
   if (game === "voidminer") initVoidMiner();
   if (game === "emulator") initEmulator();
   resizeAllGameCanvases();
+  trackGamePlay(game);
   unlockAchievement("noob");
 };
 

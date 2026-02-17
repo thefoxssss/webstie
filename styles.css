@@ -360,6 +360,73 @@ body::before {
   text-align: center;
 }
 
+.trending-games {
+  margin-top: 24px;
+  width: min(90vw, 680px);
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 14px 16px;
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.12);
+  text-align: left;
+}
+
+.trending-games h2 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.trending-meta {
+  font-size: 8px;
+  color: var(--accent);
+  opacity: 0.9;
+  margin-bottom: 10px;
+}
+
+.trending-games-list {
+  display: grid;
+  gap: 8px;
+}
+
+.trending-game-btn {
+  width: 100%;
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 1px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  transition: 0.18s ease;
+}
+
+.trending-game-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+}
+
+.trending-rank {
+  color: var(--accent);
+}
+
+.trending-count {
+  opacity: 0.86;
+}
+
+.trending-empty {
+  border: 1px dashed var(--accent-dim);
+  padding: 10px;
+  font-size: 9px;
+  opacity: 0.75;
+}
+
 .update-log {
   margin-top: 24px;
   width: min(90vw, 680px);

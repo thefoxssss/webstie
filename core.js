@@ -1401,6 +1401,100 @@ function renderLiveOps() {
   setText("liveOpsRoom", item.room);
 }
 
+
+const TRENDING_GAME_LABELS = {
+  pong: "PONG",
+  snake: "SNAKE",
+  runner: "RUNNER",
+  geo: "GEOMETRY",
+  type: "TYPE RUNNER",
+  blackjack: "BLACKJACK",
+  ttt: "TIC-TAC-TOE",
+  hangman: "HANGMAN",
+  flappy: "FLAPPY",
+  dodge: "DODGE",
+  roulette: "ROULETTE",
+  bonk: "BONK ARENA",
+  drift: "NEON DRIFT",
+  corebreaker: "COREBREAKER",
+  neondefender: "NEON DEFENDER",
+  voidminer: "VOID MINER",
+  emulator: "CPU EMULATOR",
+};
+
+function formatTrendingWindowLabel() {
+  const now = new Date();
+  return `LAST REFRESH ${now.toLocaleTimeString("en-GB")} // WINDOW 24H`;
+}
+
+async function refreshTrendingGames() {
+  const wrap = document.getElementById("trendingGamesList");
+  const meta = document.getElementById("trendingGamesMeta");
+  if (!wrap || !meta) return;
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+
+  try {
+    const snap = await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", since), limit(800)));
+    const counts = new Map();
+    snap.forEach((entry) => {
+      const data = entry.data() || {};
+      const key = String(data.game || "").toLowerCase().trim();
+      if (!key) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    const rows = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="trending-empty">NO GAME PLAYS IN THE LAST 24H.</div>';
+      meta.innerText = formatTrendingWindowLabel();
+      return;
+    }
+
+    wrap.innerHTML = rows
+      .map(([game, plays], idx) => {
+        const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
+        return `<button class="trending-game-btn" type="button" data-game="${escapeHtml(game)}"><span class="trending-rank">#${idx + 1}</span><span>${escapeHtml(label)}</span><span class="trending-count">${plays} PLAYS</span></button>`;
+      })
+      .join("");
+
+    meta.innerText = formatTrendingWindowLabel();
+  } catch (error) {
+    meta.innerText = "TRENDING SIGNAL OFFLINE";
+    wrap.innerHTML = '<div class="trending-empty">UNABLE TO LOAD TRENDING GAMES.</div>';
+  }
+}
+
+function initTrendingGamesPanel() {
+  const wrap = document.getElementById("trendingGamesList");
+  if (!wrap || wrap.dataset.ready === "1") return;
+  wrap.dataset.ready = "1";
+
+  wrap.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-game]");
+    const game = button?.dataset.game;
+    if (!game) return;
+    if (typeof window.launchGame === "function") {
+      window.launchGame(game);
+    }
+  });
+
+  refreshTrendingGames();
+  setInterval(refreshTrendingGames, 60000);
+}
+
+export function trackGamePlay(game) {
+  const normalized = String(game || "").toLowerCase().trim();
+  if (!normalized) return;
+  addDoc(collection(db, "gooner_game_plays"), {
+    game: normalized,
+    name: myName || "ANON",
+    ts: Date.now(),
+  }).catch(() => {});
+}
+
 function getAvailableSeasonIds() {
   const ids = [String(seasonData.id || "").toUpperCase(), ...(seasonData.hall || []).map((entry) => String(entry.id || "").toUpperCase())]
     .filter(Boolean);
@@ -1749,6 +1843,7 @@ initAuth();
 loadCrewData();
 loadSeasonData();
 renderLiveOps();
+initTrendingGamesPanel();
 setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
@@ -1762,6 +1857,7 @@ onAuthStateChanged(auth, async (u) => {
     await ensureGlobalMarket();
     subscribeToGlobalMarket();
     initChat();
+    refreshTrendingGames();
   }
 });
 
