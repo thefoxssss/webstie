@@ -2068,11 +2068,24 @@ async function register(username, pin) {
 
 
 export async function adminGrantCash(amount) {
-  if (!isGodUser()) {
-    showToast("ADMIN CLAIM REQUIRED", "⛔", "Use callable Cloud Function.");
+  const grant = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!grant) {
+    showToast("INVALID GRANT AMOUNT", "⚠️");
     return;
   }
-  showToast("SECURE ADMIN OP", "🧩", "Move grant to Cloud Function + Rules.");
+  await applyAdminActionToTargets({
+    actionName: "GRANT CASH",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => ({
+      money: Math.max(0, Number(targetData?.money) || 0) + grant,
+    }),
+    mutateLocal: () => {
+      myMoney += grant;
+      logTransaction("ADMIN CASH GRANT", grant);
+    },
+    successToast: (targets) => `GRANTED +$${grant.toLocaleString()} TO ${targets.length} PLAYER(S)`,
+    failToast: "ADMIN CASH GRANT FAILED",
+  });
 }
 
 function getAdminTargetUser() {
@@ -2080,6 +2093,69 @@ function getAdminTargetUser() {
   return String(userSelect?.value || "")
     .trim()
     .toUpperCase();
+}
+
+function getAdminTargetScope() {
+  const scopeSelect = document.getElementById("adminTargetScope");
+  const scope = String(scopeSelect?.value || "selected").trim().toLowerCase();
+  if (["all", "others", "self", "selected"].includes(scope)) return scope;
+  return "selected";
+}
+
+async function resolveAdminTargetUsers() {
+  const scope = getAdminTargetScope();
+  if (scope === "self") return [myName];
+  if (scope === "selected") {
+    const selected = getAdminTargetUser();
+    return selected ? [selected] : [];
+  }
+
+  const names = [];
+  const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
+  snap.forEach((playerDoc) => {
+    const playerName = String(playerDoc.data()?.name || playerDoc.id || "")
+      .trim()
+      .toUpperCase();
+    if (!playerName) return;
+    if (scope === "others" && playerName === myName) return;
+    names.push(playerName);
+  });
+  return names;
+}
+
+async function applyAdminActionToTargets({ actionName, emptyToast, mutateRemote, mutateLocal, successToast, failToast }) {
+  if (!isGodUser()) return;
+  try {
+    const targets = await resolveAdminTargetUsers();
+    if (!targets.length) {
+      showToast(emptyToast, "⚠️");
+      return;
+    }
+
+    const uniqueTargets = Array.from(new Set(targets));
+    await Promise.all(
+      uniqueTargets.map((target) =>
+        runTransaction(db, async (transaction) => {
+          const targetRef = doc(db, "gooner_users", target);
+          const targetSnap = await transaction.get(targetRef);
+          if (!targetSnap.exists()) return;
+          const patch = mutateRemote(targetSnap.data(), target);
+          if (patch && typeof patch === "object" && Object.keys(patch).length) {
+            transaction.update(targetRef, patch);
+          }
+        })
+      )
+    );
+
+    if (uniqueTargets.includes(myName)) {
+      mutateLocal?.();
+      await saveStats();
+    }
+
+    showToast(successToast(uniqueTargets), "✅", `${actionName}: ${uniqueTargets.length} target(s)`);
+  } catch {
+    showToast(failToast, "⚠️", "Try refreshing player list and retry.");
+  }
 }
 
 export async function adminRefreshTargetUsers() {
@@ -2119,137 +2195,156 @@ export async function adminRefreshTargetUsers() {
 }
 
 export async function adminGrantCashToUser(amount) {
-  if (!isGodUser()) return;
-  const target = getAdminTargetUser();
-  const grant = Math.max(0, Math.floor(Number(amount) || 0));
-  if (!target || !grant) {
-    showToast("SELECT USER + VALID AMOUNT", "⚠️");
-    return;
-  }
-
-  try {
-    const targetRef = doc(db, "gooner_users", target);
-    await runTransaction(db, async (transaction) => {
-      const targetSnap = await transaction.get(targetRef);
-      if (!targetSnap.exists()) throw new Error("TARGET_NOT_FOUND");
-      const nextMoney = Math.max(0, Number(targetSnap.data()?.money) || 0) + grant;
-      transaction.update(targetRef, { money: nextMoney });
-    });
-
-    if (target === myName) {
-      myMoney += grant;
-      logTransaction("ADMIN TARGET GRANT", grant);
-      await saveStats();
-    }
-    showToast(`GAVE ${target} +$${grant.toLocaleString()}`, "💸");
-  } catch {
-    showToast("TARGETED GRANT FAILED", "⚠️", "Confirm selected player exists.");
-  }
+  await adminGrantCash(amount);
 }
 
 export async function adminForgiveInterestForUser() {
-  if (!isGodUser()) return;
-  const target = getAdminTargetUser();
-  if (!target) {
-    showToast("SELECT USER FIRST", "⚠️");
-    return;
-  }
-
   const now = Date.now();
-  try {
-    const targetRef = doc(db, "gooner_users", target);
-    await runTransaction(db, async (transaction) => {
-      const targetSnap = await transaction.get(targetRef);
-      if (!targetSnap.exists()) throw new Error("TARGET_NOT_FOUND");
-      const nextLoans = {
-        ...(targetSnap.data()?.loans || {}),
+  await applyAdminActionToTargets({
+    actionName: "FORGIVE INTEREST",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => ({
+      loanData: {
+        ...(targetData?.loanData || {}),
         rate: 0,
         lastInterestAt: now,
-      };
-      transaction.update(targetRef, { loans: nextLoans });
-    });
-
-    if (target === myName) {
+      },
+    }),
+    mutateLocal: () => {
       loanData.rate = 0;
       loanData.lastInterestAt = now;
-      await saveStats();
-    }
-    showToast(`INTEREST FORGIVEN FOR ${target}`, "🕊️");
-  } catch {
-    showToast("INTEREST FORGIVENESS FAILED", "⚠️", "Confirm selected player exists.");
-  }
+    },
+    successToast: (targets) => `FORGAVE INTEREST FOR ${targets.length} PLAYER(S)`,
+    failToast: "INTEREST FORGIVENESS FAILED",
+  });
 }
 
 export async function adminInjectJackpot() {
-  if (!isGodUser()) return;
   const jackpot = 5000000;
-  myMoney += jackpot;
-  logTransaction("ADMIN JACKPOT", jackpot);
-  showToast(`JACKPOT INJECTED: +$${jackpot.toLocaleString()}`, "🎰");
-  await saveStats();
+  await adminGrantCash(jackpot);
 }
 
 export async function adminSetMaxCash() {
-  if (!isGodUser()) return;
-  const previous = Math.floor(Number(myMoney) || 0);
-  myMoney = 999999999;
-  const delta = Math.max(0, myMoney - previous);
-  if (delta > 0) logTransaction("ADMIN BANK OVERRIDE", delta);
-  showToast("BANK SET TO $999,999,999", "💰");
-  await saveStats();
+  await applyAdminActionToTargets({
+    actionName: "SET MAX CASH",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: () => ({ money: 999999999 }),
+    mutateLocal: () => {
+      const previous = Math.floor(Number(myMoney) || 0);
+      myMoney = 999999999;
+      const delta = Math.max(0, myMoney - previous);
+      if (delta > 0) logTransaction("ADMIN BANK OVERRIDE", delta);
+    },
+    successToast: (targets) => `SET BANK TO $999,999,999 FOR ${targets.length} PLAYER(S)`,
+    failToast: "MAX CASH OVERRIDE FAILED",
+  });
 }
 
 export async function adminGrantAllShopItems() {
-  if (!isGodUser()) return;
-  let unlocked = 0;
-  SHOP_ITEMS.forEach((item) => {
-    if (!myInventory.includes(item.id)) {
-      myInventory.push(item.id);
-      unlocked++;
-    }
-    setItemToggle(item.id, true);
+  await applyAdminActionToTargets({
+    actionName: "UNLOCK SHOP ITEMS",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => {
+      const inventory = new Set(Array.isArray(targetData?.inventory) ? targetData.inventory : []);
+      const itemToggles = { ...(targetData?.itemToggles || {}) };
+      SHOP_ITEMS.forEach((item) => {
+        inventory.add(item.id);
+        itemToggles[item.id] = true;
+      });
+      return { inventory: Array.from(inventory), itemToggles };
+    },
+    mutateLocal: () => {
+      SHOP_ITEMS.forEach((item) => {
+        if (!myInventory.includes(item.id)) myInventory.push(item.id);
+        setItemToggle(item.id, true);
+      });
+      applyOwnedVisuals();
+    },
+    successToast: (targets) => `UNLOCKED ALL SHOP ITEMS FOR ${targets.length} PLAYER(S)`,
+    failToast: "SHOP ITEM UNLOCK FAILED",
   });
-  applyOwnedVisuals();
-  showToast(
-    unlocked ? `ADMIN UNLOCKED ${unlocked} ITEMS` : "ALL SHOP ITEMS ALREADY OWNED",
-    "🧰"
-  );
-  await saveStats();
 }
 
 export async function adminClearDebtAndCooldowns() {
-  if (!isGodUser()) return;
-  loanData.debt = 0;
-  loanData.rate = 0;
-  loanData.lastInterestAt = Date.now();
-  jobData.cooldowns = {};
-  showToast("DEBT PURGED + JOBS RESET", "🧽");
-  await saveStats();
+  const now = Date.now();
+  await applyAdminActionToTargets({
+    actionName: "CLEAR DEBT + COOLDOWNS",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => ({
+      loanData: { ...(targetData?.loanData || {}), debt: 0, rate: 0, lastInterestAt: now },
+      jobs: { ...(targetData?.jobs || {}), cooldowns: {} },
+    }),
+    mutateLocal: () => {
+      loanData.debt = 0;
+      loanData.rate = 0;
+      loanData.lastInterestAt = now;
+      jobData.cooldowns = {};
+    },
+    successToast: (targets) => `DEBT + COOLDOWNS CLEARED FOR ${targets.length} PLAYER(S)`,
+    failToast: "DEBT CLEAR FAILED",
+  });
 }
 
 export async function adminBoostStats() {
-  if (!isGodUser()) return;
-  myStats.games = Math.max(0, Number(myStats.games) || 0) + 250;
-  myStats.wins = Math.max(0, Number(myStats.wins) || 0) + 100;
-  myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
-  jobData.completed = {
-    math: Math.max(50, Number(jobData.completed?.math) || 0),
-    code: Math.max(50, Number(jobData.completed?.code) || 0),
-    click: Math.max(50, Number(jobData.completed?.click) || 0),
-  };
-  showToast("STATS BOOSTED TO GOD-TIER", "📈");
-  await saveStats();
+  await applyAdminActionToTargets({
+    actionName: "BOOST STATS",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => ({
+      stats: {
+        games: Math.max(0, Number(targetData?.stats?.games) || 0) + 250,
+        wins: Math.max(0, Number(targetData?.stats?.wins) || 0) + 100,
+        wpm: Math.max(120, Number(targetData?.stats?.wpm) || 0),
+      },
+      jobs: {
+        ...(targetData?.jobs || {}),
+        completed: {
+          ...(targetData?.jobs?.completed || {}),
+          math: Math.max(50, Number(targetData?.jobs?.completed?.math) || 0),
+          code: Math.max(50, Number(targetData?.jobs?.completed?.code) || 0),
+          click: Math.max(50, Number(targetData?.jobs?.completed?.click) || 0),
+        },
+      },
+    }),
+    mutateLocal: () => {
+      myStats.games = Math.max(0, Number(myStats.games) || 0) + 250;
+      myStats.wins = Math.max(0, Number(myStats.wins) || 0) + 100;
+      myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
+      jobData.completed = {
+        math: Math.max(50, Number(jobData.completed?.math) || 0),
+        code: Math.max(50, Number(jobData.completed?.code) || 0),
+        click: Math.max(50, Number(jobData.completed?.click) || 0),
+      };
+    },
+    successToast: (targets) => `STATS BOOSTED FOR ${targets.length} PLAYER(S)`,
+    failToast: "STAT BOOST FAILED",
+  });
 }
 
 export async function adminMaxPortfolio() {
-  if (!isGodUser()) return;
-  ensureStockProfile();
-  marketState.stocks.forEach((stock) => {
-    stockData.holdings[stock.symbol] = 9999;
+  await applyAdminActionToTargets({
+    actionName: "MAX PORTFOLIO",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => {
+      const targetStock = {
+        holdings: { ...(targetData?.stockData?.holdings || {}) },
+        selected: targetData?.stockData?.selected || marketState.stocks[0]?.symbol || "GOON",
+        buyMultiplier: targetData?.stockData?.buyMultiplier || 1,
+      };
+      marketState.stocks.forEach((stock) => {
+        targetStock.holdings[stock.symbol] = 9999;
+      });
+      return { stockData: targetStock };
+    },
+    mutateLocal: () => {
+      ensureStockProfile();
+      marketState.stocks.forEach((stock) => {
+        stockData.holdings[stock.symbol] = 9999;
+      });
+      stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
+    },
+    successToast: (targets) => `PORTFOLIO MAXED FOR ${targets.length} PLAYER(S)`,
+    failToast: "PORTFOLIO MAX FAILED",
   });
-  stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
-  showToast("PORTFOLIO MAXED OUT", "📊");
-  await saveStats();
 }
 
 async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = minimumPrice) {
@@ -2329,51 +2424,82 @@ export async function adminMarketTimesThousand() {
 }
 
 export async function adminPrestigePack() {
-  if (!isGodUser()) return;
-  const previousMoney = Math.floor(Number(myMoney) || 0);
-  myMoney = Math.max(previousMoney, 999999999);
-  const moneyDelta = Math.max(0, myMoney - previousMoney);
-  if (moneyDelta > 0) logTransaction("ADMIN PRESTIGE PACK", moneyDelta);
-
-  SHOP_ITEMS.forEach((item) => {
-    if (!myInventory.includes(item.id)) myInventory.push(item.id);
-    setItemToggle(item.id, true);
+  const now = Date.now();
+  await applyAdminActionToTargets({
+    actionName: "PRESTIGE PACK",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => {
+      const inventory = new Set(Array.isArray(targetData?.inventory) ? targetData.inventory : []);
+      const achievements = new Set(Array.isArray(targetData?.achievements) ? targetData.achievements : []);
+      const itemToggles = { ...(targetData?.itemToggles || {}) };
+      SHOP_ITEMS.forEach((item) => {
+        inventory.add(item.id);
+        itemToggles[item.id] = true;
+      });
+      ACHIEVEMENTS.forEach((achievement) => achievements.add(achievement.id));
+      return {
+        money: Math.max(Math.floor(Number(targetData?.money) || 0), 999999999),
+        inventory: Array.from(inventory),
+        itemToggles,
+        achievements: Array.from(achievements),
+        stats: {
+          games: Math.max(1000, Number(targetData?.stats?.games) || 0),
+          wins: Math.max(750, Number(targetData?.stats?.wins) || 0),
+          wpm: Math.max(140, Number(targetData?.stats?.wpm) || 0),
+        },
+        jobs: { ...(targetData?.jobs || {}), completed: { math: 99, code: 99, click: 99 }, cooldowns: {} },
+        loanData: { debt: 0, rate: 0, lastInterestAt: now },
+      };
+    },
+    mutateLocal: () => {
+      const previousMoney = Math.floor(Number(myMoney) || 0);
+      myMoney = Math.max(previousMoney, 999999999);
+      const moneyDelta = Math.max(0, myMoney - previousMoney);
+      if (moneyDelta > 0) logTransaction("ADMIN PRESTIGE PACK", moneyDelta);
+      SHOP_ITEMS.forEach((item) => {
+        if (!myInventory.includes(item.id)) myInventory.push(item.id);
+        setItemToggle(item.id, true);
+      });
+      ACHIEVEMENTS.forEach((achievement) => {
+        if (!myAchievements.includes(achievement.id)) myAchievements.push(achievement.id);
+      });
+      myStats.games = Math.max(1000, Number(myStats.games) || 0);
+      myStats.wins = Math.max(750, Number(myStats.wins) || 0);
+      myStats.wpm = Math.max(140, Number(myStats.wpm) || 0);
+      jobData.completed = { math: 99, code: 99, click: 99 };
+      jobData.cooldowns = {};
+      loanData = { debt: 0, rate: 0, lastInterestAt: now };
+      applyOwnedVisuals();
+    },
+    successToast: (targets) => `PRESTIGE PACK DEPLOYED TO ${targets.length} PLAYER(S)`,
+    failToast: "PRESTIGE PACK FAILED",
   });
-
-  ACHIEVEMENTS.forEach((achievement) => {
-    if (!myAchievements.includes(achievement.id)) myAchievements.push(achievement.id);
-  });
-
-  myStats.games = Math.max(1000, Number(myStats.games) || 0);
-  myStats.wins = Math.max(750, Number(myStats.wins) || 0);
-  myStats.wpm = Math.max(140, Number(myStats.wpm) || 0);
-  jobData.completed = { math: 99, code: 99, click: 99 };
-  jobData.cooldowns = {};
-  loanData = { debt: 0, rate: 0, lastInterestAt: Date.now() };
-  applyOwnedVisuals();
-  showToast("PRESTIGE PACK DEPLOYED", "👑");
-  await saveStats();
 }
 
 export async function adminUnlockAllAchievements() {
-  if (!isGodUser()) return;
-  const missing = ACHIEVEMENTS.filter((achievement) => !myAchievements.includes(achievement.id));
-  if (!missing.length) {
-    showToast("ALL ACHIEVEMENTS ALREADY UNLOCKED", "✅");
-    return;
-  }
-
-  let rewardTotal = 0;
-  missing.forEach((achievement) => {
-    myAchievements.push(achievement.id);
-    rewardTotal += achievement.reward || 0;
+  await applyAdminActionToTargets({
+    actionName: "UNLOCK ACHIEVEMENTS",
+    emptyToast: "SELECT A TARGET FIRST",
+    mutateRemote: (targetData) => {
+      const current = new Set(Array.isArray(targetData?.achievements) ? targetData.achievements : []);
+      ACHIEVEMENTS.forEach((achievement) => current.add(achievement.id));
+      return { achievements: Array.from(current) };
+    },
+    mutateLocal: () => {
+      const missing = ACHIEVEMENTS.filter((achievement) => !myAchievements.includes(achievement.id));
+      let rewardTotal = 0;
+      missing.forEach((achievement) => {
+        myAchievements.push(achievement.id);
+        rewardTotal += achievement.reward || 0;
+      });
+      if (rewardTotal > 0) {
+        myMoney += rewardTotal;
+        logTransaction("ADMIN ACHIEVEMENT SYNC", rewardTotal);
+      }
+    },
+    successToast: (targets) => `UNLOCKED ACHIEVEMENTS FOR ${targets.length} PLAYER(S)`,
+    failToast: "ACHIEVEMENT UNLOCK FAILED",
   });
-  if (rewardTotal > 0) {
-    myMoney += rewardTotal;
-    logTransaction("ADMIN ACHIEVEMENT SYNC", rewardTotal);
-  }
-  showToast(`UNLOCKED ${missing.length} ACHIEVEMENTS`, "🛡️");
-  await saveStats();
 }
 
 // Persist stats + inventory changes to Firestore.
