@@ -26,9 +26,11 @@
             box-shadow: 0 0 30px rgba(139, 69, 19, 0.5);
             image-rendering: pixelated;
             image-rendering: crisp-edges;
-            width: min(100vw, 1200px);
+            width: min(calc(100vw - 24px), calc((100vh - 24px) * 1.7143), 1200px);
+            max-width: 1200px;
+            aspect-ratio: 1200 / 700;
             height: auto;
-            max-height: 100vh;
+            max-height: calc(100vh - 24px);
         }
 
         #ui {
