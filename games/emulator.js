@@ -6,6 +6,10 @@ const IO_INPUT_STATUS = 0x00f0;
 const IO_INPUT_DATA = 0x00f1;
 const IO_OUTPUT_DATA = 0x00f2;
 const IO_OUTPUT_CLEAR = 0x00f3;
+const JSR_STACK_PTR_ADDR = 0x0001;
+const JSR_STACK_BASE = 0x0200;
+const JSR_STACK_SIZE_BYTES = 0x0100;
+const JSR_STACK_ENTRY_SIZE = 2;
 
 const OPCODE_META = {
   0x00: { rr: false, im: false, name: "NOOP" },
@@ -122,7 +126,7 @@ class Emulator {
     this.logs = [];
     this.terminalOutput = "";
     this.inputQueue = [];
-    this.memory[0x0001] = 0;
+    this.memory[JSR_STACK_PTR_ADDR] = 0;
   }
 
   instructionSize(opcode) {
@@ -329,16 +333,33 @@ class Emulator {
   }
 
   jsPush(value) {
-    const ptr = this.memory[0x0001] & 0xff;
-    const addr = 0x0200 + ptr;
+    const ptr = this.memory[JSR_STACK_PTR_ADDR] & 0xff;
+    if ((ptr & 0x01) !== 0) {
+      this.handleInterrupt(0x00);
+      throw new Error("JSR stack pointer is misaligned");
+    }
+    if (ptr > JSR_STACK_SIZE_BYTES - JSR_STACK_ENTRY_SIZE) {
+      this.handleInterrupt(0x00);
+      throw new Error("JSR stack overflow");
+    }
+    const addr = JSR_STACK_BASE + ptr;
     this.writeWord(addr, value, true);
-    this.memory[0x0001] = (ptr + 2) & 0xff;
+    this.memory[JSR_STACK_PTR_ADDR] = (ptr + JSR_STACK_ENTRY_SIZE) & 0xff;
   }
 
   jsPop() {
-    const ptr = (this.memory[0x0001] - 2) & 0xff;
-    this.memory[0x0001] = ptr;
-    return this.readWord(0x0200 + ptr, true);
+    const currentPtr = this.memory[JSR_STACK_PTR_ADDR] & 0xff;
+    if ((currentPtr & 0x01) !== 0) {
+      this.handleInterrupt(0x00);
+      throw new Error("JSR stack pointer is misaligned");
+    }
+    if (currentPtr < JSR_STACK_ENTRY_SIZE) {
+      this.handleInterrupt(0x00);
+      throw new Error("JSR stack underflow");
+    }
+    const ptr = currentPtr - JSR_STACK_ENTRY_SIZE;
+    this.memory[JSR_STACK_PTR_ADDR] = ptr;
+    return this.readWord(JSR_STACK_BASE + ptr, true);
   }
 
   saveContext() {
