@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instruction System Reference</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      html,
+      body {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+      }
+      body {
+        padding: 20px;
+      }
+      .doc-wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      .doc-wrap h1,
+      .doc-wrap h2,
+      .doc-wrap h3 {
+        color: var(--accent);
+      }
+      .doc-wrap code {
+        color: #7fffd4;
+      }
+      .doc-card {
+        border: 1px solid var(--accent);
+        background: rgba(0, 0, 0, 0.65);
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      .tldr {
+        border-left: 4px solid #7fffd4;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      th,
+      td {
+        border: 1px solid #245;
+        padding: 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: var(--accent);
+      }
+      .tree {
+        white-space: pre;
+        font-family: "Roboto Mono", monospace;
+      }
+      .checklist li {
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc-wrap">
+      <h1>Instruction System Reference</h1>
+      <p>
+        This page explains how instruction sources are prioritized, interpreted, and executed, including conflict resolution,
+        scope behavior, workflow sequencing, and fallback handling.
+      </p>
+
+      <div class="doc-card tldr">
+        <h2>Quick Start (TL;DR)</h2>
+        <ul>
+          <li>Instructions are evaluated from highest to lowest priority.</li>
+          <li>Hard constraints (must/never/forbidden) are binding unless superseded by a higher-priority source.</li>
+          <li>Path-scoped instructions apply only to files inside their subtree.</li>
+          <li>When instructions conflict, precedence and specificity decide the final behavior.</li>
+          <li>If blocked, continue with the safest compliant fallback and state what happened.</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>1) Instruction Sources and Priority</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Source</th>
+              <th>What it controls</th>
+              <th>Override behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1 (highest)</td>
+              <td>System instructions</td>
+              <td>Global policy, safety rules, core behavior, policy limitations.</td>
+              <td>Overrides all lower-priority sources.</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Developer instructions</td>
+              <td>Task workflow, tool usage requirements, output formatting requirements.</td>
+              <td>Overrides user and repository-local guidance.</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>User instructions</td>
+              <td>Requested deliverable, target files, desired outcome.</td>
+              <td>Overrides repo-local conventions when no higher-level conflict exists.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Repository-local instructions (for example, AGENTS.md)</td>
+              <td>Code style, folder-level rules, testing notes, PR conventions.</td>
+              <td>Overrides lower conventions within its scope; cannot override higher layers.</td>
+            </tr>
+            <tr>
+              <td>5 (lowest)</td>
+              <td>Defaults and conventions</td>
+              <td>General style assumptions when no explicit instruction exists.</td>
+              <td>Always yields to explicit instructions.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-card">
+        <h2>2) Scope Rules for Path-Based Instruction Files</h2>
+        <ul>
+          <li>Instruction files like <code>AGENTS.md</code> apply to the entire directory tree rooted at their location.</li>
+          <li>More deeply nested instruction files have higher precedence for files in their subtree.</li>
+          <li>Only touched files must comply with applicable scoped instructions.</li>
+          <li>Direct system/developer/user instructions still take precedence over path-scoped files.</li>
+        </ul>
+        <h3>Example Scope Tree</h3>
+        <div class="tree">repo/
+├── AGENTS.md                # applies to everything in repo/
+├── frontend/
+│   ├── AGENTS.md            # overrides repo AGENTS for frontend/**
+│   └── src/app.js
+└── backend/
+    └── api/server.js
+        </div>
+        <p>
+          In this example, edits to <code>frontend/src/app.js</code> follow <code>frontend/AGENTS.md</code> first, then fall
+          back to repo-level guidance only where non-conflicting.
+        </p>
+      </div>
+
+      <div class="doc-card">
+        <h2>3) Instruction Types and How to Interpret Them</h2>
+        <h3>A) Hard constraints</h3>
+        <p>
+          Terms like <code>must</code>, <code>do not</code>, <code>never</code>, and <code>strictly forbidden</code> are
+          mandatory.
+        </p>
+        <h3>B) Conditional constraints</h3>
+        <p>
+          Rules in the form "if X, then Y" only apply when condition X is true. Document both trigger and required action.
+        </p>
+        <h3>C) Preference guidance</h3>
+        <p>
+          Terms like <code>prefer</code> and <code>use judgment</code> are advisory and should be followed unless they
+          conflict with stronger rules.
+        </p>
+        <h3>D) Output formatting rules</h3>
+        <p>
+          Required output templates, headings, and symbols are compliance requirements and should be followed exactly.
+        </p>
+      </div>
+
+      <div class="doc-card">
+        <h2>4) Conflict Resolution Algorithm</h2>
+        <ol>
+          <li>Collect all active instructions from all sources.</li>
+          <li>Sort by precedence (system → developer → user → scoped repo files → defaults).</li>
+          <li>Apply hard constraints first.</li>
+          <li>Filter scoped instructions by touched file path.</li>
+          <li>Resolve direct conflicts by higher source priority, then by narrower scope specificity.</li>
+          <li>If ambiguity remains, choose the safest compliant interpretation and state assumptions in the response.</li>
+        </ol>
+      </div>
+
+      <div class="doc-card">
+        <h2>5) Worked Conflict Examples</h2>
+        <h3>Example A: User preference vs developer requirement</h3>
+        <p><strong>Input:</strong> User asks for plain text. Developer requires markdown template output.</p>
+        <p><strong>Resolution:</strong> Use markdown template output (developer instruction has higher priority).</p>
+
+        <h3>Example B: Nested scoped files</h3>
+        <p><strong>Input:</strong> Root AGENTS says "2-space indent"; nested AGENTS says "4-space indent".</p>
+        <p><strong>Resolution:</strong> Files in nested subtree use 4 spaces; files outside use 2 spaces.</p>
+
+        <h3>Example C: Preference vs hard rule</h3>
+        <p><strong>Input:</strong> "Prefer command A" and "Never run command A with flag --unsafe".</p>
+        <p><strong>Resolution:</strong> Hard prohibition wins; use safe variant or fallback.</p>
+      </div>
+
+      <div class="doc-card">
+        <h2>6) Execution Workflow</h2>
+        <ol>
+          <li>Read request and identify deliverable.</li>
+          <li>Locate applicable instruction sources and scoped files.</li>
+          <li>Build a short execution plan.</li>
+          <li>Implement edits with scope-compliant style and structure.</li>
+          <li>Run checks/tests aligned with instructions.</li>
+          <li>Prepare final response in required template.</li>
+          <li>Verify no forbidden actions or missing required steps remain.</li>
+        </ol>
+      </div>
+
+      <div class="doc-card">
+        <h2>7) Output Template Requirements</h2>
+        <ul>
+          <li>Use exact heading names when required.</li>
+          <li>Include testing/check sections when required by instruction source.</li>
+          <li>Apply any mandated status symbols, checklists, or citation style exactly.</li>
+          <li>Do not include optional sections if an instruction explicitly prohibits them.</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>8) Tooling and Environment Constraints</h2>
+        <ul>
+          <li>Use only approved tools and workflows permitted by active instructions.</li>
+          <li>Respect sandbox and approval policies from the runtime environment.</li>
+          <li>If a required tool is unavailable, continue with best fallback and clearly report limitations.</li>
+          <li>Never introduce prohibited workarounds (for example, installing disallowed dependencies).</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>9) Skill Usage Rules</h2>
+        <ul>
+          <li>If a named or clearly matching skill exists, use it for that turn.</li>
+          <li>Load only the parts of skill documentation required for the current task.</li>
+          <li>If multiple skills match, choose the minimum set needed and state sequence.</li>
+          <li>If skill files are missing or blocked, report briefly and proceed with compliant fallback.</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>10) Failure Handling and Fallbacks</h2>
+        <ul>
+          <li>Missing file: note missing asset and continue with best available input.</li>
+          <li>Conflicting requirements: apply precedence algorithm and explain result.</li>
+          <li>Unavailable command/tool: report constraint and run alternative checks.</li>
+          <li>Ambiguous request: choose conservative compliant interpretation and document assumptions.</li>
+        </ul>
+      </div>
+
+      <div class="doc-card">
+        <h2>11) End-of-Task Compliance Checklist</h2>
+        <ul class="checklist">
+          <li>[ ] All applicable instruction sources identified and applied.</li>
+          <li>[ ] Scope and nested precedence rules validated for touched files.</li>
+          <li>[ ] Hard constraints satisfied without violation.</li>
+          <li>[ ] Required output format followed exactly.</li>
+          <li>[ ] Checks/tests executed and reported.</li>
+          <li>[ ] Fallbacks explained where limitations existed.</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
