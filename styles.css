@@ -259,17 +259,15 @@ body::before {
   padding-left: 20px;
 }
 
-.trending-games {
-  border: 1px solid var(--accent-dim);
-  background: rgba(0, 0, 0, 0.45);
-  padding: 12px;
-  margin-bottom: 12px;
+#overlayTrending .score-box {
+  max-width: 520px;
 }
 
-.trending-games h2 {
+#overlayTrending h2 {
   margin: 0 0 6px;
-  font-size: 12px;
+  font-size: 18px;
   letter-spacing: 1px;
+  text-align: center;
 }
 
 #trendingGamesMeta {
