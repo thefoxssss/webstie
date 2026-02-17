@@ -1184,7 +1184,7 @@ function renderSeasonBoard() {
   }
 
   if (activeSeasonTab === String(seasonData.id || "").toUpperCase()) {
-    const rows = cachedSeasonBoards[activeSeasonSubTab] || [];
+    const rows = getLiveSeasonBoardRows(activeSeasonSubTab);
     boardList.innerHTML = rows.length
       ? rows
           .map((row, idx) => activeSeasonSubTab === "gang"
@@ -1219,6 +1219,41 @@ function renderSeasonBoard() {
   boardList.innerHTML = archivedEntries.length
     ? archivedEntries.map((entry, idx) => `<div class="score-item">#${idx + 1} ${escapeHtml(entry.name)} <span style="opacity:.7">${escapeHtml(String(entry.crewTag || "SOLO").toUpperCase())}</span> // $${Math.round(Number(entry.money || entry.xp) || 0)}</div>`).join("")
     : '<div class="score-item">NO ARCHIVED SOLO SCORES FOR THIS SEASON</div>';
+}
+
+function getLiveSeasonBoardRows(mode = "solo") {
+  const normalizedName = String(myName || "ANON").toUpperCase();
+  const normalizedCrewTag = normalizeCrewTag(crewData.tag) || "SOLO";
+  const localMoney = Math.max(0, Number(myMoney) || 0);
+
+  if (mode === "gang") {
+    const gangTotals = {};
+    (cachedSeasonBoards.gang || []).forEach((row) => {
+      const tag = normalizeCrewTag(row.tag);
+      if (!tag) return;
+      gangTotals[tag] = {
+        tag,
+        money: Math.max(0, Number(row.money) || 0),
+        members: Math.max(0, Math.floor(Number(row.members) || 0)),
+      };
+    });
+
+    if (normalizedCrewTag !== "SOLO") {
+      const existing = gangTotals[normalizedCrewTag];
+      if (existing) {
+        existing.money = Math.max(existing.money, localMoney);
+        existing.members = Math.max(existing.members, 1);
+      } else {
+        gangTotals[normalizedCrewTag] = { tag: normalizedCrewTag, money: localMoney, members: 1 };
+      }
+    }
+
+    return Object.values(gangTotals).sort((a, b) => b.money - a.money).slice(0, 10);
+  }
+
+  const soloRows = (cachedSeasonBoards.solo || []).filter((row) => String(row.name || "").toUpperCase() !== normalizedName);
+  soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag });
+  return soloRows.sort((a, b) => b.money - a.money).slice(0, 10);
 }
 
 function renderSeasonPanel() {
