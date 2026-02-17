@@ -530,6 +530,9 @@ const emulator = new Emulator();
 let runTimer = null;
 let initialized = false;
 
+const RUN_INTERVAL_MS = 16;
+const RUN_STEPS_PER_TICK = 40;
+
 function renderState() {
   const regText = Array.from(emulator.registers)
     .map((value, idx) => `R${idx.toString(16).toUpperCase()}: 0x${emulator.hex(value)}`)
@@ -572,9 +575,27 @@ function safeStep() {
   }
 }
 
+function runBurst() {
+  try {
+    for (let i = 0; i < RUN_STEPS_PER_TICK; i += 1) {
+      const result = emulator.step();
+      if (result.halted) {
+        stopRunLoop();
+        break;
+      }
+    }
+    renderState();
+  } catch (error) {
+    emulator.log(`ERR: ${error.message}`);
+    renderState();
+    stopRunLoop();
+  }
+}
+
 export function initEmulator() {
   if (initialized) {
     renderState();
+    document.getElementById("emuTerminalInput")?.focus();
     return;
   }
 
@@ -621,7 +642,7 @@ export function initEmulator() {
 
   runBtn.onclick = () => {
     if (runTimer) return;
-    runTimer = window.setInterval(safeStep, 75);
+    runTimer = window.setInterval(runBurst, RUN_INTERVAL_MS);
   };
 
   stopBtn.onclick = () => {
@@ -635,13 +656,15 @@ export function initEmulator() {
   };
 
   terminalSendBtn.onclick = () => {
-    emulator.enqueueTerminalInput(terminalInput.value.trim());
+    const message = terminalInput.value.replace(/\r/g, "").trim();
+    emulator.enqueueTerminalInput(message);
     terminalInput.value = "";
+    terminalInput.focus();
     renderState();
   };
 
   terminalInput.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
+    if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     terminalSendBtn.click();
   });
@@ -655,5 +678,6 @@ export function initEmulator() {
   programInput.value = emulator.bytesToHex(bootBytes);
   emulator.loadProgram(programInput.value);
   renderState();
+  terminalInput.focus();
   initialized = true;
 }
