@@ -435,16 +435,17 @@ body::before {
   color: #0f0;
 }
 
-.season-board-wrap {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.season-tab-block {
   width: 100%;
   margin: 10px 0;
 }
 
+.season-subtabs {
+  margin-top: 8px;
+}
+
 .season-board-title {
-  margin: 0 0 6px;
+  margin: 10px 0 6px;
   text-align: center;
   font-size: 10px;
   letter-spacing: 1px;

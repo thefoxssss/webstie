@@ -697,15 +697,14 @@
           </div>
         </div>
         <div class="score-list" id="seasonMissions"></div>
-        <div class="season-board-wrap">
-          <div>
-            <h3 class="season-board-title">WEEKLY PLAYER BOARD</h3>
-            <div class="score-list" id="seasonPlayerBoard"></div>
+        <div class="season-tab-block">
+          <div class="score-tabs" id="seasonTabs"></div>
+          <div class="score-tabs season-subtabs" id="seasonSubTabs">
+            <div class="score-tab active" data-season-subtab="solo">SOLO SCORES</div>
+            <div class="score-tab" data-season-subtab="gang">GANG SCORES</div>
           </div>
-          <div>
-            <h3 class="season-board-title">WEEKLY CREW BOARD</h3>
-            <div class="score-list" id="seasonCrewBoard"></div>
-          </div>
+          <h3 class="season-board-title" id="seasonBoardTitle">SEASON BOARD</h3>
+          <div class="score-list" id="seasonBoardList"></div>
         </div>
         <div class="score-list" id="seasonHall"></div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">CLOSE</button>
