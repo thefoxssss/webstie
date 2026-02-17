@@ -50,86 +50,97 @@ import { initVoidMiner } from "./games/voidminer.js";
 import { initEmulator } from "./games/emulator.js";
 
 // Expose select helpers globally for inline HTML event handlers.
-window.openGame = openGame;
-window.closeOverlays = closeOverlays;
-window.showGameOver = showGameOver;
-window.buyItem = buyItem;
-window.toggleItem = toggleItem;
-window.tradeMoney = tradeMoney;
-window.startJob = startJob;
-window.submitJob = submitJob;
-window.initTypeGame = initTypeGame;
-window.setPongDiff = setPongDiff;
-window.adminGrantCash = adminGrantCash;
-window.adminInjectJackpot = adminInjectJackpot;
-window.adminSetMaxCash = adminSetMaxCash;
-window.adminGrantAllShopItems = adminGrantAllShopItems;
-window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
-window.adminBoostStats = adminBoostStats;
-window.adminMaxPortfolio = adminMaxPortfolio;
-window.adminMarketMoonshot = adminMarketMoonshot;
-window.adminMarketMeltdown = adminMarketMeltdown;
-window.adminMarketCrashToZero = adminMarketCrashToZero;
-window.adminMarketTimesThousand = adminMarketTimesThousand;
-window.adminPrestigePack = adminPrestigePack;
-window.adminRefreshTargetUsers = adminRefreshTargetUsers;
-window.adminGrantCashToUser = adminGrantCashToUser;
-window.adminForgiveInterestForUser = adminForgiveInterestForUser;
-window.adminUnlockAllAchievements = adminUnlockAllAchievements;
+Object.assign(window, {
+  openGame,
+  closeOverlays,
+  showGameOver,
+  buyItem,
+  toggleItem,
+  tradeMoney,
+  startJob,
+  submitJob,
+  initTypeGame,
+  setPongDiff,
+  adminGrantCash,
+  adminInjectJackpot,
+  adminSetMaxCash,
+  adminGrantAllShopItems,
+  adminClearDebtAndCooldowns,
+  adminBoostStats,
+  adminMaxPortfolio,
+  adminMarketMoonshot,
+  adminMarketMeltdown,
+  adminMarketCrashToZero,
+  adminMarketTimesThousand,
+  adminPrestigePack,
+  adminRefreshTargetUsers,
+  adminGrantCashToUser,
+  adminForgiveInterestForUser,
+  adminUnlockAllAchievements,
+});
+
+const GAME_INITIALIZERS = {
+  pong: initPong,
+  snake: initSnake,
+  runner: initRunner,
+  geo: initGeometry,
+  type: initTypeGame,
+  blackjack: initBJ,
+  ttt: initTTT,
+  hangman: initHangman,
+  flappy: initFlappy,
+  dodge: initDodge,
+  roulette: initRoulette,
+  bonk: initBonkArena,
+  drift: initDrift,
+  corebreaker: initCoreBreaker,
+  neondefender: initNeonDefender,
+  voidminer: initVoidMiner,
+  emulator: initEmulator,
+};
+
+const GAME_OVERLAY_BY_KEY = {
+  geo: "overlayGeo",
+  type: "overlayType",
+  pong: "overlayPong",
+  snake: "overlaySnake",
+  runner: "overlayRunner",
+  corebreaker: "overlayCorebreaker",
+  neondefender: "overlayNeondefender",
+  voidminer: "overlayVoidminer",
+  shadowassassin: "overlayShadowassassin",
+  dodge: "overlayDodge",
+  roulette: "overlayRoulette",
+  ttt: "overlayTTT",
+  hangman: "overlayHangman",
+  blackjack: "overlayBlackjack",
+  bonk: "overlayBonk",
+  flappy: "overlayFlappy",
+  drift: "overlayDrift",
+  emulator: "overlayEmulator",
+};
+
+const GAME_OVERLAY_IDS = Object.values(GAME_OVERLAY_BY_KEY);
+
+function showOverlay(overlayId) {
+  const overlay = document.getElementById(overlayId);
+  if (overlay) overlay.classList.add("active");
+}
+
+function startGame(game) {
+  const initGame = GAME_INITIALIZERS[game];
+  if (initGame) initGame();
+}
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {
   window.closeOverlays();
-  const overlayId =
-    "overlay" +
-    (game === "ttt"
-      ? game.toUpperCase()
-      : game.charAt(0).toUpperCase() + game.slice(1));
-  const el = document.getElementById(overlayId);
-  if (el) el.classList.add("active");
-  if (game === "pong") initPong();
-  if (game === "snake") initSnake();
-  if (game === "runner") initRunner();
-  if (game === "geo") initGeometry();
-  if (game === "type") initTypeGame();
-  if (game === "blackjack") initBJ();
-  if (game === "ttt") initTTT();
-  if (game === "hangman") initHangman();
-  if (game === "flappy") initFlappy();
-  if (game === "dodge") initDodge();
-  if (game === "roulette") initRoulette();
-  if (game === "bonk") initBonkArena();
-  if (game === "drift") initDrift();
-  if (game === "corebreaker") initCoreBreaker();
-  if (game === "neondefender") initNeonDefender();
-  if (game === "voidminer") initVoidMiner();
-  if (game === "emulator") initEmulator();
+  showOverlay(GAME_OVERLAY_BY_KEY[game]);
+  startGame(game);
   resizeAllGameCanvases();
   trackGamePlay(game);
   unlockAchievement("noob");
 };
-
-
-const GAME_OVERLAY_IDS = [
-  "overlayGeo",
-  "overlayType",
-  "overlayPong",
-  "overlaySnake",
-  "overlayRunner",
-  "overlayCorebreaker",
-  "overlayNeondefender",
-  "overlayVoidminer",
-  "overlayShadowassassin",
-  "overlayDodge",
-  "overlayRoulette",
-  "overlayTTT",
-  "overlayHangman",
-  "overlayBlackjack",
-  "overlayBonk",
-  "overlayFlappy",
-  "overlayDrift",
-  "overlayEmulator",
-];
 
 
 const CANVAS_UI_PADDING = 230;
@@ -228,23 +239,14 @@ initGameVisibilityGuards();
 document.getElementById("goRestart").onclick = () => {
   document.getElementById("modalGameOver").classList.remove("active");
   clearRestartListener();
-  if (state.currentGame === "snake") initSnake();
-  if (state.currentGame === "pong") initPong();
-  if (state.currentGame === "runner") initRunner();
-  if (state.currentGame === "geo") initGeometry();
-  if (state.currentGame === "flappy") initFlappy();
-  if (state.currentGame === "dodge") initDodge();
-  if (state.currentGame === "corebreaker") initCoreBreaker();
-  if (state.currentGame === "neondefender") initNeonDefender();
-  if (state.currentGame === "voidminer") initVoidMiner();
+  if (state.currentGame !== "blackjack") startGame(state.currentGame);
   if (state.currentGame === "roulette") {
-    initRoulette();
-    document.getElementById("overlayRoulette").classList.add("active");
+    showOverlay(GAME_OVERLAY_BY_KEY.roulette);
   }
   if (state.currentGame === "blackjack") {
     state.myMoney = 1000;
     initBJ();
-    document.getElementById("overlayBlackjack").classList.add("active");
+    showOverlay(GAME_OVERLAY_BY_KEY.blackjack);
   }
 };
 
