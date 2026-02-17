@@ -112,6 +112,8 @@ let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
 let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
 let seasonData = { id: "", xp: 0, hall: [] };
+const MIN_LOAN_AMOUNT = 100;
+const MAX_LOAN_AMOUNT = 10000;
 const SEASON_STARTING_MONEY = 1000;
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
@@ -2102,6 +2104,8 @@ function setupLoanUX() {
   const takeBtn = document.getElementById("loanTakeBtn");
   const repayBtn = document.getElementById("loanRepayBtn");
   if (!amountInput || !takeBtn || !repayBtn) return;
+  amountInput.min = String(MIN_LOAN_AMOUNT);
+  amountInput.max = String(MAX_LOAN_AMOUNT);
 
   amountInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -2122,14 +2126,22 @@ function takeLoan() {
     return;
   }
   const amount = parseInt(amountInput.value, 10);
-  if (Number.isNaN(amount) || amount < 100) {
-    formatLoanStatus("MIN LOAN IS $100", "#f66");
+  if (loanData.debt > 0) {
+    formatLoanStatus("ONLY ONE ACTIVE LOAN ALLOWED", "#f66");
+    return;
+  }
+  if (Number.isNaN(amount) || amount < MIN_LOAN_AMOUNT) {
+    formatLoanStatus(`MIN LOAN IS $${MIN_LOAN_AMOUNT}`, "#f66");
+    return;
+  }
+  if (amount > MAX_LOAN_AMOUNT) {
+    formatLoanStatus(`MAX LOAN IS $${MAX_LOAN_AMOUNT}`, "#f66");
     return;
   }
 
   const randomRate = (Math.floor(Math.random() * 19) + 18) / 100;
   const now = Date.now();
-  loanData.debt = (loanData.debt || 0) + amount;
+  loanData.debt = amount;
   loanData.rate = randomRate;
   loanData.lastInterestAt = now;
   myMoney += amount;
