@@ -1042,6 +1042,34 @@ canvas {
   margin-bottom: 8px;
   font-size: 11px;
 }
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rank-badge.inline {
+  margin-right: 6px;
+}
+
+.rank-iron { color: #9aa0a6; }
+.rank-bronze { color: #cd7f32; }
+.rank-silver { color: #d4d7dd; }
+.rank-gold { color: #ffd447; }
+.rank-platinum { color: #6ce4df; }
+.rank-diamond { color: #7aa6ff; }
+.rank-ascendant { color: #7b5cff; }
+.rank-immortal { color: #ff5d89; }
+.rank-radiant { color: #ffe682; }
+.rank-god { color: #ff3d3d; }
 .profile-progress-wrap {
   display: flex;
   flex-direction: column;
