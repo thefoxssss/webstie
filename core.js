@@ -3595,6 +3595,9 @@ export function loadHighScores() {
   setText("hsGeo", localStorage.getItem("hs_geo") || 0);
   setText("hsFlappy", localStorage.getItem("hs_flappy") || 0);
   setText("hsDodge", localStorage.getItem("hs_dodge") || 0);
+  setText("hsCorebreaker", localStorage.getItem("hs_corebreaker") || 0);
+  setText("hsNeondefender", localStorage.getItem("hs_neondefender") || 0);
+  setText("hsVoidminer", localStorage.getItem("hs_voidminer") || 0);
 }
 
 // Persist a high score globally so it appears on the leaderboard.

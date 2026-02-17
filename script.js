@@ -43,6 +43,9 @@ import { initHangman } from "./games/hangman.js";
 import { initRoulette } from "./games/roulette.js";
 import { initBonkArena } from "./games/bonkarena.js";
 import { initDrift } from "./games/drift.js";
+import { initCoreBreaker } from "./games/corebreaker.js";
+import { initNeonDefender } from "./games/neondefender.js";
+import { initVoidMiner } from "./games/voidminer.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -95,6 +98,9 @@ window.launchGame = (game) => {
   if (game === "roulette") initRoulette();
   if (game === "bonk") initBonkArena();
   if (game === "drift") initDrift();
+  if (game === "corebreaker") initCoreBreaker();
+  if (game === "neondefender") initNeonDefender();
+  if (game === "voidminer") initVoidMiner();
   unlockAchievement("noob");
 };
 
@@ -108,6 +114,9 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "geo") initGeometry();
   if (state.currentGame === "flappy") initFlappy();
   if (state.currentGame === "dodge") initDodge();
+  if (state.currentGame === "corebreaker") initCoreBreaker();
+  if (state.currentGame === "neondefender") initNeonDefender();
+  if (state.currentGame === "voidminer") initVoidMiner();
   if (state.currentGame === "roulette") {
     initRoulette();
     document.getElementById("overlayRoulette").classList.add("active");

@@ -76,6 +76,9 @@
       <button onclick="window.launchGame('pong')">PONG</button>
       <button onclick="window.launchGame('snake')">SNAKE</button>
       <button onclick="window.launchGame('runner')">RUNNER (V2)</button>
+      <button onclick="window.launchGame('corebreaker')">CORE BREAKER</button>
+      <button onclick="window.launchGame('neondefender')">NEON DEFENDER</button>
+      <button onclick="window.launchGame('voidminer')">VOID MINER</button>
       <button onclick="window.launchGame('dodge')">DODGE GRID</button>
       <button onclick="window.launchGame('roulette')">ROULETTE</button>
       <button
@@ -672,6 +675,9 @@
           <div class="score-tab" data-tab="snake">SNAKE</div>
           <div class="score-tab" data-tab="pong">PONG</div>
           <div class="score-tab" data-tab="runner">RUNNER</div>
+          <div class="score-tab" data-tab="corebreaker">CORE BREAKER</div>
+          <div class="score-tab" data-tab="neondefender">NEON DEFENDER</div>
+          <div class="score-tab" data-tab="voidminer">VOID MINER</div>
           <div class="score-tab" data-tab="dodge">DODGE</div>
           <div class="score-tab" data-tab="flappy">FLAPPY</div>
         </div>
@@ -888,6 +894,36 @@
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>
+    </div>
+
+    <!-- Core Breaker mini-game overlay. -->
+    <div class="overlay" id="overlayCorebreaker">
+      <h1>CORE BREAKER</h1>
+      <div class="high-score-display">HIGH: <span id="hsCorebreaker">0</span></div>
+      <div style="margin-bottom: 10px" id="coreBreakerScore">SCORE: 0 | LIVES: 3</div>
+      <canvas id="coreBreakerCanvas" width="800" height="450"></canvas>
+      <div class="mobile-hint active" style="margin-top: 12px">A/D OR ←/→ TO MOVE</div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <!-- Neon Defender mini-game overlay. -->
+    <div class="overlay" id="overlayNeondefender">
+      <h1>NEON DEFENDER</h1>
+      <div class="high-score-display">HIGH: <span id="hsNeondefender">0</span></div>
+      <div style="margin-bottom: 10px" id="neonDefenderScore">SCORE: 0</div>
+      <canvas id="neonDefenderCanvas" width="800" height="450"></canvas>
+      <div class="mobile-hint active" style="margin-top: 12px">MOVE MOUSE TO AIM AUTO-FIRE</div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <!-- Void Miner mini-game overlay. -->
+    <div class="overlay" id="overlayVoidminer">
+      <h1>VOID MINER</h1>
+      <div class="high-score-display">HIGH: <span id="hsVoidminer">0</span></div>
+      <div style="margin-bottom: 10px" id="voidMinerHud">FUEL: 100 | VX: 0.0 | VY: 0.0 | SCORE: 0</div>
+      <canvas id="voidMinerCanvas" width="800" height="500"></canvas>
+      <div class="mobile-hint active" style="margin-top: 12px">W/↑ THRUST • A,D / ←,→ ROTATE</div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Dodge Grid mini-game overlay. -->
