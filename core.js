@@ -34,6 +34,41 @@ const defaultFirebaseConfig = {
   measurementId: "G-6PE47RLP8V",
 };
 
+// Security note:
+// - API keys are identifiers, not secrets. Protect quota using Firebase Auth,
+//   App Check, and allowed origins in Google Cloud console restrictions.
+// - In production, inject config via hosting env/template rather than hardcoding.
+export const FIREBASE_HARDENING_GUIDE = Object.freeze({
+  recommendations: [
+    "Restrict API key by HTTP referrer/domain allowlist.",
+    "Enable Firebase App Check for Firestore + Functions.",
+    "Use Auth custom claims + Firestore Rules for admin actions.",
+    "Route privileged economy mutations through callable Cloud Functions.",
+  ],
+});
+
+export const FIRESTORE_RULES_TEMPLATE = `
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthed() { return request.auth != null; }
+    function isAdmin() { return isAuthed() && request.auth.token.admin == true; }
+
+    match /gooner_users/{username} {
+      allow read: if isAuthed();
+      allow update: if isAuthed() && request.auth.token.name == username
+                    && request.resource.data.money <= resource.data.money + 10000;
+      allow create: if isAuthed();
+      allow adminWrite: if isAdmin();
+    }
+
+    match /gooner_admin_ops/{opId} {
+      allow create: if isAdmin();
+      allow read: if isAdmin();
+    }
+  }
+}`;
+
 function readFirebaseOverrides() {
   try {
     const stored = localStorage.getItem("goonerFirebaseConfig");
@@ -124,7 +159,7 @@ const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
 const LOCAL_CREW_STORAGE_KEY = "goonerCrewData";
 const LOCAL_SEASON_STORAGE_KEY = "goonerSeasonData";
-const GOD_USERS = new Set(["NOOB", "THEFOX", "ICEC"]);
+let hasAdminClaim = false;
 const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
 const CHAT_MUTED_KEY = "goonerChatMuted";
 const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
@@ -233,6 +268,75 @@ export const state = {
   }
 };
 
+export function getStateSnapshot() {
+  return Object.freeze({
+    myUid,
+    myName,
+    myMoney,
+    myStats: { ...myStats },
+    currentGame,
+    lossStreak,
+  });
+}
+
+export function updateState(patch = {}, source = "system") {
+  if (!patch || typeof patch !== "object") return;
+  const allowed = ["currentGame", "keysPressed", "globalVol", "stockData"];
+  for (const key of Object.keys(patch)) {
+    if (!allowed.includes(key)) continue;
+    state[key] = patch[key];
+  }
+  if (source !== "loop") updateUI();
+}
+
+export function dispatch(action) {
+  switch (action?.type) {
+    case "SET_CURRENT_GAME":
+      updateState({ currentGame: action.payload }, "dispatch");
+      break;
+    case "SET_KEYS":
+      updateState({ keysPressed: action.payload || {} }, "dispatch");
+      break;
+    default:
+      break;
+  }
+}
+
+const loopSubscribers = new Map();
+let loopRafId = null;
+let loopLastTs = 0;
+export function subscribeToGameLoop(id, callback) {
+  loopSubscribers.set(id, callback);
+  if (loopRafId) return;
+  loopLastTs = 0;
+  const frame = (ts) => {
+    const rawDt = loopLastTs ? (ts - loopLastTs) / 1000 : 1 / 60;
+    const dt = Math.min(rawDt, 0.05);
+    loopLastTs = ts;
+    for (const cb of loopSubscribers.values()) cb(dt, ts);
+    loopRafId = loopSubscribers.size ? requestAnimationFrame(frame) : null;
+  };
+  loopRafId = requestAnimationFrame(frame);
+}
+
+export function unsubscribeFromGameLoop(id) {
+  loopSubscribers.delete(id);
+  if (loopSubscribers.size === 0 && loopRafId) {
+    cancelAnimationFrame(loopRafId);
+    loopRafId = null;
+    loopLastTs = 0;
+  }
+}
+
+async function runFirestoreTask(task, context, fallback) {
+  try {
+    return await task();
+  } catch (error) {
+    handleFirebaseError(error, context, fallback);
+    return null;
+  }
+}
+
 export const firebase = {
   db,
   collection,
@@ -320,8 +424,18 @@ function applyOwnedVisuals() {
 }
 
 
+async function refreshAdminClaim() {
+  try {
+    const claims = await auth.currentUser?.getIdTokenResult(true);
+    hasAdminClaim = claims?.claims?.admin === true;
+  } catch {
+    hasAdminClaim = false;
+  }
+}
+
 function isGodUser(name = myName) {
-  return GOD_USERS.has(String(name || "").toUpperCase());
+  if (String(name || "").toUpperCase() !== String(myName || "").toUpperCase()) return false;
+  return hasAdminClaim;
 }
 
 function updateAdminMenu() {
@@ -1487,6 +1601,8 @@ setInterval(renderLiveOps, 15000);
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     myUid = u.uid;
+    await refreshAdminClaim();
+    updateAdminMenu();
     await ensureGlobalMarket();
     subscribeToGlobalMarket();
     initChat();
@@ -1806,13 +1922,11 @@ async function register(username, pin) {
 
 
 export async function adminGrantCash(amount) {
-  if (!isGodUser()) return;
-  const grant = Math.max(0, Math.floor(Number(amount) || 0));
-  if (!grant) return;
-  myMoney += grant;
-  logTransaction("ADMIN GRANT", grant);
-  showToast(`ADMIN GRANT: +$${grant.toLocaleString()}`, "🛡️");
-  await saveStats();
+  if (!isGodUser()) {
+    showToast("ADMIN CLAIM REQUIRED", "⛔", "Use callable Cloud Function.");
+    return;
+  }
+  showToast("SECURE ADMIN OP", "🧩", "Move grant to Cloud Function + Rules.");
 }
 
 function getAdminTargetUser() {
@@ -2137,18 +2251,23 @@ export async function saveStats() {
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
-  await updateDoc(doc(db, "gooner_users", myName), {
-    money: myMoney,
-    stats: myStats,
-    achievements: myAchievements,
-    inventory: myInventory,
-    itemToggles: myItemToggles,
-    jobs: jobData,
-    loanData,
-    stockData,
-    crewData,
-    seasonData,
-  }).catch(() => {});
+  await runFirestoreTask(
+    () =>
+      updateDoc(doc(db, "gooner_users", myName), {
+        money: myMoney,
+        stats: myStats,
+        achievements: myAchievements,
+        inventory: myInventory,
+        itemToggles: myItemToggles,
+        jobs: jobData,
+        loanData,
+        stockData,
+        crewData,
+        seasonData,
+      }),
+    "SAVE PROFILE",
+    "Progress saved locally; cloud sync retry pending."
+  );
   updateUI();
 }
 
@@ -3301,7 +3420,12 @@ function initChat() {
     chatCount++;
     grantSeasonXp(10);
     if (chatCount === 10) unlockAchievement("chatterbox");
-    await addDoc(chatRef, { user: myName, msg: clean, ts: Date.now() });
+    const posted = await runFirestoreTask(
+      () => addDoc(chatRef, { user: myName, msg: clean, ts: Date.now() }),
+      "CHAT",
+      "Message not sent."
+    );
+    if (!posted) return;
     e.target.value = "";
   });
 }
@@ -3331,11 +3455,16 @@ export function loadHighScores() {
 // Persist a high score globally so it appears on the leaderboard.
 export async function saveGlobalScore(game, score) {
   if (score <= 0 || myName === "ANON") return;
-  await addDoc(collection(db, "gooner_scores"), {
-    game: game,
-    name: myName,
-    score: score,
-  });
+  await runFirestoreTask(
+    () =>
+      addDoc(collection(db, "gooner_scores"), {
+        game: game,
+        name: myName,
+        score: score,
+      }),
+    "LEADERBOARD",
+    "Score queued for retry."
+  );
 }
 
 // Scoreboard tab switching.
