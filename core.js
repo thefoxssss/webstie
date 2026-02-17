@@ -112,6 +112,7 @@ let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
 let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
 let seasonData = { id: "", xp: 0, hall: [] };
+const SEASON_STARTING_MONEY = 1000;
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
@@ -1127,10 +1128,11 @@ function renderLiveOps() {
 
 function renderSeasonPanel() {
   ensureCurrentSeason();
-  const target = 2000;
-  const pct = Math.max(0, Math.min(100, Math.floor((seasonData.xp / target) * 100)));
+  const target = 10000;
+  const seasonMoney = Math.max(0, Math.floor(Number(myMoney) || 0));
+  const pct = Math.max(0, Math.min(100, Math.floor((seasonMoney / target) * 100)));
   setText("seasonName", `WEEKLY SEASON ${seasonData.id}`);
-  setText("seasonProgressLabel", `${seasonData.xp} / ${target} XP`);
+  setText("seasonProgressLabel", `$${seasonMoney} / $${target}`);
   const fill = document.getElementById("seasonProgressFill");
   if (fill) fill.style.width = `${pct}%`;
 
@@ -1155,7 +1157,7 @@ function renderSeasonPanel() {
       hall.innerHTML = seasonData.hall
         .slice(-5)
         .reverse()
-        .map((entry) => `<div class="score-item">${escapeHtml(entry.id)} // ${escapeHtml(entry.name)} // XP ${entry.xp}</div>`)
+        .map((entry) => `<div class="score-item">${escapeHtml(entry.id)} // ${escapeHtml(entry.name)} // $${Math.round(Number(entry.money ?? entry.xp) || 0)}</div>`)
         .join("");
     }
   }
@@ -1166,11 +1168,14 @@ function renderSeasonPanel() {
 function ensureCurrentSeason() {
   const currentId = getSeasonId();
   if (seasonData.id === currentId) return;
-  if (Number(seasonData.xp || 0) > 0) {
-    seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, xp: Number(seasonData.xp || 0) }].slice(-20);
+  if (Number(myMoney || 0) > 0) {
+    seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, money: Number(myMoney || 0) }].slice(-20);
   }
   seasonData.id = currentId;
   seasonData.xp = 0;
+  myMoney = SEASON_STARTING_MONEY;
+  logTransaction("WEEKLY SEASON RESET", 0);
+  showToast("WEEKLY RESET", "📆", `BANK RESET TO $${SEASON_STARTING_MONEY}`);
   saveSeasonData();
 }
 
@@ -1196,25 +1201,25 @@ function loadSeasonLeaderboards() {
       const data = d.data() || {};
       const playerName = String(data.name || d.id || "ANON").toUpperCase();
       const playerSeason = data.seasonData || {};
-      const playerXp = Number(playerSeason.id === getSeasonId() ? playerSeason.xp : 0) || 0;
+      const playerMoney = Number(playerSeason.id === getSeasonId() ? data.money : SEASON_STARTING_MONEY) || 0;
       const playerCrew = data.crewData || {};
       const crewTag = String(playerCrew.tag || "").toUpperCase();
-      players.push({ name: playerName, xp: playerXp, crewTag: crewTag || "SOLO" });
+      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO" });
       if (crewTag) {
-        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, xp: 0, members: 0 };
-        crews[crewTag].xp += playerXp;
+        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0 };
+        crews[crewTag].money += playerMoney;
         crews[crewTag].members += 1;
       }
     });
 
-    const topPlayers = players.sort((a, b) => b.xp - a.xp).slice(0, 10);
+    const topPlayers = players.sort((a, b) => b.money - a.money).slice(0, 10);
     playerBoard.innerHTML = topPlayers.length
-      ? topPlayers.map((row, idx) => `<div class="score-item">#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${escapeHtml(row.crewTag)}</span> // ${row.xp} XP</div>`).join("")
+      ? topPlayers.map((row, idx) => `<div class="score-item">#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${escapeHtml(row.crewTag)}</span> // $${Math.round(row.money)}</div>`).join("")
       : '<div class="score-item">NO DATA</div>';
 
-    const topCrews = Object.values(crews).sort((a, b) => b.xp - a.xp).slice(0, 10);
+    const topCrews = Object.values(crews).sort((a, b) => b.money - a.money).slice(0, 10);
     crewBoard.innerHTML = topCrews.length
-      ? topCrews.map((row, idx) => `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // ${row.xp} XP // ${row.members} OPS</div>`).join("")
+      ? topCrews.map((row, idx) => `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // $${Math.round(row.money)} // ${row.members} OPS</div>`).join("")
       : '<div class="score-item">NO CREWS YET</div>';
   });
 }
@@ -1227,7 +1232,7 @@ function renderCrewPanel() {
   setText("crewGoal", `$${Math.round(crewData.goal || 0)}`);
   setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
   setText("crewWins", Math.round(crewData.wins || 0));
-  setText("crewXp", Math.round(seasonData.xp || 0));
+  setText("crewXp", Math.round(myMoney || 0));
   setText("crewMembers", (crewData.members || []).length);
 }
 
@@ -1521,6 +1526,20 @@ function loadProfile(data) {
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], ...(data.crewData || crewData || {}) };
   seasonData = { id: getSeasonId(), xp: 0, hall: [], ...(data.seasonData || seasonData || {}) };
+  const currentSeasonId = getSeasonId();
+  if (seasonData.id !== currentSeasonId) {
+    if (Number(data.money || 0) > 0) {
+      seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, money: Number(data.money || 0) }].slice(-20);
+    }
+    seasonData.id = currentSeasonId;
+    seasonData.xp = 0;
+    myMoney = SEASON_STARTING_MONEY;
+    showToast("WEEKLY RESET", "📆", `BANK RESET TO $${SEASON_STARTING_MONEY}`);
+    updateDoc(doc(db, "gooner_users", myName), {
+      money: myMoney,
+      seasonData,
+    }).catch(() => {});
+  }
   ensureStockProfile();
   saveLocalShopToggles();
   updateUI();
