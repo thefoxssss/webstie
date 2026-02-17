@@ -46,6 +46,7 @@ import { initDrift } from "./games/drift.js";
 import { initCoreBreaker } from "./games/corebreaker.js";
 import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
+import { initEmulator } from "./games/emulator.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -101,6 +102,7 @@ window.launchGame = (game) => {
   if (game === "corebreaker") initCoreBreaker();
   if (game === "neondefender") initNeonDefender();
   if (game === "voidminer") initVoidMiner();
+  if (game === "emulator") initEmulator();
   unlockAchievement("noob");
 };
 
