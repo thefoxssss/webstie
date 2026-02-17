@@ -2175,6 +2175,12 @@ canvas {
   gap: 8px;
   margin-top: 10px;
 }
+.emu-doc-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
 .emu-output {
   margin: 0 0 8px;
   border: 1px solid var(--accent-dim);

@@ -1383,11 +1383,20 @@
           ></textarea>
           <div class="emu-controls">
             <button class="term-btn" id="emuLoad">LOAD</button>
+            <button class="term-btn" id="emuAssemble">ASSEMBLE + LOAD</button>
             <button class="term-btn" id="emuStep">STEP</button>
             <button class="term-btn" id="emuRun">RUN</button>
             <button class="term-btn" id="emuStop">STOP</button>
             <button class="term-btn" id="emuReset">RESET</button>
+            <a class="term-btn emu-doc-link" href="cpu-emulator-docs.html" target="_blank" rel="noopener noreferrer">DOCS</a>
           </div>
+          <p class="emu-label" style="margin-top: 12px">ASSEMBLY SOURCE</p>
+          <textarea
+            id="emuAssembly"
+            class="emu-program"
+            spellcheck="false"
+            placeholder="START:\n  LFI R1, 0x0005\n  LFI R2, 0x0003\n  ADD R1, R2\n  HALT"
+          ></textarea>
         </div>
         <div class="emu-panel">
           <p class="emu-label">REGISTERS</p>
