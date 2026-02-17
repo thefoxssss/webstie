@@ -110,6 +110,8 @@ let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
+let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
+let seasonData = { id: "", xp: 0, hall: [] };
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
@@ -117,13 +119,19 @@ const STOCK_TICK_MS = 2000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
+const LOCAL_CREW_STORAGE_KEY = "goonerCrewData";
+const LOCAL_SEASON_STORAGE_KEY = "goonerSeasonData";
 const GOD_USERS = new Set(["NOOB", "THEFOX", "ICEC"]);
+const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
+const CHAT_MUTED_KEY = "goonerChatMuted";
+const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
 
 // Audio context for simple synth effects.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // Register per-game cleanup hooks (each game adds a stop function).
 const gameStops = [];
+let seasonBoardUnsub = null;
 
 // Centralized mutable state wrapper (keeps consumers consistent).
 export const state = {
@@ -1017,6 +1025,295 @@ export function setText(id, txt) {
   if (el) el.innerText = txt;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function normalizeCrewTag(tag) {
+  return String(tag || "").trim().toUpperCase();
+}
+
+function getSeasonId() {
+  const d = new Date();
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function loadCrewData() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_CREW_STORAGE_KEY) || "{}");
+    if (parsed && typeof parsed === "object") {
+      crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], ...parsed };
+    }
+  } catch {}
+}
+
+function saveCrewData() {
+  localStorage.setItem(LOCAL_CREW_STORAGE_KEY, JSON.stringify(crewData));
+}
+
+function loadSeasonData() {
+  const currentId = getSeasonId();
+  const fallback = { id: currentId, xp: 0, hall: [] };
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_SEASON_STORAGE_KEY) || "null");
+    if (!parsed) {
+      seasonData = fallback;
+      saveSeasonData();
+      return;
+    }
+    if (parsed.id !== currentId) {
+      const archived = Number(parsed.xp || 0) > 0
+        ? [{ id: parsed.id, name: myName || "ANON", xp: Number(parsed.xp || 0) }]
+        : [];
+      seasonData = { id: currentId, xp: 0, hall: [...(parsed.hall || []), ...archived].slice(-20) };
+      saveSeasonData();
+      return;
+    }
+    seasonData = { ...fallback, ...parsed };
+  } catch {
+    seasonData = fallback;
+  }
+}
+
+function saveSeasonData() {
+  localStorage.setItem(LOCAL_SEASON_STORAGE_KEY, JSON.stringify(seasonData));
+}
+
+function getChatSet(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map((v) => String(v || "").toUpperCase()) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setChatSet(key, setValue) {
+  localStorage.setItem(key, JSON.stringify(Array.from(setValue)));
+}
+
+function filterChatMessage(txt) {
+  let out = String(txt || "");
+  CHAT_BAD_WORDS.forEach((badWord) => {
+    const rx = new RegExp("\\b" + badWord + "\\b", "gi");
+    out = out.replace(rx, "***");
+  });
+  return out;
+}
+
+function renderLiveOps() {
+  const entries = [
+    { now: "DOUBLE XP // FIRST WIN OF THE DAY", mode: "WEEKLY SEASON PUSH", reward: "+25% XP", featured: "NEON DRIFT", room: "DRFT" },
+    { now: "CREW BANK RUSH // DONATE FOR BONUS", mode: "SQUAD ECON", reward: "$750 CACHE", featured: "BLACKJACK PVP", room: "BJ22" },
+    { now: "CHAT SIGNAL // COMMAND HUNT ACTIVE", mode: "SOCIAL OPS", reward: "SECRET BADGE", featured: "TYPE RUNNER", room: "TYPE" },
+  ];
+  const item = entries[Math.floor(Date.now() / 15000) % entries.length];
+  setText("liveOpsNow", item.now);
+  setText("liveOpsMode", item.mode);
+  setText("liveOpsReward", item.reward);
+  setText("liveOpsFeatured", item.featured);
+  setText("liveOpsRoom", item.room);
+}
+
+function renderSeasonPanel() {
+  ensureCurrentSeason();
+  const target = 2000;
+  const pct = Math.max(0, Math.min(100, Math.floor((seasonData.xp / target) * 100)));
+  setText("seasonName", `WEEKLY SEASON ${seasonData.id}`);
+  setText("seasonProgressLabel", `${seasonData.xp} / ${target} XP`);
+  const fill = document.getElementById("seasonProgressFill");
+  if (fill) fill.style.width = `${pct}%`;
+
+  const missions = [
+    { id: "games", label: "PLAY 10 GAMES", done: (myStats.games || 0) >= 10, xp: 300 },
+    { id: "chat", label: "SEND 20 CHAT MESSAGES", done: chatCount >= 20, xp: 250 },
+    { id: "bank", label: "REACH $10000 BANK", done: Number(myMoney) >= 10000, xp: 350 },
+    { id: "wins", label: "WIN 8 MATCHES", done: (myStats.wins || 0) >= 8, xp: 400 },
+  ];
+  const wrap = document.getElementById("seasonMissions");
+  if (wrap) {
+    wrap.innerHTML = missions
+      .map((mission) => `<div class="score-item ${mission.done ? "season-mission-done" : ""}">${mission.done ? "✅" : "⬜"} ${mission.label} <span style="opacity:.7">+${mission.xp} XP</span></div>`)
+      .join("");
+  }
+
+  const hall = document.getElementById("seasonHall");
+  if (hall) {
+    if (!seasonData.hall.length) {
+      hall.innerHTML = '<div class="score-item">HALL OF FAME WILL POPULATE WEEK TO WEEK</div>';
+    } else {
+      hall.innerHTML = seasonData.hall
+        .slice(-5)
+        .reverse()
+        .map((entry) => `<div class="score-item">${escapeHtml(entry.id)} // ${escapeHtml(entry.name)} // XP ${entry.xp}</div>`)
+        .join("");
+    }
+  }
+  loadSeasonLeaderboards();
+}
+
+
+function ensureCurrentSeason() {
+  const currentId = getSeasonId();
+  if (seasonData.id === currentId) return;
+  if (Number(seasonData.xp || 0) > 0) {
+    seasonData.hall = [...(seasonData.hall || []), { id: seasonData.id, name: myName, xp: Number(seasonData.xp || 0) }].slice(-20);
+  }
+  seasonData.id = currentId;
+  seasonData.xp = 0;
+  saveSeasonData();
+}
+
+function grantSeasonXp(amount) {
+  if (myName === "ANON") return;
+  ensureCurrentSeason();
+  seasonData.xp += Math.max(0, Math.floor(amount));
+  saveSeasonData();
+  renderSeasonPanel();
+}
+
+function loadSeasonLeaderboards() {
+  const playerBoard = document.getElementById("seasonPlayerBoard");
+  const crewBoard = document.getElementById("seasonCrewBoard");
+  if (!playerBoard || !crewBoard) return;
+  if (seasonBoardUnsub) seasonBoardUnsub();
+
+  const q = query(collection(db, "gooner_users"), limit(200));
+  seasonBoardUnsub = onSnapshot(q, (snap) => {
+    const players = [];
+    const crews = {};
+    snap.forEach((d) => {
+      const data = d.data() || {};
+      const playerName = String(data.name || d.id || "ANON").toUpperCase();
+      const playerSeason = data.seasonData || {};
+      const playerXp = Number(playerSeason.id === getSeasonId() ? playerSeason.xp : 0) || 0;
+      const playerCrew = data.crewData || {};
+      const crewTag = String(playerCrew.tag || "").toUpperCase();
+      players.push({ name: playerName, xp: playerXp, crewTag: crewTag || "SOLO" });
+      if (crewTag) {
+        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, xp: 0, members: 0 };
+        crews[crewTag].xp += playerXp;
+        crews[crewTag].members += 1;
+      }
+    });
+
+    const topPlayers = players.sort((a, b) => b.xp - a.xp).slice(0, 10);
+    playerBoard.innerHTML = topPlayers.length
+      ? topPlayers.map((row, idx) => `<div class="score-item">#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${escapeHtml(row.crewTag)}</span> // ${row.xp} XP</div>`).join("")
+      : '<div class="score-item">NO DATA</div>';
+
+    const topCrews = Object.values(crews).sort((a, b) => b.xp - a.xp).slice(0, 10);
+    crewBoard.innerHTML = topCrews.length
+      ? topCrews.map((row, idx) => `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // ${row.xp} XP // ${row.members} OPS</div>`).join("")
+      : '<div class="score-item">NO CREWS YET</div>';
+  });
+}
+
+function renderCrewPanel() {
+  setText("crewName", crewData.tag || "NONE");
+  setText("crewRole", crewData.role || "SOLO");
+  setText("crewMotto", crewData.motto || "---");
+  setText("crewRecruitment", crewData.recruitmentOpen ? "OPEN" : "CLOSED");
+  setText("crewGoal", `$${Math.round(crewData.goal || 0)}`);
+  setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
+  setText("crewWins", Math.round(crewData.wins || 0));
+  setText("crewXp", Math.round(seasonData.xp || 0));
+  setText("crewMembers", (crewData.members || []).length);
+}
+
+function initCrewUx() {
+  const createBtn = document.getElementById("crewCreateBtn");
+  const leaveBtn = document.getElementById("crewLeaveBtn");
+  const contributeBtn = document.getElementById("crewContributeBtn");
+  const mottoBtn = document.getElementById("crewMottoBtn");
+  const recruitmentBtn = document.getElementById("crewRecruitmentBtn");
+  const goalBtn = document.getElementById("crewGoalBtn");
+  const input = document.getElementById("crewInput");
+  const mottoInput = document.getElementById("crewMottoInput");
+  const donateInput = document.getElementById("crewDonateAmount");
+  if (!createBtn || !leaveBtn || !contributeBtn || !input) return;
+
+  createBtn.onclick = () => {
+    const tag = normalizeCrewTag(input.value);
+    if (!/^[A-Z0-9_]{3,8}$/.test(tag)) {
+      setText("crewMsg", "USE 3-8 LETTER/NUMBER TAG");
+      return;
+    }
+    const isNew = !crewData.tag || crewData.tag !== tag;
+    crewData.tag = tag;
+    crewData.role = isNew ? "CAPTAIN" : (crewData.role || "MEMBER");
+    crewData.members = Array.from(new Set([...(crewData.members || []), myName]));
+    saveCrewData();
+    renderCrewPanel();
+    setText("crewMsg", `LINKED TO CREW ${tag}`);
+    showToast("CREW LINK ESTABLISHED", "🛰️", tag);
+  };
+
+  leaveBtn.onclick = () => {
+    crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
+    saveCrewData();
+    renderCrewPanel();
+    setText("crewMsg", "LEFT CREW CHANNEL");
+  };
+
+  contributeBtn.onclick = async () => {
+    if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+    const amount = Math.max(100, parseInt((donateInput?.value || "500"), 10) || 0);
+    if (myMoney < amount) return setText("crewMsg", `NEED $${amount} TO DONATE`);
+    myMoney -= amount;
+    crewData.bank += amount;
+    saveCrewData();
+    await saveStats();
+    renderCrewPanel();
+    setText("crewMsg", `DONATED $${amount}`);
+  };
+
+  if (mottoBtn) {
+    mottoBtn.onclick = async () => {
+      if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+      crewData.motto = String(mottoInput?.value || "").trim().toUpperCase().slice(0, 24);
+      saveCrewData();
+      await saveStats();
+      renderCrewPanel();
+      setText("crewMsg", "CREW MOTTO UPDATED");
+    };
+  }
+
+  if (recruitmentBtn) {
+    recruitmentBtn.onclick = async () => {
+      if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+      crewData.recruitmentOpen = !crewData.recruitmentOpen;
+      saveCrewData();
+      await saveStats();
+      renderCrewPanel();
+      setText("crewMsg", `RECRUITMENT ${crewData.recruitmentOpen ? "OPEN" : "CLOSED"}`);
+    };
+  }
+
+  if (goalBtn) {
+    goalBtn.onclick = async () => {
+      if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+      const goals = [5000, 10000, 25000, 50000];
+      const idx = goals.indexOf(Number(crewData.goal || 5000));
+      crewData.goal = goals[(idx + 1) % goals.length];
+      saveCrewData();
+      await saveStats();
+      renderCrewPanel();
+      setText("crewMsg", `WEEKLY GOAL SET TO $${crewData.goal}`);
+    };
+  }
+}
+
 // Track recent money changes for the bank log.
 export function logTransaction(msg, amount) {
   transactionLog.unshift({ msg, amount, ts: new Date().toLocaleTimeString() });
@@ -1047,9 +1344,14 @@ const initAuth = async () => {
   }
 };
 initAuth();
+loadCrewData();
+loadSeasonData();
+renderLiveOps();
 setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
+initCrewUx();
+setInterval(renderLiveOps, 15000);
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     myUid = u.uid;
@@ -1077,6 +1379,8 @@ export function openGame(id) {
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
+  if (id === "overlaySeason") renderSeasonPanel();
+  if (id === "overlayCrew") renderCrewPanel();
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
@@ -1215,6 +1519,8 @@ function loadProfile(data) {
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
+  crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], ...(data.crewData || crewData || {}) };
+  seasonData = { id: getSeasonId(), xp: 0, hall: [], ...(data.seasonData || seasonData || {}) };
   ensureStockProfile();
   saveLocalShopToggles();
   updateUI();
@@ -1260,6 +1566,16 @@ function updateUI() {
   setText("profAch", `${myAchievements.length} / ${ACHIEVEMENTS.length}`);
   setText("profJoined", myJoined ? new Date(myJoined).toLocaleDateString("en-GB") : "UNKNOWN");
   setText("profUid", myUid ? myUid.substring(0, 8) : "ERR");
+  if (crewData.tag) {
+    crewData.wins = Math.max(Number(crewData.wins) || 0, Number(myStats.wins) || 0);
+    if (!crewData.members.includes(myName)) crewData.members.push(myName);
+    crewData.role = crewData.role || "MEMBER";
+    crewData.goal = Number(crewData.goal || 5000);
+    saveCrewData();
+  }
+  renderCrewPanel();
+  renderSeasonPanel();
+  renderLiveOps();
   const rank = getRank(myMoney);
   setText("displayRank", "[" + rank + "]");
   setText("profRank", rank);
@@ -1645,6 +1961,8 @@ export async function saveStats() {
     jobs: jobData,
     loanData,
     stockData,
+    crewData,
+    seasonData,
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
@@ -1657,6 +1975,8 @@ export async function saveStats() {
     jobs: jobData,
     loanData,
     stockData,
+    crewData,
+    seasonData,
   }).catch(() => {});
   updateUI();
 }
@@ -1882,6 +2202,7 @@ export function unlockAchievement(id) {
     logTransaction(`ACHIEVEMENT: ${badge.title}`, badge.reward);
     showToast(`UNLOCKED: ${badge.title}`, badge.icon, `+$${badge.reward}`);
   }
+  grantSeasonXp(80);
   saveStats();
   playSuccessSound();
 }
@@ -2706,19 +3027,25 @@ if (clockEl) {
 }
 
 let chatCount = 0;
+let lastChatAt = 0;
+let lastChatMsg = "";
 // Initialize realtime chat streaming and input handling.
 function initChat() {
   const chatRef = collection(db, "gooner_global_chat");
-  const q = query(chatRef, orderBy("ts", "desc"), limit(15));
+  const q = query(chatRef, orderBy("ts", "desc"), limit(25));
   onSnapshot(q, (snap) => {
     const list = document.getElementById("chatHistory");
     list.innerHTML = "";
+    const blocklist = getChatSet(CHAT_BLOCKLIST_KEY);
+    const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
     snap.forEach((d) => msgs.push(d.data()));
     msgs.reverse().forEach((m) => {
+      const user = String(m.user || "ANON").toUpperCase();
+      if (blocklist.has(user) || muted.has(user)) return;
       const d = document.createElement("div");
       d.className = "chat-msg";
-      d.innerHTML = `<span class="chat-user">${m.user}:</span> ${m.msg}`;
+      d.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       list.appendChild(d);
     });
     list.scrollTop = list.scrollHeight;
@@ -2746,6 +3073,9 @@ function initChat() {
     }
     if (txt === "/help") {
       unlockAchievement("architect");
+      showToast("CHAT OPS", "🛠️", "/mute USER /unmute USER /block USER");
+      e.target.value = "";
+      return;
     }
     if (txt === "/ghost") {
       unlockAchievement("ghost_signal");
@@ -2754,10 +3084,43 @@ function initChat() {
       return;
     }
 
+    if (txt.toLowerCase().startsWith("/mute ") || txt.toLowerCase().startsWith("/block ")) {
+      const user = normalizeUsername(txt.split(/\s+/)[1]);
+      const muted = getChatSet(CHAT_MUTED_KEY);
+      muted.add(user);
+      setChatSet(CHAT_MUTED_KEY, muted);
+      showToast("MUTED USER", "🔇", user);
+      e.target.value = "";
+      return;
+    }
+    if (txt.toLowerCase().startsWith("/unmute ")) {
+      const user = normalizeUsername(txt.split(/\s+/)[1]);
+      const muted = getChatSet(CHAT_MUTED_KEY);
+      muted.delete(user);
+      setChatSet(CHAT_MUTED_KEY, muted);
+      showToast("UNMUTED USER", "🔊", user);
+      e.target.value = "";
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastChatAt < 1000) {
+      showToast("RATE LIMITED", "⏳", "Wait 1 second between messages.");
+      return;
+    }
+    if (txt.toLowerCase() === lastChatMsg.toLowerCase()) {
+      showToast("DUPLICATE BLOCKED", "🧱", "Send a different message.");
+      return;
+    }
+
     // Normal message flow.
+    const clean = filterChatMessage(txt).slice(0, 30);
+    lastChatAt = now;
+    lastChatMsg = clean;
     chatCount++;
+    grantSeasonXp(10);
     if (chatCount === 10) unlockAchievement("chatterbox");
-    await addDoc(chatRef, { user: myName, msg: txt, ts: Date.now() });
+    await addDoc(chatRef, { user: myName, msg: clean, ts: Date.now() });
     e.target.value = "";
   });
 }
