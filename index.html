@@ -57,9 +57,6 @@
         <button class="menu-btn" onclick="window.openGame('overlayCrew')">
           CREW
         </button>
-        <button class="menu-btn" onclick="window.openGame('overlayTrending')">
-          TRENDING
-        </button>
         <button
           class="menu-btn"
           id="adminMenuBtn"
@@ -237,15 +234,11 @@
           <div><span>HOT ROOM</span><strong id="liveOpsRoom">----</strong></div>
         </div>
       </section>
-    </div>
-
-    <div class="overlay" id="overlayTrending">
-      <div class="score-box">
+      <section class="home-trending" aria-label="Trending games">
         <h2>TRENDING GAMES</h2>
         <p id="trendingGamesMeta">Most played in the last 24 hours.</p>
         <div id="trendingGamesList">No plays tracked yet.</div>
-        <button class="term-btn" style="margin-top: 14px" onclick="window.closeOverlays()">CLOSE</button>
-      </div>
+      </section>
     </div>
 
     <!-- Login overlay shown on initial load or when logged out. -->

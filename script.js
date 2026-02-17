@@ -131,7 +131,7 @@ function renderTrendingGames() {
   list.innerHTML = ranked
     .map(
       ([game, plays], index) =>
-        `<div class="trending-game-item"><span>${index + 1}. ${GAME_NAMES[game] || game.toUpperCase()}</span><strong>${plays} PLAY${plays === 1 ? "" : "S"}</strong></div>`
+        `<button class="trending-game-item trending-game-btn" onclick="window.launchGame('${game}')"><span>${index + 1}. ${GAME_NAMES[game] || game.toUpperCase()}</span><strong>${plays} PLAY${plays === 1 ? "" : "S"}</strong></button>`
     )
     .join("");
 

@@ -259,15 +259,17 @@ body::before {
   padding-left: 20px;
 }
 
-#overlayTrending .score-box {
-  max-width: 520px;
+.home-trending {
+  margin-top: 16px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px;
 }
 
-#overlayTrending h2 {
+.home-trending h2 {
   margin: 0 0 6px;
-  font-size: 18px;
+  font-size: 12px;
   letter-spacing: 1px;
-  text-align: center;
 }
 
 #trendingGamesMeta {
@@ -285,8 +287,22 @@ body::before {
 .trending-game-item {
   display: flex;
   justify-content: space-between;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trending-game-btn {
+  width: 100%;
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trending-game-btn:hover {
+  background: var(--accent-dim);
 }
 
 /* --- 4. CHAT --- */
