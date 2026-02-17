@@ -697,6 +697,16 @@
           </div>
         </div>
         <div class="score-list" id="seasonMissions"></div>
+        <div class="season-board-wrap">
+          <div>
+            <h3 class="season-board-title">WEEKLY PLAYER BOARD</h3>
+            <div class="score-list" id="seasonPlayerBoard"></div>
+          </div>
+          <div>
+            <h3 class="season-board-title">WEEKLY CREW BOARD</h3>
+            <div class="score-list" id="seasonCrewBoard"></div>
+          </div>
+        </div>
         <div class="score-list" id="seasonHall"></div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">CLOSE</button>
       </div>
@@ -706,14 +716,24 @@
       <div class="score-box">
         <h2 style="text-align: center">CREW TERMINAL</h2>
         <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
+        <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
         <div class="stat-row"><span>CREW BANK</span><span id="crewBank">$0</span></div>
         <div class="stat-row"><span>WEEKLY WINS</span><span id="crewWins">0</span></div>
+        <div class="stat-row"><span>WEEKLY XP</span><span id="crewXp">0</span></div>
         <div class="stat-row"><span>MEMBERS</span><span id="crewMembers">0</span></div>
         <input class="term-input" id="crewInput" placeholder="CREW TAG (3-8)" maxlength="8" />
-        <div style="display: grid; gap: 8px">
+        <input class="term-input" id="crewMottoInput" placeholder="CREW MOTTO (MAX 24)" maxlength="24" />
+        <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
+        <div class="stat-row"><span>RECRUITMENT</span><span id="crewRecruitment">OPEN</span></div>
+        <div class="stat-row"><span>WEEKLY GOAL</span><span id="crewGoal">$5000</span></div>
+        <input class="term-input" id="crewDonateAmount" placeholder="DONATE AMOUNT" maxlength="7" />
+        <div class="crew-actions">
           <button class="term-btn" id="crewCreateBtn">CREATE / JOIN CREW</button>
+          <button class="term-btn" id="crewContributeBtn">DONATE TO CREW BANK</button>
+          <button class="term-btn" id="crewMottoBtn">UPDATE MOTTO</button>
+          <button class="term-btn" id="crewRecruitmentBtn">TOGGLE RECRUITMENT</button>
+          <button class="term-btn" id="crewGoalBtn">CYCLE WEEKLY GOAL</button>
           <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00">LEAVE CREW</button>
-          <button class="term-btn" id="crewContributeBtn">DONATE $500 TO CREW BANK</button>
         </div>
         <p id="crewMsg" style="font-size: 10px; color: #aaa; margin-top: 10px"></p>
         <button class="term-btn" style="margin-top: 14px" onclick="window.closeOverlays()">CLOSE</button>
