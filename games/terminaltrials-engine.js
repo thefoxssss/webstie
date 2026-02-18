@@ -406,6 +406,7 @@ function initTrial(id) {
     y: HEIGHT - 74,
     w: 28,
     h: 36,
+    vx: 0,
     vy: 0,
     jumps: 0,
     onGround: false,
@@ -425,7 +426,8 @@ function initTrial(id) {
   let lastTapAt = 0;
   let platformSpawnAt = 0;
   let ringSpawnAt = 420;
-  const worldSpeed = 225;
+  const worldSpeed = 248;
+  let coyoteUntil = 0;
   let last = performance.now();
   let targets = [];
 
@@ -446,10 +448,11 @@ function initTrial(id) {
         return;
       }
       lastTapAt = now;
-      if (player.onGround || player.jumps < 2) {
-        player.vy = -420;
-        player.jumps += 1;
+      if (player.onGround || now < coyoteUntil || player.jumps < 2) {
+        player.vy = player.jumps === 0 || player.onGround || now < coyoteUntil ? -430 : -400;
+        player.jumps = Math.min(2, player.jumps + 1);
         player.onGround = false;
+        coyoteUntil = 0;
       }
       return;
     }
@@ -553,10 +556,12 @@ function initTrial(id) {
     if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = true;
     if (event.code === "ArrowRight" || event.code === "KeyD") keys.right = true;
     if (event.code === "ArrowUp" || event.code === "Space" || event.code === "KeyW") {
-      if (!keys.jump && (player.onGround || player.jumps < 2)) {
-        player.vy = -420;
-        player.jumps += 1;
+      const now = performance.now();
+      if (!keys.jump && (player.onGround || now < coyoteUntil || player.jumps < 2)) {
+        player.vy = player.jumps === 0 || player.onGround || now < coyoteUntil ? -430 : -400;
+        player.jumps = Math.min(2, player.jumps + 1);
         player.onGround = false;
+        coyoteUntil = 0;
       }
       keys.jump = true;
     }
@@ -583,7 +588,7 @@ function initTrial(id) {
   if (isPlatformer) {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    setText(`${id}Hud`, `${cfg.prompt} | A/D MOVE · SPACE JUMP · SHIFT/F DASH`);
+    setText(`${id}Hud`, `${cfg.prompt} | WASD/ARROWS MOVE · SPACE JUMP · SHIFT/F DASH`);
   }
 
   const timer = window.setInterval(() => {
@@ -632,54 +637,72 @@ function initTrial(id) {
       }
       const dashActive = now < dash.activeUntil;
       const move = keys.left === keys.right ? 0 : keys.right ? 1 : -1;
-      const baseSpeed = move === 0 ? worldSpeed * 0.85 : worldSpeed + move * 40;
-      const playerSpeed = baseSpeed * (dashActive ? 1.85 : 1);
-      platforms.forEach((platform) => (platform.x -= playerSpeed * dt));
-      hazards.forEach((hazard) => (hazard.x -= playerSpeed * dt));
-      rings.forEach((ring) => (ring.x -= playerSpeed * dt));
+      const scrollSpeed = (worldSpeed + (1 - remainingMs / cfg.durationMs) * 110) * (dashActive ? 1.65 : 1);
+      const runSpeed = dashActive ? 310 : 228;
+      player.vx = move * runSpeed;
+
+      platforms.forEach((platform) => (platform.x -= scrollSpeed * dt));
+      hazards.forEach((hazard) => (hazard.x -= scrollSpeed * dt));
+      rings.forEach((ring) => (ring.x -= scrollSpeed * dt));
 
       platformSpawnAt -= dt * 1000;
       ringSpawnAt -= dt * 1000;
       if (platformSpawnAt <= 0) {
-        platformSpawnAt = rand(580, 900);
-        const w = rand(110, 190);
-        const y = rand(HEIGHT - 160, HEIGHT - 65);
+        platformSpawnAt = rand(470, 760);
+        const w = rand(86, 152);
+        const y = rand(HEIGHT - 196, HEIGHT - 72);
         const lastPlatform = platforms[platforms.length - 1];
-        const x = Math.max(WIDTH + 20, (lastPlatform?.x || WIDTH) + rand(145, 230));
+        const x = Math.max(WIDTH + 20, (lastPlatform?.x || WIDTH) + rand(170, 280));
         platforms.push({ x, y, w, h: 18, kind: "ledge" });
-        if (Math.random() < 0.45) {
+        if (Math.random() < 0.62) {
           hazards.push({
-            x: x + w * rand(0.25, 0.75),
+            x: x + w * rand(0.2, 0.8),
             y: y - 14,
             w: 24,
             h: 14,
-            vy: Math.random() < 0.35 ? rand(-32, 32) : 0,
+            vy: Math.random() < 0.45 ? rand(-38, 38) : 0,
           });
         }
       }
       if (ringSpawnAt <= 0 && platforms.length > 1) {
-        ringSpawnAt = rand(460, 760);
+        ringSpawnAt = rand(360, 620);
         const p = platforms[randInt(1, platforms.length - 1)];
-        rings.push({ x: p.x + p.w * rand(0.3, 0.8), y: p.y - rand(42, 78), r: rand(13, 19), hit: false });
+        rings.push({ x: p.x + p.w * rand(0.25, 0.82), y: p.y - rand(48, 94), r: rand(13, 19), hit: false });
       }
 
-      player.vy += 980 * dt;
+      const prevX = player.x;
       const prevY = player.y;
+      player.vy += 980 * dt;
+      player.x += player.vx * dt;
       player.y += player.vy * dt;
+      player.x = clamp(player.x, 80, WIDTH - 90);
       player.onGround = false;
+
+      const prevBottom = prevY + player.h / 2;
+      const curBottom = player.y + player.h / 2;
+      const prevRight = prevX + player.w / 2;
+      const prevLeft = prevX - player.w / 2;
+      const curRight = player.x + player.w / 2;
+      const curLeft = player.x - player.w / 2;
 
       for (const platform of platforms) {
         const top = platform.y;
-        const crossedTop = prevY + player.h / 2 <= top && player.y + player.h / 2 >= top;
-        const withinX = player.x + player.w / 2 > platform.x && player.x - player.w / 2 < platform.x + platform.w;
-        if (crossedTop && withinX && player.vy >= 0) {
+        const crossedTop = prevBottom <= top + 1 && curBottom >= top;
+        const overlapX = curRight > platform.x + 2 && curLeft < platform.x + platform.w - 2;
+        const wasNearX = prevRight > platform.x + 2 && prevLeft < platform.x + platform.w - 2;
+        if (crossedTop && overlapX && wasNearX && player.vy >= 0) {
           player.y = top - player.h / 2;
           player.vy = 0;
           player.onGround = true;
           player.jumps = 0;
+          coyoteUntil = now + 120;
+          break;
         }
       }
+      if (!player.onGround && now > coyoteUntil && player.jumps === 0) player.jumps = 1;
 
+      ctx.fillStyle = "#ffffff0d";
+      ctx.fillRect(0, HEIGHT - 130, WIDTH, 38);
       hazards.forEach((hazard) => {
         if (!hazard.vy) return;
         hazard.y += hazard.vy * dt;
@@ -710,8 +733,10 @@ function initTrial(id) {
         combo = 1;
         player.x = 180;
         player.y = HEIGHT - 74;
+        player.vx = 0;
         player.vy = 0;
         player.jumps = 0;
+        coyoteUntil = 0;
       } else {
         score += dt * (dashActive ? 13 : 6);
       }
@@ -778,6 +803,8 @@ function initTrial(id) {
           for (let x = platform.x + 6; x < platform.x + platform.w - 6; x += 16) ctx.fillRect(x, platform.y - 6, 10, 6);
         }
       });
+      ctx.fillStyle = "#ffffff0d";
+      ctx.fillRect(0, HEIGHT - 130, WIDTH, 38);
       hazards.forEach((hazard) => {
         const spikeGradient = ctx.createLinearGradient(hazard.x, hazard.y, hazard.x, hazard.y + hazard.h);
         spikeGradient.addColorStop(0, "#f2f2f2");
@@ -794,6 +821,10 @@ function initTrial(id) {
       });
       rings.forEach((ring) => {
         if (ring.hit) return;
+        ctx.fillStyle = "#f3cf8e22";
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r + 8, 0, Math.PI * 2);
+        ctx.fill();
         ctx.strokeStyle = "#f3cf8e";
         ctx.lineWidth = 6;
         ctx.beginPath();
@@ -810,6 +841,10 @@ function initTrial(id) {
 
       const px = player.x - player.w / 2;
       const py = player.y - player.h / 2;
+      ctx.fillStyle = "#ffd48b22";
+      ctx.beginPath();
+      ctx.arc(player.x + 4, player.y - 8, 22, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = "#2a2030";
       ctx.fillRect(px + 3, py + player.h - 2, player.w, 4);
       ctx.fillStyle = "#d2d2dc";
