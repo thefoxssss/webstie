@@ -412,7 +412,7 @@ function initTrial(id) {
     onGround: false,
   };
   const platforms = isPlatformer
-    ? [{ x: -40, y: HEIGHT - 28, w: WIDTH + 80, h: 38, kind: "floor" }]
+    ? [{ x: -220, y: HEIGHT - 28, w: 3200, h: 38, kind: "floor" }]
     : [];
   const hazards = [];
   const rings = [];
@@ -426,8 +426,10 @@ function initTrial(id) {
   let lastTapAt = 0;
   let platformSpawnAt = 0;
   let ringSpawnAt = 420;
-  const worldSpeed = 248;
   let coyoteUntil = 0;
+  let cameraX = 0;
+  let furthestPlatformX = platforms[0]?.x + platforms[0]?.w || WIDTH;
+  let bestDistance = 0;
   let last = performance.now();
   let targets = [];
 
@@ -588,7 +590,7 @@ function initTrial(id) {
   if (isPlatformer) {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    setText(`${id}Hud`, `${cfg.prompt} | WASD/ARROWS MOVE · SPACE JUMP · SHIFT/F DASH`);
+    setText(`${id}Hud`, `${cfg.prompt} | WASD/ARROWS MOVE · SPACE JUMP · SHIFT/F DASH · NO AUTO-RUN`);
   }
 
   const timer = window.setInterval(() => {
@@ -637,23 +639,20 @@ function initTrial(id) {
       }
       const dashActive = now < dash.activeUntil;
       const move = keys.left === keys.right ? 0 : keys.right ? 1 : -1;
-      const scrollSpeed = (worldSpeed + (1 - remainingMs / cfg.durationMs) * 110) * (dashActive ? 1.65 : 1);
       const runSpeed = dashActive ? 310 : 228;
       player.vx = move * runSpeed;
 
-      platforms.forEach((platform) => (platform.x -= scrollSpeed * dt));
-      hazards.forEach((hazard) => (hazard.x -= scrollSpeed * dt));
-      rings.forEach((ring) => (ring.x -= scrollSpeed * dt));
+      cameraX = Math.max(0, player.x - 220);
 
       platformSpawnAt -= dt * 1000;
       ringSpawnAt -= dt * 1000;
-      if (platformSpawnAt <= 0) {
+      if (platformSpawnAt <= 0 && furthestPlatformX < cameraX + WIDTH + 860) {
         platformSpawnAt = rand(470, 760);
         const w = rand(86, 152);
         const y = rand(HEIGHT - 196, HEIGHT - 72);
-        const lastPlatform = platforms[platforms.length - 1];
-        const x = Math.max(WIDTH + 20, (lastPlatform?.x || WIDTH) + rand(170, 280));
+        const x = furthestPlatformX + rand(140, 260);
         platforms.push({ x, y, w, h: 18, kind: "ledge" });
+        furthestPlatformX = Math.max(furthestPlatformX, x + w);
         if (Math.random() < 0.62) {
           hazards.push({
             x: x + w * rand(0.2, 0.8),
@@ -667,7 +666,9 @@ function initTrial(id) {
       if (ringSpawnAt <= 0 && platforms.length > 1) {
         ringSpawnAt = rand(360, 620);
         const p = platforms[randInt(1, platforms.length - 1)];
-        rings.push({ x: p.x + p.w * rand(0.25, 0.82), y: p.y - rand(48, 94), r: rand(13, 19), hit: false });
+        if (p.x + p.w > cameraX - 20 && p.x < cameraX + WIDTH + 340) {
+          rings.push({ x: p.x + p.w * rand(0.25, 0.82), y: p.y - rand(48, 94), r: rand(13, 19), hit: false });
+        }
       }
 
       const prevX = player.x;
@@ -675,7 +676,6 @@ function initTrial(id) {
       player.vy += 980 * dt;
       player.x += player.vx * dt;
       player.y += player.vy * dt;
-      player.x = clamp(player.x, 80, WIDTH - 90);
       player.onGround = false;
 
       const prevBottom = prevY + player.h / 2;
@@ -731,23 +731,25 @@ function initTrial(id) {
         score -= cfg.missPenalty + 4;
         streak = 0;
         combo = 1;
-        player.x = 180;
+        player.x = Math.max(180, bestDistance - 120);
         player.y = HEIGHT - 74;
         player.vx = 0;
         player.vy = 0;
         player.jumps = 0;
         coyoteUntil = 0;
       } else {
-        score += dt * (dashActive ? 13 : 6);
+        bestDistance = Math.max(bestDistance, player.x);
+        const forwardGain = Math.max(0, player.vx) / 230;
+        score += dt * (dashActive ? 5 : 2) + dt * forwardGain * 9;
       }
 
-      while (platforms.length > 1 && platforms[0].x + platforms[0].w < -60) platforms.shift();
-      while (hazards.length && hazards[0].x + hazards[0].w < -60) hazards.shift();
-      while (rings.length && (rings[0].x + rings[0].r < -80 || rings[0].hit)) rings.shift();
+      while (platforms.length > 1 && platforms[0].x + platforms[0].w < cameraX - 260) platforms.shift();
+      while (hazards.length && hazards[0].x + hazards[0].w < cameraX - 260) hazards.shift();
+      while (rings.length && (rings[0].x + rings[0].r < cameraX - 280 || rings[0].hit)) rings.shift();
       updateHud(id, score, combo, remainingMs);
       setText(
         `${id}Hud`,
-        `${cfg.prompt} | COMBO: ${combo}x | DASH: ${"◼".repeat(dash.charges)}${"◻".repeat(dash.maxCharges - dash.charges)}`,
+        `${cfg.prompt} | COMBO: ${combo}x | DIST: ${Math.max(0, Math.floor(bestDistance - 180))}m | DASH: ${"◼".repeat(dash.charges)}${"◻".repeat(dash.maxCharges - dash.charges)}`,
       );
     } else {
       const missTop = -40;
@@ -786,64 +788,72 @@ function initTrial(id) {
     targets.forEach((target) => drawTarget(ctx, cfg, target, t));
 
     if (isPlatformer) {
+      const toScreenX = (worldX) => worldX - cameraX;
       platforms.forEach((platform) => {
+        const sx = toScreenX(platform.x);
+        if (sx + platform.w < -70 || sx > WIDTH + 80) return;
         ctx.fillStyle = "#201a27";
-        ctx.fillRect(platform.x + 4, platform.y + platform.h - 2, platform.w, 8);
-        const stoneGradient = ctx.createLinearGradient(platform.x, platform.y, platform.x, platform.y + platform.h);
+        ctx.fillRect(sx + 4, platform.y + platform.h - 2, platform.w, 8);
+        const stoneGradient = ctx.createLinearGradient(sx, platform.y, sx, platform.y + platform.h);
         stoneGradient.addColorStop(0, platform.kind === "floor" ? "#5d475f" : "#7a6176");
         stoneGradient.addColorStop(1, platform.kind === "floor" ? "#453446" : "#5a495c");
         ctx.fillStyle = stoneGradient;
-        ctx.fillRect(platform.x, platform.y, platform.w, platform.h);
+        ctx.fillRect(sx, platform.y, platform.w, platform.h);
         ctx.fillStyle = "#c0a67d";
-        ctx.fillRect(platform.x, platform.y, platform.w, 4);
+        ctx.fillRect(sx, platform.y, platform.w, 4);
         ctx.fillStyle = "#8f7a82";
-        for (let x = platform.x + 8; x < platform.x + platform.w - 8; x += 22) ctx.fillRect(x, platform.y + 8, 14, 2);
+        for (let x = sx + 8; x < sx + platform.w - 8; x += 22) ctx.fillRect(x, platform.y + 8, 14, 2);
         if (platform.kind !== "floor") {
           ctx.fillStyle = "#8f7a82";
-          for (let x = platform.x + 6; x < platform.x + platform.w - 6; x += 16) ctx.fillRect(x, platform.y - 6, 10, 6);
+          for (let x = sx + 6; x < sx + platform.w - 6; x += 16) ctx.fillRect(x, platform.y - 6, 10, 6);
         }
       });
       ctx.fillStyle = "#ffffff0d";
       ctx.fillRect(0, HEIGHT - 130, WIDTH, 38);
       hazards.forEach((hazard) => {
-        const spikeGradient = ctx.createLinearGradient(hazard.x, hazard.y, hazard.x, hazard.y + hazard.h);
+        const sx = toScreenX(hazard.x);
+        if (sx + hazard.w < -30 || sx > WIDTH + 30) return;
+        const spikeGradient = ctx.createLinearGradient(sx, hazard.y, sx, hazard.y + hazard.h);
         spikeGradient.addColorStop(0, "#f2f2f2");
         spikeGradient.addColorStop(1, "#8e8e8e");
         ctx.fillStyle = spikeGradient;
         ctx.beginPath();
-        ctx.moveTo(hazard.x, hazard.y + hazard.h);
-        ctx.lineTo(hazard.x + hazard.w / 2, hazard.y);
-        ctx.lineTo(hazard.x + hazard.w, hazard.y + hazard.h);
+        ctx.moveTo(sx, hazard.y + hazard.h);
+        ctx.lineTo(sx + hazard.w / 2, hazard.y);
+        ctx.lineTo(sx + hazard.w, hazard.y + hazard.h);
         ctx.closePath();
         ctx.fill();
         ctx.fillStyle = "#ffffff99";
-        ctx.fillRect(hazard.x + hazard.w * 0.47, hazard.y + 4, 2, hazard.h - 4);
+        ctx.fillRect(sx + hazard.w * 0.47, hazard.y + 4, 2, hazard.h - 4);
       });
       rings.forEach((ring) => {
         if (ring.hit) return;
+        const sx = toScreenX(ring.x);
+        if (sx + ring.r < -20 || sx - ring.r > WIDTH + 20) return;
         ctx.fillStyle = "#f3cf8e22";
         ctx.beginPath();
-        ctx.arc(ring.x, ring.y, ring.r + 8, 0, Math.PI * 2);
+        ctx.arc(sx, ring.y, ring.r + 8, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = "#f3cf8e";
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.arc(ring.x, ring.y, ring.r + 1, 0, Math.PI * 2);
+        ctx.arc(sx, ring.y, ring.r + 1, 0, Math.PI * 2);
         ctx.stroke();
         ctx.strokeStyle = "#ffefc9";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(ring.x, ring.y, ring.r - 3, 0, Math.PI * 2);
+        ctx.arc(sx, ring.y, ring.r - 3, 0, Math.PI * 2);
         ctx.stroke();
         ctx.fillStyle = "#f7e7bf";
-        ctx.fillRect(ring.x - 2, ring.y - ring.r + 3, 4, 7);
+        ctx.fillRect(sx - 2, ring.y - ring.r + 3, 4, 7);
       });
 
-      const px = player.x - player.w / 2;
+      const playerScreenX = player.x - cameraX;
+      const px = playerScreenX - player.w / 2;
       const py = player.y - player.h / 2;
       ctx.fillStyle = "#ffd48b22";
       ctx.beginPath();
-      ctx.arc(player.x + 4, player.y - 8, 22, 0, Math.PI * 2);
+      ctx.arc(playerScreenX + 4, player.y - 8, 22, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#2a2030";
       ctx.fillRect(px + 3, py + player.h - 2, player.w, 4);
@@ -858,11 +868,11 @@ function initTrial(id) {
         ctx.fillRect(px - 46, py + 16, 8, 4);
       }
       ctx.fillStyle = "#ffe9b8";
-      ctx.fillRect(player.x - 8, player.y - 14, 16, 10);
+      ctx.fillRect(playerScreenX - 8, player.y - 14, 16, 10);
       ctx.fillStyle = "#30222f";
-      ctx.fillRect(player.x + 2, player.y - 10, 3, 2);
+      ctx.fillRect(playerScreenX + 2, player.y - 10, 3, 2);
       ctx.fillStyle = "#724a2c";
-      ctx.fillRect(player.x + 9, player.y - 8, 12, 4);
+      ctx.fillRect(playerScreenX + 9, player.y - 8, 12, 4);
       ctx.fillStyle = "#9b2f43cc";
       ctx.fillRect(px - 4, py + 12, 6, player.h - 12);
     }
