@@ -30,6 +30,7 @@ import {
   adminForgiveInterestForUser,
   adminUnlockAllAchievements,
   trackGamePlay,
+  updateHighScore,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -76,6 +77,7 @@ window.adminRefreshTargetUsers = adminRefreshTargetUsers;
 window.adminGrantCashToUser = adminGrantCashToUser;
 window.adminForgiveInterestForUser = adminForgiveInterestForUser;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
+window.updateHighScore = updateHighScore;
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {

@@ -7473,6 +7473,30 @@
         let showingUpgrade = false;
         let gameOver = false;
         
+        // Delta-time simulation (fixed-step) to keep gameplay speed stable across frame rates.
+        const FIXED_STEP_MS = 1000 / 60;
+        const MAX_FRAME_DELTA_MS = 200;
+        const MAX_SIM_STEPS = 8;
+        let lastFrameTime = performance.now();
+        let frameAccumulator = 0;
+
+        function resetFrameClock() {
+            lastFrameTime = performance.now();
+            frameAccumulator = 0;
+        }
+
+        function submitShadowAssassinScore(roomReached) {
+            const score = Math.max(0, Number(roomReached) || 0);
+            localStorage.setItem('hs_shadowassassin', String(score));
+            if (window.parent && typeof window.parent.updateHighScore === 'function') {
+                try {
+                    window.parent.updateHighScore('shadowassassin', score);
+                } catch (_err) {
+                    // Cross-frame calls can fail in embedded contexts; local score is still saved.
+                }
+            }
+        }
+        
         // SECRET CHEAT CODE SYSTEM
         let cheatCode = '';
         let mythicMode = false;
@@ -7567,18 +7591,27 @@
         });
         
         // Game loop
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Always draw the room (even during upgrade/safe room screens)
-            if (gameStarted && !gameOver) {
-                currentRoom.draw();
-            }
-            
-            if (!gameStarted || gameOver || showingUpgrade) {
-                requestAnimationFrame(gameLoop);
-                return;
-            }
+        function gameLoop(now = performance.now()) {
+            const frameDelta = Math.min(MAX_FRAME_DELTA_MS, Math.max(0, now - lastFrameTime));
+            lastFrameTime = now;
+            frameAccumulator = Math.min(frameAccumulator + frameDelta, FIXED_STEP_MS * MAX_SIM_STEPS);
+
+            let steps = Math.floor(frameAccumulator / FIXED_STEP_MS);
+            if (steps < 1) steps = 1;
+            steps = Math.min(steps, MAX_SIM_STEPS);
+            frameAccumulator = Math.max(0, frameAccumulator - (steps * FIXED_STEP_MS));
+
+            for (let step = 0; step < steps; step++) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Always draw the room (even during upgrade/safe room screens)
+                if (gameStarted && !gameOver) {
+                    currentRoom.draw();
+                }
+                
+                if (!gameStarted || gameOver || showingUpgrade) {
+                    break;
+                }
             
             // Player input
             if (!player.dashing) {
@@ -7849,6 +7882,7 @@
             // Game over
             if (player.health <= 0 && !gameOver) {
                 gameOver = true;
+                submitShadowAssassinScore(roomNumber);
                 document.getElementById('finalRoom').textContent = roomNumber;
                 
                 // Check if checkpoint exists and enable/disable button accordingly
@@ -7869,6 +7903,11 @@
                 
                 document.getElementById('gameOverScreen').style.display = 'flex';
             }
+
+            if (!gameStarted || gameOver || showingUpgrade) {
+                break;
+            }
+        }
             
             requestAnimationFrame(gameLoop);
         }
@@ -7885,6 +7924,7 @@
             projectiles = [];
             shadowClones = [];
             gameOver = false;
+            resetFrameClock();
         });
 
         document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -7932,6 +7972,7 @@
             shadowClones = [];
             gameStarted = true;
             gameOver = false;
+            resetFrameClock();
             document.getElementById('gameOverScreen').style.display = 'none';
         });
         
@@ -7971,6 +8012,7 @@
                 shadowClones = [];
                 gameStarted = true;
                 gameOver = false;
+                resetFrameClock();
                 document.getElementById('gameOverScreen').style.display = 'none';
             } else {
                 // No checkpoint exists - button shouldn't even be clickable
@@ -7984,6 +8026,7 @@
             document.getElementById('mainMenu').style.display = 'flex';
             gameStarted = false;
             gameOver = false;
+            resetFrameClock();
             
             // Reset game state
             mythicMode = false;
@@ -7999,9 +8042,11 @@
         document.getElementById('safeRoomContinueBtn').addEventListener('click', () => {
             document.getElementById('safeRoomScreen').style.display = 'none';
             showingUpgrade = false;
+            resetFrameClock();
         });
         
         // Start game loop
+        resetFrameClock();
         gameLoop();
     </script>
 </body>
