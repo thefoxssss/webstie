@@ -1,9 +1,9 @@
 /* --- 1. CORE VARIABLES --- */
 :root {
   --bg: #050505;
-  --accent: #ff0606;
-  --accent-dim: rgba(255, 6, 6, 0.2);
-  --accent-glow: rgba(255, 6, 6, 0.6);
+  --accent: #ffffff;
+  --accent-dim: rgba(255, 255, 255, 0.2);
+  --accent-glow: rgba(255, 255, 255, 0.6);
   --scanline-opacity: 0.5;
   --common: #b0b0b0;
   --rare: #00ccff;
