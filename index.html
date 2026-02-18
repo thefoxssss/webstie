@@ -1480,8 +1480,11 @@
       <h1>BYTE BLITZ</h1>
       <div class="high-score-display">HIGH: <span id="hsByteblitz">0</span></div>
       <div style="margin-bottom: 10px" id="byteblitzTimer">TIME: 18.0s</div>
-      <div style="margin-bottom: 14px" id="byteblitzScore">SCORE: 0</div>
-      <button class="term-btn" id="byteblitzAction">COLLECT BYTE</button>
+      <div style="margin-bottom: 8px" id="byteblitzScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="byteblitzHud">CLICK FALLING BYTES BEFORE THEY BREACH THE BUFFER</div>
+      <canvas id="byteblitzCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="byteblitzAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1489,8 +1492,11 @@
       <h1>CIPHER CRACK</h1>
       <div class="high-score-display">HIGH: <span id="hsCiphercrack">0</span></div>
       <div style="margin-bottom: 10px" id="ciphercrackTimer">TIME: 20.0s</div>
-      <div style="margin-bottom: 14px" id="ciphercrackScore">SCORE: 0</div>
-      <button class="term-btn" id="ciphercrackAction">DECODE TOKEN</button>
+      <div style="margin-bottom: 8px" id="ciphercrackScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="ciphercrackHud">DECRYPT WOBBLING TOKENS. SMALLER TOKENS SCORE MORE</div>
+      <canvas id="ciphercrackCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="ciphercrackAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1498,8 +1504,11 @@
       <h1>ASTRO HOP</h1>
       <div class="high-score-display">HIGH: <span id="hsAstrohop">0</span></div>
       <div style="margin-bottom: 10px" id="astrohopTimer">TIME: 17.0s</div>
-      <div style="margin-bottom: 14px" id="astrohopScore">SCORE: 0</div>
-      <button class="term-btn" id="astrohopAction">BOOST JET</button>
+      <div style="margin-bottom: 8px" id="astrohopScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="astrohopHud">THREAD THROUGH ORBIT RINGS BEFORE THEY DESCEND</div>
+      <canvas id="astrohopCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="astrohopAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1507,8 +1516,11 @@
       <h1>PULSE STACK</h1>
       <div class="high-score-display">HIGH: <span id="hsPulsestack">0</span></div>
       <div style="margin-bottom: 10px" id="pulsestackTimer">TIME: 19.0s</div>
-      <div style="margin-bottom: 14px" id="pulsestackScore">SCORE: 0</div>
-      <button class="term-btn" id="pulsestackAction">STACK PULSE</button>
+      <div style="margin-bottom: 8px" id="pulsestackScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="pulsestackHud">CHAIN HITS TO RAISE MULTIPLIER — DON'T MISS</div>
+      <canvas id="pulsestackCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="pulsestackAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1516,8 +1528,11 @@
       <h1>GLITCH GATE</h1>
       <div class="high-score-display">HIGH: <span id="hsGlitchgate">0</span></div>
       <div style="margin-bottom: 10px" id="glitchgateTimer">TIME: 18.0s</div>
-      <div style="margin-bottom: 14px" id="glitchgateScore">SCORE: 0</div>
-      <button class="term-btn" id="glitchgateAction">PATCH GLITCH</button>
+      <div style="margin-bottom: 8px" id="glitchgateScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="glitchgateHud">CLOSE BREACHES FAST. MISSED GLITCHES HURT HARD</div>
+      <canvas id="glitchgateCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="glitchgateAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1525,8 +1540,11 @@
       <h1>ORB WEAVER</h1>
       <div class="high-score-display">HIGH: <span id="hsOrbweaver">0</span></div>
       <div style="margin-bottom: 10px" id="orbweaverTimer">TIME: 21.0s</div>
-      <div style="margin-bottom: 14px" id="orbweaverScore">SCORE: 0</div>
-      <button class="term-btn" id="orbweaverAction">WEAVE ORB</button>
+      <div style="margin-bottom: 8px" id="orbweaverScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="orbweaverHud">HIT LARGE ORBS TO TRIGGER CHAIN REACTIONS</div>
+      <canvas id="orbweaverCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="orbweaverAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1534,8 +1552,11 @@
       <h1>LASER LOCK</h1>
       <div class="high-score-display">HIGH: <span id="hsLaserlock">0</span></div>
       <div style="margin-bottom: 10px" id="laserlockTimer">TIME: 18.0s</div>
-      <div style="margin-bottom: 14px" id="laserlockScore">SCORE: 0</div>
-      <button class="term-btn" id="laserlockAction">LOCK TARGET</button>
+      <div style="margin-bottom: 8px" id="laserlockScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="laserlockHud">PRECISION MODE: SMALL FAST TARGETS, HIGH PAYOUT</div>
+      <canvas id="laserlockCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="laserlockAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1543,8 +1564,11 @@
       <h1>METRO MAZE</h1>
       <div class="high-score-display">HIGH: <span id="hsMetromaze">0</span></div>
       <div style="margin-bottom: 10px" id="metromazeTimer">TIME: 20.0s</div>
-      <div style="margin-bottom: 14px" id="metromazeScore">SCORE: 0</div>
-      <button class="term-btn" id="metromazeAction">ADVANCE NODE</button>
+      <div style="margin-bottom: 8px" id="metromazeScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="metromazeHud">TRACK NODES AS THEY SWERVE THROUGH THE GRID</div>
+      <canvas id="metromazeCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="metromazeAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1552,8 +1576,11 @@
       <h1>STACK SMASH</h1>
       <div class="high-score-display">HIGH: <span id="hsStacksmash">0</span></div>
       <div style="margin-bottom: 10px" id="stacksmashTimer">TIME: 17.0s</div>
-      <div style="margin-bottom: 14px" id="stacksmashScore">SCORE: 0</div>
-      <button class="term-btn" id="stacksmashAction">SMASH STACK</button>
+      <div style="margin-bottom: 8px" id="stacksmashScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="stacksmashHud">ARMORED STACKS NEED TWO HITS — PRIORITIZE THEM</div>
+      <canvas id="stacksmashCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="stacksmashAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
@@ -1561,8 +1588,11 @@
       <h1>QUANTUM FLIP</h1>
       <div class="high-score-display">HIGH: <span id="hsQuantumflip">0</span></div>
       <div style="margin-bottom: 10px" id="quantumflipTimer">TIME: 21.0s</div>
-      <div style="margin-bottom: 14px" id="quantumflipScore">SCORE: 0</div>
-      <button class="term-btn" id="quantumflipAction">FLIP STATE</button>
+      <div style="margin-bottom: 8px" id="quantumflipScore">SCORE: 0</div>
+      <div style="margin-bottom: 12px" id="quantumflipHud">REALITY FLIPS PERIODICALLY — ADAPT TO REVERSED MOTION</div>
+      <canvas id="quantumflipCanvas" width="800" height="420"></canvas>
+      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <button class="term-btn" id="quantumflipAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
