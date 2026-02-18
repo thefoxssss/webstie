@@ -119,6 +119,16 @@
         <button class="game-card" data-game="bonk" data-tags="pvp arcade" onclick="window.launchGame('bonk')"><span>🥊</span><strong>BONK ARENA (PVP)</strong><small>Fast arena knockouts and dodges.</small></button>
         <button class="game-card" data-game="drift" data-tags="pvp arcade skill" onclick="window.launchGame('drift')"><span>🏎️</span><strong>NEON DRIFT (PVP)</strong><small>Slide corners and chain clean laps.</small></button>
         <button class="game-card" data-game="emulator" data-tags="skill" onclick="window.launchGame('emulator')"><span>🖥️</span><strong>CPU EMULATOR</strong><small>Program-like puzzle sandbox challenge.</small></button>
+        <button class="game-card" data-game="byteblitz" data-tags="arcade skill" onclick="window.launchGame('byteblitz')"><span>💾</span><strong>BYTE BLITZ</strong><small>Spam collect packets before the clock dies.</small></button>
+        <button class="game-card" data-game="ciphercrack" data-tags="skill" onclick="window.launchGame('ciphercrack')"><span>🔐</span><strong>CIPHER CRACK</strong><small>Rapid-fire decrypt actions for score bursts.</small></button>
+        <button class="game-card" data-game="astrohop" data-tags="arcade skill" onclick="window.launchGame('astrohop')"><span>🛰️</span><strong>ASTRO HOP</strong><small>Chain thruster taps to build momentum points.</small></button>
+        <button class="game-card" data-game="pulsestack" data-tags="arcade skill" onclick="window.launchGame('pulsestack')"><span>📶</span><strong>PULSE STACK</strong><small>Stack reactor pulses under hard time pressure.</small></button>
+        <button class="game-card" data-game="glitchgate" data-tags="arcade" onclick="window.launchGame('glitchgate')"><span>🧩</span><strong>GLITCH GATE</strong><small>Patch unstable sectors and chase combo bonus.</small></button>
+        <button class="game-card" data-game="orbweaver" data-tags="skill" onclick="window.launchGame('orbweaver')"><span>🟣</span><strong>ORB WEAVER</strong><small>Weave energy orbs to push a high-score run.</small></button>
+        <button class="game-card" data-game="laserlock" data-tags="arcade skill" onclick="window.launchGame('laserlock')"><span>🔴</span><strong>LASER LOCK</strong><small>Acquire locks fast to farm precision points.</small></button>
+        <button class="game-card" data-game="metromaze" data-tags="skill" onclick="window.launchGame('metromaze')"><span>🚇</span><strong>METRO MAZE</strong><small>Advance nodes at speed through digital tunnels.</small></button>
+        <button class="game-card" data-game="stacksmash" data-tags="arcade" onclick="window.launchGame('stacksmash')"><span>🪨</span><strong>STACK SMASH</strong><small>Break layered stacks for big spike payouts.</small></button>
+        <button class="game-card" data-game="quantumflip" data-tags="skill" onclick="window.launchGame('quantumflip')"><span>⚛️</span><strong>QUANTUM FLIP</strong><small>Flip unstable states and fish for mega bursts.</small></button>
         <button class="game-card" id="btnFlappy" data-game="flappy" data-tags="arcade skill" onclick="window.launchGame('flappy')" style="display: none"><span>🐤</span><strong>FLAPPY GOON</strong><small>Secret bonus mode: tap to survive.</small></button>
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
@@ -1462,6 +1472,97 @@
           <pre id="emuTerminalOutput" class="emu-output"></pre>
         </div>
       </div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+
+    <div class="overlay" id="overlayByteblitz">
+      <h1>BYTE BLITZ</h1>
+      <div class="high-score-display">HIGH: <span id="hsByteblitz">0</span></div>
+      <div style="margin-bottom: 10px" id="byteblitzTimer">TIME: 18.0s</div>
+      <div style="margin-bottom: 14px" id="byteblitzScore">SCORE: 0</div>
+      <button class="term-btn" id="byteblitzAction">COLLECT BYTE</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayCiphercrack">
+      <h1>CIPHER CRACK</h1>
+      <div class="high-score-display">HIGH: <span id="hsCiphercrack">0</span></div>
+      <div style="margin-bottom: 10px" id="ciphercrackTimer">TIME: 20.0s</div>
+      <div style="margin-bottom: 14px" id="ciphercrackScore">SCORE: 0</div>
+      <button class="term-btn" id="ciphercrackAction">DECODE TOKEN</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayAstrohop">
+      <h1>ASTRO HOP</h1>
+      <div class="high-score-display">HIGH: <span id="hsAstrohop">0</span></div>
+      <div style="margin-bottom: 10px" id="astrohopTimer">TIME: 17.0s</div>
+      <div style="margin-bottom: 14px" id="astrohopScore">SCORE: 0</div>
+      <button class="term-btn" id="astrohopAction">BOOST JET</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayPulsestack">
+      <h1>PULSE STACK</h1>
+      <div class="high-score-display">HIGH: <span id="hsPulsestack">0</span></div>
+      <div style="margin-bottom: 10px" id="pulsestackTimer">TIME: 19.0s</div>
+      <div style="margin-bottom: 14px" id="pulsestackScore">SCORE: 0</div>
+      <button class="term-btn" id="pulsestackAction">STACK PULSE</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayGlitchgate">
+      <h1>GLITCH GATE</h1>
+      <div class="high-score-display">HIGH: <span id="hsGlitchgate">0</span></div>
+      <div style="margin-bottom: 10px" id="glitchgateTimer">TIME: 18.0s</div>
+      <div style="margin-bottom: 14px" id="glitchgateScore">SCORE: 0</div>
+      <button class="term-btn" id="glitchgateAction">PATCH GLITCH</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayOrbweaver">
+      <h1>ORB WEAVER</h1>
+      <div class="high-score-display">HIGH: <span id="hsOrbweaver">0</span></div>
+      <div style="margin-bottom: 10px" id="orbweaverTimer">TIME: 21.0s</div>
+      <div style="margin-bottom: 14px" id="orbweaverScore">SCORE: 0</div>
+      <button class="term-btn" id="orbweaverAction">WEAVE ORB</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayLaserlock">
+      <h1>LASER LOCK</h1>
+      <div class="high-score-display">HIGH: <span id="hsLaserlock">0</span></div>
+      <div style="margin-bottom: 10px" id="laserlockTimer">TIME: 18.0s</div>
+      <div style="margin-bottom: 14px" id="laserlockScore">SCORE: 0</div>
+      <button class="term-btn" id="laserlockAction">LOCK TARGET</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayMetromaze">
+      <h1>METRO MAZE</h1>
+      <div class="high-score-display">HIGH: <span id="hsMetromaze">0</span></div>
+      <div style="margin-bottom: 10px" id="metromazeTimer">TIME: 20.0s</div>
+      <div style="margin-bottom: 14px" id="metromazeScore">SCORE: 0</div>
+      <button class="term-btn" id="metromazeAction">ADVANCE NODE</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayStacksmash">
+      <h1>STACK SMASH</h1>
+      <div class="high-score-display">HIGH: <span id="hsStacksmash">0</span></div>
+      <div style="margin-bottom: 10px" id="stacksmashTimer">TIME: 17.0s</div>
+      <div style="margin-bottom: 14px" id="stacksmashScore">SCORE: 0</div>
+      <button class="term-btn" id="stacksmashAction">SMASH STACK</button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay" id="overlayQuantumflip">
+      <h1>QUANTUM FLIP</h1>
+      <div class="high-score-display">HIGH: <span id="hsQuantumflip">0</span></div>
+      <div style="margin-bottom: 10px" id="quantumflipTimer">TIME: 21.0s</div>
+      <div style="margin-bottom: 14px" id="quantumflipScore">SCORE: 0</div>
+      <button class="term-btn" id="quantumflipAction">FLIP STATE</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 

@@ -49,6 +49,18 @@ import { initCoreBreaker } from "./games/corebreaker.js";
 import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
 import { initEmulator } from "./games/emulator.js";
+import {
+  initAstroHop,
+  initByteBlitz,
+  initCipherCrack,
+  initGlitchGate,
+  initLaserLock,
+  initMetroMaze,
+  initOrbWeaver,
+  initPulseStack,
+  initQuantumFlip,
+  initStackSmash,
+} from "./games/terminaltrials.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -106,6 +118,16 @@ window.launchGame = (game) => {
   if (game === "neondefender") initNeonDefender();
   if (game === "voidminer") initVoidMiner();
   if (game === "emulator") initEmulator();
+  if (game === "byteblitz") initByteBlitz();
+  if (game === "ciphercrack") initCipherCrack();
+  if (game === "astrohop") initAstroHop();
+  if (game === "pulsestack") initPulseStack();
+  if (game === "glitchgate") initGlitchGate();
+  if (game === "orbweaver") initOrbWeaver();
+  if (game === "laserlock") initLaserLock();
+  if (game === "metromaze") initMetroMaze();
+  if (game === "stacksmash") initStackSmash();
+  if (game === "quantumflip") initQuantumFlip();
   resizeAllGameCanvases();
   trackGamePlay(game);
   updateRecentGames(game);
@@ -133,6 +155,16 @@ const GAME_OVERLAY_IDS = [
   "overlayFlappy",
   "overlayDrift",
   "overlayEmulator",
+  "overlayByteblitz",
+  "overlayCiphercrack",
+  "overlayAstrohop",
+  "overlayPulsestack",
+  "overlayGlitchgate",
+  "overlayOrbweaver",
+  "overlayLaserlock",
+  "overlayMetromaze",
+  "overlayStacksmash",
+  "overlayQuantumflip",
 ];
 
 
@@ -392,6 +424,16 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "corebreaker") initCoreBreaker();
   if (state.currentGame === "neondefender") initNeonDefender();
   if (state.currentGame === "voidminer") initVoidMiner();
+  if (state.currentGame === "byteblitz") initByteBlitz();
+  if (state.currentGame === "ciphercrack") initCipherCrack();
+  if (state.currentGame === "astrohop") initAstroHop();
+  if (state.currentGame === "pulsestack") initPulseStack();
+  if (state.currentGame === "glitchgate") initGlitchGate();
+  if (state.currentGame === "orbweaver") initOrbWeaver();
+  if (state.currentGame === "laserlock") initLaserLock();
+  if (state.currentGame === "metromaze") initMetroMaze();
+  if (state.currentGame === "stacksmash") initStackSmash();
+  if (state.currentGame === "quantumflip") initQuantumFlip();
   if (state.currentGame === "roulette") {
     initRoulette();
     document.getElementById("overlayRoulette").classList.add("active");
