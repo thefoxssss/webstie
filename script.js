@@ -49,18 +49,16 @@ import { initCoreBreaker } from "./games/corebreaker.js";
 import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
 import { initEmulator } from "./games/emulator.js";
-import {
-  initAstroHop,
-  initByteBlitz,
-  initCipherCrack,
-  initGlitchGate,
-  initLaserLock,
-  initMetroMaze,
-  initOrbWeaver,
-  initPulseStack,
-  initQuantumFlip,
-  initStackSmash,
-} from "./games/terminaltrials.js";
+import { initByteBlitz } from "./games/byteblitz.js";
+import { initCipherCrack } from "./games/ciphercrack.js";
+import { initAstroHop } from "./games/astrohop.js";
+import { initPulseStack } from "./games/pulsestack.js";
+import { initGlitchGate } from "./games/glitchgate.js";
+import { initOrbWeaver } from "./games/orbweaver.js";
+import { initLaserLock } from "./games/laserlock.js";
+import { initMetroMaze } from "./games/metromaze.js";
+import { initStackSmash } from "./games/stacksmash.js";
+import { initQuantumFlip } from "./games/quantumflip.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
