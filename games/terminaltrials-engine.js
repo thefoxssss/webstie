@@ -41,16 +41,17 @@ const GAME_CONFIG = {
   astrohop: {
     title: "ASTRO HOP",
     durationMs: 32000,
-    spawnMs: 520,
+    spawnMs: 1080,
     targetRadius: [14, 24],
-    speed: [90, 140],
-    scoreBase: 11,
+    speed: [160, 235],
+    scoreBase: 18,
     missPenalty: 6,
-    gravity: -8,
+    mode: "platformer",
+    gravity: 2600,
     bg: ["#070b1d", "#101c45"],
     accent: "#9bb3ff",
     secondary: "#a8ffe5",
-    prompt: "THREAD THROUGH ORBIT RINGS BEFORE THEY DESCEND",
+    prompt: "RUN + JUMP THROUGH ORBIT RINGS. WASD / ARROWS + SPACE",
   },
   pulsestack: {
     title: "PULSE STACK",
@@ -176,6 +177,7 @@ function stopTrial(id) {
   if (!run) return;
   window.clearInterval(run.timer);
   window.cancelAnimationFrame(run.raf);
+  if (typeof run.cleanup === "function") run.cleanup();
   const canvas = run.canvas;
   if (canvas) canvas.onpointerdown = null;
   runtime.delete(id);
@@ -316,6 +318,24 @@ function drawTarget(ctx, cfg, target, t) {
   }
 }
 
+function drawPlatformActor(ctx, actor, cfg) {
+  ctx.fillStyle = `${cfg.accent}20`;
+  ctx.fillRect(actor.x - actor.w / 2 - 3, actor.y - actor.h / 2 - 3, actor.w + 6, actor.h + 6);
+
+  ctx.fillStyle = cfg.accent;
+  ctx.fillRect(actor.x - actor.w / 2, actor.y - actor.h / 2, actor.w, actor.h);
+
+  ctx.fillStyle = cfg.secondary;
+  ctx.fillRect(actor.x - actor.w / 2 + 6, actor.y + actor.h / 2 - 9, actor.w - 12, 6);
+}
+
+function drawPlatform(ctx, platform, cfg) {
+  ctx.fillStyle = `${cfg.secondary}25`;
+  ctx.fillRect(platform.x, platform.y - 3, platform.w, platform.h + 6);
+  ctx.fillStyle = `${cfg.accent}88`;
+  ctx.fillRect(platform.x, platform.y, platform.w, platform.h);
+}
+
 function updateHud(id, score, combo, remainingMs) {
   setText(`${id}Score`, `SCORE: ${Math.max(0, Math.floor(score))}`);
   setText(`${id}Timer`, `TIME: ${(Math.max(0, remainingMs) / 1000).toFixed(1)}s`);
@@ -362,6 +382,37 @@ function initTrial(id) {
   let nextLane = 0;
   let last = performance.now();
   let targets = [];
+  const keys = new Set();
+  let player = null;
+  let platforms = [];
+
+  if (cfg.mode === "platformer") {
+    player = {
+      x: WIDTH * 0.23,
+      y: HEIGHT - 130,
+      w: 28,
+      h: 34,
+      vx: 0,
+      vy: 0,
+      maxSpeed: 330,
+      accel: 2000,
+      drag: 1650,
+      jumpForce: -860,
+      jumpsLeft: 2,
+      coyoteUntil: 0,
+      jumpBufferUntil: 0,
+      grounded: false,
+    };
+
+    platforms = [
+      { x: 0, y: HEIGHT - 46, w: WIDTH, h: 46 },
+      { x: 130, y: HEIGHT - 140, w: 170, h: 18 },
+      { x: 360, y: HEIGHT - 220, w: 155, h: 18 },
+      { x: 575, y: HEIGHT - 145, w: 155, h: 18 },
+      { x: 640, y: HEIGHT - 285, w: 115, h: 18 },
+      { x: 250, y: HEIGHT - 315, w: 125, h: 18 },
+    ];
+  }
 
   updateHud(id, score, combo, remainingMs);
   setText(`${id}Hud`, `${cfg.prompt} | COMBO: ${combo}x`);
@@ -369,6 +420,7 @@ function initTrial(id) {
   actionBtn.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = (event) => {
+    if (cfg.mode === "platformer") return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = WIDTH / rect.width;
     const scaleY = HEIGHT / rect.height;
@@ -463,6 +515,27 @@ function initTrial(id) {
     updateHud(id, score, combo, remainingMs);
   };
 
+  const onKeyDown = (event) => {
+    if (cfg.mode !== "platformer") return;
+    keys.add(event.code);
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) {
+      event.preventDefault();
+    }
+    if (["KeyW", "ArrowUp", "Space"].includes(event.code)) {
+      player.jumpBufferUntil = performance.now() + 120;
+    }
+  };
+
+  const onKeyUp = (event) => {
+    if (cfg.mode !== "platformer") return;
+    keys.delete(event.code);
+  };
+
+  if (cfg.mode === "platformer") {
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+  }
+
   const timer = window.setInterval(() => {
     remainingMs -= 100;
     updateHud(id, score, combo, remainingMs);
@@ -486,13 +559,81 @@ function initTrial(id) {
     while (spawnBudget >= cfg.spawnMs) {
       spawnBudget -= cfg.spawnMs;
       targets.push(spawnTarget(cfg, flipped));
+      if (cfg.mode === "platformer") {
+        const ring = targets[targets.length - 1];
+        ring.x = WIDTH + ring.r + rand(10, 80);
+        ring.y = rand(70, HEIGHT - 110);
+        ring.vx = -rand(cfg.speed[0], cfg.speed[1]);
+        ring.vy = 0;
+      }
+    }
+
+    if (cfg.mode === "platformer") {
+      const moveLeft = keys.has("KeyA") || keys.has("ArrowLeft");
+      const moveRight = keys.has("KeyD") || keys.has("ArrowRight");
+      const axis = Number(moveRight) - Number(moveLeft);
+
+      if (axis !== 0) {
+        player.vx += axis * player.accel * dt;
+      } else {
+        const dragStep = player.drag * dt;
+        if (Math.abs(player.vx) <= dragStep) player.vx = 0;
+        else player.vx -= Math.sign(player.vx) * dragStep;
+      }
+
+      player.vx = clamp(player.vx, -player.maxSpeed, player.maxSpeed);
+
+      const jumpRequested = player.jumpBufferUntil > now;
+      const canGroundJump = now < player.coyoteUntil;
+      if (jumpRequested && (canGroundJump || player.jumpsLeft > 0)) {
+        player.vy = player.jumpForce;
+        player.jumpBufferUntil = 0;
+        if (!canGroundJump) player.jumpsLeft -= 1;
+        player.coyoteUntil = 0;
+        player.grounded = false;
+      }
+
+      player.vy += cfg.gravity * dt;
+
+      const prevBottom = player.y + player.h / 2;
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
+      player.x = clamp(player.x, player.w / 2, WIDTH - player.w / 2);
+
+      player.grounded = false;
+      for (const platform of platforms) {
+        const withinX = player.x + player.w / 2 > platform.x && player.x - player.w / 2 < platform.x + platform.w;
+        const top = platform.y;
+        const playerBottom = player.y + player.h / 2;
+        if (withinX && prevBottom <= top && playerBottom >= top && player.vy >= 0) {
+          player.y = top - player.h / 2;
+          player.vy = 0;
+          player.grounded = true;
+          player.jumpsLeft = 1;
+          player.coyoteUntil = now + 120;
+        }
+      }
+
+      if (player.grounded) {
+        player.coyoteUntil = now + 120;
+      }
+
+      if (player.y - player.h / 2 > HEIGHT + 70) {
+        player.x = WIDTH * 0.23;
+        player.y = HEIGHT - 130;
+        player.vx = 0;
+        player.vy = 0;
+        score -= cfg.missPenalty + 2;
+        combo = 1;
+        streak = 0;
+      }
     }
 
     targets.forEach((target) => {
       target.x += target.vx * dt;
       target.y += target.vy * dt;
       if (target.x - target.r < 0 || target.x + target.r > WIDTH) target.vx *= -1;
-      if (cfg.gravity) target.vy += cfg.gravity * dt;
+      if (cfg.gravity && cfg.mode !== "platformer") target.vy += cfg.gravity * dt;
       if (cfg.mode === "glitch") target.integrity = Math.max(0, target.integrity - dt * 0.2);
       if (cfg.mode === "lock") {
         const phase = ((now - target.born) % 1200) / 1200;
@@ -504,7 +645,12 @@ function initTrial(id) {
     const missBottom = HEIGHT + 40;
     const survivors = [];
     for (const target of targets) {
-      const missed = flipped ? target.y < missTop : target.y > missBottom;
+      const missed =
+        cfg.mode === "platformer"
+          ? target.x + target.r < 0
+          : flipped
+            ? target.y < missTop
+            : target.y > missBottom;
       const breached = cfg.mode === "glitch" && target.integrity <= 0;
       if (missed || breached) {
         score -= cfg.missPenalty;
@@ -518,6 +664,9 @@ function initTrial(id) {
     targets = survivors;
 
     drawBackground(ctx, cfg, remainingMs, flipped);
+    if (cfg.mode === "platformer") {
+      platforms.forEach((platform) => drawPlatform(ctx, platform, cfg));
+    }
     if (cfg.mode === "lane") {
       ctx.strokeStyle = `${cfg.secondary}33`;
       [95, 210, 325].forEach((y, i) => {
@@ -533,11 +682,42 @@ function initTrial(id) {
     }
     const t = performance.now();
     targets.forEach((target) => drawTarget(ctx, cfg, target, t));
+    if (cfg.mode === "platformer") {
+      let gained = 0;
+      const kept = [];
+      for (const target of targets) {
+        if (Math.hypot(target.x - player.x, target.y - player.y) <= target.r + player.w * 0.55) {
+          streak += 1;
+          combo = clamp(1 + Math.floor(streak / 3), 1, 12);
+          bestCombo = Math.max(bestCombo, combo);
+          gained += cfg.scoreBase + combo * 2 + Math.floor((28 - target.r) * 0.5);
+        } else {
+          kept.push(target);
+        }
+      }
+      if (gained > 0) {
+        score += gained;
+      }
+      targets = kept;
+      drawPlatformActor(ctx, player, cfg);
+    }
+
+    updateHud(id, score, combo, remainingMs);
 
     runtime.get(id).raf = window.requestAnimationFrame(frame);
   }
 
-  runtime.set(id, { timer, raf: 0, canvas, score, bestCombo });
+  runtime.set(id, {
+    timer,
+    raf: 0,
+    canvas,
+    score,
+    bestCombo,
+    cleanup: cfg.mode === "platformer" ? () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    } : null,
+  });
   runtime.get(id).raf = window.requestAnimationFrame(frame);
 
   registerGameStop(() => stopTrial(id));
