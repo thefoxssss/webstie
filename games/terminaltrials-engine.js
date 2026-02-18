@@ -41,16 +41,16 @@ const GAME_CONFIG = {
   astrohop: {
     title: "ASTRO HOP",
     durationMs: 32000,
-    spawnMs: 520,
+    spawnMs: 780,
     targetRadius: [14, 24],
     speed: [90, 140],
     scoreBase: 11,
     missPenalty: 6,
-    gravity: -8,
-    bg: ["#070b1d", "#101c45"],
-    accent: "#9bb3ff",
-    secondary: "#a8ffe5",
-    prompt: "THREAD THROUGH ORBIT RINGS BEFORE THEY DESCEND",
+    mode: "platformer",
+    bg: ["#151022", "#3b2d52"],
+    accent: "#d7d0ff",
+    secondary: "#ffd18f",
+    prompt: "LEAP THE CASTLE WALLS, DASH OVER GAPS, GRAB CRESTS, AVOID SPIKES",
   },
   pulsestack: {
     title: "PULSE STACK",
@@ -176,6 +176,7 @@ function stopTrial(id) {
   if (!run) return;
   window.clearInterval(run.timer);
   window.cancelAnimationFrame(run.raf);
+  if (run.cleanup) run.cleanup();
   const canvas = run.canvas;
   if (canvas) canvas.onpointerdown = null;
   runtime.delete(id);
@@ -246,6 +247,44 @@ function drawBackground(ctx, cfg, remainingMs, flipped) {
     ctx.moveTo(0, y);
     ctx.lineTo(WIDTH, y);
     ctx.stroke();
+  }
+
+  if (cfg.mode === "platformer") {
+    const t = performance.now() * 0.001;
+    for (let i = 0; i < 28; i++) {
+      const sx = ((i * 97) % WIDTH) + Math.sin(t * 0.15 + i) * 4;
+      const sy = 26 + ((i * 53) % 190);
+      const twinkle = 0.35 + (Math.sin(t * 1.7 + i * 0.8) + 1) * 0.32;
+      ctx.fillStyle = `rgba(255, 236, 204, ${twinkle.toFixed(2)})`;
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+
+    ctx.fillStyle = "#f6e6b233";
+    ctx.beginPath();
+    ctx.arc(690, 74, 36, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#25173bcc";
+    ctx.beginPath();
+    ctx.moveTo(0, HEIGHT - 96);
+    for (let x = 0; x <= WIDTH; x += 70) {
+      const y = HEIGHT - 110 + Math.sin(x * 0.015 + t * 0.4) * 16;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(WIDTH, HEIGHT);
+    ctx.lineTo(0, HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#201633cc";
+    ctx.fillRect(560, 135, 42, 90);
+    ctx.fillRect(606, 112, 58, 113);
+    ctx.fillRect(668, 128, 48, 97);
+    ctx.fillStyle = "#2f2146";
+    for (let x = 0; x < WIDTH; x += 72) {
+      const h = 14 + ((x / 72) % 2) * 8;
+      ctx.fillRect(x, HEIGHT - 44, 52, h);
+    }
   }
 }
 
@@ -360,6 +399,33 @@ function initTrial(id) {
   let lastHitAt = 0;
   let stackChain = 0;
   let nextLane = 0;
+  const isPlatformer = cfg.mode === "platformer";
+  const keys = { left: false, right: false, jump: false, dash: false };
+  const player = {
+    x: 180,
+    y: HEIGHT - 74,
+    w: 28,
+    h: 36,
+    vy: 0,
+    jumps: 0,
+    onGround: false,
+  };
+  const platforms = isPlatformer
+    ? [{ x: -40, y: HEIGHT - 28, w: WIDTH + 80, h: 38, kind: "floor" }]
+    : [];
+  const hazards = [];
+  const rings = [];
+  const dash = {
+    charges: 2,
+    maxCharges: 2,
+    activeUntil: 0,
+    cooldownUntil: 0,
+    rechargeAt: 0,
+  };
+  let lastTapAt = 0;
+  let platformSpawnAt = 0;
+  let ringSpawnAt = 420;
+  const worldSpeed = 225;
   let last = performance.now();
   let targets = [];
 
@@ -369,6 +435,25 @@ function initTrial(id) {
   actionBtn.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = (event) => {
+    if (isPlatformer) {
+      const now = performance.now();
+      if (now - lastTapAt < 260 && dash.charges > 0 && now >= dash.cooldownUntil) {
+        dash.charges -= 1;
+        dash.activeUntil = now + 260;
+        dash.cooldownUntil = now + 520;
+        if (dash.charges < dash.maxCharges) dash.rechargeAt = now + 1900;
+        lastTapAt = 0;
+        return;
+      }
+      lastTapAt = now;
+      if (player.onGround || player.jumps < 2) {
+        player.vy = -420;
+        player.jumps += 1;
+        player.onGround = false;
+      }
+      return;
+    }
+
     const rect = canvas.getBoundingClientRect();
     const scaleX = WIDTH / rect.width;
     const scaleY = HEIGHT / rect.height;
@@ -463,6 +548,44 @@ function initTrial(id) {
     updateHud(id, score, combo, remainingMs);
   };
 
+  const onKeyDown = (event) => {
+    if (!isPlatformer) return;
+    if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = true;
+    if (event.code === "ArrowRight" || event.code === "KeyD") keys.right = true;
+    if (event.code === "ArrowUp" || event.code === "Space" || event.code === "KeyW") {
+      if (!keys.jump && (player.onGround || player.jumps < 2)) {
+        player.vy = -420;
+        player.jumps += 1;
+        player.onGround = false;
+      }
+      keys.jump = true;
+    }
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight" || event.code === "KeyF") {
+      const now = performance.now();
+      if (!keys.dash && dash.charges > 0 && now >= dash.cooldownUntil) {
+        dash.charges -= 1;
+        dash.activeUntil = now + 260;
+        dash.cooldownUntil = now + 520;
+        if (dash.charges < dash.maxCharges) dash.rechargeAt = now + 1900;
+      }
+      keys.dash = true;
+    }
+  };
+
+  const onKeyUp = (event) => {
+    if (!isPlatformer) return;
+    if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = false;
+    if (event.code === "ArrowRight" || event.code === "KeyD") keys.right = false;
+    if (event.code === "ArrowUp" || event.code === "Space" || event.code === "KeyW") keys.jump = false;
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight" || event.code === "KeyF") keys.dash = false;
+  };
+
+  if (isPlatformer) {
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    setText(`${id}Hud`, `${cfg.prompt} | A/D MOVE · SPACE JUMP · SHIFT/F DASH`);
+  }
+
   const timer = window.setInterval(() => {
     remainingMs -= 100;
     updateHud(id, score, combo, remainingMs);
@@ -482,10 +605,12 @@ function initTrial(id) {
       showToast(`${cfg.title}: POLARITY FLIP`, "🌀");
     }
 
-    spawnBudget += dt * 1000;
-    while (spawnBudget >= cfg.spawnMs) {
-      spawnBudget -= cfg.spawnMs;
-      targets.push(spawnTarget(cfg, flipped));
+    if (!isPlatformer) {
+      spawnBudget += dt * 1000;
+      while (spawnBudget >= cfg.spawnMs) {
+        spawnBudget -= cfg.spawnMs;
+        targets.push(spawnTarget(cfg, flipped));
+      }
     }
 
     targets.forEach((target) => {
@@ -500,22 +625,123 @@ function initTrial(id) {
       }
     });
 
-    const missTop = -40;
-    const missBottom = HEIGHT + 40;
-    const survivors = [];
-    for (const target of targets) {
-      const missed = flipped ? target.y < missTop : target.y > missBottom;
-      const breached = cfg.mode === "glitch" && target.integrity <= 0;
-      if (missed || breached) {
-        score -= cfg.missPenalty;
-        combo = 1;
-        streak = 0;
-        if (cfg.mode === "stack") stackChain = 0;
-      } else {
-        survivors.push(target);
+    if (isPlatformer) {
+      if (dash.charges < dash.maxCharges && now >= dash.rechargeAt) {
+        dash.charges += 1;
+        dash.rechargeAt = dash.charges < dash.maxCharges ? now + 1900 : 0;
       }
+      const dashActive = now < dash.activeUntil;
+      const move = keys.left === keys.right ? 0 : keys.right ? 1 : -1;
+      const baseSpeed = move === 0 ? worldSpeed * 0.85 : worldSpeed + move * 40;
+      const playerSpeed = baseSpeed * (dashActive ? 1.85 : 1);
+      platforms.forEach((platform) => (platform.x -= playerSpeed * dt));
+      hazards.forEach((hazard) => (hazard.x -= playerSpeed * dt));
+      rings.forEach((ring) => (ring.x -= playerSpeed * dt));
+
+      platformSpawnAt -= dt * 1000;
+      ringSpawnAt -= dt * 1000;
+      if (platformSpawnAt <= 0) {
+        platformSpawnAt = rand(580, 900);
+        const w = rand(110, 190);
+        const y = rand(HEIGHT - 160, HEIGHT - 65);
+        const lastPlatform = platforms[platforms.length - 1];
+        const x = Math.max(WIDTH + 20, (lastPlatform?.x || WIDTH) + rand(145, 230));
+        platforms.push({ x, y, w, h: 18, kind: "ledge" });
+        if (Math.random() < 0.45) {
+          hazards.push({
+            x: x + w * rand(0.25, 0.75),
+            y: y - 14,
+            w: 24,
+            h: 14,
+            vy: Math.random() < 0.35 ? rand(-32, 32) : 0,
+          });
+        }
+      }
+      if (ringSpawnAt <= 0 && platforms.length > 1) {
+        ringSpawnAt = rand(460, 760);
+        const p = platforms[randInt(1, platforms.length - 1)];
+        rings.push({ x: p.x + p.w * rand(0.3, 0.8), y: p.y - rand(42, 78), r: rand(13, 19), hit: false });
+      }
+
+      player.vy += 980 * dt;
+      const prevY = player.y;
+      player.y += player.vy * dt;
+      player.onGround = false;
+
+      for (const platform of platforms) {
+        const top = platform.y;
+        const crossedTop = prevY + player.h / 2 <= top && player.y + player.h / 2 >= top;
+        const withinX = player.x + player.w / 2 > platform.x && player.x - player.w / 2 < platform.x + platform.w;
+        if (crossedTop && withinX && player.vy >= 0) {
+          player.y = top - player.h / 2;
+          player.vy = 0;
+          player.onGround = true;
+          player.jumps = 0;
+        }
+      }
+
+      hazards.forEach((hazard) => {
+        if (!hazard.vy) return;
+        hazard.y += hazard.vy * dt;
+        if (hazard.y < 112 || hazard.y > HEIGHT - 42) hazard.vy *= -1;
+      });
+
+      for (const ring of rings) {
+        if (ring.hit) continue;
+        if (Math.hypot(ring.x - player.x, ring.y - player.y) <= ring.r + 14) {
+          ring.hit = true;
+          streak += 1;
+          combo = clamp(1 + Math.floor(streak / 2), 1, 12);
+          bestCombo = Math.max(bestCombo, combo);
+          score += cfg.scoreBase + combo * 3 + (dashActive ? 7 : 0);
+        }
+      }
+
+      const collided = hazards.some(
+        (hazard) =>
+          player.x + player.w / 2 > hazard.x &&
+          player.x - player.w / 2 < hazard.x + hazard.w &&
+          player.y + player.h / 2 > hazard.y &&
+          player.y - player.h / 2 < hazard.y + hazard.h,
+      );
+      if ((collided && !dashActive) || player.y > HEIGHT + 60) {
+        score -= cfg.missPenalty + 4;
+        streak = 0;
+        combo = 1;
+        player.x = 180;
+        player.y = HEIGHT - 74;
+        player.vy = 0;
+        player.jumps = 0;
+      } else {
+        score += dt * (dashActive ? 13 : 6);
+      }
+
+      while (platforms.length > 1 && platforms[0].x + platforms[0].w < -60) platforms.shift();
+      while (hazards.length && hazards[0].x + hazards[0].w < -60) hazards.shift();
+      while (rings.length && (rings[0].x + rings[0].r < -80 || rings[0].hit)) rings.shift();
+      updateHud(id, score, combo, remainingMs);
+      setText(
+        `${id}Hud`,
+        `${cfg.prompt} | COMBO: ${combo}x | DASH: ${"◼".repeat(dash.charges)}${"◻".repeat(dash.maxCharges - dash.charges)}`,
+      );
+    } else {
+      const missTop = -40;
+      const missBottom = HEIGHT + 40;
+      const survivors = [];
+      for (const target of targets) {
+        const missed = flipped ? target.y < missTop : target.y > missBottom;
+        const breached = cfg.mode === "glitch" && target.integrity <= 0;
+        if (missed || breached) {
+          score -= cfg.missPenalty;
+          combo = 1;
+          streak = 0;
+          if (cfg.mode === "stack") stackChain = 0;
+        } else {
+          survivors.push(target);
+        }
+      }
+      targets = survivors;
     }
-    targets = survivors;
 
     drawBackground(ctx, cfg, remainingMs, flipped);
     if (cfg.mode === "lane") {
@@ -534,10 +760,94 @@ function initTrial(id) {
     const t = performance.now();
     targets.forEach((target) => drawTarget(ctx, cfg, target, t));
 
+    if (isPlatformer) {
+      platforms.forEach((platform) => {
+        ctx.fillStyle = "#201a27";
+        ctx.fillRect(platform.x + 4, platform.y + platform.h - 2, platform.w, 8);
+        const stoneGradient = ctx.createLinearGradient(platform.x, platform.y, platform.x, platform.y + platform.h);
+        stoneGradient.addColorStop(0, platform.kind === "floor" ? "#5d475f" : "#7a6176");
+        stoneGradient.addColorStop(1, platform.kind === "floor" ? "#453446" : "#5a495c");
+        ctx.fillStyle = stoneGradient;
+        ctx.fillRect(platform.x, platform.y, platform.w, platform.h);
+        ctx.fillStyle = "#c0a67d";
+        ctx.fillRect(platform.x, platform.y, platform.w, 4);
+        ctx.fillStyle = "#8f7a82";
+        for (let x = platform.x + 8; x < platform.x + platform.w - 8; x += 22) ctx.fillRect(x, platform.y + 8, 14, 2);
+        if (platform.kind !== "floor") {
+          ctx.fillStyle = "#8f7a82";
+          for (let x = platform.x + 6; x < platform.x + platform.w - 6; x += 16) ctx.fillRect(x, platform.y - 6, 10, 6);
+        }
+      });
+      hazards.forEach((hazard) => {
+        const spikeGradient = ctx.createLinearGradient(hazard.x, hazard.y, hazard.x, hazard.y + hazard.h);
+        spikeGradient.addColorStop(0, "#f2f2f2");
+        spikeGradient.addColorStop(1, "#8e8e8e");
+        ctx.fillStyle = spikeGradient;
+        ctx.beginPath();
+        ctx.moveTo(hazard.x, hazard.y + hazard.h);
+        ctx.lineTo(hazard.x + hazard.w / 2, hazard.y);
+        ctx.lineTo(hazard.x + hazard.w, hazard.y + hazard.h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#ffffff99";
+        ctx.fillRect(hazard.x + hazard.w * 0.47, hazard.y + 4, 2, hazard.h - 4);
+      });
+      rings.forEach((ring) => {
+        if (ring.hit) return;
+        ctx.strokeStyle = "#f3cf8e";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r + 1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "#ffefc9";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r - 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "#f7e7bf";
+        ctx.fillRect(ring.x - 2, ring.y - ring.r + 3, 4, 7);
+      });
+
+      const px = player.x - player.w / 2;
+      const py = player.y - player.h / 2;
+      ctx.fillStyle = "#2a2030";
+      ctx.fillRect(px + 3, py + player.h - 2, player.w, 4);
+      ctx.fillStyle = "#d2d2dc";
+      ctx.fillRect(px, py + 8, player.w, player.h - 8);
+      ctx.fillStyle = "#a7a7b6";
+      ctx.fillRect(px, py + 8, 5, player.h - 8);
+      if (t < dash.activeUntil) {
+        ctx.fillStyle = "#ffcf86bb";
+        ctx.fillRect(px - 16, py + 6, 12, 6);
+        ctx.fillRect(px - 32, py + 12, 10, 5);
+        ctx.fillRect(px - 46, py + 16, 8, 4);
+      }
+      ctx.fillStyle = "#ffe9b8";
+      ctx.fillRect(player.x - 8, player.y - 14, 16, 10);
+      ctx.fillStyle = "#30222f";
+      ctx.fillRect(player.x + 2, player.y - 10, 3, 2);
+      ctx.fillStyle = "#724a2c";
+      ctx.fillRect(player.x + 9, player.y - 8, 12, 4);
+      ctx.fillStyle = "#9b2f43cc";
+      ctx.fillRect(px - 4, py + 12, 6, player.h - 12);
+    }
+
     runtime.get(id).raf = window.requestAnimationFrame(frame);
   }
 
-  runtime.set(id, { timer, raf: 0, canvas, score, bestCombo });
+  runtime.set(id, {
+    timer,
+    raf: 0,
+    canvas,
+    score,
+    bestCombo,
+    cleanup: isPlatformer
+      ? () => {
+          window.removeEventListener("keydown", onKeyDown);
+          window.removeEventListener("keyup", onKeyUp);
+        }
+      : null,
+  });
   runtime.get(id).raf = window.requestAnimationFrame(frame);
 
   registerGameStop(() => stopTrial(id));

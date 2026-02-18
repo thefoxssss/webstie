@@ -121,7 +121,7 @@
         <button class="game-card" data-game="emulator" data-tags="skill" onclick="window.launchGame('emulator')"><span>🖥️</span><strong>CPU EMULATOR</strong><small>Program-like puzzle sandbox challenge.</small></button>
         <button class="game-card" data-game="byteblitz" data-tags="arcade skill" onclick="window.launchGame('byteblitz')"><span>💾</span><strong>BYTE BLITZ</strong><small>Defend the buffer with ship controls, waves, and powerups.</small></button>
         <button class="game-card" data-game="ciphercrack" data-tags="skill" onclick="window.launchGame('ciphercrack')"><span>🔐</span><strong>CIPHER CRACK</strong><small>Trace symbol chains to crack shifting cipher sequences.</small></button>
-        <button class="game-card" data-game="astrohop" data-tags="arcade skill" onclick="window.launchGame('astrohop')"><span>🛰️</span><strong>ASTRO HOP</strong><small>Chain thruster taps to build momentum points.</small></button>
+        <button class="game-card" data-game="astrohop" data-tags="arcade skill platformer" onclick="window.launchGame('astrohop')"><span>🏰</span><strong>ASTRO HOP</strong><small>Castle run: leap battlements, dash gaps, claim crests, dodge spikes.</small></button>
         <button class="game-card" data-game="pulsestack" data-tags="arcade skill" onclick="window.launchGame('pulsestack')"><span>📶</span><strong>PULSE STACK</strong><small>Stack reactor pulses under hard time pressure.</small></button>
         <button class="game-card" data-game="glitchgate" data-tags="arcade" onclick="window.launchGame('glitchgate')"><span>🧩</span><strong>GLITCH GATE</strong><small>Patch unstable sectors and chase combo bonus.</small></button>
         <button class="game-card" data-game="orbweaver" data-tags="skill" onclick="window.launchGame('orbweaver')"><span>🟣</span><strong>ORB WEAVER</strong><small>Weave energy orbs to push a high-score run.</small></button>
@@ -1505,9 +1505,9 @@
       <div class="high-score-display">HIGH: <span id="hsAstrohop">0</span></div>
       <div style="margin-bottom: 10px" id="astrohopTimer">TIME: 17.0s</div>
       <div style="margin-bottom: 8px" id="astrohopScore">SCORE: 0</div>
-      <div style="margin-bottom: 12px" id="astrohopHud">THREAD THROUGH ORBIT RINGS BEFORE THEY DESCEND</div>
+      <div style="margin-bottom: 12px" id="astrohopHud">LEAP THE CASTLE WALLS, DASH OVER GAPS, GRAB CRESTS, AVOID SPIKES</div>
       <canvas id="astrohopCanvas" width="800" height="420"></canvas>
-      <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
+      <div class="mobile-hint active" style="margin-top: 10px">TAP TO JUMP · DOUBLE-TAP TO DASH · A/D OR ←/→ TO PACE</div>
       <button class="term-btn" id="astrohopAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
