@@ -429,6 +429,7 @@ function initTrial(id) {
   let coyoteUntil = 0;
   let cameraX = 0;
   let furthestPlatformX = platforms[0]?.x + platforms[0]?.w || WIDTH;
+  let lastPlatformY = HEIGHT - 118;
   let bestDistance = 0;
   let last = performance.now();
   let targets = [];
@@ -652,6 +653,7 @@ function initTrial(id) {
         const y = rand(HEIGHT - 196, HEIGHT - 72);
         const x = furthestPlatformX + rand(108, 200);
         platforms.push({ x, y, w, h: 18, kind: "ledge" });
+        lastPlatformY = y;
         furthestPlatformX = Math.max(furthestPlatformX, x + w);
         if (Math.random() < 0.4) {
           hazards.push({
@@ -680,8 +682,6 @@ function initTrial(id) {
 
       const prevBottom = prevY + player.h / 2;
       const curBottom = player.y + player.h / 2;
-      const prevRight = prevX + player.w / 2;
-      const prevLeft = prevX - player.w / 2;
       const curRight = player.x + player.w / 2;
       const curLeft = player.x - player.w / 2;
 
