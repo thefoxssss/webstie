@@ -622,6 +622,14 @@
             <span class="keybind-key">[L]</span>
             <span class="keybind-ability">Ranged Attack</span>
         </div>
+        <div class="keybind-item">
+            <span class="keybind-key">[G]</span>
+            <span class="keybind-ability">Grapple Hook</span>
+        </div>
+        <div class="keybind-item">
+            <span class="keybind-key">[X]</span>
+            <span class="keybind-ability">Execution (Boss Finisher)</span>
+        </div>
         <div id="additionalKeybinds"></div>
     </div>
     
@@ -647,7 +655,7 @@
     
     <!-- Controls -->
     <div class="controls">
-        WASD/Arrows: Move & Aim Knife | SPACE: Jump | J: Dagger | K: Dash | L: Knife<br>
+        WASD/Arrows: Move & Aim Knife | SPACE: Jump | J: Dagger | K: Dash | L: Knife | G: Grapple | X: Execute<br>
         Q/E: Special Abilities
     </div>
     
@@ -1057,6 +1065,12 @@
                 this.dashFrame = 0;
                 this.dashCooldown = 0;
                 this.dashSpeed = 15;
+
+                // Grapple Hook
+                this.grappling = false;
+                this.grapplePoint = null;
+                this.grappleCooldown = 0;
+                this.grappleTimer = 0;
                 
                 // Ranged with directional aiming
                 this.rangedCooldown = 0;
@@ -1117,6 +1131,105 @@
                 this.frozenEnemies = new Set();
                 this.markedEnemies = new Set();
                 this.regenTimer = 0;
+            }
+
+            fireGrapple() {
+                if (this.grappleCooldown > 0 || this.grappling) return;
+
+                let dirX = 0;
+                let dirY = 0;
+                if (keys['w'] || keys['arrowup']) dirY = -1;
+                if (keys['s'] || keys['arrowdown']) dirY = 1;
+                if (keys['a'] || keys['arrowleft']) dirX = -1;
+                if (keys['d'] || keys['arrowright']) dirX = 1;
+
+                if (dirX === 0 && dirY === 0) {
+                    dirX = this.facing;
+                    dirY = -0.4;
+                }
+
+                const mag = Math.hypot(dirX, dirY) || 1;
+                dirX /= mag;
+                dirY /= mag;
+
+                const maxDistance = 360;
+                const anchors = [];
+
+                for (const platform of currentRoom.platforms) {
+                    anchors.push({ x: platform.x + platform.width / 2, y: platform.y - 6 });
+                    anchors.push({ x: platform.x + 10, y: platform.y - 6 });
+                    anchors.push({ x: platform.x + platform.width - 10, y: platform.y - 6 });
+                }
+
+                for (let i = 0; i < 6; i++) {
+                    anchors.push({ x: 120 + i * 180, y: 90 + (i % 2) * 20 });
+                }
+
+                let bestAnchor = null;
+                let bestScore = -Infinity;
+
+                for (const anchor of anchors) {
+                    const dx = anchor.x - this.x;
+                    const dy = anchor.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < 70 || dist > maxDistance) continue;
+
+                    const ndx = dx / dist;
+                    const ndy = dy / dist;
+                    const alignment = ndx * dirX + ndy * dirY;
+                    const score = alignment * 1000 - dist;
+                    if (alignment > 0.35 && score > bestScore) {
+                        bestScore = score;
+                        bestAnchor = anchor;
+                    }
+                }
+
+                if (!bestAnchor) return;
+
+                this.grappling = true;
+                this.grapplePoint = bestAnchor;
+                this.grappleTimer = 20;
+                this.grappleCooldown = 75;
+                this.onGround = false;
+                this.hasDoubleJumped = false;
+            }
+
+            tryExecution() {
+                if (!currentRoom.boss || currentRoom.boss.health <= 0) return;
+
+                const boss = currentRoom.boss;
+                const dist = Math.hypot(boss.x - this.x, boss.y - this.y);
+                const canExecute = boss.health <= boss.maxHealth * 0.14 && dist < 95;
+                if (!canExecute || executionCinematic) return;
+
+                executionCinematic = {
+                    timer: 42,
+                    bossName: boss.type,
+                    x: boss.x,
+                    y: boss.y
+                };
+
+                this.invincible = true;
+                boss.frozen = true;
+
+                for (let i = 0; i < 120; i++) {
+                    particles.push(new Particle(
+                        boss.x,
+                        boss.y,
+                        ['#ff0000', '#ffd700', '#ffffff'][Math.floor(Math.random() * 3)],
+                        (Math.random() - 0.5) * 12,
+                        (Math.random() - 0.5) * 12,
+                        40
+                    ));
+                }
+
+                setTimeout(() => {
+                    if (currentRoom.boss === boss) {
+                        boss.takeDamage(999999);
+                        boss.frozen = false;
+                    }
+                    this.invincible = false;
+                }, 320);
             }
 
             attack() {
@@ -4038,6 +4151,7 @@
                 if (this.attackCooldown > 0) this.attackCooldown--;
                 if (this.dashCooldown > 0) this.dashCooldown--;
                 if (this.rangedCooldown > 0) this.rangedCooldown--;
+                if (this.grappleCooldown > 0) this.grappleCooldown--;
                 if (this.special1Cooldown > 0) this.special1Cooldown--;
                 if (this.special2Cooldown > 0) this.special2Cooldown--;
                 if (this.special3Cooldown > 0) this.special3Cooldown--;
@@ -4087,6 +4201,34 @@
                         this.dashFrame = 0;
                     }
                 }
+
+                if (this.grappling && this.grapplePoint) {
+                    const toX = this.grapplePoint.x - this.x;
+                    const toY = this.grapplePoint.y - this.y;
+                    const dist = Math.hypot(toX, toY);
+
+                    this.grappleTimer--;
+                    if (dist < 22 || this.grappleTimer <= 0) {
+                        this.grappling = false;
+                        this.grapplePoint = null;
+                    } else {
+                        this.vx += (toX / dist) * 1.8;
+                        this.vy += (toY / dist) * 1.8;
+                        this.vx *= 0.95;
+                        this.vy *= 0.95;
+
+                        for (let i = 0; i < 2; i++) {
+                            particles.push(new Particle(
+                                this.x,
+                                this.y,
+                                '#9aa0a6',
+                                (Math.random() - 0.5) * 1.5,
+                                (Math.random() - 0.5) * 1.5,
+                                16
+                            ));
+                        }
+                    }
+                }
                 
                 // Physics
                 this.vy += this.gravity;
@@ -4130,6 +4272,23 @@
 
             draw() {
                 const skinColors = getEquippedSkin().colors;
+
+                if (this.grappling && this.grapplePoint) {
+                    ctx.save();
+                    ctx.strokeStyle = '#c0c0c0';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - 6);
+                    ctx.lineTo(this.grapplePoint.x, this.grapplePoint.y);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.arc(this.grapplePoint.x, this.grapplePoint.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(this.facing, 1);
@@ -4892,6 +5051,11 @@
                 this.summonedMinions = [];
                 this.enrageMultiplier = 1;
                 this.comboCooldown = 120;
+
+                const signatureData = BOSS_SIGNATURE_MOVES[type] || { name: 'Fatal Art', cooldown: 230 };
+                this.signatureMoveName = signatureData.name;
+                this.signatureBaseCooldown = signatureData.cooldown;
+                this.signatureCooldown = Math.floor(this.signatureBaseCooldown * 0.75);
             }
 
             update() {
@@ -4965,6 +5129,7 @@
                 if (this.attackCooldown > 0) this.attackCooldown--;
                 if (this.specialCooldown > 0) this.specialCooldown--;
                 if (this.comboCooldown > 0) this.comboCooldown--;
+                if (this.signatureCooldown > 0) this.signatureCooldown--;
 
                 this.enrageMultiplier = 1 + Math.min(0.55, roomNumber * 0.01);
                 
@@ -4995,8 +5160,115 @@
                 
                 // Boss-specific attack patterns
                 this.executeAttackPattern(dx, dy, dist);
+                this.performSignatureMove(dx, dy, dist);
                 
                 this.animFrame++;
+            }
+
+            performSignatureMove(dx, dy, dist) {
+                if (this.signatureCooldown > 0 || dist > 560) return;
+
+                this.signatureCooldown = Math.max(95, this.signatureBaseCooldown - this.phase * 18);
+
+                for (let i = 0; i < 28; i++) {
+                    particles.push(new Particle(
+                        this.x,
+                        this.y,
+                        this.color,
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6,
+                        36
+                    ));
+                }
+
+                switch (this.type) {
+                    case 'Crimson Knight':
+                        for (let i = -2; i <= 2; i++) {
+                            projectiles.push(new Projectile(this.x, this.y, (this.facing > 0 ? 0 : Math.PI) + i * 0.12, 9, 'enemy'));
+                        }
+                        break;
+                    case 'Shadow Lord':
+                        for (let i = 0; i < 8; i++) {
+                            setTimeout(() => {
+                                const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5;
+                                projectiles.push(new Projectile(this.x, this.y, a, 8, 'enemy'));
+                            }, i * 60);
+                        }
+                        break;
+                    case 'Frost Warden':
+                        for (let i = 0; i < 12; i++) {
+                            const angle = (Math.PI * 2 / 12) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 5.5, 'enemy'));
+                        }
+                        break;
+                    case 'Flame Tyrant':
+                        for (let i = 0; i < 18; i++) {
+                            const angle = (Math.PI * 2 / 18) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 7.5, 'enemy'));
+                        }
+                        break;
+                    case 'Stone Golem':
+                        if (Math.abs(player.x - this.x) < 180) player.takeDamage(this.baseDamage * 0.8);
+                        this.vy = -10;
+                        break;
+                    case 'Toxic Assassin':
+                        for (let i = 0; i < 10; i++) {
+                            const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.9;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 6.5, 'enemy'));
+                        }
+                        break;
+                    case 'Thunder King':
+                        for (let i = 0; i < 4; i++) {
+                            setTimeout(() => {
+                                const angle = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5) * 0.4;
+                                projectiles.push(new Projectile(this.x, this.y, angle, 11, 'enemy'));
+                            }, i * 90);
+                        }
+                        break;
+                    case 'Necromancer':
+                        for (let i = 0; i < 3; i++) {
+                            const base = (Math.PI * 2 / 3) * i;
+                            for (let j = -1; j <= 1; j++) {
+                                projectiles.push(new Projectile(this.x, this.y, base + j * 0.16, 7, 'enemy'));
+                            }
+                        }
+                        break;
+                    case 'Blood Reaper':
+                        this.vx = this.facing * this.speed * 3.3;
+                        break;
+                    case 'Void Walker':
+                        for (let i = 0; i < 5; i++) {
+                            const angle = Math.atan2(dy, dx) + (i - 2) * 0.25;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 9.2, 'enemy'));
+                        }
+                        break;
+                    case 'Crystal Sage':
+                        for (let i = 0; i < 14; i++) {
+                            const angle = (Math.PI * 2 / 14) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 6.7, 'enemy'));
+                        }
+                        break;
+                    case 'Iron Colossus':
+                        this.vx = this.facing * this.speed * 2.2;
+                        player.takeDamage(this.baseDamage * 0.45);
+                        break;
+                    case 'Phantom Assassin':
+                        this.x = player.x - this.facing * 45;
+                        this.y = Math.max(120, player.y - 10);
+                        player.takeDamage(this.baseDamage * 0.6);
+                        break;
+                    case 'Plague Doctor':
+                        for (let i = 0; i < 16; i++) {
+                            const angle = (Math.PI * 2 / 16) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, i % 2 === 0 ? 4.8 : 7.8, 'enemy'));
+                        }
+                        break;
+                    case 'Storm Herald':
+                        for (let i = -3; i <= 3; i++) {
+                            projectiles.push(new Projectile(this.x, this.y, Math.atan2(dy, dx) + i * 0.2, 8.5, 'enemy'));
+                        }
+                        break;
+                }
             }
             
             executeAttackPattern(dx, dy, dist) {
@@ -6841,11 +7113,21 @@
                 ctx.shadowBlur = 8;
                 ctx.fillText(this.type, this.x, barY - 14);
                 ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#9ad1ff';
+                ctx.font = 'bold 11px Courier New';
+                ctx.fillText(`Signature: ${this.signatureMoveName}`, this.x, barY - 24);
                 
                 // Health text
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 10px Courier New';
                 ctx.fillText(Math.floor(this.health) + ' / ' + this.maxHealth, this.x, barY + 10);
+
+                if (currentRoom && currentRoom.isBossRoom) {
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.88)';
+                    ctx.font = 'bold 18px Courier New';
+                    ctx.fillText('DUEL ROOM - NO MINIONS', canvas.width / 2, 44);
+                }
             }
 
             takeDamage(damage) {
@@ -6899,6 +7181,24 @@
             'Blood Reaper', 'Void Walker', 'Crystal Sage', 'Iron Colossus',
             'Phantom Assassin', 'Plague Doctor', 'Storm Herald'
         ];
+
+        const BOSS_SIGNATURE_MOVES = {
+            'Crimson Knight': { name: 'Royal Cleave', cooldown: 260 },
+            'Shadow Lord': { name: 'Nightfall Volley', cooldown: 220 },
+            'Frost Warden': { name: 'Permafrost Ring', cooldown: 250 },
+            'Flame Tyrant': { name: 'Inferno Spiral', cooldown: 215 },
+            'Stone Golem': { name: 'Quake Stomp', cooldown: 280 },
+            'Toxic Assassin': { name: 'Venom Bloom', cooldown: 230 },
+            'Thunder King': { name: 'Storm Cage', cooldown: 210 },
+            'Necromancer': { name: 'Soul Lattice', cooldown: 245 },
+            'Blood Reaper': { name: 'Hemorrhage Arc', cooldown: 230 },
+            'Void Walker': { name: 'Void Lances', cooldown: 225 },
+            'Crystal Sage': { name: 'Prism Barrage', cooldown: 220 },
+            'Iron Colossus': { name: 'Anvil Drop', cooldown: 290 },
+            'Phantom Assassin': { name: 'Mirror Rush', cooldown: 205 },
+            'Plague Doctor': { name: 'Miasma Net', cooldown: 235 },
+            'Storm Herald': { name: 'Tempest Fan', cooldown: 215 }
+        };
 
         const BOSS_THEME_PALETTE = {
             'Crimson Knight': { primary: '#8b0000', accent: '#ffd700', glow: 'rgba(220, 20, 60, 0.2)' },
@@ -7915,6 +8215,7 @@
         let gameStarted = false;
         let showingUpgrade = false;
         let gameOver = false;
+        let executionCinematic = null;
 
         const STORE_ITEMS = [
             { id: 'classic', name: 'Classic Garb', price: 0, colors: { body: '#1a1a1a', hood: '#0a0a0a', eyes: '#ff0000', belt: '#4a2511' } },
@@ -8066,6 +8367,40 @@
                 }
             }
         }
+
+        function drawExecutionCinematic() {
+            if (!executionCinematic) return;
+
+            executionCinematic.timer--;
+
+            ctx.save();
+            const alpha = Math.min(0.7, executionCinematic.timer / 42);
+            ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#ff1a1a';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(executionCinematic.x - 60, executionCinematic.y - 60);
+            ctx.lineTo(executionCinematic.x + 60, executionCinematic.y + 60);
+            ctx.moveTo(executionCinematic.x + 60, executionCinematic.y - 60);
+            ctx.lineTo(executionCinematic.x - 60, executionCinematic.y + 60);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 34px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText('EXECUTION', canvas.width / 2, 120);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px Courier New';
+            ctx.fillText(executionCinematic.bossName, canvas.width / 2, 150);
+            ctx.restore();
+
+            if (executionCinematic.timer <= 0) {
+                executionCinematic = null;
+            }
+        }
         
         // SECRET CHEAT CODE SYSTEM
         let cheatCode = '';
@@ -8127,6 +8462,14 @@
             // Dash
             if (e.key.toLowerCase() === 'k') {
                 player.dash();
+            }
+
+            if (e.key.toLowerCase() === 'g') {
+                player.fireGrapple();
+            }
+
+            if (e.key.toLowerCase() === 'x') {
+                player.tryExecution();
             }
             
             // Specials - ALL 6 SLOTS!
@@ -8371,6 +8714,8 @@
             
             // Draw player
             player.draw();
+
+            drawExecutionCinematic();
             
             // Check for room transition
             const roomCleared = currentRoom.isSafeRoom || (currentRoom.boss ? 
@@ -8507,6 +8852,7 @@
             projectiles = [];
             shadowClones = [];
             gameOver = false;
+            executionCinematic = null;
             resetFrameClock();
         });
 
@@ -8573,6 +8919,7 @@
             shadowClones = [];
             gameStarted = true;
             gameOver = false;
+            executionCinematic = null;
             resetFrameClock();
             document.getElementById('gameOverScreen').style.display = 'none';
         });
@@ -8613,6 +8960,7 @@
                 shadowClones = [];
                 gameStarted = true;
                 gameOver = false;
+                executionCinematic = null;
                 resetFrameClock();
                 document.getElementById('gameOverScreen').style.display = 'none';
             } else {
@@ -8627,6 +8975,7 @@
             document.getElementById('mainMenu').style.display = 'flex';
             gameStarted = false;
             gameOver = false;
+            executionCinematic = null;
             resetFrameClock();
             
             // Reset game state
