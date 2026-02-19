@@ -1186,22 +1186,30 @@
                     
                     for (let s = 0; s < strikes; s++) {
                         setTimeout(() => {
-                            // Check for hits on enemies
-                            const attackRange = 70;
-                            const attackWidth = 45;
-                            
-                            // Calculate attack position in the attack direction
-                            const attackX = this.x + dirX * attackRange;
-                            const attackY = this.y + dirY * attackRange;
-                            
+                            // Refined melee hitbox: short forward cone with tighter side width
+                            const maxReach = 82;
+                            const minReach = -12;
+                            const closeHitRadius = 26;
+
                             // Check collision with enemies
                             for (let i = currentRoom.enemies.length - 1; i >= 0; i--) {
                                 const enemy = currentRoom.enemies[i];
-                                const dx = enemy.x - attackX;
-                                const dy = enemy.y - attackY;
-                                const dist = Math.sqrt(dx * dx + dy * dy);
-                                
-                                if (dist < attackWidth) {
+                                const dx = enemy.x - this.x;
+                                const dy = enemy.y - this.y;
+
+                                const forwardDist = dx * dirX + dy * dirY;
+                                const sideDist = Math.abs(dx * dirY - dy * dirX);
+                                const adaptiveHalfWidth = 20 + Math.max(0, forwardDist) * 0.22;
+                                const closeDistSq = dx * dx + dy * dy;
+
+                                const inSlashCone = (
+                                    forwardDist > minReach &&
+                                    forwardDist < maxReach &&
+                                    sideDist < adaptiveHalfWidth
+                                );
+                                const inCloseRange = closeDistSq < closeHitRadius * closeHitRadius;
+
+                                if (inSlashCone || inCloseRange) {
                                     const baseDamage = this.attackDamage * (1 + this.upgrades.damage * 0.15);
                                     const damageMultiplier = this.damageMultiplier * (mythicMode ? 5 : 1);
                                     let finalDamage = baseDamage * damageMultiplier;
@@ -1264,13 +1272,23 @@
                                 }
                             }
                             
-                            // Check collision with boss
+                            // Check boss collision with same refined slash hitbox (slightly more forgiving)
                             if (currentRoom.boss && currentRoom.boss.health > 0) {
-                                const dx = currentRoom.boss.x - attackX;
-                                const dy = currentRoom.boss.y - attackY;
-                                const dist = Math.sqrt(dx * dx + dy * dy);
-                                
-                                if (dist < attackWidth + 25) {
+                                const dx = currentRoom.boss.x - this.x;
+                                const dy = currentRoom.boss.y - this.y;
+                                const forwardDist = dx * dirX + dy * dirY;
+                                const sideDist = Math.abs(dx * dirY - dy * dirX);
+                                const closeDistSq = dx * dx + dy * dy;
+                                const bossHalfWidth = 34 + Math.max(0, forwardDist) * 0.24;
+
+                                const inBossSlashCone = (
+                                    forwardDist > minReach &&
+                                    forwardDist < maxReach + 24 &&
+                                    sideDist < bossHalfWidth
+                                );
+                                const inBossCloseRange = closeDistSq < (closeHitRadius + 16) * (closeHitRadius + 16);
+
+                                if (inBossSlashCone || inBossCloseRange) {
                                     const baseDamage = this.attackDamage * (1 + this.upgrades.damage * 0.15);
                                     const damageMultiplier = this.damageMultiplier * (mythicMode ? 5 : 1);
                                     let finalDamage = baseDamage * damageMultiplier;
@@ -1322,8 +1340,8 @@
                                 const angle = attackAngle + (Math.random() - 0.5) * Math.PI * 0.5;
                                 const speed = Math.random() * 5 + 3;
                                 particles.push(new Particle(
-                                    attackX,
-                                    attackY,
+                                    this.x + dirX * 56,
+                                    this.y + dirY * 56,
                                     Math.random() > 0.5 ? '#1a1a1a' : '#4a4a4a',
                                     Math.cos(angle) * speed,
                                     Math.sin(angle) * speed,
@@ -4203,46 +4221,53 @@
                 ctx.fillStyle = skinColors.belt;
                 ctx.fillRect(-this.width / 2, 0, this.width, 4);
                 
-                // Weapon (katana-style slash)
+                // Weapon (refined dagger slash)
                 if (this.attacking && this.attackDirection !== null) {
                     ctx.save();
                     const swingProgress = Math.min(1, this.attackFrame / 8);
-                    const slashArc = (-0.55 + swingProgress * 1.1) * this.facing;
+                    const slashArc = (-0.42 + swingProgress * 0.84) * this.facing;
                     ctx.rotate(this.attackDirection + slashArc);
 
-                    // Katana blade
-                    ctx.fillStyle = '#d8dee9';
+                    // Blade
+                    ctx.fillStyle = '#c8ccd2';
                     ctx.beginPath();
-                    ctx.moveTo(70, 0);
-                    ctx.quadraticCurveTo(34, -5, 8, -3);
-                    ctx.lineTo(8, 3);
-                    ctx.quadraticCurveTo(35, 4, 70, 0);
+                    ctx.moveTo(52, 0);
+                    ctx.lineTo(14, -4);
+                    ctx.lineTo(10, 0);
+                    ctx.lineTo(14, 4);
                     ctx.closePath();
                     ctx.fill();
 
-                    // Hamon/highlight
-                    ctx.strokeStyle = '#ffffff';
+                    // Spine highlight
+                    ctx.strokeStyle = '#f5f8ff';
                     ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.moveTo(60, -0.5);
-                    ctx.quadraticCurveTo(34, -2.5, 14, -1);
+                    ctx.moveTo(44, -0.5);
+                    ctx.lineTo(16, -1.8);
                     ctx.stroke();
 
                     // Guard
-                    ctx.fillStyle = '#c9a227';
-                    ctx.fillRect(6, -4, 4, 8);
+                    ctx.fillStyle = '#9da5ad';
+                    ctx.fillRect(9, -4, 4, 8);
 
-                    // Handle wrap
-                    ctx.fillStyle = '#2d1b12';
-                    ctx.fillRect(-8, -2.5, 14, 5);
-                    ctx.strokeStyle = '#9b7a4a';
+                    // Handle
+                    ctx.fillStyle = '#5a3a20';
+                    ctx.fillRect(-2, -3, 12, 6);
+                    ctx.strokeStyle = '#8b5a34';
                     ctx.lineWidth = 1;
-                    for (let i = -6; i <= 4; i += 4) {
+                    for (let i = 0; i < 3; i++) {
+                        const x = -1 + i * 4;
                         ctx.beginPath();
-                        ctx.moveTo(i, -2.5);
-                        ctx.lineTo(i + 4, 2.5);
+                        ctx.moveTo(x, -3);
+                        ctx.lineTo(x + 4, 3);
                         ctx.stroke();
                     }
+
+                    // Pommel
+                    ctx.fillStyle = '#d7b56d';
+                    ctx.beginPath();
+                    ctx.arc(-2, 0, 2.6, 0, Math.PI * 2);
+                    ctx.fill();
 
                     ctx.restore();
                 }
