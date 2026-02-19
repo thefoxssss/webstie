@@ -900,7 +900,49 @@ const SHOP_ITEMS = [
     type: "visual",
     desc: "Unlock Flappy Goon",
   },
+  {
+    id: "item_salary_boost",
+    name: "ARCADE PAY CHIP",
+    cost: 9000,
+    type: "perk",
+    desc: "+35% cash from game runs",
+  },
+  {
+    id: "item_combo_insurance",
+    name: "COMBO INSURANCE",
+    cost: 7000,
+    type: "perk",
+    desc: "Game-over payout floor becomes $120",
+  },
+  {
+    id: "item_xp_router",
+    name: "XP ROUTER",
+    cost: 12000,
+    type: "perk",
+    desc: "+40% season XP from games",
+  },
+  {
+    id: "item_bank_drone",
+    name: "BANK DRONE",
+    cost: 18000,
+    type: "perk",
+    desc: "High-score bonus scales harder",
+  },
 ];
+
+const GAME_PAYOUT_CONFIG = Object.freeze({
+  pong: { rate: 10, xpRate: 1.2 },
+  snake: { rate: 4, xpRate: 1.1 },
+  runner: { rate: 5, xpRate: 1.15 },
+  geo: { rate: 5, xpRate: 1.1 },
+  flappy: { rate: 20, xpRate: 1.4 },
+  dodge: { rate: 4, xpRate: 1.2 },
+  blackjack: { rate: 1, xpRate: 1 },
+  corebreaker: { rate: 0.2, xpRate: 1.3 },
+  neondefender: { rate: 3, xpRate: 1.25 },
+  voidminer: { rate: 2.5, xpRate: 1.25 },
+  default: { rate: 3, xpRate: 1.1 },
+});
 
 const STOCK_SYMBOLS = [
   { symbol: "GOON", name: "GOON TECH" },
@@ -4013,12 +4055,42 @@ export function clearRestartListener() {
   window.removeEventListener("keydown", quickRestartListener);
 }
 
+function calculateGameRewards(game, score) {
+  const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+  const cfg = GAME_PAYOUT_CONFIG[game] || GAME_PAYOUT_CONFIG.default;
+  const baseline = 20;
+  const scaled = Math.floor(safeScore * cfg.rate);
+  let cashReward = Math.min(12000, baseline + scaled);
+  if (hasActiveItem("item_bank_drone")) {
+    cashReward += Math.floor(Math.sqrt(safeScore) * 12);
+  }
+  if (hasActiveItem("item_salary_boost")) {
+    cashReward = Math.floor(cashReward * 1.35);
+  }
+  if (hasActiveItem("item_combo_insurance")) {
+    cashReward = Math.max(cashReward, 120);
+  }
+
+  let xpReward = Math.max(10, Math.floor(Math.sqrt(safeScore + 1) * 4 * cfg.xpRate));
+  if (hasActiveItem("item_xp_router")) {
+    xpReward = Math.floor(xpReward * 1.4);
+  }
+  return { cashReward, xpReward };
+}
+
 // Show a game over modal and set up restart handling.
 export function showGameOver(game, score) {
   stopAllGames();
   currentGame = game;
+  const rewards = calculateGameRewards(game, score);
+  myMoney += rewards.cashReward;
+  logTransaction(`GAME PAYOUT: ${String(game || "arcade").toUpperCase()}`, rewards.cashReward);
+  grantSeasonXp(rewards.xpReward);
+  saveStats();
+  updateUI();
   beep(150, "sawtooth", 0.5);
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
+  showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   document.getElementById("modalGameOver").classList.add("active");
   window.addEventListener("keydown", quickRestartListener);
 }
