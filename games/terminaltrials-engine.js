@@ -429,6 +429,7 @@ function initTrial(id) {
   let coyoteUntil = 0;
   let cameraX = 0;
   let furthestPlatformX = platforms[0]?.x + platforms[0]?.w || WIDTH;
+  let lastPlatformY = HEIGHT - 118;
   let bestDistance = 0;
   let last = performance.now();
   let targets = [];
@@ -560,7 +561,7 @@ function initTrial(id) {
     if (event.code === "ArrowUp" || event.code === "Space" || event.code === "KeyW") {
       const now = performance.now();
       if (!keys.jump && (player.onGround || now < coyoteUntil || player.jumps < 2)) {
-        player.vy = player.jumps === 0 || player.onGround || now < coyoteUntil ? -430 : -400;
+        player.vy = player.jumps === 0 || player.onGround || now < coyoteUntil ? -460 : -420;
         player.jumps = Math.min(2, player.jumps + 1);
         player.onGround = false;
         coyoteUntil = 0;
@@ -639,7 +640,7 @@ function initTrial(id) {
       }
       const dashActive = now < dash.activeUntil;
       const move = keys.left === keys.right ? 0 : keys.right ? 1 : -1;
-      const runSpeed = dashActive ? 310 : 228;
+      const runSpeed = dashActive ? 285 : 205;
       player.vx = move * runSpeed;
 
       cameraX = Math.max(0, player.x - 220);
@@ -647,13 +648,15 @@ function initTrial(id) {
       platformSpawnAt -= dt * 1000;
       ringSpawnAt -= dt * 1000;
       if (platformSpawnAt <= 0 && furthestPlatformX < cameraX + WIDTH + 860) {
-        platformSpawnAt = rand(470, 760);
-        const w = rand(86, 152);
-        const y = rand(HEIGHT - 196, HEIGHT - 72);
-        const x = furthestPlatformX + rand(140, 260);
+        platformSpawnAt = rand(540, 860);
+        const w = rand(126, 192);
+        const yStep = rand(-42, 36);
+        const y = clamp(lastPlatformY + yStep, HEIGHT - 188, HEIGHT - 84);
+        const x = furthestPlatformX + rand(88, 150);
         platforms.push({ x, y, w, h: 18, kind: "ledge" });
+        lastPlatformY = y;
         furthestPlatformX = Math.max(furthestPlatformX, x + w);
-        if (Math.random() < 0.62) {
+        if (Math.random() < 0.3) {
           hazards.push({
             x: x + w * rand(0.2, 0.8),
             y: y - 14,
@@ -673,24 +676,21 @@ function initTrial(id) {
 
       const prevX = player.x;
       const prevY = player.y;
-      player.vy += 980 * dt;
+      player.vy += 920 * dt;
       player.x += player.vx * dt;
       player.y += player.vy * dt;
       player.onGround = false;
 
       const prevBottom = prevY + player.h / 2;
       const curBottom = player.y + player.h / 2;
-      const prevRight = prevX + player.w / 2;
-      const prevLeft = prevX - player.w / 2;
       const curRight = player.x + player.w / 2;
       const curLeft = player.x - player.w / 2;
 
       for (const platform of platforms) {
         const top = platform.y;
-        const crossedTop = prevBottom <= top + 1 && curBottom >= top;
+        const crossedTop = prevBottom <= top + 8 && curBottom >= top;
         const overlapX = curRight > platform.x + 2 && curLeft < platform.x + platform.w - 2;
-        const wasNearX = prevRight > platform.x + 2 && prevLeft < platform.x + platform.w - 2;
-        if (crossedTop && overlapX && wasNearX && player.vy >= 0) {
+        if (crossedTop && overlapX && player.vy >= 0) {
           player.y = top - player.h / 2;
           player.vy = 0;
           player.onGround = true;
@@ -727,7 +727,14 @@ function initTrial(id) {
           player.y + player.h / 2 > hazard.y &&
           player.y - player.h / 2 < hazard.y + hazard.h,
       );
-      if ((collided && !dashActive) || player.y > HEIGHT + 60) {
+      if (player.y > HEIGHT + 60) {
+        remainingMs = 0;
+        updateHud(id, score, combo, remainingMs);
+        endRound(id, cfg, { score, bestCombo });
+        return;
+      }
+
+      if (collided && !dashActive) {
         score -= cfg.missPenalty + 4;
         streak = 0;
         combo = 1;
