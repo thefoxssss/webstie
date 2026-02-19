@@ -17,8 +17,20 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            font-family: 'Courier New', monospace;
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
             overflow: hidden;
+        }
+
+
+
+        :root {
+            --panel-bg: rgba(9, 12, 20, 0.84);
+            --panel-border: rgba(133, 170, 255, 0.45);
+            --text-primary: #f2f7ff;
+            --text-muted: #a9b6d1;
+            --accent: #58b6ff;
+            --danger: #ff4d6d;
+            --warning: #ffc857;
         }
 
         #gameCanvas {
@@ -37,10 +49,15 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            color: #fff;
+            color: var(--text-primary);
             font-size: 14px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.7);
             z-index: 10;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            backdrop-filter: blur(4px);
         }
 
         #keybinds {
@@ -51,10 +68,10 @@
             font-size: 13px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             z-index: 10;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--panel-bg);
             padding: 15px;
-            border: 2px solid #8b4513;
-            border-radius: 5px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
             min-width: 200px;
         }
 
@@ -465,6 +482,49 @@
             background: linear-gradient(135deg, #a0522d, #8b4513);
         }
 
+        .difficulty-menu {
+            position: absolute;
+            inset: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at 50% 30%, rgba(46,78,130,0.4), rgba(5,8,12,0.95));
+            z-index: 250;
+        }
+
+        .difficulty-container {
+            width: min(860px, 92vw);
+            background: linear-gradient(160deg, rgba(12,18,30,0.98), rgba(7,10,19,0.98));
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.55);
+            color: var(--text-primary);
+        }
+
+        .difficulty-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .difficulty-option {
+            border: 1px solid rgba(150, 187, 255, 0.35);
+            background: rgba(18, 28, 46, 0.7);
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: transform .2s ease, border-color .2s ease;
+        }
+
+        .difficulty-option:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }
+
+        .difficulty-option h3 { color: var(--accent); margin-bottom: 8px; }
+        .difficulty-option p { color: var(--text-muted); font-size: 13px; line-height: 1.45; }
         .settings-menu {
             position: absolute;
             top: 0;
@@ -663,6 +723,19 @@
         </div>
     </div>
 
+    <div id="difficultyMenu" class="difficulty-menu">
+        <div class="difficulty-container">
+            <h2>Choose Difficulty</h2>
+            <p style="color: var(--text-muted);">Difficulty modifies enemy health, damage, speed, spawn pressure, and AI aggression. Higher difficulties reward higher scores.</p>
+            <div class="difficulty-grid">
+                <button class="difficulty-option" data-difficulty="easy"><h3>Easy</h3><p>Forgiving damage and slower enemy pressure.</p></button>
+                <button class="difficulty-option" data-difficulty="normal"><h3>Normal</h3><p>Balanced pacing and tactical combat.</p></button>
+                <button class="difficulty-option" data-difficulty="hard"><h3>Hard</h3><p>Relentless enemies, sharper AI, and faster scaling.</p></button>
+            </div>
+            <button id="difficultyBackBtn" class="game-button" style="margin-top:16px; width: 100%;">Back</button>
+        </div>
+    </div>
+
     <div id="storeMenu" class="settings-menu">
         <div class="settings-container">
             <h2>🛒 SHADOW STORE 🛒</h2>
@@ -763,6 +836,29 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+
+        const GAME_CONFIG = {
+            difficulty: {
+                easy: { label: 'Easy', enemyHealth: 0.82, enemyDamage: 0.75, spawnRate: 0.82, enemySpeed: 0.9, aiAggression: 0.8, scoreMultiplier: 0.9 },
+                normal: { label: 'Normal', enemyHealth: 1, enemyDamage: 1, spawnRate: 1, enemySpeed: 1, aiAggression: 1, scoreMultiplier: 1 },
+                hard: { label: 'Hard', enemyHealth: 1.24, enemyDamage: 1.2, spawnRate: 1.28, enemySpeed: 1.14, aiAggression: 1.25, scoreMultiplier: 1.25 }
+            },
+            rarityWeights: { common: 34, uncommon: 24, rare: 18, epic: 12, legendary: 8, mythic: 4 }
+        };
+        let selectedDifficulty = 'normal';
+        let screenShakeFrames = 0;
+        let screenShakePower = 0;
+
+        function getDifficultyPreset() {
+            return GAME_CONFIG.difficulty[selectedDifficulty] || GAME_CONFIG.difficulty.normal;
+        }
+
+        function triggerScreenShake(power = 4, frames = 8) {
+            const enabled = document.getElementById('screenShakeToggle')?.classList.contains('active');
+            if (!enabled) return;
+            screenShakePower = Math.max(screenShakePower, power);
+            screenShakeFrames = Math.max(screenShakeFrames, frames);
+        }
         
         // Particle class
         class Particle {
@@ -1122,6 +1218,7 @@
             attack() {
                 if (this.attackCooldown <= 0 && !this.attacking && !this.dashing) {
                     this.attacking = true;
+                    triggerScreenShake(2, 4);
                     this.attackFrame = 0;
                     
                     const baseAttackSpeed = 30;
@@ -4285,6 +4382,7 @@
                 metaProgress.damageTaken += amount;
                 checkAchievements();
                 this.health -= amount;
+                triggerScreenShake(3, 6);
                 this.health = Math.max(0, Math.min(this.health, this.maxHealth));
                 
                 // Damage particles
@@ -4324,11 +4422,12 @@
                 };
                 
                 const stats = enemyStats[type] || enemyStats['basic'];
-                this.health = stats.health;
-                this.maxHealth = stats.health;
-                this.speed = stats.speed;
+                const difficulty = getDifficultyPreset();
+                this.health = Math.round(stats.health * difficulty.enemyHealth);
+                this.maxHealth = this.health;
+                this.speed = stats.speed * difficulty.enemySpeed;
                 this.color = stats.color;
-                this.baseDamage = stats.damage;
+                this.baseDamage = Math.round(stats.damage * difficulty.enemyDamage);
                 this.type = type;
                 this.facing = -1;
                 this.onGround = false;
@@ -4386,6 +4485,7 @@
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
+                const aggression = getDifficultyPreset().aiAggression;
                 
                 this.facing = dx > 0 ? 1 : -1;
                 
@@ -4398,11 +4498,11 @@
                     case 'heavy':
                         // Melee enemies
                         if (dist > 50) {
-                            this.vx = this.facing * this.speed;
+                            this.vx = this.facing * this.speed * aggression;
                         } else {
                             this.vx = 0;
                             if (this.attackCooldown <= 0) {
-                                this.attackCooldown = 60;
+                                this.attackCooldown = Math.max(30, Math.round(60 / aggression));
                                 player.takeDamage(this.baseDamage);
                             }
                         }
@@ -4411,9 +4511,9 @@
                     case 'advanced':
                         // Archer - keep distance and shoot
                         if (dist < 100) {
-                            this.vx = -this.facing * this.speed;
+                            this.vx = -this.facing * this.speed * (0.9 + aggression * 0.2);
                         } else if (dist > 300) {
-                            this.vx = this.facing * this.speed;
+                            this.vx = this.facing * this.speed * aggression;
                         } else {
                             this.vx *= 0.9;
                         }
@@ -4429,7 +4529,7 @@
                     case 'berserker':
                         // Fast melee
                         if (dist > 40) {
-                            this.vx = this.facing * this.speed;
+                            this.vx = this.facing * this.speed * aggression;
                         } else {
                             this.vx = 0;
                             if (this.attackCooldown <= 0) {
@@ -4492,7 +4592,7 @@
                     case 'sentinel':
                         // Defensive bruiser: slow advance, punishes close range
                         if (dist > 80) {
-                            this.vx = this.facing * this.speed;
+                            this.vx = this.facing * this.speed * aggression;
                         } else {
                             this.vx *= 0.8;
                             if (this.attackCooldown <= 0) {
@@ -4867,11 +4967,12 @@
                 };
                 
                 const stats = bossStats[type];
-                this.health = stats.health;
-                this.maxHealth = stats.health;
-                this.speed = stats.speed;
+                const difficulty = getDifficultyPreset();
+                this.health = Math.round(stats.health * difficulty.enemyHealth);
+                this.maxHealth = this.health;
+                this.speed = stats.speed * difficulty.enemySpeed;
                 this.color = stats.color;
-                this.baseDamage = stats.damage;
+                this.baseDamage = Math.round(stats.damage * difficulty.enemyDamage);
                 
                 this.attackCooldown = 0;
                 this.specialCooldown = 0;
@@ -4959,6 +5060,7 @@
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
+                const aggression = getDifficultyPreset().aiAggression;
                 
                 this.facing = dx > 0 ? 1 : -1;
                 
@@ -5380,9 +5482,9 @@
                     case 'Toxic Assassin':
                         // Fast hit and run, poison attacks
                         if (dist > 200) {
-                            this.vx = this.facing * this.speed;
+                            this.vx = this.facing * this.speed * aggression;
                         } else if (dist < 100) {
-                            this.vx = -this.facing * this.speed;
+                            this.vx = -this.facing * this.speed * (0.9 + aggression * 0.2);
                         } else {
                             this.vx *= 0.9;
                         }
@@ -5492,7 +5594,7 @@
                     case 'Necromancer':
                         // Stay back, summon attacks
                         if (dist < 250) {
-                            this.vx = -this.facing * this.speed;
+                            this.vx = -this.facing * this.speed * (0.9 + aggression * 0.2);
                         } else {
                             this.vx *= 0.9;
                         }
@@ -5670,7 +5772,7 @@
                         if (dist > 350) {
                             this.vx = this.facing * this.speed * 0.8;
                         } else if (dist < 250) {
-                            this.vx = -this.facing * this.speed;
+                            this.vx = -this.facing * this.speed * (0.9 + aggression * 0.2);
                         } else {
                             this.vx *= 0.92;
                         }
@@ -7031,7 +7133,9 @@
                         baseEnemyCount += 1;
                     }
                     
-                    const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
+                    const pacingBoost = 1 + Math.min(0.45, this.roomNumber * 0.012);
+                    const spawnScaled = Math.round(baseEnemyCount * getDifficultyPreset().spawnRate * pacingBoost);
+                    const enemyCount = Math.min(spawnScaled, this.platforms.length + 2);
                     const usedPlatforms = [];
                     const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock'];
                     
@@ -7478,7 +7582,9 @@
             
             // If mythic mode, ONLY show mythic upgrades!
             if (mythicMode) {
+                const EXCLUDED_UPGRADES = new Set(['resilience','sharpening','fortify','haste','conditioning','venomous','frostbite','firebreath','blink']);
                 for (const [key, upgrade] of Object.entries(upgradeDefinitions)) {
+                    if (EXCLUDED_UPGRADES.has(key)) continue;
                     if (upgrade.rarity === 'mythic') {
                         const currentLevel = player.upgrades[key] || 0;
                         if (!upgrade.maxLevel || currentLevel < upgrade.maxLevel) {
@@ -7488,16 +7594,12 @@
                 }
             } else {
                 // Normal mode - mythics now have a small chance!
-                const rarityWeights = {
-                    common: 35,
-                    uncommon: 25,
-                    rare: 18,
-                    epic: 12,
-                    legendary: 7,
-                    mythic: 3  // NEW: Mythics can drop in normal mode!
-                };
+                const progressionBoost = Math.min(10, Math.floor(roomNumber / 4));
+                const rarityWeights = { ...GAME_CONFIG.rarityWeights, mythic: GAME_CONFIG.rarityWeights.mythic + Math.floor(roomNumber / 10), legendary: GAME_CONFIG.rarityWeights.legendary + Math.floor(roomNumber / 8), common: Math.max(12, GAME_CONFIG.rarityWeights.common - progressionBoost) };
                 
+                const EXCLUDED_UPGRADES = new Set(['resilience','sharpening','fortify','haste','conditioning','venomous','frostbite','firebreath','blink']);
                 for (const [key, upgrade] of Object.entries(upgradeDefinitions)) {
+                    if (EXCLUDED_UPGRADES.has(key)) continue;
                     const currentLevel = player.upgrades[key] || 0;
                     if (!upgrade.maxLevel || currentLevel < upgrade.maxLevel) {
                         const weight = rarityWeights[upgrade.rarity] || 1;
@@ -7673,6 +7775,16 @@
                     break;
             }
             
+            if (player.upgrades.poisonDagger > 0 && player.upgrades.chainLightning > 0) {
+                player.damageMultiplier = 1 + Math.min(0.5, (player.upgrades.poisonDagger + player.upgrades.chainLightning) * 0.04);
+            }
+            if (player.upgrades.voidWalk > 0 && player.upgrades.shadowStep > 0) {
+                player.dashSpeed = 15 + Math.min(8, (player.upgrades.voidWalk + player.upgrades.shadowStep) * 1.2);
+            }
+            if (player.upgrades.critChance > 0 && player.upgrades.critDamage > 0) {
+                player.attackDamage += Math.min(4, Math.floor((player.upgrades.critChance + player.upgrades.critDamage) / 5));
+            }
+
             // Special ability assignment - NOW SUPPORTS 6 SLOTS!
             if (upgrade.type === 'special') {
                 if (!player.special1) {
@@ -7716,9 +7828,10 @@
                     const ready = slot.cooldown <= 0;
                     
                     const div = document.createElement('div');
-                    div.style.marginBottom = '5px';
-                    div.style.color = ready ? '#00ff00' : '#ff6666';
-                    div.innerHTML = `[${slot.key}] ${abilityDef.name}${ready ? ' ✓' : ' (' + Math.ceil(slot.cooldown/60) + 's)'}`;
+                    const rarityColor = { common:'#9aa6bf', uncommon:'#62d67a', rare:'#58a7ff', epic:'#b17cff', legendary:'#ffb85c', mythic:'#ff59dd' }[abilityDef.rarity] || '#fff';
+                    const pct = Math.max(0, Math.min(100, ready ? 100 : (1 - (slot.cooldown / (abilityDef.cooldown || 300))) * 100));
+                    div.style.marginBottom = '6px';
+                    div.innerHTML = `<div style="display:flex; justify-content:space-between; color:${rarityColor};"><span>[${slot.key}] ${abilityDef.name}</span><span>${ready ? 'Ready' : Math.ceil(slot.cooldown/60) + 's'}</span></div><div style="height:4px;background:#1b2436;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${ready ? '#48ff9a' : '#ff7171'};"></div></div>`;
                     listElement.appendChild(div);
                 }
             }
@@ -8173,6 +8286,13 @@
 
             for (let step = 0; step < steps; step++) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (screenShakeFrames > 0) {
+                    const intensity = screenShakePower * (screenShakeFrames / 10);
+                    ctx.save();
+                    ctx.translate((Math.random() - 0.5) * intensity, (Math.random() - 0.5) * intensity);
+                    screenShakeFrames--;
+                    if (screenShakeFrames <= 0) screenShakePower = 0;
+                }
                 
                 // Always draw the room (even during upgrade/safe room screens)
                 if (gameStarted && !gameOver) {
@@ -8458,6 +8578,14 @@
                 ctx.shadowBlur = 0;
             }
             
+            if (player.health / player.maxHealth < 0.25) {
+                const pulse = 0.15 + Math.sin(performance.now() / 120) * 0.08;
+                ctx.fillStyle = `rgba(255,0,60,${Math.max(0.06, pulse)})`;
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            }
+
+            if (screenShakeFrames >= 0) { try { ctx.restore(); } catch(_e) {} }
+
             // Game over
             if (player.health <= 0 && !gameOver) {
                 gameOver = true;
@@ -8496,10 +8624,9 @@
         checkAchievements();
 
         // Menu button event listeners
-        document.getElementById('playBtn').addEventListener('click', () => {
-            document.getElementById('mainMenu').style.display = 'none';
+        function startNewRun() {
             gameStarted = true;
-            mythicMode = false; // Reset mythic mode
+            mythicMode = false;
             player = new Player(100, 300);
             currentRoom = new Room(1);
             roomNumber = 1;
@@ -8508,6 +8635,25 @@
             shadowClones = [];
             gameOver = false;
             resetFrameClock();
+        }
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('difficultyMenu').style.display = 'flex';
+        });
+
+        document.querySelectorAll('.difficulty-option').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                selectedDifficulty = btn.dataset.difficulty || 'normal';
+                document.getElementById('difficultySelect').value = selectedDifficulty;
+                document.getElementById('difficultyMenu').style.display = 'none';
+                startNewRun();
+            });
+        });
+
+        document.getElementById('difficultyBackBtn').addEventListener('click', () => {
+            document.getElementById('difficultyMenu').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'flex';
         });
 
         document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -8561,19 +8707,14 @@
         document.getElementById('sfxSlider').addEventListener('input', (e) => {
             document.getElementById('sfxValue').textContent = e.target.value + '%';
         });
+
+        document.getElementById('difficultySelect').addEventListener('change', (e) => {
+            selectedDifficulty = e.target.value;
+        });
         
         // Game over buttons
         document.getElementById('playAgainBtn').addEventListener('click', () => {
-            mythicMode = false; // Reset mythic mode
-            player = new Player(100, 300);
-            currentRoom = new Room(1);
-            roomNumber = 1;
-            particles = [];
-            projectiles = [];
-            shadowClones = [];
-            gameStarted = true;
-            gameOver = false;
-            resetFrameClock();
+            startNewRun();
             document.getElementById('gameOverScreen').style.display = 'none';
         });
         
