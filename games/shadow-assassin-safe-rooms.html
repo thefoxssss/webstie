@@ -7510,15 +7510,19 @@
         
         function toggleMythicAbility(abilityKey, element) {
             const upgrade = upgradeDefinitions[abilityKey];
+            const specialSlotKeys = ['special1', 'special2', 'special3', 'special4', 'special5', 'special6'];
             
             if (element.classList.contains('active')) {
                 // Deactivate
                 element.classList.remove('active');
                 
                 if (upgrade.type === 'special') {
-                    // Remove from special slots
-                    if (player.special1 === abilityKey) player.special1 = null;
-                    if (player.special2 === abilityKey) player.special2 = null;
+                    // Remove from all special slots
+                    specialSlotKeys.forEach(slotKey => {
+                        if (player[slotKey] === abilityKey) {
+                            player[slotKey] = null;
+                        }
+                    });
                 } else {
                     // Remove upgrade
                     player.upgrades[abilityKey] = 0;
@@ -7528,13 +7532,12 @@
                 element.classList.add('active');
                 
                 if (upgrade.type === 'special') {
-                    // Add to special slot
-                    if (!player.special1) {
-                        player.special1 = abilityKey;
-                    } else if (!player.special2) {
-                        player.special2 = abilityKey;
+                    // Add to first empty special slot, matching applyUpgrade replacement behavior when full
+                    const emptySlotKey = specialSlotKeys.find(slotKey => !player[slotKey]);
+                    if (emptySlotKey) {
+                        player[emptySlotKey] = abilityKey;
                     } else {
-                        player.special1 = abilityKey; // Replace special1
+                        player.special1 = abilityKey; // All slots full - deterministic replacement
                     }
                 } else {
                     // Max out upgrade
