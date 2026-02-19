@@ -893,6 +893,27 @@
             
             mimicMeleeAttack() {
                 this.attackCooldown = 30;
+                const strikeX = this.x + this.facing * 35;
+                const strikeY = this.y;
+                const strikeRange = 55;
+
+                for (const enemy of currentRoom.enemies) {
+                    const dx = enemy.x - strikeX;
+                    const dy = enemy.y - strikeY;
+                    if (Math.sqrt(dx * dx + dy * dy) <= strikeRange) {
+                        enemy.takeDamage(player.attackDamage * 0.6);
+                    }
+                }
+
+                if (currentRoom.boss && currentRoom.boss.health > 0) {
+                    const bossDx = currentRoom.boss.x - strikeX;
+                    const bossDy = currentRoom.boss.y - strikeY;
+                    const bossHitRange = strikeRange + currentRoom.boss.width / 2;
+                    if (Math.sqrt(bossDx * bossDx + bossDy * bossDy) <= bossHitRange) {
+                        currentRoom.boss.takeDamage(player.attackDamage * 0.45);
+                    }
+                }
+
                 for (let i = 0; i < 10; i++) {
                     const angle = (Math.random() - 0.5) * Math.PI;
                     const speed = Math.random() * 3 + 2;
@@ -983,6 +1004,7 @@
             }
             
             draw() {
+                const skinColors = getEquippedSkin().colors;
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(this.facing, 1);
@@ -1515,17 +1537,10 @@
                         break;
                         
                     case 'teleportStrike':
-                        let nearestTele = null;
-                        let nearestTeleDist = Infinity;
-                        for (const enemy of currentRoom.enemies) {
-                            const dist = Math.sqrt((enemy.x - this.x)**2 + (enemy.y - this.y)**2);
-                            if (dist < nearestTeleDist && dist < 500) {
-                                nearestTeleDist = dist;
-                                nearestTele = enemy;
-                            }
-                        }
+                        const nearestTele = findNearestHostile(this.x, this.y, 500);
                         if (nearestTele) {
-                            this.x = nearestTele.x - nearestTele.facing * 50;
+                            const targetFacing = nearestTele.facing || this.facing;
+                            this.x = nearestTele.x - targetFacing * 50;
                             this.y = nearestTele.y;
                             nearestTele.takeDamage(150);
                             for (let i = 0; i < 30; i++) {
@@ -1572,17 +1587,10 @@
                         break;
                         
                     case 'phantomStrike':
-                        let nearest = null;
-                        let nearestDist = Infinity;
-                        for (const enemy of currentRoom.enemies) {
-                            const dist = Math.sqrt((enemy.x - this.x)**2 + (enemy.y - this.y)**2);
-                            if (dist < nearestDist && dist < 500) {
-                                nearestDist = dist;
-                                nearest = enemy;
-                            }
-                        }
+                        const nearest = findNearestHostile(this.x, this.y, 500);
                         if (nearest) {
-                            this.x = nearest.x - nearest.facing * 50;
+                            const targetFacing = nearest.facing || this.facing;
+                            this.x = nearest.x - targetFacing * 50;
                             this.y = nearest.y;
                             nearest.takeDamage(100);
                         }
@@ -3945,16 +3953,8 @@
                         break;
                         
                     case 'obliterate':
-                        // Delete nearest enemy
-                        let nearestOb = null;
-                        let nearestObDist = Infinity;
-                        for (const enemy of currentRoom.enemies) {
-                            const dist = Math.sqrt((enemy.x - this.x)**2 + (enemy.y - this.y)**2);
-                            if (dist < nearestObDist) {
-                                nearestObDist = dist;
-                                nearestOb = enemy;
-                            }
-                        }
+                        // Delete nearest enemy or heavily damage boss
+                        const nearestOb = findNearestHostile(this.x, this.y, 1200);
                         if (nearestOb) {
                             // Deletion particles
                             for (let i = 0; i < 100; i++) {
@@ -3967,7 +3967,11 @@
                                     50
                                 ));
                             }
-                            nearestOb.health = 0;
+                            if (nearestOb.isBoss) {
+                                nearestOb.takeDamage(250);
+                            } else {
+                                nearestOb.health = 0;
+                            }
                         }
                         break;
                         
@@ -3995,7 +3999,7 @@
                         break;
                         
                     case 'soulCollector':
-                        // Drain all enemy life
+                        // Drain all enemy life (and chip boss if present)
                         let totalDrained = 0;
                         for (const enemy of currentRoom.enemies) {
                             totalDrained += enemy.health;
@@ -4013,6 +4017,10 @@
                                 }, i * 30);
                             }
                             enemy.health = 0;
+                        }
+                        if (currentRoom.boss && currentRoom.boss.health > 0) {
+                            currentRoom.boss.takeDamage(60);
+                            totalDrained += 60;
                         }
                         this.health = Math.min(this.maxHealth, this.health + totalDrained * 0.1);
                         break;
@@ -4799,6 +4807,8 @@
                 this.isInvulnerable = false;
                 this.dashTarget = { x: 0, y: 0 };
                 this.summonedMinions = [];
+                this.enrageMultiplier = 1;
+                this.comboCooldown = 120;
             }
 
             update() {
@@ -4854,6 +4864,13 @@
                         ));
                     }
                 }
+
+                // Final phase - aggressive endgame pressure
+                if (this.health < this.maxHealth * 0.25 && this.phase === 2) {
+                    this.phase = 3;
+                    this.speed *= 1.2;
+                    this.baseDamage *= 1.2;
+                }
                 
                 // AI with UNIQUE ATTACK PATTERNS
                 const dx = player.x - this.x;
@@ -4864,17 +4881,30 @@
                 
                 if (this.attackCooldown > 0) this.attackCooldown--;
                 if (this.specialCooldown > 0) this.specialCooldown--;
+                if (this.comboCooldown > 0) this.comboCooldown--;
+
+                this.enrageMultiplier = 1 + Math.min(0.55, roomNumber * 0.01);
                 
                 this.patternTimer++;
-                if (this.patternTimer > 250) {
+                const patternCycle = this.phase === 3 ? 110 : (this.phase === 2 ? 150 : 220);
+                if (this.patternTimer > patternCycle) {
                     this.patternTimer = 0;
                     this.currentPattern = (this.currentPattern + 1) % 5; // Now 5 patterns!
                 }
-                
-                // In phase 2, patterns cycle faster and more aggressively
-                if (this.phase === 2 && this.patternTimer > 150) {
-                    this.patternTimer = 0;
-                    this.currentPattern = (this.currentPattern + 1) % 5;
+
+                if (dist < 460 && this.comboCooldown <= 0) {
+                    this.comboCooldown = this.phase === 3 ? 85 : 120;
+                    const leadX = player.x + player.vx * 10;
+                    const leadY = player.y + player.vy * 8;
+                    const baseAngle = Math.atan2(leadY - this.y, leadX - this.x);
+                    const burstCount = this.phase === 3 ? 5 : 3;
+                    for (let i = 0; i < burstCount; i++) {
+                        const spread = (i - (burstCount - 1) / 2) * 0.18;
+                        const proj = new Projectile(this.x, this.y, baseAngle + spread, 7 + this.phase, 'enemy');
+                        proj.vx *= this.enrageMultiplier;
+                        proj.vy *= this.enrageMultiplier;
+                        projectiles.push(proj);
+                    }
                 }
                 
                 // Set attack pattern for executeAttackPattern method
@@ -6708,7 +6738,8 @@
             }
 
             takeDamage(damage) {
-                this.health -= damage;
+                const scaledDamage = damage * (0.9 + Math.min(0.3, roomNumber * 0.004));
+                this.health -= scaledDamage;
                 this.health = Math.max(0, this.health);
                 
                 for (let i = 0; i < 20; i++) {
@@ -6722,6 +6753,33 @@
                     ));
                 }
             }
+        }
+
+
+        function findNearestHostile(fromX, fromY, maxDist = 500) {
+            let nearest = null;
+            let nearestDist = Infinity;
+
+            for (const enemy of currentRoom.enemies) {
+                const dx = enemy.x - fromX;
+                const dy = enemy.y - fromY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < nearestDist && dist < maxDist) {
+                    nearest = enemy;
+                    nearestDist = dist;
+                }
+            }
+
+            if (currentRoom.boss && currentRoom.boss.health > 0) {
+                const dx = currentRoom.boss.x - fromX;
+                const dy = currentRoom.boss.y - fromY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < nearestDist && dist < maxDist) {
+                    nearest = currentRoom.boss;
+                }
+            }
+
+            return nearest;
         }
 
         // Room class (keeping original castle look)
