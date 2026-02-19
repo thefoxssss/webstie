@@ -648,15 +648,14 @@ function initTrial(id) {
       platformSpawnAt -= dt * 1000;
       ringSpawnAt -= dt * 1000;
       if (platformSpawnAt <= 0 && furthestPlatformX < cameraX + WIDTH + 860) {
-        platformSpawnAt = rand(540, 860);
-        const w = rand(126, 192);
-        const yStep = rand(-42, 36);
-        const y = clamp(lastPlatformY + yStep, HEIGHT - 188, HEIGHT - 84);
-        const x = furthestPlatformX + rand(88, 150);
+        platformSpawnAt = rand(520, 820);
+        const w = rand(104, 178);
+        const y = rand(HEIGHT - 196, HEIGHT - 72);
+        const x = furthestPlatformX + rand(108, 200);
         platforms.push({ x, y, w, h: 18, kind: "ledge" });
         lastPlatformY = y;
         furthestPlatformX = Math.max(furthestPlatformX, x + w);
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.4) {
           hazards.push({
             x: x + w * rand(0.2, 0.8),
             y: y - 14,
