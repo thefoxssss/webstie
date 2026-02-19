@@ -1119,6 +1119,52 @@
                 this.regenTimer = 0;
             }
 
+            getAimDirection() {
+                let dirX = 0;
+                let dirY = 0;
+
+                if (keys['w'] || keys['arrowup']) dirY = -1;
+                if (keys['s'] || keys['arrowdown']) dirY = 1;
+                if (keys['a'] || keys['arrowleft']) dirX = -1;
+                if (keys['d'] || keys['arrowright']) dirX = 1;
+
+                // When standing still, auto-aim at the nearest threat for cleaner melee/ranged flow.
+                if (dirX === 0 && dirY === 0) {
+                    let nearest = null;
+                    let nearestDistSq = Infinity;
+
+                    for (const enemy of currentRoom.enemies) {
+                        const dx = enemy.x - this.x;
+                        const dy = enemy.y - this.y;
+                        const distSq = dx * dx + dy * dy;
+                        if (distSq < nearestDistSq) {
+                            nearestDistSq = distSq;
+                            nearest = enemy;
+                        }
+                    }
+
+                    if (currentRoom.boss && !currentRoom.boss.defeated) {
+                        const dx = currentRoom.boss.x - this.x;
+                        const dy = currentRoom.boss.y - this.y;
+                        const distSq = dx * dx + dy * dy;
+                        if (distSq < nearestDistSq) {
+                            nearestDistSq = distSq;
+                            nearest = currentRoom.boss;
+                        }
+                    }
+
+                    if (nearest && nearestDistSq < 230 * 230) {
+                        dirX = nearest.x - this.x;
+                        dirY = nearest.y - this.y;
+                    } else {
+                        dirX = this.facing;
+                    }
+                }
+
+                const magnitude = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
+                return { dirX: dirX / magnitude, dirY: dirY / magnitude };
+            }
+
             attack() {
                 if (this.attackCooldown <= 0 && !this.attacking && !this.dashing) {
                     this.attacking = true;
@@ -1127,28 +1173,9 @@
                     const baseAttackSpeed = 30;
                     const attackSpeedMultiplier = 1 + (this.upgrades.attackSpeed * 0.15);
                     this.attackCooldown = Math.floor(baseAttackSpeed / attackSpeedMultiplier);
-                    
-                    // Calculate attack direction based on WASD keys (same as knife throwing)
-                    let dirX = 0;
-                    let dirY = 0;
-                    
-                    if (keys['w'] || keys['arrowup']) dirY = -1;
-                    if (keys['s'] || keys['arrowdown']) dirY = 1;
-                    if (keys['a'] || keys['arrowleft']) dirX = -1;
-                    if (keys['d'] || keys['arrowright']) dirX = 1;
-                    
-                    // If no direction key pressed, use facing direction
-                    if (dirX === 0 && dirY === 0) {
-                        dirX = this.facing;
-                    }
-                    
-                    // Normalize direction
-                    const magnitude = Math.sqrt(dirX * dirX + dirY * dirY);
-                    if (magnitude > 0) {
-                        dirX /= magnitude;
-                        dirY /= magnitude;
-                    }
-                    
+
+                    const { dirX, dirY } = this.getAimDirection();
+                    if (Math.abs(dirX) > 0.2) this.facing = dirX > 0 ? 1 : -1;
                     const attackAngle = Math.atan2(dirY, dirX);
                     
                     // Store attack direction for animation
@@ -1370,27 +1397,7 @@
 
             shootRanged() {
                 if (this.rangedCooldown <= 0) {
-                    // Calculate direction based on WASD keys
-                    let dirX = 0;
-                    let dirY = 0;
-                    
-                    if (keys['w'] || keys['arrowup']) dirY = -1;
-                    if (keys['s'] || keys['arrowdown']) dirY = 1;
-                    if (keys['a'] || keys['arrowleft']) dirX = -1;
-                    if (keys['d'] || keys['arrowright']) dirX = 1;
-                    
-                    // If no direction key pressed, use facing direction
-                    if (dirX === 0 && dirY === 0) {
-                        dirX = this.facing;
-                    }
-                    
-                    // Normalize direction
-                    const magnitude = Math.sqrt(dirX * dirX + dirY * dirY);
-                    if (magnitude > 0) {
-                        dirX /= magnitude;
-                        dirY /= magnitude;
-                    }
-                    
+                    const { dirX, dirY } = this.getAimDirection();
                     const angle = Math.atan2(dirY, dirX);
                     const cooldown = Math.max(5, 20 - this.upgrades.rapidFire * 3);
                     const knifeCount = 1 + this.upgrades.multishot;
@@ -4066,6 +4073,10 @@
                     }
                 }
                 
+                if (this.attacking) {
+                    this.attackFrame++;
+                }
+
                 // Dash movement
                 if (this.dashing) {
                     this.dashFrame++;
@@ -4192,39 +4203,47 @@
                 ctx.fillStyle = skinColors.belt;
                 ctx.fillRect(-this.width / 2, 0, this.width, 4);
                 
-                // Weapon (dagger)
+                // Weapon (katana-style slash)
                 if (this.attacking && this.attackDirection !== null) {
                     ctx.save();
-                    ctx.rotate(this.attackDirection);
-                    
-                    // Dagger blade
-                    ctx.fillStyle = '#c0c0c0';
+                    const swingProgress = Math.min(1, this.attackFrame / 8);
+                    const slashArc = (-0.55 + swingProgress * 1.1) * this.facing;
+                    ctx.rotate(this.attackDirection + slashArc);
+
+                    // Katana blade
+                    ctx.fillStyle = '#d8dee9';
                     ctx.beginPath();
-                    ctx.moveTo(40, 0);
-                    ctx.lineTo(10, -3);
-                    ctx.lineTo(10, 3);
+                    ctx.moveTo(70, 0);
+                    ctx.quadraticCurveTo(34, -5, 8, -3);
+                    ctx.lineTo(8, 3);
+                    ctx.quadraticCurveTo(35, 4, 70, 0);
                     ctx.closePath();
                     ctx.fill();
-                    
-                    // Blade shine
-                    ctx.fillStyle = '#ffffff';
+
+                    // Hamon/highlight
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.moveTo(35, 0);
-                    ctx.lineTo(20, -1);
-                    ctx.lineTo(20, 1);
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    // Handle
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(8, -2, 8, 4);
-                    
-                    // Pommel
-                    ctx.fillStyle = '#ffd700';
-                    ctx.beginPath();
-                    ctx.arc(8, 0, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    
+                    ctx.moveTo(60, -0.5);
+                    ctx.quadraticCurveTo(34, -2.5, 14, -1);
+                    ctx.stroke();
+
+                    // Guard
+                    ctx.fillStyle = '#c9a227';
+                    ctx.fillRect(6, -4, 4, 8);
+
+                    // Handle wrap
+                    ctx.fillStyle = '#2d1b12';
+                    ctx.fillRect(-8, -2.5, 14, 5);
+                    ctx.strokeStyle = '#9b7a4a';
+                    ctx.lineWidth = 1;
+                    for (let i = -6; i <= 4; i += 4) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, -2.5);
+                        ctx.lineTo(i + 4, 2.5);
+                        ctx.stroke();
+                    }
+
                     ctx.restore();
                 }
                 
