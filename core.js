@@ -3245,6 +3245,10 @@ function renderJobs() {
 }
 
 export function startJob(type) {
+  showToast("JOBS RETIRED", "🕹️", "Earn money by playing games now.");
+  setText("jobsMsg", "JOBS REMOVED — SCORE IN GAMES TO EARN CASH.");
+  setJobMsg(type, "JOBS DISABLED");
+  return;
   if (myName === "ANON") return failJob(type, "LOGIN REQUIRED");
   const cfg = JOBS[type];
   if (!cfg) return;
@@ -3860,8 +3864,81 @@ function initChat() {
   });
 }
 
+const gameCashProgress = {};
+const gameLeaderboardCache = {};
+
+function getLeaderboardBaseline(game) {
+  const key = String(game || "").toLowerCase().trim();
+  if (!key) return 100;
+  const cached = gameLeaderboardCache[key];
+  if (cached && Date.now() - cached.updatedAt < 60000) return cached.baseline;
+
+  const fallback = Math.max(25, Number(localStorage.getItem(`hs_${key}`)) || 100);
+  if (!cached?.loading) {
+    gameLeaderboardCache[key] = {
+      baseline: cached?.baseline || fallback,
+      updatedAt: cached?.updatedAt || 0,
+      loading: true,
+    };
+
+    getDocs(query(collection(db, "gooner_scores"), where("game", "==", key), limit(200)))
+      .then((snap) => {
+        const bestByPlayer = {};
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const player = String(data.name || "ANON");
+          const score = Math.max(0, Number(data.score) || 0);
+          if (!bestByPlayer[player] || score > bestByPlayer[player]) bestByPlayer[player] = score;
+        });
+
+        const topScores = Object.values(bestByPlayer)
+          .sort((a, b) => b - a)
+          .slice(0, 10);
+        const baseline = topScores.length
+          ? topScores[Math.floor((topScores.length - 1) / 2)]
+          : fallback;
+
+        gameLeaderboardCache[key] = {
+          baseline: Math.max(25, Math.floor(baseline)),
+          updatedAt: Date.now(),
+          loading: false,
+        };
+      })
+      .catch(() => {
+        gameLeaderboardCache[key] = {
+          baseline: fallback,
+          updatedAt: Date.now(),
+          loading: false,
+        };
+      });
+  }
+
+  return cached?.baseline || fallback;
+}
+
+function awardScoreCash(game, score) {
+  const key = String(game || "").toLowerCase().trim();
+  const current = Math.max(0, Number(score) || 0);
+  if (!key || !Number.isFinite(current)) return;
+
+  const previous = gameCashProgress[key] || 0;
+  if (current <= previous) return;
+
+  const delta = current - previous;
+  const leaderboardBaseline = getLeaderboardBaseline(key);
+  const perPoint = Math.max(0.25, Math.min(10, 180 / Math.max(25, leaderboardBaseline)));
+  const progressionCash = Math.max(1, Math.round(delta * perPoint));
+  const firstRunBonus = previous === 0 ? 20 : 0;
+  const payout = Math.min(5000, progressionCash + firstRunBonus);
+
+  gameCashProgress[key] = current;
+  myMoney += payout;
+  logTransaction(`GAME PAYOUT: ${key.toUpperCase()} +${delta} SCORE`, payout);
+}
+
 // Update and persist a local high score for a given game.
 export function updateHighScore(game, score) {
+  awardScoreCash(game, score);
   const k = `hs_${game}`;
   const old = parseInt(localStorage.getItem(k) || 0);
   if (score > old) {
