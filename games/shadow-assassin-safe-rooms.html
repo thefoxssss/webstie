@@ -597,6 +597,7 @@
             <div id="healthBar" class="health-fill" style="width: 100%"></div>
         </div>
         <div style="margin-top: 10px;">Chamber: <span id="room">1</span></div>
+        <div>Next Boss: <span id="upcomingBoss">Crimson Knight</span></div>
         <div>Enemies: <span id="enemies">0</span></div>
         <div>Shadow Coins: <span id="shadowCoins">0</span></div>
         
@@ -6892,16 +6893,88 @@
             return nearest;
         }
 
+        const BOSS_ROTATION = [
+            'Crimson Knight', 'Shadow Lord', 'Frost Warden', 'Flame Tyrant',
+            'Stone Golem', 'Toxic Assassin', 'Thunder King', 'Necromancer',
+            'Blood Reaper', 'Void Walker', 'Crystal Sage', 'Iron Colossus',
+            'Phantom Assassin', 'Plague Doctor', 'Storm Herald'
+        ];
+
+        const BOSS_THEME_PALETTE = {
+            'Crimson Knight': { primary: '#8b0000', accent: '#ffd700', glow: 'rgba(220, 20, 60, 0.2)' },
+            'Shadow Lord': { primary: '#1a1a1a', accent: '#ff0000', glow: 'rgba(80, 0, 0, 0.2)' },
+            'Frost Warden': { primary: '#00bfff', accent: '#e0ffff', glow: 'rgba(0, 191, 255, 0.2)' },
+            'Flame Tyrant': { primary: '#ff4500', accent: '#ffff00', glow: 'rgba(255, 99, 71, 0.2)' },
+            'Stone Golem': { primary: '#696969', accent: '#c0c0c0', glow: 'rgba(140, 140, 140, 0.2)' },
+            'Toxic Assassin': { primary: '#228b22', accent: '#7fff00', glow: 'rgba(50, 205, 50, 0.2)' },
+            'Thunder King': { primary: '#4169e1', accent: '#ffd700', glow: 'rgba(120, 150, 255, 0.2)' },
+            'Necromancer': { primary: '#4b0082', accent: '#da70d6', glow: 'rgba(138, 43, 226, 0.2)' },
+            'Blood Reaper': { primary: '#dc143c', accent: '#ffb6c1', glow: 'rgba(220, 20, 60, 0.2)' },
+            'Void Walker': { primary: '#483d8b', accent: '#9370db', glow: 'rgba(72, 61, 139, 0.2)' },
+            'Crystal Sage': { primary: '#ff1493', accent: '#ffe4f2', glow: 'rgba(255, 20, 147, 0.2)' },
+            'Iron Colossus': { primary: '#4a4a4a', accent: '#b0b0b0', glow: 'rgba(160, 160, 160, 0.2)' },
+            'Phantom Assassin': { primary: '#8b008b', accent: '#dda0dd', glow: 'rgba(139, 0, 139, 0.2)' },
+            'Plague Doctor': { primary: '#006400', accent: '#adff2f', glow: 'rgba(0, 100, 0, 0.2)' },
+            'Storm Herald': { primary: '#4169e1', accent: '#87cefa', glow: 'rgba(65, 105, 225, 0.2)' }
+        };
+
+        const BOSS_MINION_POOLS = {
+            'Crimson Knight': ['heavy', 'berserker', 'advanced'],
+            'Shadow Lord': ['assassin', 'warlock', 'basic'],
+            'Frost Warden': ['mage', 'sentinel', 'advanced'],
+            'Flame Tyrant': ['berserker', 'advanced', 'mage'],
+            'Stone Golem': ['heavy', 'sentinel', 'basic'],
+            'Toxic Assassin': ['assassin', 'warlock', 'mage'],
+            'Thunder King': ['advanced', 'mage', 'warlock'],
+            'Necromancer': ['warlock', 'mage', 'sentinel'],
+            'Blood Reaper': ['berserker', 'assassin', 'heavy'],
+            'Void Walker': ['warlock', 'assassin', 'sentinel'],
+            'Crystal Sage': ['mage', 'advanced', 'warlock'],
+            'Iron Colossus': ['sentinel', 'heavy', 'advanced'],
+            'Phantom Assassin': ['assassin', 'berserker', 'warlock'],
+            'Plague Doctor': ['mage', 'warlock', 'heavy'],
+            'Storm Herald': ['advanced', 'warlock', 'assassin']
+        };
+
+        function getBossEncounterIndexForRoom(roomNum) {
+            let count = 0;
+            for (let i = 5; i <= roomNum; i++) {
+                if (i % 5 === 0 && i % 7 !== 0) count++;
+            }
+            return Math.max(0, count - 1);
+        }
+
+        function getBossTypeForBossRoom(roomNum) {
+            const idx = getBossEncounterIndexForRoom(roomNum) % BOSS_ROTATION.length;
+            return BOSS_ROTATION[idx];
+        }
+
+        function getNextBossRoomNumber(fromRoom) {
+            let room = fromRoom;
+            while (room < 9999) {
+                room++;
+                if (room % 5 === 0 && room % 7 !== 0) return room;
+            }
+            return fromRoom;
+        }
+
+        function getUpcomingBossType(roomNum) {
+            const nextBossRoom = getNextBossRoomNumber(roomNum);
+            return getBossTypeForBossRoom(nextBossRoom);
+        }
+
         // Room class (keeping original castle look)
         class Room {
             constructor(seed, isBossRoom = false, isSafeRoom = false) {
                 this.seed = seed;
+                this.roomNumber = Math.max(1, Math.round(seed / 12345));
                 this.isBossRoom = isBossRoom;
                 this.isSafeRoom = isSafeRoom;
                 this.enemies = [];
                 this.boss = null;
                 this.platforms = [];
                 this.cleared = false;
+                this.upcomingBossType = getUpcomingBossType(this.roomNumber);
                 
                 // Seeded random
                 function rand() {
@@ -6939,26 +7012,28 @@
                 if (this.isSafeRoom) {
                     // Empty room - safe zone!
                 } else if (this.isBossRoom) {
-                    const bossTypes = [
-                        'Crimson Knight', 'Shadow Lord', 'Frost Warden', 'Flame Tyrant',
-                        'Stone Golem', 'Toxic Assassin', 'Thunder King', 'Necromancer',
-                        'Blood Reaper', 'Void Walker', 'Crystal Sage', 'Iron Colossus',
-                        'Phantom Assassin', 'Plague Doctor', 'Storm Herald'
-                    ];
-                    const bossType = bossTypes[Math.floor(rand() * bossTypes.length)];
+                    const bossType = getBossTypeForBossRoom(this.roomNumber);
                     this.boss = new Boss(canvas.width / 2, canvas.height - 200, bossType);
                 } else {
-                    let baseEnemyCount = 2 + Math.floor(rand() * 4);
-                    
-                    if (this.seed < 3 * 12345) {
-                        baseEnemyCount = 1 + Math.floor(rand() * 2);
-                    } else if (this.seed < 5 * 12345) {
+                    let baseEnemyCount = 4 + Math.floor(rand() * 4);
+                    const nextBossRoom = getNextBossRoomNumber(this.roomNumber);
+                    const roomsUntilBoss = nextBossRoom - this.roomNumber;
+
+                    if (this.roomNumber < 3) {
                         baseEnemyCount = 2 + Math.floor(rand() * 2);
+                    } else if (this.roomNumber < 5) {
+                        baseEnemyCount = 3 + Math.floor(rand() * 2);
+                    }
+
+                    if (roomsUntilBoss <= 2) {
+                        baseEnemyCount += 2;
+                    } else if (roomsUntilBoss <= 4) {
+                        baseEnemyCount += 1;
                     }
                     
                     const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
                     const usedPlatforms = [];
-                    const enemyTypes = ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock'];
+                    const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock'];
                     
                     for (let i = 0; i < enemyCount; i++) {
                         let platformIndex;
@@ -6974,28 +7049,15 @@
                             
                             const typeRoll = rand();
                             let type;
-                            
-                            if (this.seed < 3 * 12345) {
-                                if (typeRoll < 0.6) type = 'basic';
-                                else if (typeRoll < 0.85) type = 'advanced';
-                                else if (typeRoll < 0.95) type = 'assassin';
-                                else type = 'berserker';
-                            } else if (this.seed < 5 * 12345) {
-                                if (typeRoll < 0.35) type = 'basic';
-                                else if (typeRoll < 0.6) type = 'advanced';
-                                else if (typeRoll < 0.75) type = 'heavy';
-                                else if (typeRoll < 0.9) type = 'assassin';
-                                else if (typeRoll < 0.95) type = 'mage';
-                                else type = 'warlock';
+
+                            if (typeRoll < 0.62) {
+                                type = thematicPool[Math.floor(rand() * thematicPool.length)];
+                            } else if (typeRoll < 0.8) {
+                                type = thematicPool[0];
+                            } else if (typeRoll < 0.92) {
+                                type = thematicPool[1] || 'advanced';
                             } else {
-                                if (typeRoll < 0.22) type = 'basic';
-                                else if (typeRoll < 0.42) type = 'advanced';
-                                else if (typeRoll < 0.58) type = 'heavy';
-                                else if (typeRoll < 0.72) type = 'assassin';
-                                else if (typeRoll < 0.84) type = 'mage';
-                                else if (typeRoll < 0.93) type = 'berserker';
-                                else if (typeRoll < 0.98) type = 'sentinel';
-                                else type = 'warlock';
+                                type = thematicPool[2] || 'heavy';
                             }
                             
                             this.enemies.push(new Enemy(
@@ -7009,27 +7071,8 @@
             }
 
             getBossThemeColors() {
-                if (!this.isBossRoom || !this.boss) return null;
-
-                const palette = {
-                    'Crimson Knight': { primary: '#8b0000', accent: '#ffd700', glow: 'rgba(220, 20, 60, 0.2)' },
-                    'Shadow Lord': { primary: '#1a1a1a', accent: '#ff0000', glow: 'rgba(80, 0, 0, 0.2)' },
-                    'Frost Warden': { primary: '#00bfff', accent: '#e0ffff', glow: 'rgba(0, 191, 255, 0.2)' },
-                    'Flame Tyrant': { primary: '#ff4500', accent: '#ffff00', glow: 'rgba(255, 99, 71, 0.2)' },
-                    'Stone Golem': { primary: '#696969', accent: '#c0c0c0', glow: 'rgba(140, 140, 140, 0.2)' },
-                    'Toxic Assassin': { primary: '#228b22', accent: '#7fff00', glow: 'rgba(50, 205, 50, 0.2)' },
-                    'Thunder King': { primary: '#4169e1', accent: '#ffd700', glow: 'rgba(120, 150, 255, 0.2)' },
-                    'Necromancer': { primary: '#4b0082', accent: '#da70d6', glow: 'rgba(138, 43, 226, 0.2)' },
-                    'Blood Reaper': { primary: '#dc143c', accent: '#ffb6c1', glow: 'rgba(220, 20, 60, 0.2)' },
-                    'Void Walker': { primary: '#483d8b', accent: '#9370db', glow: 'rgba(72, 61, 139, 0.2)' },
-                    'Crystal Sage': { primary: '#ff1493', accent: '#ffe4f2', glow: 'rgba(255, 20, 147, 0.2)' },
-                    'Iron Colossus': { primary: '#4a4a4a', accent: '#b0b0b0', glow: 'rgba(160, 160, 160, 0.2)' },
-                    'Phantom Assassin': { primary: '#8b008b', accent: '#dda0dd', glow: 'rgba(139, 0, 139, 0.2)' },
-                    'Plague Doctor': { primary: '#006400', accent: '#adff2f', glow: 'rgba(0, 100, 0, 0.2)' },
-                    'Storm Herald': { primary: '#4169e1', accent: '#87cefa', glow: 'rgba(65, 105, 225, 0.2)' }
-                };
-
-                return palette[this.boss.type] || { primary: '#5a5a5a', accent: '#c0c0c0', glow: 'rgba(120,120,120,0.2)' };
+                const themeBossType = this.isBossRoom && this.boss ? this.boss.type : this.upcomingBossType;
+                return BOSS_THEME_PALETTE[themeBossType] || { primary: '#5a5a5a', accent: '#c0c0c0', glow: 'rgba(120,120,120,0.2)' };
             }
 
             drawBossDecorations() {
@@ -7074,7 +7117,56 @@
                 ctx.fillStyle = theme.accent;
                 ctx.fill();
 
+                // Extra boss-room spectacle while keeping pixel style
+                const bannerTop = 70;
+                for (let side = 0; side < 2; side++) {
+                    const bannerX = side === 0 ? 40 : canvas.width - 80;
+                    ctx.globalAlpha = 0.35 + pulse * 0.35;
+                    ctx.fillStyle = theme.primary;
+                    ctx.fillRect(bannerX, bannerTop, 40, 180);
+                    ctx.fillStyle = theme.accent;
+                    ctx.fillRect(bannerX + 10, bannerTop + 24, 20, 12);
+                    ctx.fillRect(bannerX + 8, bannerTop + 160, 24, 10);
+                }
+
+                for (let i = 0; i < 14; i++) {
+                    const angle = (Math.PI * 2 / 14) * i + Date.now() / 800;
+                    ctx.globalAlpha = 0.12 + pulse * 0.2;
+                    ctx.fillStyle = theme.accent;
+                    ctx.fillRect(
+                        canvas.width / 2 + Math.cos(angle) * 220,
+                        canvas.height / 2 + Math.sin(angle) * 120,
+                        6,
+                        6
+                    );
+                }
+
                 ctx.globalAlpha = 1;
+                ctx.restore();
+            }
+
+            drawPreludeDecorations() {
+                if (this.isBossRoom || this.isSafeRoom) return;
+                const theme = this.getBossThemeColors();
+                if (!theme) return;
+
+                ctx.save();
+                const pulse = 0.55 + Math.sin(Date.now() / 400) * 0.2;
+                ctx.globalAlpha = 0.12 + pulse * 0.12;
+                ctx.fillStyle = theme.primary;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.globalAlpha = 0.32 + pulse * 0.18;
+                ctx.fillStyle = theme.accent;
+                for (let i = 0; i < 8; i++) {
+                    const x = 90 + i * 140;
+                    ctx.fillRect(x, 48 + (i % 2) * 8, 16, 16);
+                }
+
+                ctx.globalAlpha = 0.2 + pulse * 0.15;
+                ctx.fillStyle = theme.glow;
+                ctx.fillRect(70, canvas.height - 120, 220, 26);
+                ctx.fillRect(canvas.width - 290, canvas.height - 120, 220, 26);
                 ctx.restore();
             }
 
@@ -7087,7 +7179,9 @@
                     gradient.addColorStop(0, '#2a4a2a');
                     gradient.addColorStop(1, '#1a2a1a');
                 } else {
-                    gradient.addColorStop(0, '#3a3a3a');
+                    const theme = this.getBossThemeColors();
+                    const topShade = theme ? theme.primary : '#3a3a3a';
+                    gradient.addColorStop(0, topShade + '');
                     gradient.addColorStop(1, '#1a1a1a');
                 }
                 ctx.fillStyle = gradient;
@@ -7135,6 +7229,8 @@
                     ctx.globalAlpha = 1;
                 }
                 
+                this.drawPreludeDecorations();
+
                 if (this.isBossRoom) {
                     this.drawBossDecorations();
                 }
@@ -7824,7 +7920,11 @@
             { id: 'classic', name: 'Classic Garb', price: 0, colors: { body: '#1a1a1a', hood: '#0a0a0a', eyes: '#ff0000', belt: '#4a2511' } },
             { id: 'midnight', name: 'Midnight Veil', price: 120, colors: { body: '#10142a', hood: '#050814', eyes: '#7fd0ff', belt: '#253a6b' } },
             { id: 'bloodmoon', name: 'Bloodmoon Cloak', price: 180, colors: { body: '#2a1010', hood: '#150808', eyes: '#ff3b3b', belt: '#5f1c1c' } },
-            { id: 'emerald', name: 'Emerald Shade', price: 220, colors: { body: '#102218', hood: '#08120c', eyes: '#33ff88', belt: '#1d5a3a' } }
+            { id: 'emerald', name: 'Emerald Shade', price: 220, colors: { body: '#102218', hood: '#08120c', eyes: '#33ff88', belt: '#1d5a3a' } },
+            { id: 'stormveil', name: 'Stormveil Wraps', price: 260, colors: { body: '#162038', hood: '#0a1220', eyes: '#8ed6ff', belt: '#3c5f91' } },
+            { id: 'voidfang', name: 'Voidfang Suit', price: 280, colors: { body: '#1c1130', hood: '#0d0718', eyes: '#b884ff', belt: '#41266e' } },
+            { id: 'sunflare', name: 'Sunflare Raiment', price: 300, colors: { body: '#2e1b08', hood: '#170d03', eyes: '#ffd166', belt: '#a56b1f' } },
+            { id: 'ghostjade', name: 'Ghostjade Weave', price: 320, colors: { body: '#122422', hood: '#081311', eyes: '#9affdd', belt: '#2d6b60' } }
         ];
 
         const achievementDefinitions = [
@@ -8336,6 +8436,7 @@
             document.getElementById('health').textContent = Math.floor(player.health);
             document.getElementById('healthBar').style.width = (player.health / player.maxHealth * 100) + '%';
             document.getElementById('room').textContent = roomNumber;
+            document.getElementById('upcomingBoss').textContent = getUpcomingBossType(roomNumber);
             const enemyCount = currentRoom.enemies.length + (currentRoom.boss && currentRoom.boss.health > 0 ? 1 : 0);
             document.getElementById('enemies').textContent = enemyCount;
             document.getElementById('shadowCoins').textContent = metaProgress.coins;
