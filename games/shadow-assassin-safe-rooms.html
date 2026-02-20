@@ -1263,6 +1263,7 @@
                 
                 // Ability effects
                 this.invincible = false;
+                this.specialGuardTimer = 0;
                 this.damageMultiplier = 1;
                 
                 // Animation
@@ -1352,7 +1353,9 @@
                     bossName: boss.type,
                     x: boss.x,
                     y: boss.y,
-                    variant: getExecuteVariantForBoss(boss.type)
+                    variant: getExecuteVariantForBoss(boss.type),
+                    bossRef: boss,
+                    ownerRef: this
                 };
 
                 this.invincible = true;
@@ -1369,14 +1372,6 @@
                         40
                     ));
                 }
-
-                setTimeout(() => {
-                    if (currentRoom.boss === boss) {
-                        boss.takeDamage(999999);
-                        boss.frozen = false;
-                    }
-                    this.invincible = false;
-                }, 320);
             }
 
             attack() {
@@ -4340,6 +4335,7 @@
                 if (this.special4Cooldown > 0) this.special4Cooldown--;
                 if (this.special5Cooldown > 0) this.special5Cooldown--;
                 if (this.special6Cooldown > 0) this.special6Cooldown--;
+                if (this.specialGuardTimer > 0) this.specialGuardTimer--;
                 
                 // Regeneration
                 if (this.upgrades.regeneration > 0) {
@@ -4604,7 +4600,7 @@
             }
 
             takeDamage(amount) {
-                if (this.invincible) return;
+                if (this.invincible || this.specialGuardTimer > 0) return;
                 
                 // Evasion
                 if (this.upgrades.evasion > 0 && Math.random() < this.upgrades.evasion * 0.1) {
@@ -8900,6 +8896,14 @@
             ctx.restore();
 
             if (executionCinematic.timer <= 0) {
+                const boss = executionCinematic.bossRef;
+                if (boss && currentRoom.boss === boss) {
+                    boss.takeDamage(999999);
+                    boss.frozen = false;
+                }
+                if (executionCinematic.ownerRef) {
+                    executionCinematic.ownerRef.invincible = false;
+                }
                 executionCinematic = null;
             }
         }
