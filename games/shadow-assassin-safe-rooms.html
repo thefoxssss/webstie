@@ -2308,7 +2308,7 @@
                                 
                                 setTimeout(() => {
                                     clearInterval(healthDrain);
-                                    if (currentRoom.boss) {
+                                    if (currentRoom.boss && currentRoom.boss.health > 0) {
                                         currentRoom.boss.health = 1;
                                         // Final rewrite flash
                                         for (let i = 0; i < 200; i++) {
@@ -8898,7 +8898,10 @@
             if (executionCinematic.timer <= 0) {
                 const boss = executionCinematic.bossRef;
                 if (boss && currentRoom.boss === boss) {
-                    boss.takeDamage(999999);
+                    // Force a true finisher kill state instead of relying on damage hooks,
+                    // so delayed boss scripts can't leave it alive at 1 HP.
+                    boss.health = 0;
+                    boss.isInvulnerable = false;
                     boss.frozen = false;
                 }
                 if (executionCinematic.ownerRef) {
