@@ -692,7 +692,7 @@
         </div>
         <div class="keybind-item">
             <span class="keybind-key">[X]</span>
-            <span class="keybind-ability">Execution (Boss Finisher)</span>
+            <span class="keybind-ability">Boss Execute (X Finisher)</span>
         </div>
         <div id="additionalKeybinds"></div>
     </div>
@@ -1169,7 +1169,7 @@
                     // NEW UPGRADES
                     lifeLink: 0, deathMark: 0, voidWalk: 0, soulHarvest: 0, reflection: 0,
                     arcaneShield: 0, regeneration: 0, multiStrike: 0, bladeDance: 0, berserkerRage: 0,
-                    assassination: 0, execution: 0, rage: 0, berserk: 0, whirlwind: 0,
+                    assassination: 0, execution: 0, rage: 0, berserk: 0, whirlwind: 0, bladestorm: 0,
                     teleportStrike: 0, shadowBurst: 0, deathWave: 0, criticalMass: 0, bloodShield: 0,
                     phantomStrike: 0, timeWarp: 0, meteorStrike: 0, phaseShift: 0, divineIntervention: 0,
                     bloodPact: 0, dimensionalRift: 0, soulReaper: 0
@@ -1206,6 +1206,7 @@
                 this.frozenEnemies = new Set();
                 this.markedEnemies = new Set();
                 this.regenTimer = 0;
+                this.bladestormTimer = 0;
             }
 
             fireGrapple() {
@@ -1274,11 +1275,12 @@
 
                 const boss = currentRoom.boss;
                 const dist = Math.hypot(boss.x - this.x, boss.y - this.y);
-                const canExecute = boss.health <= boss.maxHealth * 0.14 && dist < 95;
+                const canExecute = boss.health <= boss.maxHealth * BOSS_EXECUTE_THRESHOLD && dist < 95;
                 if (!canExecute || executionCinematic) return;
 
                 executionCinematic = {
-                    timer: 42,
+                    timer: EXECUTION_CINEMATIC_DURATION,
+                    duration: EXECUTION_CINEMATIC_DURATION,
                     bossName: boss.type,
                     x: boss.x,
                     y: boss.y
@@ -1286,6 +1288,7 @@
 
                 this.invincible = true;
                 boss.frozen = true;
+                hitStopFrames = Math.max(hitStopFrames, 6);
 
                 for (let i = 0; i < 120; i++) {
                     particles.push(new Particle(
@@ -4291,11 +4294,36 @@
                         }
                     }
                 }
+
+                // Bladestorm (spinning knives)
+                if (this.upgrades.bladestorm > 0) {
+                    this.bladestormTimer++;
+                    const interval = Math.max(12, 46 - this.upgrades.bladestorm * 8);
+                    if (this.bladestormTimer >= interval) {
+                        const bladeCount = 2 + this.upgrades.bladestorm;
+                        const baseAngle = Date.now() / 220;
+                        for (let i = 0; i < bladeCount; i++) {
+                            const angle = baseAngle + (Math.PI * 2 / bladeCount) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 10, 'player'));
+                        }
+                        this.bladestormTimer = 0;
+                    }
+                }
                 
                 // Dash movement
                 if (this.dashing) {
                     this.dashFrame++;
                     this.vx = this.facing * this.dashSpeed;
+
+                    // Dash Attack
+                    if (this.upgrades.dashAttack > 0) {
+                        for (const enemy of currentRoom.enemies) {
+                            const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                            if (dist < 55) {
+                                enemy.takeDamage(4 + this.upgrades.dashAttack * 2);
+                            }
+                        }
+                    }
                     
                     // Dash trail
                     for (let i = 0; i < 3; i++) {
@@ -4513,6 +4541,11 @@
                 
                 // Evasion
                 if (this.upgrades.evasion > 0 && Math.random() < this.upgrades.evasion * 0.1) {
+                    return;
+                }
+
+                // Ghost Walk
+                if (this.upgrades.ghostWalk > 0 && Math.random() < this.upgrades.ghostWalk * 0.12) {
                     return;
                 }
                 
@@ -5070,6 +5103,14 @@
                 // Berserker Rage bonus
                 if (player.upgrades.berserkerRage > 0 && player.health < player.maxHealth * 0.3) {
                     finalDamage *= (1 + player.upgrades.berserkerRage * 0.15);
+                }
+
+                // Execute threshold
+                if (player.upgrades.executeThreshold > 0) {
+                    const threshold = 0.12 + player.upgrades.executeThreshold * 0.06;
+                    if (this.health / this.maxHealth <= threshold) {
+                        finalDamage = Math.max(finalDamage, this.health);
+                    }
                 }
                 
                 this.health -= finalDamage;
@@ -7246,6 +7287,14 @@
                     ctx.font = 'bold 18px Courier New';
                     ctx.fillText('DUEL ROOM - NO MINIONS', canvas.width / 2, 44);
                 }
+
+                if (player && this.health > 0 && this.health <= this.maxHealth * BOSS_EXECUTE_THRESHOLD) {
+                    const inRange = Math.hypot(this.x - player.x, this.y - player.y) < 95;
+                    const promptColor = inRange ? '#ff4444' : '#ffd27a';
+                    ctx.fillStyle = promptColor;
+                    ctx.font = 'bold 12px Courier New';
+                    ctx.fillText(inRange ? 'PRESS X - EXECUTE READY' : 'BOSS EXECUTABLE (GET CLOSER)', this.x, barY - 38);
+                }
             }
 
             takeDamage(damage) {
@@ -7292,6 +7341,9 @@
 
             return nearest;
         }
+
+        const BOSS_EXECUTE_THRESHOLD = 0.14;
+        const EXECUTION_CINEMATIC_DURATION = 54;
 
         const BOSS_ROTATION = [
             'Crimson Knight', 'Shadow Lord', 'Frost Warden', 'Flame Tyrant',
@@ -8086,6 +8138,9 @@
                 case 'voidRift':
                     player.upgrades.shadowBurst += 1;
                     break;
+                case 'knifeStorm':
+                    player.upgrades.bladestorm += 1;
+                    break;
                 case 'chaosTheory':
                     player.damageMultiplier += 0.15;
                     break;
@@ -8442,6 +8497,17 @@
         function onEnemyDefeated() {
             metaProgress.kills += 1;
             addCoins(8);
+
+            if (player) {
+                if (player.upgrades.reaper > 0) {
+                    player.health = Math.min(player.maxHealth, player.health + player.upgrades.reaper * 2);
+                }
+                if (player.upgrades.bloodRage > 0) {
+                    player.bloodRageStacks = Math.min(8, (player.bloodRageStacks || 0) + 1);
+                    player.speed = 5 + (player.upgrades.speed + player.upgrades.swiftness) * 0.8 + player.bloodRageStacks * 0.15;
+                }
+            }
+
             checkAchievements();
         }
 
@@ -8577,30 +8643,114 @@
         function drawExecutionCinematic() {
             if (!executionCinematic) return;
 
+            const duration = executionCinematic.duration || EXECUTION_CINEMATIC_DURATION;
+            const timer = executionCinematic.timer;
+            const progress = 1 - Math.max(0, timer) / duration;
+            const phasePulse = Math.sin(progress * Math.PI * 4);
+            const centerX = executionCinematic.x;
+            const centerY = executionCinematic.y;
+
             executionCinematic.timer--;
 
             ctx.save();
-            const alpha = Math.min(0.7, executionCinematic.timer / 42);
-            ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+
+            // Cinematic letterbox bars for a finisher feel
+            const barHeight = 38 + Math.sin(progress * Math.PI) * 26;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            ctx.fillRect(0, 0, canvas.width, barHeight);
+            ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+
+            // Cinematic blackout + flash timing
+            const blackoutAlpha = 0.32 + (Math.sin(progress * Math.PI) * 0.44);
+            ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.86, blackoutAlpha)})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.strokeStyle = '#ff1a1a';
-            ctx.lineWidth = 4;
+            // Rotating sigil circle around the boss
+            const sigilRadius = 70 + progress * 120;
+            const sigilRotation = progress * Math.PI * 3;
+            ctx.strokeStyle = `rgba(255, 180, 180, ${0.75 - progress * 0.3})`;
+            ctx.lineWidth = 2 + progress * 2;
             ctx.beginPath();
-            ctx.moveTo(executionCinematic.x - 60, executionCinematic.y - 60);
-            ctx.lineTo(executionCinematic.x + 60, executionCinematic.y + 60);
-            ctx.moveTo(executionCinematic.x + 60, executionCinematic.y - 60);
-            ctx.lineTo(executionCinematic.x - 60, executionCinematic.y + 60);
+            ctx.arc(centerX, centerY, sigilRadius, 0, Math.PI * 2);
             ctx.stroke();
+            for (let i = 0; i < 8; i++) {
+                const ang = sigilRotation + (Math.PI * 2 / 8) * i;
+                const inner = sigilRadius - 14;
+                const outer = sigilRadius + 12;
+                ctx.beginPath();
+                ctx.moveTo(centerX + Math.cos(ang) * inner, centerY + Math.sin(ang) * inner);
+                ctx.lineTo(centerX + Math.cos(ang) * outer, centerY + Math.sin(ang) * outer);
+                ctx.stroke();
+            }
 
-            ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 34px Courier New';
+            const focusRadius = 42 + progress * 240;
+            const ringAlpha = Math.max(0.2, 0.9 - progress * 0.65);
+            const ringGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, focusRadius);
+            ringGrad.addColorStop(0, `rgba(255,255,255,${0.24 + 0.16 * Math.max(0, phasePulse)})`);
+            ringGrad.addColorStop(0.45, `rgba(255,40,40,${ringAlpha})`);
+            ringGrad.addColorStop(1, 'rgba(255,0,0,0)');
+            ctx.fillStyle = ringGrad;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, focusRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main X slash + afterimage trails
+            const slashLen = 56 + progress * 84;
+            const slashWidth = 4 + progress * 3;
+            const slashJitter = 8 + Math.max(0, phasePulse) * 13;
+            for (let trail = 0; trail < 4; trail++) {
+                const tAlpha = 0.55 - trail * 0.12;
+                const tOffset = trail * 6;
+                ctx.strokeStyle = `rgba(255, 50, 50, ${tAlpha})`;
+                ctx.lineWidth = Math.max(1, slashWidth - trail * 0.7);
+                ctx.shadowColor = '#ff7777';
+                ctx.shadowBlur = 16 - trail * 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX - slashLen + tOffset, centerY - slashLen - slashJitter + tOffset * 0.5);
+                ctx.lineTo(centerX + slashLen + tOffset, centerY + slashLen + slashJitter + tOffset * 0.5);
+                ctx.moveTo(centerX + slashLen - tOffset, centerY - slashLen + slashJitter - tOffset * 0.5);
+                ctx.lineTo(centerX - slashLen - tOffset, centerY + slashLen - slashJitter - tOffset * 0.5);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+
+            // Floating embers during the finisher
+            for (let i = 0; i < 10; i++) {
+                const emberAngle = Math.random() * Math.PI * 2;
+                const emberRadius = 30 + Math.random() * (40 + progress * 110);
+                const px = centerX + Math.cos(emberAngle) * emberRadius;
+                const py = centerY + Math.sin(emberAngle) * emberRadius;
+                ctx.fillStyle = ['#ff2a2a', '#ffd700', '#ffffff'][Math.floor(Math.random() * 3)];
+                ctx.globalAlpha = 0.28 + Math.random() * 0.45;
+                ctx.fillRect(px, py, 2 + Math.random() * 2, 2 + Math.random() * 2);
+            }
+            ctx.globalAlpha = 1;
+
+            // Final flash + shockwave at the end of execution
+            if (timer < 12) {
+                const flash = (12 - timer) / 12;
+                ctx.fillStyle = `rgba(255,255,255,${flash * 0.62})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = `rgba(255,255,255,${0.75 - flash * 0.45})`;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 80 + flash * 220, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Chromatic split title text for style
             ctx.textAlign = 'center';
-            ctx.fillText('EXECUTION', canvas.width / 2, 120);
+            ctx.font = 'bold 40px Courier New';
+            ctx.fillStyle = 'rgba(255,0,0,0.8)';
+            ctx.fillText('EXECUTION', canvas.width / 2 - 2, 114);
+            ctx.fillStyle = 'rgba(0,220,255,0.8)';
+            ctx.fillText('EXECUTION', canvas.width / 2 + 2, 114);
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText('EXECUTION', canvas.width / 2, 114);
 
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 18px Courier New';
-            ctx.fillText(executionCinematic.bossName, canvas.width / 2, 150);
+            ctx.fillText(executionCinematic.bossName, canvas.width / 2, 148);
             ctx.restore();
 
             if (executionCinematic.timer <= 0) {
