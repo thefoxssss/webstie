@@ -761,7 +761,7 @@
     <!-- Controls -->
     <div class="controls">
         WASD/Arrows: Move & Aim Knife | SPACE: Jump | J: Dagger | K: Dash | L: Knife | H: Grapple | X: Execute<br>
-        Q/E: Special Abilities
+        Q/E/R/F/C/V: Special Abilities
     </div>
     
 
@@ -8309,32 +8309,14 @@
                     player.damageMultiplier += 0.15;
                     break;
             }
-            
             // Special ability assignment - NOW SUPPORTS 6 SLOTS!
             if (upgrade.type === 'special') {
-                const alreadyEquipped = [player.special1, player.special2, player.special3, player.special4, player.special5, player.special6].includes(upgradeKey);
-                if (!alreadyEquipped) {
-                    if (!player.special1) {
-                        player.special1 = upgradeKey;
-                    } else if (!player.special2) {
-                        player.special2 = upgradeKey;
-                    } else if (!player.special3) {
-                        player.special3 = upgradeKey;
-                    } else if (!player.special4) {
-                        player.special4 = upgradeKey;
-                    } else if (!player.special5) {
-                        player.special5 = upgradeKey;
-                    } else if (!player.special6) {
-                        player.special6 = upgradeKey;
-                    } else {
-                        // All 6 slots full - replace oldest (special1)
-                        player.special1 = upgradeKey;
-                    }
-                }
+                equipSpecialAbility(upgradeKey);
                 normalizeSpecialSlots();
                 updateSpecialAbilitiesUI();
             }
         }
+
         
         function updateSpecialAbilitiesUI() {
             const listElement = document.getElementById('specialAbilitiesList');
@@ -8494,7 +8476,7 @@
         
         function toggleMythicAbility(abilityKey, element) {
             const upgrade = upgradeDefinitions[abilityKey];
-            const specialSlotKeys = ['special1', 'special2', 'special3', 'special4', 'special5', 'special6'];
+            const specialSlotKeys = getSpecialSlotKeys();
             
             if (element.classList.contains('active')) {
                 // Deactivate
@@ -8505,6 +8487,7 @@
                     specialSlotKeys.forEach(slotKey => {
                         if (player[slotKey] === abilityKey) {
                             player[slotKey] = null;
+                            player[getCooldownKeyForSpecialSlot(slotKey)] = 0;
                         }
                     });
                 } else {
@@ -8516,13 +8499,8 @@
                 element.classList.add('active');
                 
                 if (upgrade.type === 'special') {
-                    // Add to first empty special slot, matching applyUpgrade replacement behavior when full
-                    const emptySlotKey = specialSlotKeys.find(slotKey => !player[slotKey]);
-                    if (emptySlotKey) {
-                        player[emptySlotKey] = abilityKey;
-                    } else {
-                        player.special1 = abilityKey; // All slots full - deterministic replacement
-                    }
+                    // Add/refresh special in slots
+                    equipSpecialAbility(abilityKey);
                 } else {
                     // Max out upgrade
                     player.upgrades[abilityKey] = upgrade.maxLevel || 10;
@@ -9404,6 +9382,29 @@
                     seen.add(ability);
                 }
             }
+        }
+
+        function getSpecialSlotKeys() {
+            return ['special1', 'special2', 'special3', 'special4', 'special5', 'special6'];
+        }
+
+        function getCooldownKeyForSpecialSlot(slotKey) {
+            return slotKey + 'Cooldown';
+        }
+
+        function equipSpecialAbility(abilityKey) {
+            const slots = getSpecialSlotKeys();
+            const existingSlot = slots.find(slotKey => player[slotKey] === abilityKey);
+            if (existingSlot) {
+                player[getCooldownKeyForSpecialSlot(existingSlot)] = 0;
+                return existingSlot;
+            }
+
+            const emptySlot = slots.find(slotKey => !player[slotKey]);
+            const targetSlot = emptySlot || 'special1';
+            player[targetSlot] = abilityKey;
+            player[getCooldownKeyForSpecialSlot(targetSlot)] = 0;
+            return targetSlot;
         }
 
         function refreshCheckpointButtons() {
