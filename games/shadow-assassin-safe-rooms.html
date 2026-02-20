@@ -1730,44 +1730,30 @@
 
             spawnSpecialCastFeedback(abilityName) {
                 const ringColor = mythicMode ? '#ffd700' : '#66ccff';
-                for (let i = 0; i < 24; i++) {
-                    const angle = (Math.PI * 2 / 24) * i;
+                for (let i = 0; i < 18; i++) {
+                    const angle = (Math.PI * 2 / 18) * i;
                     particles.push(new Particle(
                         this.x + Math.cos(angle) * 8,
                         this.y + Math.sin(angle) * 8,
                         ringColor,
-                        Math.cos(angle) * (3 + Math.random() * 4),
-                        Math.sin(angle) * (3 + Math.random() * 4),
-                        36
+                        Math.cos(angle) * (2 + Math.random() * 3),
+                        Math.sin(angle) * (2 + Math.random() * 3),
+                        30
                     ));
                 }
 
-                // Give a brief safety window so specials feel reliable under pressure.
-                this.specialGuardTimer = Math.max(this.specialGuardTimer, 24);
-                this.health = Math.min(this.maxHealth, this.health + Math.max(4, this.maxHealth * 0.04));
-
-                // Guarantee each special has visible, meaningful baseline impact.
-                const pulseDamage = Math.max(20, this.attackDamage * (mythicMode ? 1.35 : 0.9));
+                // Guarantee each special has a visible baseline impact.
+                const pulseDamage = Math.max(6, this.attackDamage * 0.35);
                 for (const enemy of currentRoom.enemies) {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
-                    if (dist < 200) {
+                    if (dist < 120) {
                         enemy.takeDamage(pulseDamage);
                     }
                 }
                 if (currentRoom.boss && currentRoom.boss.health > 0) {
                     const bossDist = Math.hypot(currentRoom.boss.x - this.x, currentRoom.boss.y - this.y);
-                    if (bossDist < 240) {
-                        currentRoom.boss.takeDamage(pulseDamage * 0.8);
-                    }
-                }
-
-                // Cancel nearby hostile bullets so casts don't feel like they whiff while you still die.
-                for (let i = projectiles.length - 1; i >= 0; i--) {
-                    const proj = projectiles[i];
-                    if (proj.owner !== 'enemy') continue;
-                    const dist = Math.hypot(proj.x - this.x, proj.y - this.y);
-                    if (dist < 180) {
-                        projectiles.splice(i, 1);
+                    if (bossDist < 150) {
+                        currentRoom.boss.takeDamage(pulseDamage * 0.6);
                     }
                 }
             }
