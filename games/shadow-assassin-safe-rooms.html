@@ -7357,18 +7357,6 @@
         const BOSS_EXECUTE_THRESHOLD = 0.14;
         const EXECUTION_CINEMATIC_DURATION = 54;
 
-        function getExecuteVariantForBoss(bossType) {
-            const key = String(bossType || '').toLowerCase();
-            if (key.includes('frost') || key.includes('crystal')) return { theme: 'FROST', primary: '#6fe8ff', secondary: '#e4ffff', accent: '#91caff' };
-            if (key.includes('flame')) return { theme: 'FLAME', primary: '#ff5a1f', secondary: '#ffd35a', accent: '#ff9a5f' };
-            if (key.includes('thunder') || key.includes('storm')) return { theme: 'THUNDER', primary: '#8eb8ff', secondary: '#fff27a', accent: '#b39bff' };
-            if (key.includes('void') || key.includes('shadow') || key.includes('phantom') || key.includes('necro')) return { theme: 'VOID', primary: '#b67bff', secondary: '#f0ddff', accent: '#6e42d8' };
-            if (key.includes('toxic') || key.includes('plague')) return { theme: 'TOXIC', primary: '#8dff5b', secondary: '#e2ff9a', accent: '#35c45f' };
-            if (key.includes('stone') || key.includes('iron') || key.includes('golem')) return { theme: 'TITAN', primary: '#c7c7c7', secondary: '#f7f7f7', accent: '#8f8f8f' };
-            if (key.includes('blood') || key.includes('crimson')) return { theme: 'BLOOD', primary: '#ff3a5a', secondary: '#ffd1da', accent: '#930019' };
-            return { theme: 'ARCANE', primary: '#ff5252', secondary: '#ffd700', accent: '#63d8ff' };
-        }
-
         const BOSS_ROTATION = [
             'Crimson Knight', 'Shadow Lord', 'Frost Warden', 'Flame Tyrant',
             'Stone Golem', 'Toxic Assassin', 'Thunder King', 'Necromancer',
@@ -8673,24 +8661,26 @@
             const phasePulse = Math.sin(progress * Math.PI * 4);
             const centerX = executionCinematic.x;
             const centerY = executionCinematic.y;
-            const variant = executionCinematic.variant || getExecuteVariantForBoss(executionCinematic.bossName);
 
             executionCinematic.timer--;
 
             ctx.save();
 
+            // Cinematic letterbox bars for a finisher feel
             const barHeight = 38 + Math.sin(progress * Math.PI) * 26;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
             ctx.fillRect(0, 0, canvas.width, barHeight);
             ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
 
+            // Cinematic blackout + flash timing
             const blackoutAlpha = 0.32 + (Math.sin(progress * Math.PI) * 0.44);
             ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.86, blackoutAlpha)})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Rotating sigil circle around the boss
             const sigilRadius = 70 + progress * 120;
             const sigilRotation = progress * Math.PI * 3;
-            ctx.strokeStyle = `${variant.primary}${Math.floor((0.75 - progress * 0.3) * 255).toString(16).padStart(2, '0')}`;
+            ctx.strokeStyle = `rgba(255, 180, 180, ${0.75 - progress * 0.3})`;
             ctx.lineWidth = 2 + progress * 2;
             ctx.beginPath();
             ctx.arc(centerX, centerY, sigilRadius, 0, Math.PI * 2);
@@ -8709,22 +8699,23 @@
             const ringAlpha = Math.max(0.2, 0.9 - progress * 0.65);
             const ringGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, focusRadius);
             ringGrad.addColorStop(0, `rgba(255,255,255,${0.24 + 0.16 * Math.max(0, phasePulse)})`);
-            ringGrad.addColorStop(0.45, `${variant.primary}${Math.floor(ringAlpha * 255).toString(16).padStart(2, '0')}`);
+            ringGrad.addColorStop(0.45, `rgba(255,40,40,${ringAlpha})`);
             ringGrad.addColorStop(1, 'rgba(255,0,0,0)');
             ctx.fillStyle = ringGrad;
             ctx.beginPath();
             ctx.arc(centerX, centerY, focusRadius, 0, Math.PI * 2);
             ctx.fill();
 
+            // Main X slash + afterimage trails
             const slashLen = 56 + progress * 84;
             const slashWidth = 4 + progress * 3;
             const slashJitter = 8 + Math.max(0, phasePulse) * 13;
             for (let trail = 0; trail < 4; trail++) {
                 const tAlpha = 0.55 - trail * 0.12;
                 const tOffset = trail * 6;
-                ctx.strokeStyle = `${variant.primary}${Math.floor(Math.max(0.08, tAlpha) * 255).toString(16).padStart(2, '0')}`;
+                ctx.strokeStyle = `rgba(255, 50, 50, ${tAlpha})`;
                 ctx.lineWidth = Math.max(1, slashWidth - trail * 0.7);
-                ctx.shadowColor = variant.accent;
+                ctx.shadowColor = '#ff7777';
                 ctx.shadowBlur = 16 - trail * 2;
                 ctx.beginPath();
                 ctx.moveTo(centerX - slashLen + tOffset, centerY - slashLen - slashJitter + tOffset * 0.5);
@@ -8735,88 +8726,19 @@
             }
             ctx.shadowBlur = 0;
 
+            // Floating embers during the finisher
             for (let i = 0; i < 10; i++) {
                 const emberAngle = Math.random() * Math.PI * 2;
                 const emberRadius = 30 + Math.random() * (40 + progress * 110);
                 const px = centerX + Math.cos(emberAngle) * emberRadius;
                 const py = centerY + Math.sin(emberAngle) * emberRadius;
-                ctx.fillStyle = [variant.primary, variant.secondary, '#ffffff'][Math.floor(Math.random() * 3)];
+                ctx.fillStyle = ['#ff2a2a', '#ffd700', '#ffffff'][Math.floor(Math.random() * 3)];
                 ctx.globalAlpha = 0.28 + Math.random() * 0.45;
                 ctx.fillRect(px, py, 2 + Math.random() * 2, 2 + Math.random() * 2);
             }
             ctx.globalAlpha = 1;
 
-            if (variant.theme === 'THUNDER') {
-                ctx.strokeStyle = variant.secondary;
-                ctx.lineWidth = 3;
-                for (let bolt = 0; bolt < 3; bolt++) {
-                    ctx.beginPath();
-                    ctx.moveTo(centerX + (bolt - 1) * 40, centerY - 130);
-                    ctx.lineTo(centerX + (bolt - 1) * 22, centerY - 40);
-                    ctx.lineTo(centerX + (bolt - 1) * 48, centerY + 30);
-                    ctx.stroke();
-                }
-            } else if (variant.theme === 'FROST') {
-                ctx.strokeStyle = variant.secondary;
-                ctx.lineWidth = 2;
-                for (let shard = 0; shard < 12; shard++) {
-                    const ang = (Math.PI * 2 / 12) * shard + progress * 0.4;
-                    ctx.beginPath();
-                    ctx.moveTo(centerX + Math.cos(ang) * 28, centerY + Math.sin(ang) * 28);
-                    ctx.lineTo(centerX + Math.cos(ang) * (88 + progress * 46), centerY + Math.sin(ang) * (88 + progress * 46));
-                    ctx.stroke();
-                }
-            } else if (variant.theme === 'VOID') {
-                const vGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 320);
-                vGrad.addColorStop(0, `${variant.primary}88`);
-                vGrad.addColorStop(1, 'rgba(0,0,0,0)');
-                ctx.fillStyle = vGrad;
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, 320, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (variant.theme === 'FLAME') {
-                for (let flame = 0; flame < 7; flame++) {
-                    const fx = centerX + (flame - 3) * 18;
-                    const fy = centerY + 48 - Math.abs(flame - 3) * 7;
-                    const fGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, 36);
-                    fGrad.addColorStop(0, `${variant.secondary}cc`);
-                    fGrad.addColorStop(1, `${variant.primary}00`);
-                    ctx.fillStyle = fGrad;
-                    ctx.beginPath();
-                    ctx.arc(fx, fy, 36, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            } else if (variant.theme === 'BLOOD') {
-                ctx.fillStyle = `${variant.primary}b3`;
-                for (let drip = 0; drip < 14; drip++) {
-                    const dx = centerX - 110 + drip * 16;
-                    const len = 18 + (drip % 4) * 10;
-                    ctx.fillRect(dx, centerY - 18, 3, len);
-                }
-            } else if (variant.theme === 'TOXIC') {
-                for (let orb = 0; orb < 8; orb++) {
-                    const ang = progress * 4 + (Math.PI * 2 / 8) * orb;
-                    const rad = 66 + Math.sin(progress * 8 + orb) * 12;
-                    ctx.fillStyle = `${variant.primary}aa`;
-                    ctx.beginPath();
-                    ctx.arc(centerX + Math.cos(ang) * rad, centerY + Math.sin(ang) * rad, 6, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            } else if (variant.theme === 'TITAN') {
-                ctx.strokeStyle = `${variant.accent}dd`;
-                ctx.lineWidth = 5;
-                ctx.strokeRect(centerX - 120, centerY - 70, 240, 140);
-            } else if (variant.theme === 'ARCANE') {
-                ctx.strokeStyle = `${variant.accent}cc`;
-                ctx.lineWidth = 2;
-                for (let rune = 0; rune < 6; rune++) {
-                    const ang = progress * 2.5 + (Math.PI * 2 / 6) * rune;
-                    ctx.beginPath();
-                    ctx.arc(centerX + Math.cos(ang) * 88, centerY + Math.sin(ang) * 88, 11, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-            }
-
+            // Final flash + shockwave at the end of execution
             if (timer < 12) {
                 const flash = (12 - timer) / 12;
                 ctx.fillStyle = `rgba(255,255,255,${flash * 0.62})`;
@@ -8828,21 +8750,19 @@
                 ctx.stroke();
             }
 
+            // Chromatic split title text for style
             ctx.textAlign = 'center';
             ctx.font = 'bold 40px Courier New';
-            ctx.fillStyle = `${variant.primary}cc`;
+            ctx.fillStyle = 'rgba(255,0,0,0.8)';
             ctx.fillText('EXECUTION', canvas.width / 2 - 2, 114);
-            ctx.fillStyle = `${variant.accent}cc`;
+            ctx.fillStyle = 'rgba(0,220,255,0.8)';
             ctx.fillText('EXECUTION', canvas.width / 2 + 2, 114);
-            ctx.fillStyle = variant.secondary;
+            ctx.fillStyle = '#ffd700';
             ctx.fillText('EXECUTION', canvas.width / 2, 114);
 
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 18px Courier New';
             ctx.fillText(executionCinematic.bossName, canvas.width / 2, 148);
-            ctx.fillStyle = variant.primary;
-            ctx.font = 'bold 12px Courier New';
-            ctx.fillText(`${variant.theme} FINISH`, canvas.width / 2, 168);
             ctx.restore();
 
             if (executionCinematic.timer <= 0) {
