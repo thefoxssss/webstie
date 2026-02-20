@@ -225,6 +225,47 @@
             color: #aaa;
             font-size: 12px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: none;
+        }
+
+        #tutorialOverlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 300;
+        }
+
+        .tutorial-card {
+            width: min(92vw, 720px);
+            background: rgba(10, 10, 10, 0.96);
+            border: 3px solid #ffd700;
+            border-radius: 8px;
+            padding: 22px;
+            color: #fff;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.35);
+        }
+
+        .tutorial-card h2 {
+            color: #ffd700;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 16px;
+            margin: 12px 0 16px;
+            font-size: 13px;
+        }
+
+        .tutorial-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
         }
 
         .title {
@@ -719,10 +760,37 @@
     
     <!-- Controls -->
     <div class="controls">
-        WASD/Arrows: Move & Aim Knife | SPACE: Jump | J: Dagger | K: Dash | L: Knife | G: Grapple | X: Execute<br>
+        WASD/Arrows: Move & Aim Knife | SPACE: Jump | J: Dagger | K: Dash | L: Knife | H: Grapple | X: Execute<br>
         Q/E: Special Abilities
     </div>
     
+
+
+    <div id="tutorialOverlay">
+        <div class="tutorial-card">
+            <h2>🗡️ SHADOW ASSASSIN TRAINING</h2>
+            <p style="font-size: 13px; color: #ddd; line-height: 1.45;">
+                First-time players must complete this quick training intro. After this, the tutorial won't block your run.
+            </p>
+            <div class="tutorial-grid">
+                <div><strong>MOVE:</strong> WASD / Arrows</div>
+                <div><strong>JUMP:</strong> Space</div>
+                <div><strong>DAGGER:</strong> J</div>
+                <div><strong>DASH:</strong> K</div>
+                <div><strong>RANGED:</strong> L</div>
+                <div><strong>GRAPPLE:</strong> H</div>
+                <div><strong>EXECUTE:</strong> X</div>
+                <div><strong>SPECIALS:</strong> Q / E / R / F / C / V</div>
+            </div>
+            <p style="font-size: 12px; color: #9ec8ff; text-align: center; margin-bottom: 14px;">
+                Tip: Puzzle rooms need the floating key before the door unlocks.
+            </p>
+            <div class="tutorial-actions">
+                <button class="game-button" id="tutorialStartBtn">START TRAINING</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Menu -->
     <div id="mainMenu" class="main-menu">
         <h1>⚔️ SHADOW ASSASSIN ⚔️</h1>
@@ -8244,22 +8312,26 @@
             
             // Special ability assignment - NOW SUPPORTS 6 SLOTS!
             if (upgrade.type === 'special') {
-                if (!player.special1) {
-                    player.special1 = upgradeKey;
-                } else if (!player.special2) {
-                    player.special2 = upgradeKey;
-                } else if (!player.special3) {
-                    player.special3 = upgradeKey;
-                } else if (!player.special4) {
-                    player.special4 = upgradeKey;
-                } else if (!player.special5) {
-                    player.special5 = upgradeKey;
-                } else if (!player.special6) {
-                    player.special6 = upgradeKey;
-                } else {
-                    // All 6 slots full - replace oldest (special1)
-                    player.special1 = upgradeKey;
+                const alreadyEquipped = [player.special1, player.special2, player.special3, player.special4, player.special5, player.special6].includes(upgradeKey);
+                if (!alreadyEquipped) {
+                    if (!player.special1) {
+                        player.special1 = upgradeKey;
+                    } else if (!player.special2) {
+                        player.special2 = upgradeKey;
+                    } else if (!player.special3) {
+                        player.special3 = upgradeKey;
+                    } else if (!player.special4) {
+                        player.special4 = upgradeKey;
+                    } else if (!player.special5) {
+                        player.special5 = upgradeKey;
+                    } else if (!player.special6) {
+                        player.special6 = upgradeKey;
+                    } else {
+                        // All 6 slots full - replace oldest (special1)
+                        player.special1 = upgradeKey;
+                    }
                 }
+                normalizeSpecialSlots();
                 updateSpecialAbilitiesUI();
             }
         }
@@ -8456,8 +8528,10 @@
                     player.upgrades[abilityKey] = upgrade.maxLevel || 10;
                 }
                 
-                // Apply special effects
-                applyUpgrade(abilityKey);
+                // Apply special effects/stat boosts
+                if (upgrade.type !== 'special') {
+                    applyUpgrade(abilityKey);
+                }
             }
             
             // Update UI
@@ -8857,6 +8931,8 @@
         // SECRET CHEAT CODE SYSTEM
         let cheatCode = '';
         let mythicMode = false;
+        const TUTORIAL_STORAGE_KEY = 'shadowAssassinTutorialComplete';
+        let pendingRunStarter = null;
         
         // Input
         const keys = {};
@@ -9316,14 +9392,46 @@
         }
         
 
-        loadMetaProgress();
-        checkAchievements();
+        function normalizeSpecialSlots() {
+            const slots = ['special1', 'special2', 'special3', 'special4', 'special5', 'special6'];
+            const seen = new Set();
+            for (const slot of slots) {
+                const ability = player[slot];
+                if (!ability) continue;
+                if (seen.has(ability)) {
+                    player[slot] = null;
+                } else {
+                    seen.add(ability);
+                }
+            }
+        }
 
-        // Menu button event listeners
-        document.getElementById('playBtn').addEventListener('click', () => {
+        function refreshCheckpointButtons() {
+            const hasCheckpoint = Boolean(localStorage.getItem('shadowAssassinCheckpoint'));
+            const continueBtn = document.getElementById('continueBtn');
+            continueBtn.style.display = hasCheckpoint ? 'block' : 'none';
+            const loadCheckpointBtn = document.getElementById('loadCheckpointBtn');
+            if (loadCheckpointBtn) {
+                loadCheckpointBtn.disabled = !hasCheckpoint;
+                loadCheckpointBtn.style.opacity = hasCheckpoint ? '1' : '0.5';
+                loadCheckpointBtn.style.cursor = hasCheckpoint ? 'pointer' : 'not-allowed';
+            }
+        }
+
+        function startRunWithTutorial(starter) {
+            const tutorialComplete = localStorage.getItem(TUTORIAL_STORAGE_KEY) === '1';
+            if (tutorialComplete) {
+                starter();
+                return;
+            }
+            pendingRunStarter = starter;
+            document.getElementById('tutorialOverlay').style.display = 'flex';
+        }
+
+        function startNewRun() {
             document.getElementById('mainMenu').style.display = 'none';
             gameStarted = true;
-            mythicMode = false; // Reset mythic mode
+            mythicMode = false;
             player = createRunPlayer();
             currentRoom = new Room(1);
             roomNumber = 1;
@@ -9333,6 +9441,76 @@
             gameOver = false;
             executionCinematic = null;
             resetFrameClock();
+            refreshCheckpointButtons();
+        }
+
+        function loadCheckpointRun(showAlertIfMissing = true) {
+            const saved = localStorage.getItem('shadowAssassinCheckpoint');
+            if (!saved) {
+                if (showAlertIfMissing) {
+                    alert('No checkpoint found! You must reach a safe room (every 7 rooms) to save a checkpoint.');
+                }
+                return false;
+            }
+
+            const checkpoint = JSON.parse(saved);
+            mythicMode = checkpoint.mythicMode || false;
+            player = new Player(100, 300);
+            player.health = checkpoint.health;
+            player.maxHealth = checkpoint.maxHealth;
+            player.upgrades = checkpoint.upgrades;
+            player.special1 = checkpoint.special1;
+            player.special2 = checkpoint.special2;
+            player.special3 = checkpoint.special3 || null;
+            player.special4 = checkpoint.special4 || null;
+            player.special5 = checkpoint.special5 || null;
+            player.special6 = checkpoint.special6 || null;
+            normalizeSpecialSlots();
+            player.hasDoubleJump = checkpoint.hasDoubleJump;
+
+            roomNumber = checkpoint.room;
+            const isSafeRoom = (roomNumber % 7 === 0);
+            const isBossRoom = (roomNumber % 5 === 0) && !isSafeRoom;
+            const isPuzzleRoom = isPuzzleRoomNumber(roomNumber);
+            currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom);
+
+            player.x = 100;
+            player.y = canvas.height - 200;
+
+            particles = [];
+            projectiles = [];
+            shadowClones = [];
+            gameStarted = true;
+            gameOver = false;
+            executionCinematic = null;
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            resetFrameClock();
+            refreshCheckpointButtons();
+            return true;
+        }
+
+        loadMetaProgress();
+        checkAchievements();
+        refreshCheckpointButtons();
+
+        // Menu button event listeners
+        document.getElementById('playBtn').addEventListener('click', () => {
+            startRunWithTutorial(startNewRun);
+        });
+
+        document.getElementById('continueBtn').addEventListener('click', () => {
+            startRunWithTutorial(() => loadCheckpointRun(true));
+        });
+
+        document.getElementById('tutorialStartBtn').addEventListener('click', () => {
+            localStorage.setItem(TUTORIAL_STORAGE_KEY, '1');
+            document.getElementById('tutorialOverlay').style.display = 'none';
+            if (pendingRunStarter) {
+                const starter = pendingRunStarter;
+                pendingRunStarter = null;
+                starter();
+            }
         });
 
         document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -9413,51 +9591,9 @@
         });
         
         document.getElementById('loadCheckpointBtn').addEventListener('click', () => {
-            // Try to load saved checkpoint
-            const saved = localStorage.getItem('shadowAssassinCheckpoint');
-            if (saved) {
-                const checkpoint = JSON.parse(saved);
-                
-                mythicMode = checkpoint.mythicMode || false;
-                player = new Player(100, 300);
-                player.health = checkpoint.health;
-                player.maxHealth = checkpoint.maxHealth;
-                player.upgrades = checkpoint.upgrades;
-                
-                // Restore special abilities - ALL 6 SLOTS!
-                player.special1 = checkpoint.special1;
-                player.special2 = checkpoint.special2;
-                player.special3 = checkpoint.special3 || null;
-                player.special4 = checkpoint.special4 || null;
-                player.special5 = checkpoint.special5 || null;
-                player.special6 = checkpoint.special6 || null;
-                player.hasDoubleJump = checkpoint.hasDoubleJump;
-                
-                roomNumber = checkpoint.room;
-                
-                // Determine if returning to safe room or continuing
-                const isSafeRoom = (roomNumber % 7 === 0);
-                const isBossRoom = (roomNumber % 5 === 0) && !isSafeRoom;
-                const isPuzzleRoom = isPuzzleRoomNumber(roomNumber);
-                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom);
-                
-                player.x = 100;
-                player.y = canvas.height - 200;
-                
-                particles = [];
-                projectiles = [];
-                shadowClones = [];
-                gameStarted = true;
-                gameOver = false;
-                executionCinematic = null;
-                resetFrameClock();
-                document.getElementById('gameOverScreen').style.display = 'none';
-            } else {
-                // No checkpoint exists - button shouldn't even be clickable
-                alert('No checkpoint found! You must reach a safe room (every 7 rooms) to save a checkpoint.');
-            }
+            loadCheckpointRun(true);
         });
-        
+
         // Home button - returns to main menu
         document.getElementById('homeBtn').addEventListener('click', () => {
             document.getElementById('gameOverScreen').style.display = 'none';
@@ -9475,6 +9611,7 @@
             particles = [];
             projectiles = [];
             shadowClones = [];
+            refreshCheckpointButtons();
         });
         
         // Safe room continue button
