@@ -8510,7 +8510,6 @@
             frameAccumulator = Math.min(frameAccumulator + frameDelta, FIXED_STEP_MS * MAX_SIM_STEPS);
 
             let steps = Math.floor(frameAccumulator / FIXED_STEP_MS);
-            if (steps < 1) steps = 1;
             steps = Math.min(steps, MAX_SIM_STEPS);
             frameAccumulator = Math.max(0, frameAccumulator - (steps * FIXED_STEP_MS));
 
