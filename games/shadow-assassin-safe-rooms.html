@@ -7445,17 +7445,24 @@
             return getBossTypeForBossRoom(nextBossRoom);
         }
 
+        function isPuzzleRoomNumber(roomNum) {
+            return roomNum >= 4 && roomNum % 6 === 3 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+        }
+
         // Room class (keeping original castle look)
         class Room {
-            constructor(seed, isBossRoom = false, isSafeRoom = false) {
+            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false) {
                 this.seed = seed;
                 this.roomNumber = Math.max(1, Math.round(seed / 12345));
                 this.isBossRoom = isBossRoom;
                 this.isSafeRoom = isSafeRoom;
+                this.isPuzzleRoom = isPuzzleRoom;
                 this.enemies = [];
                 this.boss = null;
                 this.platforms = [];
                 this.cleared = false;
+                this.keyCollected = false;
+                this.puzzleKey = null;
                 this.upcomingBossType = getUpcomingBossType(this.roomNumber);
                 
                 // Seeded random
@@ -7464,34 +7471,53 @@
                     return seed / 233280;
                 }
                 
-                // Generate platforms
-                const platformCount = 3 + Math.floor(rand() * 4);
-                for (let i = 0; i < platformCount; i++) {
+                if (this.isPuzzleRoom) {
+                    this.platforms = [
+                        { x: 50, y: canvas.height - 150, width: 200, height: 15 },
+                        { x: 330, y: canvas.height - 245, width: 140, height: 15 },
+                        { x: 560, y: canvas.height - 330, width: 120, height: 15 },
+                        { x: 760, y: canvas.height - 430, width: 110, height: 15 },
+                        { x: 930, y: canvas.height - 305, width: 130, height: 15 },
+                        { x: 700, y: canvas.height - 210, width: 120, height: 15 },
+                        { x: canvas.width - 250, y: canvas.height - 150, width: 200, height: 15 }
+                    ];
+
+                    this.puzzleKey = {
+                        x: 812,
+                        y: canvas.height - 462,
+                        radius: 14,
+                        bobOffset: rand() * Math.PI * 2
+                    };
+                } else {
+                    // Generate platforms
+                    const platformCount = 3 + Math.floor(rand() * 4);
+                    for (let i = 0; i < platformCount; i++) {
+                        this.platforms.push({
+                            x: 100 + rand() * (canvas.width - 300),
+                            y: 200 + rand() * 300,
+                            width: 100 + rand() * 150,
+                            height: 15
+                        });
+                    }
+                    
+                    // Safe spawn/exit platforms
                     this.platforms.push({
-                        x: 100 + rand() * (canvas.width - 300),
-                        y: 200 + rand() * 300,
-                        width: 100 + rand() * 150,
+                        x: 50,
+                        y: canvas.height - 150,
+                        width: 200,
+                        height: 15
+                    });
+                    
+                    this.platforms.push({
+                        x: canvas.width - 250,
+                        y: canvas.height - 150,
+                        width: 200,
                         height: 15
                     });
                 }
                 
-                // Safe spawn/exit platforms
-                this.platforms.push({
-                    x: 50,
-                    y: canvas.height - 150,
-                    width: 200,
-                    height: 15
-                });
-                
-                this.platforms.push({
-                    x: canvas.width - 250,
-                    y: canvas.height - 150,
-                    width: 200,
-                    height: 15
-                });
-                
                 // Safe rooms have no enemies
-                if (this.isSafeRoom) {
+                if (this.isSafeRoom || this.isPuzzleRoom) {
                     // Empty room - safe zone!
                 } else if (this.isBossRoom) {
                     const bossType = getBossTypeForBossRoom(this.roomNumber);
@@ -7548,6 +7574,23 @@
                                 type
                             ));
                         }
+                    }
+                }
+            }
+
+            updateRoomState() {
+                if (!this.isPuzzleRoom || this.keyCollected || !this.puzzleKey) return;
+                const bobY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
+                const dist = Math.hypot(player.x - this.puzzleKey.x, player.y - bobY);
+                if (dist < 34) {
+                    this.keyCollected = true;
+                    for (let i = 0; i < 16; i++) {
+                        particles.push(new Particle(
+                            this.puzzleKey.x + (Math.random() - 0.5) * 24,
+                            bobY + (Math.random() - 0.5) * 24,
+                            '#9be07d',
+                            3 + Math.random() * 2
+                        ));
                     }
                 }
             }
@@ -7690,6 +7733,14 @@
                         ctx.strokeRect(x, y, 60, 50);
                     }
                 }
+
+                // Moss / vine detailing (keeps same castle look, adds depth)
+                ctx.fillStyle = this.isSafeRoom ? 'rgba(40, 130, 70, 0.35)' : 'rgba(65, 120, 55, 0.28)';
+                for (let x = 30; x < canvas.width; x += 120) {
+                    const vineHeight = 40 + ((x + this.roomNumber * 17) % 45);
+                    ctx.fillRect(x, 0, 4, vineHeight);
+                    ctx.fillRect(x + 5, vineHeight - 12, 8, 4);
+                }
                 
                 // Torches (green for safe rooms)
                 for (let i = 0; i < 5; i++) {
@@ -7740,6 +7791,12 @@
                         ctx.lineTo(crackX + 5, platform.y + platform.height);
                         ctx.stroke();
                     }
+
+                    ctx.fillStyle = this.isSafeRoom ? 'rgba(80, 180, 100, 0.4)' : 'rgba(85, 145, 75, 0.32)';
+                    for (let i = 0; i < platform.width; i += 28) {
+                        const mossWidth = 12 + ((platform.x + i + this.roomNumber) % 10);
+                        ctx.fillRect(platform.x + i, platform.y - 4, mossWidth, 4);
+                    }
                 }
                 
                 // Ground
@@ -7754,6 +7811,35 @@
                 
                 ctx.fillStyle = '#4a4a4a';
                 ctx.fillRect(0, canvas.height - 50, canvas.width, 3);
+
+                ctx.fillStyle = this.isSafeRoom ? 'rgba(60, 150, 85, 0.5)' : 'rgba(70, 125, 60, 0.35)';
+                for (let i = 0; i < canvas.width; i += 45) {
+                    const tuft = 4 + ((i + this.roomNumber * 9) % 8);
+                    ctx.fillRect(i, canvas.height - 50, 14, tuft);
+                }
+
+                if (this.isPuzzleRoom && this.puzzleKey && !this.keyCollected) {
+                    const keyY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
+                    const keyGlow = ctx.createRadialGradient(this.puzzleKey.x, keyY, 0, this.puzzleKey.x, keyY, 38);
+                    keyGlow.addColorStop(0, 'rgba(180, 255, 140, 0.45)');
+                    keyGlow.addColorStop(1, 'rgba(180, 255, 140, 0)');
+                    ctx.fillStyle = keyGlow;
+                    ctx.fillRect(this.puzzleKey.x - 38, keyY - 38, 76, 76);
+
+                    ctx.strokeStyle = '#d4ff9a';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(this.puzzleKey.x, keyY, 10, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = '#d4ff9a';
+                    ctx.fillRect(this.puzzleKey.x - 2, keyY + 9, 4, 16);
+                    ctx.fillRect(this.puzzleKey.x + 2, keyY + 20, 8, 4);
+
+                    ctx.fillStyle = '#c9ff92';
+                    ctx.font = '16px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('PARKOUR FOR THE KEY', canvas.width / 2, 70);
+                }
                 
                 // Door
                 if (this.enemies.length === 0 && !this.cleared) {
@@ -7763,6 +7849,7 @@
                 if (this.cleared || this.enemies.length === 0) {
                     const doorX = canvas.width - 60;
                     const doorY = canvas.height - 180;
+                    const doorLocked = this.isPuzzleRoom && !this.keyCollected;
                     
                     ctx.fillStyle = '#4a4a4a';
                     ctx.fillRect(doorX, doorY, 50, 130);
@@ -7775,26 +7862,43 @@
                     ctx.fillRect(doorX + 5, doorY + 20, 40, 110);
                     
                     const doorGradient = ctx.createRadialGradient(doorX + 25, doorY + 75, 0, doorX + 25, doorY + 75, 50);
-                    doorGradient.addColorStop(0, 'rgba(255, 215, 0, 0.4)');
-                    doorGradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                    doorGradient.addColorStop(0, doorLocked ? 'rgba(140, 255, 140, 0.28)' : 'rgba(255, 215, 0, 0.4)');
+                    doorGradient.addColorStop(1, doorLocked ? 'rgba(140, 255, 140, 0)' : 'rgba(255, 215, 0, 0)');
                     ctx.fillStyle = doorGradient;
                     ctx.fillRect(doorX - 20, doorY, 90, 130);
                     
                     ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 300) * 0.3;
-                    ctx.fillStyle = '#ffd700';
+                    ctx.fillStyle = doorLocked ? '#9be07d' : '#ffd700';
                     ctx.fillRect(doorX + 5, doorY + 20, 40, 110);
                     ctx.globalAlpha = 1;
+
+                    if (doorLocked) {
+                        ctx.strokeStyle = '#d4ff9a';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(doorX + 7, doorY + 45);
+                        ctx.lineTo(doorX + 43, doorY + 85);
+                        ctx.moveTo(doorX + 43, doorY + 45);
+                        ctx.lineTo(doorX + 7, doorY + 85);
+                        ctx.stroke();
+                    }
                     
                     ctx.strokeStyle = '#6a6a6a';
                     ctx.lineWidth = 3;
                     ctx.strokeRect(doorX, doorY, 50, 130);
                     
-                    ctx.fillStyle = '#ffd700';
+                    ctx.fillStyle = doorLocked ? '#c9ff92' : '#ffd700';
                     ctx.font = '20px Courier New';
                     ctx.textAlign = 'center';
                     ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 300) * 0.3;
-                    ctx.fillText('→', doorX + 25, doorY - 10);
+                    ctx.fillText(doorLocked ? '🔒' : '→', doorX + 25, doorY - 10);
                     ctx.globalAlpha = 1;
+
+                    if (doorLocked) {
+                        ctx.fillStyle = '#c9ff92';
+                        ctx.font = '14px Courier New';
+                        ctx.fillText('KEY REQUIRED', canvas.width - 130, doorY - 15);
+                    }
                 }
                 
                 // Safe room indicator text
@@ -9108,10 +9212,12 @@
 
             drawExecutionCinematic();
             
+            currentRoom.updateRoomState();
+
             // Check for room transition
-            const roomCleared = currentRoom.isSafeRoom || (currentRoom.boss ? 
-                (currentRoom.boss.health <= 0) : 
-                (currentRoom.enemies.length === 0));
+            const roomCleared = currentRoom.isSafeRoom || (currentRoom.boss ?
+                (currentRoom.boss.health <= 0) :
+                (currentRoom.isPuzzleRoom ? currentRoom.keyCollected : currentRoom.enemies.length === 0));
                 
             if (roomCleared && player.x > canvas.width - 60) {
                 roomNumber++;
@@ -9121,7 +9227,8 @@
                 
                 const isSafeRoom = (roomNumber % 7 === 0);
                 const isBossRoom = (roomNumber % 5 === 0) && !isSafeRoom;
-                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom);
+                const isPuzzleRoom = isPuzzleRoomNumber(roomNumber);
+                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom);
                 
                 player.x = 100;
                 player.y = canvas.height - 200;
@@ -9351,7 +9458,8 @@
                 // Determine if returning to safe room or continuing
                 const isSafeRoom = (roomNumber % 7 === 0);
                 const isBossRoom = (roomNumber % 5 === 0) && !isSafeRoom;
-                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom);
+                const isPuzzleRoom = isPuzzleRoomNumber(roomNumber);
+                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom);
                 
                 player.x = 100;
                 player.y = canvas.height - 200;
