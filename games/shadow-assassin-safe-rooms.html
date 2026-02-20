@@ -687,7 +687,7 @@
             <span class="keybind-ability">Ranged Attack</span>
         </div>
         <div class="keybind-item">
-            <span class="keybind-key">[G]</span>
+            <span class="keybind-key">[H]</span>
             <span class="keybind-ability">Grapple Hook</span>
         </div>
         <div class="keybind-item">
@@ -7446,7 +7446,7 @@
         }
 
         function isPuzzleRoomNumber(roomNum) {
-            return roomNum >= 6 && roomNum % 10 === 3 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && (roomNum % 10 === 3 || roomNum % 10 === 8) && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         // Room class (keeping original castle look)
@@ -8916,7 +8916,7 @@
                 player.dash();
             }
 
-            if (e.key.toLowerCase() === 'g') {
+            if (e.key.toLowerCase() === 'h') {
                 player.fireGrapple();
             }
 
