@@ -1237,7 +1237,7 @@
                     this.attacking = true;
                     this.attackFrame = 0;
                     
-                    const baseAttackSpeed = 30;
+                    const baseAttackSpeed = 22;
                     const attackSpeedMultiplier = 1 + (this.upgrades.attackSpeed * 0.15);
                     this.attackCooldown = Math.floor(baseAttackSpeed / attackSpeedMultiplier);
                     
@@ -1269,12 +1269,15 @@
                     
                     // Multi-strike
                     const strikes = 1 + (this.upgrades.multiStrike || 0);
+                    const strikeDelay = 80;
                     
                     for (let s = 0; s < strikes; s++) {
                         setTimeout(() => {
                             // Check for hits on enemies
-                            const attackRange = 70;
-                            const attackWidth = 45;
+                            const attackRange = 62;
+                            const attackWidth = 52;
+                            const closeRange = 34;
+                            let hitConfirmed = false;
                             
                             // Calculate attack position in the attack direction
                             const attackX = this.x + dirX * attackRange;
@@ -1286,8 +1289,12 @@
                                 const dx = enemy.x - attackX;
                                 const dy = enemy.y - attackY;
                                 const dist = Math.sqrt(dx * dx + dy * dy);
+                                const toEnemyX = enemy.x - this.x;
+                                const toEnemyY = enemy.y - this.y;
+                                const distFromPlayer = Math.sqrt(toEnemyX * toEnemyX + toEnemyY * toEnemyY);
+                                const forwardDot = (toEnemyX * dirX + toEnemyY * dirY) / Math.max(1, distFromPlayer);
                                 
-                                if (dist < attackWidth) {
+                                if ((dist < attackWidth && forwardDot > 0.05) || distFromPlayer < closeRange) {
                                     const baseDamage = this.attackDamage * (1 + this.upgrades.damage * 0.15);
                                     const damageMultiplier = this.damageMultiplier * (mythicMode ? 5 : 1);
                                     let finalDamage = baseDamage * damageMultiplier;
@@ -1311,6 +1318,9 @@
                                     
                                     // Apply damage
                                     enemy.health -= finalDamage;
+                                    enemy.vx += dirX * 3.5;
+                                    enemy.vy -= 1.8;
+                                    hitConfirmed = true;
                                     
                                     // Lifesteal
                                     if (this.upgrades.lifesteal > 0) {
@@ -1355,8 +1365,12 @@
                                 const dx = currentRoom.boss.x - attackX;
                                 const dy = currentRoom.boss.y - attackY;
                                 const dist = Math.sqrt(dx * dx + dy * dy);
+                                const toBossX = currentRoom.boss.x - this.x;
+                                const toBossY = currentRoom.boss.y - this.y;
+                                const distFromPlayer = Math.sqrt(toBossX * toBossX + toBossY * toBossY);
+                                const forwardDot = (toBossX * dirX + toBossY * dirY) / Math.max(1, distFromPlayer);
                                 
-                                if (dist < attackWidth + 25) {
+                                if ((dist < attackWidth + 25 && forwardDot > 0.05) || distFromPlayer < closeRange + 16) {
                                     const baseDamage = this.attackDamage * (1 + this.upgrades.damage * 0.15);
                                     const damageMultiplier = this.damageMultiplier * (mythicMode ? 5 : 1);
                                     let finalDamage = baseDamage * damageMultiplier;
@@ -1380,6 +1394,8 @@
                                     
                                     currentRoom.boss.health -= finalDamage;
                                     currentRoom.boss.health = Math.max(0, currentRoom.boss.health);
+                                    currentRoom.boss.vx += dirX * 1.8;
+                                    hitConfirmed = true;
                                     
                                     // Boss damage particles
                                     for (let j = 0; j < 20; j++) {
@@ -1396,6 +1412,10 @@
                                         this.health = Math.min(this.maxHealth, this.health + this.upgrades.lifesteal * 2);
                                     }
                                 }
+                            }
+
+                            if (hitConfirmed) {
+                                this.applyMeleeImpact(dirX, dirY, attackX, attackY);
                             }
                             
                             // Trigger clone attacks
@@ -1446,13 +1466,30 @@
                                     ));
                                 }
                             }
-                        }, s * 100);
+                        }, s * strikeDelay);
                     }
                     
                     setTimeout(() => {
                         this.attacking = false;
                         this.attackDirection = null;
-                    }, 150);
+                    }, 190 + (strikes - 1) * strikeDelay);
+                }
+            }
+
+            applyMeleeImpact(dirX, dirY, impactX, impactY) {
+                this.vx += dirX * 1.4;
+                this.vy += dirY * 0.45;
+                hitStopFrames = Math.max(hitStopFrames, 3);
+
+                for (let i = 0; i < 8; i++) {
+                    particles.push(new Particle(
+                        impactX,
+                        impactY,
+                        ['#d9d9d9', '#f0f0f0', '#ffd27a'][Math.floor(Math.random() * 3)],
+                        (Math.random() - 0.5) * 9 + dirX * 2,
+                        (Math.random() - 0.5) * 6 + dirY,
+                        16 + Math.random() * 8
+                    ));
                 }
             }
 
@@ -4268,6 +4305,10 @@
                     this.animFrame = (this.animFrame + 1) % 4;
                     this.animCounter = 0;
                 }
+
+                if (this.attacking) {
+                    this.attackFrame++;
+                }
             }
 
             draw() {
@@ -4354,7 +4395,9 @@
                 // Weapon (dagger)
                 if (this.attacking && this.attackDirection !== null) {
                     ctx.save();
-                    ctx.rotate(this.attackDirection);
+                    const swingPhase = Math.min(1, this.attackFrame / 11);
+                    const swingOffset = (swingPhase - 0.5) * 0.8;
+                    ctx.rotate(this.attackDirection + swingOffset);
                     
                     // Dagger blade
                     ctx.fillStyle = '#c0c0c0';
@@ -8212,6 +8255,7 @@
         let particles = [];
         let projectiles = [];
         let shadowClones = [];
+        let hitStopFrames = 0;
         let gameStarted = false;
         let showingUpgrade = false;
         let gameOver = false;
@@ -8523,6 +8567,30 @@
                 
                 if (!gameStarted || gameOver || showingUpgrade) {
                     break;
+                }
+
+                if (hitStopFrames > 0) {
+                    hitStopFrames--;
+
+                    for (const enemy of currentRoom.enemies) {
+                        enemy.draw();
+                    }
+
+                    if (currentRoom.boss && currentRoom.boss.health > 0) {
+                        currentRoom.boss.draw();
+                    }
+
+                    for (const clone of shadowClones) {
+                        clone.draw();
+                    }
+
+                    for (const particle of particles) {
+                        particle.draw();
+                    }
+
+                    player.draw();
+                    drawExecutionCinematic();
+                    continue;
                 }
             
             // Player input
