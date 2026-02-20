@@ -496,6 +496,70 @@
             text-align: center;
         }
 
+        .skill-tree-container {
+            background: radial-gradient(circle at top, #1a2340 0%, #0b0f1d 65%, #06070f 100%);
+            border: 2px solid #33d2ff;
+            box-shadow: 0 0 25px rgba(51, 210, 255, 0.35);
+            padding: 28px;
+            max-width: 980px;
+            width: 95%;
+            max-height: 86vh;
+            overflow-y: auto;
+        }
+
+        .skill-tree-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(200px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .skill-node {
+            background: linear-gradient(160deg, rgba(20, 29, 55, 0.95), rgba(12, 16, 30, 0.95));
+            border: 1px solid #2f4f7a;
+            border-left: 4px solid #33d2ff;
+            color: #dce8ff;
+            padding: 12px;
+            min-height: 130px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .skill-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 12px rgba(51, 210, 255, 0.4);
+            border-color: #56e0ff;
+        }
+
+        .skill-node.locked {
+            opacity: 0.62;
+            border-left-color: #607190;
+            filter: grayscale(0.35);
+        }
+
+        .skill-node.maxed {
+            border-left-color: #8dff89;
+            box-shadow: 0 0 10px rgba(141, 255, 137, 0.45);
+        }
+
+        .skill-node button {
+            margin-top: auto;
+            padding: 8px 10px;
+            border: 1px solid #37b6ff;
+            background: rgba(10, 27, 47, 0.85);
+            color: #9be7ff;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .skill-node button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
         .setting-item {
             margin-bottom: 25px;
             color: #fff;
@@ -667,6 +731,7 @@
             <button id="continueBtn" class="menu-button" style="display: none;">CONTINUE</button>
             <button id="settingsBtn" class="menu-button">SETTINGS</button>
             <button id="storeBtn" class="menu-button">STORE</button>
+            <button id="skillTreeBtn" class="menu-button">SKILL TREE</button>
             <button id="achievementsBtn" class="menu-button">ACHIEVEMENTS</button>
         </div>
     </div>
@@ -677,6 +742,16 @@
             <p style="color: #ffd700; margin-bottom: 16px;">Coins: <span id="storeCoins">0</span></p>
             <div id="storeItems"></div>
             <button id="storeBackBtn" class="back-button">BACK</button>
+        </div>
+    </div>
+
+    <div id="skillTreeMenu" class="settings-menu">
+        <div class="skill-tree-container">
+            <h2>🧠 NEURAL SKILL TREE</h2>
+            <p style="color: #8ec5ff; font-size: 13px; margin-bottom: 8px; text-align: center;">Cyber-style passive tree: permanent but small boosts only.</p>
+            <p style="color: #ffd700; margin-bottom: 8px; text-align: center;">Coins: <span id="skillTreeCoins">0</span></p>
+            <div id="skillTreeNodes" class="skill-tree-grid"></div>
+            <button id="skillTreeBackBtn" class="back-button" style="margin-top: 14px;">BACK</button>
         </div>
     </div>
 
@@ -8272,6 +8347,14 @@
             { id: 'ghostjade', name: 'Ghostjade Weave', price: 320, colors: { body: '#122422', hood: '#081311', eyes: '#9affdd', belt: '#2d6b60' } }
         ];
 
+        const META_SKILL_TREE = [
+            { id: 'steadyHands', name: 'Steady Hands', maxLevel: 5, baseCost: 70, costStep: 45, desc: '+2% base dagger damage per level', requires: [] },
+            { id: 'lightPockets', name: 'Light Pockets', maxLevel: 5, baseCost: 80, costStep: 50, desc: '+3% coin gains per level', requires: [] },
+            { id: 'footwork', name: 'Footwork', maxLevel: 4, baseCost: 90, costStep: 55, desc: '+1% move speed per level', requires: ['steadyHands'] },
+            { id: 'stitchKit', name: 'Stitch Kit', maxLevel: 4, baseCost: 90, costStep: 55, desc: '+2 transition heal per level', requires: ['lightPockets'] },
+            { id: 'ironWill', name: 'Iron Will', maxLevel: 5, baseCost: 110, costStep: 65, desc: '+5 max health per level', requires: ['footwork', 'stitchKit'] }
+        ];
+
         const achievementDefinitions = [
             { id: 'firstBlood', name: 'First Blood', desc: 'Defeat your first enemy', reward: 30, check: (s) => s.kills >= 1 },
             { id: 'roomRunner', name: 'Room Runner', desc: 'Reach chamber 10', reward: 80, check: (s) => s.maxRoom >= 10 },
@@ -8288,8 +8371,42 @@
             maxRoom: 1,
             unlockedSkins: ['classic'],
             equippedSkin: 'classic',
-            achievements: {}
+            achievements: {},
+            metaUpgrades: {}
         };
+
+        function getMetaSkillLevel(id) {
+            return Math.max(0, Number(metaProgress.metaUpgrades?.[id]) || 0);
+        }
+
+        function getMetaSkillCost(def) {
+            const level = getMetaSkillLevel(def.id);
+            return def.baseCost + level * def.costStep;
+        }
+
+        function getCoinGainMultiplier() {
+            return 1 + getMetaSkillLevel('lightPockets') * 0.03;
+        }
+
+        function applyMetaUpgradesToPlayer(targetPlayer, fullHeal = true) {
+            const maxHealthBonus = getMetaSkillLevel('ironWill') * 5;
+            const damageMultiplier = 1 + getMetaSkillLevel('steadyHands') * 0.02;
+            const speedMultiplier = 1 + getMetaSkillLevel('footwork') * 0.01;
+            targetPlayer.maxHealth += maxHealthBonus;
+            targetPlayer.attackDamage *= damageMultiplier;
+            targetPlayer.speed *= speedMultiplier;
+            if (fullHeal) {
+                targetPlayer.health = targetPlayer.maxHealth;
+            } else {
+                targetPlayer.health = Math.min(targetPlayer.health, targetPlayer.maxHealth);
+            }
+        }
+
+        function createRunPlayer() {
+            const runPlayer = new Player(100, 300);
+            applyMetaUpgradesToPlayer(runPlayer, true);
+            return runPlayer;
+        }
 
         function loadMetaProgress() {
             try {
@@ -8298,7 +8415,8 @@
                     ...metaProgress,
                     ...saved,
                     unlockedSkins: Array.isArray(saved.unlockedSkins) && saved.unlockedSkins.length ? saved.unlockedSkins : ['classic'],
-                    achievements: saved.achievements || {}
+                    achievements: saved.achievements || {},
+                    metaUpgrades: saved.metaUpgrades || {}
                 };
             } catch (_err) {
                 // Ignore bad saves and keep defaults.
@@ -8314,7 +8432,10 @@
         }
 
         function addCoins(amount) {
-            metaProgress.coins = Math.max(0, metaProgress.coins + amount);
+            const adjustedAmount = amount > 0
+                ? Math.ceil(amount * getCoinGainMultiplier())
+                : amount;
+            metaProgress.coins = Math.max(0, metaProgress.coins + adjustedAmount);
             saveMetaProgress();
         }
 
@@ -8373,6 +8494,47 @@
                     renderStore();
                 });
                 list.appendChild(btn);
+            }
+        }
+
+        function renderSkillTree() {
+            document.getElementById('skillTreeCoins').textContent = metaProgress.coins;
+            const nodeRoot = document.getElementById('skillTreeNodes');
+            nodeRoot.innerHTML = '';
+
+            for (const node of META_SKILL_TREE) {
+                const level = getMetaSkillLevel(node.id);
+                const maxed = level >= node.maxLevel;
+                const cost = getMetaSkillCost(node);
+                const missingReqs = (node.requires || []).filter(req => getMetaSkillLevel(req) <= 0);
+                const locked = missingReqs.length > 0;
+
+                const card = document.createElement('div');
+                card.className = `skill-node${locked ? ' locked' : ''}${maxed ? ' maxed' : ''}`;
+
+                const reqText = locked
+                    ? `Locked • Needs ${missingReqs.map(req => META_SKILL_TREE.find(n => n.id === req)?.name || req).join(' + ')}`
+                    : ((node.requires || []).length ? 'Linked node online' : 'Root node online');
+
+                card.innerHTML = `
+                    <div style="font-size: 16px; color: #9be7ff;">${node.name}</div>
+                    <div style="font-size: 12px; color: #c8d9ff;">${node.desc}</div>
+                    <div style="font-size: 12px; color: ${locked ? '#ff7b7b' : '#8effc2'};">${reqText}</div>
+                    <div style="font-size: 12px; color: #ffd700;">Level ${level}/${node.maxLevel}</div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.textContent = maxed ? 'MAXED' : `Upgrade (${cost}c)`;
+                btn.disabled = maxed || locked || metaProgress.coins < cost;
+                btn.addEventListener('click', () => {
+                    if (maxed || locked) return;
+                    addCoins(-cost);
+                    metaProgress.metaUpgrades[node.id] = level + 1;
+                    saveMetaProgress();
+                    renderSkillTree();
+                });
+                card.appendChild(btn);
+                nodeRoot.appendChild(card);
             }
         }
 
@@ -8809,7 +8971,8 @@
                     player.health = player.maxHealth;
                 } else {
                     // Small heal on normal room transition
-                    player.health = Math.min(player.health + 20, player.maxHealth);
+                    const transitionHeal = 20 + getMetaSkillLevel('stitchKit') * 2;
+                    player.health = Math.min(player.health + transitionHeal, player.maxHealth);
                 }
                 
                 projectiles = [];
@@ -8912,7 +9075,7 @@
             document.getElementById('mainMenu').style.display = 'none';
             gameStarted = true;
             mythicMode = false; // Reset mythic mode
-            player = new Player(100, 300);
+            player = createRunPlayer();
             currentRoom = new Room(1);
             roomNumber = 1;
             particles = [];
@@ -8932,6 +9095,11 @@
             document.getElementById('storeMenu').style.display = 'flex';
         });
 
+        document.getElementById('skillTreeBtn').addEventListener('click', () => {
+            renderSkillTree();
+            document.getElementById('skillTreeMenu').style.display = 'flex';
+        });
+
         document.getElementById('achievementsBtn').addEventListener('click', () => {
             renderAchievements();
             document.getElementById('achievementsMenu').style.display = 'flex';
@@ -8939,6 +9107,10 @@
 
         document.getElementById('storeBackBtn').addEventListener('click', () => {
             document.getElementById('storeMenu').style.display = 'none';
+        });
+
+        document.getElementById('skillTreeBackBtn').addEventListener('click', () => {
+            document.getElementById('skillTreeMenu').style.display = 'none';
         });
 
         document.getElementById('achievementsBackBtn').addEventListener('click', () => {
@@ -8978,7 +9150,7 @@
         // Game over buttons
         document.getElementById('playAgainBtn').addEventListener('click', () => {
             mythicMode = false; // Reset mythic mode
-            player = new Player(100, 300);
+            player = createRunPlayer();
             currentRoom = new Room(1);
             roomNumber = 1;
             particles = [];
@@ -9047,7 +9219,7 @@
             
             // Reset game state
             mythicMode = false;
-            player = new Player(100, 300);
+            player = createRunPlayer();
             currentRoom = new Room(1);
             roomNumber = 1;
             particles = [];
