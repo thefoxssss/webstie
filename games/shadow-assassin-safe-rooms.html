@@ -1283,7 +1283,8 @@
                     duration: EXECUTION_CINEMATIC_DURATION,
                     bossName: boss.type,
                     x: boss.x,
-                    y: boss.y
+                    y: boss.y,
+                    variant: getExecuteVariantForBoss(boss.type)
                 };
 
                 this.invincible = true;
@@ -7239,7 +7240,18 @@
                 // Dark background
                 ctx.fillStyle = '#1a1a1a';
                 ctx.fillRect(this.x - barWidth / 2, barY, barWidth, barHeight);
-                
+
+                // Execute window segment (last 14% of boss HP)
+                const executeStartX = this.x + barWidth / 2 - (barWidth * BOSS_EXECUTE_THRESHOLD);
+                const executeWindowGrad = ctx.createLinearGradient(executeStartX, 0, this.x + barWidth / 2, 0);
+                executeWindowGrad.addColorStop(0, 'rgba(255, 80, 80, 0.25)');
+                executeWindowGrad.addColorStop(1, 'rgba(255, 220, 120, 0.35)');
+                ctx.fillStyle = executeWindowGrad;
+                ctx.fillRect(executeStartX, barY, barWidth * BOSS_EXECUTE_THRESHOLD, barHeight);
+                ctx.strokeStyle = 'rgba(255, 180, 140, 0.85)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(executeStartX, barY, barWidth * BOSS_EXECUTE_THRESHOLD, barHeight);
+
                 // Health fill with gradient
                 const healthPercent = this.health / this.maxHealth;
                 const healthGrad = ctx.createLinearGradient(this.x - barWidth/2, 0, this.x + barWidth/2, 0);
@@ -8757,7 +8769,7 @@
                 executionCinematic = null;
             }
         }
-        
+
         // SECRET CHEAT CODE SYSTEM
         let cheatCode = '';
         let mythicMode = false;
