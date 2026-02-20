@@ -7446,7 +7446,7 @@
         }
 
         function isPuzzleRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 6 === 3 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 6 && roomNum % 10 === 3 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         // Room class (keeping original castle look)
@@ -7733,14 +7733,6 @@
                         ctx.strokeRect(x, y, 60, 50);
                     }
                 }
-
-                // Moss / vine detailing (keeps same castle look, adds depth)
-                ctx.fillStyle = this.isSafeRoom ? 'rgba(40, 130, 70, 0.35)' : 'rgba(65, 120, 55, 0.28)';
-                for (let x = 30; x < canvas.width; x += 120) {
-                    const vineHeight = 40 + ((x + this.roomNumber * 17) % 45);
-                    ctx.fillRect(x, 0, 4, vineHeight);
-                    ctx.fillRect(x + 5, vineHeight - 12, 8, 4);
-                }
                 
                 // Torches (green for safe rooms)
                 for (let i = 0; i < 5; i++) {
@@ -7791,12 +7783,6 @@
                         ctx.lineTo(crackX + 5, platform.y + platform.height);
                         ctx.stroke();
                     }
-
-                    ctx.fillStyle = this.isSafeRoom ? 'rgba(80, 180, 100, 0.4)' : 'rgba(85, 145, 75, 0.32)';
-                    for (let i = 0; i < platform.width; i += 28) {
-                        const mossWidth = 12 + ((platform.x + i + this.roomNumber) % 10);
-                        ctx.fillRect(platform.x + i, platform.y - 4, mossWidth, 4);
-                    }
                 }
                 
                 // Ground
@@ -7811,12 +7797,6 @@
                 
                 ctx.fillStyle = '#4a4a4a';
                 ctx.fillRect(0, canvas.height - 50, canvas.width, 3);
-
-                ctx.fillStyle = this.isSafeRoom ? 'rgba(60, 150, 85, 0.5)' : 'rgba(70, 125, 60, 0.35)';
-                for (let i = 0; i < canvas.width; i += 45) {
-                    const tuft = 4 + ((i + this.roomNumber * 9) % 8);
-                    ctx.fillRect(i, canvas.height - 50, 14, tuft);
-                }
 
                 if (this.isPuzzleRoom && this.puzzleKey && !this.keyCollected) {
                     const keyY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
