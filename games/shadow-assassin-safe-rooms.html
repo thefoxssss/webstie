@@ -692,7 +692,7 @@
         </div>
         <div class="keybind-item">
             <span class="keybind-key">[X]</span>
-            <span class="keybind-ability">Execution (Boss Finisher)</span>
+            <span class="keybind-ability">Boss Execute (X Finisher)</span>
         </div>
         <div id="additionalKeybinds"></div>
     </div>
@@ -1169,7 +1169,7 @@
                     // NEW UPGRADES
                     lifeLink: 0, deathMark: 0, voidWalk: 0, soulHarvest: 0, reflection: 0,
                     arcaneShield: 0, regeneration: 0, multiStrike: 0, bladeDance: 0, berserkerRage: 0,
-                    assassination: 0, execution: 0, rage: 0, berserk: 0, whirlwind: 0,
+                    assassination: 0, execution: 0, rage: 0, berserk: 0, whirlwind: 0, bladestorm: 0,
                     teleportStrike: 0, shadowBurst: 0, deathWave: 0, criticalMass: 0, bloodShield: 0,
                     phantomStrike: 0, timeWarp: 0, meteorStrike: 0, phaseShift: 0, divineIntervention: 0,
                     bloodPact: 0, dimensionalRift: 0, soulReaper: 0
@@ -1206,6 +1206,7 @@
                 this.frozenEnemies = new Set();
                 this.markedEnemies = new Set();
                 this.regenTimer = 0;
+                this.bladestormTimer = 0;
             }
 
             fireGrapple() {
@@ -1274,18 +1275,21 @@
 
                 const boss = currentRoom.boss;
                 const dist = Math.hypot(boss.x - this.x, boss.y - this.y);
-                const canExecute = boss.health <= boss.maxHealth * 0.14 && dist < 95;
+                const canExecute = boss.health <= boss.maxHealth * BOSS_EXECUTE_THRESHOLD && dist < 95;
                 if (!canExecute || executionCinematic) return;
 
                 executionCinematic = {
-                    timer: 42,
+                    timer: EXECUTION_CINEMATIC_DURATION,
+                    duration: EXECUTION_CINEMATIC_DURATION,
                     bossName: boss.type,
                     x: boss.x,
-                    y: boss.y
+                    y: boss.y,
+                    variant: getExecuteVariantForBoss(boss.type)
                 };
 
                 this.invincible = true;
                 boss.frozen = true;
+                hitStopFrames = Math.max(hitStopFrames, 6);
 
                 for (let i = 0; i < 120; i++) {
                     particles.push(new Particle(
@@ -4291,11 +4295,36 @@
                         }
                     }
                 }
+
+                // Bladestorm (spinning knives)
+                if (this.upgrades.bladestorm > 0) {
+                    this.bladestormTimer++;
+                    const interval = Math.max(12, 46 - this.upgrades.bladestorm * 8);
+                    if (this.bladestormTimer >= interval) {
+                        const bladeCount = 2 + this.upgrades.bladestorm;
+                        const baseAngle = Date.now() / 220;
+                        for (let i = 0; i < bladeCount; i++) {
+                            const angle = baseAngle + (Math.PI * 2 / bladeCount) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 10, 'player'));
+                        }
+                        this.bladestormTimer = 0;
+                    }
+                }
                 
                 // Dash movement
                 if (this.dashing) {
                     this.dashFrame++;
                     this.vx = this.facing * this.dashSpeed;
+
+                    // Dash Attack
+                    if (this.upgrades.dashAttack > 0) {
+                        for (const enemy of currentRoom.enemies) {
+                            const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                            if (dist < 55) {
+                                enemy.takeDamage(4 + this.upgrades.dashAttack * 2);
+                            }
+                        }
+                    }
                     
                     // Dash trail
                     for (let i = 0; i < 3; i++) {
@@ -4513,6 +4542,11 @@
                 
                 // Evasion
                 if (this.upgrades.evasion > 0 && Math.random() < this.upgrades.evasion * 0.1) {
+                    return;
+                }
+
+                // Ghost Walk
+                if (this.upgrades.ghostWalk > 0 && Math.random() < this.upgrades.ghostWalk * 0.12) {
                     return;
                 }
                 
@@ -5070,6 +5104,14 @@
                 // Berserker Rage bonus
                 if (player.upgrades.berserkerRage > 0 && player.health < player.maxHealth * 0.3) {
                     finalDamage *= (1 + player.upgrades.berserkerRage * 0.15);
+                }
+
+                // Execute threshold
+                if (player.upgrades.executeThreshold > 0) {
+                    const threshold = 0.12 + player.upgrades.executeThreshold * 0.06;
+                    if (this.health / this.maxHealth <= threshold) {
+                        finalDamage = Math.max(finalDamage, this.health);
+                    }
                 }
                 
                 this.health -= finalDamage;
@@ -7198,7 +7240,18 @@
                 // Dark background
                 ctx.fillStyle = '#1a1a1a';
                 ctx.fillRect(this.x - barWidth / 2, barY, barWidth, barHeight);
-                
+
+                // Execute window segment (last 14% of boss HP)
+                const executeStartX = this.x + barWidth / 2 - (barWidth * BOSS_EXECUTE_THRESHOLD);
+                const executeWindowGrad = ctx.createLinearGradient(executeStartX, 0, this.x + barWidth / 2, 0);
+                executeWindowGrad.addColorStop(0, 'rgba(255, 80, 80, 0.25)');
+                executeWindowGrad.addColorStop(1, 'rgba(255, 220, 120, 0.35)');
+                ctx.fillStyle = executeWindowGrad;
+                ctx.fillRect(executeStartX, barY, barWidth * BOSS_EXECUTE_THRESHOLD, barHeight);
+                ctx.strokeStyle = 'rgba(255, 180, 140, 0.85)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(executeStartX, barY, barWidth * BOSS_EXECUTE_THRESHOLD, barHeight);
+
                 // Health fill with gradient
                 const healthPercent = this.health / this.maxHealth;
                 const healthGrad = ctx.createLinearGradient(this.x - barWidth/2, 0, this.x + barWidth/2, 0);
@@ -7246,6 +7299,14 @@
                     ctx.font = 'bold 18px Courier New';
                     ctx.fillText('DUEL ROOM - NO MINIONS', canvas.width / 2, 44);
                 }
+
+                if (player && this.health > 0 && this.health <= this.maxHealth * BOSS_EXECUTE_THRESHOLD) {
+                    const inRange = Math.hypot(this.x - player.x, this.y - player.y) < 95;
+                    const promptColor = inRange ? '#ff4444' : '#ffd27a';
+                    ctx.fillStyle = promptColor;
+                    ctx.font = 'bold 12px Courier New';
+                    ctx.fillText(inRange ? 'PRESS X - EXECUTE READY' : 'BOSS EXECUTABLE (GET CLOSER)', this.x, barY - 38);
+                }
             }
 
             takeDamage(damage) {
@@ -7291,6 +7352,21 @@
             }
 
             return nearest;
+        }
+
+        const BOSS_EXECUTE_THRESHOLD = 0.14;
+        const EXECUTION_CINEMATIC_DURATION = 54;
+
+        function getExecuteVariantForBoss(bossType) {
+            const key = String(bossType || '').toLowerCase();
+            if (key.includes('frost') || key.includes('crystal')) return { theme: 'FROST', primary: '#6fe8ff', secondary: '#e4ffff', accent: '#91caff' };
+            if (key.includes('flame')) return { theme: 'FLAME', primary: '#ff5a1f', secondary: '#ffd35a', accent: '#ff9a5f' };
+            if (key.includes('thunder') || key.includes('storm')) return { theme: 'THUNDER', primary: '#8eb8ff', secondary: '#fff27a', accent: '#b39bff' };
+            if (key.includes('void') || key.includes('shadow') || key.includes('phantom') || key.includes('necro')) return { theme: 'VOID', primary: '#b67bff', secondary: '#f0ddff', accent: '#6e42d8' };
+            if (key.includes('toxic') || key.includes('plague')) return { theme: 'TOXIC', primary: '#8dff5b', secondary: '#e2ff9a', accent: '#35c45f' };
+            if (key.includes('stone') || key.includes('iron') || key.includes('golem')) return { theme: 'TITAN', primary: '#c7c7c7', secondary: '#f7f7f7', accent: '#8f8f8f' };
+            if (key.includes('blood') || key.includes('crimson')) return { theme: 'BLOOD', primary: '#ff3a5a', secondary: '#ffd1da', accent: '#930019' };
+            return { theme: 'ARCANE', primary: '#ff5252', secondary: '#ffd700', accent: '#63d8ff' };
         }
 
         const BOSS_ROTATION = [
@@ -8086,6 +8162,9 @@
                 case 'voidRift':
                     player.upgrades.shadowBurst += 1;
                     break;
+                case 'knifeStorm':
+                    player.upgrades.bladestorm += 1;
+                    break;
                 case 'chaosTheory':
                     player.damageMultiplier += 0.15;
                     break;
@@ -8442,6 +8521,17 @@
         function onEnemyDefeated() {
             metaProgress.kills += 1;
             addCoins(8);
+
+            if (player) {
+                if (player.upgrades.reaper > 0) {
+                    player.health = Math.min(player.maxHealth, player.health + player.upgrades.reaper * 2);
+                }
+                if (player.upgrades.bloodRage > 0) {
+                    player.bloodRageStacks = Math.min(8, (player.bloodRageStacks || 0) + 1);
+                    player.speed = 5 + (player.upgrades.speed + player.upgrades.swiftness) * 0.8 + player.bloodRageStacks * 0.15;
+                }
+            }
+
             checkAchievements();
         }
 
@@ -8577,37 +8667,189 @@
         function drawExecutionCinematic() {
             if (!executionCinematic) return;
 
+            const duration = executionCinematic.duration || EXECUTION_CINEMATIC_DURATION;
+            const timer = executionCinematic.timer;
+            const progress = 1 - Math.max(0, timer) / duration;
+            const phasePulse = Math.sin(progress * Math.PI * 4);
+            const centerX = executionCinematic.x;
+            const centerY = executionCinematic.y;
+            const variant = executionCinematic.variant || getExecuteVariantForBoss(executionCinematic.bossName);
+
             executionCinematic.timer--;
 
             ctx.save();
-            const alpha = Math.min(0.7, executionCinematic.timer / 42);
-            ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+
+            const barHeight = 38 + Math.sin(progress * Math.PI) * 26;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            ctx.fillRect(0, 0, canvas.width, barHeight);
+            ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+
+            const blackoutAlpha = 0.32 + (Math.sin(progress * Math.PI) * 0.44);
+            ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.86, blackoutAlpha)})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.strokeStyle = '#ff1a1a';
-            ctx.lineWidth = 4;
+            const sigilRadius = 70 + progress * 120;
+            const sigilRotation = progress * Math.PI * 3;
+            ctx.strokeStyle = `${variant.primary}${Math.floor((0.75 - progress * 0.3) * 255).toString(16).padStart(2, '0')}`;
+            ctx.lineWidth = 2 + progress * 2;
             ctx.beginPath();
-            ctx.moveTo(executionCinematic.x - 60, executionCinematic.y - 60);
-            ctx.lineTo(executionCinematic.x + 60, executionCinematic.y + 60);
-            ctx.moveTo(executionCinematic.x + 60, executionCinematic.y - 60);
-            ctx.lineTo(executionCinematic.x - 60, executionCinematic.y + 60);
+            ctx.arc(centerX, centerY, sigilRadius, 0, Math.PI * 2);
             ctx.stroke();
+            for (let i = 0; i < 8; i++) {
+                const ang = sigilRotation + (Math.PI * 2 / 8) * i;
+                const inner = sigilRadius - 14;
+                const outer = sigilRadius + 12;
+                ctx.beginPath();
+                ctx.moveTo(centerX + Math.cos(ang) * inner, centerY + Math.sin(ang) * inner);
+                ctx.lineTo(centerX + Math.cos(ang) * outer, centerY + Math.sin(ang) * outer);
+                ctx.stroke();
+            }
 
-            ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 34px Courier New';
+            const focusRadius = 42 + progress * 240;
+            const ringAlpha = Math.max(0.2, 0.9 - progress * 0.65);
+            const ringGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, focusRadius);
+            ringGrad.addColorStop(0, `rgba(255,255,255,${0.24 + 0.16 * Math.max(0, phasePulse)})`);
+            ringGrad.addColorStop(0.45, `${variant.primary}${Math.floor(ringAlpha * 255).toString(16).padStart(2, '0')}`);
+            ringGrad.addColorStop(1, 'rgba(255,0,0,0)');
+            ctx.fillStyle = ringGrad;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, focusRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            const slashLen = 56 + progress * 84;
+            const slashWidth = 4 + progress * 3;
+            const slashJitter = 8 + Math.max(0, phasePulse) * 13;
+            for (let trail = 0; trail < 4; trail++) {
+                const tAlpha = 0.55 - trail * 0.12;
+                const tOffset = trail * 6;
+                ctx.strokeStyle = `${variant.primary}${Math.floor(Math.max(0.08, tAlpha) * 255).toString(16).padStart(2, '0')}`;
+                ctx.lineWidth = Math.max(1, slashWidth - trail * 0.7);
+                ctx.shadowColor = variant.accent;
+                ctx.shadowBlur = 16 - trail * 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX - slashLen + tOffset, centerY - slashLen - slashJitter + tOffset * 0.5);
+                ctx.lineTo(centerX + slashLen + tOffset, centerY + slashLen + slashJitter + tOffset * 0.5);
+                ctx.moveTo(centerX + slashLen - tOffset, centerY - slashLen + slashJitter - tOffset * 0.5);
+                ctx.lineTo(centerX - slashLen - tOffset, centerY + slashLen - slashJitter - tOffset * 0.5);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+
+            for (let i = 0; i < 10; i++) {
+                const emberAngle = Math.random() * Math.PI * 2;
+                const emberRadius = 30 + Math.random() * (40 + progress * 110);
+                const px = centerX + Math.cos(emberAngle) * emberRadius;
+                const py = centerY + Math.sin(emberAngle) * emberRadius;
+                ctx.fillStyle = [variant.primary, variant.secondary, '#ffffff'][Math.floor(Math.random() * 3)];
+                ctx.globalAlpha = 0.28 + Math.random() * 0.45;
+                ctx.fillRect(px, py, 2 + Math.random() * 2, 2 + Math.random() * 2);
+            }
+            ctx.globalAlpha = 1;
+
+            if (variant.theme === 'THUNDER') {
+                ctx.strokeStyle = variant.secondary;
+                ctx.lineWidth = 3;
+                for (let bolt = 0; bolt < 3; bolt++) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + (bolt - 1) * 40, centerY - 130);
+                    ctx.lineTo(centerX + (bolt - 1) * 22, centerY - 40);
+                    ctx.lineTo(centerX + (bolt - 1) * 48, centerY + 30);
+                    ctx.stroke();
+                }
+            } else if (variant.theme === 'FROST') {
+                ctx.strokeStyle = variant.secondary;
+                ctx.lineWidth = 2;
+                for (let shard = 0; shard < 12; shard++) {
+                    const ang = (Math.PI * 2 / 12) * shard + progress * 0.4;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + Math.cos(ang) * 28, centerY + Math.sin(ang) * 28);
+                    ctx.lineTo(centerX + Math.cos(ang) * (88 + progress * 46), centerY + Math.sin(ang) * (88 + progress * 46));
+                    ctx.stroke();
+                }
+            } else if (variant.theme === 'VOID') {
+                const vGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 320);
+                vGrad.addColorStop(0, `${variant.primary}88`);
+                vGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = vGrad;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 320, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (variant.theme === 'FLAME') {
+                for (let flame = 0; flame < 7; flame++) {
+                    const fx = centerX + (flame - 3) * 18;
+                    const fy = centerY + 48 - Math.abs(flame - 3) * 7;
+                    const fGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, 36);
+                    fGrad.addColorStop(0, `${variant.secondary}cc`);
+                    fGrad.addColorStop(1, `${variant.primary}00`);
+                    ctx.fillStyle = fGrad;
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, 36, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else if (variant.theme === 'BLOOD') {
+                ctx.fillStyle = `${variant.primary}b3`;
+                for (let drip = 0; drip < 14; drip++) {
+                    const dx = centerX - 110 + drip * 16;
+                    const len = 18 + (drip % 4) * 10;
+                    ctx.fillRect(dx, centerY - 18, 3, len);
+                }
+            } else if (variant.theme === 'TOXIC') {
+                for (let orb = 0; orb < 8; orb++) {
+                    const ang = progress * 4 + (Math.PI * 2 / 8) * orb;
+                    const rad = 66 + Math.sin(progress * 8 + orb) * 12;
+                    ctx.fillStyle = `${variant.primary}aa`;
+                    ctx.beginPath();
+                    ctx.arc(centerX + Math.cos(ang) * rad, centerY + Math.sin(ang) * rad, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else if (variant.theme === 'TITAN') {
+                ctx.strokeStyle = `${variant.accent}dd`;
+                ctx.lineWidth = 5;
+                ctx.strokeRect(centerX - 120, centerY - 70, 240, 140);
+            } else if (variant.theme === 'ARCANE') {
+                ctx.strokeStyle = `${variant.accent}cc`;
+                ctx.lineWidth = 2;
+                for (let rune = 0; rune < 6; rune++) {
+                    const ang = progress * 2.5 + (Math.PI * 2 / 6) * rune;
+                    ctx.beginPath();
+                    ctx.arc(centerX + Math.cos(ang) * 88, centerY + Math.sin(ang) * 88, 11, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            if (timer < 12) {
+                const flash = (12 - timer) / 12;
+                ctx.fillStyle = `rgba(255,255,255,${flash * 0.62})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = `rgba(255,255,255,${0.75 - flash * 0.45})`;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 80 + flash * 220, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
             ctx.textAlign = 'center';
-            ctx.fillText('EXECUTION', canvas.width / 2, 120);
+            ctx.font = 'bold 40px Courier New';
+            ctx.fillStyle = `${variant.primary}cc`;
+            ctx.fillText('EXECUTION', canvas.width / 2 - 2, 114);
+            ctx.fillStyle = `${variant.accent}cc`;
+            ctx.fillText('EXECUTION', canvas.width / 2 + 2, 114);
+            ctx.fillStyle = variant.secondary;
+            ctx.fillText('EXECUTION', canvas.width / 2, 114);
 
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 18px Courier New';
-            ctx.fillText(executionCinematic.bossName, canvas.width / 2, 150);
+            ctx.fillText(executionCinematic.bossName, canvas.width / 2, 148);
+            ctx.fillStyle = variant.primary;
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillText(`${variant.theme} FINISH`, canvas.width / 2, 168);
             ctx.restore();
 
             if (executionCinematic.timer <= 0) {
                 executionCinematic = null;
             }
         }
-        
+
         // SECRET CHEAT CODE SYSTEM
         let cheatCode = '';
         let mythicMode = false;
