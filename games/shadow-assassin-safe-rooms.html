@@ -1340,12 +1340,15 @@
             }
 
             tryExecution() {
-                if (!currentRoom.boss || currentRoom.boss.health <= 0) return;
+                if (!currentRoom.boss || currentRoom.boss.health <= 0 || executionCinematic) return;
 
                 const boss = currentRoom.boss;
+                const executeBonus = this.upgrades.execution || 0;
+                const executeThreshold = BOSS_EXECUTE_THRESHOLD + executeBonus * 0.03;
+                const executeRange = 120 + executeBonus * 8;
                 const dist = Math.hypot(boss.x - this.x, boss.y - this.y);
-                const canExecute = boss.health <= boss.maxHealth * BOSS_EXECUTE_THRESHOLD && dist < 95;
-                if (!canExecute || executionCinematic) return;
+                const canExecute = boss.health <= boss.maxHealth * executeThreshold && dist <= executeRange;
+                if (!canExecute) return;
 
                 executionCinematic = {
                     timer: EXECUTION_CINEMATIC_DURATION,
@@ -2308,7 +2311,7 @@
                                 
                                 setTimeout(() => {
                                     clearInterval(healthDrain);
-                                    if (currentRoom.boss) {
+                                    if (currentRoom.boss && currentRoom.boss.health > 0) {
                                         currentRoom.boss.health = 1;
                                         // Final rewrite flash
                                         for (let i = 0; i < 200; i++) {
@@ -7362,12 +7365,17 @@
                     ctx.fillText('DUEL ROOM - NO MINIONS', canvas.width / 2, 44);
                 }
 
-                if (player && this.health > 0 && this.health <= this.maxHealth * BOSS_EXECUTE_THRESHOLD) {
-                    const inRange = Math.hypot(this.x - player.x, this.y - player.y) < 95;
-                    const promptColor = inRange ? '#ff4444' : '#ffd27a';
-                    ctx.fillStyle = promptColor;
-                    ctx.font = 'bold 12px Courier New';
-                    ctx.fillText(inRange ? 'PRESS X - EXECUTE READY' : 'BOSS EXECUTABLE (GET CLOSER)', this.x, barY - 38);
+                if (player && this.health > 0) {
+                    const executeBonus = player.upgrades.execution || 0;
+                    const executeThreshold = BOSS_EXECUTE_THRESHOLD + executeBonus * 0.03;
+                    if (this.health <= this.maxHealth * executeThreshold) {
+                        const executeRange = 120 + executeBonus * 8;
+                        const inRange = Math.hypot(this.x - player.x, this.y - player.y) <= executeRange;
+                        const promptColor = inRange ? '#ff4444' : '#ffd27a';
+                        ctx.fillStyle = promptColor;
+                        ctx.font = 'bold 12px Courier New';
+                        ctx.fillText(inRange ? 'PRESS X - EXECUTE READY' : 'BOSS EXECUTABLE (GET CLOSER)', this.x, barY - 38);
+                    }
                 }
             }
 
@@ -7416,7 +7424,7 @@
             return nearest;
         }
 
-        const BOSS_EXECUTE_THRESHOLD = 0.14;
+        const BOSS_EXECUTE_THRESHOLD = 0.22;
         const EXECUTION_CINEMATIC_DURATION = 54;
 
         const BOSS_ROTATION = [
@@ -8898,7 +8906,10 @@
             if (executionCinematic.timer <= 0) {
                 const boss = executionCinematic.bossRef;
                 if (boss && currentRoom.boss === boss) {
-                    boss.takeDamage(999999);
+                    // Force a true finisher kill state instead of relying on damage hooks,
+                    // so delayed boss scripts can't leave it alive at 1 HP.
+                    boss.health = 0;
+                    boss.isInvulnerable = false;
                     boss.frozen = false;
                 }
                 if (executionCinematic.ownerRef) {
