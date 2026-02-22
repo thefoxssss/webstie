@@ -117,6 +117,7 @@
         <button class="game-card" data-game="bonk" data-tags="pvp arcade" onclick="window.launchGame('bonk')"><span>🥊</span><strong>BONK ARENA</strong><small>Fast arena knockouts and dodges.</small></button>
         <button class="game-card" data-game="drift" data-tags="pvp arcade skill" onclick="window.launchGame('drift')"><span>🏎️</span><strong>NEON DRIFT</strong><small>Slide corners and chain clean laps.</small></button>
         <button class="game-card" data-game="hangman" data-tags="pvp skill" onclick="window.launchGame('hangman')"><span>🧠</span><strong>HANGMAN (PVP)</strong><small>Guess words before the timer expires.</small></button>
+        <button class="game-card" data-game="bonk" data-tags="pvp arcade" onclick="window.launchGame('bonk')"><span>🥊</span><strong>BONK ARENA (PVP)</strong><small>Fast arena knockouts and dodges.</small></button>
         <button class="game-card" data-game="drift" data-tags="pvp arcade skill" onclick="window.launchGame('drift')"><span>🏎️</span><strong>NEON DRIFT (PVP)</strong><small>Slide corners and chain clean laps.</small></button>
         <button class="game-card" data-game="emulator" data-tags="skill" onclick="window.launchGame('emulator')"><span>🖥️</span><strong>CPU EMULATOR</strong><small>Program-like puzzle sandbox challenge.</small></button>
         <button class="game-card" data-game="byteblitz" data-tags="arcade skill" onclick="window.launchGame('byteblitz')"><span>💾</span><strong>BYTE BLITZ</strong><small>Defend the buffer with ship controls, waves, and powerups.</small></button>
@@ -1341,9 +1342,72 @@
     </div>
 
     <!-- Firebase multiplayer physics arena game. -->
+    <div class="overlay" id="overlayBonk">
+      <h1>BONK ARENA</h1>
+      <div class="bonk-sub">CUSTOM MULTIPLAYER PHYSICS BRAWL</div>
+
+      <div id="baMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateBA">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input
+          type="text"
+          id="joinBACode"
+          class="term-input"
+          placeholder="ROOM CODE"
+          maxlength="4"
+        />
+        <button class="term-btn" id="btnJoinBA">JOIN ROOM</button>
+        <button class="menu-btn" id="btnBAAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+      </div>
+
+      <div id="baLobby" class="menu-box" style="display: none">
+        <h2>ROOM: <span id="baRoomId">----</span></h2>
+        <div id="baPList" style="text-align: left; margin: 16px 0"></div>
+        <label for="baModeSelect" style="font-size: 10px; opacity: 0.9">GAME MODE</label>
+        <select id="baModeSelect" class="term-input" style="width: 180px; text-align: center; margin-bottom: 10px">
+          <option value="classic">CLASSIC</option>
+          <option value="arrows">ARROWS</option>
+          <option value="grapple">GRAPPLE</option>
+        </select>
+        <div id="baModeLabel" style="font-size: 10px; margin-bottom: 10px">MODE: CLASSIC</div>
+        <button class="term-btn" id="baStartBtn" style="display: none">
+          START ROUND
+        </button>
+        <div id="baLobbyStatus" style="font-size: 10px">WAITING...</div>
+      </div>
+
+      <div id="baGame" class="bonk-wrap" style="display: none">
+        <div class="bonk-hud">
+          <span id="baStatus">SURVIVE</span>
+          <span>RING: <span id="baRadius">230</span></span>
+          <span id="baHint">BUMP ENEMIES OUTSIDE</span>
+        </div>
+        <canvas id="baCanvas" width="780" height="460"></canvas>
+        <div id="baWinner" class="bonk-winner"></div>
+        <button class="menu-btn" id="baReplayBtn">REPLAY (HOST)</button>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Flappy Goon mini-game overlay. -->
+    <div class="overlay" id="overlayFlappy">
+      <h1>FLAPPY GOON</h1>
+      <div class="high-score-display">HIGH: <span id="hsFlappy">0</span></div>
+      <div style="margin-bottom: 10px" id="flappyScore">SCORE: 0</div>
+      <canvas id="flappyCanvas" width="400" height="600"></canvas>
+      <div class="mobile-hint active">TAP TO FLAP</div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Firebase multiplayer top-down drift racing game. -->
     <div class="overlay" id="overlayDrift">
       <h1>NEON DRIFT</h1>
-      <div class="duel-sub">ONLINE 2D DRIFT DUELS</div>
+      <div class="bonk-sub">ONLINE 2D DRIFT DUELS</div>
 
       <div id="driftMenu" class="menu-box">
         <button class="term-btn" id="btnCreateDrift">CREATE ROOM</button>
@@ -1374,7 +1438,7 @@
           <span id="driftLeader">LEADER: --</span>
         </div>
         <canvas id="driftCanvas" width="780" height="460"></canvas>
-        <div id="driftWinner" class="duel-winner"></div>
+        <div id="driftWinner" class="bonk-winner"></div>
       </div>
 
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>

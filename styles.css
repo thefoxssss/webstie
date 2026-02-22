@@ -2384,14 +2384,14 @@ canvas {
   margin-top: 10px;
 }
 
-/* --- DUEL UI --- */
-.duel-sub {
+/* --- BONK ARENA --- */
+.bonk-sub {
   font-size: 10px;
   margin-bottom: 16px;
   opacity: 0.9;
 }
 
-.duel-wrap {
+.bonk-wrap {
   width: min(840px, 95vw);
   display: flex;
   flex-direction: column;
@@ -2399,7 +2399,7 @@ canvas {
   gap: 10px;
 }
 
-.duel-hud {
+.bonk-hud {
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -2418,7 +2418,7 @@ canvas {
   box-shadow: 0 0 20px var(--accent-dim);
 }
 
-.duel-winner {
+.bonk-winner {
   min-height: 18px;
   font-size: 13px;
   color: #00ff9d;
