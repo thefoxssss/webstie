@@ -256,6 +256,14 @@ body::before {
   gap: 8px;
 }
 
+
+#topFullscreenBtn {
+  position: fixed;
+  top: calc(var(--topbar-clearance) + 10px);
+  right: 14px;
+  z-index: 2100;
+}
+
 /* Games dropdown menu anchored to the top bar. */
 .dropdown-content {
   display: none !important;
@@ -812,6 +820,18 @@ body.games-directory-open .wrap {
 .menu-overlay {
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(1px);
+}
+
+
+#overlayBank,
+#overlayShop,
+#overlayProfile,
+#overlayScores,
+#overlaySeason,
+#overlayCrew,
+#overlayAdmin,
+#overlayGames {
+  z-index: 1250;
 }
 
 .games-directory-overlay {
@@ -3224,6 +3244,10 @@ body.reduce-motion *::after {
   .top-overlay-controls {
     width: 100%;
     justify-content: center;
+  }
+
+  #topFullscreenBtn {
+    right: 8px;
   }
 }
 

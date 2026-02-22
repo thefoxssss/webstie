@@ -266,6 +266,17 @@ const GAME_OVERLAY_IDS = [
 ];
 
 
+
+function disableInGameExitButtons() {
+  GAME_OVERLAY_IDS.forEach((overlayId) => {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+    overlay.querySelectorAll(".exit-btn-fixed").forEach((button) => {
+      button.style.display = "none";
+    });
+  });
+}
+
 const CANVAS_UI_PADDING = 230;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
 const GAME_LIBRARY_RECENTS_KEY = "goonerRecentGames";
@@ -805,6 +816,7 @@ function initTopBarOverlayControls() {
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
+    overlayGames: "menuToggle",
     overlayTrending: "menuToggle",
     overlayUpdates: "menuToggle",
   };
@@ -820,8 +832,8 @@ function initTopBarOverlayControls() {
       event.preventDefault();
       event.stopImmediatePropagation();
       const activeOverlay = getActiveOverlay();
-      if (activeOverlay && activeOverlay.id === "overlayConfig" && typeof window.closeConfigOverlay === "function") {
-        window.closeConfigOverlay();
+      if (activeOverlay && TOP_PANEL_OVERLAY_IDS.includes(activeOverlay.id) && typeof window.toggleTopPanelOverlay === "function") {
+        window.toggleTopPanelOverlay(activeOverlay.id);
       } else if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
         if (window.__goonerLastGameLaunchSource === "directory") {
           openGame("overlayGames");
@@ -835,7 +847,25 @@ function initTopBarOverlayControls() {
     }, true);
   });
 
-  const getActiveOverlay = () => overlays.slice().reverse().find((overlay) => overlay.classList.contains("active")) || null;
+  const TOP_PANEL_OVERLAY_IDS = [
+    "overlayConfig",
+    "overlayBank",
+    "overlayShop",
+    "overlayProfile",
+    "overlayScores",
+    "overlaySeason",
+    "overlayCrew",
+    "overlayAdmin",
+    "overlayGames",
+  ];
+
+  const getActiveOverlay = () => {
+    for (const overlayId of TOP_PANEL_OVERLAY_IDS) {
+      const overlay = document.getElementById(overlayId);
+      if (overlay?.classList.contains("active")) return overlay;
+    }
+    return overlays.slice().reverse().find((overlay) => overlay.classList.contains("active")) || null;
+  };
   const isFullscreenApplicable = (overlay) => Boolean(overlay && GAME_OVERLAY_IDS.includes(overlay.id) && getFullscreenTarget(overlay));
 
   function getExitTabButton(overlay) {
@@ -872,13 +902,7 @@ function initTopBarOverlayControls() {
     fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
     fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
     if (closeBtn) {
-      const shouldShowClose = Boolean(activeOverlay && activeOverlay.id !== "overlayLogin" && !exitTab);
-      closeBtn.style.display = shouldShowClose ? "inline-flex" : "none";
-      closeBtn.textContent = "EXIT";
-      closeBtn.onclick = () => {
-        closeOverlays();
-        updateControls();
-      };
+      closeBtn.style.display = "none";
     }
   }
 
@@ -888,6 +912,7 @@ function initTopBarOverlayControls() {
   updateControls();
 }
 
+disableInGameExitButtons();
 initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
