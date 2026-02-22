@@ -397,6 +397,7 @@ function initGameSwitcher() {
 
     switcher.querySelectorAll(".game-switcher-title").forEach((button) => {
       button.addEventListener("click", () => {
+        if (Date.now() < suppressClickUntil) return;
         const targetGame = button.dataset.game;
         if (!targetGame) return;
         window.launchGame(targetGame, "game-switcher-click");
@@ -406,7 +407,20 @@ function initGameSwitcher() {
     let dragStartX = null;
     let activeIndex = startIndex;
     let previewIndex = startIndex;
+    let didDrag = false;
+    let suppressClickUntil = 0;
     const DRAG_STEP = 130;
+
+    function getDragState(deltaX) {
+      const rawShift = -deltaX / DRAG_STEP;
+      const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
+      const remainder = rawShift - wholeShift;
+      const renderIndex = wrapGameIndex(activeIndex + wholeShift);
+      const smoothOffset = -remainder * DRAG_STEP;
+      const commitShift = wholeShift + (remainder >= 0.5 ? 1 : remainder <= -0.5 ? -1 : 0);
+      const commitIndex = wrapGameIndex(activeIndex + commitShift);
+      return { renderIndex, smoothOffset, commitIndex };
+    }
 
     switcher.addEventListener("pointerdown", (event) => {
       dragStartX = event.clientX;
@@ -419,29 +433,31 @@ function initGameSwitcher() {
     switcher.addEventListener("pointermove", (event) => {
       if (dragStartX === null) return;
       const deltaX = event.clientX - dragStartX;
-      const rawShift = -deltaX / DRAG_STEP;
-      const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
-      const remainder = rawShift - wholeShift;
-      const renderIndex = wrapGameIndex(activeIndex + wholeShift);
-      const smoothOffset = -remainder * DRAG_STEP;
-      const commitShift = wholeShift + (remainder >= 0.5 ? 1 : remainder <= -0.5 ? -1 : 0);
-      previewIndex = wrapGameIndex(activeIndex + commitShift);
-      renderSwitcherAtIndex(switcher, renderIndex, smoothOffset);
+      didDrag = didDrag || Math.abs(deltaX) > 6;
+      const state = getDragState(deltaX);
+      previewIndex = state.commitIndex;
+      renderSwitcherAtIndex(switcher, state.renderIndex, state.smoothOffset);
     });
 
-    function commitDrag() {
+    function commitDrag(event) {
       if (dragStartX === null) return;
+      const deltaX = (event?.clientX ?? dragStartX) - dragStartX;
+      const state = getDragState(deltaX);
+      previewIndex = state.commitIndex;
       dragStartX = null;
       switcher.classList.remove("is-dragging");
       const currentIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
       renderSwitcherAtIndex(switcher, previewIndex, 0);
+      if (didDrag) suppressClickUntil = Date.now() + 220;
       if (previewIndex !== currentIndex) launchFromIndex(previewIndex);
+      didDrag = false;
     }
 
     switcher.addEventListener("pointerup", commitDrag);
     switcher.addEventListener("pointercancel", () => {
       if (dragStartX === null) return;
       dragStartX = null;
+      didDrag = false;
       switcher.classList.remove("is-dragging");
       const resetIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
       previewIndex = resetIndex;
