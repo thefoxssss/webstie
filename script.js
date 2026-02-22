@@ -902,13 +902,7 @@ function initTopBarOverlayControls() {
     fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
     fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
     if (closeBtn) {
-      const shouldShowClose = Boolean(activeOverlay && activeOverlay.id !== "overlayLogin" && !exitTab);
-      closeBtn.style.display = shouldShowClose ? "inline-flex" : "none";
-      closeBtn.textContent = "EXIT";
-      closeBtn.onclick = () => {
-        closeOverlays();
-        updateControls();
-      };
+      closeBtn.style.display = "none";
     }
   }
 

@@ -256,6 +256,14 @@ body::before {
   gap: 8px;
 }
 
+
+#topFullscreenBtn {
+  position: fixed;
+  top: calc(var(--topbar-clearance) + 10px);
+  right: 14px;
+  z-index: 2100;
+}
+
 /* Games dropdown menu anchored to the top bar. */
 .dropdown-content {
   display: none !important;
@@ -3236,6 +3244,10 @@ body.reduce-motion *::after {
   .top-overlay-controls {
     width: 100%;
     justify-content: center;
+  }
+
+  #topFullscreenBtn {
+    right: 8px;
   }
 }
 
