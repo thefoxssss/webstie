@@ -805,6 +805,7 @@ function initTopBarOverlayControls() {
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
+    overlayGames: "menuToggle",
     overlayTrending: "menuToggle",
     overlayUpdates: "menuToggle",
   };
@@ -820,8 +821,8 @@ function initTopBarOverlayControls() {
       event.preventDefault();
       event.stopImmediatePropagation();
       const activeOverlay = getActiveOverlay();
-      if (activeOverlay && activeOverlay.id === "overlayConfig" && typeof window.closeConfigOverlay === "function") {
-        window.closeConfigOverlay();
+      if (activeOverlay && TOP_PANEL_OVERLAY_IDS.includes(activeOverlay.id) && typeof window.toggleTopPanelOverlay === "function") {
+        window.toggleTopPanelOverlay(activeOverlay.id);
       } else if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
         if (window.__goonerLastGameLaunchSource === "directory") {
           openGame("overlayGames");

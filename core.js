@@ -2187,6 +2187,7 @@ const TOP_PANEL_OVERLAY_IDS = [
   "overlaySeason",
   "overlayCrew",
   "overlayAdmin",
+  "overlayGames",
 ];
 
 function runOverlayOpenHooks(id) {
@@ -2234,21 +2235,40 @@ window.toggleConfigOverlay = () => {
   }
 };
 
+function getActiveOverlayId() {
+  const active = Array.from(document.querySelectorAll(".overlay")).find((overlay) => overlay.classList.contains("active"));
+  return active?.id || "";
+}
+
 window.toggleTopPanelOverlay = (id) => {
   if (id === "overlayAdmin" && !isGodUser()) return;
   const target = document.getElementById(id);
   if (!target) return;
-  const shouldOpen = !target.classList.contains("active");
-  TOP_PANEL_OVERLAY_IDS.forEach((overlayId) => {
-    const overlay = document.getElementById(overlayId);
-    if (overlay) overlay.classList.remove("active");
-  });
-  if (shouldOpen) {
+  const currentlyActiveId = getActiveOverlayId();
+  const isClosingSameOverlay = currentlyActiveId === id;
+
+  document.querySelectorAll(".overlay").forEach((overlay) => overlay.classList.remove("active"));
+
+  if (isClosingSameOverlay) {
+    const returnId = String(target.dataset.returnOverlayId || "").trim();
+    target.dataset.returnOverlayId = "";
+    if (returnId) {
+      const returnOverlay = document.getElementById(returnId);
+      if (returnOverlay) {
+        returnOverlay.classList.add("active");
+        runOverlayOpenHooks(returnId);
+      }
+    }
+  } else {
+    const returnId = currentlyActiveId && currentlyActiveId !== id ? currentlyActiveId : "";
+    target.dataset.returnOverlayId = returnId;
     target.classList.add("active");
     runOverlayOpenHooks(id);
   }
+
   const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
   document.body.classList.toggle("overlay-open", hasActiveOverlay);
+  document.body.classList.toggle("games-directory-open", Boolean(document.getElementById("overlayGames")?.classList.contains("active")));
 };
 
 // Open an overlay by id, optionally render its contents.
@@ -4240,8 +4260,9 @@ if (menuToggleBtn) {
   menuToggleBtn.onclick = (e) => {
     e.stopPropagation();
     registerMenuMash();
-    if (menuDropdownEl && menuDropdownEl.children.length) {
-      menuDropdownEl.classList.toggle("show");
+    if (menuDropdownEl) menuDropdownEl.classList.remove("show");
+    if (typeof window.toggleTopPanelOverlay === "function") {
+      window.toggleTopPanelOverlay("overlayGames");
       return;
     }
     openGame("overlayGames");
