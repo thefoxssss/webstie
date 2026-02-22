@@ -1634,7 +1634,21 @@ function normalizeUpdateLogRow(row, fallbackNumber = "?") {
   const cleanedTitle = String(rawTitle || "").trim();
   const title = cleanedTitle || `CHANGE ${number}`;
 
-  return { number, title };
+  const mergedAtRaw = rowObj.mergedAt ?? rowObj.merged_at ?? rowObj.date;
+  const mergedAtMs = Date.parse(String(mergedAtRaw || ""));
+  const mergedAt = Number.isFinite(mergedAtMs) ? new Date(mergedAtMs).toISOString() : "";
+
+  return { number, title, mergedAt };
+}
+
+function formatUpdateLogDateHeading(isoDate) {
+  const parsed = Date.parse(String(isoDate || ""));
+  if (!Number.isFinite(parsed)) return "UNKNOWN DATE";
+  return new Date(parsed).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function renderFullUpdateLogRows(searchTerm = "") {
@@ -1653,7 +1667,17 @@ function renderFullUpdateLogRows(searchTerm = "") {
     return;
   }
 
-  fullList.innerHTML = rows.map((row) => `<li><span>${escapeHtml(row.number)}</span> ${escapeHtml(row.title)}</li>`).join("");
+  let previousDateHeading = "";
+  fullList.innerHTML = rows
+    .map((row) => {
+      const dateHeading = formatUpdateLogDateHeading(row.mergedAt);
+      const dateRow = dateHeading !== previousDateHeading
+        ? `<li class="update-log-day-title">${escapeHtml(dateHeading)}</li>`
+        : "";
+      previousDateHeading = dateHeading;
+      return `${dateRow}<li><span>${escapeHtml(row.number)}</span> ${escapeHtml(row.title)}</li>`;
+    })
+    .join("");
   fullMeta.innerText = normalizedQuery
     ? `SHOWING ${rows.length} OF ${mergedUpdateLogRows.length} MERGED UPDATES`
     : `SHOWING ${rows.length} MERGED UPDATES`;
