@@ -728,7 +728,6 @@ function initTopBarOverlayControls() {
   if (!overlays.length || !fsBtn) return;
 
   const OVERLAY_TAB_MAP = {
-    overlayGames: "tabMainMenu",
     overlayConfig: "tabConfig",
     overlayBank: "tabBank",
     overlayShop: "tabShop",
@@ -737,11 +736,11 @@ function initTopBarOverlayControls() {
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
-    overlayTrending: "tabMainMenu",
-    overlayUpdates: "tabMainMenu",
+    overlayTrending: "menuToggle",
+    overlayUpdates: "menuToggle",
   };
 
-  const topTabs = ["tabMainMenu", "tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
+  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 

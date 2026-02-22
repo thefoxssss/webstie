@@ -65,7 +65,7 @@ body {
   overflow-x: hidden;
   color: var(--accent);
   touch-action: auto;
-  text-shadow: 0 0 10px var(--accent);
+  text-shadow: 0 0 10px var(--accent-glow);
   transition:
     color 0.5s,
     text-shadow 0.5s;
