@@ -1890,8 +1890,15 @@ canvas {
   }
 }
 
+#overlayShop .score-box {
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
 .shop-list {
-  max-height: 250px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   margin-top: 10px;
 }
@@ -1902,7 +1909,12 @@ canvas {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   font-size: 10px;
+}
+.shop-item-icon {
+  display: inline-block;
+  margin-right: 8px;
 }
 .shop-buy-btn {
   background: var(--accent);
