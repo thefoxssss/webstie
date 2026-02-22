@@ -576,6 +576,24 @@ body::before {
 .overlay.active {
   display: flex !important;
 }
+
+/* Menu-style overlays sit above the home scene so chat/glow stay visible. */
+.menu-overlay {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(1px);
+}
+
+.menu-overlay .score-box,
+.menu-overlay .menu-box,
+.menu-overlay .job-card,
+.menu-overlay .settings-grid,
+.menu-overlay .games-toolbar,
+.menu-overlay .games-grid,
+.menu-overlay h1,
+.menu-overlay p {
+  position: relative;
+  z-index: 1;
+}
 .menu-box {
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid var(--accent);
