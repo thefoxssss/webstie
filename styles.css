@@ -841,7 +841,7 @@ canvas {
   flex-wrap: wrap;
   gap: 4px;
   max-height: 32px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .game-tag {
@@ -856,7 +856,7 @@ canvas {
   justify-content: center;
   border-radius: 999px;
   position: relative;
-  cursor: help;
+  cursor: default;
 }
 
 .game-tag::after {
@@ -878,8 +878,27 @@ canvas {
   z-index: 6;
 }
 
+.game-tag::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  background: #030;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 5;
+}
+
 .game-tag:hover::after,
-.game-tag:focus-visible::after {
+.game-tag:hover::before,
+.game-tag:focus-visible::after,
+.game-tag:focus-visible::before {
   opacity: 1;
 }
 
