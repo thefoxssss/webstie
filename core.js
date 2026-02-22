@@ -2178,38 +2178,18 @@ function openConfigOverlay() {
   document.body.classList.add("overlay-open");
 }
 
-export function closeConfigOverlay() {
-  const configOverlay = document.getElementById("overlayConfig");
-  if (!configOverlay) return;
-  configOverlay.classList.remove("active");
-  const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
-  document.body.classList.toggle("overlay-open", hasActiveOverlay);
-}
+const TOP_PANEL_OVERLAY_IDS = [
+  "overlayConfig",
+  "overlayBank",
+  "overlayShop",
+  "overlayProfile",
+  "overlayScores",
+  "overlaySeason",
+  "overlayCrew",
+  "overlayAdmin",
+];
 
-window.openConfigOverlay = openConfigOverlay;
-window.closeConfigOverlay = closeConfigOverlay;
-window.toggleConfigOverlay = () => {
-  const configOverlay = document.getElementById("overlayConfig");
-  if (!configOverlay) return;
-  if (configOverlay.classList.contains("active")) {
-    closeConfigOverlay();
-  } else {
-    openConfigOverlay();
-  }
-};
-
-// Open an overlay by id, optionally render its contents.
-export function openGame(id) {
-  if (id === "overlayAdmin" && !isGodUser()) return;
-  if (id === "overlayConfig") {
-    openConfigOverlay();
-    return;
-  }
-  closeOverlays();
-  const el = document.getElementById(id);
-  if (el) el.classList.add("active");
-  document.body.classList.toggle("overlay-open", Boolean(el));
-  document.body.classList.toggle("games-directory-open", id === "overlayGames");
+function runOverlayOpenHooks(id) {
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
@@ -2232,6 +2212,58 @@ export function openGame(id) {
   if (id === "overlayUpdates") {
     refreshUpdateLogFromMergedPrs();
   }
+}
+
+export function closeConfigOverlay() {
+  const configOverlay = document.getElementById("overlayConfig");
+  if (!configOverlay) return;
+  configOverlay.classList.remove("active");
+  const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
+  document.body.classList.toggle("overlay-open", hasActiveOverlay);
+}
+
+window.openConfigOverlay = openConfigOverlay;
+window.closeConfigOverlay = closeConfigOverlay;
+window.toggleConfigOverlay = () => {
+  const configOverlay = document.getElementById("overlayConfig");
+  if (!configOverlay) return;
+  if (configOverlay.classList.contains("active")) {
+    closeConfigOverlay();
+  } else {
+    openConfigOverlay();
+  }
+};
+
+window.toggleTopPanelOverlay = (id) => {
+  if (id === "overlayAdmin" && !isGodUser()) return;
+  const target = document.getElementById(id);
+  if (!target) return;
+  const shouldOpen = !target.classList.contains("active");
+  TOP_PANEL_OVERLAY_IDS.forEach((overlayId) => {
+    const overlay = document.getElementById(overlayId);
+    if (overlay) overlay.classList.remove("active");
+  });
+  if (shouldOpen) {
+    target.classList.add("active");
+    runOverlayOpenHooks(id);
+  }
+  const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
+  document.body.classList.toggle("overlay-open", hasActiveOverlay);
+};
+
+// Open an overlay by id, optionally render its contents.
+export function openGame(id) {
+  if (id === "overlayAdmin" && !isGodUser()) return;
+  if (id === "overlayConfig") {
+    openConfigOverlay();
+    return;
+  }
+  closeOverlays();
+  const el = document.getElementById(id);
+  if (el) el.classList.add("active");
+  document.body.classList.toggle("overlay-open", Boolean(el));
+  document.body.classList.toggle("games-directory-open", id === "overlayGames");
+  runOverlayOpenHooks(id);
 }
 
 // Close overlays and clear dropdown state.
