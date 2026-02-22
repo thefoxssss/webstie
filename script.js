@@ -134,16 +134,23 @@ function renderInGameShopPanel(game, overlayId) {
   const overlay = document.getElementById(overlayId);
   if (!overlay) return;
   overlay.querySelectorAll(".game-side-shop").forEach((panel) => panel.remove());
-  overlay.classList.remove("has-game-side-shop");
+  overlay.classList.add("has-game-side-shop");
 
   const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === game);
   const relatedItems = Array.isArray(entry?.shopItems) ? entry.shopItems : [];
-  if (!relatedItems.length) return;
-  overlay.classList.add("has-game-side-shop");
 
   const panel = document.createElement("aside");
   panel.className = "game-side-shop";
   panel.innerHTML = '<h3>GAME SHOP</h3><p class="game-side-shop-meta">TOGGLES + QUICK BUY</p>';
+
+  if (!relatedItems.length) {
+    const empty = document.createElement("div");
+    empty.className = "game-side-shop-empty";
+    empty.textContent = "NO SPECIAL ITEMS FOR THIS GAME.";
+    panel.appendChild(empty);
+    overlay.appendChild(panel);
+    return;
+  }
 
   relatedItems.forEach((itemId) => {
     const item = getShopItemById(itemId);
@@ -369,8 +376,18 @@ function sizeCanvasToViewport(canvas) {
   const intrinsicW = Number(canvas.getAttribute("width")) || canvas.width || 800;
   const intrinsicH = Number(canvas.getAttribute("height")) || canvas.height || 450;
   const isFullscreen = document.fullscreenElement === canvas;
-  const availW = (isFullscreen ? window.innerWidth : window.innerWidth * 0.95);
-  const availH = Math.max(120, (isFullscreen ? window.innerHeight : window.innerHeight - CANVAS_UI_PADDING));
+  const gameboxContent = canvas.closest("#overlayGamebox .gamebox-content");
+  const gameboxActive = Boolean(document.getElementById("overlayGamebox")?.classList.contains("active"));
+  const availW = isFullscreen
+    ? window.innerWidth
+    : gameboxContent && gameboxActive
+      ? Math.max(180, gameboxContent.clientWidth - 20)
+      : window.innerWidth * 0.95;
+  const availH = isFullscreen
+    ? window.innerHeight
+    : gameboxContent && gameboxActive
+      ? Math.max(140, gameboxContent.clientHeight - 20)
+      : Math.max(120, window.innerHeight - CANVAS_UI_PADDING);
   const scale = Math.max(0.1, Math.min(availW / intrinsicW, availH / intrinsicH));
   canvas.style.width = `${Math.round(intrinsicW * scale)}px`;
   canvas.style.height = `${Math.round(intrinsicH * scale)}px`;

@@ -257,13 +257,6 @@ body::before {
 }
 
 
-#topFullscreenBtn {
-  position: fixed;
-  top: calc(var(--topbar-clearance) + 10px);
-  right: 14px;
-  z-index: 2100;
-}
-
 /* Games dropdown menu anchored to the top bar. */
 .dropdown-content {
   display: none !important;
@@ -1093,6 +1086,12 @@ canvas {
   min-width: 220px;
 }
 
+.gamebox-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .gamebox-subtitle {
   width: 100%;
   margin: 0;
@@ -1103,7 +1102,7 @@ canvas {
 
 .gamebox-content {
   width: 100%;
-  min-height: 0;
+  min-height: 580px;
   flex: 1;
   display: flex;
   align-items: center;
@@ -1365,7 +1364,8 @@ canvas {
 
 
 .overlay.has-game-side-shop {
-  --game-side-shop-width: clamp(220px, 26vw, 300px);
+  --game-side-shop-width: 260px;
+  --game-side-shop-height: 520px;
   padding-left: calc(var(--game-side-shop-width) + 24px);
 }
 
@@ -1373,9 +1373,9 @@ canvas {
   position: absolute;
   left: 14px;
   top: 74px;
-  width: var(--game-side-shop-width, min(250px, 30vw));
-  height: clamp(280px, 62vh, 560px);
-  max-height: calc(100vh - var(--topbar-clearance) - 110px);
+  width: var(--game-side-shop-width, 260px);
+  height: var(--game-side-shop-height, 520px);
+  max-height: var(--game-side-shop-height, 520px);
   border: 1px solid var(--accent);
   background: rgba(0, 0, 0, 0.9);
   padding: 8px;
@@ -1427,13 +1427,24 @@ canvas {
   padding: 5px 6px;
 }
 
+.game-side-shop-empty {
+  margin-top: 8px;
+  border-top: 1px dashed var(--accent-dim);
+  padding-top: 8px;
+  font-size: 8px;
+  color: #ddd;
+  letter-spacing: 0.25px;
+}
+
 @media (max-width: 1100px) {
   .overlay.has-game-side-shop {
-    --game-side-shop-width: clamp(200px, 30vw, 260px);
+    --game-side-shop-width: 220px;
+    --game-side-shop-height: 460px;
   }
 
-  .game-side-shop {
-    height: clamp(240px, 58vh, 500px);
+  .gamebox-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
 
@@ -3383,8 +3394,9 @@ body.reduce-motion *::after {
     justify-content: center;
   }
 
-  #topFullscreenBtn {
-    right: 8px;
+  .gamebox-header-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

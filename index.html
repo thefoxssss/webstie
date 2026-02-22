@@ -69,9 +69,6 @@
         </button>
         <button class="menu-btn" id="menuToggle">GAMES</button>
         <div id="topOverlayControls" class="top-overlay-controls" aria-live="polite">
-          <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">
-            FULLSCREEN
-          </button>
           <button id="topCloseBtn" class="menu-btn" type="button" style="display: none">
             CLOSE
           </button>
@@ -1056,7 +1053,10 @@
       <div class="game-content-shell gamebox-shell">
         <div class="gamebox-header-row">
           <h1 id="gameboxTitle">GAME BOX</h1>
-          <button class="menu-btn" id="gameboxLeaderboardBtn" type="button">VIEW LEADERBOARD</button>
+          <div class="gamebox-header-actions">
+            <button class="menu-btn" id="gameboxLeaderboardBtn" type="button">VIEW LEADERBOARD</button>
+            <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">FULLSCREEN</button>
+          </div>
         </div>
         <p class="gamebox-subtitle" id="gameboxSubtitle">SELECT A GAME FROM THE DIRECTORY TO LOAD IT HERE.</p>
         <div id="gameboxContent" class="gamebox-content"></div>
@@ -1837,11 +1837,6 @@
       <button class="term-btn" id="quantumflipAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
-
-
-    <button class="term-btn game-leaderboard-jump-btn" id="gameLeaderboardJumpBtn" style="display: none">
-      VIEW LEADERBOARD
-    </button>
 
     <!-- Game-over modal shared across mini-games. -->
     <div id="modalGameOver" class="game-over-modal">
