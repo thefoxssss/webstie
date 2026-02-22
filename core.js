@@ -4860,7 +4860,31 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
-  const activeGameOverlay = document.querySelector(".overlay.active:not(#modalGameOver)");
+  const gameOverlayById = {
+    snake: "overlaySnake",
+    pong: "overlayPong",
+    runner: "overlayRunner",
+    geo: "overlayGeo",
+    flappy: "overlayFlappy",
+    dodge: "overlayDodge",
+    corebreaker: "overlayCorebreaker",
+    neondefender: "overlayNeondefender",
+    voidminer: "overlayVoidminer",
+    byteblitz: "overlayByteblitz",
+    ciphercrack: "overlayCiphercrack",
+    astrohop: "overlayAstrohop",
+    pulsestack: "overlayPulsestack",
+    glitchgate: "overlayGlitchgate",
+    orbweaver: "overlayOrbweaver",
+    laserlock: "overlayLaserlock",
+    metromaze: "overlayMetromaze",
+    stacksmash: "overlayStacksmash",
+    quantumflip: "overlayQuantumflip",
+    roulette: "overlayRoulette",
+    blackjack: "overlayBlackjack",
+  };
+  const overlayId = gameOverlayById[String(game || "").toLowerCase()] || "";
+  const activeGameOverlay = (overlayId && document.getElementById(overlayId)) || document.querySelector(".overlay.active:not(#modalGameOver)");
   const modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
   if (modalHost) {
     modalHost.classList.add("game-over-host");
