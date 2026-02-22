@@ -661,7 +661,7 @@ canvas {
 
 .game-overlay {
   gap: 10px;
-  padding-top: 10px;
+  padding-top: 88px;
 }
 
 .game-content-shell {
@@ -699,14 +699,17 @@ canvas {
 }
 
 .overlay-controls-fixed {
-  position: static;
-  margin: 0 0 10px;
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: min(95vw, 430px);
-  z-index: 1001;
+  z-index: 2100;
 }
 
 .fullscreen-btn-fixed {
@@ -2646,6 +2649,7 @@ canvas {
   }
 
   .overlay-controls-fixed {
+    top: 8px;
     width: min(95vw, 320px);
     flex-direction: column;
     gap: 8px;
