@@ -381,6 +381,84 @@ body::before {
   text-align: center;
 }
 
+.home-menu-links {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.panel-menu-box,
+.panel-scroll-box {
+  width: min(94vw, 820px);
+  display: grid;
+  gap: 10px;
+}
+
+.panel-scroll-box {
+  max-height: min(82vh, 700px);
+  overflow-y: auto;
+}
+
+.panel-subtext {
+  margin: 0;
+  font-size: 9px;
+  opacity: 0.85;
+}
+
+.trending-menu-list {
+  display: grid;
+  gap: 10px;
+}
+
+.trending-menu-row {
+  border: 1px solid var(--accent-dim);
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  gap: 8px;
+}
+
+.trending-menu-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 9px;
+}
+
+.trending-menu-timestamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trending-time-btn {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--font-type);
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.trending-time-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.update-log-menu-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 9px;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.update-log-menu-list li span {
+  color: var(--accent);
+}
 
 .random-game-cta {
   margin-top: 24px;

@@ -1485,43 +1485,87 @@ function formatTrendingWindowLabel() {
   return `LAST REFRESH ${now.toLocaleTimeString("en-GB")} // WINDOW 24H`;
 }
 
+function formatTrendingTimestamp(ts) {
+  const d = new Date(Number(ts) || Date.now());
+  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+async function fetchTrendingGameRows() {
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const snap = await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", since), limit(2000)));
+  const byGame = new Map();
+
+  snap.forEach((entry) => {
+    const data = entry.data() || {};
+    const game = String(data.game || "").toLowerCase().trim();
+    const ts = Number(data.ts || 0);
+    if (!game || !Number.isFinite(ts) || ts <= 0) return;
+    if (!byGame.has(game)) byGame.set(game, []);
+    byGame.get(game).push(ts);
+  });
+
+  return [...byGame.entries()]
+    .map(([game, timestamps]) => {
+      timestamps.sort((a, b) => b - a);
+      return {
+        game,
+        label: TRENDING_GAME_LABELS[game] || game.toUpperCase(),
+        plays: timestamps.length,
+        recentTimestamps: timestamps.slice(0, 5),
+      };
+    })
+    .sort((a, b) => b.plays - a.plays || b.recentTimestamps[0] - a.recentTimestamps[0]);
+}
+
 async function refreshTrendingGames() {
   const wrap = document.getElementById("trendingGamesList");
   const meta = document.getElementById("trendingGamesMeta");
+  const menuWrap = document.getElementById("trendingMenuList");
+  const menuMeta = document.getElementById("trendingMenuMeta");
   if (!wrap || !meta) return;
-  const since = Date.now() - 24 * 60 * 60 * 1000;
 
   try {
-    const snap = await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", since), limit(800)));
-    const counts = new Map();
-    snap.forEach((entry) => {
-      const data = entry.data() || {};
-      const key = String(data.game || "").toLowerCase().trim();
-      if (!key) return;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-
-    const rows = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+    const rows = await fetchTrendingGameRows();
 
     if (!rows.length) {
-      wrap.innerHTML = '<div class="trending-empty">NO GAME PLAYS IN THE LAST 24H.</div>';
+      const empty = '<div class="trending-empty">NO GAME PLAYS IN THE LAST 24H.</div>';
+      wrap.innerHTML = empty;
+      if (menuWrap) menuWrap.innerHTML = empty;
       meta.innerText = formatTrendingWindowLabel();
+      if (menuMeta) menuMeta.innerText = formatTrendingWindowLabel();
       return;
     }
 
-    wrap.innerHTML = rows
-      .map(([game, plays], idx) => {
-        const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
-        return `<button class="trending-game-btn" type="button" data-game="${escapeHtml(game)}"><span class="trending-rank">#${idx + 1}</span><span>${escapeHtml(label)}</span><span class="trending-count">${plays} PLAYS</span></button>`;
-      })
+    wrap.innerHTML = rows.slice(0, 5)
+      .map((row, idx) => `<button class="trending-game-btn" type="button" data-game="${escapeHtml(row.game)}"><span class="trending-rank">#${idx + 1}</span><span>${escapeHtml(row.label)}</span><span class="trending-count">${row.plays} PLAYS</span></button>`)
       .join("");
 
-    meta.innerText = formatTrendingWindowLabel();
+    if (menuWrap) {
+      menuWrap.innerHTML = rows
+        .map((row, idx) => `
+          <article class="trending-menu-row">
+            <div class="trending-menu-head">
+              <strong>#${idx + 1} ${escapeHtml(row.label)}</strong>
+              <span>${row.plays} PLAYS</span>
+            </div>
+            <div class="trending-menu-timestamps">
+              ${row.recentTimestamps
+                .map((ts) => `<button class="trending-time-btn" type="button" data-game="${escapeHtml(row.game)}" data-ts="${ts}" title="LAUNCH ${escapeHtml(row.label)}">${formatTrendingTimestamp(ts)}</button>`)
+                .join("")}
+            </div>
+          </article>
+        `)
+        .join("");
+    }
+
+    const windowLabel = formatTrendingWindowLabel();
+    meta.innerText = windowLabel;
+    if (menuMeta) menuMeta.innerText = `${windowLabel} // CLICK A TIMESTAMP TO LAUNCH`;
   } catch (error) {
     meta.innerText = "TRENDING SIGNAL OFFLINE";
     wrap.innerHTML = '<div class="trending-empty">UNABLE TO LOAD TRENDING GAMES.</div>';
+    if (menuMeta) menuMeta.innerText = "TRENDING SIGNAL OFFLINE";
+    if (menuWrap) menuWrap.innerHTML = '<div class="trending-empty">UNABLE TO LOAD TRENDING GAMES.</div>';
   }
 }
 
@@ -1536,12 +1580,15 @@ function renderUpdateLogMessage(message, tag = "SYNC") {
 async function refreshUpdateLogFromMergedPrs() {
   const panel = document.getElementById("updateLogPanel");
   const list = document.getElementById("updateLogList");
+  const menuList = document.getElementById("updateLogMenuList");
+  const menuMeta = document.getElementById("updateLogMenuMeta");
   if (!panel || !list) return;
 
   const owner = String(panel.dataset.githubOwner || "").trim();
   const repo = String(panel.dataset.githubRepo || "").trim();
   if (!owner || !repo) {
     renderUpdateLogMessage("SET data-github-owner / data-github-repo TO ENABLE AUTO LOG", "CONFIG");
+    if (menuMeta) menuMeta.innerText = "SET data-github-owner / data-github-repo TO ENABLE AUTO LOG";
     return;
   }
 
@@ -1549,14 +1596,16 @@ async function refreshUpdateLogFromMergedPrs() {
   const cacheTtlMs = 5 * 60 * 1000;
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
-    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows)) {
-      list.innerHTML = cached.rows.join("");
+    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rowsPreview) && Array.isArray(cached.rowsFull)) {
+      list.innerHTML = cached.rowsPreview.join("");
+      if (menuList) menuList.innerHTML = cached.rowsFull.join("");
+      if (menuMeta) menuMeta.innerText = `LAST SYNC ${new Date(cached.ts).toLocaleTimeString("en-GB")}`;
       return;
     }
   } catch {}
 
   try {
-    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=closed&sort=updated&direction=desc&per_page=12`;
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=closed&sort=updated&direction=desc&per_page=100`;
     const response = await fetch(url, {
       headers: { Accept: "application/vnd.github+json" },
     });
@@ -1566,25 +1615,28 @@ async function refreshUpdateLogFromMergedPrs() {
     const pulls = await response.json();
     const merged = (Array.isArray(pulls) ? pulls : [])
       .filter((pr) => pr && pr.merged_at)
-      .sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime())
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime());
 
     if (!merged.length) {
       renderUpdateLogMessage("NO MERGED PULL REQUESTS FOUND", "EMPTY");
+      if (menuMeta) menuMeta.innerText = "NO MERGED PULL REQUESTS FOUND";
       return;
     }
 
-    const rows = merged.map((pr) => {
+    const allRows = merged.map((pr) => {
       const title = String(pr.title || "UNTITLED CHANGE");
       const match = title.match(/\bcommit\s*#?\s*(\d+)\b/i);
       const rowNumber = `#${match ? match[1] : String(pr.number || "?")}`;
       return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
     });
 
-    list.innerHTML = rows.join("");
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows }));
+    list.innerHTML = allRows.slice(0, 5).join("");
+    if (menuList) menuList.innerHTML = allRows.join("");
+    if (menuMeta) menuMeta.innerText = `SHOWING ${allRows.length} MERGED UPDATES`;
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rowsPreview: allRows.slice(0, 5), rowsFull: allRows }));
   } catch (_error) {
     renderUpdateLogMessage("UNABLE TO LOAD MERGED PR FEED", "OFFLINE");
+    if (menuMeta) menuMeta.innerText = "UNABLE TO LOAD MERGED PR FEED";
   }
 }
 
@@ -1593,14 +1645,18 @@ function initTrendingGamesPanel() {
   if (!wrap || wrap.dataset.ready === "1") return;
   wrap.dataset.ready = "1";
 
-  wrap.addEventListener("click", (event) => {
+  const launchFromDataGame = (event) => {
     const button = event.target.closest("[data-game]");
     const game = button?.dataset.game;
     if (!game) return;
     if (typeof window.launchGame === "function") {
       window.launchGame(game);
     }
-  });
+  };
+
+  wrap.addEventListener("click", launchFromDataGame);
+  const menuWrap = document.getElementById("trendingMenuList");
+  if (menuWrap) menuWrap.addEventListener("click", launchFromDataGame);
 
   refreshTrendingGames();
   setInterval(refreshTrendingGames, 60000);
@@ -2035,6 +2091,12 @@ export function openGame(id) {
   }
   if (id === "overlayScores") {
     loadLeaderboard();
+  }
+  if (id === "overlayTrendingMenu") {
+    refreshTrendingGames();
+  }
+  if (id === "overlayUpdateLogMenu") {
+    refreshUpdateLogFromMergedPrs();
   }
 }
 

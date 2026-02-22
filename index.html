@@ -265,6 +265,11 @@
           >[IRON]</span
         >
       </div>
+      <div class="home-menu-links" aria-label="Main menus">
+        <button class="menu-btn" type="button" onclick="window.openGame('overlayMainMenu')">MAIN MENU</button>
+        <button class="menu-btn" type="button" onclick="window.openGame('overlayTrendingMenu')">TRENDING GAMES</button>
+        <button class="menu-btn" type="button" onclick="window.openGame('overlayUpdateLogMenu')">UPDATE LOG</button>
+      </div>
       <section class="random-game-cta" aria-label="Random game">
         <button class="trending-game-btn random-game-btn" id="randomGameBtn" type="button">
           <span class="trending-rank">🎲</span>
@@ -295,6 +300,42 @@
           <div><span>HOT ROOM</span><strong id="liveOpsRoom">----</strong></div>
         </div>
       </section>
+    </div>
+
+
+    <!-- Main menu shortcuts. -->
+    <div class="overlay" id="overlayMainMenu">
+      <div class="score-box panel-menu-box">
+        <h2>MAIN MENU PAGES</h2>
+        <button class="term-btn" type="button" onclick="window.openGame('overlayGames')">GAMES DIRECTORY</button>
+        <button class="term-btn" type="button" onclick="window.openGame('overlayTrendingMenu')">TRENDING GAMES</button>
+        <button class="term-btn" type="button" onclick="window.openGame('overlayUpdateLogMenu')">UPDATE LOG</button>
+        <button class="term-btn" type="button" onclick="window.closeOverlays()">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Expanded trending panel with clickable timestamps. -->
+    <div class="overlay" id="overlayTrendingMenu">
+      <div class="score-box panel-scroll-box">
+        <h2>TRENDING GAMES FEED</h2>
+        <p class="panel-subtext" id="trendingMenuMeta">SCANNING GAME TRAFFIC...</p>
+        <div id="trendingMenuList" class="trending-menu-list">
+          <div class="trending-empty">NO GAME PLAYS IN THE LAST 24H.</div>
+        </div>
+        <button class="term-btn" type="button" onclick="window.closeOverlays()">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Full update log in a scrollable view. -->
+    <div class="overlay" id="overlayUpdateLogMenu">
+      <div class="score-box panel-scroll-box">
+        <h2>UPDATE LOG // FULL HISTORY</h2>
+        <p class="panel-subtext" id="updateLogMenuMeta">FETCHING MERGED UPDATES...</p>
+        <ul id="updateLogMenuList" class="update-log-menu-list">
+          <li><span>#--</span> LOADING LATEST UPDATES...</li>
+        </ul>
+        <button class="term-btn" type="button" onclick="window.closeOverlays()">CLOSE</button>
+      </div>
     </div>
 
     <!-- Login overlay shown on initial load or when logged out. -->
