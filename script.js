@@ -59,6 +59,7 @@ import { initLaserLock } from "./games/laserlock.js";
 import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
+import { initUltimateTTT } from "./games/ultimatettt.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -126,6 +127,7 @@ window.launchGame = (game) => {
   if (game === "metromaze") initMetroMaze();
   if (game === "stacksmash") initStackSmash();
   if (game === "quantumflip") initQuantumFlip();
+  if (game === "ultimatettt") initUltimateTTT();
   resizeAllGameCanvases();
   trackGamePlay(game);
   updateRecentGames(game);
@@ -163,6 +165,7 @@ const GAME_OVERLAY_IDS = [
   "overlayMetromaze",
   "overlayStacksmash",
   "overlayQuantumflip",
+  "overlayUltimatettt",
 ];
 
 

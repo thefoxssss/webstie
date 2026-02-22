@@ -2433,3 +2433,80 @@ canvas {
     grid-template-columns: 1fr;
   }
 }
+
+/* Ultimate Tic-Tac-Toe */
+.uttt-headline {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.uttt-subline {
+  font-size: 9px;
+  opacity: 0.82;
+  margin: 8px 0 12px;
+}
+.uttt-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.uttt-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  width: 84px;
+}
+.uttt-meta-cell {
+  border: 1px solid var(--accent-dim);
+  font-size: 12px;
+  text-align: center;
+  padding: 4px 0;
+}
+.uttt-meta-cell.x { color: #f66; }
+.uttt-meta-cell.o { color: #86b9ff; }
+.uttt-score {
+  font-size: 10px;
+}
+.uttt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 8px;
+  width: min(92vw, 640px);
+}
+.uttt-mini-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  border: 2px solid var(--accent-dim);
+  padding: 2px;
+  background: rgba(8, 12, 8, 0.65);
+}
+.uttt-mini-board.is-allowed {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-dim);
+}
+.uttt-mini-board.is-locked {
+  opacity: 0.5;
+}
+.uttt-mini-board[data-winner="X"] {
+  border-color: #f66;
+}
+.uttt-mini-board[data-winner="O"] {
+  border-color: #86b9ff;
+}
+.uttt-mini-board[data-winner="draw"] {
+  border-color: #888;
+}
+.uttt-cell {
+  height: 38px;
+  border: 1px solid var(--accent-dim);
+  background: #0b0f0b;
+  color: #fff;
+  font-size: 20px;
+  font-family: var(--font-main);
+  cursor: pointer;
+}
+.uttt-cell.is-playable:hover {
+  background: #152115;
+}
