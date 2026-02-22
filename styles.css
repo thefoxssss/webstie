@@ -360,6 +360,16 @@ body::before {
   text-align: center;
 }
 
+
+.random-game-cta {
+  margin-top: 24px;
+  width: min(90vw, 680px);
+}
+
+.random-game-btn {
+  text-align: left;
+}
+
 .trending-games {
   margin-top: 24px;
   width: min(90vw, 680px);
