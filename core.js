@@ -2094,11 +2094,50 @@ setInterval(() => {
 }, 1000);
 
 // Open an overlay by id, optionally render its contents.
+const MAIN_MENU_HIDDEN_OVERLAY_IDS = new Set([
+  "overlayGames",
+  "overlayGeo",
+  "overlayType",
+  "overlayPong",
+  "overlaySnake",
+  "overlayRunner",
+  "overlayCorebreaker",
+  "overlayNeondefender",
+  "overlayVoidminer",
+  "overlayShadowassassin",
+  "overlayDodge",
+  "overlayRoulette",
+  "overlayTTT",
+  "overlayHangman",
+  "overlayBlackjack",
+  "overlayBonk",
+  "overlayFlappy",
+  "overlayDrift",
+  "overlayEmulator",
+  "overlayByteblitz",
+  "overlayCiphercrack",
+  "overlayAstrohop",
+  "overlayPulsestack",
+  "overlayGlitchgate",
+  "overlayOrbweaver",
+  "overlayLaserlock",
+  "overlayMetromaze",
+  "overlayStacksmash",
+  "overlayQuantumflip",
+  "overlayUltimatettt",
+]);
+
+function shouldHideMainMenuForOverlay(id) {
+  return MAIN_MENU_HIDDEN_OVERLAY_IDS.has(id);
+}
+
 export function openGame(id) {
   if (id === "overlayAdmin" && !isGodUser()) return;
-  closeOverlays();
+  const hideMainMenu = shouldHideMainMenuForOverlay(id);
+  closeOverlays({ keepMainMenuHidden: hideMainMenu });
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
+  document.body.classList.toggle("main-menu-hidden", hideMainMenu);
   document.body.classList.toggle("games-directory-open", id === "overlayGames");
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
@@ -2125,7 +2164,7 @@ export function openGame(id) {
 }
 
 // Close overlays and clear dropdown state.
-export function closeOverlays() {
+export function closeOverlays({ keepMainMenuHidden = false } = {}) {
   stopAllGames();
   document
     .querySelectorAll(".overlay")
@@ -2134,6 +2173,7 @@ export function closeOverlays() {
   const menuDropdown = document.getElementById("menuDropdown");
   if (menuDropdown) menuDropdown.classList.remove("show");
   document.body.classList.remove("games-directory-open");
+  if (!keepMainMenuHidden) document.body.classList.remove("main-menu-hidden");
 }
 
 function normalizeUsername(username) {

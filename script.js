@@ -94,7 +94,7 @@ window.updateHighScore = updateHighScore;
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
-  window.closeOverlays();
+  window.closeOverlays({ keepMainMenuHidden: true });
   const overlayId =
     "overlay" +
     (game === "ttt"

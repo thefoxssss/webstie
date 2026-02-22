@@ -198,6 +198,10 @@ body::before {
   background: rgba(0, 0, 0, 0.9);
   border-bottom: 1px solid var(--accent);
 }
+
+body.main-menu-hidden .top-bar {
+  display: none;
+}
 .menu-btn {
   background: transparent;
   color: var(--accent);
@@ -672,6 +676,10 @@ body.games-directory-open .wrap {
   z-index: 1000;
   overflow-y: auto;
   padding: 20px;
+}
+
+body.main-menu-hidden .overlay {
+  inset: 0;
 }
 .overlay.active {
   display: flex !important;
