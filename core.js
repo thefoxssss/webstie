@@ -2243,33 +2243,22 @@ window.toggleConfigOverlay = () => {
   }
 };
 
-function getActiveOverlayId() {
-  const active = Array.from(document.querySelectorAll(".overlay")).find((overlay) => overlay.classList.contains("active"));
-  return active?.id || "";
-}
-
 window.toggleTopPanelOverlay = (id) => {
   if (id === "overlayAdmin" && !isGodUser()) return;
   const target = document.getElementById(id);
   if (!target) return;
-  const currentlyActiveId = getActiveOverlayId();
-  const isClosingSameOverlay = currentlyActiveId === id;
 
-  document.querySelectorAll(".overlay").forEach((overlay) => overlay.classList.remove("active"));
+  const isClosingSameOverlay = target.classList.contains("active");
+
+  TOP_PANEL_OVERLAY_IDS.forEach((overlayId) => {
+    if (overlayId === id) return;
+    const overlay = document.getElementById(overlayId);
+    if (overlay) overlay.classList.remove("active");
+  });
 
   if (isClosingSameOverlay) {
-    const returnId = String(target.dataset.returnOverlayId || "").trim();
-    target.dataset.returnOverlayId = "";
-    if (returnId) {
-      const returnOverlay = document.getElementById(returnId);
-      if (returnOverlay) {
-        returnOverlay.classList.add("active");
-        runOverlayOpenHooks(returnId);
-      }
-    }
+    target.classList.remove("active");
   } else {
-    const returnId = currentlyActiveId && currentlyActiveId !== id ? currentlyActiveId : "";
-    target.dataset.returnOverlayId = returnId;
     target.classList.add("active");
     runOverlayOpenHooks(id);
   }
