@@ -49,6 +49,7 @@ import {
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
+  getShopItemById,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -127,6 +128,63 @@ window.adminClearScheduledTasksFromInput = adminClearScheduledTasksFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
+
+function renderInGameShopPanel(game, overlayId) {
+  const overlay = document.getElementById(overlayId);
+  if (!overlay) return;
+  overlay.querySelectorAll(".game-side-shop").forEach((panel) => panel.remove());
+  overlay.classList.remove("has-game-side-shop");
+
+  const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === game);
+  const relatedItems = Array.isArray(entry?.shopItems) ? entry.shopItems : [];
+  if (!relatedItems.length) return;
+  overlay.classList.add("has-game-side-shop");
+
+  const panel = document.createElement("aside");
+  panel.className = "game-side-shop";
+  panel.innerHTML = '<h3>GAME SHOP</h3><p class="game-side-shop-meta">TOGGLES + QUICK BUY</p>';
+
+  relatedItems.forEach((itemId) => {
+    const item = getShopItemById(itemId);
+    if (!item) return;
+    const ownsItem = state.myInventory.includes(itemId);
+    const isEnabled = state.myItemToggles[itemId] !== false;
+
+    const row = document.createElement("div");
+    row.className = "game-side-shop-row";
+
+    const details = document.createElement("div");
+    details.className = "game-side-shop-details";
+    details.innerHTML = `<strong>${item.icon || "🛒"} ${item.name}</strong><small>${item.desc}</small><small>${ownsItem ? "OWNED" : `$${item.cost}`}</small>`;
+
+    const action = document.createElement("button");
+    action.className = "term-btn game-side-shop-action";
+    if (ownsItem) {
+      action.textContent = isEnabled ? "ON" : "OFF";
+      action.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleItem(itemId);
+        renderInGameShopPanel(game, overlayId);
+      });
+    } else {
+      action.textContent = state.myMoney >= item.cost ? `BUY $${item.cost}` : `NEED $${item.cost}`;
+      if (state.myMoney < item.cost) action.disabled = true;
+      action.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        buyItem(itemId);
+        renderInGameShopPanel(game, overlayId);
+      });
+    }
+
+    row.append(details, action);
+    panel.appendChild(row);
+  });
+
+  overlay.appendChild(panel);
+}
+
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
@@ -138,6 +196,7 @@ window.launchGame = (game, source = "direct") => {
       : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
+  renderInGameShopPanel(game, overlayId);
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
@@ -299,8 +358,10 @@ function initGamesLibraryDiscovery() {
 
   grid.innerHTML = "";
   GAME_DIRECTORY_ENTRIES.forEach((entry) => {
-    const card = document.createElement("button");
+    const card = document.createElement("div");
     card.className = "game-card";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
     card.dataset.game = entry.id;
     card.dataset.tags = entry.tags.join(" ");
     card.innerHTML = `<span class="game-icon">${entry.icon}</span><strong>${entry.title}</strong><small>${entry.description}</small>`;
@@ -353,6 +414,13 @@ function initGamesLibraryDiscovery() {
     card.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       toggleFavorite(card.dataset.game || "");
+    });
+
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        window.launchGame(card.dataset.game || "", "directory");
+      }
     });
   });
 
@@ -429,6 +497,7 @@ function initGamesLibraryDiscovery() {
       card.style.display = show ? "flex" : "none";
       if (show) visibleCards.push(card);
     });
+
 
     sortCards(visibleCards);
     visibleCards.forEach((card) => grid.appendChild(card));
