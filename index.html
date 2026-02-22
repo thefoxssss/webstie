@@ -1811,17 +1811,16 @@
       <h1>MOOMOO.IO</h1>
       <div class="high-score-display">HIGH: <span id="hsMoomooio">0</span></div>
       <div style="margin-bottom: 8px" id="moomooioScore">SCORE: 0</div>
-      <div style="margin-bottom: 10px" id="moomooioResources">WOOD 0 | STONE 0 | FOOD 0 | CASH $0 | BASE LV 1</div>
+      <div style="margin-bottom: 10px" id="moomooioResources">AGE 1 (0 XP) | WOOD 0 | STONE 0 | APPLES 0 | CASH $0</div>
       <div style="margin-bottom: 12px" id="moomooioHud">MODE: ONLINE | PLAYERS IN LOBBY: 0 (AI: 0)</div>
       <canvas id="moomooioCanvas" width="800" height="420"></canvas>
-      <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS MOVE · SPACE HARVEST · 1-4 BUILD · U UPGRADE BASE</div>
+      <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS MOVE · SPACE SWING AXE · 1-4 BUILD · U TECH UPGRADE</div>
       <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap">
         <select id="moomooioMode" class="term-btn" style="min-width: 150px">
-          <option value="online">ONLINE LOBBY + AI</option>
+          <option value="online">ONLINE LOBBY (REAL PLAYERS + AI)</option>
           <option value="offline">OFFLINE (AI SKIRMISH)</option>
         </select>
-        <button class="term-btn" id="moomooioAddPlayer">SIMULATE PLAYER JOIN</button>
-        <button class="term-btn" id="moomooioAction">START MATCH</button>
+                <button class="term-btn" id="moomooioAction">START MATCH</button>
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>

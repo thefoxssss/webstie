@@ -5,6 +5,7 @@ const HEIGHT = 420;
 const WORLD_W = 2200;
 const WORLD_H = 1400;
 const PLAYER_SPEED = 220;
+const NETWORK_ROOM = "moomooio-room-v1";
 
 let run = null;
 
@@ -15,7 +16,7 @@ function stopMooMooIo() {
   window.clearInterval(run.incomeInterval);
   document.removeEventListener("keydown", run.onKeyDown);
   document.removeEventListener("keyup", run.onKeyUp);
-  if (run.canvas) run.canvas.onpointerdown = null;
+  if (run.channel) run.channel.close();
   run = null;
 }
 
@@ -24,42 +25,36 @@ function rand(min, max) {
 }
 
 function spawnResource(id) {
-  const typeRoll = Math.random();
+  const roll = Math.random();
   let type = "tree";
-  if (typeRoll > 0.75) type = "rock";
-  if (typeRoll > 0.9) type = "bush";
-  const hp = type === "rock" ? 5 : type === "tree" ? 4 : 3;
-  return {
-    id,
-    type,
-    x: rand(60, WORLD_W - 60),
-    y: rand(60, WORLD_H - 60),
-    hp,
-    maxHp: hp,
-  };
+  if (roll > 0.72) type = "rock";
+  if (roll > 0.9) type = "apple";
+  const hp = type === "rock" ? 5 : type === "tree" ? 4 : 2;
+  return { id, type, x: rand(60, WORLD_W - 60), y: rand(60, WORLD_H - 60), hp, maxHp: hp };
 }
 
 function makeAgent(name, isHuman = false) {
   return {
-    id: `${name}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `${name}-${Math.random().toString(36).slice(2, 8)}`,
     name,
     isHuman,
     ai: !isHuman,
     x: rand(180, WORLD_W - 180),
     y: rand(180, WORLD_H - 180),
-    dirX: 0,
-    dirY: 0,
     hp: 100,
     wood: 20,
     stone: 10,
     food: 8,
     cash: 50,
-    level: 1,
+    age: 1,
+    xp: 0,
     targetId: null,
     hitCd: 0,
     thinkCd: 0,
     buildCd: rand(2, 4),
     score: 0,
+    swing: 0,
+    facing: 0,
   };
 }
 
@@ -70,31 +65,18 @@ function makeStructure(ownerId, type, x, y) {
     autominer: { hp: 90, color: "#7a8fb8" },
     turret: { hp: 80, color: "#b84c4c" },
   };
-  return {
-    id: `${type}-${Math.random().toString(36).slice(2, 8)}`,
-    ownerId,
-    type,
-    x,
-    y,
-    hp: defs[type].hp,
-    maxHp: defs[type].hp,
-    color: defs[type].color,
-  };
+  return { id: `${type}-${Math.random().toString(36).slice(2, 8)}`, ownerId, type, x, y, hp: defs[type].hp, color: defs[type].color };
 }
 
 function createWorld() {
   const resources = Array.from({ length: 140 }, (_, i) => spawnResource(i));
-  return {
-    resources,
-    structures: [],
-    nextResourceId: resources.length,
-  };
+  return { resources, structures: [], nextResourceId: resources.length };
 }
 
 function resourceYield(type) {
-  if (type === "rock") return { stone: 7, cash: 3 };
-  if (type === "bush") return { food: 6, cash: 2 };
-  return { wood: 8, cash: 2 };
+  if (type === "rock") return { stone: 7, cash: 3, xp: 12 };
+  if (type === "apple") return { food: 8, cash: 2, xp: 8 };
+  return { wood: 8, cash: 2, xp: 10 };
 }
 
 function nearestResource(world, x, y) {
@@ -118,6 +100,15 @@ function spend(agent, cost) {
   agent.wood -= cost.wood || 0;
   agent.stone -= cost.stone || 0;
   agent.cash -= cost.cash || 0;
+}
+
+function maybeAgeUp(agent) {
+  const needed = 60 + agent.age * 45;
+  if (agent.xp < needed) return;
+  agent.xp -= needed;
+  agent.age += 1;
+  agent.score += 35;
+  if (agent.isHuman) showToast(`AGE UP: ${agent.age}`, "🧬");
 }
 
 function buildForAgent(runData, agent, type, x, y) {
@@ -144,20 +135,30 @@ function hitResource(agent, res, world) {
   agent.stone += gain.stone || 0;
   agent.food += gain.food || 0;
   agent.cash += gain.cash || 0;
+  agent.xp += gain.xp || 0;
   agent.score += 10;
+  maybeAgeUp(agent);
   world.resources = world.resources.filter((item) => item.id !== res.id);
   world.resources.push(spawnResource(world.nextResourceId++));
+}
+
+function swingAxe(runData, actor, forcedTarget = null) {
+  actor.swing = 0.22;
+  const target = forcedTarget || nearestResource(runData.world, actor.x, actor.y);
+  if (!target) return;
+  actor.facing = Math.atan2(target.y - actor.y, target.x - actor.x);
+  if (Math.hypot(target.x - actor.x, target.y - actor.y) < 56) hitResource(actor, target, runData.world);
 }
 
 function processAi(runData, ai, dt) {
   ai.thinkCd -= dt;
   ai.hitCd -= dt;
   ai.buildCd -= dt;
+  ai.swing = Math.max(0, ai.swing - dt);
 
   if (ai.thinkCd <= 0) {
     ai.thinkCd = rand(0.2, 0.8);
-    const target = nearestResource(runData.world, ai.x, ai.y);
-    ai.targetId = target?.id || null;
+    ai.targetId = nearestResource(runData.world, ai.x, ai.y)?.id || null;
   }
 
   const target = runData.world.resources.find((res) => res.id === ai.targetId) || nearestResource(runData.world, ai.x, ai.y);
@@ -167,9 +168,9 @@ function processAi(runData, ai, dt) {
     const dist = Math.max(1, Math.hypot(dx, dy));
     ai.x += (dx / dist) * PLAYER_SPEED * 0.66 * dt;
     ai.y += (dy / dist) * PLAYER_SPEED * 0.66 * dt;
-    if (dist < 44 && ai.hitCd <= 0) {
-      ai.hitCd = 0.45;
-      hitResource(ai, target, runData.world);
+    if (dist < 48 && ai.hitCd <= 0) {
+      ai.hitCd = 0.55;
+      swingAxe(runData, ai, target);
     }
   }
 
@@ -185,8 +186,8 @@ function processAi(runData, ai, dt) {
 
 function updateHud(runData) {
   const p = runData.player;
-  setText("moomooioHud", `MOO ${runData.mode.toUpperCase()} | LOBBY: ${runData.agents.length} (AI: ${runData.agents.filter((a) => a.ai).length})`);
-  setText("moomooioResources", `WOOD ${Math.floor(p.wood)} | STONE ${Math.floor(p.stone)} | FOOD ${Math.floor(p.food)} | CASH $${Math.floor(p.cash)} | BASE LV ${p.level}`);
+  setText("moomooioHud", `MOO ${runData.mode.toUpperCase()} | LOBBY: ${runData.livePlayers + runData.agents.length} (AI: ${runData.agents.length})`);
+  setText("moomooioResources", `AGE ${p.age} (${Math.floor(p.xp)} XP) | WOOD ${Math.floor(p.wood)} | STONE ${Math.floor(p.stone)} | APPLES ${Math.floor(p.food)} | CASH $${Math.floor(p.cash)}`);
   setText("moomooioScore", `SCORE: ${Math.floor(p.score)}`);
 }
 
@@ -198,20 +199,20 @@ function updateCamera(runData) {
 
 function draw(runData) {
   const { ctx } = runData;
-  ctx.fillStyle = "#122014";
+  ctx.fillStyle = "#102012";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   ctx.save();
   ctx.translate(-runData.cameraX, -runData.cameraY);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
-  for (let x = 0; x <= WORLD_W; x += 100) {
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  for (let x = 0; x <= WORLD_W; x += 64) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, WORLD_H);
     ctx.stroke();
   }
-  for (let y = 0; y <= WORLD_H; y += 100) {
+  for (let y = 0; y <= WORLD_H; y += 64) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(WORLD_W, y);
@@ -219,11 +220,26 @@ function draw(runData) {
   }
 
   for (const res of runData.world.resources) {
-    ctx.fillStyle = res.type === "tree" ? "#3d8b3d" : res.type === "rock" ? "#8a8e97" : "#7ca355";
-    const radius = res.type === "rock" ? 18 : 20;
-    ctx.beginPath();
-    ctx.arc(res.x, res.y, radius, 0, Math.PI * 2);
-    ctx.fill();
+    if (res.type === "tree") {
+      ctx.fillStyle = "#3a8b3a";
+      ctx.beginPath();
+      ctx.arc(res.x, res.y, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#6e4b2a";
+      ctx.fillRect(res.x - 4, res.y + 8, 8, 14);
+    } else if (res.type === "rock") {
+      ctx.fillStyle = "#8a8e97";
+      ctx.beginPath();
+      ctx.arc(res.x, res.y, 17, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#c94747";
+      ctx.beginPath();
+      ctx.arc(res.x, res.y, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#6cbf57";
+      ctx.fillRect(res.x - 1, res.y - 13, 2, 5);
+    }
   }
 
   for (const s of runData.world.structures) {
@@ -231,26 +247,37 @@ function draw(runData) {
     ctx.fillRect(s.x - 14, s.y - 14, 28, 28);
   }
 
-  for (const agent of runData.agents) {
-    ctx.fillStyle = agent.isHuman ? "#f5d76e" : "#66b8ff";
+  const allPlayers = [runData.player, ...runData.agents, ...Object.values(runData.remotePlayers)];
+  for (const agent of allPlayers) {
+    ctx.fillStyle = agent.isHuman ? "#f5d76e" : agent.ai ? "#66b8ff" : "#ffa95e";
     ctx.beginPath();
     ctx.arc(agent.x, agent.y, 12, 0, Math.PI * 2);
     ctx.fill();
+
+    const swingBoost = agent.swing > 0 ? Math.sin((agent.swing / 0.22) * Math.PI) * 12 : 0;
+    const axeLen = 17 + swingBoost;
+    ctx.strokeStyle = "#d5d7de";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(agent.x, agent.y);
+    ctx.lineTo(agent.x + Math.cos(agent.facing) * axeLen, agent.y + Math.sin(agent.facing) * axeLen);
+    ctx.stroke();
+
     ctx.fillStyle = "#fff";
     ctx.font = "10px monospace";
-    ctx.fillText(agent.name, agent.x - 22, agent.y - 18);
+    ctx.fillText(`${agent.name} A${agent.age || 1}`, agent.x - 26, agent.y - 18);
   }
 
   ctx.restore();
 }
 
 function doIncomeTick(runData) {
-  for (const agent of runData.agents) {
+  for (const agent of [runData.player, ...runData.agents]) {
     const own = runData.world.structures.filter((s) => s.ownerId === agent.id);
     const farms = own.filter((s) => s.type === "farm").length;
     const miners = own.filter((s) => s.type === "autominer").length;
     const turrets = own.filter((s) => s.type === "turret").length;
-    agent.cash += farms * 6 + miners * 5 + agent.level * 1.5;
+    agent.cash += farms * 6 + miners * 5 + agent.age * 1.5;
     agent.stone += miners * 2;
     agent.score += farms * 2 + miners * 3 + turrets;
   }
@@ -260,12 +287,39 @@ function doIncomeTick(runData) {
 
 function handleBuildShortcut(runData, code) {
   const p = runData.player;
-  const forwardX = p.x + 28;
-  const forwardY = p.y;
-  if (code === "Digit1") buildForAgent(runData, p, "wall", forwardX, forwardY);
-  if (code === "Digit2") buildForAgent(runData, p, "farm", forwardX, forwardY);
-  if (code === "Digit3") buildForAgent(runData, p, "autominer", forwardX, forwardY);
-  if (code === "Digit4") buildForAgent(runData, p, "turret", forwardX, forwardY);
+  const fx = p.x + Math.cos(p.facing) * 28;
+  const fy = p.y + Math.sin(p.facing) * 28;
+  if (code === "Digit1") buildForAgent(runData, p, "wall", fx, fy);
+  if (code === "Digit2") buildForAgent(runData, p, "farm", fx, fy);
+  if (code === "Digit3") buildForAgent(runData, p, "autominer", fx, fy);
+  if (code === "Digit4") buildForAgent(runData, p, "turret", fx, fy);
+}
+
+function setupNetworking(runData) {
+  if (runData.mode !== "online" || typeof BroadcastChannel === "undefined") return;
+  const channel = new BroadcastChannel(NETWORK_ROOM);
+  runData.channel = channel;
+
+  channel.onmessage = (event) => {
+    const msg = event.data;
+    if (!msg || msg.sender === runData.player.id) return;
+    if (msg.type === "state") {
+      runData.remotePlayers[msg.sender] = {
+        id: msg.sender,
+        name: msg.name,
+        x: msg.x,
+        y: msg.y,
+        age: msg.age,
+        isHuman: false,
+        ai: false,
+        swing: msg.swing || 0,
+        facing: msg.facing || 0,
+      };
+    }
+    if (msg.type === "leave") delete runData.remotePlayers[msg.sender];
+  };
+
+  channel.postMessage({ type: "join", sender: runData.player.id });
 }
 
 export function initMooMooIo() {
@@ -274,16 +328,15 @@ export function initMooMooIo() {
 
   const canvas = document.getElementById("moomooioCanvas");
   const action = document.getElementById("moomooioAction");
-  const addPlayerBtn = document.getElementById("moomooioAddPlayer");
   const modeToggle = document.getElementById("moomooioMode");
-  if (!canvas || !action || !addPlayerBtn || !modeToggle) return;
+  if (!canvas || !action || !modeToggle) return;
   const ctx = canvas.getContext("2d");
 
   const mode = modeToggle.value || "online";
-  const player = makeAgent("YOU", true);
-  const agents = [player];
+  const playerName = `YOU_${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+  const player = makeAgent(playerName, true);
   const aiCount = mode === "offline" ? 12 : 8;
-  for (let i = 1; i <= aiCount; i++) agents.push(makeAgent(`AI_${i}`));
+  const agents = Array.from({ length: aiCount }, (_, i) => makeAgent(`AI_${i + 1}`));
 
   const runData = {
     canvas,
@@ -292,6 +345,8 @@ export function initMooMooIo() {
     world: createWorld(),
     agents,
     player,
+    remotePlayers: {},
+    livePlayers: 1,
     pressed: new Set(),
     cameraX: 0,
     cameraY: 0,
@@ -299,38 +354,30 @@ export function initMooMooIo() {
     raf: 0,
     tickInterval: 0,
     incomeInterval: 0,
+    channel: null,
   };
 
   action.disabled = false;
   action.textContent = "RESTART RAID";
   action.onclick = () => initMooMooIo();
 
-  addPlayerBtn.onclick = () => {
-    const newcomer = makeAgent(`GUEST_${runData.agents.length}`);
-    runData.agents.push(newcomer);
-    showToast("NEW PLAYER JOINED LOBBY", "🧑");
-    updateHud(runData);
-  };
-
-  modeToggle.onchange = () => {
-    showToast("RESTART MATCH TO SWITCH MODE", "ℹ️");
-  };
+  modeToggle.onchange = () => showToast("RESTART MATCH TO SWITCH MODE", "ℹ️");
 
   const onKeyDown = (event) => {
     runData.pressed.add(event.code);
     if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(event.code)) handleBuildShortcut(runData, event.code);
     if (event.code === "Space") {
       event.preventDefault();
-      const near = nearestResource(runData.world, player.x, player.y);
-      if (near && Math.hypot(near.x - player.x, near.y - player.y) < 48) hitResource(player, near, runData.world);
+      swingAxe(runData, player);
     }
     if (event.code === "KeyU") {
-      const upgradeCost = { cash: 90 + player.level * 65, wood: 25 + player.level * 10, stone: 20 + player.level * 10 };
+      const upgradeCost = { cash: 90 + player.age * 50, wood: 25 + player.age * 10, stone: 20 + player.age * 10 };
       if (canAfford(player, upgradeCost)) {
         spend(player, upgradeCost);
-        player.level += 1;
         player.score += 40;
-        showToast(`BASE UPGRADED TO LV ${player.level}`, "⬆️");
+        player.xp += 45;
+        maybeAgeUp(player);
+        showToast("TECH UPGRADED", "⬆️");
       }
     }
   };
@@ -344,6 +391,8 @@ export function initMooMooIo() {
     while (runData.world.resources.length < 140) runData.world.resources.push(spawnResource(runData.world.nextResourceId++));
   }, 1800);
 
+  setupNetworking(runData);
+
   const frame = (ts) => {
     const dt = Math.min(0.05, (ts - runData.lastTs) / 1000 || 0.016);
     runData.lastTs = ts;
@@ -356,15 +405,28 @@ export function initMooMooIo() {
     if (runData.pressed.has("KeyD") || runData.pressed.has("ArrowRight")) moveX += 1;
     const mag = Math.hypot(moveX, moveY);
     if (mag > 0) {
+      player.facing = Math.atan2(moveY, moveX);
       player.x += (moveX / mag) * PLAYER_SPEED * dt;
       player.y += (moveY / mag) * PLAYER_SPEED * dt;
     }
+    player.swing = Math.max(0, player.swing - dt);
     player.x = Math.max(16, Math.min(WORLD_W - 16, player.x));
     player.y = Math.max(16, Math.min(WORLD_H - 16, player.y));
 
-    for (const agent of runData.agents) {
-      if (!agent.ai) continue;
-      processAi(runData, agent, dt);
+    for (const agent of runData.agents) processAi(runData, agent, dt);
+
+    if (runData.channel) {
+      runData.channel.postMessage({
+        type: "state",
+        sender: player.id,
+        name: player.name,
+        x: player.x,
+        y: player.y,
+        age: player.age,
+        facing: player.facing,
+        swing: player.swing,
+      });
+      runData.livePlayers = 1 + Object.keys(runData.remotePlayers).length;
     }
 
     updateCamera(runData);
@@ -373,12 +435,7 @@ export function initMooMooIo() {
     runData.raf = requestAnimationFrame(frame);
   };
 
-  run = {
-    ...runData,
-    onKeyDown,
-    onKeyUp,
-  };
-
+  run = { ...runData, onKeyDown, onKeyUp };
   updateHud(runData);
   runData.raf = requestAnimationFrame(frame);
 }
