@@ -810,20 +810,18 @@ body.games-directory-open .wrap {
 
 
 .game-switcher-header {
-  width: min(760px, 100%);
+  width: min(980px, 100%);
   margin-bottom: 6px;
   user-select: none;
   touch-action: pan-y;
   --switcher-drag-offset: 0px;
-  overflow: hidden;
-  mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
 }
 
 .game-switcher-track {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 10px;
   transform: translateX(var(--switcher-drag-offset));
   transition: transform 0.28s ease;
 }
@@ -841,28 +839,23 @@ body.games-directory-open .wrap {
   letter-spacing: 1px;
   cursor: pointer;
   transition: opacity 0.18s ease, transform 0.18s ease;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
-  text-overflow: ellipsis;
-  max-width: 170px;
-  min-width: 85px;
-  font-size: 13px;
-  opacity: 0.26;
-}
-
-.game-switcher-title[data-pos="-2"],
-.game-switcher-title[data-pos="2"] {
-  opacity: 0.1;
+  text-overflow: clip;
+  min-width: 0;
+  font-size: 16px;
+  opacity: 0.5;
 }
 
 .game-switcher-title[data-pos="0"] {
   opacity: 1;
-  transform: scale(1.03);
+  transform: scale(1.14);
+  font-size: 22px;
 }
 
 .game-switcher-title[data-pos="-1"],
 .game-switcher-title[data-pos="1"] {
-  opacity: 0.42;
+  opacity: 0.56;
 }
 
 .game-switcher-title:hover,

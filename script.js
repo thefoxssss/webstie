@@ -381,15 +381,11 @@ function initGameSwitcher() {
     switcher.dataset.activeGame = game.id;
     switcher.innerHTML = `
       <div class="game-switcher-track" aria-label="Game switcher">
-        <button class="game-switcher-title" type="button" data-pos="-2"></button>
-        <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="-1"></button>
         <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="0"></button>
         <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="1"></button>
-        <span class="game-switcher-arrow" aria-hidden="true">→</span>
-        <button class="game-switcher-title" type="button" data-pos="2"></button>
       </div>
     `;
     const heading = overlay.querySelector("h1");
@@ -428,7 +424,7 @@ function initGameSwitcher() {
       const remainder = rawShift - wholeShift;
       const renderIndex = wrapGameIndex(activeIndex + wholeShift);
       const smoothOffset = -remainder * DRAG_STEP;
-      const commitShift = Math.round(rawShift);
+      const commitShift = wholeShift + (remainder >= 0.5 ? 1 : remainder <= -0.5 ? -1 : 0);
       previewIndex = wrapGameIndex(activeIndex + commitShift);
       renderSwitcherAtIndex(switcher, renderIndex, smoothOffset);
     });
