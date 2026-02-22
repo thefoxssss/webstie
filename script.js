@@ -520,7 +520,12 @@ initGameVisibilityGuards();
 initGamesLibraryDiscovery();
 
 function hideGameOverModal() {
-  document.getElementById("modalGameOver").classList.remove("active");
+  const modal = document.getElementById("modalGameOver");
+  modal.classList.remove("active", "game-over-contained");
+  modal.style.left = "";
+  modal.style.top = "";
+  modal.style.width = "";
+  modal.style.height = "";
   document.querySelectorAll(".game-over-host").forEach((el) => el.classList.remove("game-over-host"));
 }
 

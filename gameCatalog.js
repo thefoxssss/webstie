@@ -1,7 +1,7 @@
 export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "geo", title: "GEO DASH", description: "Dodge spikes and survive speed ramps.", icon: "🟨", tags: ["arcade", "skill", "platformer", "reflex"] },
   { id: "type", title: "TYPE RUNNER", description: "Type fast to outrun incoming threats.", icon: "⌨️", tags: ["arcade", "skill", "typing", "reflex"] },
-  { id: "pong", title: "PONG", description: "Retro paddle battle with adjustable difficulty.", icon: "🏓", tags: ["arcade", "pvp", "retro", "duel"] },
+  { id: "pong", title: "PONG", description: "Retro paddle challenge versus CPU with adjustable difficulty.", icon: "🏓", tags: ["arcade", "skill", "retro"] },
   { id: "snake", title: "SNAKE", description: "Grow longer while avoiding walls and yourself.", icon: "🐍", tags: ["arcade", "skill"] },
   { id: "runner", title: "RUNNER V2", description: "Endless sprint with jump timing focus.", icon: "🏃", tags: ["arcade", "skill"] },
   { id: "corebreaker", title: "CORE BREAKER", description: "Break glowing blocks and protect your core.", icon: "🧱", tags: ["arcade", "skill"] },

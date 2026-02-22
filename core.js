@@ -4521,9 +4521,27 @@ export function showGameOver(game, score) {
   const modal = document.getElementById("modalGameOver");
   const activeGameOverlay = document.querySelector(".overlay.game-overlay.active");
   const modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
+  const visibleSurface = activeGameOverlay
+    ? Array.from(activeGameOverlay.querySelectorAll("canvas, iframe, .ttt-grid, .uttt-grid, .hangman-room, .bj-table, .bonk-wrap, #driftRace"))
+      .find((el) => el.offsetParent !== null)
+    : null;
+  modal.classList.remove("game-over-contained");
+  modal.style.left = "";
+  modal.style.top = "";
+  modal.style.width = "";
+  modal.style.height = "";
   if (modalHost) {
     modalHost.classList.add("game-over-host");
     modalHost.appendChild(modal);
+    if (visibleSurface && modalHost === activeGameOverlay) {
+      const hostBounds = modalHost.getBoundingClientRect();
+      const surfaceBounds = visibleSurface.getBoundingClientRect();
+      modal.classList.add("game-over-contained");
+      modal.style.left = `${Math.max(0, surfaceBounds.left - hostBounds.left)}px`;
+      modal.style.top = `${Math.max(0, surfaceBounds.top - hostBounds.top)}px`;
+      modal.style.width = `${Math.max(220, Math.round(surfaceBounds.width))}px`;
+      modal.style.height = `${Math.max(180, Math.round(surfaceBounds.height))}px`;
+    }
   }
   modal.classList.add("active");
   window.addEventListener("keydown", quickRestartListener);

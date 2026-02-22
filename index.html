@@ -1263,15 +1263,6 @@
     <div class="overlay" id="overlayBlackjack">
       <h1>BLACKJACK</h1>
       <div id="bjMode" class="menu-box common-game-menu">
-        <button class="term-btn" onclick="window.bjSelect('solo')">
-          SINGLE PLAYER / VS BOT
-        </button>
-        <br /><br />
-        <button class="term-btn" onclick="window.bjSelect('multi')">
-          MULTIPLAYER
-        </button>
-      </div>
-      <div id="bjNetMenu" class="menu-box common-game-menu" style="display: none">
         <div class="common-mode-label">MULTIPLAYER</div>
         <button class="term-btn" id="btnCreateBJ">CREATE ROOM</button>
         <p>- OR -</p>
@@ -1283,6 +1274,10 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinBJ">JOIN ROOM</button>
+        <div class="common-mode-label">SINGLE PLAYER / VS BOT</div>
+        <button class="menu-btn" onclick="window.bjSelect('solo')" style="margin-top: 10px">
+          SINGLE PLAYER / VS BOT
+        </button>
       </div>
       <div id="bjLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="bjRoomId">????</span></h2>

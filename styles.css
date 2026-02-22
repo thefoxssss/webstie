@@ -1989,6 +1989,10 @@ canvas {
   align-items: center;
   overflow: hidden;
 }
+
+.game-over-host > #modalGameOver.game-over-contained {
+  inset: auto;
+}
 #modalGameOver h1 {
   color: #fff;
   text-shadow: 2px 2px red;

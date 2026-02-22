@@ -32,8 +32,8 @@ const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"
 export function initBJ() {
   state.currentGame = "blackjack";
   bjCurrentBet = 0;
+  bjMode = "solo";
   document.getElementById("bjMode").style.display = "flex";
-  document.getElementById("bjNetMenu").style.display = "none";
   document.getElementById("bjLobby").style.display = "none";
   document.getElementById("bjTable").style.display = "none";
   updBJ();
@@ -51,7 +51,7 @@ function cleanupBJ() {
 // Select solo or multiplayer mode from the UI.
 window.bjSelect = (mode) => {
   bjMode = mode;
-  document.getElementById("bjMode").style.display = "none";
+  document.getElementById("bjMode").style.display = mode === "solo" ? "none" : "flex";
   if (mode === "solo") {
     document.getElementById("bjTable").style.display = "flex";
     setText("bjHostLabel", "DEALER");
@@ -59,8 +59,9 @@ window.bjSelect = (mode) => {
     document.getElementById("bjSide").innerHTML = "";
     startSoloBetting();
   } else {
+    document.getElementById("bjTable").style.display = "none";
+    document.getElementById("bjLobby").style.display = "none";
     document.querySelector(".bj-pot-display").style.display = "block";
-    document.getElementById("bjNetMenu").style.display = "flex";
   }
   beep(400, "square", 0.1);
 };
@@ -204,6 +205,8 @@ function getBJRef(code) {
 
 // Create a new multiplayer Blackjack room as seat 0.
 document.getElementById("btnCreateBJ").onclick = async () => {
+  bjMode = "multi";
+  document.getElementById("bjMode").style.display = "none";
   if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
   const code = Math.floor(1000 + Math.random() * 9000).toString();
   const seats = [
@@ -218,6 +221,8 @@ document.getElementById("btnCreateBJ").onclick = async () => {
 
 // Join an existing Blackjack room if a seat is open.
 document.getElementById("btnJoinBJ").onclick = async () => {
+  bjMode = "multi";
+  document.getElementById("bjMode").style.display = "none";
   const code = document.getElementById("joinBJCode").value;
   const ref = getBJRef(code);
   await runTransaction(firebase.db, async (t) => {
@@ -250,7 +255,7 @@ document.getElementById("btnJoinBJ").onclick = async () => {
 function joinBJ(code, idx) {
   bjRoomCode = code;
   bjMySeatIdx = idx;
-  document.getElementById("bjNetMenu").style.display = "none";
+  document.getElementById("bjMode").style.display = "none";
   document.getElementById("bjLobby").style.display = "flex";
   setText("bjRoomId", code);
   if (bjRoomUnsub) bjRoomUnsub();
