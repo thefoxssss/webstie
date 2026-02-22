@@ -11,6 +11,7 @@
   --leg: #ffd700;
   --font-main: "Press Start 2P", monospace;
   --font-type: "Roboto Mono", monospace;
+  --topbar-clearance: 50px;
 }
 
 /* RAINBOW MODE */
@@ -532,7 +533,7 @@ body::before {
 /* Overlay container for modals and game screens. */
 .overlay {
   position: fixed;
-  inset: 0;
+  inset: var(--topbar-clearance) 0 0 0;
   background: #000;
   display: none;
   flex-direction: column;
@@ -1663,6 +1664,10 @@ canvas {
   opacity: 1;
 }
 @media (max-width: 900px) {
+  :root {
+    --topbar-clearance: 96px;
+  }
+
   .hangman-room {
     grid-template-columns: 1fr;
   }
