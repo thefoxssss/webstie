@@ -808,6 +808,72 @@ body.games-directory-open .wrap {
   display: flex !important;
 }
 
+
+.game-switcher-header {
+  width: min(960px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+  touch-action: pan-y;
+}
+
+.game-switcher-header h1 {
+  margin: 0;
+  text-align: center;
+}
+
+.game-switcher-side {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.35;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.game-switcher-prev {
+  text-align: left;
+}
+
+.game-switcher-next {
+  text-align: right;
+}
+
+.game-switcher-side:hover,
+.game-switcher-side:focus-visible {
+  opacity: 0.8;
+  transform: scale(1.02);
+}
+
+.game-switcher-side::before {
+  display: inline-block;
+}
+
+.game-switcher-prev::before {
+  content: "◀ ";
+}
+
+.game-switcher-next::before {
+  content: " ▶";
+}
+
+.game-switcher-side.is-empty,
+.game-switcher-side:disabled {
+  opacity: 0.08;
+  cursor: default;
+  transform: none;
+}
+
 /* Menu-style overlays sit above the home scene so chat/glow stay visible. */
 .menu-overlay {
   background: rgba(0, 0, 0, 0.2);

@@ -185,15 +185,16 @@ function renderInGameShopPanel(game, overlayId) {
   overlay.appendChild(panel);
 }
 
+function getOverlayIdForGame(gameId) {
+  if (!gameId) return "";
+  return `overlay${gameId === "ttt" ? gameId.toUpperCase() : gameId.charAt(0).toUpperCase() + gameId.slice(1)}`;
+}
+
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
   window.closeOverlays();
-  const overlayId =
-    "overlay" +
-    (game === "ttt"
-      ? game.toUpperCase()
-      : game.charAt(0).toUpperCase() + game.slice(1));
+  const overlayId = getOverlayIdForGame(game);
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   renderInGameShopPanel(game, overlayId);
@@ -225,6 +226,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "stacksmash") initStackSmash();
   if (game === "quantumflip") initQuantumFlip();
   if (game === "ultimatettt") initUltimateTTT();
+  if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
   resizeAllGameCanvases();
   trackGamePlay(game);
   updateRecentGames(game);
@@ -330,6 +332,90 @@ function pauseGamesWhenHidden() {
 function initGameVisibilityGuards() {
   document.addEventListener("visibilitychange", pauseGamesWhenHidden);
   window.addEventListener("blur", pauseGamesWhenHidden);
+}
+
+function initGameSwitcher() {
+  const orderedGames = GAME_DIRECTORY_ENTRIES
+    .map((entry) => ({ id: entry.id, title: entry.title, overlayId: getOverlayIdForGame(entry.id) }))
+    .filter((entry) => document.getElementById(entry.overlayId));
+  if (!orderedGames.length) return;
+
+  const gameIndexById = new Map(orderedGames.map((entry, index) => [entry.id, index]));
+
+  function getNeighborGame(gameId, offset) {
+    const index = gameIndexById.get(gameId);
+    if (typeof index !== "number") return null;
+    const neighborIndex = index + offset;
+    if (neighborIndex < 0 || neighborIndex >= orderedGames.length) return null;
+    return orderedGames[neighborIndex];
+  }
+
+  function launchNeighbor(gameId, offset) {
+    const target = getNeighborGame(gameId, offset);
+    if (!target) return;
+    window.launchGame(target.id, "game-switcher");
+  }
+
+  orderedGames.forEach((game) => {
+    const overlay = document.getElementById(game.overlayId);
+    const heading = overlay?.querySelector("h1");
+    if (!overlay || !heading) return;
+
+    const switcher = document.createElement("div");
+    switcher.className = "game-switcher-header";
+    switcher.dataset.game = game.id;
+    switcher.innerHTML = `
+      <button class="game-switcher-side game-switcher-prev" type="button" aria-label="Previous game"></button>
+      <h1>${game.title}</h1>
+      <button class="game-switcher-side game-switcher-next" type="button" aria-label="Next game"></button>
+    `;
+    heading.replaceWith(switcher);
+
+    const prevButton = switcher.querySelector(".game-switcher-prev");
+    const nextButton = switcher.querySelector(".game-switcher-next");
+    prevButton?.addEventListener("click", () => launchNeighbor(game.id, -1));
+    nextButton?.addEventListener("click", () => launchNeighbor(game.id, 1));
+
+    let dragStartX = null;
+    switcher.addEventListener("pointerdown", (event) => {
+      dragStartX = event.clientX;
+      switcher.setPointerCapture?.(event.pointerId);
+    });
+    switcher.addEventListener("pointerup", (event) => {
+      if (dragStartX === null) return;
+      const deltaX = event.clientX - dragStartX;
+      dragStartX = null;
+      if (Math.abs(deltaX) < 40) return;
+      launchNeighbor(game.id, deltaX < 0 ? 1 : -1);
+    });
+    switcher.addEventListener("pointercancel", () => {
+      dragStartX = null;
+    });
+  });
+
+  function updateSwitcherState(activeGameId) {
+    if (!activeGameId) return;
+    const overlayId = getOverlayIdForGame(activeGameId);
+    const header = document.querySelector(`#${overlayId} .game-switcher-header`);
+    if (!header) return;
+    const prevGame = getNeighborGame(activeGameId, -1);
+    const nextGame = getNeighborGame(activeGameId, 1);
+    const prevButton = header.querySelector(".game-switcher-prev");
+    const nextButton = header.querySelector(".game-switcher-next");
+
+    if (prevButton) {
+      prevButton.textContent = prevGame ? prevGame.title : "";
+      prevButton.disabled = !prevGame;
+      prevButton.classList.toggle("is-empty", !prevGame);
+    }
+    if (nextButton) {
+      nextButton.textContent = nextGame ? nextGame.title : "";
+      nextButton.disabled = !nextGame;
+      nextButton.classList.toggle("is-empty", !nextGame);
+    }
+  }
+
+  window.__updateGameSwitcherState = updateSwitcherState;
 }
 
 function getFullscreenTarget(overlay) {
@@ -891,6 +977,7 @@ function initTopBarOverlayControls() {
 initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
+initGameSwitcher();
 initGamesLibraryDiscovery();
 initMainSiteSearch();
 
