@@ -4183,7 +4183,12 @@ document.getElementById("themeColor").oninput = (e) => {
   const g = parseInt(h.slice(3, 5), 16);
   const b = parseInt(h.slice(5, 7), 16);
   document.documentElement.style.setProperty("--accent-dim", `rgba(${r},${g},${b},0.2)`);
-  document.documentElement.style.setProperty("--accent-glow", `rgba(${r},${g},${b},0.6)`);
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  const glowR = Math.round(r + (255 - r) * 0.45);
+  const glowG = Math.round(g + (255 - g) * 0.45);
+  const glowB = Math.round(b + (255 - b) * 0.45);
+  const glowAlpha = luminance < 0.25 ? 0.95 : 0.7;
+  document.documentElement.style.setProperty("--accent-glow", `rgba(${glowR},${glowG},${glowB},${glowAlpha})`);
 };
 // Volume slider controls global audio volume.
 document.getElementById("volSlider").oninput = (e) => {

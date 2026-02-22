@@ -65,7 +65,7 @@ body {
   overflow-x: hidden;
   color: var(--accent);
   touch-action: auto;
-  text-shadow: 0 0 10px var(--accent);
+  text-shadow: 0 0 10px var(--accent-glow);
   transition:
     color 0.5s,
     text-shadow 0.5s;
@@ -202,6 +202,12 @@ body::before {
   background: rgba(0, 0, 0, 0.9);
   border-bottom: 1px solid var(--accent);
 }
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .menu-btn {
   background: transparent;
   color: var(--accent);
@@ -311,7 +317,7 @@ body::before {
   font-size: 9px;
   letter-spacing: 1px;
   text-align: center;
-  color: #fff;
+  color: var(--accent);
 }
 
 .chat-tabs {
@@ -349,7 +355,7 @@ body::before {
   flex: 1;
   overflow-y: auto;
   padding: 10px;
-  color: #fff;
+  color: var(--accent);
   text-shadow: none;
   user-select: text;
 }
@@ -418,8 +424,8 @@ body::before {
 
 .site-search #siteSearchInput {
   flex: 1;
-  color: #fff;
-  -webkit-text-fill-color: #fff;
+  color: var(--accent);
+  -webkit-text-fill-color: var(--accent);
   caret-color: var(--accent);
   background: rgba(0, 0, 0, 0.72);
   text-align: left;
@@ -516,7 +522,7 @@ body::before {
   margin: 0 0 8px;
   font-size: 11px;
   letter-spacing: 2px;
-  color: #fff;
+  color: var(--accent);
 }
 
 .random-game-cta h2 .panel-title-btn {
@@ -537,13 +543,13 @@ body::before {
   margin: 0 0 8px;
   font-size: 11px;
   letter-spacing: 2px;
-  color: #fff;
+  color: var(--accent);
 }
 
 .panel-title-btn {
   border: 1px solid var(--accent-dim);
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--accent);
   font: inherit;
   font-size: inherit;
   letter-spacing: inherit;
@@ -575,7 +581,7 @@ body::before {
   width: 100%;
   border: 1px solid var(--accent-dim);
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--accent);
   padding: 8px 10px;
   font-family: inherit;
   font-size: 9px;
@@ -623,7 +629,7 @@ body::before {
   margin: 0 0 10px;
   font-size: 11px;
   letter-spacing: 2px;
-  color: #fff;
+  color: var(--accent);
 }
 
 .update-log ul {
@@ -722,7 +728,7 @@ body::before {
   margin: 0 0 8px;
   font-size: 11px;
   letter-spacing: 2px;
-  color: #fff;
+  color: var(--accent);
 }
 
 .live-ops-line {
@@ -751,7 +757,7 @@ body::before {
 
 .live-ops-grid strong {
   font-size: 9px;
-  color: #fff;
+  color: var(--accent);
 }
 
 .season-mission-done {
@@ -1617,7 +1623,7 @@ canvas {
 .job-prompt {
   min-height: 18px;
   font-size: 10px;
-  color: #fff;
+  color: var(--accent);
   margin-bottom: 8px;
 }
 .job-input {
@@ -1668,7 +1674,7 @@ canvas {
   border: 1px solid var(--accent-dim);
   border-radius: 12px;
   background: rgba(10, 10, 10, 0.88);
-  color: #fff;
+  color: var(--accent);
   font-size: 11px;
   line-height: 1;
   display: flex;
@@ -1719,7 +1725,7 @@ canvas {
 }
 .profile-summary-rank {
   text-align: center;
-  color: #fff;
+  color: var(--accent);
   margin-bottom: 8px;
   font-size: 11px;
 }
@@ -1874,7 +1880,7 @@ canvas {
   font-size: 9px;
 }
 .hangman-chat-text {
-  color: #fff;
+  color: var(--accent);
   font-family: var(--font-type);
   font-size: 11px;
   text-shadow: none;
@@ -1973,14 +1979,14 @@ canvas {
 }
 .hangman-man div {
   position: absolute;
-  background: #fff;
+  background: var(--accent);
   opacity: 0;
   transition: opacity 0.3s;
 }
 .hangman-head {
   width: 28px;
   height: 28px;
-  border: 3px solid #fff;
+  border: 3px solid var(--accent);
   border-radius: 50%;
   top: 56px;
   left: 118px;
@@ -2152,7 +2158,7 @@ canvas {
 }
 
 #modalGameOver h1 {
-  color: #fff;
+  color: var(--accent);
   text-shadow: 2px 2px red;
   font-size: 24px;
   margin-bottom: 10px;
@@ -2162,7 +2168,7 @@ canvas {
   font-size: 10px;
   margin-top: 20px;
   animation: blink 1s infinite;
-  color: #fff;
+  color: var(--accent);
 }
 
 /* --- ACHIEVEMENTS & SHOP --- */
@@ -2245,7 +2251,7 @@ canvas {
 #bdDesc {
   font-size: 10px;
   line-height: 1.5;
-  color: #fff;
+  color: var(--accent);
   max-width: 80%;
   margin: 0 auto;
 }
@@ -2537,7 +2543,7 @@ canvas {
 
 .stock-detail-price {
   font-size: 16px;
-  color: #fff;
+  color: var(--accent);
 }
 
 #stockChart {
@@ -2656,7 +2662,7 @@ canvas {
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-top: 18px solid #fff;
+  border-top: 18px solid var(--accent);
   z-index: 4;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
 }
@@ -2833,7 +2839,7 @@ canvas {
   padding: 14px 8px;
   font-family: inherit;
   background: #111;
-  color: #fff;
+  color: var(--accent);
   cursor: pointer;
   text-transform: uppercase;
   display: flex;
@@ -2999,7 +3005,7 @@ canvas {
   white-space: pre-wrap;
   font-family: var(--font-type);
   font-size: 11px;
-  color: #fff;
+  color: var(--accent);
   text-shadow: none;
 }
 @media (max-width: 900px) {
@@ -3076,7 +3082,7 @@ canvas {
   height: 38px;
   border: 1px solid var(--accent-dim);
   background: #0b0f0b;
-  color: #fff;
+  color: var(--accent);
   font-size: 20px;
   font-family: var(--font-main);
   cursor: pointer;

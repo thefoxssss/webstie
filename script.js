@@ -736,9 +736,8 @@ function initTopBarOverlayControls() {
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
-    overlayGames: "menuToggle",
-    overlayTrending: "",
-    overlayUpdates: "",
+    overlayTrending: "menuToggle",
+    overlayUpdates: "menuToggle",
   };
 
   const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
@@ -770,7 +769,6 @@ function initTopBarOverlayControls() {
 
   function getExitTabButton(overlay) {
     if (!overlay) return null;
-    if (GAME_OVERLAY_IDS.includes(overlay.id)) return document.getElementById("menuToggle");
     return document.getElementById(OVERLAY_TAB_MAP[overlay.id] || "") || null;
   }
 
