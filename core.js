@@ -2218,6 +2218,10 @@ function runOverlayOpenHooks(id) {
 export function closeConfigOverlay() {
   const configOverlay = document.getElementById("overlayConfig");
   if (!configOverlay) return;
+  if (configOverlay.classList.contains("active") && typeof window.toggleTopPanelOverlay === "function") {
+    window.toggleTopPanelOverlay("overlayConfig");
+    return;
+  }
   configOverlay.classList.remove("active");
   const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
   document.body.classList.toggle("overlay-open", hasActiveOverlay);
@@ -2226,6 +2230,10 @@ export function closeConfigOverlay() {
 window.openConfigOverlay = openConfigOverlay;
 window.closeConfigOverlay = closeConfigOverlay;
 window.toggleConfigOverlay = () => {
+  if (typeof window.toggleTopPanelOverlay === "function") {
+    window.toggleTopPanelOverlay("overlayConfig");
+    return;
+  }
   const configOverlay = document.getElementById("overlayConfig");
   if (!configOverlay) return;
   if (configOverlay.classList.contains("active")) {
