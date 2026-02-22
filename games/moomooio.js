@@ -1,14 +1,14 @@
 import { registerGameStop, setText, showToast, state, updateHighScore } from "../core.js";
 
-const WIDTH = 900;
-const HEIGHT = 500;
+const WIDTH = 800;
+const HEIGHT = 420;
 const WORLD_W = 2200;
 const WORLD_H = 1400;
 const PLAYER_SPEED = 220;
 
 let run = null;
 
-function stopMooMooArena() {
+function stopMooMooIo() {
   if (!run) return;
   window.cancelAnimationFrame(run.raf);
   window.clearInterval(run.tickInterval);
@@ -185,9 +185,9 @@ function processAi(runData, ai, dt) {
 
 function updateHud(runData) {
   const p = runData.player;
-  setText("moomooHud", `MODE: ${runData.mode.toUpperCase()} | PLAYERS IN LOBBY: ${runData.agents.length} (AI: ${runData.agents.filter((a) => a.ai).length})`);
-  setText("moomooResources", `WOOD ${Math.floor(p.wood)} | STONE ${Math.floor(p.stone)} | FOOD ${Math.floor(p.food)} | CASH $${Math.floor(p.cash)} | BASE LV ${p.level}`);
-  setText("moomooScore", `SCORE: ${Math.floor(p.score)}`);
+  setText("moomooioHud", `MOO ${runData.mode.toUpperCase()} | LOBBY: ${runData.agents.length} (AI: ${runData.agents.filter((a) => a.ai).length})`);
+  setText("moomooioResources", `WOOD ${Math.floor(p.wood)} | STONE ${Math.floor(p.stone)} | FOOD ${Math.floor(p.food)} | CASH $${Math.floor(p.cash)} | BASE LV ${p.level}`);
+  setText("moomooioScore", `SCORE: ${Math.floor(p.score)}`);
 }
 
 function updateCamera(runData) {
@@ -254,7 +254,7 @@ function doIncomeTick(runData) {
     agent.stone += miners * 2;
     agent.score += farms * 2 + miners * 3 + turrets;
   }
-  updateHighScore("moomooarena", Math.floor(runData.player.score));
+  updateHighScore("moomooio", Math.floor(runData.player.score));
   updateHud(runData);
 }
 
@@ -268,14 +268,14 @@ function handleBuildShortcut(runData, code) {
   if (code === "Digit4") buildForAgent(runData, p, "turret", forwardX, forwardY);
 }
 
-export function initMooMooArena() {
-  stopMooMooArena();
-  state.currentGame = "moomooarena";
+export function initMooMooIo() {
+  stopMooMooIo();
+  state.currentGame = "moomooio";
 
-  const canvas = document.getElementById("moomooCanvas");
-  const action = document.getElementById("moomooAction");
-  const addPlayerBtn = document.getElementById("moomooAddPlayer");
-  const modeToggle = document.getElementById("moomooMode");
+  const canvas = document.getElementById("moomooioCanvas");
+  const action = document.getElementById("moomooioAction");
+  const addPlayerBtn = document.getElementById("moomooioAddPlayer");
+  const modeToggle = document.getElementById("moomooioMode");
   if (!canvas || !action || !addPlayerBtn || !modeToggle) return;
   const ctx = canvas.getContext("2d");
 
@@ -301,8 +301,9 @@ export function initMooMooArena() {
     incomeInterval: 0,
   };
 
-  action.disabled = true;
-  action.textContent = "MATCH LIVE";
+  action.disabled = false;
+  action.textContent = "RESTART RAID";
+  action.onclick = () => initMooMooIo();
 
   addPlayerBtn.onclick = () => {
     const newcomer = makeAgent(`GUEST_${runData.agents.length}`);
@@ -353,9 +354,11 @@ export function initMooMooArena() {
     if (runData.pressed.has("KeyS") || runData.pressed.has("ArrowDown")) moveY += 1;
     if (runData.pressed.has("KeyA") || runData.pressed.has("ArrowLeft")) moveX -= 1;
     if (runData.pressed.has("KeyD") || runData.pressed.has("ArrowRight")) moveX += 1;
-    const mag = Math.hypot(moveX, moveY) || 1;
-    player.x += (moveX / mag) * PLAYER_SPEED * dt;
-    player.y += (moveY / mag) * PLAYER_SPEED * dt;
+    const mag = Math.hypot(moveX, moveY);
+    if (mag > 0) {
+      player.x += (moveX / mag) * PLAYER_SPEED * dt;
+      player.y += (moveY / mag) * PLAYER_SPEED * dt;
+    }
     player.x = Math.max(16, Math.min(WORLD_W - 16, player.x));
     player.y = Math.max(16, Math.min(WORLD_H - 16, player.y));
 
@@ -380,4 +383,4 @@ export function initMooMooArena() {
   runData.raf = requestAnimationFrame(frame);
 }
 
-registerGameStop("moomooarena", stopMooMooArena);
+registerGameStop("moomooio", stopMooMooIo);

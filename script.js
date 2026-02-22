@@ -78,7 +78,7 @@ import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
-import { initMooMooArena } from "./games/moomooarena.js";
+import { initMooMooIo } from "./games/moomooio.js";
 import { GAME_DIRECTORY_ENTRIES, GAME_TAG_EMOJI } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -167,7 +167,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "stacksmash") initStackSmash();
   if (game === "quantumflip") initQuantumFlip();
   if (game === "ultimatettt") initUltimateTTT();
-  if (game === "moomooarena") initMooMooArena();
+  if (game === "moomooio") initMooMooIo();
   resizeAllGameCanvases();
   trackGamePlay(game);
   updateRecentGames(game);
@@ -206,7 +206,7 @@ const GAME_OVERLAY_IDS = [
   "overlayStacksmash",
   "overlayQuantumflip",
   "overlayUltimatettt",
-  "overlayMoomooarena",
+  "overlayMoomooio",
 ];
 
 

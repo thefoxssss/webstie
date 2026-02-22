@@ -27,7 +27,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "metromaze", title: "METRO MAZE", description: "Procedural mazes with relics, sentinels, and level exits.", icon: "🚇", tags: ["skill", "maze", "puzzle", "strategy"] },
   { id: "stacksmash", title: "STACK SMASH", description: "Break layered stacks for big spike payouts.", icon: "🪨", tags: ["arcade", "timing", "reflex"] },
   { id: "quantumflip", title: "QUANTUM FLIP", description: "Pilot a phase core: chain matching orbs and survive hunter waves.", icon: "⚛️", tags: ["skill", "strategy", "survival"] },
-  { id: "moomooarena", title: "MOO ARENA", description: "MMO-style gathering, base building, AI rivals, and lobby simulation.", icon: "🪓", tags: ["pvp", "strategy", "survival"] },
+  { id: "moomooio", title: "MOOMOO.IO", description: "Harvest, fortify, and scale your base with players + AI in one arena.", icon: "🪓", tags: ["pvp", "strategy", "survival"] },
   { id: "flappy", title: "FLAPPY GOON", description: "Secret bonus mode: tap to survive.", icon: "🐤", tags: ["arcade", "skill"], hidden: true },
 ]);
 
