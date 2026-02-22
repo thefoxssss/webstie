@@ -211,6 +211,16 @@ const CANVAS_UI_PADDING = 230;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
 const GAME_LIBRARY_RECENTS_KEY = "goonerRecentGames";
 const GAME_LIBRARY_RECENT_LIMIT = 6;
+const SHOP_ITEM_LABELS = Object.freeze({
+  item_aimbot: "PONG AIMBOT",
+  item_slowmo: "RUNNER SLOW-MO",
+  item_xray: "X-RAY VISOR",
+  item_cardcount: "CARD COUNTER",
+  item_double: "SNAKE OIL",
+  item_dodge_stabilizer: "DODGE STABILIZER",
+  item_autotype: "AUTO-TYPER",
+  item_flappy: "GAME: FLAPPY",
+});
 
 function readStoredGameList(key) {
   try {
@@ -299,8 +309,10 @@ function initGamesLibraryDiscovery() {
 
   grid.innerHTML = "";
   GAME_DIRECTORY_ENTRIES.forEach((entry) => {
-    const card = document.createElement("button");
+    const card = document.createElement("div");
     card.className = "game-card";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
     card.dataset.game = entry.id;
     card.dataset.tags = entry.tags.join(" ");
     card.innerHTML = `<span class="game-icon">${entry.icon}</span><strong>${entry.title}</strong><small>${entry.description}</small>`;
@@ -340,7 +352,13 @@ function initGamesLibraryDiscovery() {
     if (card.id === "btnFlappy" && card.style.display === "none") card.dataset.locked = "1";
     card.title = "CLICK TO LAUNCH • SHIFT+CLICK OR RIGHT-CLICK TO FAVORITE";
 
+    const itemControls = document.createElement("div");
+    itemControls.className = "game-shop-controls";
+    itemControls.dataset.gameShopControls = entry.id;
+    card.appendChild(itemControls);
+
     card.addEventListener("click", (event) => {
+      if (event.target.closest(".game-shop-controls")) return;
       if (event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();
@@ -351,10 +369,65 @@ function initGamesLibraryDiscovery() {
     });
 
     card.addEventListener("contextmenu", (event) => {
+      if (event.target.closest(".game-shop-controls")) return;
       event.preventDefault();
       toggleFavorite(card.dataset.game || "");
     });
+
+    card.addEventListener("keydown", (event) => {
+      if (event.target.closest(".game-shop-controls")) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        window.launchGame(card.dataset.game || "", "directory");
+      }
+    });
   });
+
+  function renderGameShopControls(card) {
+    const gameId = card.dataset.game || "";
+    const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === gameId);
+    const controls = card.querySelector(".game-shop-controls");
+    if (!controls || !entry?.shopItems?.length) {
+      if (controls) controls.innerHTML = "";
+      return;
+    }
+    controls.innerHTML = "";
+    entry.shopItems.forEach((itemId) => {
+      const ownsItem = state.myInventory.includes(itemId);
+      const isEnabled = state.myItemToggles[itemId] !== false;
+      const row = document.createElement("div");
+      row.className = "game-shop-row";
+      const label = SHOP_ITEM_LABELS[itemId] || itemId.toUpperCase();
+      row.innerHTML = `<span>${label}</span>`;
+
+      const actionBtn = document.createElement("button");
+      actionBtn.className = "term-btn game-shop-action";
+      if (ownsItem) {
+        actionBtn.textContent = isEnabled ? "ON" : "OFF";
+        actionBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleItem(itemId);
+          refreshGameShopControls();
+        });
+      } else {
+        actionBtn.textContent = "BUY";
+        actionBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          buyItem(itemId);
+          refreshGameShopControls();
+        });
+      }
+      row.appendChild(actionBtn);
+      controls.appendChild(row);
+    });
+  }
+
+  function refreshGameShopControls() {
+    cards.forEach((card) => renderGameShopControls(card));
+  }
+  refreshGameShopControls();
 
   function getFavorites() {
     return readStoredGameList(GAME_LIBRARY_FAVORITES_KEY);
@@ -429,6 +502,8 @@ function initGamesLibraryDiscovery() {
       card.style.display = show ? "flex" : "none";
       if (show) visibleCards.push(card);
     });
+
+    refreshGameShopControls();
 
     sortCards(visibleCards);
     visibleCards.forEach((card) => grid.appendChild(card));

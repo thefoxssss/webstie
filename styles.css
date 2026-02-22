@@ -1115,6 +1115,7 @@ canvas {
   gap: 8px;
   font-family: inherit;
   position: relative;
+  cursor: pointer;
 }
 
 .game-card.is-favorite {
@@ -1215,6 +1216,29 @@ canvas {
 .game-card:hover {
   background: var(--accent-dim);
   box-shadow: 0 0 10px var(--accent-dim);
+}
+
+.game-shop-controls {
+  border-top: 1px dashed var(--accent-dim);
+  margin-top: 4px;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-shop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 8px;
+}
+
+.game-shop-action {
+  min-width: 48px;
+  padding: 4px 6px;
+  font-size: 8px;
 }
 
 @media (max-width: 980px) {
