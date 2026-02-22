@@ -199,8 +199,9 @@ body::before {
   border-bottom: 1px solid var(--accent);
 }
 
-body.main-menu-hidden .top-bar {
-  display: none;
+body.main-menu-hidden .wrap,
+body.main-menu-hidden #globalChat {
+  visibility: hidden;
 }
 .menu-btn {
   background: transparent;
@@ -678,9 +679,6 @@ body.games-directory-open .wrap {
   padding: 20px;
 }
 
-body.main-menu-hidden .overlay {
-  inset: 0;
-}
 .overlay.active {
   display: flex !important;
 }
