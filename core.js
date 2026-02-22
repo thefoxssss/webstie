@@ -22,6 +22,7 @@ import {
   deleteDoc,
   getDocs,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { LEADERBOARD_GAME_COLUMNS } from "./gameCatalog.js";
 
 // Firebase project configuration.
 const defaultFirebaseConfig = {
@@ -4082,19 +4083,14 @@ export async function saveGlobalScore(game, score) {
 let leaderboardUnsubs = [];
 
 const LEADERBOARD_COLUMNS = [
-  { id: "players", title: "PLAYERS", type: "players" },
-  { id: "richest", title: "RICHEST", type: "richest" },
-  { id: "geo", title: "GEO DASH", type: "game" },
-  { id: "type", title: "TYPER", type: "game" },
-  { id: "snake", title: "SNAKE", type: "game" },
-  { id: "pong", title: "PONG", type: "game" },
-  { id: "runner", title: "RUNNER", type: "game" },
-  { id: "corebreaker", title: "CORE BREAKER", type: "game" },
-  { id: "neondefender", title: "NEON DEFENDER", type: "game" },
-  { id: "voidminer", title: "VOID MINER", type: "game" },
-  { id: "shadowassassin", title: "SHADOW ASSASSIN", type: "game" },
-  { id: "dodge", title: "DODGE", type: "game" },
-  { id: "flappy", title: "FLAPPY", type: "game" },
+  { id: "players", title: "PLAYERS", type: "players", tags: ["players", "operator", "rank"] },
+  { id: "richest", title: "RICHEST", type: "richest", tags: ["bank", "money", "cash", "economy"] },
+  ...LEADERBOARD_GAME_COLUMNS.map((game) => ({
+    id: game.id,
+    title: game.title,
+    type: "game",
+    tags: game.tags,
+  })),
 ];
 
 const clearLeaderboardSubscriptions = () => {
@@ -4251,7 +4247,7 @@ function loadLeaderboard() {
 
   const filterValue = getLeaderboardFilterValue();
   const visibleColumns = filterValue
-    ? LEADERBOARD_COLUMNS.filter((column) => column.title.includes(filterValue))
+    ? LEADERBOARD_COLUMNS.filter((column) => (`${column.title} ${(column.tags || []).join(" ")}`.toUpperCase()).includes(filterValue))
     : LEADERBOARD_COLUMNS;
 
   if (!visibleColumns.length) {

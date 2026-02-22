@@ -60,6 +60,7 @@ import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
+import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -260,6 +261,20 @@ function initGamesLibraryDiscovery() {
   const meta = document.getElementById("gamesResultsMeta");
   if (!overlay || !grid || !search || !filter || !sort || !clearBtn || !meta) return;
 
+  grid.innerHTML = "";
+  GAME_DIRECTORY_ENTRIES.forEach((entry) => {
+    const card = document.createElement("button");
+    card.className = "game-card";
+    card.dataset.game = entry.id;
+    card.dataset.tags = entry.tags.join(" ");
+    card.innerHTML = `<span class="game-icon">${entry.icon}</span><strong>${entry.title}</strong><small>${entry.description}</small>`;
+    if (entry.hidden) {
+      card.id = "btnFlappy";
+      card.style.display = "none";
+    }
+    grid.appendChild(card);
+  });
+
   const cards = Array.from(grid.querySelectorAll(".game-card"));
   cards.forEach((card) => {
     const name = (card.querySelector("strong")?.textContent || "").trim();
@@ -284,10 +299,13 @@ function initGamesLibraryDiscovery() {
     card.title = "CLICK TO LAUNCH • SHIFT+CLICK OR RIGHT-CLICK TO FAVORITE";
 
     card.addEventListener("click", (event) => {
-      if (!event.shiftKey) return;
-      event.preventDefault();
-      event.stopPropagation();
-      toggleFavorite(card.dataset.game || "");
+      if (event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleFavorite(card.dataset.game || "");
+        return;
+      }
+      window.launchGame(card.dataset.game || "");
     });
 
     card.addEventListener("contextmenu", (event) => {
