@@ -62,6 +62,7 @@ export function initPulseStack() {
   const action = document.getElementById("pulsestackAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
+  let started = false;
 
   let score = 0;
   let stackHeight = 0;
@@ -77,6 +78,7 @@ export function initPulseStack() {
   action.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = () => {
+    started = true;
     const centerDist = Math.abs(pulseX - WIDTH * 0.5);
     if (centerDist <= 48) {
       combo = Math.min(10, combo + 1);
@@ -93,6 +95,7 @@ export function initPulseStack() {
   };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     remainingMs -= 100;
     if (remainingMs <= 0) {
       const finalScore = Math.floor(score + stackHeight * 5);
@@ -110,7 +113,7 @@ export function initPulseStack() {
   let last = performance.now();
   function frame(now) {
     if (!run) return;
-    const dt = Math.min(0.04, (now - last) / 1000);
+    const dt = started ? Math.min(0.04, (now - last) / 1000) : 0;
     last = now;
     pulseX += dir * dt * 380;
     if (pulseX < 25 || pulseX > WIDTH - 25) dir *= -1;

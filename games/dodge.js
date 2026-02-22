@@ -28,6 +28,7 @@ let spawnTimer = 0;
 let sideTimer = 0;
 let wallTimer = 0;
 let dLastTime = 0;
+let dodgeStarted = false;
 
 const CANVAS_W = 700;
 const CANVAS_H = 450;
@@ -57,6 +58,7 @@ export function initDodge() {
   sideTimer = 0;
   wallTimer = 0;
   dLastTime = 0;
+  dodgeStarted = false;
   setText("dodgeScore", "TIME: 0s");
   loopDodge(performance.now());
 }
@@ -181,9 +183,13 @@ function updateScoreFromTime() {
 
 function loopDodge(now) {
   if (state.currentGame !== "dodge") return;
-  const dtFrames = dLastTime
+  const movementInput =
+    state.keysPressed.ArrowLeft || state.keysPressed.a || state.keysPressed.ArrowRight || state.keysPressed.d ||
+    state.keysPressed.ArrowUp || state.keysPressed.w || state.keysPressed.ArrowDown || state.keysPressed.s;
+  if (movementInput) dodgeStarted = true;
+  const dtFrames = dodgeStarted && dLastTime
     ? Math.min((now - dLastTime) / FRAME_MS, MAX_DT_FRAMES)
-    : 1;
+    : 0;
   dLastTime = now;
   dElapsed += dtFrames / FPS;
   spawnTimer += dtFrames;

@@ -101,6 +101,7 @@ export function initCipherCrack() {
   const action = document.getElementById("ciphercrackAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
+  let started = false;
 
   const game = {
     score: 0,
@@ -120,6 +121,7 @@ export function initCipherCrack() {
   action.textContent = "RUNNING";
 
   canvas.onpointerdown = (event) => {
+    started = true;
     const hit = pickCellFromPointer(event, canvas);
     if (!hit) return;
 
@@ -176,6 +178,7 @@ export function initCipherCrack() {
   };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     game.remainingMs -= 100;
 
     game.entropy = Math.max(0, game.entropy - 0.3);
@@ -205,7 +208,7 @@ export function initCipherCrack() {
   let last = performance.now();
   function frame(now) {
     if (!run) return;
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = started ? Math.min(0.05, (now - last) / 1000) : 0;
     last = now;
 
     for (const cell of game.board) cell.flash = Math.max(0, cell.flash - dt);

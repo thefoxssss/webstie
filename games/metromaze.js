@@ -221,6 +221,7 @@ export function initMetroMaze() {
   const action = document.getElementById("metromazeAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
+  let started = false;
 
   const runData = {
     score: 0,
@@ -239,6 +240,7 @@ export function initMetroMaze() {
   action.textContent = "RUNNING";
 
   const onKeyDown = (event) => {
+    started = true;
     if (!run) return;
     if (event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
       event.preventDefault();
@@ -256,9 +258,13 @@ export function initMetroMaze() {
   };
 
   document.addEventListener("keydown", onKeyDown);
-  canvas.onpointerdown = (event) => handlePointerMove(event, canvas, runData);
+  canvas.onpointerdown = (event) => {
+    started = true;
+    handlePointerMove(event, canvas, runData);
+  };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     runData.remainingMs -= 100;
     setText("metromazeTimer", `TIME: ${(Math.max(0, runData.remainingMs) / 1000).toFixed(1)}s`);
 
@@ -276,7 +282,7 @@ export function initMetroMaze() {
   let last = performance.now();
   function frame(now) {
     if (!run) return;
-    const dt = Math.min(0.045, (now - last) / 1000);
+    const dt = started ? Math.min(0.045, (now - last) / 1000) : 0;
     last = now;
 
     runData.moveCooldown = Math.max(0, runData.moveCooldown - dt);

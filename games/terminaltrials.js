@@ -120,12 +120,14 @@ function initTrial(id) {
 
   let score = 0;
   let remainingMs = config.durationMs;
+  let started = false;
   setText(scoreId, `SCORE: ${score}`);
   setText(timerId, `TIME: ${(remainingMs / 1000).toFixed(1)}s`);
   actionBtn.textContent = config.actionLabel;
   actionBtn.disabled = false;
 
   const tick = window.setInterval(() => {
+    if (!started) return;
     remainingMs -= 100;
     const remaining = Math.max(0, remainingMs);
     setText(timerId, `TIME: ${(remaining / 1000).toFixed(1)}s`);
@@ -139,6 +141,7 @@ function initTrial(id) {
   }, 100);
 
   actionBtn.onclick = () => {
+    started = true;
     if (remainingMs <= 0) return;
     const gain = randomInt(config.minGain, config.maxGain);
     const burst = Math.random() < config.burstChance ? config.burstBonus : 0;
