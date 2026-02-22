@@ -4003,6 +4003,13 @@ const clearLeaderboardSubscriptions = () => {
   leaderboardUnsubs = [];
 };
 
+const getLeaderboardFilterValue = () => {
+  const filterInput = document.getElementById("leaderboardFilter");
+  return String(filterInput?.value || "")
+    .trim()
+    .toUpperCase();
+};
+
 const renderLeaderboardRows = (
   list,
   rows,
@@ -4130,14 +4137,31 @@ function loadLeaderboardColumn(column, body) {
 // Render all leaderboard columns and subscribe to each data feed.
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
+  const filterInput = document.getElementById("leaderboardFilter");
   if (!list) return;
+
+  if (filterInput && !filterInput.dataset.bound) {
+    filterInput.addEventListener("input", () => loadLeaderboard());
+    filterInput.dataset.bound = "1";
+  }
+
   clearLeaderboardSubscriptions();
   list.innerHTML = "";
+
+  const filterValue = getLeaderboardFilterValue();
+  const visibleColumns = filterValue
+    ? LEADERBOARD_COLUMNS.filter((column) => column.title.includes(filterValue))
+    : LEADERBOARD_COLUMNS;
+
+  if (!visibleColumns.length) {
+    list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES "${escapeHtml(filterValue)}"</div>`;
+    return;
+  }
 
   const columnsWrap = document.createElement("div");
   columnsWrap.className = "score-columns";
 
-  LEADERBOARD_COLUMNS.forEach((column) => {
+  visibleColumns.forEach((column) => {
     const card = document.createElement("section");
     card.className = "score-column";
 

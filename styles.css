@@ -1078,7 +1078,11 @@ canvas {
   overflow-y: auto;
   text-align: left;
 }
+#overlayScores #leaderboardFilter {
+  width: 100%;
+}
 #overlayScores .score-list {
+
   max-height: min(58vh, 500px);
   overflow-x: auto;
   overflow-y: hidden;
