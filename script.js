@@ -431,6 +431,8 @@ function initTopBarOverlayControls() {
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
     overlayGames: "menuToggle",
+    overlayTrending: "",
+    overlayUpdates: "",
   };
 
   const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
@@ -490,7 +492,15 @@ function initTopBarOverlayControls() {
 
     fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
     fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
-    if (closeBtn) closeBtn.style.display = "none";
+    if (closeBtn) {
+      const shouldShowClose = Boolean(activeOverlay && activeOverlay.id !== "overlayLogin" && !exitTab);
+      closeBtn.style.display = shouldShowClose ? "inline-flex" : "none";
+      closeBtn.textContent = "EXIT";
+      closeBtn.onclick = () => {
+        closeOverlays();
+        updateControls();
+      };
+    }
   }
 
   const observer = new MutationObserver(updateControls);

@@ -77,7 +77,7 @@
     <div class="dropdown-content" id="menuDropdown"></div>
 
     <!-- Dedicated games directory overlay. -->
-    <div class="overlay" id="overlayGames">
+    <div class="overlay menu-overlay games-directory-overlay" id="overlayGames">
       <h1>GAMES DIRECTORY</h1>
       <div class="games-toolbar">
         <input
@@ -109,6 +109,28 @@
       <div class="games-grid">
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
+    <div class="overlay menu-overlay" id="overlayTrending">
+      <div class="score-box panel-overlay-box">
+        <h2>TRENDING GAMES // MONTHLY GRAPH</h2>
+        <p class="panel-overlay-meta" id="trendingMonthlyMeta">SCANNING 30-DAY TREND FEED...</p>
+        <div class="trending-month-chart" id="trendingMonthChart">
+          <div class="trending-empty">COLLECTING SIGNAL DATA...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay menu-overlay" id="overlayUpdates">
+      <div class="score-box panel-overlay-box">
+        <h2>UPDATE LOG // FULL HISTORY</h2>
+        <p class="panel-overlay-meta" id="updateLogFullMeta">SYNCING FULL MERGED PR HISTORY...</p>
+        <div class="update-log-scroll">
+          <ul id="updateLogFullList">
+            <li><span>SYNC</span> LOADING MERGED CHANGELOG...</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <!-- God-tier operator controls. Visible only to allowlisted users. -->
@@ -237,18 +259,18 @@
         <button class="trending-game-btn random-game-btn" id="randomGameBtn" type="button">
           <span class="trending-rank">🎲</span>
           <span>RANDOM GAME</span>
-          <span class="trending-count">LAUNCH</span>
+          <span class="trending-count">OPEN MENU</span>
         </button>
       </section>
       <section class="trending-games" aria-label="Trending games">
-        <h2>TRENDING GAMES // LAST 24H</h2>
+        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayTrending">TRENDING GAMES // LAST 24H</button></h2>
         <div class="trending-meta" id="trendingGamesMeta">SCANNING PLAYER TRAFFIC...</div>
         <div class="trending-games-list" id="trendingGamesList">
           <div class="trending-empty">NO TRAFFIC SIGNAL YET.</div>
         </div>
       </section>
       <section class="update-log" aria-label="Update log" id="updateLogPanel" data-github-owner="thefoxssss" data-github-repo="webstie">
-        <h2>UPDATE LOG</h2>
+        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayUpdates">UPDATE LOG</button></h2>
         <ul id="updateLogList">
           <li><span>#01</span> LOADING LATEST UPDATES...</li>
         </ul>
