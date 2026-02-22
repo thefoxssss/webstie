@@ -1721,6 +1721,17 @@ canvas {
 #modalGameOver {
   background: rgba(5, 5, 5, 0.95);
   z-index: 9500;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+#modalGameOver.in-game {
+  position: absolute;
+  inset: 16px;
+  padding: 20px;
+  border: 2px solid var(--accent);
+  background: rgba(0, 0, 0, 0.82);
 }
 #modalGameOver h1 {
   color: #fff;

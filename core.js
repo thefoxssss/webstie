@@ -4322,9 +4322,17 @@ export function showGameOver(game, score) {
   saveStats();
   updateUI();
   beep(150, "sawtooth", 0.5);
+  const gameOverModal = document.getElementById("modalGameOver");
+  const activeGameOverlay = document.querySelector(
+    ".overlay.active:not(#modalGameOver)"
+  );
+  if (gameOverModal && activeGameOverlay) {
+    activeGameOverlay.appendChild(gameOverModal);
+    gameOverModal.classList.add("in-game");
+  }
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
-  document.getElementById("modalGameOver").classList.add("active");
+  gameOverModal?.classList.add("active");
   window.addEventListener("keydown", quickRestartListener);
 }
 

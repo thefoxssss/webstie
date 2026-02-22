@@ -448,9 +448,17 @@ initGameCanvasSizing();
 initGameVisibilityGuards();
 initGamesLibraryDiscovery();
 
+function resetGameOverModalHost() {
+  const modal = document.getElementById("modalGameOver");
+  if (!modal) return;
+  document.body.appendChild(modal);
+  modal.classList.remove("in-game");
+}
+
 // Restart the last game from the game-over modal.
 document.getElementById("goRestart").onclick = () => {
   document.getElementById("modalGameOver").classList.remove("active");
+  resetGameOverModalHost();
   clearRestartListener();
   if (state.currentGame === "snake") initSnake();
   if (state.currentGame === "pong") initPong();
@@ -487,4 +495,5 @@ document.getElementById("goExit").onclick = () => {
   stopAllGames();
   closeOverlays();
   document.getElementById("modalGameOver").classList.remove("active");
+  resetGameOverModalHost();
 };
