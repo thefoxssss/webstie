@@ -260,8 +260,23 @@ function initGamesLibraryDiscovery() {
   const cards = Array.from(grid.querySelectorAll(".game-card"));
   cards.forEach((card) => {
     const name = (card.querySelector("strong")?.textContent || "").trim();
+    const description = (card.querySelector("small")?.textContent || "").trim();
+    const tags = (card.dataset.tags || "")
+      .split(/\s+/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
     card.dataset.name = name;
-    card.dataset.search = `${name} ${(card.querySelector("small")?.textContent || "")} ${(card.dataset.tags || "")}`.toLowerCase();
+    card.dataset.search = `${name} ${description} ${(card.dataset.tags || "")}`.toLowerCase();
+
+    let tagsRow = card.querySelector(".game-tags");
+    if (!tagsRow) {
+      tagsRow = document.createElement("div");
+      tagsRow.className = "game-tags";
+      card.appendChild(tagsRow);
+    }
+    tagsRow.innerHTML = tags.map((tag) => `<span class="game-tag">${tag.toUpperCase()}</span>`).join("");
+
     if (card.id === "btnFlappy" && card.style.display === "none") card.dataset.locked = "1";
     card.title = "CLICK TO LAUNCH • SHIFT+CLICK OR RIGHT-CLICK TO FAVORITE";
 

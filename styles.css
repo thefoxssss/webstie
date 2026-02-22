@@ -763,6 +763,21 @@ canvas {
   line-height: 1.4;
 }
 
+.game-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.game-tag {
+  border: 1px solid var(--accent);
+  background: rgba(0, 255, 0, 0.08);
+  color: var(--accent);
+  font-size: 8px;
+  padding: 2px 6px;
+  letter-spacing: 0.5px;
+}
+
 .game-card:hover {
   background: var(--accent-dim);
   box-shadow: 0 0 10px var(--accent-dim);
