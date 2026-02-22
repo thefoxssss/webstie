@@ -391,6 +391,10 @@ body::before {
   text-align: left;
 }
 
+#randomGamesDirectoryBtn {
+  margin-top: 8px;
+}
+
 .trending-games {
   margin-top: 24px;
   width: min(90vw, 680px);
@@ -566,6 +570,10 @@ body::before {
 
 .update-log-scroll li span {
   color: var(--accent);
+}
+
+.panel-overlay-exit {
+  margin-top: 12px;
 }
 
 .live-ops {

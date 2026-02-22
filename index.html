@@ -118,6 +118,7 @@
         <div class="trending-month-chart" id="trendingMonthChart">
           <div class="trending-empty">COLLECTING SIGNAL DATA...</div>
         </div>
+        <button class="term-btn panel-overlay-exit" type="button" onclick="window.closeOverlays()">EXIT</button>
       </div>
     </div>
 
@@ -130,6 +131,7 @@
             <li><span>SYNC</span> LOADING MERGED CHANGELOG...</li>
           </ul>
         </div>
+        <button class="term-btn panel-overlay-exit" type="button" onclick="window.closeOverlays()">EXIT</button>
       </div>
     </div>
 
@@ -259,8 +261,9 @@
         <button class="trending-game-btn random-game-btn" id="randomGameBtn" type="button">
           <span class="trending-rank">🎲</span>
           <span>RANDOM GAME</span>
-          <span class="trending-count">OPEN MENU</span>
+          <span class="trending-count">LAUNCH</span>
         </button>
+        <button class="panel-title-btn" id="randomGamesDirectoryBtn" type="button">OPEN GAMES DIRECTORY</button>
       </section>
       <section class="trending-games" aria-label="Trending games">
         <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayTrending">TRENDING GAMES // LAST 24H</button></h2>

@@ -1674,6 +1674,23 @@ function initRandomGameButton() {
   button.dataset.ready = "1";
 
   button.addEventListener("click", () => {
+    const gameButtons = Array.from(document.querySelectorAll(".games-grid .game-card[data-game]"));
+    if (!gameButtons.length || typeof window.launchGame !== "function") return;
+
+    const visibleGames = gameButtons.filter((gameBtn) => gameBtn.offsetParent !== null);
+    const pool = visibleGames.length ? visibleGames : gameButtons;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const game = String(pick?.dataset.game || "").trim();
+    if (!game) return;
+    window.launchGame(game);
+  });
+}
+
+function initRandomGamesDirectoryButton() {
+  const button = document.getElementById("randomGamesDirectoryBtn");
+  if (!button || button.dataset.ready === "1") return;
+  button.dataset.ready = "1";
+  button.addEventListener("click", () => {
     openGame("overlayGames");
   });
 }
@@ -2053,6 +2070,7 @@ loadSeasonData();
 renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
+initRandomGamesDirectoryButton();
 initHomePanelOverlayButtons();
 refreshTrendingMonthGraph();
 refreshUpdateLogFromMergedPrs();
