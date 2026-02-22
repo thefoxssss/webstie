@@ -2099,6 +2099,7 @@ export function openGame(id) {
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
+  document.body.classList.toggle("overlay-open", Boolean(el));
   document.body.classList.toggle("games-directory-open", id === "overlayGames");
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
@@ -2134,6 +2135,7 @@ export function closeOverlays() {
   const menuDropdown = document.getElementById("menuDropdown");
   if (menuDropdown) menuDropdown.classList.remove("show");
   document.body.classList.remove("games-directory-open");
+  document.body.classList.remove("overlay-open");
 }
 
 function normalizeUsername(username) {

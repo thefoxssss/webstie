@@ -71,6 +71,10 @@ body {
     text-shadow 0.5s;
 }
 
+body.overlay-open {
+  overflow: hidden;
+}
+
 /* --- 2. VISUAL EFFECTS --- */
 /* Matrix rain canvas sits beneath the UI and toggles via .active. */
 #matrixCanvas {
@@ -2134,10 +2138,16 @@ canvas {
   }
 }
 
+#overlayShop {
+  overflow: hidden;
+}
+
 #overlayShop .score-box {
-  max-height: calc(100vh - 40px);
+  height: calc(100vh - var(--topbar-clearance) - 40px);
+  max-height: none;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .shop-list {
