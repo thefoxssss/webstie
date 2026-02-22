@@ -4519,8 +4519,10 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
-  const activeGameOverlay = Array.from(document.querySelectorAll(".overlay.active"))
-    .find((overlay) => overlay.id !== "modalGameOver" && !overlay.classList.contains("menu-overlay")) || null;
+  const overlayId = `overlay${String(game || "").charAt(0).toUpperCase()}${String(game || "").slice(1)}`;
+  const activeGameOverlay = document.getElementById(overlayId)
+    || Array.from(document.querySelectorAll(".overlay.active")).find((overlay) => overlay.id !== "modalGameOver")
+    || null;
   const modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
   const visibleSurface = activeGameOverlay
     ? Array.from(activeGameOverlay.querySelectorAll("canvas, iframe, .ttt-grid, .uttt-grid, .hangman-room, .bj-table, .bonk-wrap, #driftRace"))
