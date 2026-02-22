@@ -28,14 +28,16 @@ let soloRounds = 0;
 const suits = ["♠", "♥", "♦", "♣"];
 const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
-// Initialize Blackjack overlay into mode select.
+// Initialize Blackjack overlay into the unified game menu.
 export function initBJ() {
   state.currentGame = "blackjack";
+  bjMode = "solo";
   bjCurrentBet = 0;
-  document.getElementById("bjMode").style.display = "flex";
-  document.getElementById("bjNetMenu").style.display = "none";
+  document.getElementById("bjMenu").style.display = "flex";
   document.getElementById("bjLobby").style.display = "none";
   document.getElementById("bjTable").style.display = "none";
+  document.querySelector(".bj-pot-display").style.display = "none";
+  document.getElementById("bjSide").innerHTML = "";
   updBJ();
 }
 
@@ -48,10 +50,10 @@ function cleanupBJ() {
   bjLastPhase = "";
 }
 
-// Select solo or multiplayer mode from the UI.
+// Select solo or multiplayer mode from the unified Blackjack menu.
 window.bjSelect = (mode) => {
   bjMode = mode;
-  document.getElementById("bjMode").style.display = "none";
+  document.getElementById("bjMenu").style.display = "none";
   if (mode === "solo") {
     document.getElementById("bjTable").style.display = "flex";
     setText("bjHostLabel", "DEALER");
@@ -60,7 +62,6 @@ window.bjSelect = (mode) => {
     startSoloBetting();
   } else {
     document.querySelector(".bj-pot-display").style.display = "block";
-    document.getElementById("bjNetMenu").style.display = "flex";
   }
   beep(400, "square", 0.1);
 };
@@ -204,6 +205,7 @@ function getBJRef(code) {
 
 // Create a new multiplayer Blackjack room as seat 0.
 document.getElementById("btnCreateBJ").onclick = async () => {
+  bjMode = "multi";
   if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
   const code = Math.floor(1000 + Math.random() * 9000).toString();
   const seats = [
@@ -218,6 +220,7 @@ document.getElementById("btnCreateBJ").onclick = async () => {
 
 // Join an existing Blackjack room if a seat is open.
 document.getElementById("btnJoinBJ").onclick = async () => {
+  bjMode = "multi";
   const code = document.getElementById("joinBJCode").value;
   const ref = getBJRef(code);
   await runTransaction(firebase.db, async (t) => {
@@ -250,7 +253,7 @@ document.getElementById("btnJoinBJ").onclick = async () => {
 function joinBJ(code, idx) {
   bjRoomCode = code;
   bjMySeatIdx = idx;
-  document.getElementById("bjNetMenu").style.display = "none";
+  document.getElementById("bjMenu").style.display = "none";
   document.getElementById("bjLobby").style.display = "flex";
   setText("bjRoomId", code);
   if (bjRoomUnsub) bjRoomUnsub();
@@ -393,6 +396,8 @@ function handleBJUpdate(d) {
 document.getElementById("bjStartBtn").onclick = async () => {
   await updateDoc(getBJRef(bjRoomCode), { phase: "betting" });
 };
+
+document.getElementById("btnBJSolo").onclick = () => window.bjSelect("solo");
 
 // Deck click handler for both solo and multiplayer flows.
 document.getElementById("bjDeck").onclick = async () => {

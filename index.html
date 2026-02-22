@@ -1414,16 +1414,7 @@
     <!-- Solo + multiplayer Blackjack overlay. -->
     <div class="overlay" id="overlayBlackjack">
       <h1>BLACKJACK</h1>
-      <div id="bjMode" class="menu-box">
-        <button class="term-btn" onclick="window.bjSelect('solo')">
-          SOLO (VS DEALER)
-        </button>
-        <br /><br />
-        <button class="term-btn" onclick="window.bjSelect('multi')">
-          PVP (4 PLAYER)
-        </button>
-      </div>
-      <div id="bjNetMenu" class="menu-box" style="display: none">
+      <div id="bjMenu" class="menu-box">
         <button class="term-btn" id="btnCreateBJ">CREATE TABLE</button>
         <p>- OR -</p>
         <input
@@ -1434,6 +1425,7 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinBJ">JOIN TABLE</button>
+        <button class="menu-btn" id="btnBJSolo" style="margin-top: 10px">SINGLEPLAYER VS DEALER</button>
       </div>
       <div id="bjLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="bjRoomId">????</span></h2>
