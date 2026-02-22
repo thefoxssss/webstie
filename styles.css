@@ -1885,12 +1885,17 @@ canvas {
 }
 
 #overlayConfig {
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px 14px 14px;
   z-index: 1300;
-  background: rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(1.5px);
+}
+
+#overlayConfig .config-box {
+  margin-top: 0;
+  margin-left: 0;
 }
 .config-row {
   display: flex;
