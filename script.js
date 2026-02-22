@@ -50,6 +50,7 @@ import {
   trackGamePlay,
   updateHighScore,
   getShopItemById,
+  openGameLeaderboard,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -190,14 +191,67 @@ function getOverlayIdForGame(gameId) {
   return `overlay${gameId === "ttt" ? gameId.toUpperCase() : gameId.charAt(0).toUpperCase() + gameId.slice(1)}`;
 }
 
+const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
+let mountedGameOverlayId = "";
+
+function updateSharedGameboxHeader(gameId) {
+  const title = document.getElementById("gameboxTitle");
+  const subtitle = document.getElementById("gameboxSubtitle");
+  const leaderboardBtn = document.getElementById("gameboxLeaderboardBtn");
+  const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === gameId);
+  if (title) title.textContent = entry?.title || String(gameId || "GAME").toUpperCase();
+  if (subtitle) subtitle.textContent = entry?.description || "GAME MODULE LOADED";
+  if (leaderboardBtn) {
+    leaderboardBtn.textContent = `VIEW ${String(gameId || "GAME").toUpperCase()} LEADERBOARD`;
+    leaderboardBtn.onclick = () => openGameLeaderboard(gameId);
+  }
+}
+
+function mountGameOverlayIntoGamebox(gameId) {
+  const targetOverlayId = getOverlayIdForGame(gameId);
+  const gameboxContent = document.getElementById("gameboxContent");
+  const templatesRoot = document.getElementById("gameOverlayTemplates");
+  const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
+  if (!gameboxContent || !templatesRoot || !sharedOverlay) return targetOverlayId;
+
+  if (mountedGameOverlayId && mountedGameOverlayId !== targetOverlayId) {
+    const previousOverlay = document.getElementById(mountedGameOverlayId);
+    if (previousOverlay) {
+      previousOverlay.classList.remove("active", "gamebox-mounted");
+      templatesRoot.appendChild(previousOverlay);
+    }
+  }
+
+  const nextOverlay = document.getElementById(targetOverlayId);
+  if (!nextOverlay) return targetOverlayId;
+  nextOverlay.classList.remove("active");
+  nextOverlay.classList.add("gamebox-mounted");
+  gameboxContent.innerHTML = "";
+  gameboxContent.appendChild(nextOverlay);
+  mountedGameOverlayId = targetOverlayId;
+  updateSharedGameboxHeader(gameId);
+  return SHARED_GAME_OVERLAY_ID;
+}
+
+function initSharedGamebox() {
+  const templatesRoot = document.getElementById("gameOverlayTemplates");
+  if (!templatesRoot) return;
+  GAME_TEMPLATE_OVERLAY_IDS.forEach((overlayId) => {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+    overlay.classList.remove("active");
+    templatesRoot.appendChild(overlay);
+  });
+}
+
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
   window.closeOverlays();
-  const overlayId = getOverlayIdForGame(game);
+  const overlayId = mountGameOverlayIntoGamebox(game);
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
-  renderInGameShopPanel(game, overlayId);
+  renderInGameShopPanel(game, SHARED_GAME_OVERLAY_ID);
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
@@ -235,7 +289,7 @@ window.launchGame = (game, source = "direct") => {
 };
 
 
-const GAME_OVERLAY_IDS = [
+const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayGeo",
   "overlayType",
   "overlayPong",
@@ -265,6 +319,11 @@ const GAME_OVERLAY_IDS = [
   "overlayStacksmash",
   "overlayQuantumflip",
   "overlayUltimatettt",
+];
+
+const GAME_OVERLAY_IDS = [
+  ...GAME_TEMPLATE_OVERLAY_IDS,
+  SHARED_GAME_OVERLAY_ID,
 ];
 
 
@@ -1059,6 +1118,7 @@ function initTopBarOverlayControls() {
   updateControls();
 }
 
+initSharedGamebox();
 disableInGameExitButtons();
 initTopBarOverlayControls();
 initGameCanvasSizing();
