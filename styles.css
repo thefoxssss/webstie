@@ -1,12 +1,9 @@
 /* --- 1. CORE VARIABLES --- */
 :root {
-  --bg: #080604;
-  --accent: #ffd700;
-  --accent-dim: rgba(139, 69, 19, 0.45);
-  --accent-glow: rgba(255, 215, 0, 0.75);
-  --panel-bg: rgba(10, 8, 5, 0.92);
-  --panel-border: #8b4513;
-  --text-main: #f5e8cc;
+  --bg: #050505;
+  --accent: #ffffff;
+  --accent-dim: rgba(255, 255, 255, 0.2);
+  --accent-glow: rgba(255, 255, 255, 0.6);
   --scanline-opacity: 0.5;
   --common: #b0b0b0;
   --rare: #00ccff;
@@ -40,9 +37,8 @@
 }
 body.rainbow-mode {
   animation: rgbLoop 5s linear infinite;
-  --accent-dim: rgba(255, 255, 255, 0.3);
-  --accent-glow: rgba(255, 255, 255, 0.6);
-  --text-main: #fff;
+  --accent-dim: rgba(255, 255, 255, 0.2);
+  --accent-glow: rgba(255, 255, 255, 0.5);
   will-change: color, text-shadow;
 }
 
@@ -67,9 +63,9 @@ body {
   background-color: var(--bg);
   font-family: var(--font-main);
   overflow-x: hidden;
-  color: var(--text-main);
+  color: var(--accent);
   touch-action: auto;
-  text-shadow: 0 0 8px rgba(245, 232, 204, 0.28);
+  text-shadow: 0 0 10px var(--accent);
   transition:
     color 0.5s,
     text-shadow 0.5s;
@@ -203,19 +199,16 @@ body::before {
   align-items: center;
   padding: 0 20px;
   z-index: 2000;
-  background: linear-gradient(180deg, rgba(21, 13, 8, 0.96), rgba(8, 6, 4, 0.95));
-  border-bottom: 2px solid var(--panel-border);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.9);
+  border-bottom: 1px solid var(--accent);
 }
 .menu-btn {
-  background: linear-gradient(180deg, rgba(28, 19, 12, 0.9), rgba(15, 10, 7, 0.94));
+  background: transparent;
   color: var(--accent);
   padding: 8px 12px;
   font-family: inherit;
   font-size: 10px;
-  border: 2px solid var(--panel-border);
-  border-radius: 4px;
-  text-shadow: none;
+  border: 1px solid var(--accent);
   text-transform: uppercase;
   transition: 0.2s;
 }
@@ -225,17 +218,15 @@ body::before {
   box-shadow: none;
 }
 .menu-btn:hover {
-  background: linear-gradient(180deg, #d29d3c, #7a4418);
-  color: #1a0f07;
-  border-color: var(--accent);
-  box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+  background: var(--accent);
+  color: #000;
+  box-shadow: 0 0 10px var(--accent);
 }
 
 .menu-btn[data-exit-mode="1"] {
-  background: linear-gradient(180deg, #d29d3c, #7a4418);
-  color: #1a0f07;
-  border-color: var(--accent);
-  box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+  background: var(--accent);
+  color: #000;
+  box-shadow: 0 0 10px var(--accent);
 }
 .sys-info {
   display: flex;
@@ -798,7 +789,7 @@ body.games-directory-open .wrap {
 .overlay {
   position: fixed;
   inset: var(--topbar-clearance) 0 0 0;
-  background: radial-gradient(circle at top, rgba(38, 23, 13, 0.96), rgba(5, 4, 3, 0.98));
+  background: #000;
   display: none;
   flex-direction: column;
   align-items: center;
@@ -813,8 +804,8 @@ body.games-directory-open .wrap {
 
 /* Menu-style overlays sit above the home scene so chat/glow stay visible. */
 .menu-overlay {
-  background: rgba(7, 5, 3, 0.55);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(1px);
 }
 
 .games-directory-overlay {
@@ -834,15 +825,15 @@ body.games-directory-open .wrap {
   z-index: 1;
 }
 .menu-box {
-  background: var(--panel-bg);
-  border: 2px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid var(--accent);
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 15px;
   text-align: center;
   min-width: 300px;
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.55), inset 0 0 18px rgba(139, 69, 19, 0.2);
+  box-shadow: 0 0 15px var(--accent-dim);
 }
 
 /* LOGIN */
@@ -861,9 +852,9 @@ body.games-directory-open .wrap {
 
 /* INPUTS */
 .term-input {
-  background: rgba(18, 12, 8, 0.9);
-  border: 2px solid var(--panel-border);
-  color: var(--text-main);
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
   padding: 15px;
   font-family: inherit;
   text-align: center;
@@ -886,9 +877,9 @@ select.term-input:focus {
   background: #050505;
 }
 .term-btn {
-  background: linear-gradient(180deg, #d29d3c, #7a4418);
-  color: #150c05;
-  border: 2px solid #b26a2b;
+  background: var(--accent);
+  color: #000;
+  border: none;
   padding: 15px;
   font-family: inherit;
   font-weight: bold;
@@ -897,9 +888,7 @@ select.term-input:focus {
   width: 100%;
 }
 .term-btn:hover {
-  filter: brightness(1.07);
-  border-color: var(--accent);
-  box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+  opacity: 0.8;
 }
 
 
@@ -949,9 +938,9 @@ select.term-input:focus {
 
 /* --- 7. GAMES --- */
 canvas {
-  border: 3px solid var(--panel-border);
+  border: 4px solid var(--accent);
   background: #000;
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.65), 0 0 24px rgba(139, 69, 19, 0.4);
+  box-shadow: 0 0 20px var(--accent-dim);
   width: auto;
   height: auto;
   max-width: 95vw;
@@ -965,9 +954,9 @@ canvas {
   aspect-ratio: 1200 / 700;
   height: auto;
   max-height: calc(100vh - 210px);
-  border: 3px solid var(--panel-border);
+  border: 3px solid var(--accent);
   background: #000;
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.65), 0 0 24px rgba(139, 69, 19, 0.4);
+  box-shadow: 0 0 20px var(--accent-dim);
 }
 
 .game-overlay {
@@ -977,9 +966,9 @@ canvas {
 
 .game-content-shell {
   width: min(95vw, 1200px);
-  border: 2px solid var(--panel-border);
-  background: var(--panel-bg);
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.65), inset 0 0 24px rgba(139, 69, 19, 0.22);
+  border: 2px solid var(--accent);
+  background: rgba(0, 0, 0, 0.86);
+  box-shadow: 0 0 20px var(--accent-dim);
   padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
@@ -990,8 +979,6 @@ canvas {
 .game-content-shell > h1 {
   margin: 0 0 4px;
   font-size: clamp(24px, 4.2vw, 40px);
-  color: var(--accent);
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.45);
 }
 
 .game-content-shell > .high-score-display {
@@ -2906,7 +2893,7 @@ canvas {
   max-height: 62vh;
   border: 2px solid var(--accent);
   background: radial-gradient(circle at 50% 45%, #111 0%, #050505 65%);
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.65), 0 0 24px rgba(139, 69, 19, 0.4);
+  box-shadow: 0 0 20px var(--accent-dim);
 }
 
 .bonk-winner {
