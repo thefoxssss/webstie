@@ -36,6 +36,8 @@ let isHost = false;
 let localState = null;
 let roomSub = null;
 let hostLoop = null;
+let localLoop = null;
+let aiSingleplayer = false;
 
 function roomRef(code) {
   return doc(firebase.db, "gooner_terminal_rooms", ROOM_PREFIX + code);
@@ -91,8 +93,11 @@ function resetUi() {
 function stopSession() {
   if (roomSub) roomSub();
   if (hostLoop) clearInterval(hostLoop);
+  if (localLoop) clearInterval(localLoop);
   roomSub = null;
   hostLoop = null;
+  localLoop = null;
+  aiSingleplayer = false;
   roomCode = null;
   myPlayerId = null;
   isHost = false;
@@ -102,6 +107,53 @@ function stopSession() {
 export function initDrift() {
   stopSession();
   resetUi();
+}
+
+
+
+function aiDriveInput(car) {
+  const angle = Math.atan2((car.y - TRACK.cy) / TRACK.outerB, (car.x - TRACK.cx) / TRACK.outerA);
+  const tangent = angle + Math.PI / 2;
+  let d = tangent - car.heading;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return {
+    up: true,
+    down: false,
+    left: d < -0.08,
+    right: d > 0.08,
+    drift: Math.abs(d) > 0.22,
+  };
+}
+
+function startDriftAISolo() {
+  stopSession();
+  state.currentGame = "drift";
+  aiSingleplayer = true;
+  myPlayerId = "p1";
+  isHost = true;
+  localState = {
+    status: "playing",
+    winner: "",
+    startedAt: Date.now(),
+    players: {
+      p1: makeCar(state.myUid || "local", state.myName || "YOU", 0),
+      p2: makeCar("ai", "BOT", 1),
+    },
+    inputs: { p1: { ...keyState }, p2: { up: true, down: false, left: false, right: false, drift: false } },
+  };
+  document.getElementById("driftMenu").style.display = "none";
+  document.getElementById("driftLobby").style.display = "none";
+  document.getElementById("driftRace").style.display = "block";
+  render(localState);
+  localLoop = setInterval(() => {
+    if (!localState || localState.status !== "playing") return;
+    localState.inputs.p1 = { ...keyState };
+    localState.inputs.p2 = aiDriveInput(localState.players.p2);
+    const next = simTick(localState);
+    localState = { ...localState, ...next };
+    render(localState);
+  }, TICK_MS);
 }
 
 async function createRoom() {
@@ -182,6 +234,8 @@ function subscribeRoom() {
     if (localState.status !== "playing" && hostLoop) {
       clearInterval(hostLoop);
       hostLoop = null;
+  localLoop = null;
+  aiSingleplayer = false;
     }
   });
 }
@@ -511,6 +565,7 @@ document.addEventListener("keyup", (e) => onKeyChange(false, e.key));
 
 document.getElementById("btnCreateDrift").onclick = createRoom;
 document.getElementById("btnJoinDrift").onclick = joinRoomByCode;
+document.getElementById("btnDriftAI").onclick = startDriftAISolo;
 document.getElementById("driftStartBtn").onclick = startRace;
 
 registerGameStop(() => {

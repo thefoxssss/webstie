@@ -8,6 +8,8 @@ let hmRoomUnsub = null;
 let hmIsHost = false;
 const HM_MAX_PLAYERS = 4;
 const HM_MAX_CHAT = 30;
+let hmLocalGame = null;
+const HM_AI_WORDS = ["FIREWALL", "ALGORITHM", "NEURAL NET", "TERMINAL", "SANDBOX"];
 
 // Firestore room reference helper.
 function getHMRef(code) {
@@ -46,7 +48,30 @@ export function initHangman() {
   document.getElementById("hmChatLog").innerHTML = "";
   setText("hmStatus", "DECRYPTING...");
   setText("hmTurnName", "...");
+  hmLocalGame = null;
 }
+
+function startHMAI() {
+  hmLocalGame = {
+    hostUid: "ai",
+    word: HM_AI_WORDS[Math.floor(Math.random() * HM_AI_WORDS.length)],
+    guesses: [],
+    wrong: [],
+    wrongWords: [],
+    remaining: 6,
+    status: "playing",
+    turnIndex: 0,
+    players: [{ uid: state.myUid || "local", name: state.myName || "YOU" }],
+    chat: [{ name: "SYSTEM", msg: "AI MODE ACTIVE", type: "system", ts: Date.now() }],
+  };
+  hmLocalGame.masked = maskWord(hmLocalGame.word, hmLocalGame.guesses);
+  document.getElementById("hmMenu").style.display = "none";
+  document.getElementById("hmLobby").style.display = "none";
+  document.getElementById("hmGame").style.display = "flex";
+  handleHMUpdate(hmLocalGame);
+}
+
+document.getElementById("btnHMAI").onclick = startHMAI;
 
 // Create a new hangman room and become the host.
 document.getElementById("btnCreateHM").onclick = async () => {
@@ -220,11 +245,38 @@ document.getElementById("hmStartBtn").onclick = async () => {
 
 // Submit a guess for the current player's turn.
 async function submitGuess() {
-  if (!hmRoomCode) return;
   const rawGuess = document.getElementById("hmGuessInput").value;
   const guess = normalizePhrase(rawGuess);
   document.getElementById("hmGuessInput").value = "";
   if (!guess) return;
+
+  if (hmLocalGame) {
+    if (hmLocalGame.status !== "playing") return;
+    const targetWord = normalizePhrase(hmLocalGame.word || "");
+    if (guess.length > 1) {
+      if (guess === targetWord) {
+        hmLocalGame.guesses = Array.from(new Set(targetWord.replace(/ /g, "").split("")));
+      } else {
+        hmLocalGame.wrongWords.push(guess);
+        hmLocalGame.remaining = Math.max(0, hmLocalGame.remaining - 2);
+      }
+    } else {
+      const letter = guess[0];
+      if (hmLocalGame.guesses.includes(letter) || hmLocalGame.wrong.includes(letter)) return;
+      if (targetWord.includes(letter)) hmLocalGame.guesses.push(letter);
+      else {
+        hmLocalGame.wrong.push(letter);
+        hmLocalGame.remaining = Math.max(0, hmLocalGame.remaining - 1);
+      }
+    }
+    hmLocalGame.masked = maskWord(hmLocalGame.word, hmLocalGame.guesses);
+    const solved = !hmLocalGame.masked.includes("_");
+    if (solved || hmLocalGame.remaining <= 0) hmLocalGame.status = "finished";
+    handleHMUpdate(hmLocalGame);
+    return;
+  }
+
+  if (!hmRoomCode) return;
   const ref = getHMRef(hmRoomCode);
   await runTransaction(firebase.db, async (t) => {
     const snap = await t.get(ref);
@@ -333,4 +385,5 @@ registerGameStop(() => {
   hmRoomUnsub = null;
   hmRoomCode = null;
   hmIsHost = false;
+  hmLocalGame = null;
 });

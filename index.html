@@ -1080,6 +1080,7 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinTTT">JOIN ROOM</button>
+        <button class="menu-btn" id="btnTTTAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
       </div>
       <div id="tttLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="tttRoomId">????</span></h2>
@@ -1119,10 +1120,23 @@
       </button>
     </div>
 
-    <!-- Ultimate Tic-Tac-Toe overlay (rules inspired by Wikipedia). -->
+    <!-- Ultimate Tic-Tac-Toe overlay (online multiplayer + AI). -->
     <div class="overlay" id="overlayUltimatettt">
       <h1>ULTIMATE TIC-TAC-TOE</h1>
-      <div class="menu-box" style="width:min(92vw,920px)">
+      <div id="utttMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateUTTT">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input type="text" id="joinUTTTCode" class="term-input" placeholder="CODE" maxlength="4" />
+        <button class="term-btn" id="btnJoinUTTT">JOIN ROOM</button>
+        <button class="menu-btn" id="btnUTTTAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+      </div>
+      <div id="utttLobby" class="menu-box" style="display:none">
+        <h2>ROOM: <span id="utttRoomId">----</span></h2>
+        <div id="utttPList" style="text-align:left;margin:10px 0"></div>
+        <button class="term-btn" id="utttStartBtn" style="display:none">START GAME</button>
+        <div id="utttWait" style="font-size:10px">WAITING...</div>
+      </div>
+      <div id="utttGame" class="menu-box" style="display:none;width:min(92vw,920px)">
         <div class="uttt-headline" id="ultimatetttStatus">TURN: X • LEGAL: ANY OPEN BOARD</div>
         <div class="uttt-subline" id="ultimatetttTurn">Rule: Your move sends your opponent to the matching small board.</div>
         <div class="uttt-meta-row">
@@ -1133,18 +1147,8 @@
           </div>
           <div class="uttt-score" id="ultimatetttScore">X:0 | O:0</div>
         </div>
-        <div class="uttt-grid" id="ultimatetttGrid">
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="0" data-cell="0"></button><button class="uttt-cell" data-board="0" data-cell="1"></button><button class="uttt-cell" data-board="0" data-cell="2"></button><button class="uttt-cell" data-board="0" data-cell="3"></button><button class="uttt-cell" data-board="0" data-cell="4"></button><button class="uttt-cell" data-board="0" data-cell="5"></button><button class="uttt-cell" data-board="0" data-cell="6"></button><button class="uttt-cell" data-board="0" data-cell="7"></button><button class="uttt-cell" data-board="0" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="1" data-cell="0"></button><button class="uttt-cell" data-board="1" data-cell="1"></button><button class="uttt-cell" data-board="1" data-cell="2"></button><button class="uttt-cell" data-board="1" data-cell="3"></button><button class="uttt-cell" data-board="1" data-cell="4"></button><button class="uttt-cell" data-board="1" data-cell="5"></button><button class="uttt-cell" data-board="1" data-cell="6"></button><button class="uttt-cell" data-board="1" data-cell="7"></button><button class="uttt-cell" data-board="1" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="2" data-cell="0"></button><button class="uttt-cell" data-board="2" data-cell="1"></button><button class="uttt-cell" data-board="2" data-cell="2"></button><button class="uttt-cell" data-board="2" data-cell="3"></button><button class="uttt-cell" data-board="2" data-cell="4"></button><button class="uttt-cell" data-board="2" data-cell="5"></button><button class="uttt-cell" data-board="2" data-cell="6"></button><button class="uttt-cell" data-board="2" data-cell="7"></button><button class="uttt-cell" data-board="2" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="3" data-cell="0"></button><button class="uttt-cell" data-board="3" data-cell="1"></button><button class="uttt-cell" data-board="3" data-cell="2"></button><button class="uttt-cell" data-board="3" data-cell="3"></button><button class="uttt-cell" data-board="3" data-cell="4"></button><button class="uttt-cell" data-board="3" data-cell="5"></button><button class="uttt-cell" data-board="3" data-cell="6"></button><button class="uttt-cell" data-board="3" data-cell="7"></button><button class="uttt-cell" data-board="3" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="4" data-cell="0"></button><button class="uttt-cell" data-board="4" data-cell="1"></button><button class="uttt-cell" data-board="4" data-cell="2"></button><button class="uttt-cell" data-board="4" data-cell="3"></button><button class="uttt-cell" data-board="4" data-cell="4"></button><button class="uttt-cell" data-board="4" data-cell="5"></button><button class="uttt-cell" data-board="4" data-cell="6"></button><button class="uttt-cell" data-board="4" data-cell="7"></button><button class="uttt-cell" data-board="4" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="5" data-cell="0"></button><button class="uttt-cell" data-board="5" data-cell="1"></button><button class="uttt-cell" data-board="5" data-cell="2"></button><button class="uttt-cell" data-board="5" data-cell="3"></button><button class="uttt-cell" data-board="5" data-cell="4"></button><button class="uttt-cell" data-board="5" data-cell="5"></button><button class="uttt-cell" data-board="5" data-cell="6"></button><button class="uttt-cell" data-board="5" data-cell="7"></button><button class="uttt-cell" data-board="5" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="6" data-cell="0"></button><button class="uttt-cell" data-board="6" data-cell="1"></button><button class="uttt-cell" data-board="6" data-cell="2"></button><button class="uttt-cell" data-board="6" data-cell="3"></button><button class="uttt-cell" data-board="6" data-cell="4"></button><button class="uttt-cell" data-board="6" data-cell="5"></button><button class="uttt-cell" data-board="6" data-cell="6"></button><button class="uttt-cell" data-board="6" data-cell="7"></button><button class="uttt-cell" data-board="6" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="7" data-cell="0"></button><button class="uttt-cell" data-board="7" data-cell="1"></button><button class="uttt-cell" data-board="7" data-cell="2"></button><button class="uttt-cell" data-board="7" data-cell="3"></button><button class="uttt-cell" data-board="7" data-cell="4"></button><button class="uttt-cell" data-board="7" data-cell="5"></button><button class="uttt-cell" data-board="7" data-cell="6"></button><button class="uttt-cell" data-board="7" data-cell="7"></button><button class="uttt-cell" data-board="7" data-cell="8"></button></div>
-          <div class="uttt-mini-board"><button class="uttt-cell" data-board="8" data-cell="0"></button><button class="uttt-cell" data-board="8" data-cell="1"></button><button class="uttt-cell" data-board="8" data-cell="2"></button><button class="uttt-cell" data-board="8" data-cell="3"></button><button class="uttt-cell" data-board="8" data-cell="4"></button><button class="uttt-cell" data-board="8" data-cell="5"></button><button class="uttt-cell" data-board="8" data-cell="6"></button><button class="uttt-cell" data-board="8" data-cell="7"></button><button class="uttt-cell" data-board="8" data-cell="8"></button></div>
-        </div>
-        <button class="term-btn" id="ultimatetttReset" style="margin-top:14px">RESET MATCH</button>
+        <div class="uttt-grid" id="ultimatetttGrid"><div class="uttt-mini-board"><button class="uttt-cell" data-board="0" data-cell="0"></button><button class="uttt-cell" data-board="0" data-cell="1"></button><button class="uttt-cell" data-board="0" data-cell="2"></button><button class="uttt-cell" data-board="0" data-cell="3"></button><button class="uttt-cell" data-board="0" data-cell="4"></button><button class="uttt-cell" data-board="0" data-cell="5"></button><button class="uttt-cell" data-board="0" data-cell="6"></button><button class="uttt-cell" data-board="0" data-cell="7"></button><button class="uttt-cell" data-board="0" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="1" data-cell="0"></button><button class="uttt-cell" data-board="1" data-cell="1"></button><button class="uttt-cell" data-board="1" data-cell="2"></button><button class="uttt-cell" data-board="1" data-cell="3"></button><button class="uttt-cell" data-board="1" data-cell="4"></button><button class="uttt-cell" data-board="1" data-cell="5"></button><button class="uttt-cell" data-board="1" data-cell="6"></button><button class="uttt-cell" data-board="1" data-cell="7"></button><button class="uttt-cell" data-board="1" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="2" data-cell="0"></button><button class="uttt-cell" data-board="2" data-cell="1"></button><button class="uttt-cell" data-board="2" data-cell="2"></button><button class="uttt-cell" data-board="2" data-cell="3"></button><button class="uttt-cell" data-board="2" data-cell="4"></button><button class="uttt-cell" data-board="2" data-cell="5"></button><button class="uttt-cell" data-board="2" data-cell="6"></button><button class="uttt-cell" data-board="2" data-cell="7"></button><button class="uttt-cell" data-board="2" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="3" data-cell="0"></button><button class="uttt-cell" data-board="3" data-cell="1"></button><button class="uttt-cell" data-board="3" data-cell="2"></button><button class="uttt-cell" data-board="3" data-cell="3"></button><button class="uttt-cell" data-board="3" data-cell="4"></button><button class="uttt-cell" data-board="3" data-cell="5"></button><button class="uttt-cell" data-board="3" data-cell="6"></button><button class="uttt-cell" data-board="3" data-cell="7"></button><button class="uttt-cell" data-board="3" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="4" data-cell="0"></button><button class="uttt-cell" data-board="4" data-cell="1"></button><button class="uttt-cell" data-board="4" data-cell="2"></button><button class="uttt-cell" data-board="4" data-cell="3"></button><button class="uttt-cell" data-board="4" data-cell="4"></button><button class="uttt-cell" data-board="4" data-cell="5"></button><button class="uttt-cell" data-board="4" data-cell="6"></button><button class="uttt-cell" data-board="4" data-cell="7"></button><button class="uttt-cell" data-board="4" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="5" data-cell="0"></button><button class="uttt-cell" data-board="5" data-cell="1"></button><button class="uttt-cell" data-board="5" data-cell="2"></button><button class="uttt-cell" data-board="5" data-cell="3"></button><button class="uttt-cell" data-board="5" data-cell="4"></button><button class="uttt-cell" data-board="5" data-cell="5"></button><button class="uttt-cell" data-board="5" data-cell="6"></button><button class="uttt-cell" data-board="5" data-cell="7"></button><button class="uttt-cell" data-board="5" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="6" data-cell="0"></button><button class="uttt-cell" data-board="6" data-cell="1"></button><button class="uttt-cell" data-board="6" data-cell="2"></button><button class="uttt-cell" data-board="6" data-cell="3"></button><button class="uttt-cell" data-board="6" data-cell="4"></button><button class="uttt-cell" data-board="6" data-cell="5"></button><button class="uttt-cell" data-board="6" data-cell="6"></button><button class="uttt-cell" data-board="6" data-cell="7"></button><button class="uttt-cell" data-board="6" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="7" data-cell="0"></button><button class="uttt-cell" data-board="7" data-cell="1"></button><button class="uttt-cell" data-board="7" data-cell="2"></button><button class="uttt-cell" data-board="7" data-cell="3"></button><button class="uttt-cell" data-board="7" data-cell="4"></button><button class="uttt-cell" data-board="7" data-cell="5"></button><button class="uttt-cell" data-board="7" data-cell="6"></button><button class="uttt-cell" data-board="7" data-cell="7"></button><button class="uttt-cell" data-board="7" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="8" data-cell="0"></button><button class="uttt-cell" data-board="8" data-cell="1"></button><button class="uttt-cell" data-board="8" data-cell="2"></button><button class="uttt-cell" data-board="8" data-cell="3"></button><button class="uttt-cell" data-board="8" data-cell="4"></button><button class="uttt-cell" data-board="8" data-cell="5"></button><button class="uttt-cell" data-board="8" data-cell="6"></button><button class="uttt-cell" data-board="8" data-cell="7"></button><button class="uttt-cell" data-board="8" data-cell="8"></button></div></div>
+        <button class="term-btn" id="ultimatetttReset" style="margin-top:14px;display:none">PLAY AGAIN</button>
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
@@ -1170,6 +1174,7 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinHM">JOIN ROOM</button>
+        <button class="menu-btn" id="btnHMAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
       </div>
       <div id="hmLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="hmRoomId">????</span></h2>
@@ -1360,6 +1365,7 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinBA">JOIN ROOM</button>
+        <button class="menu-btn" id="btnBAAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
       </div>
 
       <div id="baLobby" class="menu-box" style="display: none">
@@ -1422,6 +1428,7 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinDrift">JOIN ROOM</button>
+        <button class="menu-btn" id="btnDriftAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
       </div>
 
       <div id="driftLobby" class="menu-box" style="display: none">

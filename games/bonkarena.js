@@ -36,6 +36,8 @@ let hostLoop = null;
 let localState = null;
 let lastSnapshotAt = 0;
 let keyState = { up: false, down: false, left: false, right: false };
+let aiSingleplayer = false;
+let localLoop = null;
 
 function roomRef(code) {
   return doc(firebase.db, "gooner_terminal_rooms", ROOM_PREFIX + code);
@@ -98,11 +100,61 @@ export function initBonkArena() {
 function stopSession() {
   if (unsubRoom) unsubRoom();
   if (hostLoop) clearInterval(hostLoop);
+  if (localLoop) clearInterval(localLoop);
   unsubRoom = null;
   hostLoop = null;
+  localLoop = null;
+  aiSingleplayer = false;
   roomCode = null;
   myPlayerId = null;
   isHost = false;
+}
+
+
+
+function aiInputFor(player, target) {
+  const input = { up: false, down: false, left: false, right: false };
+  if (!player?.alive || !target?.alive) return input;
+  input.left = target.x < player.x - 14;
+  input.right = target.x > player.x + 14;
+  input.up = target.y + 20 < player.y && Math.random() < 0.2;
+  input.down = Math.random() < 0.08;
+  return input;
+}
+
+function startAISolo() {
+  stopSession();
+  state.currentGame = "bonk";
+  aiSingleplayer = true;
+  roomCode = "AI";
+  myPlayerId = "p1";
+  isHost = true;
+  localState = {
+    status: "playing",
+    startedAt: Date.now(),
+    arenaRadius: START_RADIUS,
+    winner: "",
+    mode: "classic",
+    projectiles: [],
+    players: {
+      p1: makePlayer(state.myUid || "local", state.myName || "YOU", 0),
+      p2: makePlayer("ai", "BOT", 1),
+    },
+    inputs: { p1: { ...keyState }, p2: { up: false, down: false, left: false, right: false } },
+  };
+  document.getElementById("baMenu").style.display = "none";
+  document.getElementById("baLobby").style.display = "none";
+  document.getElementById("baGame").style.display = "flex";
+  renderState(localState);
+  localLoop = setInterval(() => {
+    if (!localState || localState.status !== "playing") return;
+    const me = localState.players.p1;
+    const bot = localState.players.p2;
+    localState.inputs.p1 = { ...keyState };
+    localState.inputs.p2 = aiInputFor(bot, me);
+    localState = { ...localState, ...simulateTick(localState) };
+    renderState(localState);
+  }, TICK_MS);
 }
 
 async function createRoom() {
@@ -193,6 +245,8 @@ function subscribeRoom() {
     if (data.status !== "playing" && hostLoop) {
       clearInterval(hostLoop);
       hostLoop = null;
+  localLoop = null;
+  aiSingleplayer = false;
     }
   });
 }
@@ -625,6 +679,7 @@ document.addEventListener("keyup", (e) => onKeyChange(false, e.key));
 
 document.getElementById("btnCreateBA").onclick = createRoom;
 document.getElementById("btnJoinBA").onclick = joinRoomByCode;
+document.getElementById("btnBAAI").onclick = startAISolo;
 document.getElementById("baStartBtn").onclick = startRound;
 document.getElementById("baModeSelect").onchange = async (e) => {
   if (!isHost || !roomCode) return;
