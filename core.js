@@ -4081,20 +4081,26 @@ export async function saveGlobalScore(game, score) {
 let leaderboardUnsubs = [];
 
 const LEADERBOARD_COLUMNS = [
-  { id: "players", title: "PLAYERS", type: "players" },
-  { id: "richest", title: "RICHEST", type: "richest" },
-  { id: "geo", title: "GEO DASH", type: "game" },
-  { id: "type", title: "TYPER", type: "game" },
-  { id: "snake", title: "SNAKE", type: "game" },
-  { id: "pong", title: "PONG", type: "game" },
-  { id: "runner", title: "RUNNER", type: "game" },
-  { id: "corebreaker", title: "CORE BREAKER", type: "game" },
-  { id: "neondefender", title: "NEON DEFENDER", type: "game" },
-  { id: "voidminer", title: "VOID MINER", type: "game" },
-  { id: "shadowassassin", title: "SHADOW ASSASSIN", type: "game" },
-  { id: "dodge", title: "DODGE", type: "game" },
-  { id: "flappy", title: "FLAPPY", type: "game" },
+  { id: "players", title: "PLAYERS", type: "players", tags: ["community"] },
+  { id: "richest", title: "RICHEST", type: "richest", tags: ["money", "economy"] },
+  { id: "geo", title: "GEO DASH", type: "game", tags: ["arcade", "skill"] },
+  { id: "type", title: "TYPER", type: "game", tags: ["arcade", "skill"] },
+  { id: "snake", title: "SNAKE", type: "game", tags: ["arcade", "skill"] },
+  { id: "pong", title: "PONG", type: "game", tags: ["arcade", "pvp"] },
+  { id: "runner", title: "RUNNER", type: "game", tags: ["arcade", "skill"] },
+  { id: "corebreaker", title: "CORE BREAKER", type: "game", tags: ["arcade", "skill"] },
+  { id: "neondefender", title: "NEON DEFENDER", type: "game", tags: ["arcade", "skill"] },
+  { id: "voidminer", title: "VOID MINER", type: "game", tags: ["arcade", "skill"] },
+  { id: "shadowassassin", title: "SHADOW ASSASSIN", type: "game", tags: ["arcade", "skill"] },
+  { id: "dodge", title: "DODGE", type: "game", tags: ["arcade", "skill"] },
+  { id: "flappy", title: "FLAPPY", type: "game", tags: ["arcade", "skill"] },
 ];
+
+const leaderboardColumnMatchesFilter = (column, filterValue) => {
+  if (!filterValue) return true;
+  if (column.title.includes(filterValue)) return true;
+  return (column.tags || []).some((tag) => String(tag || "").toUpperCase().includes(filterValue));
+};
 
 const clearLeaderboardSubscriptions = () => {
   leaderboardUnsubs.forEach((unsub) => {
@@ -4249,9 +4255,7 @@ function loadLeaderboard() {
   list.innerHTML = "";
 
   const filterValue = getLeaderboardFilterValue();
-  const visibleColumns = filterValue
-    ? LEADERBOARD_COLUMNS.filter((column) => column.title.includes(filterValue))
-    : LEADERBOARD_COLUMNS;
+  const visibleColumns = LEADERBOARD_COLUMNS.filter((column) => leaderboardColumnMatchesFilter(column, filterValue));
 
   if (!visibleColumns.length) {
     list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES "${escapeHtml(filterValue)}"</div>`;
