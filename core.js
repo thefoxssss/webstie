@@ -4860,16 +4860,23 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
-  const activeGameOverlay = document.querySelector(".overlay.game-overlay.active");
+  const activeOverlays = Array.from(document.querySelectorAll(".overlay.active")).filter(
+    (overlay) => overlay.id !== "modalGameOver"
+  );
+  const activeGameOverlay =
+    activeOverlays.find((overlay) =>
+      overlay.classList.contains("game-overlay") || overlay.querySelector("canvas, .embedded-game-frame")
+    ) || activeOverlays[activeOverlays.length - 1] || null;
+
   const gameSurface = activeGameOverlay?.querySelector("canvas, .embedded-game-frame");
   let modalHost = null;
   if (gameSurface) {
     if (gameSurface.parentElement?.classList.contains("game-surface-host")) {
       modalHost = gameSurface.parentElement;
-    } else {
+    } else if (gameSurface.parentElement) {
       const surfaceHost = document.createElement("div");
       surfaceHost.className = "game-surface-host";
-      gameSurface.parentElement?.insertBefore(surfaceHost, gameSurface);
+      gameSurface.parentElement.insertBefore(surfaceHost, gameSurface);
       surfaceHost.appendChild(gameSurface);
       modalHost = surfaceHost;
     }
