@@ -452,6 +452,276 @@ function initGamesLibraryDiscovery() {
   applyLibraryView();
 }
 
+
+function initMainSiteSearch() {
+  const form = document.getElementById("siteSearchForm");
+  const input = document.getElementById("siteSearchInput");
+  const meta = document.getElementById("siteSearchMeta");
+  const dropdown = document.getElementById("siteSearchDropdown");
+  const gamesSearch = document.getElementById("gamesSearch");
+  const gamesFilter = document.getElementById("gamesFilter");
+  if (!form || !input || !meta || !dropdown) return;
+
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("autocorrect", "off");
+  input.setAttribute("autocapitalize", "off");
+  input.setAttribute("spellcheck", "false");
+
+  const QUICK_ROUTES = [
+    { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY", overlayId: "overlayGames" },
+    { aliases: ["trending", "trend"], action: () => openGame("overlayTrending"), label: "OPENED TRENDING GAMES", overlayId: "overlayTrending" },
+    { aliases: ["updates", "update", "log", "update log", "patch notes"], action: () => openGame("overlayUpdates"), label: "OPENED UPDATE LOG", overlayId: "overlayUpdates" },
+    { aliases: ["bank", "money"], action: () => openGame("overlayBank"), label: "OPENED BANK PANEL", overlayId: "overlayBank" },
+    { aliases: ["shop", "store", "black market"], action: () => openGame("overlayShop"), label: "OPENED SHOP PANEL", overlayId: "overlayShop" },
+    { aliases: ["profile", "account", "stats"], action: () => openGame("overlayProfile"), label: "OPENED PROFILE PANEL", overlayId: "overlayProfile" },
+    { aliases: ["scores", "leaderboard", "ranks"], action: () => openGame("overlayScores"), label: "OPENED SCORES PANEL", overlayId: "overlayScores" },
+    { aliases: ["season", "battle pass"], action: () => openGame("overlaySeason"), label: "OPENED SEASON PANEL", overlayId: "overlaySeason" },
+    { aliases: ["crew", "clan", "guild"], action: () => openGame("overlayCrew"), label: "OPENED CREW PANEL", overlayId: "overlayCrew" },
+    { aliases: ["config", "settings"], action: () => openGame("overlayConfig"), label: "OPENED CONFIG PANEL", overlayId: "overlayConfig" },
+  ];
+
+  let activeSuggestions = [];
+  let activeSuggestionIndex = -1;
+
+  function normalize(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function tokenize(value) {
+    return normalize(value).split(" ").filter(Boolean);
+  }
+
+  function getRouteSearchCorpus(route) {
+    const overlay = route.overlayId ? document.getElementById(route.overlayId) : null;
+    const overlayText = overlay ? normalize(overlay.textContent) : "";
+    const aliasText = normalize(route.aliases.join(" "));
+    return { aliasText, overlayText };
+  }
+
+  function scoreRouteMatch(route, query) {
+    const { aliasText, overlayText } = getRouteSearchCorpus(route);
+    const aliasParts = route.aliases.map((alias) => normalize(alias));
+
+    let score = 99;
+    aliasParts.forEach((alias) => {
+      if (alias === query) score = Math.min(score, 0);
+      else if (alias.startsWith(query)) score = Math.min(score, 1);
+      else if (alias.includes(query)) score = Math.min(score, 2);
+      else if (query.startsWith(alias)) score = Math.min(score, 3);
+    });
+
+    if (score < 99) return score;
+    if (aliasText && aliasText.includes(query)) return 4;
+    if (overlayText && overlayText.includes(query)) return 20;
+    return 99;
+  }
+
+  function findBestGameMatch(query) {
+    return GAME_DIRECTORY_ENTRIES
+      .filter((entry) => !entry.hidden)
+      .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
+      .filter((item) => item.score < 99)
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        return a.entry.title.localeCompare(b.entry.title);
+      })[0] || null;
+  }
+
+  function scoreGameSuggestion(entry, query) {
+    const title = normalize(entry.title);
+    const gameId = normalize(entry.id);
+    const tags = tokenize(normalize(entry.tags.join(" ")));
+    const descriptionTokens = tokenize(normalize(entry.description));
+    const queryTokens = tokenize(query);
+
+    if (title === query) return 0;
+    if (title.startsWith(query)) return 1;
+    if (title.includes(query)) return 2;
+    if (gameId === query) return 3;
+    if (gameId.startsWith(query)) return 4;
+    if (gameId.includes(query)) return 5;
+
+    const tagMatch = queryTokens.every((token) => tags.some((tag) => tag.includes(token)));
+    if (tagMatch) return 6;
+
+    const descriptionMatch = queryTokens.every((token) => descriptionTokens.some((word) => word.includes(token)));
+    if (descriptionMatch) return 7;
+
+    return 99;
+  }
+
+  function buildSuggestions(rawQuery) {
+    const query = normalize(rawQuery);
+    if (!query) return [];
+
+    const gameSuggestions = GAME_DIRECTORY_ENTRIES
+      .filter((entry) => !entry.hidden)
+      .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
+      .filter((item) => item.score < 99)
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        return a.entry.title.localeCompare(b.entry.title);
+      })
+      .slice(0, 6)
+      .map((item) => ({
+        type: "game",
+        value: item.entry.title,
+        subtitle: item.entry.description,
+      }));
+
+    const routeSuggestions = QUICK_ROUTES
+      .map((route) => ({ route, bestScore: scoreRouteMatch(route, query) }))
+      .filter((item) => item.bestScore < 99)
+      .sort((a, b) => a.bestScore - b.bestScore)
+      .slice(0, 3)
+      .map((item) => ({
+        type: "route",
+        value: item.route.aliases[0].toUpperCase(),
+        subtitle: item.route.label,
+      }));
+
+    return [...gameSuggestions, ...routeSuggestions].slice(0, 7);
+  }
+
+  function hideSuggestions() {
+    dropdown.classList.remove("active");
+    dropdown.innerHTML = "";
+    activeSuggestions = [];
+    activeSuggestionIndex = -1;
+  }
+
+  function renderSuggestions(rawQuery) {
+    if (document.activeElement !== input) {
+      hideSuggestions();
+      return;
+    }
+    activeSuggestions = buildSuggestions(rawQuery);
+    activeSuggestionIndex = -1;
+    if (!activeSuggestions.length) {
+      hideSuggestions();
+      return;
+    }
+
+    dropdown.innerHTML = activeSuggestions
+      .map((suggestion, index) => `<button class="site-search-option" type="button" data-suggest-index="${index}"><strong>${suggestion.value}</strong><small>${suggestion.subtitle}</small></button>`)
+      .join("");
+    dropdown.classList.add("active");
+  }
+
+  function setActiveSuggestion(index) {
+    const options = Array.from(dropdown.querySelectorAll(".site-search-option"));
+    options.forEach((option, optionIndex) => option.classList.toggle("active", optionIndex === index));
+    activeSuggestionIndex = index;
+  }
+
+  function executeSearch(rawInput) {
+    const query = normalize(rawInput);
+    if (!query) {
+      meta.textContent = "ENTER A SEARCH TERM TO JUMP THROUGH THE TERMINAL.";
+      return;
+    }
+
+    const bestRoute = QUICK_ROUTES
+      .map((route) => ({ route, score: scoreRouteMatch(route, query) }))
+      .filter((item) => item.score < 99)
+      .sort((a, b) => a.score - b.score)[0] || null;
+
+    const bestGame = findBestGameMatch(query);
+
+    if (bestGame && bestGame.score <= 2) {
+      window.launchGame(bestGame.entry.id, "site-search");
+      meta.textContent = `LAUNCHED ${bestGame.entry.title.toUpperCase()} // MATCHED "${query.toUpperCase()}"`;
+      return;
+    }
+
+    if (bestRoute && bestRoute.score <= 4) {
+      bestRoute.route.action();
+      meta.textContent = `${bestRoute.route.label} // SEARCH: ${query.toUpperCase()}`;
+      return;
+    }
+
+    if (bestGame) {
+      window.launchGame(bestGame.entry.id, "site-search");
+      meta.textContent = `LAUNCHED ${bestGame.entry.title.toUpperCase()} // MATCHED "${query.toUpperCase()}"`;
+      return;
+    }
+
+    if (bestRoute) {
+      bestRoute.route.action();
+      meta.textContent = `${bestRoute.route.label} // SEARCH: ${query.toUpperCase()}`;
+      return;
+    }
+
+    if (gamesSearch) {
+      openGame("overlayGames");
+      gamesSearch.value = query;
+      if (gamesFilter) gamesFilter.value = "all";
+      gamesSearch.dispatchEvent(new Event("input", { bubbles: true }));
+      meta.textContent = `NO DIRECT MATCH. OPENED DIRECTORY SEARCH FOR "${query.toUpperCase()}".`;
+      return;
+    }
+
+    meta.textContent = `NO MATCH FOR "${query.toUpperCase()}".`;
+  }
+
+  input.addEventListener("focus", () => renderSuggestions(input.value));
+  input.addEventListener("input", () => renderSuggestions(input.value));
+  input.addEventListener("keydown", (event) => {
+    if (!activeSuggestions.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const next = activeSuggestionIndex < activeSuggestions.length - 1 ? activeSuggestionIndex + 1 : 0;
+      setActiveSuggestion(next);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const prev = activeSuggestionIndex > 0 ? activeSuggestionIndex - 1 : activeSuggestions.length - 1;
+      setActiveSuggestion(prev);
+      return;
+    }
+    if (event.key === "Escape") {
+      hideSuggestions();
+      return;
+    }
+    if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      const selected = activeSuggestions[activeSuggestionIndex];
+      input.value = selected.value;
+      hideSuggestions();
+      form.requestSubmit();
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (!dropdown.matches(":hover")) hideSuggestions();
+    }, 120);
+  });
+
+  dropdown.addEventListener("mousedown", (event) => {
+    const option = event.target.closest(".site-search-option");
+    if (!option) return;
+    event.preventDefault();
+    const index = Number(option.dataset.suggestIndex || -1);
+    const selected = activeSuggestions[index];
+    if (!selected) return;
+    input.value = selected.value;
+    hideSuggestions();
+    form.requestSubmit();
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    hideSuggestions();
+    executeSearch(input.value);
+  });
+}
+
 function initTopBarOverlayControls() {
   const overlays = Array.from(document.querySelectorAll(".overlay"));
   const fsBtn = document.getElementById("topFullscreenBtn");
@@ -554,6 +824,7 @@ initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGamesLibraryDiscovery();
+initMainSiteSearch();
 
 function hideGameOverModal() {
   const modal = document.getElementById("modalGameOver");
