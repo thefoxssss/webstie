@@ -844,7 +844,8 @@ canvas {
 }
 
 .game-card strong {
-  font-size: 10px;
+  font-size: 14px;
+  line-height: 1.25;
 }
 
 .game-card small {
@@ -857,15 +858,66 @@ canvas {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  max-height: 32px;
+  overflow: visible;
 }
 
 .game-tag {
   border: 1px solid var(--accent);
   background: rgba(0, 255, 0, 0.08);
   color: var(--accent);
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  position: relative;
+  cursor: default;
+}
+
+.game-tag::after {
+  content: attr(data-tag-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  background: #030;
+  color: var(--accent);
   font-size: 7px;
-  padding: 1px 4px;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.25px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 6;
+}
+
+.game-tag::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  background: #030;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 5;
+}
+
+.game-tag:hover::after,
+.game-tag:hover::before,
+.game-tag:focus-visible::after,
+.game-tag:focus-visible::before {
+  opacity: 1;
 }
 
 .game-card:hover {
