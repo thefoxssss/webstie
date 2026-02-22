@@ -825,6 +825,7 @@ const ACHIEVEMENTS = [
 const SHOP_ITEMS = [
   {
     id: "item_aimbot",
+    icon: "🏓",
     name: "PONG AIMBOT",
     cost: 2000,
     type: "perk",
@@ -832,6 +833,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_slowmo",
+    icon: "⏱️",
     name: "RUNNER SLOW-MO",
     cost: 1500,
     type: "perk",
@@ -839,6 +841,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_shield",
+    icon: "🛡️",
     name: "1-HIT SHIELD",
     cost: 500,
     type: "consumable",
@@ -846,6 +849,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_xray",
+    icon: "🕶️",
     name: "X-RAY VISOR",
     cost: 5000,
     type: "perk",
@@ -853,6 +857,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_cardcount",
+    icon: "🃏",
     name: "CARD COUNTER",
     cost: 3000,
     type: "perk",
@@ -860,6 +865,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_double",
+    icon: "🐍",
     name: "SNAKE OIL",
     cost: 3000,
     type: "perk",
@@ -867,6 +873,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_dodge_stabilizer",
+    icon: "💠",
     name: "DODGE STABILIZER",
     cost: 2500,
     type: "perk",
@@ -874,6 +881,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_matrix",
+    icon: "💻",
     name: "MATRIX MODE",
     cost: 6000,
     type: "visual",
@@ -881,6 +889,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_rainbow",
+    icon: "🌈",
     name: "RGB MODE",
     cost: 10000,
     type: "visual",
@@ -888,6 +897,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_autotype",
+    icon: "⌨️",
     name: "AUTO-TYPER",
     cost: 7500,
     type: "perk",
@@ -895,6 +905,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_flappy",
+    icon: "🐦",
     name: "GAME: FLAPPY",
     cost: 10000,
     type: "visual",
@@ -902,6 +913,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_salary_boost",
+    icon: "💰",
     name: "ARCADE PAY CHIP",
     cost: 9000,
     type: "perk",
@@ -909,6 +921,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_combo_insurance",
+    icon: "🧾",
     name: "COMBO INSURANCE",
     cost: 7000,
     type: "perk",
@@ -916,6 +929,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_xp_router",
+    icon: "📡",
     name: "XP ROUTER",
     cost: 12000,
     type: "perk",
@@ -923,6 +937,7 @@ const SHOP_ITEMS = [
   },
   {
     id: "item_bank_drone",
+    icon: "🏦",
     name: "BANK DRONE",
     cost: 18000,
     type: "perk",
@@ -3502,7 +3517,7 @@ function renderShop() {
           isEnabled ? "ON" : "OFF"
         }</button>`
       : "";
-    div.innerHTML = `<div>${item.name}<div style="font-size:8px;opacity:0.7">${
+    div.innerHTML = `<div><span class="shop-item-icon" aria-hidden="true">${item.icon || "🛒"}</span>${item.name}<div style="font-size:8px;opacity:0.7">${
       item.desc
     }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><div class="shop-item-actions"><button class="shop-buy-btn" onclick="window.buyItem('${
       item.id
