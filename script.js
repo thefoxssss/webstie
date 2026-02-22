@@ -392,43 +392,57 @@ function initGamesLibraryDiscovery() {
 }
 
 function initTopBarOverlayControls() {
-  const overlays = Array.from(document.querySelectorAll('.overlay'));
-  const closeBtn = document.getElementById('topCloseBtn');
-  const fsBtn = document.getElementById('topFullscreenBtn');
+  const overlays = Array.from(document.querySelectorAll(".overlay"));
+  const closeBtn = document.getElementById("topCloseBtn");
+  const fsBtn = document.getElementById("topFullscreenBtn");
   if (!overlays.length || !closeBtn || !fsBtn) return;
 
-  const getActiveOverlay = () => overlays.find((overlay) => overlay.classList.contains('active')) || null;
+  const getActiveOverlay = () => overlays.find((overlay) => overlay.classList.contains("active")) || null;
   const isFullscreenApplicable = (overlay) => Boolean(overlay && GAME_OVERLAY_IDS.includes(overlay.id) && getFullscreenTarget(overlay));
 
-  closeBtn.addEventListener('click', () => {
-    closeOverlays();
+  function getCloseLabel(overlay) {
+    if (!overlay) return "CLOSE";
+    if (GAME_OVERLAY_IDS.includes(overlay.id)) return "CLOSE GAMES";
+    const heading = (overlay.querySelector("h1")?.textContent || "").trim();
+    if (heading) return `CLOSE ${heading.replace(/\s+/g, " ")}`;
+    return "CLOSE";
+  }
+
+  closeBtn.addEventListener("click", () => {
+    const activeOverlay = getActiveOverlay();
+    if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
+      openGame("overlayGames");
+    } else {
+      closeOverlays();
+    }
     updateControls();
   });
 
-  fsBtn.addEventListener('click', async () => {
+  fsBtn.addEventListener("click", async () => {
     const activeOverlay = getActiveOverlay();
     if (!isFullscreenApplicable(activeOverlay)) return;
     try {
       await toggleGameFullscreen(activeOverlay, fsBtn);
     } catch (error) {
-      console.warn('Fullscreen toggle failed', error);
+      console.warn("Fullscreen toggle failed", error);
     }
     updateControls();
   });
 
   function updateControls() {
     const activeOverlay = getActiveOverlay();
-    const hasOverlay = Boolean(activeOverlay && activeOverlay.id !== 'overlayLogin');
+    const hasOverlay = Boolean(activeOverlay && activeOverlay.id !== "overlayLogin");
     const canFullscreen = isFullscreenApplicable(activeOverlay);
 
-    closeBtn.style.display = hasOverlay ? 'inline-flex' : 'none';
-    fsBtn.style.display = canFullscreen ? 'inline-flex' : 'none';
-    fsBtn.textContent = document.fullscreenElement ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+    closeBtn.style.display = hasOverlay ? "inline-flex" : "none";
+    closeBtn.textContent = getCloseLabel(activeOverlay);
+    fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
+    fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
   }
 
   const observer = new MutationObserver(updateControls);
-  overlays.forEach((overlay) => observer.observe(overlay, { attributes: true, attributeFilter: ['class'] }));
-  document.addEventListener('fullscreenchange', updateControls);
+  overlays.forEach((overlay) => observer.observe(overlay, { attributes: true, attributeFilter: ["class"] }));
+  document.addEventListener("fullscreenchange", updateControls);
   updateControls();
 }
 

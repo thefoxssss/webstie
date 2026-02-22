@@ -846,6 +846,12 @@ canvas {
   color: #000;
 }
 
+
+/* Hide all legacy per-overlay close buttons; top bar controls replace them. */
+.overlay button[onclick*="closeOverlays"] {
+  display: none !important;
+}
+
 .touch-controls {
   display: none;
   margin-top: 10px;
