@@ -14,11 +14,9 @@ import {
 const WIDTH = 800;
 const HEIGHT = 500;
 const FIXED_DT = 1 / 60;
-const GRAVITY = 26;
-const THRUST = 52;
+const BASE_GRAVITY = 24;
+const BASE_THRUST = 50;
 const ROT_SPEED = 2.8;
-const MAX_SAFE_VY = 28;
-const MAX_SAFE_VX = 18;
 
 const ship = {
   x: WIDTH * 0.5,
@@ -30,17 +28,11 @@ const ship = {
   ang: -Math.PI / 2,
   pAng: -Math.PI / 2,
   fuel: 100,
+  shield: 0,
 };
 
-const terrain = [
-  [30, 460],
-  [180, 410],
-  [300, 430],
-  [380, 390],
-  [520, 390],
-  [640, 440],
-  [770, 420],
-];
+let terrain = [];
+let landingZone = { x1: 360, x2: 500, y: 390 };
 
 let thrustOn = false;
 let leftOn = false;
@@ -48,6 +40,53 @@ let rightOn = false;
 let draw;
 let kernel;
 let score = 0;
+let level = 1;
+let upgradePoints = 0;
+
+const upgrades = {
+  fuelTank: 0,
+  thrusters: 0,
+  stabilizer: 0,
+  shield: 0,
+};
+
+const wind = {
+  force: 0,
+  target: 0,
+  timer: 0,
+};
+
+function randomRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function maxFuel() {
+  return 100 + upgrades.fuelTank * 25;
+}
+
+function generateTerrain(currentLevel) {
+  const points = [];
+  const steps = 9 + Math.min(5, Math.floor(currentLevel / 2));
+  const padWidth = Math.max(80, 150 - currentLevel * 7);
+  const padStart = randomRange(140, WIDTH - 140 - padWidth);
+  const padEnd = padStart + padWidth;
+  const padY = randomRange(340, 430);
+
+  points.push([30, randomRange(390, 460)]);
+  for (let i = 1; i < steps; i++) {
+    const x = 30 + (740 / steps) * i;
+    let y = randomRange(320, 465);
+
+    if (x >= padStart - 25 && x <= padEnd + 25) y = padY;
+    points.push([x, y]);
+  }
+  points.push([770, randomRange(390, 460)]);
+
+  points.sort((a, b) => a[0] - b[0]);
+
+  terrain = points;
+  landingZone = { x1: padStart, x2: padEnd, y: padY };
+}
 
 function signedDistanceToGround(x, y) {
   let best = Number.POSITIVE_INFINITY;
@@ -66,26 +105,77 @@ function signedDistanceToGround(x, y) {
 }
 
 function landingZoneY(x) {
-  if (x < 380 || x > 520) return -1;
-  return 390;
+  if (x < landingZone.x1 || x > landingZone.x2) return -1;
+  return landingZone.y;
+}
+
+function difficultyScale() {
+  return 1 + (level - 1) * 0.12;
+}
+
+function applyUpgrade(slot) {
+  if (upgradePoints <= 0) return;
+  if (slot === "1") upgrades.fuelTank += 1;
+  if (slot === "2") upgrades.thrusters += 1;
+  if (slot === "3") upgrades.stabilizer += 1;
+  if (slot === "4") upgrades.shield += 1;
+  if (!["1", "2", "3", "4"].includes(slot)) return;
+  upgradePoints -= 1;
+  showToast(`UPGRADE APPLIED (${slot})`, "⬆️");
+}
+
+function startNextRun() {
+  level += 1;
+  generateTerrain(level);
+
+  ship.x = WIDTH * 0.5;
+  ship.y = 90;
+  ship.vx = 0;
+  ship.vy = 0;
+  ship.ang = -Math.PI / 2;
+  ship.fuel = maxFuel();
+  ship.shield = upgrades.shield;
+
+  wind.force = 0;
+  wind.target = 0;
+  wind.timer = 0;
 }
 
 export function updateVoidMiner() {
   if (state.currentGame !== "voidminer") return;
   const dt = FIXED_DT;
+  const scale = difficultyScale();
 
   ship.px = ship.x;
   ship.py = ship.y;
   ship.pAng = ship.ang;
 
-  if (leftOn) ship.ang -= ROT_SPEED * dt;
-  if (rightOn) ship.ang += ROT_SPEED * dt;
+  if (leftOn) ship.ang -= ROT_SPEED * dt * (1 + upgrades.stabilizer * 0.08);
+  if (rightOn) ship.ang += ROT_SPEED * dt * (1 + upgrades.stabilizer * 0.08);
 
-  ship.vy += GRAVITY * dt;
+  wind.timer -= dt;
+  if (wind.timer <= 0) {
+    wind.timer = randomRange(1.2, 2.8);
+    wind.target = randomRange(-10, 10) * Math.max(0, level - 1) * 0.16;
+  }
+  wind.force += (wind.target - wind.force) * 0.8 * dt;
+
+  ship.vx += wind.force * dt;
+  ship.vy += BASE_GRAVITY * scale * dt;
+
+  const turbulenceChance = Math.max(0, (level - 3) * 0.0008);
+  if (Math.random() < turbulenceChance) {
+    ship.vx += randomRange(-8, 8) * dt;
+    ship.vy += randomRange(-5, 4) * dt;
+  }
+
   if (thrustOn && ship.fuel > 0) {
-    ship.vx += Math.cos(ship.ang) * THRUST * dt;
-    ship.vy += Math.sin(ship.ang) * THRUST * dt;
-    ship.fuel = Math.max(0, ship.fuel - 18 * dt);
+    const thrustScale = 1 + upgrades.thrusters * 0.14;
+    ship.vx += Math.cos(ship.ang) * BASE_THRUST * thrustScale * dt;
+    ship.vy += Math.sin(ship.ang) * BASE_THRUST * thrustScale * dt;
+
+    const burnRate = (18 + Math.max(0, level - 1) * 1.1) * (1 - upgrades.fuelTank * 0.05);
+    ship.fuel = Math.max(0, ship.fuel - burnRate * dt);
   }
 
   ship.x += ship.vx * dt;
@@ -96,32 +186,39 @@ export function updateVoidMiner() {
   const groundDist = signedDistanceToGround(ship.x, ship.y);
   if (groundDist < 11) {
     const padY = landingZoneY(ship.x);
-    const safe =
-      padY > 0 &&
-      Math.abs(ship.vx) <= MAX_SAFE_VX &&
-      Math.abs(ship.vy) <= MAX_SAFE_VY &&
-      Math.abs(ship.ang + Math.PI / 2) < 0.3;
+    const safeVx = Math.max(7, 18 - level * 0.7 + upgrades.stabilizer * 1.5);
+    const safeVy = Math.max(11, 28 - level * 0.85 + upgrades.stabilizer * 1.8);
+    const safeAngle = 0.3 + upgrades.stabilizer * 0.03;
+    const safe = padY > 0 && Math.abs(ship.vx) <= safeVx && Math.abs(ship.vy) <= safeVy && Math.abs(ship.ang + Math.PI / 2) < safeAngle;
 
     if (safe) {
-      score += Math.floor(ship.fuel * 10 + 500);
+      const levelReward = 400 + level * 180;
+      score += Math.floor(ship.fuel * 8 + levelReward);
       updateHighScore("voidminer", score);
-      unlockAchievement("soft_touchdown");
-      showToast("SUCCESSFUL LANDING", "🛰️");
-      ship.x = WIDTH * 0.5;
-      ship.y = 90;
-      ship.vx = 0;
-      ship.vy = 0;
-      ship.ang = -Math.PI / 2;
-      ship.fuel = 100;
+
+      if (level >= 5) unlockAchievement("soft_touchdown");
+      if (score > 3000) unlockAchievement("void_veteran");
+
+      upgradePoints += 1;
+      showToast(`LANDING SECURE | +1 UPGRADE (${upgradePoints})`, "🛰️");
+      startNextRun();
+    } else if (ship.shield > 0) {
+      ship.shield -= 1;
+      ship.vx *= -0.25;
+      ship.vy = -Math.abs(ship.vy) * 0.25;
+      ship.y -= 14;
+      showToast("SHIELD SAVED YOU", "🛡️");
     } else {
       showGameOver("voidminer", score);
-      if (score > 2000) unlockAchievement("void_veteran");
       return;
     }
   }
 
-  score += dt * 2;
-  setText("voidMinerHud", `FUEL: ${ship.fuel.toFixed(0)} | VX: ${ship.vx.toFixed(1)} | VY: ${ship.vy.toFixed(1)} | SCORE: ${Math.floor(score)}`);
+  score += dt * (2 + level * 0.4);
+  setText(
+    "voidMinerHud",
+    `LVL:${level} FUEL:${ship.fuel.toFixed(0)} VX:${ship.vx.toFixed(1)} VY:${ship.vy.toFixed(1)} WIND:${wind.force.toFixed(1)} SCORE:${Math.floor(score)} UP:${upgradePoints} [1:TANK 2:THRUST 3:STAB 4:SHIELD]`
+  );
 }
 
 export function drawVoidMiner(alpha) {
@@ -135,7 +232,7 @@ export function drawVoidMiner(alpha) {
   for (let i = 0; i < terrain.length - 1; i++) {
     draw.line("#78ffce", 2, terrain[i][0], terrain[i][1], terrain[i + 1][0], terrain[i + 1][1]);
   }
-  draw.line("#ffe066", 3, 380, 390, 520, 390);
+  draw.line("#ffe066", 3, landingZone.x1, landingZone.y, landingZone.x2, landingZone.y);
 
   const noseX = x + Math.cos(ang) * 12;
   const noseY = y + Math.sin(ang) * 12;
@@ -153,6 +250,13 @@ export function drawVoidMiner(alpha) {
     draw.line("#ff7f50", 2, flameX, flameY, flameX - Math.cos(ang) * (8 + Math.random() * 6), flameY - Math.sin(ang) * (8 + Math.random() * 6));
   }
 
+  if (Math.abs(wind.force) > 0.5) {
+    const windY = 50;
+    const dir = Math.sign(wind.force) || 1;
+    const len = Math.min(70, Math.abs(wind.force) * 10);
+    draw.line("#7aa2ff", 2, WIDTH / 2 - len * dir, windY, WIDTH / 2 + len * dir, windY);
+  }
+
   draw.flush();
 }
 
@@ -166,17 +270,27 @@ export function initVoidMiner() {
   kernel = new EngineKernel({ fixedHz: 60 });
 
   score = 0;
+  level = 1;
+  upgradePoints = 0;
+  upgrades.fuelTank = 0;
+  upgrades.thrusters = 0;
+  upgrades.stabilizer = 0;
+  upgrades.shield = 0;
+
+  generateTerrain(level);
+
   ship.x = WIDTH * 0.5;
   ship.y = 80;
   ship.vx = 0;
   ship.vy = 0;
   ship.ang = -Math.PI / 2;
-  ship.fuel = 100;
+  ship.fuel = maxFuel();
+  ship.shield = 0;
   thrustOn = false;
   leftOn = false;
   rightOn = false;
 
-  setText("voidMinerHud", "FUEL: 100 | VX: 0.0 | VY: 0.0 | SCORE: 0");
+  setText("voidMinerHud", "LVL:1 FUEL:100 VX:0.0 VY:0.0 WIND:0.0 SCORE:0 UP:0");
   kernel.start(updateVoidMiner, drawVoidMiner);
 }
 
@@ -185,6 +299,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") thrustOn = true;
   if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") leftOn = true;
   if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") rightOn = true;
+  applyUpgrade(e.key);
 });
 
 document.addEventListener("keyup", (e) => {
