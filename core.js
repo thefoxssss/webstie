@@ -1526,6 +1526,25 @@ function initTrendingGamesPanel() {
   setInterval(refreshTrendingGames, 60000);
 }
 
+function initHomeRandomGameButton() {
+  const randomBtn = document.getElementById("randomGameBtn");
+  if (!randomBtn || randomBtn.dataset.ready === "1") return;
+  randomBtn.dataset.ready = "1";
+
+  randomBtn.addEventListener("click", () => {
+    const gameButtons = Array.from(document.querySelectorAll("#overlayGames .game-card[data-game]"));
+    const games = gameButtons
+      .filter((button) => getComputedStyle(button).display !== "none")
+      .map((button) => String(button.dataset.game || "").trim())
+      .filter(Boolean);
+    if (!games.length) return;
+    const randomGame = games[Math.floor(Math.random() * games.length)];
+    if (typeof window.launchGame === "function") {
+      window.launchGame(randomGame);
+    }
+  });
+}
+
 export function trackGamePlay(game) {
   const normalized = String(game || "").toLowerCase().trim();
   if (!normalized) return;
@@ -1885,6 +1904,7 @@ loadCrewData();
 loadSeasonData();
 renderLiveOps();
 initTrendingGamesPanel();
+initHomeRandomGameButton();
 setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
