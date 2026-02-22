@@ -1075,7 +1075,8 @@
     <!-- Multiplayer Tic Tac Toe overlay. -->
     <div class="overlay" id="overlayTTT">
       <h1>TIC TAC TOE</h1>
-      <div id="tttMenu" class="menu-box">
+      <div id="tttMenu" class="menu-box common-game-menu">
+        <div class="common-mode-label">MULTIPLAYER</div>
         <button class="term-btn" id="btnCreateTTT">CREATE ROOM</button>
         <p>- OR -</p>
         <input
@@ -1086,7 +1087,8 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinTTT">JOIN ROOM</button>
-        <button class="menu-btn" id="btnTTTAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+        <div class="common-mode-label">SINGLE PLAYER / VS BOT</div>
+        <button class="menu-btn" id="btnTTTAI" style="margin-top: 10px">SINGLE PLAYER / VS BOT</button>
       </div>
       <div id="tttLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="tttRoomId">????</span></h2>
@@ -1129,12 +1131,14 @@
     <!-- Ultimate Tic-Tac-Toe overlay (online multiplayer + AI). -->
     <div class="overlay" id="overlayUltimatettt">
       <h1>ULTIMATE TIC-TAC-TOE</h1>
-      <div id="utttMenu" class="menu-box">
+      <div id="utttMenu" class="menu-box common-game-menu">
+        <div class="common-mode-label">MULTIPLAYER</div>
         <button class="term-btn" id="btnCreateUTTT">CREATE ROOM</button>
         <p>- OR -</p>
         <input type="text" id="joinUTTTCode" class="term-input" placeholder="CODE" maxlength="4" />
         <button class="term-btn" id="btnJoinUTTT">JOIN ROOM</button>
-        <button class="menu-btn" id="btnUTTTAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+        <div class="common-mode-label">SINGLE PLAYER / VS BOT</div>
+        <button class="menu-btn" id="btnUTTTAI" style="margin-top: 10px">SINGLE PLAYER / VS BOT</button>
       </div>
       <div id="utttLobby" class="menu-box" style="display:none">
         <h2>ROOM: <span id="utttRoomId">----</span></h2>
@@ -1162,7 +1166,8 @@
     <!-- Multiplayer Hangman overlay. -->
     <div class="overlay" id="overlayHangman">
       <h1>HANGMAN</h1>
-      <div id="hmMenu" class="menu-box">
+      <div id="hmMenu" class="menu-box common-game-menu">
+        <div class="common-mode-label">MULTIPLAYER</div>
         <input
           type="text"
           id="hmWordInput"
@@ -1180,7 +1185,8 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinHM">JOIN ROOM</button>
-        <button class="menu-btn" id="btnHMAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+        <div class="common-mode-label">SINGLE PLAYER / VS BOT</div>
+        <button class="menu-btn" id="btnHMAI" style="margin-top: 10px">SINGLE PLAYER / VS BOT</button>
       </div>
       <div id="hmLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="hmRoomId">????</span></h2>
@@ -1256,17 +1262,18 @@
     <!-- Solo + multiplayer Blackjack overlay. -->
     <div class="overlay" id="overlayBlackjack">
       <h1>BLACKJACK</h1>
-      <div id="bjMode" class="menu-box">
+      <div id="bjMode" class="menu-box common-game-menu">
         <button class="term-btn" onclick="window.bjSelect('solo')">
-          SOLO (VS DEALER)
+          SINGLE PLAYER / VS BOT
         </button>
         <br /><br />
         <button class="term-btn" onclick="window.bjSelect('multi')">
-          PVP (4 PLAYER)
+          MULTIPLAYER
         </button>
       </div>
-      <div id="bjNetMenu" class="menu-box" style="display: none">
-        <button class="term-btn" id="btnCreateBJ">CREATE TABLE</button>
+      <div id="bjNetMenu" class="menu-box common-game-menu" style="display: none">
+        <div class="common-mode-label">MULTIPLAYER</div>
+        <button class="term-btn" id="btnCreateBJ">CREATE ROOM</button>
         <p>- OR -</p>
         <input
           type="text"
@@ -1275,7 +1282,7 @@
           placeholder="CODE"
           maxlength="4"
         />
-        <button class="term-btn" id="btnJoinBJ">JOIN TABLE</button>
+        <button class="term-btn" id="btnJoinBJ">JOIN ROOM</button>
       </div>
       <div id="bjLobby" class="menu-box" style="display: none">
         <h2>ROOM: <span id="bjRoomId">????</span></h2>
@@ -1360,7 +1367,8 @@
       <h1>BONK ARENA</h1>
       <div class="bonk-sub">CUSTOM MULTIPLAYER PHYSICS BRAWL</div>
 
-      <div id="baMenu" class="menu-box">
+      <div id="baMenu" class="menu-box common-game-menu">
+        <div class="common-mode-label">MULTIPLAYER</div>
         <button class="term-btn" id="btnCreateBA">CREATE ROOM</button>
         <p>- OR -</p>
         <input
@@ -1371,7 +1379,8 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinBA">JOIN ROOM</button>
-        <button class="menu-btn" id="btnBAAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+        <div class="common-mode-label">SINGLE PLAYER / VS BOT</div>
+        <button class="menu-btn" id="btnBAAI" style="margin-top: 10px">SINGLE PLAYER / VS BOT</button>
       </div>
 
       <div id="baLobby" class="menu-box" style="display: none">
@@ -1423,7 +1432,8 @@
       <h1>NEON DRIFT</h1>
       <div class="bonk-sub">ONLINE 2D DRIFT DUELS</div>
 
-      <div id="driftMenu" class="menu-box">
+      <div id="driftMenu" class="menu-box common-game-menu">
+        <div class="common-mode-label">MULTIPLAYER</div>
         <button class="term-btn" id="btnCreateDrift">CREATE ROOM</button>
         <p>- OR -</p>
         <input
@@ -1434,7 +1444,8 @@
           maxlength="4"
         />
         <button class="term-btn" id="btnJoinDrift">JOIN ROOM</button>
-        <button class="menu-btn" id="btnDriftAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+        <div class="common-mode-label">SINGLE PLAYER / VS BOT</div>
+        <button class="menu-btn" id="btnDriftAI" style="margin-top: 10px">SINGLE PLAYER / VS BOT</button>
       </div>
 
       <div id="driftLobby" class="menu-box" style="display: none">
