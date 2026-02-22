@@ -578,7 +578,8 @@ function isGodUser(name = myName) {
 }
 
 function updateAdminMenu() {
-  const adminBtn = document.getElementById("adminMenuBtn");
+  const adminBtn =
+    document.getElementById("tabAdmin") || document.getElementById("adminMenuBtn");
   const adminName = document.getElementById("adminName");
   const hasAccess = isGodUser();
   if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
