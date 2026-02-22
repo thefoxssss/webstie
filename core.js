@@ -4042,10 +4042,15 @@ export function toggleItem(id) {
 
 // Display a toast notification with optional subtitle.
 export function showToast(title, icon, subtitle = "") {
+  const toastBox = document.getElementById("toastBox");
+  if (!toastBox) return;
+
+  toastBox.classList.toggle("in-game", !!currentGame);
+
   const t = document.createElement("div");
   t.className = "toast";
   t.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-desc">${subtitle}</div></div>`;
-  document.getElementById("toastBox").appendChild(t);
+  toastBox.appendChild(t);
   setTimeout(() => t.remove(), 4000);
 }
 
