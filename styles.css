@@ -603,6 +603,10 @@ body::before {
   padding: 10px 14px;
 }
 
+.update-log-search {
+  margin: 0 0 10px;
+}
+
 .update-log-scroll ul {
   margin: 0;
   padding-left: 18px;

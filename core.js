@@ -1597,12 +1597,46 @@ async function fetchMergedPullRequests(owner, repo, maxPages = 6) {
   return merged.sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime());
 }
 
+let mergedUpdateLogRows = [];
+
+function renderFullUpdateLogRows(searchTerm = "") {
+  const fullList = document.getElementById("updateLogFullList");
+  const fullMeta = document.getElementById("updateLogFullMeta");
+  if (!fullList || !fullMeta) return;
+
+  const normalizedQuery = String(searchTerm || "").trim().toLowerCase();
+  const rows = normalizedQuery
+    ? mergedUpdateLogRows.filter((row) => row.number.toLowerCase().includes(normalizedQuery) || row.title.toLowerCase().includes(normalizedQuery))
+    : mergedUpdateLogRows;
+
+  if (!rows.length) {
+    fullList.innerHTML = '<li><span>EMPTY</span> NO UPDATES MATCH THIS SEARCH.</li>';
+    fullMeta.innerText = normalizedQuery ? `NO MATCHES FOR "${String(searchTerm).trim().toUpperCase()}"` : "NO MERGED UPDATES FOUND";
+    return;
+  }
+
+  fullList.innerHTML = rows.map((row) => `<li><span>${escapeHtml(row.number)}</span> ${escapeHtml(row.title)}</li>`).join("");
+  fullMeta.innerText = normalizedQuery
+    ? `SHOWING ${rows.length} OF ${mergedUpdateLogRows.length} MERGED UPDATES`
+    : `SHOWING ${rows.length} MERGED UPDATES`;
+}
+
+function initUpdateLogSearch() {
+  const input = document.getElementById("updateLogSearchInput");
+  if (!input || input.dataset.ready === "1") return;
+  input.dataset.ready = "1";
+  input.addEventListener("input", () => {
+    renderFullUpdateLogRows(input.value);
+  });
+}
+
 async function refreshUpdateLogFromMergedPrs() {
   const panel = document.getElementById("updateLogPanel");
   const list = document.getElementById("updateLogList");
-  const fullList = document.getElementById("updateLogFullList");
-  const fullMeta = document.getElementById("updateLogFullMeta");
+  const input = document.getElementById("updateLogSearchInput");
   if (!panel || !list) return;
+
+  initUpdateLogSearch();
 
   const owner = String(panel.dataset.githubOwner || "").trim();
   const repo = String(panel.dataset.githubRepo || "").trim();
@@ -1617,8 +1651,11 @@ async function refreshUpdateLogFromMergedPrs() {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
     if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows) && Array.isArray(cached.allRows)) {
       list.innerHTML = cached.rows.join("");
-      if (fullList) fullList.innerHTML = cached.allRows.join("");
-      if (fullMeta) fullMeta.innerText = `SHOWING ${cached.allRows.length} MERGED UPDATES`;
+      mergedUpdateLogRows = cached.allRows.map((row) => ({
+        number: String(row.number || "#?"),
+        title: String(row.title || "UNTITLED CHANGE"),
+      }));
+      renderFullUpdateLogRows(input?.value || "");
       return;
     }
   } catch {}
@@ -1627,8 +1664,9 @@ async function refreshUpdateLogFromMergedPrs() {
     const merged = await fetchMergedPullRequests(owner, repo);
 
     if (!merged.length) {
+      mergedUpdateLogRows = [];
       renderUpdateLogMessage("NO MERGED PULL REQUESTS FOUND", "EMPTY");
-      if (fullMeta) fullMeta.innerText = "NO MERGED UPDATES FOUND";
+      renderFullUpdateLogRows(input?.value || "");
       return;
     }
 
@@ -1636,16 +1674,17 @@ async function refreshUpdateLogFromMergedPrs() {
       const title = String(pr.title || "UNTITLED CHANGE");
       const match = title.match(/commit\s*#?\s*(\d+)/i);
       const rowNumber = `#${match ? match[1] : String(pr.number || "?")}`;
-      return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
+      return { number: rowNumber, title };
     });
 
-    const compactRows = allRows.slice(0, 5);
+    mergedUpdateLogRows = allRows;
+    const compactRows = allRows.slice(0, 5).map((row) => `<li><span>${escapeHtml(row.number)}</span> ${escapeHtml(row.title)}</li>`);
     list.innerHTML = compactRows.join("");
-    if (fullList) fullList.innerHTML = allRows.join("");
-    if (fullMeta) fullMeta.innerText = `SHOWING ${allRows.length} MERGED UPDATES`;
+    renderFullUpdateLogRows(input?.value || "");
     localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows: compactRows, allRows }));
   } catch (_error) {
     renderUpdateLogMessage("UNABLE TO LOAD MERGED PR FEED", "OFFLINE");
+    const fullMeta = document.getElementById("updateLogFullMeta");
     if (fullMeta) fullMeta.innerText = "FULL UPDATE LOG OFFLINE";
   }
 }
