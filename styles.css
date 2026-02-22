@@ -1876,21 +1876,54 @@ canvas {
 
 /* Config */
 .config-box {
-  width: 300px;
-  padding: 20px;
+  width: min(260px, 92vw);
+  padding: 14px;
   border: 1px solid var(--accent);
-  background: #000;
+  background: rgba(0, 0, 0, 0.92);
+  font-size: 10px;
+  box-shadow: 0 0 10px var(--accent-dim);
 }
 
 #overlayConfig {
   align-items: flex-start;
-  padding: 8px 20px 20px;
+  justify-content: flex-start;
+  padding: 8px 14px 14px;
+  z-index: 1300;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(1.5px);
+}
+
+#overlayConfig .config-box {
+  margin-top: 0;
+  margin-left: 0;
 }
 .config-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 15px 0;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.config-row span {
+  white-space: nowrap;
+}
+
+.config-row input[type="range"] {
+  width: 120px;
+}
+
+body.high-contrast {
+  filter: contrast(1.18) saturate(1.06);
+}
+
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* TTT */

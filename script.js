@@ -820,7 +820,9 @@ function initTopBarOverlayControls() {
       event.preventDefault();
       event.stopImmediatePropagation();
       const activeOverlay = getActiveOverlay();
-      if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
+      if (activeOverlay && activeOverlay.id === "overlayConfig" && typeof window.closeConfigOverlay === "function") {
+        window.closeConfigOverlay();
+      } else if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
         if (window.__goonerLastGameLaunchSource === "directory") {
           openGame("overlayGames");
         } else {
@@ -833,7 +835,7 @@ function initTopBarOverlayControls() {
     }, true);
   });
 
-  const getActiveOverlay = () => overlays.find((overlay) => overlay.classList.contains("active")) || null;
+  const getActiveOverlay = () => overlays.slice().reverse().find((overlay) => overlay.classList.contains("active")) || null;
   const isFullscreenApplicable = (overlay) => Boolean(overlay && GAME_OVERLAY_IDS.includes(overlay.id) && getFullscreenTarget(overlay));
 
   function getExitTabButton(overlay) {

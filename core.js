@@ -2171,9 +2171,40 @@ setInterval(() => {
   if (d.getHours() === 3) unlockAchievement("insomniac");
 }, 1000);
 
+function openConfigOverlay() {
+  const configOverlay = document.getElementById("overlayConfig");
+  if (!configOverlay) return;
+  configOverlay.classList.add("active");
+  document.body.classList.add("overlay-open");
+}
+
+export function closeConfigOverlay() {
+  const configOverlay = document.getElementById("overlayConfig");
+  if (!configOverlay) return;
+  configOverlay.classList.remove("active");
+  const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
+  document.body.classList.toggle("overlay-open", hasActiveOverlay);
+}
+
+window.openConfigOverlay = openConfigOverlay;
+window.closeConfigOverlay = closeConfigOverlay;
+window.toggleConfigOverlay = () => {
+  const configOverlay = document.getElementById("overlayConfig");
+  if (!configOverlay) return;
+  if (configOverlay.classList.contains("active")) {
+    closeConfigOverlay();
+  } else {
+    openConfigOverlay();
+  }
+};
+
 // Open an overlay by id, optionally render its contents.
 export function openGame(id) {
   if (id === "overlayAdmin" && !isGodUser()) return;
+  if (id === "overlayConfig") {
+    openConfigOverlay();
+    return;
+  }
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
@@ -4135,6 +4166,41 @@ document.getElementById("btnLogout").onclick = () => {
   localStorage.clear();
   location.reload();
 };
+
+const UI_CONFIG_KEY = "goonerUiConfigV1";
+
+function readUiConfig() {
+  try {
+    return JSON.parse(localStorage.getItem(UI_CONFIG_KEY) || "{}");
+  } catch (_error) {
+    return {};
+  }
+}
+
+function writeUiConfig(nextConfig) {
+  localStorage.setItem(UI_CONFIG_KEY, JSON.stringify({ ...readUiConfig(), ...nextConfig }));
+}
+
+function applyUiScale(value) {
+  document.documentElement.style.setProperty("--ui-scale", String(value));
+  document.body.style.zoom = `${value}`;
+}
+
+function applyUiTextSize(valuePx) {
+  document.documentElement.style.fontSize = `${valuePx}px`;
+}
+
+function applyContrastMode(enabled) {
+  document.body.classList.toggle("high-contrast", enabled);
+  const contrastToggle = document.getElementById("contrastToggle");
+  if (contrastToggle) contrastToggle.textContent = enabled ? "ON" : "OFF";
+}
+
+function applyReducedMotion(enabled) {
+  document.body.classList.toggle("reduce-motion", enabled);
+  const motionToggle = document.getElementById("motionToggle");
+  if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
+}
 // Open the games directory from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
 const menuDropdownEl = document.getElementById("menuDropdown");
@@ -4217,6 +4283,44 @@ document.getElementById("fsToggle").onclick = () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen();
   else document.exitFullscreen();
 };
+
+document.getElementById("uiScaleSlider").oninput = (e) => {
+  const value = Number(e.target.value) / 100;
+  applyUiScale(value);
+  writeUiConfig({ uiScale: value });
+};
+
+document.getElementById("uiTextSlider").oninput = (e) => {
+  const value = Number(e.target.value);
+  applyUiTextSize(value);
+  writeUiConfig({ uiTextSize: value });
+};
+
+document.getElementById("contrastToggle").onclick = () => {
+  const enabled = !document.body.classList.contains("high-contrast");
+  applyContrastMode(enabled);
+  writeUiConfig({ highContrast: enabled });
+};
+
+document.getElementById("motionToggle").onclick = () => {
+  const enabled = !document.body.classList.contains("reduce-motion");
+  applyReducedMotion(enabled);
+  writeUiConfig({ reducedMotion: enabled });
+};
+
+(function hydrateUiConfig() {
+  const config = readUiConfig();
+  const uiScale = Number(config.uiScale || 1);
+  const uiTextSize = Number(config.uiTextSize || 11);
+  applyUiScale(uiScale);
+  applyUiTextSize(uiTextSize);
+  applyContrastMode(Boolean(config.highContrast));
+  applyReducedMotion(Boolean(config.reducedMotion));
+  const uiScaleSlider = document.getElementById("uiScaleSlider");
+  const uiTextSlider = document.getElementById("uiTextSlider");
+  if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
+  if (uiTextSlider) uiTextSlider.value = String(uiTextSize);
+})();
 
 // Konami code sequence for a hidden Matrix unlock.
 const konamiCode = [
