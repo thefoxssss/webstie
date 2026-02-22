@@ -266,6 +266,17 @@ const GAME_OVERLAY_IDS = [
 ];
 
 
+
+function disableInGameExitButtons() {
+  GAME_OVERLAY_IDS.forEach((overlayId) => {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+    overlay.querySelectorAll(".exit-btn-fixed").forEach((button) => {
+      button.style.display = "none";
+    });
+  });
+}
+
 const CANVAS_UI_PADDING = 230;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
 const GAME_LIBRARY_RECENTS_KEY = "goonerRecentGames";
@@ -907,6 +918,7 @@ function initTopBarOverlayControls() {
   updateControls();
 }
 
+disableInGameExitButtons();
 initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
