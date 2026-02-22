@@ -342,28 +342,24 @@ function initGameSwitcher() {
 
   const gameIndexById = new Map(orderedGames.map((entry, index) => [entry.id, index]));
 
-  function clampGameIndex(index) {
-    return Math.max(0, Math.min(orderedGames.length - 1, index));
+  function wrapGameIndex(index) {
+    const total = orderedGames.length;
+    if (!total) return 0;
+    return ((index % total) + total) % total;
   }
 
   function renderSwitcherAtIndex(switcher, centerIndex, dragOffset = 0) {
-    const prevButton = switcher.querySelector('[data-slot="prev"]');
-    const currentButton = switcher.querySelector('[data-slot="current"]');
-    const nextButton = switcher.querySelector('[data-slot="next"]');
-    if (!prevButton || !currentButton || !nextButton) return;
+    const titleButtons = Array.from(switcher.querySelectorAll(".game-switcher-title"));
+    if (!titleButtons.length) return;
 
-    const slots = [
-      { button: prevButton, game: orderedGames[centerIndex - 1] || null, pos: -1 },
-      { button: currentButton, game: orderedGames[centerIndex] || null, pos: 0 },
-      { button: nextButton, game: orderedGames[centerIndex + 1] || null, pos: 1 },
-    ];
-
-    slots.forEach(({ button, game, pos }) => {
+    titleButtons.forEach((button) => {
+      const pos = Number(button.dataset.pos || 0);
+      const game = orderedGames[wrapGameIndex(centerIndex + pos)] || null;
       button.dataset.pos = String(pos);
       button.dataset.game = game?.id || "";
       button.textContent = game?.title || "";
-      button.disabled = !game;
-      button.classList.toggle("is-empty", !game);
+      button.disabled = false;
+      button.classList.remove("is-empty");
       button.classList.toggle("is-center", pos === 0);
     });
 
@@ -371,7 +367,7 @@ function initGameSwitcher() {
   }
 
   function launchFromIndex(index) {
-    const game = orderedGames[clampGameIndex(index)];
+    const game = orderedGames[wrapGameIndex(index)];
     if (!game) return;
     window.launchGame(game.id, "game-switcher");
   }
@@ -386,11 +382,15 @@ function initGameSwitcher() {
     switcher.dataset.activeGame = game.id;
     switcher.innerHTML = `
       <div class="game-switcher-track" aria-label="Game switcher">
-        <button class="game-switcher-title" type="button" data-slot="prev"></button>
+        <button class="game-switcher-title" type="button" data-pos="-2"></button>
         <span class="game-switcher-arrow" aria-hidden="true">→</span>
-        <button class="game-switcher-title" type="button" data-slot="current"></button>
+        <button class="game-switcher-title" type="button" data-pos="-1"></button>
         <span class="game-switcher-arrow" aria-hidden="true">→</span>
-        <button class="game-switcher-title" type="button" data-slot="next"></button>
+        <button class="game-switcher-title" type="button" data-pos="0"></button>
+        <span class="game-switcher-arrow" aria-hidden="true">→</span>
+        <button class="game-switcher-title" type="button" data-pos="1"></button>
+        <span class="game-switcher-arrow" aria-hidden="true">→</span>
+        <button class="game-switcher-title" type="button" data-pos="2"></button>
       </div>
     `;
     heading.replaceWith(switcher);
@@ -423,8 +423,8 @@ function initGameSwitcher() {
       if (dragStartX === null) return;
       const deltaX = event.clientX - dragStartX;
       const shifted = Math.round(-deltaX / DRAG_STEP);
-      previewIndex = clampGameIndex(activeIndex + shifted);
-      renderSwitcherAtIndex(switcher, previewIndex, deltaX * 0.2);
+      previewIndex = wrapGameIndex(activeIndex + shifted);
+      renderSwitcherAtIndex(switcher, activeIndex, deltaX);
     });
 
     function commitDrag() {

@@ -810,20 +810,22 @@ body.games-directory-open .wrap {
 
 
 .game-switcher-header {
-  width: min(820px, 100%);
+  width: min(760px, 100%);
   margin-bottom: 6px;
   user-select: none;
   touch-action: pan-y;
   --switcher-drag-offset: 0px;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
 }
 
 .game-switcher-track {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   transform: translateX(var(--switcher-drag-offset));
-  transition: transform 0.2s ease;
+  transition: transform 0.28s ease;
 }
 
 .game-switcher-header.is-dragging .game-switcher-track {
@@ -842,10 +844,15 @@ body.games-directory-open .wrap {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  max-width: 230px;
-  min-width: 110px;
-  font-size: 14px;
-  opacity: 0.35;
+  max-width: 170px;
+  min-width: 85px;
+  font-size: 13px;
+  opacity: 0.26;
+}
+
+.game-switcher-title[data-pos="-2"],
+.game-switcher-title[data-pos="2"] {
+  opacity: 0.1;
 }
 
 .game-switcher-title[data-pos="0"] {
@@ -855,7 +862,7 @@ body.games-directory-open .wrap {
 
 .game-switcher-title[data-pos="-1"],
 .game-switcher-title[data-pos="1"] {
-  opacity: 0.35;
+  opacity: 0.42;
 }
 
 .game-switcher-title:hover,
