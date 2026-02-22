@@ -1556,21 +1556,22 @@ async function refreshUpdateLogFromMergedPrs() {
     const merged = (Array.isArray(pulls) ? pulls : [])
       .filter((pr) => pr && pr.merged_at)
       .sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime())
-      .slice(0, 6);
+      .slice(0, 5);
 
     if (!merged.length) {
       renderUpdateLogMessage("NO MERGED PULL REQUESTS FOUND", "EMPTY");
       return;
     }
 
-    const rows = merged.map((pr) => {
+    const rows = merged.map((pr, idx) => {
       const number = Number(pr.number) || "?";
       const title = String(pr.title || "UNTITLED CHANGE");
       const link = String(pr.html_url || "");
       const stamp = formatUpdateLogDate(pr.merged_at);
-      const text = `${escapeHtml(title)} (#${number})`;
-      if (!link) return `<li><span>${stamp}</span> ${text}</li>`;
-      return `<li><span>${stamp}</span> <a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${text}</a></li>`;
+      const rowNumber = `#${String(idx + 1).padStart(2, "0")}`;
+      const text = `${escapeHtml(title)} (PR #${number} // ${stamp})`;
+      if (!link) return `<li><span>${rowNumber}</span> ${text}</li>`;
+      return `<li><span>${rowNumber}</span> <a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${text}</a></li>`;
     });
 
     list.innerHTML = rows.join("");
