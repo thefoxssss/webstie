@@ -1508,6 +1508,68 @@ async function refreshTrendingGames() {
   }
 }
 
+
+function renderUpdateLogMessage(message, tag = "SYNC") {
+  const list = document.getElementById("updateLogList");
+  if (!list) return;
+  list.innerHTML = `<li><span>${escapeHtml(tag)}</span> ${escapeHtml(message)}</li>`;
+}
+
+
+async function refreshUpdateLogFromMergedPrs() {
+  const panel = document.getElementById("updateLogPanel");
+  const list = document.getElementById("updateLogList");
+  if (!panel || !list) return;
+
+  const owner = String(panel.dataset.githubOwner || "").trim();
+  const repo = String(panel.dataset.githubRepo || "").trim();
+  if (!owner || !repo) {
+    renderUpdateLogMessage("SET data-github-owner / data-github-repo TO ENABLE AUTO LOG", "CONFIG");
+    return;
+  }
+
+  const cacheKey = `goonerUpdateLog:${owner}/${repo}`;
+  const cacheTtlMs = 5 * 60 * 1000;
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows)) {
+      list.innerHTML = cached.rows.join("");
+      return;
+    }
+  } catch {}
+
+  try {
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=closed&sort=updated&direction=desc&per_page=12`;
+    const response = await fetch(url, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok) {
+      throw new Error(`GITHUB HTTP ${response.status}`);
+    }
+    const pulls = await response.json();
+    const merged = (Array.isArray(pulls) ? pulls : [])
+      .filter((pr) => pr && pr.merged_at)
+      .sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime())
+      .slice(0, 5);
+
+    if (!merged.length) {
+      renderUpdateLogMessage("NO MERGED PULL REQUESTS FOUND", "EMPTY");
+      return;
+    }
+
+    const rows = merged.map((pr, idx) => {
+      const title = String(pr.title || "UNTITLED CHANGE");
+      const rowNumber = `#${String(idx + 1).padStart(2, "0")}`;
+      return `<li><span>${rowNumber}</span> ${escapeHtml(title)}</li>`;
+    });
+
+    list.innerHTML = rows.join("");
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows }));
+  } catch (_error) {
+    renderUpdateLogMessage("UNABLE TO LOAD MERGED PR FEED", "OFFLINE");
+  }
+}
+
 function initTrendingGamesPanel() {
   const wrap = document.getElementById("trendingGamesList");
   if (!wrap || wrap.dataset.ready === "1") return;
@@ -1885,11 +1947,13 @@ loadCrewData();
 loadSeasonData();
 renderLiveOps();
 initTrendingGamesPanel();
+refreshUpdateLogFromMergedPrs();
 setupBankTransferUX();
 setupLoanUX();
 setupStockMarketUX();
 initCrewUx();
 setInterval(renderLiveOps, 15000);
+setInterval(refreshUpdateLogFromMergedPrs, 5 * 60 * 1000);
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     myUid = u.uid;
@@ -1899,6 +1963,7 @@ onAuthStateChanged(auth, async (u) => {
     subscribeToGlobalMarket();
     initChat();
     refreshTrendingGames();
+    refreshUpdateLogFromMergedPrs();
   }
 });
 
