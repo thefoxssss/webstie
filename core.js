@@ -1516,11 +1516,6 @@ function renderUpdateLogMessage(message, tag = "SYNC") {
   list.innerHTML = `<li><span>${escapeHtml(tag)}</span> ${escapeHtml(message)}</li>`;
 }
 
-function formatUpdateLogDate(ts) {
-  const date = new Date(ts);
-  if (Number.isNaN(date.getTime())) return "DATE";
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }).toUpperCase();
-}
 
 async function refreshUpdateLogFromMergedPrs() {
   const panel = document.getElementById("updateLogPanel");
@@ -1564,14 +1559,9 @@ async function refreshUpdateLogFromMergedPrs() {
     }
 
     const rows = merged.map((pr, idx) => {
-      const number = Number(pr.number) || "?";
       const title = String(pr.title || "UNTITLED CHANGE");
-      const link = String(pr.html_url || "");
-      const stamp = formatUpdateLogDate(pr.merged_at);
       const rowNumber = `#${String(idx + 1).padStart(2, "0")}`;
-      const text = `${escapeHtml(title)} (PR #${number} // ${stamp})`;
-      if (!link) return `<li><span>${rowNumber}</span> ${text}</li>`;
-      return `<li><span>${rowNumber}</span> <a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${text}</a></li>`;
+      return `<li><span>${rowNumber}</span> ${escapeHtml(title)}</li>`;
     });
 
     list.innerHTML = rows.join("");
