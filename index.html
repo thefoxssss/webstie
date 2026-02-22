@@ -32,7 +32,7 @@
         <button id="tabMainMenu" class="menu-btn" onclick="window.closeOverlays()">
           HOME
         </button>
-        <button id="tabConfig" class="menu-btn" onclick="window.openGame('overlayConfig')">
+        <button id="tabConfig" class="menu-btn" onclick="window.toggleConfigOverlay()">
           CONFIG
         </button>
       </div>
@@ -1020,6 +1020,22 @@
           <span>FULLSCREEN</span
           ><button class="menu-btn" id="fsToggle">TOGGLE</button>
         </div>
+        <div class="config-row">
+          <span>UI SCALE</span
+          ><input type="range" id="uiScaleSlider" min="85" max="110" step="1" value="100" />
+        </div>
+        <div class="config-row">
+          <span>TEXT SIZE</span
+          ><input type="range" id="uiTextSlider" min="9" max="13" step="1" value="11" />
+        </div>
+        <div class="config-row">
+          <span>HIGH CONTRAST</span
+          ><button class="menu-btn" id="contrastToggle">OFF</button>
+        </div>
+        <div class="config-row">
+          <span>REDUCED MOTION</span
+          ><button class="menu-btn" id="motionToggle">OFF</button>
+        </div>
         <button
           class="term-btn"
           id="btnLogout"
@@ -1030,7 +1046,7 @@
         <button
           class="term-btn"
           style="margin-top: 20px"
-          onclick="window.closeOverlays()"
+          onclick="window.closeConfigOverlay()"
         >
           CLOSE
         </button>
