@@ -4556,7 +4556,6 @@ const LEADERBOARD_SCORE_SYNC_COOLDOWN_MS = 60000;
 const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
 let leaderboardDifficultyFilter = "all";
 let leaderboardPlayerCountFilter = "all";
-let leaderboardTagFilters = [];
 
 function normalizeLeaderboardMode(mode) {
   const normalized = String(mode || "").toLowerCase().trim();
@@ -4727,22 +4726,6 @@ function shouldIncludeScoreRowByFilters(mode) {
   return true;
 }
 
-function initLeaderboardTagFilter() {
-  const select = document.getElementById("leaderboardTagFilter");
-  if (!select || select.dataset.ready) return;
-  const tagSet = new Set();
-  LEADERBOARD_GAME_COLUMNS.forEach((game) => (game.tags || []).forEach((tag) => tagSet.add(tag)));
-  Array.from(tagSet)
-    .sort((a, b) => a.localeCompare(b))
-    .forEach((tag) => {
-      const option = document.createElement("option");
-      option.value = tag;
-      option.textContent = tag.toUpperCase();
-      select.appendChild(option);
-    });
-  select.dataset.ready = "1";
-}
-
 const renderLeaderboardRows = (
   list,
   rows,
@@ -4874,10 +4857,7 @@ function loadLeaderboard() {
   const filterInput = document.getElementById("leaderboardFilter");
   const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
   const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
-  const tagSelect = document.getElementById("leaderboardTagFilter");
   if (!list) return;
-
-  initLeaderboardTagFilter();
 
   if (filterInput && !filterInput.dataset.bound) {
     filterInput.addEventListener("input", () => loadLeaderboard());
@@ -4900,17 +4880,8 @@ function loadLeaderboard() {
     playerCountSelect.dataset.bound = "1";
   }
 
-  if (tagSelect && !tagSelect.dataset.bound) {
-    tagSelect.addEventListener("change", () => {
-      leaderboardTagFilters = Array.from(tagSelect.selectedOptions).map((option) => String(option.value || "").toLowerCase());
-      loadLeaderboard();
-    });
-    tagSelect.dataset.bound = "1";
-  }
-
   if (difficultySelect) leaderboardDifficultyFilter = String(difficultySelect.value || "all").toLowerCase();
   if (playerCountSelect) leaderboardPlayerCountFilter = String(playerCountSelect.value || "all").toLowerCase();
-  if (tagSelect) leaderboardTagFilters = Array.from(tagSelect.selectedOptions).map((option) => String(option.value || "").toLowerCase());
 
   clearLeaderboardSubscriptions();
   list.innerHTML = "";
@@ -4931,11 +4902,6 @@ function loadLeaderboard() {
     if (leaderboardPlayerCountFilter !== "all") {
       const gamePlayerCount = (column.leaderboardModes || []).includes("multiplayer") ? "multiplayer" : "single";
       if (gamePlayerCount !== leaderboardPlayerCountFilter) return false;
-    }
-
-    if (leaderboardTagFilters.length) {
-      const tagSet = new Set((column.tags || []).map((tag) => String(tag).toLowerCase()));
-      if (!leaderboardTagFilters.every((tag) => tagSet.has(tag))) return false;
     }
 
     return true;
@@ -4990,7 +4956,6 @@ function syncGameLeaderboardButton() {
 export function openGameLeaderboard(gameId) {
   leaderboardDifficultyFilter = "all";
   leaderboardPlayerCountFilter = "all";
-  leaderboardTagFilters = [];
   openGame("overlayScores");
 
   const gameColumn = LEADERBOARD_COLUMNS.find((column) => column.type === "game" && column.id === String(gameId || "").toLowerCase());
@@ -5001,7 +4966,6 @@ export function openGameLeaderboard(gameId) {
   if (difficultySelect) difficultySelect.value = "all";
   const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
   if (playerCountSelect) playerCountSelect.value = "all";
-  const tagSelect = document.getElementById("leaderboardTagFilter");
   if (tagSelect) Array.from(tagSelect.options).forEach((option) => (option.selected = false));
 
   loadLeaderboard();
