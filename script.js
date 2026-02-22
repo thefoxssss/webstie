@@ -263,10 +263,9 @@ function initGameCanvasSizing() {
 function pauseGamesWhenHidden() {
   const activeGameOverlay = GAME_OVERLAY_IDS.some((id) => document.getElementById(id)?.classList.contains("active"));
   if (!activeGameOverlay) return;
-  if (document.hidden) {
-    stopAllGames();
-    GAME_OVERLAY_IDS.forEach((id) => document.getElementById(id)?.classList.remove("active"));
-  }
+  // Keep the active game visible/stateful when switching browser tabs.
+  // We only stop active games when explicitly launching a different overlay/game.
+  if (document.hidden) return;
 }
 
 function initGameVisibilityGuards() {
