@@ -457,9 +457,10 @@ function initMainSiteSearch() {
   const form = document.getElementById("siteSearchForm");
   const input = document.getElementById("siteSearchInput");
   const meta = document.getElementById("siteSearchMeta");
+  const dropdown = document.getElementById("siteSearchDropdown");
   const gamesSearch = document.getElementById("gamesSearch");
   const gamesFilter = document.getElementById("gamesFilter");
-  if (!form || !input || !meta) return;
+  if (!form || !input || !meta || !dropdown) return;
 
   const QUICK_ROUTES = [
     { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY" },
@@ -473,6 +474,9 @@ function initMainSiteSearch() {
     { aliases: ["crew", "clan", "guild"], action: () => openGame("overlayCrew"), label: "OPENED CREW PANEL" },
     { aliases: ["config", "settings"], action: () => openGame("overlayConfig"), label: "OPENED CONFIG PANEL" },
   ];
+
+  let activeSuggestions = [];
+  let activeSuggestionIndex = -1;
 
   function normalize(value) {
     return String(value || "")
@@ -500,9 +504,97 @@ function initMainSiteSearch() {
     });
   }
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const query = normalize(input.value);
+  function scoreGameSuggestion(entry, query) {
+    const title = normalize(entry.title);
+    const gameId = normalize(entry.id);
+    const tags = normalize(entry.tags.join(" "));
+    const description = normalize(entry.description);
+    if (title === query) return 0;
+    if (title.startsWith(query)) return 1;
+    if (title.includes(query)) return 2;
+    if (gameId === query) return 3;
+    if (gameId.startsWith(query)) return 4;
+    if (gameId.includes(query)) return 5;
+    if (tags.includes(query)) return 6;
+    if (description.includes(query)) return 7;
+    return 99;
+  }
+
+  function buildSuggestions(rawQuery) {
+    const query = normalize(rawQuery);
+    if (!query) return [];
+
+    const gameSuggestions = GAME_DIRECTORY_ENTRIES
+      .filter((entry) => !entry.hidden)
+      .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
+      .filter((item) => item.score < 99)
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        return a.entry.title.localeCompare(b.entry.title);
+      })
+      .slice(0, 6)
+      .map((item) => ({
+        type: "game",
+        value: item.entry.title,
+        subtitle: `GAME • ${item.entry.tags.join("/").toUpperCase()}`,
+      }));
+
+    const routeSuggestions = QUICK_ROUTES
+      .map((route) => {
+        const normalizedAliases = route.aliases.map((alias) => normalize(alias));
+        const bestScore = normalizedAliases.reduce((score, alias) => {
+          if (alias === query) return Math.min(score, 10);
+          if (alias.startsWith(query)) return Math.min(score, 11);
+          if (alias.includes(query)) return Math.min(score, 12);
+          return score;
+        }, 99);
+        return { route, bestScore };
+      })
+      .filter((item) => item.bestScore < 99)
+      .sort((a, b) => a.bestScore - b.bestScore)
+      .slice(0, 2)
+      .map((item) => ({
+        type: "route",
+        value: item.route.aliases[0].toUpperCase(),
+        subtitle: item.route.label,
+      }));
+
+    return [...gameSuggestions, ...routeSuggestions].slice(0, 7);
+  }
+
+  function hideSuggestions() {
+    dropdown.classList.remove("active");
+    dropdown.innerHTML = "";
+    activeSuggestions = [];
+    activeSuggestionIndex = -1;
+  }
+
+  function renderSuggestions(rawQuery) {
+    if (document.activeElement !== input) {
+      hideSuggestions();
+      return;
+    }
+    activeSuggestions = buildSuggestions(rawQuery);
+    activeSuggestionIndex = -1;
+    if (!activeSuggestions.length) {
+      hideSuggestions();
+      return;
+    }
+
+    dropdown.innerHTML = activeSuggestions
+      .map((suggestion, index) => `<button class="site-search-option" type="button" data-suggest-index="${index}"><strong>${suggestion.value}</strong><small>${suggestion.subtitle}</small></button>`)
+      .join("");
+    dropdown.classList.add("active");
+  }
+
+  function setActiveSuggestion(index) {
+    const options = Array.from(dropdown.querySelectorAll(".site-search-option"));
+    options.forEach((option, optionIndex) => option.classList.toggle("active", optionIndex === index));
+    activeSuggestionIndex = index;
+  }
+
+  function executeSearch(rawInput) {
+    const query = normalize(rawInput);
     if (!query) {
       meta.textContent = "ENTER A SEARCH TERM TO JUMP THROUGH THE TERMINAL.";
       return;
@@ -527,6 +619,7 @@ function initMainSiteSearch() {
       meta.textContent = `${route.label} // SEARCH: ${query.toUpperCase()}`;
       return;
     }
+
     if (gamesSearch) {
       openGame("overlayGames");
       gamesSearch.value = query;
@@ -537,6 +630,59 @@ function initMainSiteSearch() {
     }
 
     meta.textContent = `NO MATCH FOR "${query.toUpperCase()}".`;
+  }
+
+  input.addEventListener("focus", () => renderSuggestions(input.value));
+  input.addEventListener("input", () => renderSuggestions(input.value));
+  input.addEventListener("keydown", (event) => {
+    if (!activeSuggestions.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const next = activeSuggestionIndex < activeSuggestions.length - 1 ? activeSuggestionIndex + 1 : 0;
+      setActiveSuggestion(next);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const prev = activeSuggestionIndex > 0 ? activeSuggestionIndex - 1 : activeSuggestions.length - 1;
+      setActiveSuggestion(prev);
+      return;
+    }
+    if (event.key === "Escape") {
+      hideSuggestions();
+      return;
+    }
+    if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      const selected = activeSuggestions[activeSuggestionIndex];
+      input.value = selected.value;
+      hideSuggestions();
+      form.requestSubmit();
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (!dropdown.matches(":hover")) hideSuggestions();
+    }, 120);
+  });
+
+  dropdown.addEventListener("mousedown", (event) => {
+    const option = event.target.closest(".site-search-option");
+    if (!option) return;
+    event.preventDefault();
+    const index = Number(option.dataset.suggestIndex || -1);
+    const selected = activeSuggestions[index];
+    if (!selected) return;
+    input.value = selected.value;
+    hideSuggestions();
+    form.requestSubmit();
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    hideSuggestions();
+    executeSearch(input.value);
   });
 }
 
