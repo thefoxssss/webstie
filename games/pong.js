@@ -20,6 +20,7 @@ let p2 = { y: 250, h: 80 };
 let pSc = 0;
 let aiSc = 0;
 let pDiff = 0.08;
+let pongMode = "easy";
 let pAnim;
 let pLastTime = 0;
 
@@ -27,7 +28,8 @@ const BASE_FRAME_MS = 1000 / 60;
 const MAX_DT_FRAMES = 2.5;
 
 export function setPongDiff(level) {
-  pDiff = level === "hard" ? 0.14 : 0.055;
+  pongMode = level === "hard" ? "hard" : "easy";
+  pDiff = pongMode === "hard" ? 0.14 : 0.055;
   resetBall();
 }
 
@@ -103,7 +105,7 @@ function loopPong(now) {
   }
   if (ball.x > 800) {
     pSc++;
-    updateHighScore("pong", pSc);
+    updateHighScore("pong", pSc, { mode: pongMode });
     loadHighScores();
     resetBall();
     beep(800);

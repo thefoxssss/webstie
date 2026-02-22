@@ -894,6 +894,24 @@
           placeholder="FILTER LEADERBOARD TYPES/TAGS (E.G. PONG, PVP, RICHEST)"
           style="margin-bottom: 12px"
         />
+        <div class="leaderboard-subfilters">
+          <label>
+            <span>DIFFICULTY</span>
+            <select class="term-input" id="leaderboardDifficultyFilter">
+              <option value="all">ALL</option>
+              <option value="easy">EASY</option>
+              <option value="hard">HARD</option>
+            </select>
+          </label>
+          <label>
+            <span>PLAYER COUNT</span>
+            <select class="term-input" id="leaderboardPlayerCountFilter">
+              <option value="all">ALL</option>
+              <option value="single">SINGLE PLAYER</option>
+              <option value="multiplayer">MULTIPLAYER</option>
+            </select>
+          </label>
+        </div>
         <div class="score-list" id="scoreList">
           <div class="score-item">LOADING DATA...</div>
         </div>
@@ -1786,6 +1804,11 @@
       <button class="term-btn" id="quantumflipAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+
+
+    <button class="term-btn game-leaderboard-jump-btn" id="gameLeaderboardJumpBtn" style="display: none">
+      VIEW LEADERBOARD
+    </button>
 
     <!-- Game-over modal shared across mini-games. -->
     <div id="modalGameOver" class="game-over-modal">

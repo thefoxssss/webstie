@@ -251,6 +251,7 @@ export const state = {
   },
   set currentGame(value) {
     currentGame = value;
+    syncGameLeaderboardButton();
   },
   get keysPressed() {
     return keysPressed;
@@ -1311,6 +1312,7 @@ export function registerGameStop(stopFn) {
 export function stopAllGames() {
   gameStops.forEach((stopFn) => stopFn());
   currentGame = null;
+  syncGameLeaderboardButton();
   keysPressed = {};
   window.removeEventListener("keydown", quickRestartListener);
 }
@@ -2113,6 +2115,8 @@ renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
 initHomePanelOverlayButtons();
+initGameLeaderboardButton();
+syncGameLeaderboardButton();
 refreshTrendingMonthGraph();
 refreshUpdateLogFromMergedPrs();
 setupBankTransferUX();
@@ -4547,6 +4551,17 @@ function initChat() {
 
 const gameCashProgress = {};
 const gameLeaderboardCache = {};
+const leaderboardScoreSyncState = {};
+const LEADERBOARD_SCORE_SYNC_COOLDOWN_MS = 60000;
+const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
+let leaderboardDifficultyFilter = "all";
+let leaderboardPlayerCountFilter = "all";
+
+function normalizeLeaderboardMode(mode) {
+  const normalized = String(mode || "").toLowerCase().trim();
+  if (["easy", "hard", "single", "multiplayer"].includes(normalized)) return normalized;
+  return "single";
+}
 
 function getLeaderboardBaseline(game) {
   const key = String(game || "").toLowerCase().trim();
@@ -4618,13 +4633,22 @@ function awardScoreCash(game, score) {
 }
 
 // Update and persist a local high score for a given game.
-export function updateHighScore(game, score) {
+export function updateHighScore(game, score, options = {}) {
   awardScoreCash(game, score);
-  const k = `hs_${game}`;
+  const key = String(game || "").toLowerCase().trim();
+  const k = `hs_${key}`;
   const old = parseInt(localStorage.getItem(k) || 0);
   if (score > old) {
     localStorage.setItem(k, score);
-    saveGlobalScore(game, score);
+    const mode = normalizeLeaderboardMode(options.mode);
+    const forceGlobalSync = options.forceGlobalSync === true;
+    const syncState = leaderboardScoreSyncState[key] || { lastSentAt: 0, lastSentScore: 0 };
+    const enoughTimeElapsed = Date.now() - syncState.lastSentAt >= LEADERBOARD_SCORE_SYNC_COOLDOWN_MS;
+    const enoughScoreDelta = score - syncState.lastSentScore >= LEADERBOARD_SCORE_SYNC_MIN_DELTA;
+    if (forceGlobalSync || enoughTimeElapsed || enoughScoreDelta) {
+      leaderboardScoreSyncState[key] = { lastSentAt: Date.now(), lastSentScore: score };
+      saveGlobalScore(key, score, { mode });
+    }
     return score;
   }
   return old;
@@ -4644,14 +4668,16 @@ export function loadHighScores() {
 }
 
 // Persist a high score globally so it appears on the leaderboard.
-export async function saveGlobalScore(game, score) {
+export async function saveGlobalScore(game, score, options = {}) {
   if (score <= 0 || myName === "ANON") return;
+  const mode = normalizeLeaderboardMode(options.mode);
   await runFirestoreTask(
     () =>
       addDoc(collection(db, "gooner_scores"), {
         game: game,
         name: myName,
         score: score,
+        mode,
       }),
     "LEADERBOARD",
     "Score queued for retry."
@@ -4661,15 +4687,28 @@ export async function saveGlobalScore(game, score) {
 // Scoreboard columns rendering.
 let leaderboardUnsubs = [];
 
+const formatLeaderboardModeLabel = (mode) => {
+  if (mode === "easy") return "EASY";
+  if (mode === "hard") return "HARD";
+  if (mode === "multiplayer") return "MULTIPLAYER";
+  return "SINGLE PLAYER";
+};
+
 const LEADERBOARD_COLUMNS = [
   { id: "players", title: "PLAYERS", type: "players", tags: ["players", "operator", "rank"] },
   { id: "richest", title: "RICHEST", type: "richest", tags: ["bank", "money", "cash", "economy"] },
-  ...LEADERBOARD_GAME_COLUMNS.map((game) => ({
-    id: game.id,
-    title: game.title,
-    type: "game",
-    tags: game.tags,
-  })),
+  ...LEADERBOARD_GAME_COLUMNS.flatMap((game) => {
+    const modes = (game.leaderboardModes || ["single"]).filter(Boolean);
+    return modes.map((mode) => ({
+      id: `${game.id}__${mode}`,
+      gameId: game.id,
+      mode,
+      title: `${game.title} // ${formatLeaderboardModeLabel(mode)}`,
+      type: "game",
+      tags: [...(game.tags || []), mode, formatLeaderboardModeLabel(mode).toLowerCase()],
+      leaderboardModes: [mode],
+    }));
+  }),
 ];
 
 const clearLeaderboardSubscriptions = () => {
@@ -4685,6 +4724,19 @@ const getLeaderboardFilterValue = () => {
     .trim()
     .toUpperCase();
 };
+
+function getModePlayerCount(mode) {
+  return mode === "multiplayer" ? "multiplayer" : "single";
+}
+
+function shouldIncludeScoreRowByFilters(mode) {
+  const normalizedMode = normalizeLeaderboardMode(mode);
+  if (leaderboardDifficultyFilter !== "all") {
+    if (!["easy", "hard"].includes(normalizedMode) || normalizedMode !== leaderboardDifficultyFilter) return false;
+  }
+  if (leaderboardPlayerCountFilter !== "all" && getModePlayerCount(normalizedMode) !== leaderboardPlayerCountFilter) return false;
+  return true;
+}
 
 const renderLeaderboardRows = (
   list,
@@ -4791,13 +4843,18 @@ function loadLeaderboardColumn(column, body) {
     return;
   }
 
-  const q = query(collection(db, "gooner_scores"), where("game", "==", column.id), limit(200));
+  const q = query(collection(db, "gooner_scores"), where("game", "==", column.gameId), limit(200));
   leaderboardUnsubs.push(
     onSnapshot(q, (snap) => {
       const data = [];
       snap.forEach((d) => data.push(d.data()));
+      const modeFiltered = data.filter((row) => {
+        const entryMode = normalizeLeaderboardMode(row.mode);
+        if (column.mode && entryMode !== column.mode) return false;
+        return shouldIncludeScoreRowByFilters(entryMode);
+      });
       const uniqueScores = {};
-      data.forEach((scoreRow) => {
+      modeFiltered.forEach((scoreRow) => {
         if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
           uniqueScores[scoreRow.name] = scoreRow;
         }
@@ -4814,6 +4871,8 @@ function loadLeaderboardColumn(column, body) {
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
   const filterInput = document.getElementById("leaderboardFilter");
+  const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
+  const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
   if (!list) return;
 
   if (filterInput && !filterInput.dataset.bound) {
@@ -4821,23 +4880,58 @@ function loadLeaderboard() {
     filterInput.dataset.bound = "1";
   }
 
+  if (difficultySelect && !difficultySelect.dataset.bound) {
+    difficultySelect.addEventListener("change", () => {
+      leaderboardDifficultyFilter = String(difficultySelect.value || "all").toLowerCase();
+      loadLeaderboard();
+    });
+    difficultySelect.dataset.bound = "1";
+  }
+
+  if (playerCountSelect && !playerCountSelect.dataset.bound) {
+    playerCountSelect.addEventListener("change", () => {
+      leaderboardPlayerCountFilter = String(playerCountSelect.value || "all").toLowerCase();
+      loadLeaderboard();
+    });
+    playerCountSelect.dataset.bound = "1";
+  }
+
+  if (difficultySelect) leaderboardDifficultyFilter = String(difficultySelect.value || "all").toLowerCase();
+  if (playerCountSelect) leaderboardPlayerCountFilter = String(playerCountSelect.value || "all").toLowerCase();
+
   clearLeaderboardSubscriptions();
   list.innerHTML = "";
 
   const filterValue = getLeaderboardFilterValue();
   const visibleColumns = filterValue
-    ? LEADERBOARD_COLUMNS.filter((column) => (`${column.title} ${(column.tags || []).join(" ")}`.toUpperCase()).includes(filterValue))
+    ? LEADERBOARD_COLUMNS.filter((column) => {
+        const searchable = `${column.id} ${column.title} ${(column.tags || []).join(" ")}`.toUpperCase();
+        return searchable.includes(filterValue);
+      })
     : LEADERBOARD_COLUMNS;
 
-  if (!visibleColumns.length) {
-    list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES "${escapeHtml(filterValue)}"</div>`;
+  const filteredColumns = visibleColumns.filter((column) => {
+    if (column.type !== "game") return true;
+
+    if (leaderboardDifficultyFilter !== "all" && !(column.leaderboardModes || []).includes(leaderboardDifficultyFilter)) return false;
+
+    if (leaderboardPlayerCountFilter !== "all") {
+      const gamePlayerCount = (column.leaderboardModes || []).includes("multiplayer") ? "multiplayer" : "single";
+      if (gamePlayerCount !== leaderboardPlayerCountFilter) return false;
+    }
+
+    return true;
+  });
+
+  if (!filteredColumns.length) {
+    list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES CURRENT FILTERS</div>`;
     return;
   }
 
   const columnsWrap = document.createElement("div");
   columnsWrap.className = "score-columns";
 
-  visibleColumns.forEach((column) => {
+  filteredColumns.forEach((column) => {
     const card = document.createElement("section");
     card.className = "score-column";
 
@@ -4853,6 +4947,44 @@ function loadLeaderboard() {
   });
 
   list.appendChild(columnsWrap);
+}
+
+
+function initGameLeaderboardButton() {
+  const btn = document.getElementById("gameLeaderboardJumpBtn");
+  if (!btn || btn.dataset.bound) return;
+  btn.addEventListener("click", () => {
+    if (!currentGame) return;
+    openGameLeaderboard(currentGame);
+  });
+  btn.dataset.bound = "1";
+}
+
+function syncGameLeaderboardButton() {
+  const btn = document.getElementById("gameLeaderboardJumpBtn");
+  if (!btn) return;
+  const hasGame = Boolean(currentGame);
+  btn.classList.toggle("active", hasGame);
+  btn.style.display = hasGame ? "block" : "none";
+  btn.textContent = hasGame ? `VIEW ${String(currentGame).toUpperCase()} LEADERBOARD` : "VIEW LEADERBOARD";
+}
+
+export function openGameLeaderboard(gameId) {
+  leaderboardDifficultyFilter = "all";
+  leaderboardPlayerCountFilter = "all";
+  openGame("overlayScores");
+
+  const normalizedGameId = String(gameId || "").toLowerCase();
+  const gameColumn = LEADERBOARD_COLUMNS.find((column) => column.type === "game" && column.gameId === normalizedGameId);
+  const filterInput = document.getElementById("leaderboardFilter");
+  if (filterInput) filterInput.value = normalizedGameId || gameColumn?.title || String(gameId || "");
+
+  const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
+  if (difficultySelect) difficultySelect.value = "all";
+  const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
+  if (playerCountSelect) playerCountSelect.value = "all";
+
+  loadLeaderboard();
 }
 
 // Count consecutive losses for the rage-quit achievement.

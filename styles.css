@@ -316,7 +316,7 @@ body::before {
 
 .chat-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border-bottom: 1px solid var(--accent-dim);
 }
 .chat-tab {
@@ -1024,6 +1024,49 @@ canvas {
 
 .exit-btn-fixed {
   display: none;
+}
+
+.game-leaderboard-jump-btn {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 1200;
+  min-width: 160px;
+  max-width: 220px;
+  padding: 8px 10px;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.game-leaderboard-jump-btn.active {
+  display: block;
+}
+
+.leaderboard-subfilters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.leaderboard-subfilters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 10px;
+}
+
+
+@media (max-width: 900px) {
+  .leaderboard-subfilters {
+    grid-template-columns: 1fr;
+  }
+
+  .game-leaderboard-jump-btn {
+    right: 10px;
+    bottom: 10px;
+    min-width: 140px;
+  }
 }
 
 .games-grid {
@@ -3062,4 +3105,19 @@ canvas {
     width: 100%;
     justify-content: center;
   }
+}
+
+
+/* Remove bottom utility bar elements inside game overlays. */
+.overlay .mobile-hint.active,
+.overlay .term-btn[id$="Action"],
+.overlay .term-btn[id$="StartBtn"],
+.overlay .term-btn[id$="startBtn"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
 }
