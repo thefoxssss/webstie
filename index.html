@@ -31,6 +31,9 @@
       <button id="tabConfig" class="menu-btn" onclick="window.openGame('overlayConfig')">
         CONFIG
       </button>
+      <button id="tabQuickSearch" class="menu-btn" type="button">
+        SEARCH
+      </button>
       <div class="sys-info">
         <span id="sysClock">00:00:00</span> | PING:
         <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
@@ -75,6 +78,10 @@
     </div>
 
     <div class="dropdown-content" id="menuDropdown"></div>
+    <div class="dropdown-content search-dropdown" id="siteSearchDropdown">
+      <input id="siteSearchInput" class="term-input" type="text" placeholder="FIND MENU OR PAGE..." maxlength="50" />
+      <div id="siteSearchResults" class="search-dropdown-results"></div>
+    </div>
 
     <!-- Dedicated games directory overlay. -->
     <div class="overlay menu-overlay games-directory-overlay" id="overlayGames">
@@ -126,6 +133,10 @@
       <div class="score-box panel-overlay-box">
         <h2>UPDATE LOG // FULL HISTORY</h2>
         <p class="panel-overlay-meta" id="updateLogFullMeta">SYNCING FULL MERGED PR HISTORY...</p>
+        <div class="update-log-toolbar">
+          <input id="updateLogSearch" class="term-input" type="text" placeholder="SEARCH UPDATES BY TITLE OR CONTENT..." maxlength="80" />
+          <button id="updateLogSearchClear" class="term-btn" type="button">RESET</button>
+        </div>
         <div class="update-log-scroll">
           <ul id="updateLogFullList">
             <li><span>SYNC</span> LOADING MERGED CHANGELOG...</li>

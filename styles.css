@@ -284,6 +284,54 @@ body::before {
   padding-left: 20px;
 }
 
+.search-dropdown {
+  min-width: min(420px, 90vw);
+  max-height: 60vh;
+  overflow: hidden;
+  padding: 10px;
+  right: auto;
+  left: 20px;
+  top: 50px;
+}
+
+.search-dropdown .term-input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.search-dropdown-results {
+  display: grid;
+  gap: 6px;
+  max-height: calc(60vh - 70px);
+  overflow-y: auto;
+}
+
+.search-dropdown-results button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--accent-dim);
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 9px;
+  padding: 10px;
+  text-align: left;
+}
+
+.search-dropdown-results button span {
+  opacity: 0.7;
+  font-size: 8px;
+}
+
+.search-dropdown-empty {
+  border: 1px dashed var(--accent-dim);
+  padding: 10px;
+  font-size: 9px;
+  opacity: 0.8;
+}
+
 /* --- 4. CHAT --- */
 /* Global chat dock on the home screen. */
 #globalChat {
@@ -563,6 +611,17 @@ body::before {
   font-size: 9px;
   margin-bottom: 10px;
   color: var(--accent);
+}
+
+.update-log-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.update-log-toolbar .term-input {
+  flex: 1;
+  margin: 0;
 }
 
 .trending-month-chart {

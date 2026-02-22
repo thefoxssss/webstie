@@ -1535,6 +1535,47 @@ function renderUpdateLogMessage(message, tag = "SYNC") {
   if (fullList) fullList.innerHTML = row;
 }
 
+let updateLogEntries = [];
+
+function renderUpdateLogRows(filterTerm = "") {
+  const compactList = document.getElementById("updateLogList");
+  const fullList = document.getElementById("updateLogFullList");
+  const fullMeta = document.getElementById("updateLogFullMeta");
+  const normalizedFilter = String(filterTerm || "").trim().toLowerCase();
+  const filtered = normalizedFilter
+    ? updateLogEntries.filter((entry) => {
+      const title = String(entry.title || "").toLowerCase();
+      const body = String(entry.body || "").toLowerCase();
+      return title.includes(normalizedFilter) || body.includes(normalizedFilter);
+    })
+    : updateLogEntries;
+
+  const rows = filtered.map((entry) => `<li><span>${escapeHtml(entry.rowNumber)}</span> ${escapeHtml(entry.title)}</li>`);
+  if (compactList) compactList.innerHTML = rows.slice(0, 5).join("") || '<li><span>EMPTY</span> NO MATCHING UPDATES.</li>';
+  if (fullList) fullList.innerHTML = rows.join("") || '<li><span>EMPTY</span> NO MATCHING UPDATES.</li>';
+  if (fullMeta) {
+    const prefix = normalizedFilter ? `SHOWING ${filtered.length} OF ${updateLogEntries.length} MERGED UPDATES` : `SHOWING ${updateLogEntries.length} MERGED UPDATES`;
+    fullMeta.innerText = prefix;
+  }
+}
+
+function initUpdateLogSearch() {
+  const searchInput = document.getElementById("updateLogSearch");
+  const clearButton = document.getElementById("updateLogSearchClear");
+  if (!searchInput || searchInput.dataset.ready === "1") return;
+  searchInput.dataset.ready = "1";
+  searchInput.addEventListener("input", () => {
+    renderUpdateLogRows(searchInput.value);
+  });
+  if (clearButton) {
+    clearButton.addEventListener("click", () => {
+      searchInput.value = "";
+      renderUpdateLogRows("");
+      searchInput.focus();
+    });
+  }
+}
+
 function renderMonthlyTrendingGraph(rows) {
   const chart = document.getElementById("trendingMonthChart");
   const meta = document.getElementById("trendingMonthlyMeta");
@@ -1615,10 +1656,10 @@ async function refreshUpdateLogFromMergedPrs() {
   const cacheTtlMs = 5 * 60 * 1000;
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
-    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows) && Array.isArray(cached.allRows)) {
-      list.innerHTML = cached.rows.join("");
-      if (fullList) fullList.innerHTML = cached.allRows.join("");
-      if (fullMeta) fullMeta.innerText = `SHOWING ${cached.allRows.length} MERGED UPDATES`;
+    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.entries)) {
+      updateLogEntries = cached.entries;
+      const activeFilter = String(document.getElementById("updateLogSearch")?.value || "");
+      renderUpdateLogRows(activeFilter);
       return;
     }
   } catch {}
@@ -1632,22 +1673,95 @@ async function refreshUpdateLogFromMergedPrs() {
       return;
     }
 
-    const allRows = merged.map((pr) => {
+    updateLogEntries = merged.map((pr) => {
       const title = String(pr.title || "UNTITLED CHANGE");
       const match = title.match(/commit\s*#?\s*(\d+)/i);
-      const rowNumber = `#${match ? match[1] : String(pr.number || "?")}`;
-      return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
+      return {
+        rowNumber: `#${match ? match[1] : String(pr.number || "?")}`,
+        title,
+        body: String(pr.body || ""),
+      };
     });
 
-    const compactRows = allRows.slice(0, 5);
-    list.innerHTML = compactRows.join("");
-    if (fullList) fullList.innerHTML = allRows.join("");
-    if (fullMeta) fullMeta.innerText = `SHOWING ${allRows.length} MERGED UPDATES`;
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows: compactRows, allRows }));
+    const activeFilter = String(document.getElementById("updateLogSearch")?.value || "");
+    renderUpdateLogRows(activeFilter);
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), entries: updateLogEntries }));
   } catch (_error) {
     renderUpdateLogMessage("UNABLE TO LOAD MERGED PR FEED", "OFFLINE");
     if (fullMeta) fullMeta.innerText = "FULL UPDATE LOG OFFLINE";
   }
+}
+
+function initSiteSearch() {
+  const triggerBtn = document.getElementById("tabQuickSearch");
+  const dropdown = document.getElementById("siteSearchDropdown");
+  const input = document.getElementById("siteSearchInput");
+  const results = document.getElementById("siteSearchResults");
+  if (!triggerBtn || !dropdown || !input || !results || triggerBtn.dataset.ready === "1") return;
+  triggerBtn.dataset.ready = "1";
+
+  const buildIndex = () => {
+    const seen = new Set();
+    const entries = [];
+    document.querySelectorAll(".overlay[id]").forEach((overlay) => {
+      const id = overlay.id;
+      const title = String(overlay.querySelector("h1, h2")?.innerText || id).trim();
+      const content = String(overlay.innerText || "").replace(/\s+/g, " ").trim().slice(0, 500);
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      entries.push({ id, title, content });
+    });
+    return entries;
+  };
+
+  const renderResults = (term = "") => {
+    const query = String(term || "").trim().toLowerCase();
+    const entries = buildIndex();
+    const ranked = entries
+      .map((entry) => {
+        const title = entry.title.toLowerCase();
+        const content = entry.content.toLowerCase();
+        let score = 0;
+        if (!query) score = 1;
+        else {
+          if (title.includes(query)) score += 10;
+          if (title.startsWith(query)) score += 6;
+          if (content.includes(query)) score += 3;
+        }
+        return { ...entry, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+      .slice(0, 9);
+
+    results.innerHTML = ranked.length
+      ? ranked.map((entry) => `<button type="button" data-overlay-id="${escapeHtml(entry.id)}"><strong>${escapeHtml(entry.title)}</strong><span>${escapeHtml(entry.id)}</span></button>`).join("")
+      : '<div class="search-dropdown-empty">NO MATCHING MENU OR PAGE.</div>';
+  };
+
+  triggerBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    dropdown.classList.toggle("show");
+    if (dropdown.classList.contains("show")) {
+      renderResults(input.value);
+      input.focus();
+    }
+  });
+
+  input.addEventListener("input", () => renderResults(input.value));
+  results.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-overlay-id]");
+    const overlayId = String(button?.dataset.overlayId || "");
+    if (!overlayId) return;
+    openGame(overlayId);
+    dropdown.classList.remove("show");
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("#siteSearchDropdown") && !event.target.closest("#tabQuickSearch")) {
+      dropdown.classList.remove("show");
+    }
+  });
 }
 
 function initTrendingGamesPanel() {
@@ -2062,6 +2176,8 @@ renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
 initHomePanelOverlayButtons();
+initUpdateLogSearch();
+initSiteSearch();
 refreshTrendingMonthGraph();
 refreshUpdateLogFromMergedPrs();
 setupBankTransferUX();
@@ -2134,6 +2250,8 @@ export function closeOverlays() {
   clearLeaderboardSubscriptions();
   const menuDropdown = document.getElementById("menuDropdown");
   if (menuDropdown) menuDropdown.classList.remove("show");
+  const siteSearchDropdown = document.getElementById("siteSearchDropdown");
+  if (siteSearchDropdown) siteSearchDropdown.classList.remove("show");
   document.body.classList.remove("games-directory-open");
   document.body.classList.remove("overlay-open");
 }
