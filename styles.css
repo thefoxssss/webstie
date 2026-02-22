@@ -648,10 +648,25 @@ canvas {
   box-shadow: 0 0 20px var(--accent-dim);
 }
 
-.fullscreen-btn-fixed {
+.overlay-controls-fixed {
   position: sticky;
-  bottom: 82px;
-  margin: 0 0 10px;
+  bottom: 20px;
+  margin: auto 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: min(95vw, 430px);
+  z-index: 1001;
+}
+
+.game-overlay {
+  padding-bottom: 96px;
+}
+
+.fullscreen-btn-fixed {
+  position: static;
+  margin: 0;
   width: 200px;
   border: 2px solid var(--accent);
   background: #000;
@@ -670,11 +685,10 @@ canvas {
 }
 
 .exit-btn-fixed {
-  position: sticky;
-  bottom: 20px;
+  position: static;
   left: auto;
   transform: none;
-  margin: 16px 0 10px;
+  margin: 0;
   width: 200px;
   border: 2px solid var(--accent);
   background: #000;
@@ -2509,4 +2523,18 @@ canvas {
 }
 .uttt-cell.is-playable:hover {
   background: #152115;
+}
+
+
+@media (max-width: 560px) {
+  .overlay-controls-fixed {
+    width: min(95vw, 320px);
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .overlay-controls-fixed .fullscreen-btn-fixed,
+  .overlay-controls-fixed .exit-btn-fixed {
+    width: 100%;
+  }
 }
