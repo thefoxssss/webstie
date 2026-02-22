@@ -2427,26 +2427,25 @@ export async function adminGrantCash(amount) {
 }
 
 function getAdminTargetUser() {
-  const userSelect = document.getElementById("adminTargetUser");
-  return String(userSelect?.value || "")
+  const userInput = document.getElementById("adminTargetUser");
+  return String(userInput?.value || "")
     .trim()
     .toUpperCase();
 }
 
 function getAdminTargetScope() {
   const scopeSelect = document.getElementById("adminTargetScope");
-  const scope = String(scopeSelect?.value || "selected").trim().toLowerCase();
-  if (["all", "others", "self", "selected"].includes(scope)) return scope;
-  return "selected";
+  const scope = String(scopeSelect?.value || "self").trim().toLowerCase();
+  if (["all", "others", "self", "username"].includes(scope)) return scope;
+  return "self";
 }
 
 async function resolveAdminTargetUsers() {
   const scope = getAdminTargetScope();
+  const selected = getAdminTargetUser();
+  if (selected) return [selected];
   if (scope === "self") return [myName];
-  if (scope === "selected") {
-    const selected = getAdminTargetUser();
-    return selected ? [selected] : [];
-  }
+  if (scope === "username") return [myName];
 
   const names = [];
   const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
@@ -2498,13 +2497,14 @@ async function applyAdminActionToTargets({ actionName, emptyToast, mutateRemote,
 
 export async function adminRefreshTargetUsers() {
   if (!isGodUser()) return;
-  const userSelect = document.getElementById("adminTargetUser");
-  if (!userSelect) return;
+  const userInput = document.getElementById("adminTargetUser");
+  const userList = document.getElementById("adminTargetUserList");
+  if (!userInput || !userList) return;
 
-  const previous = String(userSelect.value || "")
+  const previous = String(userInput.value || "")
     .trim()
     .toUpperCase();
-  userSelect.innerHTML = '<option value="">SELECT USER</option>';
+  userList.innerHTML = "";
 
   try {
     const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
@@ -2521,22 +2521,74 @@ export async function adminRefreshTargetUsers() {
       .forEach((name) => {
         const option = document.createElement("option");
         option.value = name;
-        option.innerText = name;
-        userSelect.appendChild(option);
+        userList.appendChild(option);
       });
 
-    if (previous && names.includes(previous)) userSelect.value = previous;
+    if (previous && names.includes(previous)) userInput.value = previous;
     showToast(`TARGET LIST READY (${names.length})`, "🎯");
   } catch {
     showToast("FAILED TO LOAD TARGETS", "⚠️", "Check connection.");
   }
 }
 
-export async function adminGrantCashToUser(amount) {
-  await adminGrantCash(amount);
+function readAdminNumberInput(id, fallback = 0) {
+  const input = document.getElementById(id);
+  const value = Number(input?.value);
+  return Number.isFinite(value) ? value : fallback;
 }
 
-export async function adminForgiveInterestForUser() {
+export async function adminGrantCashFromInput() {
+  await adminGrantCash(readAdminNumberInput("adminCashAmount", 0));
+}
+
+export async function adminSetCashFromInput() {
+  const amount = Math.max(0, Math.floor(readAdminNumberInput("adminCashAmount", 0)));
+  await applyAdminActionToTargets({
+    actionName: "SET CASH",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: () => ({ money: amount }),
+    mutateLocal: () => {
+      const previous = Math.floor(Number(myMoney) || 0);
+      myMoney = amount;
+      logTransaction("ADMIN CASH SET", myMoney - previous);
+    },
+    successToast: (targets) => `SET CASH FOR ${targets.length} PLAYER(S)`,
+    failToast: "SET CASH FAILED",
+  });
+}
+
+export async function adminMultiplyCashFromInput() {
+  const multiplier = Math.max(0, readAdminNumberInput("adminCashAmount", 1));
+  await applyAdminActionToTargets({
+    actionName: "MULTIPLY CASH",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => ({ money: Math.floor((Number(targetData?.money) || 0) * multiplier) }),
+    mutateLocal: () => {
+      const previous = Math.floor(Number(myMoney) || 0);
+      myMoney = Math.floor(previous * multiplier);
+      logTransaction("ADMIN CASH MULTIPLIER", myMoney - previous);
+    },
+    successToast: (targets) => `MULTIPLIED CASH FOR ${targets.length} PLAYER(S)`,
+    failToast: "MULTIPLY CASH FAILED",
+  });
+}
+
+export async function adminSetDebtFromInput() {
+  const debt = Math.max(0, Math.floor(readAdminNumberInput("adminCashAmount", 0)));
+  const now = Date.now();
+  await applyAdminActionToTargets({
+    actionName: "SET DEBT",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => ({ loanData: { ...(targetData?.loanData || {}), debt, lastInterestAt: now } }),
+    mutateLocal: () => {
+      loanData = { ...(loanData || {}), debt, lastInterestAt: now };
+    },
+    successToast: (targets) => `SET DEBT FOR ${targets.length} PLAYER(S)`,
+    failToast: "SET DEBT FAILED",
+  });
+}
+
+export async function adminForgiveInterest() {
   const now = Date.now();
   await applyAdminActionToTargets({
     actionName: "FORGIVE INTEREST",
@@ -2658,6 +2710,53 @@ export async function adminBoostStats() {
   });
 }
 
+export async function adminBoostStatsFromInput() {
+  const amount = Math.max(1, Math.floor(readAdminNumberInput("adminStatAmount", 100)));
+  await applyAdminActionToTargets({
+    actionName: "BOOST STATS",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => ({
+      stats: {
+        games: Math.max(0, Number(targetData?.stats?.games) || 0) + amount * 2,
+        wins: Math.max(0, Number(targetData?.stats?.wins) || 0) + amount,
+        wpm: Math.max(120, Number(targetData?.stats?.wpm) || 0),
+      },
+    }),
+    mutateLocal: () => {
+      myStats.games = Math.max(0, Number(myStats.games) || 0) + amount * 2;
+      myStats.wins = Math.max(0, Number(myStats.wins) || 0) + amount;
+      myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
+    },
+    successToast: (targets) => `STATS BOOSTED FOR ${targets.length} PLAYER(S)`,
+    failToast: "STAT BOOST FAILED",
+  });
+}
+
+export async function adminSetJobCompletionsFromInput() {
+  const amount = Math.max(0, Math.floor(readAdminNumberInput("adminStatAmount", 0)));
+  const jobKeys = ["cashier", "frontdesk", "delivery", "stocker", "janitor", "barista", "math", "code", "click"];
+  await applyAdminActionToTargets({
+    actionName: "SET JOB COMPLETIONS",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const completed = { ...(targetData?.jobs?.completed || {}) };
+      jobKeys.forEach((key) => {
+        completed[key] = amount;
+      });
+      return { jobs: { ...(targetData?.jobs || {}), completed } };
+    },
+    mutateLocal: () => {
+      const completed = { ...(jobData?.completed || {}) };
+      jobKeys.forEach((key) => {
+        completed[key] = amount;
+      });
+      jobData.completed = completed;
+    },
+    successToast: (targets) => `UPDATED JOB COMPLETIONS FOR ${targets.length} PLAYER(S)`,
+    failToast: "JOB COMPLETION UPDATE FAILED",
+  });
+}
+
 export async function adminMaxPortfolio() {
   await applyAdminActionToTargets({
     actionName: "MAX PORTFOLIO",
@@ -2758,6 +2857,30 @@ export async function adminMarketTimesThousand() {
   if (!isGodUser()) return;
   await setMarketShift(1000000000000000000, 0.01, 1);
   showToast("MARKET MULTIPLIED x1000000000000000000", "📈");
+  await saveStats();
+}
+
+export async function adminMarketPumpFromInput() {
+  if (!isGodUser()) return;
+  const percent = Math.max(1, readAdminNumberInput("adminMarketAmount", 35));
+  await setMarketShift(1 + percent / 100);
+  showToast(`MARKET UP +${percent}%`, "📈");
+  await saveStats();
+}
+
+export async function adminMarketDropFromInput() {
+  if (!isGodUser()) return;
+  const percent = Math.max(1, readAdminNumberInput("adminMarketAmount", 35));
+  await setMarketShift(Math.max(0, 1 - percent / 100), 0.01, 0.01);
+  showToast(`MARKET DOWN -${percent}%`, "📉");
+  await saveStats();
+}
+
+export async function adminMarketMultiplyFromInput() {
+  if (!isGodUser()) return;
+  const multiplier = Math.max(0, readAdminNumberInput("adminMarketAmount", 2));
+  await setMarketShift(multiplier, 0.01, 0.01);
+  showToast(`MARKET MULTIPLIED x${multiplier}`, "📊");
   await saveStats();
 }
 

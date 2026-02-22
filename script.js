@@ -14,6 +14,10 @@ import {
   submitJob,
   state,
   adminGrantCash,
+  adminGrantCashFromInput,
+  adminSetCashFromInput,
+  adminMultiplyCashFromInput,
+  adminSetDebtFromInput,
   adminInjectJackpot,
   adminSetMaxCash,
   adminGrantAllShopItems,
@@ -26,8 +30,12 @@ import {
   adminMarketTimesThousand,
   adminPrestigePack,
   adminRefreshTargetUsers,
-  adminGrantCashToUser,
-  adminForgiveInterestForUser,
+  adminForgiveInterest,
+  adminBoostStatsFromInput,
+  adminSetJobCompletionsFromInput,
+  adminMarketPumpFromInput,
+  adminMarketDropFromInput,
+  adminMarketMultiplyFromInput,
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
@@ -74,6 +82,10 @@ window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 window.adminGrantCash = adminGrantCash;
+window.adminGrantCashFromInput = adminGrantCashFromInput;
+window.adminSetCashFromInput = adminSetCashFromInput;
+window.adminMultiplyCashFromInput = adminMultiplyCashFromInput;
+window.adminSetDebtFromInput = adminSetDebtFromInput;
 window.adminInjectJackpot = adminInjectJackpot;
 window.adminSetMaxCash = adminSetMaxCash;
 window.adminGrantAllShopItems = adminGrantAllShopItems;
@@ -86,8 +98,12 @@ window.adminMarketCrashToZero = adminMarketCrashToZero;
 window.adminMarketTimesThousand = adminMarketTimesThousand;
 window.adminPrestigePack = adminPrestigePack;
 window.adminRefreshTargetUsers = adminRefreshTargetUsers;
-window.adminGrantCashToUser = adminGrantCashToUser;
-window.adminForgiveInterestForUser = adminForgiveInterestForUser;
+window.adminForgiveInterest = adminForgiveInterest;
+window.adminBoostStatsFromInput = adminBoostStatsFromInput;
+window.adminSetJobCompletionsFromInput = adminSetJobCompletionsFromInput;
+window.adminMarketPumpFromInput = adminMarketPumpFromInput;
+window.adminMarketDropFromInput = adminMarketDropFromInput;
+window.adminMarketMultiplyFromInput = adminMarketMultiplyFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
