@@ -342,18 +342,38 @@ function initGameSwitcher() {
 
   const gameIndexById = new Map(orderedGames.map((entry, index) => [entry.id, index]));
 
-  function getNeighborGame(gameId, offset) {
-    const index = gameIndexById.get(gameId);
-    if (typeof index !== "number") return null;
-    const neighborIndex = index + offset;
-    if (neighborIndex < 0 || neighborIndex >= orderedGames.length) return null;
-    return orderedGames[neighborIndex];
+  function clampGameIndex(index) {
+    return Math.max(0, Math.min(orderedGames.length - 1, index));
   }
 
-  function launchNeighbor(gameId, offset) {
-    const target = getNeighborGame(gameId, offset);
-    if (!target) return;
-    window.launchGame(target.id, "game-switcher");
+  function renderSwitcherAtIndex(switcher, centerIndex, dragOffset = 0) {
+    const prevButton = switcher.querySelector('[data-slot="prev"]');
+    const currentButton = switcher.querySelector('[data-slot="current"]');
+    const nextButton = switcher.querySelector('[data-slot="next"]');
+    if (!prevButton || !currentButton || !nextButton) return;
+
+    const slots = [
+      { button: prevButton, game: orderedGames[centerIndex - 1] || null, pos: -1 },
+      { button: currentButton, game: orderedGames[centerIndex] || null, pos: 0 },
+      { button: nextButton, game: orderedGames[centerIndex + 1] || null, pos: 1 },
+    ];
+
+    slots.forEach(({ button, game, pos }) => {
+      button.dataset.pos = String(pos);
+      button.dataset.game = game?.id || "";
+      button.textContent = game?.title || "";
+      button.disabled = !game;
+      button.classList.toggle("is-empty", !game);
+      button.classList.toggle("is-center", pos === 0);
+    });
+
+    switcher.style.setProperty("--switcher-drag-offset", `${dragOffset}px`);
+  }
+
+  function launchFromIndex(index) {
+    const game = orderedGames[clampGameIndex(index)];
+    if (!game) return;
+    window.launchGame(game.id, "game-switcher");
   }
 
   orderedGames.forEach((game) => {
@@ -363,33 +383,67 @@ function initGameSwitcher() {
 
     const switcher = document.createElement("div");
     switcher.className = "game-switcher-header";
-    switcher.dataset.game = game.id;
+    switcher.dataset.activeGame = game.id;
     switcher.innerHTML = `
-      <button class="game-switcher-side game-switcher-prev" type="button" aria-label="Previous game"></button>
-      <h1>${game.title}</h1>
-      <button class="game-switcher-side game-switcher-next" type="button" aria-label="Next game"></button>
+      <div class="game-switcher-track" aria-label="Game switcher">
+        <button class="game-switcher-title" type="button" data-slot="prev"></button>
+        <span class="game-switcher-arrow" aria-hidden="true">→</span>
+        <button class="game-switcher-title" type="button" data-slot="current"></button>
+        <span class="game-switcher-arrow" aria-hidden="true">→</span>
+        <button class="game-switcher-title" type="button" data-slot="next"></button>
+      </div>
     `;
     heading.replaceWith(switcher);
 
-    const prevButton = switcher.querySelector(".game-switcher-prev");
-    const nextButton = switcher.querySelector(".game-switcher-next");
-    prevButton?.addEventListener("click", () => launchNeighbor(game.id, -1));
-    nextButton?.addEventListener("click", () => launchNeighbor(game.id, 1));
+    const startIndex = gameIndexById.get(game.id) || 0;
+    renderSwitcherAtIndex(switcher, startIndex, 0);
+
+    switcher.querySelectorAll(".game-switcher-title").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetGame = button.dataset.game;
+        if (!targetGame) return;
+        window.launchGame(targetGame, "game-switcher-click");
+      });
+    });
 
     let dragStartX = null;
+    let activeIndex = startIndex;
+    let previewIndex = startIndex;
+    const DRAG_STEP = 130;
+
     switcher.addEventListener("pointerdown", (event) => {
       dragStartX = event.clientX;
+      activeIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      previewIndex = activeIndex;
+      switcher.classList.add("is-dragging");
       switcher.setPointerCapture?.(event.pointerId);
     });
-    switcher.addEventListener("pointerup", (event) => {
+
+    switcher.addEventListener("pointermove", (event) => {
       if (dragStartX === null) return;
       const deltaX = event.clientX - dragStartX;
-      dragStartX = null;
-      if (Math.abs(deltaX) < 40) return;
-      launchNeighbor(game.id, deltaX < 0 ? 1 : -1);
+      const shifted = Math.round(-deltaX / DRAG_STEP);
+      previewIndex = clampGameIndex(activeIndex + shifted);
+      renderSwitcherAtIndex(switcher, previewIndex, deltaX * 0.2);
     });
-    switcher.addEventListener("pointercancel", () => {
+
+    function commitDrag() {
+      if (dragStartX === null) return;
       dragStartX = null;
+      switcher.classList.remove("is-dragging");
+      const currentIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      renderSwitcherAtIndex(switcher, previewIndex, 0);
+      if (previewIndex !== currentIndex) launchFromIndex(previewIndex);
+    }
+
+    switcher.addEventListener("pointerup", commitDrag);
+    switcher.addEventListener("pointercancel", () => {
+      if (dragStartX === null) return;
+      dragStartX = null;
+      switcher.classList.remove("is-dragging");
+      const resetIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      previewIndex = resetIndex;
+      renderSwitcherAtIndex(switcher, resetIndex, 0);
     });
   });
 
@@ -398,21 +452,10 @@ function initGameSwitcher() {
     const overlayId = getOverlayIdForGame(activeGameId);
     const header = document.querySelector(`#${overlayId} .game-switcher-header`);
     if (!header) return;
-    const prevGame = getNeighborGame(activeGameId, -1);
-    const nextGame = getNeighborGame(activeGameId, 1);
-    const prevButton = header.querySelector(".game-switcher-prev");
-    const nextButton = header.querySelector(".game-switcher-next");
-
-    if (prevButton) {
-      prevButton.textContent = prevGame ? prevGame.title : "";
-      prevButton.disabled = !prevGame;
-      prevButton.classList.toggle("is-empty", !prevGame);
-    }
-    if (nextButton) {
-      nextButton.textContent = nextGame ? nextGame.title : "";
-      nextButton.disabled = !nextGame;
-      nextButton.classList.toggle("is-empty", !nextGame);
-    }
+    header.dataset.activeGame = activeGameId;
+    const activeIndex = gameIndexById.get(activeGameId);
+    if (typeof activeIndex !== "number") return;
+    renderSwitcherAtIndex(header, activeIndex, 0);
   }
 
   window.__updateGameSwitcherState = updateSwitcherState;

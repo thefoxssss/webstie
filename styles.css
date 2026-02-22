@@ -810,68 +810,71 @@ body.games-directory-open .wrap {
 
 
 .game-switcher-header {
-  width: min(960px, 100%);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 10px;
+  width: min(820px, 100%);
+  margin-bottom: 6px;
+  user-select: none;
   touch-action: pan-y;
+  --switcher-drag-offset: 0px;
 }
 
-.game-switcher-header h1 {
-  margin: 0;
-  text-align: center;
+.game-switcher-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transform: translateX(var(--switcher-drag-offset));
+  transition: transform 0.2s ease;
 }
 
-.game-switcher-side {
+.game-switcher-header.is-dragging .game-switcher-track {
+  transition: none;
+}
+
+.game-switcher-title {
   border: none;
   background: transparent;
   color: var(--accent);
   font: inherit;
-  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  opacity: 0.35;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  min-width: 0;
+  max-width: 230px;
+  min-width: 110px;
+  font-size: 14px;
+  opacity: 0.35;
 }
 
-.game-switcher-prev {
-  text-align: left;
+.game-switcher-title[data-pos="0"] {
+  opacity: 1;
+  transform: scale(1.03);
 }
 
-.game-switcher-next {
-  text-align: right;
+.game-switcher-title[data-pos="-1"],
+.game-switcher-title[data-pos="1"] {
+  opacity: 0.35;
 }
 
-.game-switcher-side:hover,
-.game-switcher-side:focus-visible {
-  opacity: 0.8;
-  transform: scale(1.02);
+.game-switcher-title:hover,
+.game-switcher-title:focus-visible {
+  opacity: 0.9;
 }
 
-.game-switcher-side::before {
-  display: inline-block;
-}
-
-.game-switcher-prev::before {
-  content: "◀ ";
-}
-
-.game-switcher-next::before {
-  content: " ▶";
-}
-
-.game-switcher-side.is-empty,
-.game-switcher-side:disabled {
+.game-switcher-title.is-empty,
+.game-switcher-title:disabled {
   opacity: 0.08;
   cursor: default;
   transform: none;
+}
+
+.game-switcher-arrow {
+  color: var(--accent-dim);
+  font-size: 13px;
+  opacity: 0.8;
+  user-select: none;
 }
 
 /* Menu-style overlays sit above the home scene so chat/glow stay visible. */
