@@ -1573,10 +1573,11 @@ async function refreshUpdateLogFromMergedPrs() {
       return;
     }
 
-    const rows = merged.map((pr, idx) => {
+    const rows = merged.map((pr) => {
       const title = String(pr.title || "UNTITLED CHANGE");
-      const rowNumber = `#${String(idx + 1).padStart(2, "0")}`;
-      return `<li><span>${rowNumber}</span> ${escapeHtml(title)}</li>`;
+      const commitNumber = String(pr.merge_commit_sha || pr.head?.sha || "").trim();
+      const rowNumber = commitNumber ? `#${commitNumber.slice(0, 7).toUpperCase()}` : `PR-${String(pr.number || "?")}`;
+      return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
     });
 
     list.innerHTML = rows.join("");
