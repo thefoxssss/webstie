@@ -89,6 +89,18 @@ window.adminForgiveInterestForUser = adminForgiveInterestForUser;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
+function bindOverlayNavButtons() {
+  document.querySelectorAll("[data-open-overlay]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const overlayId = button.getAttribute("data-open-overlay");
+      if (!overlayId || typeof window.openGame !== "function") return;
+      window.openGame(overlayId);
+    });
+  });
+}
+
+bindOverlayNavButtons();
+
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {
   window.closeOverlays();
