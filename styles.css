@@ -1048,6 +1048,13 @@ canvas {
   display: block;
 }
 
+.game-leaderboard-jump-btn.above-game-shop {
+  left: 14px;
+  right: auto;
+  top: 14px;
+  bottom: auto;
+}
+
 .leaderboard-subfilters {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1072,6 +1079,11 @@ canvas {
     right: 10px;
     bottom: 10px;
     min-width: 140px;
+  }
+
+  .game-leaderboard-jump-btn.above-game-shop {
+    left: 10px;
+    top: 10px;
   }
 }
 

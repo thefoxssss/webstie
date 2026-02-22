@@ -4992,7 +4992,10 @@ function syncGameLeaderboardButton() {
   const btn = document.getElementById("gameLeaderboardJumpBtn");
   if (!btn) return;
   const hasGame = Boolean(currentGame);
+  const activeOverlay = document.querySelector(".overlay.active");
+  const shouldAnchorAboveShop = hasGame && activeOverlay?.classList.contains("has-game-side-shop");
   btn.classList.toggle("active", hasGame);
+  btn.classList.toggle("above-game-shop", Boolean(shouldAnchorAboveShop));
   btn.style.display = hasGame ? "block" : "none";
   btn.textContent = hasGame ? `VIEW ${String(currentGame).toUpperCase()} LEADERBOARD` : "VIEW LEADERBOARD";
 }
