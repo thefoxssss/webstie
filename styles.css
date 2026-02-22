@@ -2214,9 +2214,12 @@ canvas {
 
 #toastBox {
   position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: calc(var(--topbar-clearance) + 14px);
+  right: 18px;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  max-width: 340px;
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -2225,12 +2228,13 @@ canvas {
 }
 .toast {
   background: rgba(0, 0, 0, 0.95);
-  border: 2px solid var(--accent);
+  border: 1px solid var(--accent);
   color: var(--accent);
-  padding: 15px 25px;
-  min-width: 300px;
+  min-width: 220px;
+  max-width: 340px;
+  padding: 10px 14px;
   text-align: center;
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: 0 0 10px var(--accent-glow);
   display: flex;
   align-items: center;
   gap: 15px;
@@ -2255,20 +2259,7 @@ canvas {
 }
 
 #toastBox.in-game {
-  top: 18px;
-  right: 18px;
-  bottom: auto;
-  left: auto;
-  transform: none;
-  max-width: 340px;
-}
-
-#toastBox.in-game .toast {
-  min-width: 220px;
-  max-width: 340px;
-  padding: 10px 14px;
-  border-width: 1px;
-  box-shadow: 0 0 10px var(--accent-glow);
+  top: calc(var(--topbar-clearance) + 14px);
 }
 
 #toastBox.in-game .toast-icon {
