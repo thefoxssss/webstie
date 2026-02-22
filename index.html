@@ -151,7 +151,7 @@
               <option value="others">OTHERS</option>
               <option value="username">USERNAME</option>
             </select>
-            <input class="term-input" id="adminTargetUser" list="adminTargetUserList" placeholder="USERNAME (OPTIONAL)" />
+            <input class="term-input" id="adminTargetUser" list="adminTargetUserList" pattern="[A-Za-z0-9_]{3,10}" maxlength="10" placeholder="USERNAME (OPTIONAL)" />
             <datalist id="adminTargetUserList"></datalist>
             <button class="term-btn" onclick="window.adminRefreshTargetUsers()">
               REFRESH USER LIST
@@ -235,6 +235,53 @@
             <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">
               CLEAR RECENT CHAT MESSAGES
             </button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">SETTING ACTIONS (ADD / REMOVE / SET)</p>
+            <input class="term-input" id="adminSettingKey" type="text" maxlength="32" placeholder="SETTING KEY (E.G. ROLE, TAGS, LIMIT_DAILY)" />
+            <select class="term-input" id="adminSettingType">
+              <option value="string">STRING</option>
+              <option value="integer">INTEGER</option>
+              <option value="boolean">BOOLEAN</option>
+              <option value="list">LIST (COMMA SEPARATED)</option>
+            </select>
+            <input class="term-input" id="adminSettingValue" type="text" maxlength="120" placeholder="SETTING VALUE" />
+            <select class="term-input" id="adminSettingAction">
+              <option value="set">SET</option>
+              <option value="add">ADD</option>
+              <option value="remove">REMOVE</option>
+            </select>
+            <button class="term-btn" onclick="window.adminApplySettingActionFromInput()">
+              APPLY SETTING ACTION
+            </button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">ADVANCED OPERATIONS</p>
+            <input class="term-input" id="adminRoleInput" type="text" maxlength="16" placeholder="ROLE (PLAYER, MOD, ADMIN, OWNER)" />
+            <button class="term-btn" onclick="window.adminSetRoleFromInput()">SET ROLE</button>
+            <input class="term-input" id="adminStatusInput" type="text" maxlength="16" placeholder="STATUS (ACTIVE, MUTED, SUSPENDED, BANNED)" />
+            <button class="term-btn" onclick="window.adminSetStatusFromInput()">SET STATUS</button>
+            <input class="term-input" id="adminPermissionInput" type="text" maxlength="32" placeholder="PERMISSION KEY" />
+            <button class="term-btn" onclick="window.adminGrantPermissionFromInput()">ADD PERMISSION</button>
+            <button class="term-btn" onclick="window.adminRevokePermissionFromInput()">REMOVE PERMISSION</button>
+            <input class="term-input" id="adminTagInput" type="text" maxlength="24" placeholder="TAG" />
+            <button class="term-btn" onclick="window.adminAddTagFromInput()">ADD TAG</button>
+            <button class="term-btn" onclick="window.adminRemoveTagFromInput()">REMOVE TAG</button>
+            <input class="term-input" id="adminLimitKeyInput" type="text" maxlength="24" placeholder="LIMIT KEY" />
+            <input class="term-input" id="adminLimitValueInput" type="number" step="1" min="0" placeholder="LIMIT VALUE" />
+            <button class="term-btn" onclick="window.adminSetLimitFromInput()">SET LIMIT</button>
+            <input class="term-input" id="adminPreferenceKeyInput" type="text" maxlength="24" placeholder="PREFERENCE KEY" />
+            <input class="term-input" id="adminPreferenceValueInput" type="text" maxlength="60" placeholder="PREFERENCE VALUE" />
+            <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
+            <input class="term-input" id="adminRestrictionInput" type="text" maxlength="24" placeholder="RESTRICTION KEY" />
+            <button class="term-btn" onclick="window.adminRemoveRestrictionFromInput()">REMOVE RESTRICTION</button>
+            <input class="term-input" id="adminActionLogInput" type="text" maxlength="100" placeholder="ACTION LOG MESSAGE" />
+            <button class="term-btn" onclick="window.adminLogAdminActionFromInput()">LOG ACTION</button>
+            <input class="term-input" id="adminTaskNameInput" type="text" maxlength="40" placeholder="TASK NAME" />
+            <input class="term-input" id="adminTaskTimeInput" type="number" step="1" min="1" placeholder="RUN AFTER MINUTES" />
+            <button class="term-btn" onclick="window.adminScheduleTaskFromInput()">SCHEDULE TASK</button>
           </div>
 
         </div>

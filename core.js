@@ -2428,9 +2428,12 @@ export async function adminGrantCash(amount) {
 
 function getAdminTargetUser() {
   const userInput = document.getElementById("adminTargetUser");
-  return String(userInput?.value || "")
+  const candidate = String(userInput?.value || "")
     .trim()
     .toUpperCase();
+  if (!candidate) return "";
+  if (!/^[A-Z0-9_]{3,10}$/.test(candidate)) return "";
+  return candidate;
 }
 
 function getAdminTargetScope() {
@@ -2545,6 +2548,115 @@ function readAdminTextInput(id) {
 function clearAdminTextInput(id) {
   const input = document.getElementById(id);
   if (input) input.value = "";
+}
+
+function readAdminActionChoice(id, allowed, fallback) {
+  const input = document.getElementById(id);
+  const value = String(input?.value || "")
+    .trim()
+    .toLowerCase();
+  return allowed.includes(value) ? value : fallback;
+}
+
+function parseTypedAdminValue(type, raw) {
+  if (type === "string") return String(raw || "").trim();
+  if (type === "integer") {
+    const value = Math.floor(Number(raw));
+    return Number.isFinite(value) ? value : null;
+  }
+  if (type === "boolean") {
+    const normalized = String(raw || "").trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "off"].includes(normalized)) return false;
+    return null;
+  }
+  if (type === "list") {
+    return String(raw || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return null;
+}
+
+function validateAdminSettingValue(key, type, value) {
+  const setting = String(key || "")
+    .trim()
+    .toLowerCase();
+  if (!/^[a-z0-9_]{3,32}$/.test(setting)) return { ok: false, message: "INVALID SETTING KEY" };
+  if (type === "integer" && (!Number.isInteger(value) || value < 0 || value > 1000000000)) {
+    return { ok: false, message: "INTEGER OUT OF RANGE" };
+  }
+  if (setting === "role") {
+    const allowed = ["PLAYER", "MOD", "ADMIN", "OWNER"];
+    if (type !== "string" || !allowed.includes(String(value || "").toUpperCase())) {
+      return { ok: false, message: "INVALID ROLE" };
+    }
+  }
+  if (setting === "status") {
+    const allowed = ["ACTIVE", "MUTED", "SUSPENDED", "BANNED"];
+    if (type !== "string" || !allowed.includes(String(value || "").toUpperCase())) {
+      return { ok: false, message: "INVALID STATUS" };
+    }
+  }
+  if (["permissions", "tags", "restrictions"].includes(setting)) {
+    const list = Array.isArray(value) ? value : [String(value || "")];
+    if (!list.every((entry) => /^[A-Z0-9_]{2,32}$/i.test(String(entry || "").trim()))) {
+      return { ok: false, message: "INVALID LIST ENTRY" };
+    }
+  }
+  return { ok: true };
+}
+
+function applySettingAction(currentValue, action, type, value) {
+  if (action === "set") return value;
+  if (type === "integer") {
+    const base = Number.isInteger(currentValue) ? currentValue : 0;
+    if (action === "add") return base + value;
+    if (action === "remove") return Math.max(0, base - value);
+  }
+  if (type === "boolean") {
+    if (action === "add") return true;
+    if (action === "remove") return false;
+  }
+  if (type === "string") {
+    const base = String(currentValue || "");
+    if (action === "add") return `${base}${value}`.trim();
+    if (action === "remove") return base.replace(String(value), "").trim();
+  }
+  if (type === "list") {
+    const base = new Set(Array.isArray(currentValue) ? currentValue.map((entry) => String(entry).trim()) : []);
+    const updates = Array.isArray(value) ? value : [value];
+    if (action === "add") updates.forEach((entry) => base.add(String(entry).trim()));
+    if (action === "remove") updates.forEach((entry) => base.delete(String(entry).trim()));
+    return Array.from(base).filter(Boolean);
+  }
+  return value;
+}
+
+async function adminApplySettingAction({ key, type, action, value, successLabel = "SETTING UPDATED" }) {
+  const validation = validateAdminSettingValue(key, type, value);
+  if (!validation.ok) {
+    showToast(validation.message, "⚠️");
+    return;
+  }
+  await applyAdminActionToTargets({
+    actionName: `SETTING:${key.toUpperCase()}`,
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const settings = { ...(targetData?.adminSettings || {}) };
+      const currentValue = settings[key];
+      settings[key] = applySettingAction(currentValue, action, type, value);
+      return { adminSettings: settings };
+    },
+    mutateLocal: () => {
+      state.adminSettings = state.adminSettings || {};
+      const currentValue = state.adminSettings[key];
+      state.adminSettings[key] = applySettingAction(currentValue, action, type, value);
+    },
+    successToast: (targets) => `${successLabel} FOR ${targets.length} PLAYER(S)`,
+    failToast: "SETTING UPDATE FAILED",
+  });
 }
 
 export async function adminGrantCashFromInput() {
@@ -2866,6 +2978,113 @@ export async function adminClearRecentChatFromInput() {
   } catch {
     showToast("CHAT CLEAR FAILED", "⚠️", "Try again shortly.");
   }
+}
+
+export async function adminApplySettingActionFromInput() {
+  const key = String(readAdminTextInput("adminSettingKey") || "")
+    .trim()
+    .toLowerCase();
+  const type = readAdminActionChoice("adminSettingType", ["string", "integer", "boolean", "list"], "string");
+  const action = readAdminActionChoice("adminSettingAction", ["add", "remove", "set"], "set");
+  const parsed = parseTypedAdminValue(type, readAdminTextInput("adminSettingValue"));
+  if (parsed === null || key.length < 3) {
+    showToast("INVALID SETTING INPUT", "⚠️");
+    return;
+  }
+  await adminApplySettingAction({ key, type, action, value: parsed, successLabel: "SETTING APPLIED" });
+}
+
+export async function adminSetRoleFromInput() {
+  const role = String(readAdminTextInput("adminRoleInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "role", type: "string", action: "set", value: role, successLabel: "ROLE SET" });
+}
+
+export async function adminSetStatusFromInput() {
+  const status = String(readAdminTextInput("adminStatusInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "status", type: "string", action: "set", value: status, successLabel: "STATUS SET" });
+}
+
+export async function adminGrantPermissionFromInput() {
+  const permission = String(readAdminTextInput("adminPermissionInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "permissions", type: "list", action: "add", value: [permission], successLabel: "PERMISSION ADDED" });
+}
+
+export async function adminRevokePermissionFromInput() {
+  const permission = String(readAdminTextInput("adminPermissionInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "permissions", type: "list", action: "remove", value: [permission], successLabel: "PERMISSION REMOVED" });
+}
+
+export async function adminAddTagFromInput() {
+  const tag = String(readAdminTextInput("adminTagInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "tags", type: "list", action: "add", value: [tag], successLabel: "TAG ADDED" });
+}
+
+export async function adminRemoveTagFromInput() {
+  const tag = String(readAdminTextInput("adminTagInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "tags", type: "list", action: "remove", value: [tag], successLabel: "TAG REMOVED" });
+}
+
+export async function adminSetLimitFromInput() {
+  const key = String(readAdminTextInput("adminLimitKeyInput") || "")
+    .trim()
+    .toLowerCase();
+  const value = Math.max(0, Math.floor(readAdminNumberInput("adminLimitValueInput", 0)));
+  await adminApplySettingAction({ key: `limit_${key}`, type: "integer", action: "set", value, successLabel: "LIMIT SET" });
+}
+
+export async function adminSetPreferenceFromInput() {
+  const key = String(readAdminTextInput("adminPreferenceKeyInput") || "")
+    .trim()
+    .toLowerCase();
+  const value = readAdminTextInput("adminPreferenceValueInput");
+  await adminApplySettingAction({ key: `pref_${key}`, type: "string", action: "set", value, successLabel: "PREFERENCE SET" });
+}
+
+export async function adminRemoveRestrictionFromInput() {
+  const restriction = String(readAdminTextInput("adminRestrictionInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "restrictions", type: "list", action: "remove", value: [restriction], successLabel: "RESTRICTION REMOVED" });
+}
+
+export async function adminLogAdminActionFromInput() {
+  if (!isGodUser()) return;
+  const message = readAdminTextInput("adminActionLogInput");
+  if (!message) {
+    showToast("LOG MESSAGE REQUIRED", "⚠️");
+    return;
+  }
+  const ok = await runFirestoreTask(
+    () => addDoc(collection(db, "gooner_admin_ops"), { actor: myName, message: message.slice(0, 100), ts: Date.now() }),
+    "ADMIN LOG",
+    "Admin log failed."
+  );
+  if (!ok) return;
+  clearAdminTextInput("adminActionLogInput");
+  showToast("ADMIN ACTION LOGGED", "🧾");
+}
+
+export async function adminScheduleTaskFromInput() {
+  const taskName = readAdminTextInput("adminTaskNameInput");
+  const delayMinutes = Math.max(1, Math.floor(readAdminNumberInput("adminTaskTimeInput", 1)));
+  if (!taskName) {
+    showToast("TASK NAME REQUIRED", "⚠️");
+    return;
+  }
+  await applyAdminActionToTargets({
+    actionName: "SCHEDULE TASK",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const queued = Array.isArray(targetData?.adminScheduledTasks) ? targetData.adminScheduledTasks : [];
+      return {
+        adminScheduledTasks: [
+          ...queued,
+          { name: taskName.slice(0, 40), runAt: Date.now() + delayMinutes * 60000, createdBy: myName },
+        ].slice(-50),
+      };
+    },
+    mutateLocal: () => {},
+    successToast: (targets) => `TASK SCHEDULED FOR ${targets.length} PLAYER(S)`,
+    failToast: "TASK SCHEDULE FAILED",
+  });
 }
 
 export async function adminPrestigePack() {

@@ -33,6 +33,18 @@ import {
   adminSendChatAnnouncement,
   adminSendChatSystemMessage,
   adminClearRecentChatFromInput,
+  adminApplySettingActionFromInput,
+  adminSetRoleFromInput,
+  adminSetStatusFromInput,
+  adminGrantPermissionFromInput,
+  adminRevokePermissionFromInput,
+  adminAddTagFromInput,
+  adminRemoveTagFromInput,
+  adminSetLimitFromInput,
+  adminSetPreferenceFromInput,
+  adminRemoveRestrictionFromInput,
+  adminLogAdminActionFromInput,
+  adminScheduleTaskFromInput,
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
@@ -98,6 +110,18 @@ window.adminMarketMultiplyFromInput = adminMarketMultiplyFromInput;
 window.adminSendChatAnnouncement = adminSendChatAnnouncement;
 window.adminSendChatSystemMessage = adminSendChatSystemMessage;
 window.adminClearRecentChatFromInput = adminClearRecentChatFromInput;
+window.adminApplySettingActionFromInput = adminApplySettingActionFromInput;
+window.adminSetRoleFromInput = adminSetRoleFromInput;
+window.adminSetStatusFromInput = adminSetStatusFromInput;
+window.adminGrantPermissionFromInput = adminGrantPermissionFromInput;
+window.adminRevokePermissionFromInput = adminRevokePermissionFromInput;
+window.adminAddTagFromInput = adminAddTagFromInput;
+window.adminRemoveTagFromInput = adminRemoveTagFromInput;
+window.adminSetLimitFromInput = adminSetLimitFromInput;
+window.adminSetPreferenceFromInput = adminSetPreferenceFromInput;
+window.adminRemoveRestrictionFromInput = adminRemoveRestrictionFromInput;
+window.adminLogAdminActionFromInput = adminLogAdminActionFromInput;
+window.adminScheduleTaskFromInput = adminScheduleTaskFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
