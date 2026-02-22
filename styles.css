@@ -943,14 +943,48 @@ canvas {
 
 .game-leaderboard-jump-btn {
   position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 1300;
-  min-width: 220px;
+  right: 14px;
+  bottom: 14px;
+  z-index: 1200;
+  min-width: 160px;
+  max-width: 220px;
+  padding: 8px 10px;
+  font-size: 10px;
+  opacity: 0.9;
 }
 
 .game-leaderboard-jump-btn.active {
   display: block;
+}
+
+.leaderboard-subfilters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.leaderboard-subfilters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 10px;
+}
+
+#leaderboardTagFilter {
+  min-height: 92px;
+}
+
+@media (max-width: 900px) {
+  .leaderboard-subfilters {
+    grid-template-columns: 1fr;
+  }
+
+  .game-leaderboard-jump-btn {
+    right: 10px;
+    bottom: 10px;
+    min-width: 140px;
+  }
 }
 
 .games-grid {

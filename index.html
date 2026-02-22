@@ -882,12 +882,27 @@
           placeholder="FILTER LEADERBOARD TYPES/TAGS (E.G. PONG, PVP, RICHEST)"
           style="margin-bottom: 12px"
         />
-        <div class="score-tabs season-subtabs" id="leaderboardGameModeTabs" style="margin-bottom: 12px">
-          <div class="score-tab active" data-leaderboard-mode="all">ALL MODES</div>
-          <div class="score-tab" data-leaderboard-mode="easy">EASY</div>
-          <div class="score-tab" data-leaderboard-mode="hard">HARD</div>
-          <div class="score-tab" data-leaderboard-mode="single">SINGLE PLAYER</div>
-          <div class="score-tab" data-leaderboard-mode="multiplayer">MULTIPLAYER</div>
+        <div class="leaderboard-subfilters">
+          <label>
+            <span>DIFFICULTY</span>
+            <select class="term-input" id="leaderboardDifficultyFilter">
+              <option value="all">ALL</option>
+              <option value="easy">EASY</option>
+              <option value="hard">HARD</option>
+            </select>
+          </label>
+          <label>
+            <span>PLAYER COUNT</span>
+            <select class="term-input" id="leaderboardPlayerCountFilter">
+              <option value="all">ALL</option>
+              <option value="single">SINGLE PLAYER</option>
+              <option value="multiplayer">MULTIPLAYER</option>
+            </select>
+          </label>
+          <label>
+            <span>TAGS</span>
+            <select class="term-input" id="leaderboardTagFilter" multiple size="4"></select>
+          </label>
         </div>
         <div class="score-list" id="scoreList">
           <div class="score-item">LOADING DATA...</div>
