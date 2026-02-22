@@ -45,6 +45,7 @@ import {
   adminRemoveRestrictionFromInput,
   adminLogAdminActionFromInput,
   adminScheduleTaskFromInput,
+  adminClearScheduledTasksFromInput,
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
@@ -122,6 +123,7 @@ window.adminSetPreferenceFromInput = adminSetPreferenceFromInput;
 window.adminRemoveRestrictionFromInput = adminRemoveRestrictionFromInput;
 window.adminLogAdminActionFromInput = adminLogAdminActionFromInput;
 window.adminScheduleTaskFromInput = adminScheduleTaskFromInput;
+window.adminClearScheduledTasksFromInput = adminClearScheduledTasksFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 

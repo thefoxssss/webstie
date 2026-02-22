@@ -142,104 +142,85 @@
         <p style="text-align: center; font-size: 10px">
           GOD ACCESS: <span id="adminName">UNKNOWN</span>
         </p>
-        <div class="admin-actions">
+        <div class="admin-actions admin-actions-overhaul">
+          <div class="admin-section admin-section-hero">
+            <p class="admin-section-title">ADMIN CONTROL CENTER</p>
+            <p class="admin-section-subtitle">Choose a scope, enter values, and run actions with plain Set / Add / Remove controls.</p>
+          </div>
+
           <div class="admin-section">
             <p class="admin-section-title">APPLY TO</p>
             <select class="term-input" id="adminTargetScope">
               <option value="self">SELF</option>
-              <option value="all">ALL</option>
               <option value="others">OTHERS</option>
-              <option value="username">USERNAME</option>
+              <option value="all">ALL</option>
+              <option value="username">SPECIFIC USERNAME</option>
             </select>
             <input class="term-input" id="adminTargetUser" list="adminTargetUserList" pattern="[A-Za-z0-9_]{3,10}" maxlength="10" placeholder="USERNAME (OPTIONAL)" />
             <datalist id="adminTargetUserList"></datalist>
-            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">
-              REFRESH USER LIST
-            </button>
+            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">REFRESH USER LIST</button>
           </div>
 
           <div class="admin-section">
-            <p class="admin-section-title">ECONOMY</p>
-            <input class="term-input" id="adminCashAmount" type="number" step="1" placeholder="CASH AMOUNT" />
-            <button class="term-btn" onclick="window.adminGrantCashFromInput()">
-              GRANT +$AMOUNT
-            </button>
-            <button class="term-btn" onclick="window.adminSetCashFromInput()">
-              SET CASH TO AMOUNT
-            </button>
-            <button class="term-btn" onclick="window.adminMultiplyCashFromInput()">
-              MULTIPLY CASH BY AMOUNT
-            </button>
-            <button class="term-btn" onclick="window.adminSetDebtFromInput()">
-              SET DEBT TO AMOUNT
-            </button>
-            <button class="term-btn" onclick="window.adminForgiveInterest()">
-              FORGIVE INTEREST
-            </button>
+            <p class="admin-section-title">MONEY AND MARKET</p>
+            <input class="term-input" id="adminCashAmount" type="number" step="1" placeholder="MONEY VALUE" />
+            <button class="term-btn" onclick="window.adminGrantCashFromInput()">ADD MONEY</button>
+            <button class="term-btn" onclick="window.adminSetCashFromInput()">SET MONEY</button>
+            <button class="term-btn" onclick="window.adminMultiplyCashFromInput()">MULTIPLY MONEY</button>
+            <button class="term-btn" onclick="window.adminSetDebtFromInput()">SET DEBT</button>
+            <button class="term-btn" onclick="window.adminForgiveInterest()">REMOVE INTEREST</button>
             <input class="term-input" id="adminPortfolioAmount" type="number" step="1" min="0" placeholder="SHARES PER STOCK" />
-            <button class="term-btn" onclick="window.adminSetPortfolioSharesFromInput()">
-              SET PORTFOLIO SHARES
-            </button>
+            <button class="term-btn" onclick="window.adminSetPortfolioSharesFromInput()">SET STOCK SHARES</button>
+            <input class="term-input" id="adminMarketAmount" type="number" step="0.01" min="0" placeholder="MARKET PERCENT OR MULTIPLIER" />
+            <button class="term-btn" onclick="window.adminMarketPumpFromInput()">ADD MARKET PERCENT</button>
+            <button class="term-btn" onclick="window.adminMarketDropFromInput()">REMOVE MARKET PERCENT</button>
+            <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">SET MARKET MULTIPLIER</button>
+            <button class="term-btn" onclick="window.adminMarketCrashToZero()">SET MARKET TO MINIMUM</button>
           </div>
 
           <div class="admin-section">
-            <p class="admin-section-title">PROGRESSION</p>
-            <input class="term-input" id="adminStatAmount" type="number" step="1" min="1" placeholder="STAT AMOUNT" />
-            <button class="term-btn" onclick="window.adminGrantAllShopItems()">
-              UNLOCK + ENABLE ALL SHOP ITEMS
-            </button>
-            <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">
-              CLEAR DEBT + RESET JOB COOLDOWNS
-            </button>
-            <button class="term-btn" onclick="window.adminBoostStatsFromInput()">
-              BOOST STATS (+AMOUNT WINS / +AMOUNT*2 GAMES)
-            </button>
-            <button class="term-btn" onclick="window.adminPrestigePack()">
-              PRESTIGE PACK (MONEY + ITEMS + ACHIEVEMENTS)
-            </button>
-            <button class="term-btn" onclick="window.adminUnlockAllAchievements()">
-              UNLOCK ALL ACHIEVEMENTS
-            </button>
-            <button class="term-btn" onclick="window.adminSetJobCompletionsFromInput()">
-              SET ALL JOB COMPLETIONS TO AMOUNT
-            </button>
+            <p class="admin-section-title">ACCOUNT AND ACCESS</p>
+            <input class="term-input" id="adminRoleInput" type="text" maxlength="16" placeholder="ROLE (PLAYER, MOD, ADMIN, OWNER)" />
+            <button class="term-btn" onclick="window.adminSetRoleFromInput()">SET ROLE</button>
+            <input class="term-input" id="adminStatusInput" type="text" maxlength="16" placeholder="STATUS (ACTIVE, MUTED, SUSPENDED, BANNED)" />
+            <button class="term-btn" onclick="window.adminSetStatusFromInput()">SET STATUS</button>
+            <input class="term-input" id="adminPermissionInput" type="text" maxlength="32" placeholder="PERMISSION KEY" />
+            <button class="term-btn" onclick="window.adminGrantPermissionFromInput()">ADD PERMISSION</button>
+            <button class="term-btn" onclick="window.adminRevokePermissionFromInput()">REMOVE PERMISSION</button>
+            <input class="term-input" id="adminTagInput" type="text" maxlength="24" placeholder="TAG" />
+            <button class="term-btn" onclick="window.adminAddTagFromInput()">ADD TAG</button>
+            <button class="term-btn" onclick="window.adminRemoveTagFromInput()">REMOVE TAG</button>
+            <input class="term-input" id="adminRestrictionInput" type="text" maxlength="24" placeholder="RESTRICTION KEY" />
+            <button class="term-btn" onclick="window.adminRemoveRestrictionFromInput()">REMOVE RESTRICTION</button>
           </div>
 
           <div class="admin-section">
-            <p class="admin-section-title">MARKET CONTROL</p>
-            <input class="term-input" id="adminMarketAmount" type="number" step="0.01" min="0" placeholder="PERCENT OR MULTIPLIER" />
-            <button class="term-btn" onclick="window.adminMarketPumpFromInput()">
-              INCREASE MARKET BY % INPUT
-            </button>
-            <button class="term-btn" onclick="window.adminMarketDropFromInput()">
-              DECREASE MARKET BY % INPUT
-            </button>
-            <button class="term-btn" onclick="window.adminMarketCrashToZero()">
-              CRASH MARKET TO ZERO
-            </button>
-            <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">
-              MULTIPLY MARKET BY INPUT
-            </button>
+            <p class="admin-section-title">PROGRESS AND LIMITS</p>
+            <input class="term-input" id="adminStatAmount" type="number" step="1" min="1" placeholder="STATS VALUE" />
+            <button class="term-btn" onclick="window.adminBoostStatsFromInput()">ADD STATS</button>
+            <button class="term-btn" onclick="window.adminSetJobCompletionsFromInput()">SET JOB COMPLETIONS</button>
+            <button class="term-btn" onclick="window.adminUnlockAllAchievements()">SET ACHIEVEMENTS TO UNLOCKED</button>
+            <button class="term-btn" onclick="window.adminGrantAllShopItems()">SET ITEMS TO OWNED</button>
+            <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">SET DEBT AND COOLDOWNS TO CLEAR</button>
+            <input class="term-input" id="adminLimitKeyInput" type="text" maxlength="24" placeholder="LIMIT KEY" />
+            <input class="term-input" id="adminLimitValueInput" type="number" step="1" min="0" placeholder="LIMIT VALUE" />
+            <button class="term-btn" onclick="window.adminSetLimitFromInput()">SET LIMIT</button>
           </div>
 
           <div class="admin-section">
-            <p class="admin-section-title">CHAT CONTROL</p>
-            <input class="term-input" id="adminChatMessage" type="text" maxlength="80" placeholder="CHAT MESSAGE" />
+            <p class="admin-section-title">CHAT, NOTICES, AND LOGS</p>
+            <input class="term-input" id="adminChatMessage" type="text" maxlength="80" placeholder="MESSAGE" />
+            <button class="term-btn" onclick="window.adminSendChatAnnouncement()">SEND NOTICE AS ADMIN</button>
+            <button class="term-btn" onclick="window.adminSendChatSystemMessage()">SEND NOTICE AS SYSTEM</button>
             <input class="term-input" id="adminChatClearCount" type="number" min="1" step="1" placeholder="MESSAGES TO REMOVE" />
-            <button class="term-btn" onclick="window.adminSendChatAnnouncement()">
-              SEND ANNOUNCEMENT
-            </button>
-            <button class="term-btn" onclick="window.adminSendChatSystemMessage()">
-              SEND SYSTEM MESSAGE
-            </button>
-            <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">
-              CLEAR RECENT CHAT MESSAGES
-            </button>
+            <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">REMOVE RECENT CHAT</button>
+            <input class="term-input" id="adminActionLogInput" type="text" maxlength="100" placeholder="ACTION LOG MESSAGE" />
+            <button class="term-btn" onclick="window.adminLogAdminActionFromInput()">ADD ACTION LOG</button>
           </div>
 
           <div class="admin-section">
-            <p class="admin-section-title">SETTING ACTIONS (ADD / REMOVE / SET)</p>
-            <input class="term-input" id="adminSettingKey" type="text" maxlength="32" placeholder="SETTING KEY (E.G. ROLE, TAGS, LIMIT_DAILY)" />
+            <p class="admin-section-title">SETTINGS ENGINE (ADD / REMOVE / SET)</p>
+            <input class="term-input" id="adminSettingKey" type="text" maxlength="32" placeholder="SETTING KEY" />
             <select class="term-input" id="adminSettingType">
               <option value="string">STRING</option>
               <option value="integer">INTEGER</option>
@@ -252,38 +233,21 @@
               <option value="add">ADD</option>
               <option value="remove">REMOVE</option>
             </select>
-            <button class="term-btn" onclick="window.adminApplySettingActionFromInput()">
-              APPLY SETTING ACTION
-            </button>
-          </div>
-
-          <div class="admin-section">
-            <p class="admin-section-title">ADVANCED OPERATIONS</p>
-            <input class="term-input" id="adminRoleInput" type="text" maxlength="16" placeholder="ROLE (PLAYER, MOD, ADMIN, OWNER)" />
-            <button class="term-btn" onclick="window.adminSetRoleFromInput()">SET ROLE</button>
-            <input class="term-input" id="adminStatusInput" type="text" maxlength="16" placeholder="STATUS (ACTIVE, MUTED, SUSPENDED, BANNED)" />
-            <button class="term-btn" onclick="window.adminSetStatusFromInput()">SET STATUS</button>
-            <input class="term-input" id="adminPermissionInput" type="text" maxlength="32" placeholder="PERMISSION KEY" />
-            <button class="term-btn" onclick="window.adminGrantPermissionFromInput()">ADD PERMISSION</button>
-            <button class="term-btn" onclick="window.adminRevokePermissionFromInput()">REMOVE PERMISSION</button>
-            <input class="term-input" id="adminTagInput" type="text" maxlength="24" placeholder="TAG" />
-            <button class="term-btn" onclick="window.adminAddTagFromInput()">ADD TAG</button>
-            <button class="term-btn" onclick="window.adminRemoveTagFromInput()">REMOVE TAG</button>
-            <input class="term-input" id="adminLimitKeyInput" type="text" maxlength="24" placeholder="LIMIT KEY" />
-            <input class="term-input" id="adminLimitValueInput" type="number" step="1" min="0" placeholder="LIMIT VALUE" />
-            <button class="term-btn" onclick="window.adminSetLimitFromInput()">SET LIMIT</button>
+            <button class="term-btn" onclick="window.adminApplySettingActionFromInput()">RUN SETTING ACTION</button>
             <input class="term-input" id="adminPreferenceKeyInput" type="text" maxlength="24" placeholder="PREFERENCE KEY" />
             <input class="term-input" id="adminPreferenceValueInput" type="text" maxlength="60" placeholder="PREFERENCE VALUE" />
             <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
-            <input class="term-input" id="adminRestrictionInput" type="text" maxlength="24" placeholder="RESTRICTION KEY" />
-            <button class="term-btn" onclick="window.adminRemoveRestrictionFromInput()">REMOVE RESTRICTION</button>
-            <input class="term-input" id="adminActionLogInput" type="text" maxlength="100" placeholder="ACTION LOG MESSAGE" />
-            <button class="term-btn" onclick="window.adminLogAdminActionFromInput()">LOG ACTION</button>
-            <input class="term-input" id="adminTaskNameInput" type="text" maxlength="40" placeholder="TASK NAME" />
-            <input class="term-input" id="adminTaskTimeInput" type="number" step="1" min="1" placeholder="RUN AFTER MINUTES" />
-            <button class="term-btn" onclick="window.adminScheduleTaskFromInput()">SCHEDULE TASK</button>
           </div>
 
+          <div class="admin-section admin-section-danger">
+            <p class="admin-section-title">AUTOMATION</p>
+            <input class="term-input" id="adminTaskNameInput" type="text" maxlength="40" placeholder="TASK NAME" />
+            <input class="term-input" id="adminTaskTimeInput" type="number" step="1" min="1" placeholder="RUN AFTER MINUTES" />
+            <button class="term-btn" onclick="window.adminScheduleTaskFromInput()">ADD SCHEDULED TASK</button>
+            <input class="term-input" id="adminTaskClearCount" type="number" step="1" min="1" placeholder="TASKS TO REMOVE" />
+            <button class="term-btn" onclick="window.adminClearScheduledTasksFromInput()">REMOVE SCHEDULED TASKS</button>
+          </div>
+        </div>
         </div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
           CLOSE

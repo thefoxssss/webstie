@@ -3087,6 +3087,21 @@ export async function adminScheduleTaskFromInput() {
   });
 }
 
+export async function adminClearScheduledTasksFromInput() {
+  const removeCount = Math.max(1, Math.floor(readAdminNumberInput("adminTaskClearCount", 1)));
+  await applyAdminActionToTargets({
+    actionName: "CLEAR SCHEDULED TASKS",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const queued = Array.isArray(targetData?.adminScheduledTasks) ? targetData.adminScheduledTasks : [];
+      return { adminScheduledTasks: queued.slice(removeCount) };
+    },
+    mutateLocal: () => {},
+    successToast: (targets) => `REMOVED SCHEDULED TASKS FOR ${targets.length} PLAYER(S)`,
+    failToast: "TASK CLEAR FAILED",
+  });
+}
+
 export async function adminPrestigePack() {
   const now = Date.now();
   await applyAdminActionToTargets({

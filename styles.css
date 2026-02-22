@@ -773,11 +773,23 @@ select.term-input:focus {
   margin-top: 14px;
 }
 
+.admin-actions-overhaul {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
 .admin-section {
   border: 1px solid var(--accent-dim);
-  padding: 10px;
+  padding: 12px;
   display: grid;
   gap: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-section-hero {
+  grid-column: 1 / -1;
+  border-color: rgba(255, 215, 0, 0.6);
+  background: rgba(255, 215, 0, 0.08);
 }
 
 .admin-section-danger {
@@ -790,6 +802,13 @@ select.term-input:focus {
   letter-spacing: 1px;
   color: var(--accent);
   text-align: left;
+}
+
+.admin-section-subtitle {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #ddd;
 }
 
 /* --- 7. GAMES --- */
