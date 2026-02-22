@@ -838,16 +838,16 @@ canvas {
 .game-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .game-tag {
   border: 1px solid var(--accent);
   background: rgba(0, 255, 0, 0.08);
   color: var(--accent);
-  font-size: 8px;
-  padding: 2px 6px;
-  letter-spacing: 0.5px;
+  font-size: 7px;
+  padding: 1px 4px;
+  letter-spacing: 0.3px;
 }
 
 .game-card:hover {
