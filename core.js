@@ -2537,6 +2537,16 @@ function readAdminNumberInput(id, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function readAdminTextInput(id) {
+  const input = document.getElementById(id);
+  return String(input?.value || "").trim();
+}
+
+function clearAdminTextInput(id) {
+  const input = document.getElementById(id);
+  if (input) input.value = "";
+}
+
 export async function adminGrantCashFromInput() {
   await adminGrantCash(readAdminNumberInput("adminCashAmount", 0));
 }
@@ -2882,6 +2892,56 @@ export async function adminMarketMultiplyFromInput() {
   await setMarketShift(multiplier, 0.01, 0.01);
   showToast(`MARKET MULTIPLIED x${multiplier}`, "📊");
   await saveStats();
+}
+
+export async function adminSendChatAnnouncement() {
+  if (!isGodUser()) return;
+  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
+  if (!message) {
+    showToast("CHAT MESSAGE REQUIRED", "⚠️");
+    return;
+  }
+  const sent = await runFirestoreTask(
+    () => addDoc(collection(db, "gooner_global_chat"), { user: myName, msg: `[ADMIN] ${message}`, ts: Date.now() }),
+    "ADMIN CHAT",
+    "Announcement failed."
+  );
+  if (!sent) return;
+  clearAdminTextInput("adminChatMessage");
+  showToast("ANNOUNCEMENT SENT", "📣");
+}
+
+export async function adminSendChatSystemMessage() {
+  if (!isGodUser()) return;
+  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
+  if (!message) {
+    showToast("CHAT MESSAGE REQUIRED", "⚠️");
+    return;
+  }
+  const sent = await runFirestoreTask(
+    () => addDoc(collection(db, "gooner_global_chat"), { user: "SYSTEM", msg: message, ts: Date.now() }),
+    "ADMIN CHAT",
+    "System message failed."
+  );
+  if (!sent) return;
+  clearAdminTextInput("adminChatMessage");
+  showToast("SYSTEM MESSAGE SENT", "🛰️");
+}
+
+export async function adminClearRecentChatFromInput() {
+  if (!isGodUser()) return;
+  const count = Math.max(1, Math.floor(readAdminNumberInput("adminChatClearCount", 10)));
+  try {
+    const snap = await getDocs(query(collection(db, "gooner_global_chat"), orderBy("ts", "desc"), limit(count)));
+    if (snap.empty) {
+      showToast("NO CHAT MESSAGES FOUND", "ℹ️");
+      return;
+    }
+    await Promise.all(snap.docs.map((row) => deleteDoc(row.ref)));
+    showToast(`REMOVED ${snap.docs.length} CHAT MESSAGE(S)`, "🧹");
+  } catch {
+    showToast("CHAT CLEAR FAILED", "⚠️", "Try again shortly.");
+  }
 }
 
 export async function adminPrestigePack() {

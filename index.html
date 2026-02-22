@@ -160,7 +160,7 @@
 
           <div class="admin-section">
             <p class="admin-section-title">ECONOMY</p>
-            <input class="term-input" id="adminCashAmount" type="number" value="10000" step="100" min="1" placeholder="CASH AMOUNT" />
+            <input class="term-input" id="adminCashAmount" type="number" step="1" placeholder="CASH AMOUNT" />
             <button class="term-btn" onclick="window.adminGrantCashFromInput()">
               GRANT +$AMOUNT
             </button>
@@ -171,10 +171,7 @@
               MULTIPLY CASH BY AMOUNT
             </button>
             <button class="term-btn" onclick="window.adminInjectJackpot()">
-              INJECT JACKPOT (+$5,000,000)
-            </button>
-            <button class="term-btn" onclick="window.adminSetMaxCash()">
-              SET BANK TO $999,999,999
+              INJECT JACKPOT
             </button>
             <button class="term-btn" onclick="window.adminSetDebtFromInput()">
               SET DEBT TO AMOUNT
@@ -183,13 +180,13 @@
               FORGIVE INTEREST
             </button>
             <button class="term-btn" onclick="window.adminMaxPortfolio()">
-              MAX STOCK PORTFOLIO (9,999 SHARES EACH)
+              FILL STOCK PORTFOLIO
             </button>
           </div>
 
           <div class="admin-section">
             <p class="admin-section-title">PROGRESSION</p>
-            <input class="term-input" id="adminStatAmount" type="number" value="100" step="1" min="1" placeholder="STAT AMOUNT" />
+            <input class="term-input" id="adminStatAmount" type="number" step="1" min="1" placeholder="STAT AMOUNT" />
             <button class="term-btn" onclick="window.adminGrantAllShopItems()">
               UNLOCK + ENABLE ALL SHOP ITEMS
             </button>
@@ -212,12 +209,12 @@
 
           <div class="admin-section">
             <p class="admin-section-title">MARKET CONTROL</p>
-            <input class="term-input" id="adminMarketAmount" type="number" value="35" step="1" min="1" placeholder="PERCENT OR MULTIPLIER" />
+            <input class="term-input" id="adminMarketAmount" type="number" step="0.01" min="0" placeholder="PERCENT OR MULTIPLIER" />
             <button class="term-btn" onclick="window.adminMarketMoonshot()">
-              MARKET MOONSHOT (+35% ALL STOCKS)
+              MARKET MOONSHOT
             </button>
             <button class="term-btn" onclick="window.adminMarketMeltdown()">
-              MARKET MELTDOWN (-45% ALL STOCKS)
+              MARKET MELTDOWN
             </button>
             <button class="term-btn" onclick="window.adminMarketPumpFromInput()">
               INCREASE MARKET BY % INPUT
@@ -229,10 +226,25 @@
               CRASH MARKET TO ZERO
             </button>
             <button class="term-btn" onclick="window.adminMarketTimesThousand()">
-              MULTIPLY MARKET x1000000000000000000
+              EXTREME MARKET MULTIPLIER
             </button>
             <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">
               MULTIPLY MARKET BY INPUT
+            </button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">CHAT CONTROL</p>
+            <input class="term-input" id="adminChatMessage" type="text" maxlength="80" placeholder="CHAT MESSAGE" />
+            <input class="term-input" id="adminChatClearCount" type="number" min="1" step="1" placeholder="MESSAGES TO REMOVE" />
+            <button class="term-btn" onclick="window.adminSendChatAnnouncement()">
+              SEND ANNOUNCEMENT
+            </button>
+            <button class="term-btn" onclick="window.adminSendChatSystemMessage()">
+              SEND SYSTEM MESSAGE
+            </button>
+            <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">
+              CLEAR RECENT CHAT MESSAGES
             </button>
           </div>
 

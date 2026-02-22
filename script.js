@@ -36,6 +36,9 @@ import {
   adminMarketPumpFromInput,
   adminMarketDropFromInput,
   adminMarketMultiplyFromInput,
+  adminSendChatAnnouncement,
+  adminSendChatSystemMessage,
+  adminClearRecentChatFromInput,
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
@@ -104,6 +107,9 @@ window.adminSetJobCompletionsFromInput = adminSetJobCompletionsFromInput;
 window.adminMarketPumpFromInput = adminMarketPumpFromInput;
 window.adminMarketDropFromInput = adminMarketDropFromInput;
 window.adminMarketMultiplyFromInput = adminMarketMultiplyFromInput;
+window.adminSendChatAnnouncement = adminSendChatAnnouncement;
+window.adminSendChatSystemMessage = adminSendChatSystemMessage;
+window.adminClearRecentChatFromInput = adminClearRecentChatFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
