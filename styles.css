@@ -595,6 +595,19 @@ body::before {
   margin-bottom: 20px;
   width: 100%;
 }
+
+select.term-input {
+  background: #050505;
+}
+
+select.term-input option {
+  background: #050505;
+  color: var(--accent);
+}
+
+select.term-input:focus {
+  background: #050505;
+}
 .term-btn {
   background: var(--accent);
   color: #000;
