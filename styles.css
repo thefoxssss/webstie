@@ -1727,6 +1727,19 @@ canvas {
   background: rgba(5, 5, 5, 0.95);
   z-index: 9500;
 }
+
+.game-over-host {
+  position: relative;
+}
+
+.game-over-host > #modalGameOver {
+  position: absolute;
+  inset: 0;
+  padding: 20px;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
 #modalGameOver h1 {
   color: #fff;
   text-shadow: 2px 2px red;
