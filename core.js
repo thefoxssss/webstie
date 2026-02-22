@@ -1599,6 +1599,19 @@ async function fetchMergedPullRequests(owner, repo, maxPages = 6) {
 
 let mergedUpdateLogRows = [];
 
+function normalizeUpdateLogRow(row, fallbackNumber = "?") {
+  const rowObj = row && typeof row === "object" ? row : {};
+  const rawNumber = rowObj.number ?? rowObj.pull_number ?? rowObj.id ?? fallbackNumber;
+  const normalizedDigits = String(rawNumber).match(/\d+/)?.[0];
+  const number = `#${normalizedDigits || String(fallbackNumber).replace(/^#/, "") || "?"}`;
+
+  const rawTitle = rowObj.title ?? rowObj.name ?? rowObj.message ?? rowObj.body;
+  const cleanedTitle = String(rawTitle || "").trim();
+  const title = cleanedTitle || `CHANGE ${number}`;
+
+  return { number, title };
+}
+
 function renderFullUpdateLogRows(searchTerm = "") {
   const fullList = document.getElementById("updateLogFullList");
   const fullMeta = document.getElementById("updateLogFullMeta");
@@ -1651,10 +1664,7 @@ async function refreshUpdateLogFromMergedPrs() {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
     if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows) && Array.isArray(cached.allRows)) {
       list.innerHTML = cached.rows.join("");
-      mergedUpdateLogRows = cached.allRows.map((row) => ({
-        number: String(row.number || "#?"),
-        title: String(row.title || "UNTITLED CHANGE"),
-      }));
+      mergedUpdateLogRows = cached.allRows.map((row, index) => normalizeUpdateLogRow(row, index + 1));
       renderFullUpdateLogRows(input?.value || "");
       return;
     }
@@ -1670,11 +1680,13 @@ async function refreshUpdateLogFromMergedPrs() {
       return;
     }
 
-    const allRows = merged.map((pr) => {
-      const title = String(pr.title || "UNTITLED CHANGE");
-      const match = title.match(/commit\s*#?\s*(\d+)/i);
-      const rowNumber = `#${match ? match[1] : String(pr.number || "?")}`;
-      return { number: rowNumber, title };
+    const allRows = merged.map((pr, index) => {
+      const normalized = normalizeUpdateLogRow(pr, index + 1);
+      const match = normalized.title.match(/commit\s*#?\s*(\d+)/i);
+      return {
+        ...normalized,
+        number: match ? `#${match[1]}` : normalized.number,
+      };
     });
 
     mergedUpdateLogRows = allRows;
