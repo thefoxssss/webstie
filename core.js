@@ -4860,7 +4860,7 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
-  const activeGameOverlay = document.querySelector(".overlay.game-overlay.active");
+  const activeGameOverlay = document.querySelector(".overlay.active:not(#modalGameOver)");
   const modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
   if (modalHost) {
     modalHost.classList.add("game-over-host");
