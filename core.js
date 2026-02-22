@@ -3952,27 +3952,115 @@ if (clockEl) {
 let chatCount = 0;
 let lastChatAt = 0;
 let lastChatMsg = "";
-// Initialize realtime chat streaming and input handling.
-function initChat() {
-  const chatRef = collection(db, "gooner_global_chat");
-  const q = query(chatRef, orderBy("ts", "desc"), limit(25));
-  onSnapshot(q, (snap) => {
-    const list = document.getElementById("chatHistory");
+let activeChatTab = "global";
+let stopChatListener = null;
+
+function getChatTabConfig(tab) {
+  const crewTag = normalizeCrewTag(crewData?.tag || "");
+  const configs = {
+    dm: {
+      label: "MESSAGES",
+      placeholder: "@USER MESSAGE...",
+      meta: "DIRECT MESSAGES // USE @USERNAME MESSAGE",
+      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), orderBy("ts", "desc"), limit(25)),
+      send: (txt) => {
+        const match = txt.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
+        if (!match) return { error: "USE @USERNAME FOLLOWED BY A MESSAGE." };
+        const to = normalizeUsername(match[1]);
+        const body = filterChatMessage(match[2] || "").slice(0, 60);
+        if (!body) return { error: "MESSAGE BODY CANNOT BE EMPTY." };
+        if (to === normalizeUsername(myName)) return { error: "CAN'T DM YOURSELF." };
+        return {
+          payload: { user: myName, to, participants: [normalizeUsername(myName), to], msg: body, ts: Date.now() },
+          collectionName: "gooner_user_chat"
+        };
+      },
+      renderMessage: (m) => {
+        const sender = normalizeUsername(m.user || "ANON");
+        const to = normalizeUsername(m.to || "");
+        const mine = sender === normalizeUsername(myName);
+        const prefix = mine ? `TO ${to || "UNKNOWN"}` : `FROM ${sender}`;
+        return `<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      }
+    },
+    global: {
+      label: "GLOBAL",
+      placeholder: "TYPE MESSAGE...",
+      meta: "GLOBAL CHANNEL // TYPE MESSAGE...",
+      getQuery: () => query(collection(db, "gooner_global_chat"), orderBy("ts", "desc"), limit(25)),
+      send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
+      renderMessage: (m) => {
+        const user = String(m.user || "ANON").toUpperCase();
+        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      }
+    },
+    crew: {
+      label: "CREW",
+      placeholder: "SEND TO CREW...",
+      meta: crewTag ? `CREW CHANNEL [${crewTag}]` : "CREW CHANNEL // JOIN A CREW TO CHAT",
+      getQuery: () => {
+        if (!crewTag) return null;
+        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag), orderBy("ts", "desc"), limit(25));
+      },
+      send: (txt) => {
+        if (!crewTag) return { error: "JOIN A CREW BEFORE USING CREW CHAT." };
+        return { payload: { user: myName, crewTag, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_crew_chat" };
+      },
+      renderMessage: (m) => {
+        const user = String(m.user || "ANON").toUpperCase();
+        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      }
+    }
+  };
+  return configs[tab] || configs.global;
+}
+
+function renderChatTab() {
+  const input = document.getElementById("chatInput");
+  const list = document.getElementById("chatHistory");
+  const meta = document.getElementById("chatMeta");
+  const tabConfig = getChatTabConfig(activeChatTab);
+  document.querySelectorAll(".chat-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.chatTab === activeChatTab);
+  });
+  if (input) input.placeholder = tabConfig.placeholder;
+  if (meta) meta.textContent = tabConfig.meta;
+  if (stopChatListener) {
+    stopChatListener();
+    stopChatListener = null;
+  }
+  if (!tabConfig.getQuery()) {
+    if (list) list.innerHTML = '<div class="chat-msg">NO CREW LINKED. JOIN A CREW TO UNLOCK THIS TAB.</div>';
+    return;
+  }
+  stopChatListener = onSnapshot(tabConfig.getQuery(), (snap) => {
+    if (!list) return;
     list.innerHTML = "";
     const blocklist = getChatSet(CHAT_BLOCKLIST_KEY);
     const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
     snap.forEach((d) => msgs.push(d.data()));
     msgs.reverse().forEach((m) => {
-      const user = String(m.user || "ANON").toUpperCase();
+      const user = normalizeUsername(m.user || "ANON");
       if (blocklist.has(user) || muted.has(user)) return;
       const d = document.createElement("div");
       d.className = "chat-msg";
-      d.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      d.innerHTML = tabConfig.renderMessage(m);
       list.appendChild(d);
     });
     list.scrollTop = list.scrollHeight;
   });
+}
+
+// Initialize realtime chat streaming and input handling.
+function initChat() {
+  document.querySelectorAll(".chat-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeChatTab = btn.dataset.chatTab || "global";
+      renderChatTab();
+    });
+  });
+  renderChatTab();
   document.getElementById("chatInput").addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
 
@@ -4036,15 +4124,20 @@ function initChat() {
       return;
     }
 
-    // Normal message flow.
-    const clean = filterChatMessage(txt).slice(0, 30);
+    const tabConfig = getChatTabConfig(activeChatTab);
+    const sendConfig = tabConfig.send(txt);
+    if (sendConfig.error) {
+      showToast(tabConfig.label, "⚠️", sendConfig.error);
+      return;
+    }
+
     lastChatAt = now;
-    lastChatMsg = clean;
+    lastChatMsg = txt;
     chatCount++;
     grantSeasonXp(10);
     if (chatCount === 10) unlockAchievement("chatterbox");
     const posted = await runFirestoreTask(
-      () => addDoc(chatRef, { user: myName, msg: clean, ts: Date.now() }),
+      () => addDoc(collection(db, sendConfig.collectionName), sendConfig.payload),
       "CHAT",
       "Message not sent."
     );

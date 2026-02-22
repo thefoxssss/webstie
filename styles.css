@@ -309,6 +309,38 @@ body::before {
   text-align: center;
   color: #fff;
 }
+
+.chat-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--accent-dim);
+}
+.chat-tab {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--accent-dim);
+  color: #9ee;
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  padding: 7px 4px;
+  cursor: pointer;
+}
+.chat-tab:last-child {
+  border-right: none;
+}
+.chat-tab.active {
+  color: #000;
+  background: var(--accent);
+  text-shadow: none;
+}
+.chat-meta {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--accent-dim);
+  color: #9aa;
+  font-size: 8px;
+  letter-spacing: 0.6px;
+}
 #chatHistory {
   flex: 1;
   overflow-y: auto;

@@ -234,13 +234,19 @@
 
     <!-- Global text chat dock (always visible on home). -->
     <div id="globalChat" class="home-chat">
-      <div class="chat-header">GLOBAL CHAT</div>
+      <div class="chat-header">CHAT TERMINAL</div>
+      <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="Chat channels">
+        <button class="chat-tab" data-chat-tab="dm" type="button">MESSAGE USERS</button>
+        <button class="chat-tab active" data-chat-tab="global" type="button">GLOBAL</button>
+        <button class="chat-tab" data-chat-tab="crew" type="button">CREW</button>
+      </div>
+      <div id="chatMeta" class="chat-meta">GLOBAL CHANNEL // TYPE MESSAGE...</div>
       <div id="chatHistory"></div>
       <input
         type="text"
         id="chatInput"
         placeholder="TYPE MESSAGE..."
-        maxlength="30"
+        maxlength="60"
       />
     </div>
 
