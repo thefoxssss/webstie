@@ -1931,8 +1931,7 @@ export function openGame(id) {
     setText("stockTradeMsg", "");
   }
   if (id === "overlayScores") {
-    const activeTab = document.querySelector(".score-tab.active");
-    loadLeaderboard(activeTab?.dataset.tab || "richest");
+    loadLeaderboard();
   }
 }
 
@@ -1942,6 +1941,7 @@ export function closeOverlays() {
   document
     .querySelectorAll(".overlay")
     .forEach((o) => o.classList.remove("active"));
+  clearLeaderboardSubscriptions();
   const menuDropdown = document.getElementById("menuDropdown");
   if (menuDropdown) menuDropdown.classList.remove("show");
 }
@@ -3976,17 +3976,39 @@ export async function saveGlobalScore(game, score) {
   );
 }
 
-// Scoreboard tab switching.
-document.querySelectorAll("#overlayScores .score-tab[data-tab]").forEach((t) => {
-  t.onclick = () => {
-    document
-      .querySelectorAll("#overlayScores .score-tab[data-tab]")
-      .forEach((x) => x.classList.remove("active"));
-    t.classList.add("active");
-    loadLeaderboard(t.dataset.tab);
-  };
-});
-let leaderboardUnsub = null;
+// Scoreboard columns rendering.
+let leaderboardUnsubs = [];
+
+const LEADERBOARD_COLUMNS = [
+  { id: "players", title: "PLAYERS", type: "players" },
+  { id: "richest", title: "RICHEST", type: "richest" },
+  { id: "geo", title: "GEO DASH", type: "game" },
+  { id: "type", title: "TYPER", type: "game" },
+  { id: "snake", title: "SNAKE", type: "game" },
+  { id: "pong", title: "PONG", type: "game" },
+  { id: "runner", title: "RUNNER", type: "game" },
+  { id: "corebreaker", title: "CORE BREAKER", type: "game" },
+  { id: "neondefender", title: "NEON DEFENDER", type: "game" },
+  { id: "voidminer", title: "VOID MINER", type: "game" },
+  { id: "shadowassassin", title: "SHADOW ASSASSIN", type: "game" },
+  { id: "dodge", title: "DODGE", type: "game" },
+  { id: "flappy", title: "FLAPPY", type: "game" },
+];
+
+const clearLeaderboardSubscriptions = () => {
+  leaderboardUnsubs.forEach((unsub) => {
+    if (typeof unsub === "function") unsub();
+  });
+  leaderboardUnsubs = [];
+};
+
+const getLeaderboardFilterValue = () => {
+  const filterInput = document.getElementById("leaderboardFilter");
+  return String(filterInput?.value || "")
+    .trim()
+    .toUpperCase();
+};
+
 const renderLeaderboardRows = (
   list,
   rows,
@@ -4053,58 +4075,107 @@ async function adminRemoveAccount(targetName) {
   }
 }
 
-// Render the leaderboard for the currently selected game.
-function loadLeaderboard(game) {
-  const list = document.getElementById("scoreList");
-  list.innerHTML = "LOADING...";
-  if (leaderboardUnsub) leaderboardUnsub();
-  if (game === "players") {
+function loadLeaderboardColumn(column, body) {
+  body.innerHTML = "<div class=\"score-item\">LOADING...</div>";
+
+  if (column.type === "players") {
     const q = query(collection(db, "gooner_users"), orderBy("name"), limit(100));
-    leaderboardUnsub = onSnapshot(q, (snap) => {
-      const rows = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        const playerName = data.name || d.id;
-        rows.push({
-          name: playerName,
-          score: data.rank || getRank(Number(data.money) || 0, playerName),
-          rankData: getRankData(Number(data.money) || 0, playerName),
-          canRemove: playerName !== myName && !isGodUser(playerName),
+    leaderboardUnsubs.push(
+      onSnapshot(q, (snap) => {
+        const rows = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          const playerName = data.name || d.id;
+          rows.push({
+            name: playerName,
+            score: data.rank || getRank(Number(data.money) || 0, playerName),
+            rankData: getRankData(Number(data.money) || 0, playerName),
+            canRemove: playerName !== myName && !isGodUser(playerName),
+          });
         });
-      });
-      renderLeaderboardRows(list, rows, { showAdminRemove: true });
-    });
+        renderLeaderboardRows(body, rows, { showAdminRemove: true });
+      })
+    );
     return;
   }
 
-  if (game === "richest") {
+  if (column.type === "richest") {
     const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(10));
-    leaderboardUnsub = onSnapshot(q, (snap) => {
-      const rows = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        rows.push({ name: data.name || d.id, score: data.money ?? 0 });
-      });
-      renderLeaderboardRows(list, rows, { valuePrefix: "$" });
-    });
+    leaderboardUnsubs.push(
+      onSnapshot(q, (snap) => {
+        const rows = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          rows.push({ name: data.name || d.id, score: data.money ?? 0 });
+        });
+        renderLeaderboardRows(body, rows, { valuePrefix: "$" });
+      })
+    );
     return;
   }
 
-  const q = query(collection(db, "gooner_scores"), where("game", "==", game), limit(200));
-  leaderboardUnsub = onSnapshot(q, (snap) => {
-    const data = [];
-    snap.forEach((d) => data.push(d.data()));
-    const uniqueScores = {};
-    data.forEach((s) => {
-      if (!uniqueScores[s.name] || s.score > uniqueScores[s.name].score) {
-        uniqueScores[s.name] = s;
-      }
-    });
-    const filtered = Object.values(uniqueScores)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-    renderLeaderboardRows(list, filtered);
+  const q = query(collection(db, "gooner_scores"), where("game", "==", column.id), limit(200));
+  leaderboardUnsubs.push(
+    onSnapshot(q, (snap) => {
+      const data = [];
+      snap.forEach((d) => data.push(d.data()));
+      const uniqueScores = {};
+      data.forEach((scoreRow) => {
+        if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
+          uniqueScores[scoreRow.name] = scoreRow;
+        }
+      });
+      const filtered = Object.values(uniqueScores)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+      renderLeaderboardRows(body, filtered);
+    })
+  );
+}
+
+// Render all leaderboard columns and subscribe to each data feed.
+function loadLeaderboard() {
+  const list = document.getElementById("scoreList");
+  const filterInput = document.getElementById("leaderboardFilter");
+  if (!list) return;
+
+  if (filterInput && !filterInput.dataset.bound) {
+    filterInput.addEventListener("input", () => loadLeaderboard());
+    filterInput.dataset.bound = "1";
+  }
+
+  clearLeaderboardSubscriptions();
+  list.innerHTML = "";
+
+  const filterValue = getLeaderboardFilterValue();
+  const visibleColumns = filterValue
+    ? LEADERBOARD_COLUMNS.filter((column) => column.title.includes(filterValue))
+    : LEADERBOARD_COLUMNS;
+
+  if (!visibleColumns.length) {
+    list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES "${escapeHtml(filterValue)}"</div>`;
+    return;
+  }
+
+  const columnsWrap = document.createElement("div");
+  columnsWrap.className = "score-columns";
+
+  visibleColumns.forEach((column) => {
+    const card = document.createElement("section");
+    card.className = "score-column";
+
+    const title = document.createElement("h3");
+    title.innerText = column.title;
+
+    const body = document.createElement("div");
+    body.className = "score-column-body";
+
+    card.append(title, body);
+    columnsWrap.appendChild(card);
+    loadLeaderboardColumn(column, body);
   });
+
+  list.appendChild(columnsWrap);
 }
 
 // Count consecutive losses for the rage-quit achievement.

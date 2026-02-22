@@ -714,21 +714,15 @@
         <h2 style="text-align: center; margin-bottom: 20px">
           GLOBAL LEADERBOARD
         </h2>
-        <div class="score-tabs">
-          <div class="score-tab" data-tab="players">PLAYERS</div>
-          <div class="score-tab active" data-tab="richest">RICHEST</div>
-          <div class="score-tab" data-tab="geo">GEO DASH</div>
-          <div class="score-tab" data-tab="type">TYPER</div>
-          <div class="score-tab" data-tab="snake">SNAKE</div>
-          <div class="score-tab" data-tab="pong">PONG</div>
-          <div class="score-tab" data-tab="runner">RUNNER</div>
-          <div class="score-tab" data-tab="corebreaker">CORE BREAKER</div>
-          <div class="score-tab" data-tab="neondefender">NEON DEFENDER</div>
-          <div class="score-tab" data-tab="voidminer">VOID MINER</div>
-          <div class="score-tab" data-tab="shadowassassin">SHADOW ASSASSIN</div>
-          <div class="score-tab" data-tab="dodge">DODGE</div>
-          <div class="score-tab" data-tab="flappy">FLAPPY</div>
-        </div>
+        <p style="text-align: center; font-size: 10px; margin-bottom: 10px">
+          SCROLL LEFT-RIGHT TO VIEW EVERY LEADERBOARD
+        </p>
+        <input
+          class="term-input"
+          id="leaderboardFilter"
+          placeholder="FILTER LEADERBOARD TYPES (E.G. PONG, RICHEST)"
+          style="margin-bottom: 12px"
+        />
         <div class="score-list" id="scoreList">
           <div class="score-item">LOADING DATA...</div>
         </div>

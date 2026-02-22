@@ -1093,6 +1093,39 @@ canvas {
   overflow-y: auto;
   text-align: left;
 }
+#overlayScores #leaderboardFilter {
+  width: 100%;
+}
+#overlayScores .score-list {
+
+  max-height: min(58vh, 500px);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+#overlayScores .score-columns {
+  display: flex;
+  gap: 12px;
+  min-width: max-content;
+  padding-bottom: 6px;
+}
+#overlayScores .score-column {
+  width: min(78vw, 240px);
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+#overlayScores .score-column h3 {
+  margin: 0;
+  padding: 8px;
+  border-bottom: 1px solid var(--accent-dim);
+  font-size: 11px;
+  text-align: center;
+}
+#overlayScores .score-column-body {
+  overflow-y: auto;
+  max-height: min(48vh, 410px);
+}
 .score-item {
   display: flex;
   justify-content: space-between;
