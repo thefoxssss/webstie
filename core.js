@@ -332,17 +332,28 @@ export class EngineKernel {
     this.onRender = null;
   }
 
-  start(onTick, onRender) {
+  start(onTick, onRender, options = {}) {
     this.stop();
+    const { startPausedUntilInput = false } = options;
     this.onTick = onTick;
     this.onRender = onRender;
     this.accumulator = 0;
     this.lastTs = 0;
     this.running = true;
+    let started = !startPausedUntilInput;
+    const begin = () => {
+      started = true;
+    };
+    const onStartKey = () => begin();
+    const onStartPointer = () => begin();
+    if (!started) {
+      window.addEventListener("keydown", onStartKey, { passive: true });
+      window.addEventListener("pointerdown", onStartPointer, { passive: true });
+    }
     const frame = (ts) => {
       if (!this.running) return;
       if (!this.lastTs) this.lastTs = ts;
-      const frameDt = Math.min((ts - this.lastTs) / 1000, 0.1);
+      const frameDt = started ? Math.min((ts - this.lastTs) / 1000, 0.1) : 0;
       this.lastTs = ts;
       this.accumulator += frameDt;
       let ticks = 0;
@@ -357,11 +368,17 @@ export class EngineKernel {
       this.onRender?.(this.accumulator / this.fixedDt, ts);
       this.rafId = requestAnimationFrame(frame);
     };
+    this.cleanupStartGate = () => {
+      window.removeEventListener("keydown", onStartKey);
+      window.removeEventListener("pointerdown", onStartPointer);
+    };
     this.rafId = requestAnimationFrame(frame);
   }
 
   stop() {
     this.running = false;
+    this.cleanupStartGate?.();
+    this.cleanupStartGate = null;
     if (this.rafId) cancelAnimationFrame(this.rafId);
     this.rafId = 0;
   }

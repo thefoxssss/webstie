@@ -16,6 +16,7 @@ let fScore = 0;
 let fAnim;
 let fLastTime = 0;
 let fSpawnAccumulator = 0;
+let flappyStarted = false;
 
 const FLAP_STRENGTH = -7;
 const GRAVITY = 0.5;
@@ -55,6 +56,7 @@ export function initFlappy() {
   fScore = 0;
   fLastTime = 0;
   fSpawnAccumulator = 0;
+  flappyStarted = false;
   setText("flappyScore", "SCORE: 0");
   loopFlappy(performance.now());
 }
@@ -62,7 +64,7 @@ export function initFlappy() {
 // Main game loop: physics update, pipe spawn, collision, render.
 function loopFlappy(now) {
   if (state.currentGame !== "flappy") return;
-  const dtFrames = fLastTime
+  const dtFrames = flappyStarted && fLastTime
     ? Math.min((now - fLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
     : 1;
   fLastTime = now;
@@ -71,11 +73,14 @@ function loopFlappy(now) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 400, 600);
   if (state.keysPressed[" "]) {
+    flappyStarted = true;
     fBird.dy = FLAP_STRENGTH;
     state.keysPressed[" "] = false;
   }
-  fBird.dy += GRAVITY * dtFrames;
-  fBird.y += fBird.dy * dtFrames;
+  if (flappyStarted) {
+    fBird.dy += GRAVITY * dtFrames;
+    fBird.y += fBird.dy * dtFrames;
+  }
   ctx.fillStyle = "#fff";
   ctx.fillRect(fBird.x, fBird.y, 20, 20);
   if (fBird.y > 600 || fBird.y < 0) {
@@ -87,6 +92,10 @@ function loopFlappy(now) {
       return;
     }
     showGameOver("flappy", fScore);
+    return;
+  }
+  if (!flappyStarted) {
+    fAnim = requestAnimationFrame(loopFlappy);
     return;
   }
   const lastPipe = fPipes[fPipes.length - 1];
@@ -127,7 +136,10 @@ function loopFlappy(now) {
 
 // Click/tap to flap.
 document.getElementById("flappyCanvas").onclick = () => {
-  if (state.currentGame === "flappy") fBird.dy = FLAP_STRENGTH;
+  if (state.currentGame === "flappy") {
+    flappyStarted = true;
+    fBird.dy = FLAP_STRENGTH;
+  }
 };
 
 // Cancel animation loop on exit.

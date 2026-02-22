@@ -196,7 +196,7 @@ export function initRunner() {
   resetPool();
 
   setText("runnerScoreBoard", "SCORE: 0");
-  kernel.start(onTick, onRender);
+  kernel.start(onTick, onRender, { startPausedUntilInput: true });
 }
 
 document.getElementById("runnerCanvas").onclick = () => {
