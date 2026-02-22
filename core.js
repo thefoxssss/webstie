@@ -4860,9 +4860,7 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
-  const activeOverlays = Array.from(document.querySelectorAll(".overlay.active")).filter(
-    (overlay) => overlay.id !== "modalGameOver"
-  );
+  const activeOverlays = Array.from(document.querySelectorAll(".overlay.active"));
   const activeGameOverlay =
     activeOverlays.find((overlay) =>
       overlay.classList.contains("game-overlay") || overlay.querySelector("canvas, .embedded-game-frame")
@@ -4870,10 +4868,10 @@ export function showGameOver(game, score) {
 
   const gameSurface = activeGameOverlay?.querySelector("canvas, .embedded-game-frame");
   let modalHost = null;
-  if (gameSurface) {
-    if (gameSurface.parentElement?.classList.contains("game-surface-host")) {
+  if (gameSurface?.parentElement) {
+    if (gameSurface.parentElement.classList.contains("game-surface-host")) {
       modalHost = gameSurface.parentElement;
-    } else if (gameSurface.parentElement) {
+    } else {
       const surfaceHost = document.createElement("div");
       surfaceHost.className = "game-surface-host";
       gameSurface.parentElement.insertBefore(surfaceHost, gameSurface);
@@ -4882,12 +4880,11 @@ export function showGameOver(game, score) {
     }
   }
   if (!modalHost) {
-    modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
+    modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay || document.body;
   }
-  if (modalHost) {
-    modalHost.classList.add("game-over-host");
-    modalHost.appendChild(modal);
-  }
+
+  modalHost.classList.add("game-over-host");
+  modalHost.appendChild(modal);
   modal.classList.add("active");
   window.addEventListener("keydown", quickRestartListener);
 }

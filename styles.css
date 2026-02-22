@@ -1978,8 +1978,34 @@ canvas {
 }
 /* Game Over Modal */
 #modalGameOver {
+  display: none;
+  position: absolute;
+  inset: 0;
   background: rgba(5, 5, 5, 0.95);
-  z-index: 9500;
+  z-index: 30;
+  padding: 20px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+#modalGameOver.active {
+  display: flex;
+}
+
+#goRestart {
+  width: 200px;
+}
+
+#goExit {
+  margin-top: 20px;
+}
+
+#gameOverText {
+  margin-bottom: 30px;
+  font-size: 14px;
 }
 
 .game-over-host {
@@ -1993,20 +2019,13 @@ canvas {
   justify-content: center;
 }
 
-.game-over-host > #modalGameOver {
-  position: absolute;
-  inset: 0;
-  padding: 20px;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
 #modalGameOver h1 {
   color: #fff;
   text-shadow: 2px 2px red;
   font-size: 24px;
   margin-bottom: 10px;
 }
+
 .restart-hint {
   font-size: 10px;
   margin-top: 20px;

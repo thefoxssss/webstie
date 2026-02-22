@@ -556,8 +556,10 @@ initGameVisibilityGuards();
 initGamesLibraryDiscovery();
 
 function hideGameOverModal() {
-  document.getElementById("modalGameOver").classList.remove("active");
+  const modal = document.getElementById("modalGameOver");
+  modal.classList.remove("active");
   document.querySelectorAll(".game-over-host").forEach((el) => el.classList.remove("game-over-host"));
+  document.body.appendChild(modal);
 }
 
 // Restart the last game from the game-over modal.
