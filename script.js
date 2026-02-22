@@ -452,6 +452,81 @@ function initGamesLibraryDiscovery() {
   applyLibraryView();
 }
 
+
+function initMainSiteSearch() {
+  const form = document.getElementById("siteSearchForm");
+  const input = document.getElementById("siteSearchInput");
+  const meta = document.getElementById("siteSearchMeta");
+  const gamesSearch = document.getElementById("gamesSearch");
+  const gamesFilter = document.getElementById("gamesFilter");
+  if (!form || !input || !meta) return;
+
+  const QUICK_ROUTES = [
+    { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY" },
+    { aliases: ["trending", "trend"], action: () => openGame("overlayTrending"), label: "OPENED TRENDING GAMES" },
+    { aliases: ["updates", "update", "log", "update log", "patch notes"], action: () => openGame("overlayUpdates"), label: "OPENED UPDATE LOG" },
+    { aliases: ["bank", "money"], action: () => openGame("overlayBank"), label: "OPENED BANK PANEL" },
+    { aliases: ["shop", "store"], action: () => openGame("overlayShop"), label: "OPENED SHOP PANEL" },
+    { aliases: ["profile", "account", "stats"], action: () => openGame("overlayProfile"), label: "OPENED PROFILE PANEL" },
+    { aliases: ["scores", "leaderboard", "ranks"], action: () => openGame("overlayScores"), label: "OPENED SCORES PANEL" },
+    { aliases: ["season", "battle pass"], action: () => openGame("overlaySeason"), label: "OPENED SEASON PANEL" },
+    { aliases: ["crew", "clan", "guild"], action: () => openGame("overlayCrew"), label: "OPENED CREW PANEL" },
+    { aliases: ["config", "settings"], action: () => openGame("overlayConfig"), label: "OPENED CONFIG PANEL" },
+  ];
+
+  function normalize(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function findGame(query) {
+    const exact = GAME_DIRECTORY_ENTRIES.find((entry) => {
+      if (entry.hidden) return false;
+      const haystack = `${entry.title} ${entry.id} ${entry.tags.join(" ")}`.toLowerCase();
+      return haystack === query || entry.title.toLowerCase() === query || entry.id.toLowerCase() === query;
+    });
+    if (exact) return exact;
+    return GAME_DIRECTORY_ENTRIES.find((entry) => {
+      if (entry.hidden) return false;
+      const haystack = `${entry.title} ${entry.id} ${entry.tags.join(" ")} ${entry.description}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const query = normalize(input.value);
+    if (!query) {
+      meta.textContent = "ENTER A SEARCH TERM TO JUMP THROUGH THE TERMINAL.";
+      return;
+    }
+
+    const route = QUICK_ROUTES.find((item) => item.aliases.some((alias) => query.includes(alias)));
+    if (route) {
+      route.action();
+      meta.textContent = `${route.label} // SEARCH: ${query.toUpperCase()}`;
+      return;
+    }
+
+    const game = findGame(query);
+    if (game) {
+      window.launchGame(game.id, "site-search");
+      meta.textContent = `LAUNCHED ${game.title.toUpperCase()} // MATCHED "${query.toUpperCase()}"`;
+      return;
+    }
+
+    if (gamesSearch) {
+      openGame("overlayGames");
+      gamesSearch.value = query;
+      if (gamesFilter) gamesFilter.value = "all";
+      gamesSearch.dispatchEvent(new Event("input", { bubbles: true }));
+      meta.textContent = `NO DIRECT MATCH. OPENED DIRECTORY SEARCH FOR "${query.toUpperCase()}".`;
+      return;
+    }
+
+    meta.textContent = `NO MATCH FOR "${query.toUpperCase()}".`;
+  });
+}
+
 function initTopBarOverlayControls() {
   const overlays = Array.from(document.querySelectorAll(".overlay"));
   const fsBtn = document.getElementById("topFullscreenBtn");
@@ -554,6 +629,7 @@ initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGamesLibraryDiscovery();
+initMainSiteSearch();
 
 function hideGameOverModal() {
   document.getElementById("modalGameOver").classList.remove("active");
