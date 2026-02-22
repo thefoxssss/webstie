@@ -1,132 +1,31 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GOONER // Proxy Page</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --bg: #030303;
-        --panel: #0b0b0b;
-        --accent: #00ff66;
-        --accent-dim: #00ff6640;
-        --warn: #ffd44d;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        background: radial-gradient(circle at top, #0f1912 0%, var(--bg) 45%);
-        color: #e8ffe8;
-        font-family: "Roboto Mono", monospace;
-        padding: 24px;
-      }
-      .wrap {
-        max-width: 980px;
-        margin: 0 auto;
-        border: 2px solid var(--accent);
-        background: linear-gradient(180deg, #0b0b0b 0%, #070707 100%);
-        box-shadow: 0 0 24px var(--accent-dim);
-        padding: 20px;
-      }
-      h1 {
-        margin-top: 0;
-        font-family: "Press Start 2P", monospace;
-        font-size: 22px;
-        color: var(--accent);
-      }
-      p { line-height: 1.4; }
-      .row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 10px;
-      }
-      input, button {
-        width: 100%;
-        border: 1px solid var(--accent);
-        background: #000;
-        color: var(--accent);
-        padding: 12px;
-        font: inherit;
-      }
-      button {
-        width: auto;
-        cursor: pointer;
-        font-weight: 700;
-      }
-      .warn {
-        border: 1px solid var(--warn);
-        color: var(--warn);
-        background: #211c09;
-        padding: 10px;
-        margin: 14px 0;
-        font-size: 13px;
-      }
-      iframe {
-        width: 100%;
-        min-height: 64vh;
-        border: 1px solid var(--accent);
-        background: #000;
-      }
-      .links {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 14px;
-      }
-      .links a {
-        border: 1px solid var(--accent);
-        color: var(--accent);
-        text-decoration: none;
-        padding: 8px 12px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <h1>PROXY PAGE</h1>
-      <p>Use this page to open websites through a text mirror proxy (via r.jina.ai) inside the frame below.</p>
-      <div class="links">
-        <a href="index.html">← Back to Terminal</a>
-        <a href="https://www.croxyproxy.com/" target="_blank" rel="noreferrer">Open CroxyProxy</a>
-        <a href="https://www.duckduckgo.com/" target="_blank" rel="noreferrer">Open DuckDuckGo</a>
-      </div>
-      <div class="row">
-        <input id="proxyUrl" type="url" placeholder="https://example.com" value="https://example.com" />
-        <button id="loadProxy" type="button">LOAD</button>
-      </div>
-      <div class="warn">Note: In-frame browsing is text-only mirror mode. Some websites can block proxy rendering.</div>
-      <iframe id="proxyFrame" title="Proxy browser" loading="lazy"></iframe>
-    </div>
-
-    <script>
-      const input = document.getElementById("proxyUrl");
-      const button = document.getElementById("loadProxy");
-      const frame = document.getElementById("proxyFrame");
-
-      function normalizeUrl(value) {
-        if (!value) return "";
-        if (/^https?:\/\//i.test(value)) return value;
-        return `https://${value}`;
-      }
-
-      function loadProxy() {
-        const normalized = normalizeUrl(input.value.trim());
-        if (!normalized) return;
-        input.value = normalized;
-        frame.src = `https://r.jina.ai/http://${normalized.replace(/^https?:\/\//i, "")}`;
-      }
-
-      button.addEventListener("click", loadProxy);
-      input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") loadProxy();
-      });
-
-      loadProxy();
-    </script>
-  </body>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ultra Proxy v2</title>
+<style>
+body{font-family:sans-serif;background:#0f172a;color:white;
+display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+.box{background:#1e293b;padding:40px;border-radius:14px}
+input{width:400px;max-width:60vw;padding:12px;border-radius:8px;border:none}
+button{padding:12px 20px;border:none;border-radius:8px;
+background:#22c55e;color:white;font-weight:bold;margin-left:10px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>Ultra Proxy v2</h2>
+<p>Enter full URL:</p>
+<input id="u" placeholder="https://example.com">
+<button onclick="go()">Go</button>
+</div>
+<script>
+function go(){
+  let u=document.getElementById("u").value.trim()
+  if(!u.startsWith("http")) u="https://"+u
+  location.href="/"+encodeURIComponent(u)
+}
+</script>
+</body>
 </html>
