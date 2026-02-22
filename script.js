@@ -60,7 +60,7 @@ import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
-import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
+import { GAME_DIRECTORY_ENTRIES, GAME_TAG_EMOJI } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -293,7 +293,13 @@ function initGamesLibraryDiscovery() {
       tagsRow.className = "game-tags";
       card.appendChild(tagsRow);
     }
-    tagsRow.innerHTML = tags.map((tag) => `<span class="game-tag">${tag.toUpperCase()}</span>`).join("");
+    tagsRow.innerHTML = tags
+      .map((tag) => {
+        const emoji = GAME_TAG_EMOJI[tag] || "🏷️";
+        const label = tag.toUpperCase();
+        return `<span class="game-tag" data-tag-label="${label}" aria-label="${label}" role="img" tabindex="0">${emoji}</span>`;
+      })
+      .join("");
 
     if (card.id === "btnFlappy" && card.style.display === "none") card.dataset.locked = "1";
     card.title = "CLICK TO LAUNCH • SHIFT+CLICK OR RIGHT-CLICK TO FAVORITE";

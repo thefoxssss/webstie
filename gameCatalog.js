@@ -35,3 +35,26 @@ export const LEADERBOARD_GAME_COLUMNS = Object.freeze(
     .map((id) => GAME_DIRECTORY_ENTRIES.find((entry) => entry.id === id))
     .filter(Boolean)
 );
+
+export const GAME_TAG_EMOJI = Object.freeze({
+  arcade: "🕹️",
+  skill: "🎯",
+  pvp: "⚔️",
+  casino: "🎰",
+  platformer: "🦘",
+  reflex: "⚡",
+  typing: "⌨️",
+  retro: "📼",
+  duel: "🥊",
+  luck: "🍀",
+  table: "🃏",
+  cards: "🂡",
+  puzzle: "🧩",
+  logic: "🧠",
+  timing: "⏱️",
+  defense: "🛡️",
+  strategy: "♟️",
+  precision: "🎯",
+  maze: "🧭",
+  survival: "🫀",
+});
