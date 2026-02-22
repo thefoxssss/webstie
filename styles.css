@@ -649,7 +649,8 @@ canvas {
 }
 
 .game-overlay {
-  gap: 14px;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .game-content-shell {
@@ -657,11 +658,33 @@ canvas {
   border: 2px solid var(--accent);
   background: rgba(0, 0, 0, 0.86);
   box-shadow: 0 0 20px var(--accent-dim);
-  padding: 18px 16px;
+  padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.game-content-shell > h1 {
+  margin: 0 0 4px;
+  font-size: clamp(24px, 4.2vw, 40px);
+}
+
+.game-content-shell > .high-score-display {
+  margin-bottom: 2px;
+}
+
+.game-content-shell > [style*="margin-bottom"] {
+  margin-bottom: 4px !important;
+}
+
+.game-content-shell > .mobile-hint.active {
+  margin-top: 6px !important;
+}
+
+.game-content-shell canvas,
+.game-content-shell .embedded-game-frame {
+  margin-bottom: 4px;
 }
 
 .overlay-controls-fixed {
@@ -2539,7 +2562,12 @@ canvas {
 
 @media (max-width: 560px) {
   .game-content-shell {
-    padding: 14px 10px;
+    padding: 10px 8px;
+    gap: 6px;
+  }
+
+  .game-content-shell > h1 {
+    font-size: clamp(20px, 6.4vw, 28px);
   }
 
   .overlay-controls-fixed {
