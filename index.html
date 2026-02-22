@@ -26,6 +26,36 @@
     <!-- Toast container for transient notifications. -->
     <div id="toastBox"></div>
 
+    <script>
+      // Defensive fallback so inline handlers never break if module init is delayed/fails.
+      window.openGame =
+        window.openGame ||
+        function (id) {
+          document
+            .querySelectorAll('.overlay')
+            .forEach((overlay) => overlay.classList.remove('active'));
+          const el = document.getElementById(id);
+          if (el) el.classList.add('active');
+        };
+      window.closeOverlays =
+        window.closeOverlays ||
+        function () {
+          document
+            .querySelectorAll('.overlay')
+            .forEach((overlay) => overlay.classList.remove('active'));
+        };
+      window.launchGame =
+        window.launchGame ||
+        function (game) {
+          const overlayId =
+            'overlay' +
+            (game === 'ttt'
+              ? game.toUpperCase()
+              : game.charAt(0).toUpperCase() + game.slice(1));
+          window.openGame(overlayId);
+        };
+    </script>
+
     <!-- Global top navigation + system status. -->
     <div class="top-bar">
       <button class="menu-btn" onclick="window.openGame('overlayConfig')">
