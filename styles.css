@@ -1986,6 +1986,13 @@ canvas {
   position: relative;
 }
 
+.game-surface-host {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
 .game-over-host > #modalGameOver {
   position: absolute;
   inset: 0;

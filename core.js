@@ -4861,7 +4861,22 @@ export function showGameOver(game, score) {
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
   const activeGameOverlay = document.querySelector(".overlay.game-overlay.active");
-  const modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
+  const gameSurface = activeGameOverlay?.querySelector("canvas, .embedded-game-frame");
+  let modalHost = null;
+  if (gameSurface) {
+    if (gameSurface.parentElement?.classList.contains("game-surface-host")) {
+      modalHost = gameSurface.parentElement;
+    } else {
+      const surfaceHost = document.createElement("div");
+      surfaceHost.className = "game-surface-host";
+      gameSurface.parentElement?.insertBefore(surfaceHost, gameSurface);
+      surfaceHost.appendChild(gameSurface);
+      modalHost = surfaceHost;
+    }
+  }
+  if (!modalHost) {
+    modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay;
+  }
   if (modalHost) {
     modalHost.classList.add("game-over-host");
     modalHost.appendChild(modal);
