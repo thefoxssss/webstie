@@ -354,7 +354,7 @@ function initGamesLibraryDiscovery() {
 
     const itemControls = document.createElement("div");
     itemControls.className = "game-shop-controls";
-    itemControls.dataset.gameShopControls = entry.id;
+    itemControls.dataset.gameShopControls = card.dataset.game || "";
     card.appendChild(itemControls);
 
     card.addEventListener("click", (event) => {
