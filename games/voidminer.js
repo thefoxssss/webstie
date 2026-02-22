@@ -197,7 +197,7 @@ export function updateVoidMiner() {
       updateHighScore("voidminer", score);
 
       if (level >= 5) unlockAchievement("soft_touchdown");
-      if (score > 3000) unlockAchievement("void_veteran");
+      if (Math.floor(score) > 3000) unlockAchievement("void_veteran");
 
       upgradePoints += 1;
       showToast(`LANDING SECURE | +1 UPGRADE (${upgradePoints})`, "🛰️");
@@ -209,7 +209,7 @@ export function updateVoidMiner() {
       ship.y -= 14;
       showToast("SHIELD SAVED YOU", "🛡️");
     } else {
-      showGameOver("voidminer", score);
+      showGameOver("voidminer", Math.floor(score));
       return;
     }
   }

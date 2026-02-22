@@ -2138,6 +2138,35 @@ canvas {
   font-size: 8px;
   opacity: 0.8;
 }
+
+#toastBox.in-game {
+  top: 18px;
+  right: 18px;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  max-width: 340px;
+}
+
+#toastBox.in-game .toast {
+  min-width: 220px;
+  max-width: 340px;
+  padding: 10px 14px;
+  border-width: 1px;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+#toastBox.in-game .toast-icon {
+  font-size: 20px;
+}
+
+#toastBox.in-game .toast-title {
+  font-size: 10px;
+}
+
+#toastBox.in-game .toast-desc {
+  font-size: 8px;
+}
 @keyframes slideUp {
   from {
     transform: translateY(100px);
