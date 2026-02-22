@@ -1305,12 +1305,16 @@ setInterval(() => {
 
 // Allow games to register a cleanup routine when overlays close.
 export function registerGameStop(stopFn) {
+  if (typeof stopFn !== "function") return;
   gameStops.push(stopFn);
 }
 
 // Stop all running games and reset transient input state.
 export function stopAllGames() {
-  gameStops.forEach((stopFn) => stopFn());
+  gameStops.forEach((stopFn) => {
+    if (typeof stopFn !== "function") return;
+    stopFn();
+  });
   currentGame = null;
   syncGameLeaderboardButton();
   keysPressed = {};
