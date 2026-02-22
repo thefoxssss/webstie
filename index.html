@@ -28,41 +28,49 @@
 
     <!-- Global top navigation + system status. -->
     <div class="top-bar">
-      <button class="menu-btn" onclick="window.openGame('overlayConfig')">
+      <button id="tabConfig" class="menu-btn" onclick="window.openGame('overlayConfig')">
         CONFIG
       </button>
       <div class="sys-info">
         <span id="sysClock">00:00:00</span> | PING:
         <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
       </div>
-      <div style="display: flex; gap: 10px">
-        <button class="menu-btn" onclick="window.openGame('overlayBank')">
+      <div class="top-bar-actions">
+        <button id="tabBank" class="menu-btn" onclick="window.openGame('overlayBank')">
           BANK
         </button>
-        <button class="menu-btn" onclick="window.openGame('overlayShop')">
+        <button id="tabShop" class="menu-btn" onclick="window.openGame('overlayShop')">
           SHOP
         </button>
-        <button class="menu-btn" onclick="window.openGame('overlayProfile')">
+        <button id="tabProfile" class="menu-btn" onclick="window.openGame('overlayProfile')">
           PROFILE
         </button>
-        <button class="menu-btn" onclick="window.openGame('overlayScores')">
+        <button id="tabScores" class="menu-btn" onclick="window.openGame('overlayScores')">
           SCORES
         </button>
-        <button class="menu-btn" onclick="window.openGame('overlaySeason')">
+        <button id="tabSeason" class="menu-btn" onclick="window.openGame('overlaySeason')">
           SEASON
         </button>
-        <button class="menu-btn" onclick="window.openGame('overlayCrew')">
+        <button id="tabCrew" class="menu-btn" onclick="window.openGame('overlayCrew')">
           CREW
         </button>
         <button
           class="menu-btn"
-          id="adminMenuBtn"
+          id="tabAdmin"
           onclick="window.openGame('overlayAdmin')"
           style="display: none; border-color: #ffd700; color: #ffd700"
         >
           ADMIN
         </button>
         <button class="menu-btn" id="menuToggle">GAMES</button>
+        <div id="topOverlayControls" class="top-overlay-controls" aria-live="polite">
+          <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">
+            FULLSCREEN
+          </button>
+          <button id="topCloseBtn" class="menu-btn" type="button" style="display: none">
+            CLOSE
+          </button>
+        </div>
       </div>
     </div>
 

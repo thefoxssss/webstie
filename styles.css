@@ -218,12 +218,32 @@ body::before {
   color: #000;
   box-shadow: 0 0 10px var(--accent);
 }
+
+.menu-btn[data-exit-mode="1"] {
+  background: var(--accent);
+  color: #000;
+  box-shadow: 0 0 10px var(--accent);
+}
 .sys-info {
   display: flex;
   gap: 15px;
   font-size: 8px;
   color: var(--accent);
   opacity: 0.8;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.top-overlay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Games dropdown menu anchored to the top bar. */
@@ -712,14 +732,7 @@ canvas {
 }
 
 .overlay-controls-fixed {
-  position: static;
-  margin: 0 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: min(95vw, 430px);
-  z-index: 1001;
+  display: none;
 }
 
 .fullscreen-btn-fixed {
@@ -743,20 +756,7 @@ canvas {
 }
 
 .exit-btn-fixed {
-  position: static;
-  left: auto;
-  transform: none;
-  margin: 0;
-  width: 200px;
-  border: 2px solid var(--accent);
-  background: #000;
-  color: var(--accent);
-  padding: 15px;
-  font-family: inherit;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: 0.2s;
-  z-index: 1001;
+  display: none;
 }
 
 .games-grid {
@@ -863,6 +863,12 @@ canvas {
 .exit-btn-fixed:hover {
   background: var(--accent);
   color: #000;
+}
+
+
+/* Hide all legacy per-overlay close buttons; top bar controls replace them. */
+.overlay button[onclick*="closeOverlays"] {
+  display: none !important;
 }
 
 .touch-controls {
@@ -2671,14 +2677,13 @@ canvas {
     font-size: clamp(20px, 6.4vw, 28px);
   }
 
-  .overlay-controls-fixed {
-    width: min(95vw, 320px);
-    flex-direction: column;
-    gap: 8px;
+  .top-bar-actions {
+    width: 100%;
+    justify-content: center;
   }
 
-  .overlay-controls-fixed .fullscreen-btn-fixed,
-  .overlay-controls-fixed .exit-btn-fixed {
+  .top-overlay-controls {
     width: 100%;
+    justify-content: center;
   }
 }

@@ -391,59 +391,91 @@ function initGamesLibraryDiscovery() {
   applyLibraryView();
 }
 
-function initGameFullscreenControls() {
-  const overlays = GAME_OVERLAY_IDS
+function initTopBarOverlayControls() {
+  const overlays = Array.from(document.querySelectorAll(".overlay"));
+  const fsBtn = document.getElementById("topFullscreenBtn");
+  const closeBtn = document.getElementById("topCloseBtn");
+  if (!overlays.length || !fsBtn) return;
+
+  const OVERLAY_TAB_MAP = {
+    overlayConfig: "tabConfig",
+    overlayBank: "tabBank",
+    overlayShop: "tabShop",
+    overlayProfile: "tabProfile",
+    overlayScores: "tabScores",
+    overlaySeason: "tabSeason",
+    overlayCrew: "tabCrew",
+    overlayAdmin: "tabAdmin",
+    overlayGames: "menuToggle",
+  };
+
+  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 
-  overlays.forEach((overlay) => {
-    const exitBtn = overlay.querySelector(".exit-btn-fixed");
-    if (!exitBtn || overlay.querySelector(".fullscreen-btn-fixed")) return;
-
-    overlay.classList.add("game-overlay");
-
-    let gameShell = overlay.querySelector(".game-content-shell");
-    if (!gameShell) {
-      gameShell = document.createElement("div");
-      gameShell.className = "game-content-shell";
-      Array.from(overlay.children)
-        .filter((child) => !child.classList.contains("overlay-controls-fixed"))
-        .forEach((child) => gameShell.appendChild(child));
-      overlay.appendChild(gameShell);
-    }
-
-    let controlsBar = overlay.querySelector(".overlay-controls-fixed");
-    if (!controlsBar) {
-      controlsBar = document.createElement("div");
-      controlsBar.className = "overlay-controls-fixed";
-      overlay.appendChild(controlsBar);
-    }
-
-    controlsBar.appendChild(exitBtn);
-
-    const fsButton = document.createElement("button");
-    fsButton.className = "fullscreen-btn-fixed";
-    fsButton.type = "button";
-    fsButton.textContent = "FULLSCREEN";
-    fsButton.addEventListener("click", async () => {
-      try {
-        await toggleGameFullscreen(overlay, fsButton);
-      } catch (error) {
-        console.warn("Fullscreen toggle failed", error);
+  topTabs.forEach((button) => {
+    button.dataset.defaultLabel = button.textContent.trim();
+    button.addEventListener("click", (event) => {
+      if (button.dataset.exitMode !== "1") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const activeOverlay = getActiveOverlay();
+      if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
+        openGame("overlayGames");
+      } else {
+        closeOverlays();
       }
-    });
-    controlsBar.insertBefore(fsButton, exitBtn);
+      updateControls();
+    }, true);
   });
 
-  document.addEventListener("fullscreenchange", () => {
-    const isFullscreen = Boolean(document.fullscreenElement);
-    document.querySelectorAll(".fullscreen-btn-fixed").forEach((button) => {
-      button.textContent = isFullscreen ? "EXIT FULLSCREEN" : "FULLSCREEN";
-    });
+  const getActiveOverlay = () => overlays.find((overlay) => overlay.classList.contains("active")) || null;
+  const isFullscreenApplicable = (overlay) => Boolean(overlay && GAME_OVERLAY_IDS.includes(overlay.id) && getFullscreenTarget(overlay));
+
+  function getExitTabButton(overlay) {
+    if (!overlay) return null;
+    if (GAME_OVERLAY_IDS.includes(overlay.id)) return document.getElementById("menuToggle");
+    return document.getElementById(OVERLAY_TAB_MAP[overlay.id] || "") || null;
+  }
+
+  fsBtn.addEventListener("click", async () => {
+    const activeOverlay = getActiveOverlay();
+    if (!isFullscreenApplicable(activeOverlay)) return;
+    try {
+      await toggleGameFullscreen(activeOverlay, fsBtn);
+    } catch (error) {
+      console.warn("Fullscreen toggle failed", error);
+    }
+    updateControls();
   });
+
+  function updateControls() {
+    const activeOverlay = getActiveOverlay();
+    const canFullscreen = isFullscreenApplicable(activeOverlay);
+    const exitTab = getExitTabButton(activeOverlay);
+
+    topTabs.forEach((button) => {
+      button.dataset.exitMode = "0";
+      button.textContent = button.dataset.defaultLabel || button.textContent;
+    });
+
+    if (exitTab && activeOverlay && activeOverlay.id !== "overlayLogin") {
+      exitTab.dataset.exitMode = "1";
+      exitTab.textContent = "EXIT";
+    }
+
+    fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
+    fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
+    if (closeBtn) closeBtn.style.display = "none";
+  }
+
+  const observer = new MutationObserver(updateControls);
+  overlays.forEach((overlay) => observer.observe(overlay, { attributes: true, attributeFilter: ["class"] }));
+  document.addEventListener("fullscreenchange", updateControls);
+  updateControls();
 }
 
-initGameFullscreenControls();
+initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGamesLibraryDiscovery();
