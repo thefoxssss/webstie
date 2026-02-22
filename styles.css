@@ -1299,18 +1299,12 @@ canvas {
 
 
 .overlay.has-game-side-shop {
-  padding-left: 280px;
-}
-
-@media (max-width: 760px) {
-  .overlay.has-game-side-shop {
-    padding-left: 0;
-  }
+  padding-left: 20px;
 }
 
 .game-side-shop {
   position: absolute;
-  left: 14px;
+  right: 14px;
   top: 74px;
   width: min(250px, 30vw);
   border: 1px solid var(--accent);
@@ -2534,6 +2528,7 @@ body.reduce-motion *::after {
 }
 
 #overlayShop .score-box {
+  width: min(96vw, 920px);
   height: calc(100vh - var(--topbar-clearance) - 40px);
   max-height: none;
   display: flex;
@@ -2553,9 +2548,16 @@ body.reduce-motion *::after {
   margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
   font-size: 10px;
+}
+.shop-item > div {
+  min-width: 0;
+  flex: 1 1 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .shop-item-icon {
   display: inline-block;
@@ -2576,6 +2578,7 @@ body.reduce-motion *::after {
 }
 .shop-item-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
