@@ -206,7 +206,7 @@ body::before {
 .top-bar-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 .menu-btn {
   background: transparent;
@@ -245,7 +245,7 @@ body::before {
 .top-bar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -425,7 +425,7 @@ body::before {
 .site-search {
   width: min(92vw, 680px);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   margin-top: 0;
 }
@@ -816,6 +816,79 @@ body.games-directory-open .wrap {
   display: flex !important;
 }
 
+
+.game-switcher-header {
+  width: min(980px, 100%);
+  margin: 0 0 6px 0;
+  min-height: 42px;
+  user-select: none;
+  touch-action: pan-y;
+  --switcher-drag-offset: 0px;
+}
+
+.game-switcher-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transform: translateX(var(--switcher-drag-offset));
+  transition: transform 0.28s ease;
+}
+
+.game-switcher-header.is-dragging .game-switcher-track {
+  transition: none;
+}
+
+.game-switcher-title {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  width: 280px;
+  min-width: 280px;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 15px;
+  opacity: 0.5;
+}
+
+.game-switcher-title[data-pos="0"] {
+  opacity: 1;
+  transform: scale(1.16);
+  font-size: 20px;
+}
+
+.game-switcher-title[data-pos="-1"],
+.game-switcher-title[data-pos="1"] {
+  opacity: 0.56;
+}
+
+.game-switcher-title:hover,
+.game-switcher-title:focus-visible {
+  opacity: 0.9;
+}
+
+.game-switcher-title.is-empty,
+.game-switcher-title:disabled {
+  opacity: 0.08;
+  cursor: default;
+  transform: none;
+}
+
+.game-switcher-arrow {
+  color: var(--accent-dim);
+  font-size: 13px;
+  opacity: 0.8;
+  user-select: none;
+}
+
 /* Menu-style overlays sit above the home scene so chat/glow stay visible. */
 .menu-overlay {
   background: rgba(0, 0, 0, 0.2);
@@ -920,7 +993,7 @@ select.term-input:focus {
 
 .admin-actions {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin-top: 14px;
 }
 
@@ -986,7 +1059,7 @@ canvas {
 }
 
 .game-overlay {
-  gap: 10px;
+  gap: 12px;
   padding-top: 10px;
 }
 
@@ -1071,7 +1144,7 @@ canvas {
 .leaderboard-subfilters {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
@@ -1099,7 +1172,7 @@ canvas {
   width: min(1200px, 95vw);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
@@ -1107,7 +1180,7 @@ canvas {
   width: min(1200px, 95vw);
   display: grid;
   grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(180px, 240px)) auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   margin-bottom: 8px;
 }
@@ -1246,26 +1319,24 @@ canvas {
 
 
 .overlay.has-game-side-shop {
-  padding-left: 280px;
-}
-
-@media (max-width: 760px) {
-  .overlay.has-game-side-shop {
-    padding-left: 0;
-  }
+  --game-side-shop-width: clamp(220px, 26vw, 300px);
+  padding-left: calc(var(--game-side-shop-width) + 24px);
 }
 
 .game-side-shop {
   position: absolute;
   left: 14px;
   top: 74px;
-  width: min(250px, 30vw);
+  width: var(--game-side-shop-width, min(250px, 30vw));
+  height: clamp(280px, 62vh, 560px);
+  max-height: calc(100vh - var(--topbar-clearance) - 110px);
   border: 1px solid var(--accent);
   background: rgba(0, 0, 0, 0.9);
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
   z-index: 8;
 }
 
@@ -1311,15 +1382,25 @@ canvas {
 }
 
 @media (max-width: 1100px) {
+  .overlay.has-game-side-shop {
+    --game-side-shop-width: clamp(200px, 30vw, 260px);
+  }
+
   .game-side-shop {
-    width: min(210px, 38vw);
+    height: clamp(240px, 58vh, 500px);
   }
 }
 
 @media (max-width: 760px) {
+  .overlay.has-game-side-shop {
+    padding-left: 20px;
+  }
+
   .game-side-shop {
     position: static;
     width: min(92vw, 420px);
+    height: auto;
+    max-height: none;
     margin: 8px auto 0;
   }
 }
@@ -1343,7 +1424,7 @@ canvas {
 .touch-controls {
   display: none;
   margin-top: 10px;
-  gap: 10px;
+  gap: 12px;
 }
 .touch-controls.active {
   display: grid;
@@ -1438,7 +1519,7 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 .bj-pot-display {
   font-size: 24px;
@@ -1472,7 +1553,7 @@ canvas {
 }
 .bj-hand {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: center;
   margin-top: 10px;
   flex-wrap: wrap;
@@ -1573,7 +1654,7 @@ canvas {
 
 .bj-chip-rack {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   margin-top: 10px;
   justify-content: center;
   flex-wrap: wrap;
@@ -1676,7 +1757,7 @@ canvas {
 .score-item {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   padding: 10px 8px;
   border-bottom: 1px dashed var(--accent-dim);
   font-size: clamp(10px, 2vw, 13px);
@@ -1702,7 +1783,7 @@ canvas {
 .jobs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .job-card {
   border: 1px solid var(--accent-dim);
@@ -1796,7 +1877,8 @@ canvas {
   height: 16px;
   border: 1px solid var(--accent-dim);
   background: rgba(255, 255, 255, 0.05);
-  margin-bottom: 6px;
+  margin: 0 0 6px 0;
+  min-height: 42px;
 }
 .job-meter-fill {
   width: 0%;
@@ -1921,7 +2003,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   margin: 10px 0;
 }
 
@@ -2222,7 +2304,7 @@ body.reduce-motion *::after {
 
   .wrap {
     padding: 76px 12px 24px;
-    gap: 10px;
+    gap: 12px;
   }
 
   #globalChat {
@@ -2309,7 +2391,7 @@ body.reduce-motion *::after {
 .badge-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 12px;
   margin-top: 15px;
   max-height: 200px;
   overflow-y: auto;
@@ -2406,7 +2488,7 @@ body.reduce-motion *::after {
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   pointer-events: none;
 }
 .toast {
@@ -2480,6 +2562,7 @@ body.reduce-motion *::after {
 }
 
 #overlayShop .score-box {
+  width: min(96vw, 920px);
   height: calc(100vh - var(--topbar-clearance) - 40px);
   max-height: none;
   display: flex;
@@ -2499,9 +2582,16 @@ body.reduce-motion *::after {
   margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
   font-size: 10px;
+}
+.shop-item > div {
+  min-width: 0;
+  flex: 1 1 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .shop-item-icon {
   display: inline-block;
@@ -2522,6 +2612,7 @@ body.reduce-motion *::after {
 }
 .shop-item-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
@@ -2636,7 +2727,7 @@ body.reduce-motion *::after {
 .stock-market-grid {
   display: grid;
   grid-template-columns: minmax(170px, 220px) 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .stock-list {
@@ -2908,7 +2999,7 @@ body.reduce-motion *::after {
   width: min(94vw, 720px);
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   font-size: 11px;
   margin-bottom: 10px;
 }
@@ -3014,7 +3105,7 @@ body.reduce-motion *::after {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .bonk-hud {
@@ -3023,7 +3114,7 @@ body.reduce-motion *::after {
   justify-content: space-between;
   align-items: center;
   font-size: 10px;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -3048,7 +3139,7 @@ body.reduce-motion *::after {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   font-size: 10px;
   margin-bottom: 8px;

@@ -185,15 +185,16 @@ function renderInGameShopPanel(game, overlayId) {
   overlay.appendChild(panel);
 }
 
+function getOverlayIdForGame(gameId) {
+  if (!gameId) return "";
+  return `overlay${gameId === "ttt" ? gameId.toUpperCase() : gameId.charAt(0).toUpperCase() + gameId.slice(1)}`;
+}
+
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
   window.closeOverlays();
-  const overlayId =
-    "overlay" +
-    (game === "ttt"
-      ? game.toUpperCase()
-      : game.charAt(0).toUpperCase() + game.slice(1));
+  const overlayId = getOverlayIdForGame(game);
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
   renderInGameShopPanel(game, overlayId);
@@ -225,6 +226,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "stacksmash") initStackSmash();
   if (game === "quantumflip") initQuantumFlip();
   if (game === "ultimatettt") initUltimateTTT();
+  if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
   resizeAllGameCanvases();
   trackGamePlay(game);
   updateRecentGames(game);
@@ -341,6 +343,151 @@ function pauseGamesWhenHidden() {
 function initGameVisibilityGuards() {
   document.addEventListener("visibilitychange", pauseGamesWhenHidden);
   window.addEventListener("blur", pauseGamesWhenHidden);
+}
+
+function initGameSwitcher() {
+  const orderedGames = GAME_DIRECTORY_ENTRIES
+    .map((entry) => ({ id: entry.id, title: entry.title, overlayId: getOverlayIdForGame(entry.id) }))
+    .filter((entry) => document.getElementById(entry.overlayId));
+  if (!orderedGames.length) return;
+
+  const gameIndexById = new Map(orderedGames.map((entry, index) => [entry.id, index]));
+
+  function wrapGameIndex(index) {
+    const total = orderedGames.length;
+    if (!total) return 0;
+    return ((index % total) + total) % total;
+  }
+
+  function renderSwitcherAtIndex(switcher, centerIndex, dragOffset = 0) {
+    const titleButtons = Array.from(switcher.querySelectorAll(".game-switcher-title"));
+    if (!titleButtons.length) return;
+
+    titleButtons.forEach((button) => {
+      const pos = Number(button.dataset.pos || 0);
+      const game = orderedGames[wrapGameIndex(centerIndex + pos)] || null;
+      button.dataset.pos = String(pos);
+      button.dataset.game = game?.id || "";
+      button.textContent = game?.title || "";
+      button.disabled = false;
+      button.classList.remove("is-empty");
+      button.classList.toggle("is-center", pos === 0);
+    });
+
+    switcher.style.setProperty("--switcher-drag-offset", `${dragOffset}px`);
+  }
+
+  function launchFromIndex(index) {
+    const game = orderedGames[wrapGameIndex(index)];
+    if (!game) return;
+    window.launchGame(game.id, "game-switcher");
+  }
+
+  orderedGames.forEach((game) => {
+    const overlay = document.getElementById(game.overlayId);
+    if (!overlay) return;
+
+    const switcher = document.createElement("div");
+    switcher.className = "game-switcher-header";
+    switcher.dataset.activeGame = game.id;
+    switcher.innerHTML = `
+      <div class="game-switcher-track" aria-label="Game switcher">
+        <button class="game-switcher-title" type="button" data-pos="-1"></button>
+        <span class="game-switcher-arrow" aria-hidden="true">→</span>
+        <button class="game-switcher-title" type="button" data-pos="0"></button>
+        <span class="game-switcher-arrow" aria-hidden="true">→</span>
+        <button class="game-switcher-title" type="button" data-pos="1"></button>
+      </div>
+    `;
+    const heading = overlay.querySelector("h1");
+    if (heading) heading.replaceWith(switcher);
+    else overlay.prepend(switcher);
+
+    const startIndex = gameIndexById.get(game.id) || 0;
+    renderSwitcherAtIndex(switcher, startIndex, 0);
+
+    switcher.querySelectorAll(".game-switcher-title").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (Date.now() < suppressClickUntil) return;
+        const targetGame = button.dataset.game;
+        if (!targetGame) return;
+        window.launchGame(targetGame, "game-switcher-click");
+      });
+    });
+
+    let dragStartX = null;
+    let activeIndex = startIndex;
+    let previewIndex = startIndex;
+    let didDrag = false;
+    let suppressClickUntil = 0;
+    const DRAG_STEP = 130;
+
+    function getDragState(deltaX) {
+      const rawShift = -deltaX / DRAG_STEP;
+      const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
+      const remainder = rawShift - wholeShift;
+      const renderIndex = wrapGameIndex(activeIndex + wholeShift);
+      const smoothOffset = -remainder * DRAG_STEP;
+      const commitShift = wholeShift + (remainder >= 0.5 ? 1 : remainder <= -0.5 ? -1 : 0);
+      const commitIndex = wrapGameIndex(activeIndex + commitShift);
+      return { renderIndex, smoothOffset, commitIndex };
+    }
+
+    switcher.addEventListener("pointerdown", (event) => {
+      dragStartX = event.clientX;
+      activeIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      previewIndex = activeIndex;
+      switcher.classList.add("is-dragging");
+      switcher.setPointerCapture?.(event.pointerId);
+    });
+
+    switcher.addEventListener("pointermove", (event) => {
+      if (dragStartX === null) return;
+      const deltaX = event.clientX - dragStartX;
+      didDrag = didDrag || Math.abs(deltaX) > 6;
+      const state = getDragState(deltaX);
+      previewIndex = state.commitIndex;
+      renderSwitcherAtIndex(switcher, state.renderIndex, state.smoothOffset);
+    });
+
+    function commitDrag(event) {
+      if (dragStartX === null) return;
+      const deltaX = (event?.clientX ?? dragStartX) - dragStartX;
+      const state = getDragState(deltaX);
+      previewIndex = state.commitIndex;
+      dragStartX = null;
+      switcher.classList.remove("is-dragging");
+      const currentIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      renderSwitcherAtIndex(switcher, previewIndex, 0);
+      if (didDrag) suppressClickUntil = Date.now() + 220;
+      if (previewIndex !== currentIndex) launchFromIndex(previewIndex);
+      didDrag = false;
+    }
+
+    switcher.addEventListener("pointerup", commitDrag);
+    switcher.addEventListener("pointercancel", () => {
+      if (dragStartX === null) return;
+      dragStartX = null;
+      didDrag = false;
+      switcher.classList.remove("is-dragging");
+      const resetIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      previewIndex = resetIndex;
+      renderSwitcherAtIndex(switcher, resetIndex, 0);
+    });
+  });
+
+  function updateSwitcherState(activeGameId) {
+    if (!activeGameId) return;
+    const overlayId = getOverlayIdForGame(activeGameId);
+    const header = document.querySelector(`#${overlayId} .game-switcher-header`);
+    if (!header) return;
+    header.dataset.activeGame = activeGameId;
+    const activeIndex = gameIndexById.get(activeGameId);
+    if (typeof activeIndex !== "number") return;
+    renderSwitcherAtIndex(header, activeIndex, 0);
+  }
+
+  window.__updateGameSwitcherState = updateSwitcherState;
 }
 
 function getFullscreenTarget(overlay) {
@@ -916,6 +1063,7 @@ disableInGameExitButtons();
 initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
+initGameSwitcher();
 initGamesLibraryDiscovery();
 initMainSiteSearch();
 
