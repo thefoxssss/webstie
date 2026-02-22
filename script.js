@@ -92,7 +92,8 @@ window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
-window.launchGame = (game) => {
+window.launchGame = (game, source = "direct") => {
+  window.__goonerLastGameLaunchSource = source;
   window.closeOverlays();
   const overlayId =
     "overlay" +
@@ -311,7 +312,7 @@ function initGamesLibraryDiscovery() {
         toggleFavorite(card.dataset.game || "");
         return;
       }
-      window.launchGame(card.dataset.game || "");
+      window.launchGame(card.dataset.game || "", "directory");
     });
 
     card.addEventListener("contextmenu", (event) => {
@@ -431,6 +432,8 @@ function initTopBarOverlayControls() {
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
     overlayGames: "menuToggle",
+    overlayTrending: "",
+    overlayUpdates: "",
   };
 
   const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
@@ -445,7 +448,11 @@ function initTopBarOverlayControls() {
       event.stopImmediatePropagation();
       const activeOverlay = getActiveOverlay();
       if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
-        openGame("overlayGames");
+        if (window.__goonerLastGameLaunchSource === "directory") {
+          openGame("overlayGames");
+        } else {
+          closeOverlays();
+        }
       } else {
         closeOverlays();
       }
@@ -490,7 +497,15 @@ function initTopBarOverlayControls() {
 
     fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
     fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
-    if (closeBtn) closeBtn.style.display = "none";
+    if (closeBtn) {
+      const shouldShowClose = Boolean(activeOverlay && activeOverlay.id !== "overlayLogin" && !exitTab);
+      closeBtn.style.display = shouldShowClose ? "inline-flex" : "none";
+      closeBtn.textContent = "EXIT";
+      closeBtn.onclick = () => {
+        closeOverlays();
+        updateControls();
+      };
+    }
   }
 
   const observer = new MutationObserver(updateControls);

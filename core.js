@@ -1528,15 +1528,80 @@ async function refreshTrendingGames() {
 
 
 function renderUpdateLogMessage(message, tag = "SYNC") {
-  const list = document.getElementById("updateLogList");
-  if (!list) return;
-  list.innerHTML = `<li><span>${escapeHtml(tag)}</span> ${escapeHtml(message)}</li>`;
+  const row = `<li><span>${escapeHtml(tag)}</span> ${escapeHtml(message)}</li>`;
+  const compactList = document.getElementById("updateLogList");
+  if (compactList) compactList.innerHTML = row;
+  const fullList = document.getElementById("updateLogFullList");
+  if (fullList) fullList.innerHTML = row;
 }
 
+function renderMonthlyTrendingGraph(rows) {
+  const chart = document.getElementById("trendingMonthChart");
+  const meta = document.getElementById("trendingMonthlyMeta");
+  if (!chart || !meta) return;
+
+  if (!rows.length) {
+    chart.innerHTML = '<div class="trending-empty">NO TREND DATA YET FOR THE LAST 30 DAYS.</div>';
+    meta.innerText = "MONTHLY TRAFFIC WINDOW: EMPTY";
+    return;
+  }
+
+  const maxCount = Math.max(...rows.map((row) => row.count), 1);
+  chart.innerHTML = rows
+    .map((row) => {
+      const width = Math.max(2, Math.round((row.count / maxCount) * 100));
+      return `<div class="trend-row"><span>${escapeHtml(row.label)}</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:${width}%"></div></div><span>${row.count} PLAYS</span></div>`;
+    })
+    .join("");
+  meta.innerText = `MONTHLY TRAFFIC WINDOW: ${rows.length} DAYS`;
+}
+
+async function refreshTrendingMonthGraph() {
+  const chart = document.getElementById("trendingMonthChart");
+  const meta = document.getElementById("trendingMonthlyMeta");
+  if (!chart || !meta) return;
+
+  try {
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const snap = await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", since), limit(4000)));
+    const counts = new Map();
+    snap.forEach((entry) => {
+      const data = entry.data() || {};
+      const ts = Number(data.ts || 0);
+      if (!ts) return;
+      const day = new Date(ts).toISOString().slice(5, 10);
+      counts.set(day, (counts.get(day) || 0) + 1);
+    });
+
+    const rows = [...counts.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, count]) => ({ label, count }));
+    renderMonthlyTrendingGraph(rows);
+  } catch (_error) {
+    chart.innerHTML = '<div class="trending-empty">UNABLE TO LOAD MONTHLY TREND GRAPH.</div>';
+    meta.innerText = "MONTHLY TREND FEED OFFLINE";
+  }
+}
+
+async function fetchMergedPullRequests(owner, repo, maxPages = 6) {
+  const merged = [];
+  for (let page = 1; page <= maxPages; page += 1) {
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=${page}`;
+    const response = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+    if (!response.ok) throw new Error(`GITHUB HTTP ${response.status}`);
+    const pulls = await response.json();
+    if (!Array.isArray(pulls) || !pulls.length) break;
+    merged.push(...pulls.filter((pr) => pr && pr.merged_at));
+    if (pulls.length < 100) break;
+  }
+  return merged.sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime());
+}
 
 async function refreshUpdateLogFromMergedPrs() {
   const panel = document.getElementById("updateLogPanel");
   const list = document.getElementById("updateLogList");
+  const fullList = document.getElementById("updateLogFullList");
+  const fullMeta = document.getElementById("updateLogFullMeta");
   if (!panel || !list) return;
 
   const owner = String(panel.dataset.githubOwner || "").trim();
@@ -1550,42 +1615,38 @@ async function refreshUpdateLogFromMergedPrs() {
   const cacheTtlMs = 5 * 60 * 1000;
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
-    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows)) {
+    if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows) && Array.isArray(cached.allRows)) {
       list.innerHTML = cached.rows.join("");
+      if (fullList) fullList.innerHTML = cached.allRows.join("");
+      if (fullMeta) fullMeta.innerText = `SHOWING ${cached.allRows.length} MERGED UPDATES`;
       return;
     }
   } catch {}
 
   try {
-    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=closed&sort=updated&direction=desc&per_page=12`;
-    const response = await fetch(url, {
-      headers: { Accept: "application/vnd.github+json" },
-    });
-    if (!response.ok) {
-      throw new Error(`GITHUB HTTP ${response.status}`);
-    }
-    const pulls = await response.json();
-    const merged = (Array.isArray(pulls) ? pulls : [])
-      .filter((pr) => pr && pr.merged_at)
-      .sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime())
-      .slice(0, 5);
+    const merged = await fetchMergedPullRequests(owner, repo);
 
     if (!merged.length) {
       renderUpdateLogMessage("NO MERGED PULL REQUESTS FOUND", "EMPTY");
+      if (fullMeta) fullMeta.innerText = "NO MERGED UPDATES FOUND";
       return;
     }
 
-    const rows = merged.map((pr) => {
+    const allRows = merged.map((pr) => {
       const title = String(pr.title || "UNTITLED CHANGE");
-      const match = title.match(/\bcommit\s*#?\s*(\d+)\b/i);
+      const match = title.match(/commit\s*#?\s*(\d+)/i);
       const rowNumber = `#${match ? match[1] : String(pr.number || "?")}`;
       return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
     });
 
-    list.innerHTML = rows.join("");
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows }));
+    const compactRows = allRows.slice(0, 5);
+    list.innerHTML = compactRows.join("");
+    if (fullList) fullList.innerHTML = allRows.join("");
+    if (fullMeta) fullMeta.innerText = `SHOWING ${allRows.length} MERGED UPDATES`;
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows: compactRows, allRows }));
   } catch (_error) {
     renderUpdateLogMessage("UNABLE TO LOAD MERGED PR FEED", "OFFLINE");
+    if (fullMeta) fullMeta.innerText = "FULL UPDATE LOG OFFLINE";
   }
 }
 
@@ -1599,7 +1660,7 @@ function initTrendingGamesPanel() {
     const game = button?.dataset.game;
     if (!game) return;
     if (typeof window.launchGame === "function") {
-      window.launchGame(game);
+      window.launchGame(game, "trending");
     }
   });
 
@@ -1621,8 +1682,22 @@ function initRandomGameButton() {
     const pick = pool[Math.floor(Math.random() * pool.length)];
     const game = String(pick?.dataset.game || "").trim();
     if (!game) return;
+    window.launchGame(game, "random");
+  });
+}
 
-    window.launchGame(game);
+function initHomePanelOverlayButtons() {
+  const buttons = document.querySelectorAll("[data-open-overlay]");
+  buttons.forEach((button) => {
+    if (button.dataset.ready === "1") return;
+    button.dataset.ready = "1";
+    button.addEventListener("click", () => {
+      const overlayId = String(button.dataset.openOverlay || "").trim();
+      if (!overlayId) return;
+      openGame(overlayId);
+      if (overlayId === "overlayTrending") refreshTrendingMonthGraph();
+      if (overlayId === "overlayUpdates") refreshUpdateLogFromMergedPrs();
+    });
   });
 }
 
@@ -1986,6 +2061,8 @@ loadSeasonData();
 renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
+initHomePanelOverlayButtons();
+refreshTrendingMonthGraph();
 refreshUpdateLogFromMergedPrs();
 setupBankTransferUX();
 setupLoanUX();
@@ -2002,6 +2079,7 @@ onAuthStateChanged(auth, async (u) => {
     subscribeToGlobalMarket();
     initChat();
     refreshTrendingGames();
+    refreshTrendingMonthGraph();
     refreshUpdateLogFromMergedPrs();
   }
 });
@@ -2021,6 +2099,7 @@ export function openGame(id) {
   closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
+  document.body.classList.toggle("games-directory-open", id === "overlayGames");
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
@@ -2037,6 +2116,12 @@ export function openGame(id) {
   if (id === "overlayScores") {
     loadLeaderboard();
   }
+  if (id === "overlayTrending") {
+    refreshTrendingMonthGraph();
+  }
+  if (id === "overlayUpdates") {
+    refreshUpdateLogFromMergedPrs();
+  }
 }
 
 // Close overlays and clear dropdown state.
@@ -2048,6 +2133,7 @@ export function closeOverlays() {
   clearLeaderboardSubscriptions();
   const menuDropdown = document.getElementById("menuDropdown");
   if (menuDropdown) menuDropdown.classList.remove("show");
+  document.body.classList.remove("games-directory-open");
 }
 
 function normalizeUsername(username) {
