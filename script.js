@@ -374,8 +374,7 @@ function initGameSwitcher() {
 
   orderedGames.forEach((game) => {
     const overlay = document.getElementById(game.overlayId);
-    const heading = overlay?.querySelector("h1");
-    if (!overlay || !heading) return;
+    if (!overlay) return;
 
     const switcher = document.createElement("div");
     switcher.className = "game-switcher-header";
@@ -393,7 +392,9 @@ function initGameSwitcher() {
         <button class="game-switcher-title" type="button" data-pos="2"></button>
       </div>
     `;
-    heading.replaceWith(switcher);
+    const heading = overlay.querySelector("h1");
+    if (heading) heading.replaceWith(switcher);
+    else overlay.prepend(switcher);
 
     const startIndex = gameIndexById.get(game.id) || 0;
     renderSwitcherAtIndex(switcher, startIndex, 0);
@@ -422,9 +423,14 @@ function initGameSwitcher() {
     switcher.addEventListener("pointermove", (event) => {
       if (dragStartX === null) return;
       const deltaX = event.clientX - dragStartX;
-      const shifted = Math.round(-deltaX / DRAG_STEP);
-      previewIndex = wrapGameIndex(activeIndex + shifted);
-      renderSwitcherAtIndex(switcher, activeIndex, deltaX);
+      const rawShift = -deltaX / DRAG_STEP;
+      const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
+      const remainder = rawShift - wholeShift;
+      const renderIndex = wrapGameIndex(activeIndex + wholeShift);
+      const smoothOffset = -remainder * DRAG_STEP;
+      const commitShift = Math.round(rawShift);
+      previewIndex = wrapGameIndex(activeIndex + commitShift);
+      renderSwitcherAtIndex(switcher, renderIndex, smoothOffset);
     });
 
     function commitDrag() {
