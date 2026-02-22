@@ -49,6 +49,7 @@ import {
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
+  getShopItemById,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -127,6 +128,63 @@ window.adminClearScheduledTasksFromInput = adminClearScheduledTasksFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
+
+function renderInGameShopPanel(game, overlayId) {
+  const overlay = document.getElementById(overlayId);
+  if (!overlay) return;
+  overlay.querySelectorAll(".game-side-shop").forEach((panel) => panel.remove());
+  overlay.classList.remove("has-game-side-shop");
+
+  const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === game);
+  const relatedItems = Array.isArray(entry?.shopItems) ? entry.shopItems : [];
+  if (!relatedItems.length) return;
+  overlay.classList.add("has-game-side-shop");
+
+  const panel = document.createElement("aside");
+  panel.className = "game-side-shop";
+  panel.innerHTML = '<h3>GAME SHOP</h3><p class="game-side-shop-meta">TOGGLES + QUICK BUY</p>';
+
+  relatedItems.forEach((itemId) => {
+    const item = getShopItemById(itemId);
+    if (!item) return;
+    const ownsItem = state.myInventory.includes(itemId);
+    const isEnabled = state.myItemToggles[itemId] !== false;
+
+    const row = document.createElement("div");
+    row.className = "game-side-shop-row";
+
+    const details = document.createElement("div");
+    details.className = "game-side-shop-details";
+    details.innerHTML = `<strong>${item.icon || "🛒"} ${item.name}</strong><small>${item.desc}</small><small>${ownsItem ? "OWNED" : `$${item.cost}`}</small>`;
+
+    const action = document.createElement("button");
+    action.className = "term-btn game-side-shop-action";
+    if (ownsItem) {
+      action.textContent = isEnabled ? "ON" : "OFF";
+      action.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleItem(itemId);
+        renderInGameShopPanel(game, overlayId);
+      });
+    } else {
+      action.textContent = state.myMoney >= item.cost ? `BUY $${item.cost}` : `NEED $${item.cost}`;
+      if (state.myMoney < item.cost) action.disabled = true;
+      action.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        buyItem(itemId);
+        renderInGameShopPanel(game, overlayId);
+      });
+    }
+
+    row.append(details, action);
+    panel.appendChild(row);
+  });
+
+  overlay.appendChild(panel);
+}
+
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
@@ -138,6 +196,7 @@ window.launchGame = (game, source = "direct") => {
       : game.charAt(0).toUpperCase() + game.slice(1));
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
+  renderInGameShopPanel(game, overlayId);
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
@@ -211,16 +270,6 @@ const CANVAS_UI_PADDING = 230;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
 const GAME_LIBRARY_RECENTS_KEY = "goonerRecentGames";
 const GAME_LIBRARY_RECENT_LIMIT = 6;
-const SHOP_ITEM_LABELS = Object.freeze({
-  item_aimbot: "PONG AIMBOT",
-  item_slowmo: "RUNNER SLOW-MO",
-  item_xray: "X-RAY VISOR",
-  item_cardcount: "CARD COUNTER",
-  item_double: "SNAKE OIL",
-  item_dodge_stabilizer: "DODGE STABILIZER",
-  item_autotype: "AUTO-TYPER",
-  item_flappy: "GAME: FLAPPY",
-});
 
 function readStoredGameList(key) {
   try {
@@ -352,13 +401,7 @@ function initGamesLibraryDiscovery() {
     if (card.id === "btnFlappy" && card.style.display === "none") card.dataset.locked = "1";
     card.title = "CLICK TO LAUNCH • SHIFT+CLICK OR RIGHT-CLICK TO FAVORITE";
 
-    const itemControls = document.createElement("div");
-    itemControls.className = "game-shop-controls";
-    itemControls.dataset.gameShopControls = card.dataset.game || "";
-    card.appendChild(itemControls);
-
     card.addEventListener("click", (event) => {
-      if (event.target.closest(".game-shop-controls")) return;
       if (event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();
@@ -369,65 +412,17 @@ function initGamesLibraryDiscovery() {
     });
 
     card.addEventListener("contextmenu", (event) => {
-      if (event.target.closest(".game-shop-controls")) return;
       event.preventDefault();
       toggleFavorite(card.dataset.game || "");
     });
 
     card.addEventListener("keydown", (event) => {
-      if (event.target.closest(".game-shop-controls")) return;
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         window.launchGame(card.dataset.game || "", "directory");
       }
     });
   });
-
-  function renderGameShopControls(card) {
-    const gameId = card.dataset.game || "";
-    const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === gameId);
-    const controls = card.querySelector(".game-shop-controls");
-    if (!controls || !entry?.shopItems?.length) {
-      if (controls) controls.innerHTML = "";
-      return;
-    }
-    controls.innerHTML = "";
-    entry.shopItems.forEach((itemId) => {
-      const ownsItem = state.myInventory.includes(itemId);
-      const isEnabled = state.myItemToggles[itemId] !== false;
-      const row = document.createElement("div");
-      row.className = "game-shop-row";
-      const label = SHOP_ITEM_LABELS[itemId] || itemId.toUpperCase();
-      row.innerHTML = `<span>${label}</span>`;
-
-      const actionBtn = document.createElement("button");
-      actionBtn.className = "term-btn game-shop-action";
-      if (ownsItem) {
-        actionBtn.textContent = isEnabled ? "ON" : "OFF";
-        actionBtn.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          toggleItem(itemId);
-          refreshGameShopControls();
-        });
-      } else {
-        actionBtn.textContent = "BUY";
-        actionBtn.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          buyItem(itemId);
-          refreshGameShopControls();
-        });
-      }
-      row.appendChild(actionBtn);
-      controls.appendChild(row);
-    });
-  }
-
-  function refreshGameShopControls() {
-    cards.forEach((card) => renderGameShopControls(card));
-  }
-  refreshGameShopControls();
 
   function getFavorites() {
     return readStoredGameList(GAME_LIBRARY_FAVORITES_KEY);
@@ -503,7 +498,6 @@ function initGamesLibraryDiscovery() {
       if (show) visibleCards.push(card);
     });
 
-    refreshGameShopControls();
 
     sortCards(visibleCards);
     visibleCards.forEach((card) => grid.appendChild(card));

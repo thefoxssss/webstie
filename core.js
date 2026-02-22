@@ -965,6 +965,12 @@ const SHOP_ITEMS = [
   },
 ];
 
+
+export function getShopItemById(id) {
+  const item = SHOP_ITEMS.find((entry) => entry.id === id);
+  return item ? { ...item } : null;
+}
+
 const GAME_PAYOUT_CONFIG = Object.freeze({
   pong: { rate: 10, xpRate: 1.2 },
   snake: { rate: 4, xpRate: 1.1 },
