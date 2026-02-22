@@ -711,6 +711,14 @@ body::before {
   color: var(--accent);
 }
 
+.update-log-scroll li.update-log-day-title {
+  list-style: none;
+  text-align: center;
+  color: rgba(220, 255, 235, 0.65);
+  letter-spacing: 0.8px;
+  margin: 4px 0;
+}
+
 .panel-overlay-exit {
   display: block !important;
   margin-top: 12px;
