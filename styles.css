@@ -71,6 +71,10 @@ body {
     text-shadow 0.5s;
 }
 
+body.overlay-open {
+  overflow: hidden;
+}
+
 /* --- 2. VISUAL EFFECTS --- */
 /* Matrix rain canvas sits beneath the UI and toggles via .active. */
 #matrixCanvas {
