@@ -246,6 +246,10 @@ body::before {
   gap: 8px;
 }
 
+body.game-active .top-bar {
+  display: none;
+}
+
 /* Games dropdown menu anchored to the top bar. */
 .dropdown-content {
   display: none !important;

@@ -475,8 +475,11 @@ function initTopBarOverlayControls() {
 
   function updateControls() {
     const activeOverlay = getActiveOverlay();
+    const inGameOverlay = Boolean(activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id));
     const canFullscreen = isFullscreenApplicable(activeOverlay);
     const exitTab = getExitTabButton(activeOverlay);
+
+    document.body.classList.toggle("game-active", inGameOverlay);
 
     topTabs.forEach((button) => {
       button.dataset.exitMode = "0";
