@@ -4687,16 +4687,28 @@ export async function saveGlobalScore(game, score, options = {}) {
 // Scoreboard columns rendering.
 let leaderboardUnsubs = [];
 
+const formatLeaderboardModeLabel = (mode) => {
+  if (mode === "easy") return "EASY";
+  if (mode === "hard") return "HARD";
+  if (mode === "multiplayer") return "MULTIPLAYER";
+  return "SINGLE PLAYER";
+};
+
 const LEADERBOARD_COLUMNS = [
   { id: "players", title: "PLAYERS", type: "players", tags: ["players", "operator", "rank"] },
   { id: "richest", title: "RICHEST", type: "richest", tags: ["bank", "money", "cash", "economy"] },
-  ...LEADERBOARD_GAME_COLUMNS.map((game) => ({
-    id: game.id,
-    title: game.title,
-    type: "game",
-    tags: game.tags,
-    leaderboardModes: game.leaderboardModes || [],
-  })),
+  ...LEADERBOARD_GAME_COLUMNS.flatMap((game) => {
+    const modes = (game.leaderboardModes || ["single"]).filter(Boolean);
+    return modes.map((mode) => ({
+      id: `${game.id}__${mode}`,
+      gameId: game.id,
+      mode,
+      title: `${game.title} // ${formatLeaderboardModeLabel(mode)}`,
+      type: "game",
+      tags: [...(game.tags || []), mode, formatLeaderboardModeLabel(mode).toLowerCase()],
+      leaderboardModes: [mode],
+    }));
+  }),
 ];
 
 const clearLeaderboardSubscriptions = () => {
@@ -4831,12 +4843,16 @@ function loadLeaderboardColumn(column, body) {
     return;
   }
 
-  const q = query(collection(db, "gooner_scores"), where("game", "==", column.id), limit(200));
+  const q = query(collection(db, "gooner_scores"), where("game", "==", column.gameId), limit(200));
   leaderboardUnsubs.push(
     onSnapshot(q, (snap) => {
       const data = [];
       snap.forEach((d) => data.push(d.data()));
-      const modeFiltered = data.filter((row) => shouldIncludeScoreRowByFilters(normalizeLeaderboardMode(row.mode)));
+      const modeFiltered = data.filter((row) => {
+        const entryMode = normalizeLeaderboardMode(row.mode);
+        if (column.mode && entryMode !== column.mode) return false;
+        return shouldIncludeScoreRowByFilters(entryMode);
+      });
       const uniqueScores = {};
       modeFiltered.forEach((scoreRow) => {
         if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
@@ -4958,7 +4974,8 @@ export function openGameLeaderboard(gameId) {
   leaderboardPlayerCountFilter = "all";
   openGame("overlayScores");
 
-  const gameColumn = LEADERBOARD_COLUMNS.find((column) => column.type === "game" && column.id === String(gameId || "").toLowerCase());
+  const normalizedGameId = String(gameId || "").toLowerCase();
+  const gameColumn = LEADERBOARD_COLUMNS.find((column) => column.type === "game" && column.gameId === normalizedGameId);
   const filterInput = document.getElementById("leaderboardFilter");
   if (filterInput) filterInput.value = gameColumn?.title || String(gameId || "");
 

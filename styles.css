@@ -3030,3 +3030,12 @@ canvas {
     justify-content: center;
   }
 }
+
+
+/* Remove bottom utility bar elements inside game overlays. */
+.overlay .mobile-hint.active,
+.overlay button.term-btn[id$="Action"],
+.overlay button.term-btn[id$="StartBtn"],
+.overlay button.term-btn[id$="startBtn"] {
+  display: none !important;
+}
