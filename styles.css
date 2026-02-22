@@ -1450,6 +1450,11 @@ canvas {
   border: 1px solid var(--accent);
   background: #000;
 }
+
+#overlayConfig {
+  align-items: flex-start;
+  padding: 8px 20px 20px;
+}
 .config-row {
   display: flex;
   align-items: center;
