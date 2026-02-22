@@ -31,9 +31,13 @@
       <button id="tabConfig" class="menu-btn" onclick="window.openGame('overlayConfig')">
         CONFIG
       </button>
-      <button id="tabQuickSearch" class="menu-btn" type="button">
-        SEARCH
-      </button>
+      <input
+        id="topSiteSearchInput"
+        class="term-input top-site-search-input"
+        type="text"
+        placeholder="SEARCH MENU/PAGE..."
+        maxlength="50"
+      />
       <div class="sys-info">
         <span id="sysClock">00:00:00</span> | PING:
         <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
@@ -79,7 +83,6 @@
 
     <div class="dropdown-content" id="menuDropdown"></div>
     <div class="dropdown-content search-dropdown" id="siteSearchDropdown">
-      <input id="siteSearchInput" class="term-input" type="text" placeholder="FIND MENU OR PAGE..." maxlength="50" />
       <div id="siteSearchResults" class="search-dropdown-results"></div>
     </div>
 

@@ -250,6 +250,12 @@ body::before {
   gap: 8px;
 }
 
+.top-site-search-input {
+  width: clamp(180px, 20vw, 280px);
+  margin: 0;
+  padding: 9px 10px;
+}
+
 /* Games dropdown menu anchored to the top bar. */
 .dropdown-content {
   display: none !important;
@@ -292,11 +298,6 @@ body::before {
   right: auto;
   left: 20px;
   top: 50px;
-}
-
-.search-dropdown .term-input {
-  width: 100%;
-  margin-bottom: 8px;
 }
 
 .search-dropdown-results {

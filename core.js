@@ -1693,12 +1693,11 @@ async function refreshUpdateLogFromMergedPrs() {
 }
 
 function initSiteSearch() {
-  const triggerBtn = document.getElementById("tabQuickSearch");
+  const searchInput = document.getElementById("topSiteSearchInput");
   const dropdown = document.getElementById("siteSearchDropdown");
-  const input = document.getElementById("siteSearchInput");
   const results = document.getElementById("siteSearchResults");
-  if (!triggerBtn || !dropdown || !input || !results || triggerBtn.dataset.ready === "1") return;
-  triggerBtn.dataset.ready = "1";
+  if (!searchInput || !dropdown || !results || searchInput.dataset.ready === "1") return;
+  searchInput.dataset.ready = "1";
 
   const buildIndex = () => {
     const seen = new Set();
@@ -1739,16 +1738,25 @@ function initSiteSearch() {
       : '<div class="search-dropdown-empty">NO MATCHING MENU OR PAGE.</div>';
   };
 
-  triggerBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    dropdown.classList.toggle("show");
-    if (dropdown.classList.contains("show")) {
-      renderResults(input.value);
-      input.focus();
-    }
+  searchInput.addEventListener("focus", () => {
+    dropdown.classList.add("show");
+    renderResults(searchInput.value);
   });
 
-  input.addEventListener("input", () => renderResults(input.value));
+  searchInput.addEventListener("input", () => {
+    dropdown.classList.add("show");
+    renderResults(searchInput.value);
+  });
+
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    const first = results.querySelector("[data-overlay-id]");
+    const overlayId = String(first?.dataset.overlayId || "");
+    if (!overlayId) return;
+    openGame(overlayId);
+    dropdown.classList.remove("show");
+  });
+
   results.addEventListener("click", (event) => {
     const button = event.target.closest("[data-overlay-id]");
     const overlayId = String(button?.dataset.overlayId || "");
@@ -1758,7 +1766,7 @@ function initSiteSearch() {
   });
 
   document.addEventListener("click", (event) => {
-    if (!event.target.closest("#siteSearchDropdown") && !event.target.closest("#tabQuickSearch")) {
+    if (!event.target.closest("#siteSearchDropdown") && !event.target.closest("#topSiteSearchInput")) {
       dropdown.classList.remove("show");
     }
   });
