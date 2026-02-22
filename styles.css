@@ -941,6 +941,18 @@ canvas {
   display: none;
 }
 
+.game-leaderboard-jump-btn {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1300;
+  min-width: 220px;
+}
+
+.game-leaderboard-jump-btn.active {
+  display: block;
+}
+
 .games-grid {
   width: min(1200px, 95vw);
   display: grid;

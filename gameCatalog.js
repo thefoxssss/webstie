@@ -31,9 +31,14 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
 ]);
 
 export const LEADERBOARD_GAME_COLUMNS = Object.freeze(
-  ["geo", "type", "snake", "pong", "runner", "corebreaker", "neondefender", "voidminer", "shadowassassin", "dodge", "flappy"]
-    .map((id) => GAME_DIRECTORY_ENTRIES.find((entry) => entry.id === id))
-    .filter(Boolean)
+  GAME_DIRECTORY_ENTRIES.map((entry) => ({
+    ...entry,
+    leaderboardModes: (() => {
+      if (entry.id === "pong") return ["easy", "hard", "single"];
+      if ((entry.tags || []).includes("pvp")) return ["multiplayer"];
+      return ["single"];
+    })(),
+  }))
 );
 
 export const GAME_TAG_EMOJI = Object.freeze({

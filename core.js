@@ -251,6 +251,7 @@ export const state = {
   },
   set currentGame(value) {
     currentGame = value;
+    syncGameLeaderboardButton();
   },
   get keysPressed() {
     return keysPressed;
@@ -2113,6 +2114,8 @@ renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
 initHomePanelOverlayButtons();
+initGameLeaderboardButton();
+syncGameLeaderboardButton();
 refreshTrendingMonthGraph();
 refreshUpdateLogFromMergedPrs();
 setupBankTransferUX();
@@ -4547,6 +4550,16 @@ function initChat() {
 
 const gameCashProgress = {};
 const gameLeaderboardCache = {};
+const leaderboardScoreSyncState = {};
+const LEADERBOARD_SCORE_SYNC_COOLDOWN_MS = 60000;
+const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
+let leaderboardGameModeFilter = "all";
+
+function normalizeLeaderboardMode(mode) {
+  const normalized = String(mode || "").toLowerCase().trim();
+  if (["easy", "hard", "single", "multiplayer"].includes(normalized)) return normalized;
+  return "single";
+}
 
 function getLeaderboardBaseline(game) {
   const key = String(game || "").toLowerCase().trim();
@@ -4618,13 +4631,22 @@ function awardScoreCash(game, score) {
 }
 
 // Update and persist a local high score for a given game.
-export function updateHighScore(game, score) {
+export function updateHighScore(game, score, options = {}) {
   awardScoreCash(game, score);
-  const k = `hs_${game}`;
+  const key = String(game || "").toLowerCase().trim();
+  const k = `hs_${key}`;
   const old = parseInt(localStorage.getItem(k) || 0);
   if (score > old) {
     localStorage.setItem(k, score);
-    saveGlobalScore(game, score);
+    const mode = normalizeLeaderboardMode(options.mode);
+    const forceGlobalSync = options.forceGlobalSync === true;
+    const syncState = leaderboardScoreSyncState[key] || { lastSentAt: 0, lastSentScore: 0 };
+    const enoughTimeElapsed = Date.now() - syncState.lastSentAt >= LEADERBOARD_SCORE_SYNC_COOLDOWN_MS;
+    const enoughScoreDelta = score - syncState.lastSentScore >= LEADERBOARD_SCORE_SYNC_MIN_DELTA;
+    if (forceGlobalSync || enoughTimeElapsed || enoughScoreDelta) {
+      leaderboardScoreSyncState[key] = { lastSentAt: Date.now(), lastSentScore: score };
+      saveGlobalScore(key, score, { mode });
+    }
     return score;
   }
   return old;
@@ -4644,14 +4666,16 @@ export function loadHighScores() {
 }
 
 // Persist a high score globally so it appears on the leaderboard.
-export async function saveGlobalScore(game, score) {
+export async function saveGlobalScore(game, score, options = {}) {
   if (score <= 0 || myName === "ANON") return;
+  const mode = normalizeLeaderboardMode(options.mode);
   await runFirestoreTask(
     () =>
       addDoc(collection(db, "gooner_scores"), {
         game: game,
         name: myName,
         score: score,
+        mode,
       }),
     "LEADERBOARD",
     "Score queued for retry."
@@ -4669,6 +4693,7 @@ const LEADERBOARD_COLUMNS = [
     title: game.title,
     type: "game",
     tags: game.tags,
+    leaderboardModes: game.leaderboardModes || [],
   })),
 ];
 
@@ -4796,8 +4821,13 @@ function loadLeaderboardColumn(column, body) {
     onSnapshot(q, (snap) => {
       const data = [];
       snap.forEach((d) => data.push(d.data()));
+      const modeFiltered = data.filter((row) => {
+        if (leaderboardGameModeFilter === "all") return true;
+        const entryMode = normalizeLeaderboardMode(row.mode);
+        return entryMode === leaderboardGameModeFilter;
+      });
       const uniqueScores = {};
-      data.forEach((scoreRow) => {
+      modeFiltered.forEach((scoreRow) => {
         if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
           uniqueScores[scoreRow.name] = scoreRow;
         }
@@ -4814,11 +4844,25 @@ function loadLeaderboardColumn(column, body) {
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
   const filterInput = document.getElementById("leaderboardFilter");
+  const gameModeTabs = document.getElementById("leaderboardGameModeTabs");
   if (!list) return;
 
   if (filterInput && !filterInput.dataset.bound) {
     filterInput.addEventListener("input", () => loadLeaderboard());
     filterInput.dataset.bound = "1";
+  }
+
+  if (gameModeTabs && !gameModeTabs.dataset.bound) {
+    gameModeTabs.addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-leaderboard-mode]");
+      if (!tab) return;
+      leaderboardGameModeFilter = String(tab.dataset.leaderboardMode || "all").toLowerCase();
+      gameModeTabs
+        .querySelectorAll("[data-leaderboard-mode]")
+        .forEach((el) => el.classList.toggle("active", el === tab));
+      loadLeaderboard();
+    });
+    gameModeTabs.dataset.bound = "1";
   }
 
   clearLeaderboardSubscriptions();
@@ -4829,7 +4873,12 @@ function loadLeaderboard() {
     ? LEADERBOARD_COLUMNS.filter((column) => (`${column.title} ${(column.tags || []).join(" ")}`.toUpperCase()).includes(filterValue))
     : LEADERBOARD_COLUMNS;
 
-  if (!visibleColumns.length) {
+  const modeFilteredColumns = visibleColumns.filter((column) => {
+    if (column.type !== "game" || leaderboardGameModeFilter === "all") return true;
+    return (column.leaderboardModes || []).includes(leaderboardGameModeFilter);
+  });
+
+  if (!modeFilteredColumns.length) {
     list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES "${escapeHtml(filterValue)}"</div>`;
     return;
   }
@@ -4837,7 +4886,7 @@ function loadLeaderboard() {
   const columnsWrap = document.createElement("div");
   columnsWrap.className = "score-columns";
 
-  visibleColumns.forEach((column) => {
+  modeFilteredColumns.forEach((column) => {
     const card = document.createElement("section");
     card.className = "score-column";
 
@@ -4853,6 +4902,38 @@ function loadLeaderboard() {
   });
 
   list.appendChild(columnsWrap);
+}
+
+
+function initGameLeaderboardButton() {
+  const btn = document.getElementById("gameLeaderboardJumpBtn");
+  if (!btn || btn.dataset.bound) return;
+  btn.addEventListener("click", () => {
+    if (!currentGame) return;
+    openGameLeaderboard(currentGame);
+  });
+  btn.dataset.bound = "1";
+}
+
+function syncGameLeaderboardButton() {
+  const btn = document.getElementById("gameLeaderboardJumpBtn");
+  if (!btn) return;
+  const hasGame = Boolean(currentGame);
+  btn.classList.toggle("active", hasGame);
+  btn.style.display = hasGame ? "block" : "none";
+  btn.textContent = hasGame ? `VIEW ${String(currentGame).toUpperCase()} LEADERBOARD` : "VIEW LEADERBOARD";
+}
+
+export function openGameLeaderboard(gameId) {
+  leaderboardGameModeFilter = "all";
+  openGame("overlayScores");
+  const filterInput = document.getElementById("leaderboardFilter");
+  if (filterInput) filterInput.value = String(gameId || "");
+  const tabs = document.getElementById("leaderboardGameModeTabs");
+  tabs
+    ?.querySelectorAll("[data-leaderboard-mode]")
+    .forEach((tab) => tab.classList.toggle("active", tab.dataset.leaderboardMode === "all"));
+  loadLeaderboard();
 }
 
 // Count consecutive losses for the rage-quit achievement.
