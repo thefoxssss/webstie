@@ -413,7 +413,7 @@ body::before {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-top: -12px;
+  margin-top: 0;
 }
 
 .site-search #siteSearchInput {
@@ -425,6 +425,12 @@ body::before {
   text-align: left;
   font-size: 14px;
   margin-bottom: 0;
+}
+
+.site-search #siteSearchBtn {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 15px 18px;
 }
 
 .site-search #siteSearchInput::placeholder {
@@ -446,7 +452,7 @@ body::before {
   color: var(--accent);
   font-size: 10px;
   opacity: 0.7;
-  margin-top: -20px;
+  margin-top: 0;
   text-transform: uppercase;
   letter-spacing: 4px;
   text-align: center;

@@ -475,7 +475,15 @@ function initMainSiteSearch() {
   ];
 
   function normalize(value) {
-    return String(value || "").trim().toLowerCase();
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function tokenize(value) {
+    return value.split(" ").filter(Boolean);
   }
 
   function findGame(query) {
@@ -500,13 +508,6 @@ function initMainSiteSearch() {
       return;
     }
 
-    const route = QUICK_ROUTES.find((item) => item.aliases.some((alias) => query.includes(alias)));
-    if (route) {
-      route.action();
-      meta.textContent = `${route.label} // SEARCH: ${query.toUpperCase()}`;
-      return;
-    }
-
     const game = findGame(query);
     if (game) {
       window.launchGame(game.id, "site-search");
@@ -514,6 +515,18 @@ function initMainSiteSearch() {
       return;
     }
 
+    const queryTokens = tokenize(query);
+    const route = QUICK_ROUTES.find((item) => {
+      return item.aliases.some((alias) => {
+        const normalizedAlias = normalize(alias);
+        return query === normalizedAlias || queryTokens.includes(normalizedAlias);
+      });
+    });
+    if (route) {
+      route.action();
+      meta.textContent = `${route.label} // SEARCH: ${query.toUpperCase()}`;
+      return;
+    }
     if (gamesSearch) {
       openGame("overlayGames");
       gamesSearch.value = query;
