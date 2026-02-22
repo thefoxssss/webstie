@@ -43,7 +43,6 @@ import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
 import { initRoulette } from "./games/roulette.js";
-import { initBonkArena } from "./games/bonkarena.js";
 import { initDrift } from "./games/drift.js";
 import { initCoreBreaker } from "./games/corebreaker.js";
 import { initNeonDefender } from "./games/neondefender.js";
@@ -111,7 +110,6 @@ window.launchGame = (game) => {
   if (game === "flappy") initFlappy();
   if (game === "dodge") initDodge();
   if (game === "roulette") initRoulette();
-  if (game === "bonk") initBonkArena();
   if (game === "drift") initDrift();
   if (game === "corebreaker") initCoreBreaker();
   if (game === "neondefender") initNeonDefender();
@@ -151,7 +149,6 @@ const GAME_OVERLAY_IDS = [
   "overlayTTT",
   "overlayHangman",
   "overlayBlackjack",
-  "overlayBonk",
   "overlayFlappy",
   "overlayDrift",
   "overlayEmulator",

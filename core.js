@@ -1456,7 +1456,6 @@ const TRENDING_GAME_LABELS = {
   flappy: "FLAPPY",
   dodge: "DODGE",
   roulette: "ROULETTE",
-  bonk: "BONK ARENA",
   drift: "NEON DRIFT",
   corebreaker: "COREBREAKER",
   neondefender: "NEON DEFENDER",
