@@ -1034,19 +1034,19 @@ canvas {
 
 .game-leaderboard-jump-btn {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
+  left: 14px;
+  top: calc(var(--topbar-clearance) + 14px);
   z-index: 1200;
-  min-width: 160px;
-  max-width: 220px;
+  min-width: 180px;
+  max-width: 240px;
   padding: 8px 10px;
   font-size: 10px;
-  opacity: 0.9;
 }
 
 .game-leaderboard-jump-btn.active {
   display: block;
 }
+
 
 .leaderboard-subfilters {
   display: grid;
@@ -1069,9 +1069,9 @@ canvas {
   }
 
   .game-leaderboard-jump-btn {
-    right: 10px;
-    bottom: 10px;
-    min-width: 140px;
+    left: 10px;
+    top: calc(var(--topbar-clearance) + 10px);
+    min-width: 160px;
   }
 }
 
