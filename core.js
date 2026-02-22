@@ -1686,15 +1686,6 @@ function initRandomGameButton() {
   });
 }
 
-function initRandomGamesDirectoryButton() {
-  const button = document.getElementById("randomGamesDirectoryBtn");
-  if (!button || button.dataset.ready === "1") return;
-  button.dataset.ready = "1";
-  button.addEventListener("click", () => {
-    openGame("overlayGames");
-  });
-}
-
 function initHomePanelOverlayButtons() {
   const buttons = document.querySelectorAll("[data-open-overlay]");
   buttons.forEach((button) => {
@@ -2070,7 +2061,6 @@ loadSeasonData();
 renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
-initRandomGamesDirectoryButton();
 initHomePanelOverlayButtons();
 refreshTrendingMonthGraph();
 refreshUpdateLogFromMergedPrs();

@@ -391,8 +391,11 @@ body::before {
   text-align: left;
 }
 
-#randomGamesDirectoryBtn {
-  margin-top: 8px;
+.random-game-cta h2 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #fff;
 }
 
 .trending-games {
@@ -573,6 +576,7 @@ body::before {
 }
 
 .panel-overlay-exit {
+  display: block !important;
   margin-top: 12px;
 }
 
