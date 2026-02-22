@@ -35,7 +35,7 @@
         <span id="sysClock">00:00:00</span> | PING:
         <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
       </div>
-      <div style="display: flex; gap: 10px">
+      <div class="top-bar-actions">
         <button class="menu-btn" onclick="window.openGame('overlayBank')">
           BANK
         </button>
@@ -63,6 +63,14 @@
           ADMIN
         </button>
         <button class="menu-btn" id="menuToggle">GAMES</button>
+        <div id="topOverlayControls" class="top-overlay-controls" aria-live="polite">
+          <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">
+            FULLSCREEN
+          </button>
+          <button id="topCloseBtn" class="menu-btn" type="button" style="display: none">
+            CLOSE
+          </button>
+        </div>
       </div>
     </div>
 

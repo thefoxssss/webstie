@@ -226,6 +226,20 @@ body::before {
   opacity: 0.8;
 }
 
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.top-overlay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Games dropdown menu anchored to the top bar. */
 .dropdown-content {
   display: none !important;
@@ -661,7 +675,7 @@ canvas {
 
 .game-overlay {
   gap: 10px;
-  padding-top: 88px;
+  padding-top: 10px;
 }
 
 .game-content-shell {
@@ -699,17 +713,7 @@ canvas {
 }
 
 .overlay-controls-fixed {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: min(95vw, 430px);
-  z-index: 2100;
+  display: none;
 }
 
 .fullscreen-btn-fixed {
@@ -733,20 +737,7 @@ canvas {
 }
 
 .exit-btn-fixed {
-  position: static;
-  left: auto;
-  transform: none;
-  margin: 0;
-  width: 200px;
-  border: 2px solid var(--accent);
-  background: #000;
-  color: var(--accent);
-  padding: 15px;
-  font-family: inherit;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: 0.2s;
-  z-index: 1001;
+  display: none;
 }
 
 .games-grid {
@@ -2648,15 +2639,13 @@ canvas {
     font-size: clamp(20px, 6.4vw, 28px);
   }
 
-  .overlay-controls-fixed {
-    top: 8px;
-    width: min(95vw, 320px);
-    flex-direction: column;
-    gap: 8px;
+  .top-bar-actions {
+    width: 100%;
+    justify-content: center;
   }
 
-  .overlay-controls-fixed .fullscreen-btn-fixed,
-  .overlay-controls-fixed .exit-btn-fixed {
+  .top-overlay-controls {
     width: 100%;
+    justify-content: center;
   }
 }

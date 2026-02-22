@@ -391,59 +391,48 @@ function initGamesLibraryDiscovery() {
   applyLibraryView();
 }
 
-function initGameFullscreenControls() {
-  const overlays = GAME_OVERLAY_IDS
-    .map((id) => document.getElementById(id))
-    .filter(Boolean);
+function initTopBarOverlayControls() {
+  const overlays = Array.from(document.querySelectorAll('.overlay'));
+  const closeBtn = document.getElementById('topCloseBtn');
+  const fsBtn = document.getElementById('topFullscreenBtn');
+  if (!overlays.length || !closeBtn || !fsBtn) return;
 
-  overlays.forEach((overlay) => {
-    const exitBtn = overlay.querySelector(".exit-btn-fixed");
-    if (!exitBtn || overlay.querySelector(".fullscreen-btn-fixed")) return;
+  const getActiveOverlay = () => overlays.find((overlay) => overlay.classList.contains('active')) || null;
+  const isFullscreenApplicable = (overlay) => Boolean(overlay && GAME_OVERLAY_IDS.includes(overlay.id) && getFullscreenTarget(overlay));
 
-    overlay.classList.add("game-overlay");
-
-    let gameShell = overlay.querySelector(".game-content-shell");
-    if (!gameShell) {
-      gameShell = document.createElement("div");
-      gameShell.className = "game-content-shell";
-      Array.from(overlay.children)
-        .filter((child) => !child.classList.contains("overlay-controls-fixed"))
-        .forEach((child) => gameShell.appendChild(child));
-      overlay.appendChild(gameShell);
-    }
-
-    let controlsBar = overlay.querySelector(".overlay-controls-fixed");
-    if (!controlsBar) {
-      controlsBar = document.createElement("div");
-      controlsBar.className = "overlay-controls-fixed";
-      overlay.appendChild(controlsBar);
-    }
-
-    controlsBar.appendChild(exitBtn);
-
-    const fsButton = document.createElement("button");
-    fsButton.className = "fullscreen-btn-fixed";
-    fsButton.type = "button";
-    fsButton.textContent = "FULLSCREEN";
-    fsButton.addEventListener("click", async () => {
-      try {
-        await toggleGameFullscreen(overlay, fsButton);
-      } catch (error) {
-        console.warn("Fullscreen toggle failed", error);
-      }
-    });
-    controlsBar.insertBefore(fsButton, exitBtn);
+  closeBtn.addEventListener('click', () => {
+    closeOverlays();
+    updateControls();
   });
 
-  document.addEventListener("fullscreenchange", () => {
-    const isFullscreen = Boolean(document.fullscreenElement);
-    document.querySelectorAll(".fullscreen-btn-fixed").forEach((button) => {
-      button.textContent = isFullscreen ? "EXIT FULLSCREEN" : "FULLSCREEN";
-    });
+  fsBtn.addEventListener('click', async () => {
+    const activeOverlay = getActiveOverlay();
+    if (!isFullscreenApplicable(activeOverlay)) return;
+    try {
+      await toggleGameFullscreen(activeOverlay, fsBtn);
+    } catch (error) {
+      console.warn('Fullscreen toggle failed', error);
+    }
+    updateControls();
   });
+
+  function updateControls() {
+    const activeOverlay = getActiveOverlay();
+    const hasOverlay = Boolean(activeOverlay && activeOverlay.id !== 'overlayLogin');
+    const canFullscreen = isFullscreenApplicable(activeOverlay);
+
+    closeBtn.style.display = hasOverlay ? 'inline-flex' : 'none';
+    fsBtn.style.display = canFullscreen ? 'inline-flex' : 'none';
+    fsBtn.textContent = document.fullscreenElement ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+  }
+
+  const observer = new MutationObserver(updateControls);
+  overlays.forEach((overlay) => observer.observe(overlay, { attributes: true, attributeFilter: ['class'] }));
+  document.addEventListener('fullscreenchange', updateControls);
+  updateControls();
 }
 
-initGameFullscreenControls();
+initTopBarOverlayControls();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGamesLibraryDiscovery();
