@@ -31,6 +31,7 @@ let currentDir = "R";
 let score = 0;
 let stepAccumulator = 0;
 let inputQueue = [];
+let snakeStarted = false;
 
 const opposite = { U: "D", D: "U", L: "R", R: "L" };
 const toVec = {
@@ -51,6 +52,7 @@ export function initSnake() {
   score = 0;
   stepAccumulator = 0;
   inputQueue = [];
+  snakeStarted = false;
   setText("snakeScoreVal", 0);
   subscribeToGameLoop("snake", onFrame);
 }
@@ -60,6 +62,7 @@ function randomFood() {
 }
 
 function queueDirection(nextDir) {
+  snakeStarted = true;
   const last = inputQueue[inputQueue.length - 1] || currentDir;
   if (nextDir === last || opposite[nextDir] === last) return;
   if (inputQueue.length < 2) inputQueue.push(nextDir);
@@ -72,6 +75,10 @@ function consumeInput() {
 
 function onFrame(dt) {
   if (state.currentGame !== "snake") return;
+  if (!snakeStarted) {
+    draw();
+    return;
+  }
   stepAccumulator += dt;
   while (stepAccumulator >= STEP_SECONDS) {
     stepAccumulator -= STEP_SECONDS;

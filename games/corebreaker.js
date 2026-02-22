@@ -340,7 +340,7 @@ export function initCoreBreaker() {
   initBricks();
   resetPools();
   setText("coreBreakerScore", "SCORE: 0 | LIVES: 3");
-  kernel.start(updateCoreBreaker, drawCoreBreaker);
+  kernel.start(updateCoreBreaker, drawCoreBreaker, { startPausedUntilInput: true });
 }
 
 document.addEventListener("keydown", (event) => {

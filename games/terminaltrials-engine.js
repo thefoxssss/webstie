@@ -433,13 +433,21 @@ function initTrial(id) {
   let bestDistance = 0;
   let last = performance.now();
   let targets = [];
+  let started = false;
+
+  const beginRound = () => {
+    if (started) return;
+    started = true;
+    updateHud(id, score, combo, remainingMs);
+  };
 
   updateHud(id, score, combo, remainingMs);
-  setText(`${id}Hud`, `${cfg.prompt} | COMBO: ${combo}x`);
+  setText(`${id}Hud`, `${cfg.prompt} | PRESS ANY KEY OR CLICK TO START`);
   actionBtn.disabled = true;
   actionBtn.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = (event) => {
+    beginRound();
     if (isPlatformer) {
       const now = performance.now();
       if (now - lastTapAt < 260 && dash.charges > 0 && now >= dash.cooldownUntil) {
@@ -555,6 +563,7 @@ function initTrial(id) {
   };
 
   const onKeyDown = (event) => {
+    beginRound();
     if (!isPlatformer) return;
     if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = true;
     if (event.code === "ArrowRight" || event.code === "KeyD") keys.right = true;
@@ -591,10 +600,11 @@ function initTrial(id) {
   if (isPlatformer) {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    setText(`${id}Hud`, `${cfg.prompt} | WASD/ARROWS MOVE · SPACE JUMP · SHIFT/F DASH · NO AUTO-RUN`);
+    setText(`${id}Hud`, `${cfg.prompt} | WASD/ARROWS MOVE · SPACE JUMP · SHIFT/F DASH · PRESS ANY KEY/CLICK TO START`);
   }
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     remainingMs -= 100;
     updateHud(id, score, combo, remainingMs);
     if (remainingMs <= 0) {
@@ -604,7 +614,7 @@ function initTrial(id) {
 
   function frame(now) {
     if (!runtime.has(id)) return;
-    const dt = Math.min(0.04, (now - last) / 1000);
+    const dt = started ? Math.min(0.04, (now - last) / 1000) : 0;
     last = now;
 
     if (cfg.flipInterval && remainingMs < flipAt) {

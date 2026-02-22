@@ -272,7 +272,7 @@ export function initNeonDefender() {
   resetPools();
 
   setText("neonDefenderScore", "SCORE: 0");
-  kernel.start(updateNeonDefender, drawNeonDefender);
+  kernel.start(updateNeonDefender, drawNeonDefender, { startPausedUntilInput: true });
 }
 
 document.addEventListener("mousemove", (event) => {

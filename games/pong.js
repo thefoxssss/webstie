@@ -23,6 +23,7 @@ let pDiff = 0.08;
 let pongMode = "easy";
 let pAnim;
 let pLastTime = 0;
+let pongStarted = false;
 
 const BASE_FRAME_MS = 1000 / 60;
 const MAX_DT_FRAMES = 2.5;
@@ -42,6 +43,7 @@ export function initPong() {
   pSc = 0;
   aiSc = 0;
   pLastTime = 0;
+  pongStarted = false;
   resetBall();
   loopPong(performance.now());
 }
@@ -58,7 +60,10 @@ function resetBall() {
 // Main animation loop: update paddles, ball, scores, and render.
 function loopPong(now) {
   if (state.currentGame !== "pong") return;
-  const dtFrames = pLastTime
+  if (!pongStarted) {
+    if (state.keysPressed.w || state.keysPressed.s || state.keysPressed.ArrowUp || state.keysPressed.ArrowDown) pongStarted = true;
+  }
+  const dtFrames = pongStarted && pLastTime
     ? Math.min((now - pLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
     : 1;
   pLastTime = now;
@@ -84,8 +89,10 @@ function loopPong(now) {
   pCtx.beginPath();
   pCtx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
   pCtx.fill();
-  ball.x += ball.dx * dtFrames;
-  ball.y += ball.dy * dtFrames;
+  if (pongStarted) {
+    ball.x += ball.dx * dtFrames;
+    ball.y += ball.dy * dtFrames;
+  }
   if (ball.y < 0 || ball.y > 600) ball.dy *= -1;
   if (ball.x < 30 && ball.y > p1.y && ball.y < p1.y + p1.h) {
     ball.dx = Math.min(Math.abs(ball.dx) + 0.4, 9);

@@ -23,6 +23,7 @@ let gCanvasRef = null;
 let gOverlayRef = null;
 let gSpawnDistanceRemaining = 0;
 let gLastTime = 0;
+let geoStarted = false;
 
 const BASE_FRAME_MS = 1000 / 60;
 const MAX_DT_FRAMES = 2.5;
@@ -41,6 +42,7 @@ export function initGeometry() {
   gSpeed = 6;
   gSpawnDistanceRemaining = 0;
   gLastTime = 0;
+  geoStarted = false;
   setText("geoScore", "SCORE: 0");
   bindGeoControls();
   loopGeometry(ctx, performance.now());
@@ -51,7 +53,8 @@ function loopGeometry(ctx, now) {
   if (state.currentGame !== "geo") return;
   const dtFrames = gLastTime
     ? Math.min((now - gLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
-    : 1;
+    : 0;
+  const simDtFrames = geoStarted ? dtFrames : 0;
   gLastTime = now;
 
   const cv = document.getElementById("geoCanvas");
@@ -59,15 +62,15 @@ function loopGeometry(ctx, now) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
   const currentSpeed = gSpeed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
-  gPlayer.dy += 0.9 * dtFrames;
-  gPlayer.y += gPlayer.dy * dtFrames;
+  gPlayer.dy += 0.9 * simDtFrames;
+  gPlayer.y += gPlayer.dy * simDtFrames;
   if (gPlayer.y > 320) {
     gPlayer.y = 320;
     gPlayer.dy = 0;
     gPlayer.grounded = true;
     gPlayer.ang = Math.round(gPlayer.ang / (Math.PI / 2)) * (Math.PI / 2);
   } else {
-    gPlayer.ang += 0.15 * dtFrames;
+    gPlayer.ang += 0.15 * simDtFrames;
   }
   ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
   ctx.lineWidth = 2;
@@ -81,7 +84,7 @@ function loopGeometry(ctx, now) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(-gPlayer.w / 2, -gPlayer.h / 2, gPlayer.w, gPlayer.h);
   ctx.restore();
-  gSpawnDistanceRemaining -= currentSpeed * dtFrames;
+  gSpawnDistanceRemaining -= currentSpeed * simDtFrames;
   if (gSpawnDistanceRemaining <= 0 && Math.random() < 0.4) {
     gObs.push({
       x: 800,
@@ -94,7 +97,7 @@ function loopGeometry(ctx, now) {
   }
   for (let i = gObs.length - 1; i >= 0; i--) {
     const o = gObs[i];
-    o.x -= currentSpeed * dtFrames;
+    o.x -= currentSpeed * simDtFrames;
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
     if (o.type === "spike") {
       ctx.beginPath();
@@ -132,6 +135,7 @@ function loopGeometry(ctx, now) {
 // Apply a jump impulse if grounded.
 function jumpGeo() {
   if (state.currentGame === "geo" && gPlayer.grounded) {
+    geoStarted = true;
     gPlayer.dy = -13;
     gPlayer.grounded = false;
   }

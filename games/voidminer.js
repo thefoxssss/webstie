@@ -291,7 +291,7 @@ export function initVoidMiner() {
   rightOn = false;
 
   setText("voidMinerHud", "LVL:1 FUEL:100 VX:0.0 VY:0.0 WIND:0.0 SCORE:0 UP:0");
-  kernel.start(updateVoidMiner, drawVoidMiner);
+  kernel.start(updateVoidMiner, drawVoidMiner, { startPausedUntilInput: true });
 }
 
 document.addEventListener("keydown", (e) => {

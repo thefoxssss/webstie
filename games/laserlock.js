@@ -31,6 +31,7 @@ export function initLaserLock() {
   const action = document.getElementById("laserlockAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
+  let started = false;
 
   let score = 0;
   let streak = 0;
@@ -44,6 +45,7 @@ export function initLaserLock() {
   action.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = (event) => {
+    started = true;
     const rect = canvas.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * WIDTH;
     const y = ((event.clientY - rect.top) / rect.height) * HEIGHT;
@@ -65,6 +67,7 @@ export function initLaserLock() {
   };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     remainingMs -= 100;
     setText("laserlockTimer", `TIME: ${(Math.max(0, remainingMs) / 1000).toFixed(1)}s`);
     if (remainingMs <= 0) {
@@ -81,7 +84,7 @@ export function initLaserLock() {
   let last = performance.now();
   function frame(now) {
     if (!run) return;
-    const dt = Math.min(0.04, (now - last) / 1000);
+    const dt = started ? Math.min(0.04, (now - last) / 1000) : 0;
     last = now;
 
     target.age += dt;

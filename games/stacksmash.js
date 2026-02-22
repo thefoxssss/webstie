@@ -38,6 +38,7 @@ export function initStackSmash() {
   let score = 0;
   let remainingMs = DURATION_MS;
   let blocks = [0, 1, 2, 3, 4].map(spawnBlock);
+  let started = false;
 
   setText("stacksmashScore", "SCORE: 0");
   setText("stacksmashTimer", `TIME: ${(DURATION_MS / 1000).toFixed(1)}s`);
@@ -47,6 +48,7 @@ export function initStackSmash() {
   action.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = (event) => {
+    started = true;
     const rect = canvas.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * WIDTH;
     const y = ((event.clientY - rect.top) / rect.height) * HEIGHT;
@@ -68,6 +70,7 @@ export function initStackSmash() {
   };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     remainingMs -= 100;
     setText("stacksmashTimer", `TIME: ${(Math.max(0, remainingMs) / 1000).toFixed(1)}s`);
     if (remainingMs <= 0) {
@@ -84,7 +87,7 @@ export function initStackSmash() {
   let last = performance.now();
   function frame(now) {
     if (!run) return;
-    const dt = Math.min(0.04, (now - last) / 1000);
+    const dt = started ? Math.min(0.04, (now - last) / 1000) : 0;
     last = now;
 
     ctx.fillStyle = "#1a1208";

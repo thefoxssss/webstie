@@ -30,6 +30,7 @@ export function initOrbWeaver() {
   const action = document.getElementById("orbweaverAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
+  let started = false;
 
   let score = 0;
   let remainingMs = DURATION_MS;
@@ -44,6 +45,7 @@ export function initOrbWeaver() {
   action.textContent = "ROUND LIVE";
 
   canvas.onpointerdown = (event) => {
+    started = true;
     const rect = canvas.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * WIDTH;
     const y = ((event.clientY - rect.top) / rect.height) * HEIGHT;
@@ -74,6 +76,7 @@ export function initOrbWeaver() {
   };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     remainingMs -= 100;
     setText("orbweaverTimer", `TIME: ${(Math.max(0, remainingMs) / 1000).toFixed(1)}s`);
     if (remainingMs <= 0) {

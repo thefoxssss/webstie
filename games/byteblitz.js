@@ -78,6 +78,7 @@ export function initByteBlitz() {
   const action = document.getElementById("byteblitzAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
+  let started = false;
 
   const game = {
     score: 0,
@@ -104,6 +105,7 @@ export function initByteBlitz() {
   action.textContent = "RUNNING";
 
   const onKeyDown = (event) => {
+    started = true;
     const key = event.key.toLowerCase();
     if (key === "arrowleft" || key === "a") game.keys.left = true;
     if (key === "arrowright" || key === "d") game.keys.right = true;
@@ -118,6 +120,7 @@ export function initByteBlitz() {
   document.addEventListener("keyup", onKeyUp);
 
   canvas.onpointerdown = (event) => {
+    started = true;
     const rect = canvas.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * WIDTH;
     game.player.x = Math.max(28, Math.min(WIDTH - 28, x));
@@ -125,6 +128,7 @@ export function initByteBlitz() {
   };
 
   const timer = window.setInterval(() => {
+    if (!started) return;
     game.remainingMs -= 100;
     game.spawnInMs -= 100;
     game.powerupInMs -= 100;
@@ -167,7 +171,7 @@ export function initByteBlitz() {
   let last = performance.now();
   function frame(now) {
     if (!run) return;
-    const dt = Math.min(0.04, (now - last) / 1000);
+    const dt = started ? Math.min(0.04, (now - last) / 1000) : 0;
     last = now;
 
     const accel = 580;
@@ -178,7 +182,7 @@ export function initByteBlitz() {
 
     game.fireMs -= dt * 1000;
     const fireRate = game.overclockMs > 0 ? 55 : 120;
-    if (game.fireMs <= 0) {
+    if (started && game.fireMs <= 0) {
       fireShot(game);
       if (game.overclockMs > 0) {
         fireShot(game, -8);
