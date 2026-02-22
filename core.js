@@ -961,6 +961,7 @@ const STOCK_BASE_PRICES = {
 };
 
 let stopMarketSync = null;
+let marketSyncAvailable = true;
 
 function buildInitialStockState() {
   return STOCK_SYMBOLS.map((entry) => {
@@ -1052,23 +1053,35 @@ function evolveMarketStocks(stocks) {
 
 async function ensureGlobalMarket() {
   const ref = marketDocRef();
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    applyMarketPayload(snap.data());
-    return;
+  try {
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      applyMarketPayload(snap.data());
+      return;
+    }
+    const initial = getInitialMarketPayload();
+    await setDoc(ref, initial).catch(() => {});
+    applyMarketPayload(initial);
+  } catch (error) {
+    const denied = getFirebaseErrorCode(error) === "permission-denied";
+    marketSyncAvailable = !denied;
+    applyMarketPayload(getInitialMarketPayload());
   }
-  const initial = getInitialMarketPayload();
-  await setDoc(ref, initial).catch(() => {});
-  applyMarketPayload(initial);
 }
 
 function subscribeToGlobalMarket() {
-  if (stopMarketSync) return;
+  if (stopMarketSync || !marketSyncAvailable) return;
   const ref = marketDocRef();
   stopMarketSync = onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
     applyMarketPayload(snap.data());
-  }, () => {});
+  }, (error) => {
+    if (getFirebaseErrorCode(error) === "permission-denied") {
+      marketSyncAvailable = false;
+      if (stopMarketSync) stopMarketSync();
+      stopMarketSync = null;
+    }
+  });
 }
 
 async function tickStockMarket() {
