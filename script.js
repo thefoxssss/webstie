@@ -397,6 +397,27 @@ function initGameFullscreenControls() {
     const exitBtn = overlay.querySelector(".exit-btn-fixed");
     if (!exitBtn || overlay.querySelector(".fullscreen-btn-fixed")) return;
 
+    overlay.classList.add("game-overlay");
+
+    let gameShell = overlay.querySelector(".game-content-shell");
+    if (!gameShell) {
+      gameShell = document.createElement("div");
+      gameShell.className = "game-content-shell";
+      Array.from(overlay.children)
+        .filter((child) => !child.classList.contains("overlay-controls-fixed"))
+        .forEach((child) => gameShell.appendChild(child));
+      overlay.appendChild(gameShell);
+    }
+
+    let controlsBar = overlay.querySelector(".overlay-controls-fixed");
+    if (!controlsBar) {
+      controlsBar = document.createElement("div");
+      controlsBar.className = "overlay-controls-fixed";
+      overlay.appendChild(controlsBar);
+    }
+
+    controlsBar.appendChild(exitBtn);
+
     const fsButton = document.createElement("button");
     fsButton.className = "fullscreen-btn-fixed";
     fsButton.type = "button";
@@ -408,7 +429,7 @@ function initGameFullscreenControls() {
         console.warn("Fullscreen toggle failed", error);
       }
     });
-    exitBtn.insertAdjacentElement("beforebegin", fsButton);
+    controlsBar.insertBefore(fsButton, exitBtn);
   });
 
   document.addEventListener("fullscreenchange", () => {
