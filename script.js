@@ -463,16 +463,16 @@ function initMainSiteSearch() {
   if (!form || !input || !meta || !dropdown) return;
 
   const QUICK_ROUTES = [
-    { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY" },
-    { aliases: ["trending", "trend"], action: () => openGame("overlayTrending"), label: "OPENED TRENDING GAMES" },
-    { aliases: ["updates", "update", "log", "update log", "patch notes"], action: () => openGame("overlayUpdates"), label: "OPENED UPDATE LOG" },
-    { aliases: ["bank", "money"], action: () => openGame("overlayBank"), label: "OPENED BANK PANEL" },
-    { aliases: ["shop", "store"], action: () => openGame("overlayShop"), label: "OPENED SHOP PANEL" },
-    { aliases: ["profile", "account", "stats"], action: () => openGame("overlayProfile"), label: "OPENED PROFILE PANEL" },
-    { aliases: ["scores", "leaderboard", "ranks"], action: () => openGame("overlayScores"), label: "OPENED SCORES PANEL" },
-    { aliases: ["season", "battle pass"], action: () => openGame("overlaySeason"), label: "OPENED SEASON PANEL" },
-    { aliases: ["crew", "clan", "guild"], action: () => openGame("overlayCrew"), label: "OPENED CREW PANEL" },
-    { aliases: ["config", "settings"], action: () => openGame("overlayConfig"), label: "OPENED CONFIG PANEL" },
+    { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY", overlayId: "overlayGames" },
+    { aliases: ["trending", "trend"], action: () => openGame("overlayTrending"), label: "OPENED TRENDING GAMES", overlayId: "overlayTrending" },
+    { aliases: ["updates", "update", "log", "update log", "patch notes"], action: () => openGame("overlayUpdates"), label: "OPENED UPDATE LOG", overlayId: "overlayUpdates" },
+    { aliases: ["bank", "money"], action: () => openGame("overlayBank"), label: "OPENED BANK PANEL", overlayId: "overlayBank" },
+    { aliases: ["shop", "store"], action: () => openGame("overlayShop"), label: "OPENED SHOP PANEL", overlayId: "overlayShop" },
+    { aliases: ["profile", "account", "stats"], action: () => openGame("overlayProfile"), label: "OPENED PROFILE PANEL", overlayId: "overlayProfile" },
+    { aliases: ["scores", "leaderboard", "ranks"], action: () => openGame("overlayScores"), label: "OPENED SCORES PANEL", overlayId: "overlayScores" },
+    { aliases: ["season", "battle pass"], action: () => openGame("overlaySeason"), label: "OPENED SEASON PANEL", overlayId: "overlaySeason" },
+    { aliases: ["crew", "clan", "guild"], action: () => openGame("overlayCrew"), label: "OPENED CREW PANEL", overlayId: "overlayCrew" },
+    { aliases: ["config", "settings"], action: () => openGame("overlayConfig"), label: "OPENED CONFIG PANEL", overlayId: "overlayConfig" },
   ];
 
   let activeSuggestions = [];
@@ -486,8 +486,29 @@ function initMainSiteSearch() {
       .replace(/\s+/g, " ");
   }
 
-  function tokenize(value) {
-    return value.split(" ").filter(Boolean);
+  function getRouteSearchCorpus(route) {
+    const overlay = route.overlayId ? document.getElementById(route.overlayId) : null;
+    const overlayText = overlay ? normalize(overlay.textContent) : "";
+    const aliasText = normalize(route.aliases.join(" "));
+    return { aliasText, overlayText };
+  }
+
+  function scoreRouteMatch(route, query) {
+    const { aliasText, overlayText } = getRouteSearchCorpus(route);
+    const aliasParts = route.aliases.map((alias) => normalize(alias));
+
+    let score = 99;
+    aliasParts.forEach((alias) => {
+      if (alias === query) score = Math.min(score, 0);
+      else if (alias.startsWith(query)) score = Math.min(score, 1);
+      else if (alias.includes(query)) score = Math.min(score, 2);
+      else if (query.startsWith(alias)) score = Math.min(score, 3);
+    });
+
+    if (score < 99) return score;
+    if (aliasText && aliasText.includes(query)) return 4;
+    if (overlayText && overlayText.includes(query)) return 20;
+    return 99;
   }
 
   function findGame(query) {
@@ -540,19 +561,10 @@ function initMainSiteSearch() {
       }));
 
     const routeSuggestions = QUICK_ROUTES
-      .map((route) => {
-        const normalizedAliases = route.aliases.map((alias) => normalize(alias));
-        const bestScore = normalizedAliases.reduce((score, alias) => {
-          if (alias === query) return Math.min(score, 10);
-          if (alias.startsWith(query)) return Math.min(score, 11);
-          if (alias.includes(query)) return Math.min(score, 12);
-          return score;
-        }, 99);
-        return { route, bestScore };
-      })
+      .map((route) => ({ route, bestScore: scoreRouteMatch(route, query) }))
       .filter((item) => item.bestScore < 99)
       .sort((a, b) => a.bestScore - b.bestScore)
-      .slice(0, 2)
+      .slice(0, 3)
       .map((item) => ({
         type: "route",
         value: item.route.aliases[0].toUpperCase(),
@@ -600,23 +612,21 @@ function initMainSiteSearch() {
       return;
     }
 
+    const rankedRoutes = QUICK_ROUTES
+      .map((route) => ({ route, score: scoreRouteMatch(route, query) }))
+      .filter((item) => item.score < 99)
+      .sort((a, b) => a.score - b.score);
+    const route = rankedRoutes.length ? rankedRoutes[0].route : null;
+    if (route) {
+      route.action();
+      meta.textContent = `${route.label} // SEARCH: ${query.toUpperCase()}`;
+      return;
+    }
+
     const game = findGame(query);
     if (game) {
       window.launchGame(game.id, "site-search");
       meta.textContent = `LAUNCHED ${game.title.toUpperCase()} // MATCHED "${query.toUpperCase()}"`;
-      return;
-    }
-
-    const queryTokens = tokenize(query);
-    const route = QUICK_ROUTES.find((item) => {
-      return item.aliases.some((alias) => {
-        const normalizedAlias = normalize(alias);
-        return query === normalizedAlias || queryTokens.includes(normalizedAlias);
-      });
-    });
-    if (route) {
-      route.action();
-      meta.textContent = `${route.label} // SEARCH: ${query.toUpperCase()}`;
       return;
     }
 
