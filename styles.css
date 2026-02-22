@@ -814,6 +814,18 @@ body.games-directory-open .wrap {
   backdrop-filter: blur(1px);
 }
 
+
+#overlayBank,
+#overlayShop,
+#overlayProfile,
+#overlayScores,
+#overlaySeason,
+#overlayCrew,
+#overlayAdmin,
+#overlayGames {
+  z-index: 1250;
+}
+
 .games-directory-overlay {
   background: rgba(0, 0, 0, 0.94);
   backdrop-filter: blur(2px);

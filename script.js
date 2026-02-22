@@ -835,7 +835,25 @@ function initTopBarOverlayControls() {
     }, true);
   });
 
-  const getActiveOverlay = () => overlays.slice().reverse().find((overlay) => overlay.classList.contains("active")) || null;
+  const TOP_PANEL_OVERLAY_IDS = [
+    "overlayConfig",
+    "overlayBank",
+    "overlayShop",
+    "overlayProfile",
+    "overlayScores",
+    "overlaySeason",
+    "overlayCrew",
+    "overlayAdmin",
+    "overlayGames",
+  ];
+
+  const getActiveOverlay = () => {
+    for (const overlayId of TOP_PANEL_OVERLAY_IDS) {
+      const overlay = document.getElementById(overlayId);
+      if (overlay?.classList.contains("active")) return overlay;
+    }
+    return overlays.slice().reverse().find((overlay) => overlay.classList.contains("active")) || null;
+  };
   const isFullscreenApplicable = (overlay) => Boolean(overlay && GAME_OVERLAY_IDS.includes(overlay.id) && getFullscreenTarget(overlay));
 
   function getExitTabButton(overlay) {
