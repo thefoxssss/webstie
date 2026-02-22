@@ -89,17 +89,52 @@ window.adminForgiveInterestForUser = adminForgiveInterestForUser;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
-function bindOverlayNavButtons() {
-  document.querySelectorAll("[data-open-overlay]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const overlayId = button.getAttribute("data-open-overlay");
-      if (!overlayId || typeof window.openGame !== "function") return;
-      window.openGame(overlayId);
-    });
+function parseInlineArgs(rawArgs) {
+  if (!rawArgs || !rawArgs.trim()) return [];
+  try {
+    return JSON.parse(`[${rawArgs.replace(/'/g, '"')}]`);
+  } catch (_err) {
+    return [];
+  }
+}
+
+function executeInlineAction(action) {
+  const normalized = String(action || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return;
+  const compact = normalized.replace(/\s*([.()])\s*/g, "$1");
+
+  const windowCall = compact.match(/^window\.([A-Za-z0-9_]+)\((.*)\)$/);
+  if (windowCall) {
+    const fnName = windowCall[1];
+    const args = parseInlineArgs(windowCall[2]);
+    if (typeof window[fnName] === "function") window[fnName](...args);
+    return;
+  }
+
+  const focusCall = compact.match(/^document\.getElementById\('([^']+)'\)\.focus\(\)$/);
+  if (focusCall) {
+    document.getElementById(focusCall[1])?.focus();
+    return;
+  }
+
+  const classRemoveCall = compact.match(
+    /^document\.getElementById\('([^']+)'\)\.classList\.remove\('([^']+)'\)$/,
+  );
+  if (classRemoveCall) {
+    document.getElementById(classRemoveCall[1])?.classList.remove(classRemoveCall[2]);
+  }
+}
+
+function bindInlineClickHandlers() {
+  document.querySelectorAll("[onclick]").forEach((el) => {
+    const action = el.getAttribute("onclick");
+    if (!action) return;
+    el.removeAttribute("onclick");
+    el.addEventListener("click", () => executeInlineAction(action));
   });
 }
 
-bindOverlayNavButtons();
+bindInlineClickHandlers();
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game) => {

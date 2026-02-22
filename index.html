@@ -28,7 +28,7 @@
 
     <!-- Global top navigation + system status. -->
     <div class="top-bar">
-      <button class="menu-btn" data-open-overlay="overlayConfig">
+      <button class="menu-btn" onclick="window.openGame('overlayConfig')">
         CONFIG
       </button>
       <div class="sys-info">
@@ -36,28 +36,28 @@
         <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
       </div>
       <div style="display: flex; gap: 10px">
-        <button class="menu-btn" data-open-overlay="overlayBank">
+        <button class="menu-btn" onclick="window.openGame('overlayBank')">
           BANK
         </button>
-        <button class="menu-btn" data-open-overlay="overlayShop">
+        <button class="menu-btn" onclick="window.openGame('overlayShop')">
           SHOP
         </button>
-        <button class="menu-btn" data-open-overlay="overlayProfile">
+        <button class="menu-btn" onclick="window.openGame('overlayProfile')">
           PROFILE
         </button>
-        <button class="menu-btn" data-open-overlay="overlayScores">
+        <button class="menu-btn" onclick="window.openGame('overlayScores')">
           SCORES
         </button>
-        <button class="menu-btn" data-open-overlay="overlaySeason">
+        <button class="menu-btn" onclick="window.openGame('overlaySeason')">
           SEASON
         </button>
-        <button class="menu-btn" data-open-overlay="overlayCrew">
+        <button class="menu-btn" onclick="window.openGame('overlayCrew')">
           CREW
         </button>
         <button
           class="menu-btn"
           id="adminMenuBtn"
-          data-open-overlay="overlayAdmin"
+          onclick="window.openGame('overlayAdmin')"
           style="display: none; border-color: #ffd700; color: #ffd700"
         >
           ADMIN
