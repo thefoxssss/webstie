@@ -1575,8 +1575,8 @@ async function refreshUpdateLogFromMergedPrs() {
 
     const rows = merged.map((pr) => {
       const title = String(pr.title || "UNTITLED CHANGE");
-      const commitNumber = String(pr.merge_commit_sha || pr.head?.sha || "").trim();
-      const rowNumber = commitNumber ? `#${commitNumber.slice(0, 7).toUpperCase()}` : `PR-${String(pr.number || "?")}`;
+      const match = title.match(/\bcommit\s*#?\s*(\d+)\b/i);
+      const rowNumber = `#${match ? match[1] : String(pr.number || "?")}`;
       return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
     });
 
