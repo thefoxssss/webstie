@@ -4977,13 +4977,12 @@ export function openGameLeaderboard(gameId) {
   const normalizedGameId = String(gameId || "").toLowerCase();
   const gameColumn = LEADERBOARD_COLUMNS.find((column) => column.type === "game" && column.gameId === normalizedGameId);
   const filterInput = document.getElementById("leaderboardFilter");
-  if (filterInput) filterInput.value = gameColumn?.title || String(gameId || "");
+  if (filterInput) filterInput.value = normalizedGameId || gameColumn?.title || String(gameId || "");
 
   const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
   if (difficultySelect) difficultySelect.value = "all";
   const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
   if (playerCountSelect) playerCountSelect.value = "all";
-  if (tagSelect) Array.from(tagSelect.options).forEach((option) => (option.selected = false));
 
   loadLeaderboard();
 }

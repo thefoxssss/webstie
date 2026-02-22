@@ -3034,8 +3034,14 @@ canvas {
 
 /* Remove bottom utility bar elements inside game overlays. */
 .overlay .mobile-hint.active,
-.overlay button.term-btn[id$="Action"],
-.overlay button.term-btn[id$="StartBtn"],
-.overlay button.term-btn[id$="startBtn"] {
+.overlay .term-btn[id$="Action"],
+.overlay .term-btn[id$="StartBtn"],
+.overlay .term-btn[id$="startBtn"] {
   display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
 }
