@@ -418,6 +418,18 @@ body::before {
 
 .site-search #siteSearchInput {
   flex: 1;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  caret-color: var(--accent);
+  background: rgba(0, 0, 0, 0.72);
+  text-align: left;
+  font-size: 14px;
+  margin-bottom: 0;
+}
+
+.site-search #siteSearchInput::placeholder {
+  color: #9fd8be;
+  opacity: 0.85;
 }
 
 .site-search-meta {
