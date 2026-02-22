@@ -398,6 +398,10 @@ body::before {
   color: #fff;
 }
 
+.random-game-cta h2 .panel-title-btn {
+  text-align: center;
+}
+
 .trending-games {
   margin-top: 24px;
   width: min(90vw, 680px);

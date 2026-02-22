@@ -1660,7 +1660,7 @@ function initTrendingGamesPanel() {
     const game = button?.dataset.game;
     if (!game) return;
     if (typeof window.launchGame === "function") {
-      window.launchGame(game);
+      window.launchGame(game, "trending");
     }
   });
 
@@ -1682,7 +1682,7 @@ function initRandomGameButton() {
     const pick = pool[Math.floor(Math.random() * pool.length)];
     const game = String(pick?.dataset.game || "").trim();
     if (!game) return;
-    window.launchGame(game);
+    window.launchGame(game, "random");
   });
 }
 
