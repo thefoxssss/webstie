@@ -18,16 +18,10 @@ import {
   adminSetCashFromInput,
   adminMultiplyCashFromInput,
   adminSetDebtFromInput,
-  adminInjectJackpot,
-  adminSetMaxCash,
   adminGrantAllShopItems,
   adminClearDebtAndCooldowns,
-  adminBoostStats,
-  adminMaxPortfolio,
-  adminMarketMoonshot,
-  adminMarketMeltdown,
+  adminSetPortfolioSharesFromInput,
   adminMarketCrashToZero,
-  adminMarketTimesThousand,
   adminPrestigePack,
   adminRefreshTargetUsers,
   adminForgiveInterest,
@@ -89,16 +83,10 @@ window.adminGrantCashFromInput = adminGrantCashFromInput;
 window.adminSetCashFromInput = adminSetCashFromInput;
 window.adminMultiplyCashFromInput = adminMultiplyCashFromInput;
 window.adminSetDebtFromInput = adminSetDebtFromInput;
-window.adminInjectJackpot = adminInjectJackpot;
-window.adminSetMaxCash = adminSetMaxCash;
 window.adminGrantAllShopItems = adminGrantAllShopItems;
 window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
-window.adminBoostStats = adminBoostStats;
-window.adminMaxPortfolio = adminMaxPortfolio;
-window.adminMarketMoonshot = adminMarketMoonshot;
-window.adminMarketMeltdown = adminMarketMeltdown;
+window.adminSetPortfolioSharesFromInput = adminSetPortfolioSharesFromInput;
 window.adminMarketCrashToZero = adminMarketCrashToZero;
-window.adminMarketTimesThousand = adminMarketTimesThousand;
 window.adminPrestigePack = adminPrestigePack;
 window.adminRefreshTargetUsers = adminRefreshTargetUsers;
 window.adminForgiveInterest = adminForgiveInterest;

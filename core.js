@@ -2619,27 +2619,6 @@ export async function adminForgiveInterest() {
   });
 }
 
-export async function adminInjectJackpot() {
-  const jackpot = 5000000;
-  await adminGrantCash(jackpot);
-}
-
-export async function adminSetMaxCash() {
-  await applyAdminActionToTargets({
-    actionName: "SET MAX CASH",
-    emptyToast: "SELECT A TARGET FIRST",
-    mutateRemote: () => ({ money: 999999999 }),
-    mutateLocal: () => {
-      const previous = Math.floor(Number(myMoney) || 0);
-      myMoney = 999999999;
-      const delta = Math.max(0, myMoney - previous);
-      if (delta > 0) logTransaction("ADMIN BANK OVERRIDE", delta);
-    },
-    successToast: (targets) => `SET BANK TO $999,999,999 FOR ${targets.length} PLAYER(S)`,
-    failToast: "MAX CASH OVERRIDE FAILED",
-  });
-}
-
 export async function adminGrantAllShopItems() {
   await applyAdminActionToTargets({
     actionName: "UNLOCK SHOP ITEMS",
@@ -2682,41 +2661,6 @@ export async function adminClearDebtAndCooldowns() {
     },
     successToast: (targets) => `DEBT + COOLDOWNS CLEARED FOR ${targets.length} PLAYER(S)`,
     failToast: "DEBT CLEAR FAILED",
-  });
-}
-
-export async function adminBoostStats() {
-  await applyAdminActionToTargets({
-    actionName: "BOOST STATS",
-    emptyToast: "SELECT A TARGET FIRST",
-    mutateRemote: (targetData) => ({
-      stats: {
-        games: Math.max(0, Number(targetData?.stats?.games) || 0) + 250,
-        wins: Math.max(0, Number(targetData?.stats?.wins) || 0) + 100,
-        wpm: Math.max(120, Number(targetData?.stats?.wpm) || 0),
-      },
-      jobs: {
-        ...(targetData?.jobs || {}),
-        completed: {
-          ...(targetData?.jobs?.completed || {}),
-          math: Math.max(50, Number(targetData?.jobs?.completed?.math) || 0),
-          code: Math.max(50, Number(targetData?.jobs?.completed?.code) || 0),
-          click: Math.max(50, Number(targetData?.jobs?.completed?.click) || 0),
-        },
-      },
-    }),
-    mutateLocal: () => {
-      myStats.games = Math.max(0, Number(myStats.games) || 0) + 250;
-      myStats.wins = Math.max(0, Number(myStats.wins) || 0) + 100;
-      myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
-      jobData.completed = {
-        math: Math.max(50, Number(jobData.completed?.math) || 0),
-        code: Math.max(50, Number(jobData.completed?.code) || 0),
-        click: Math.max(50, Number(jobData.completed?.click) || 0),
-      };
-    },
-    successToast: (targets) => `STATS BOOSTED FOR ${targets.length} PLAYER(S)`,
-    failToast: "STAT BOOST FAILED",
   });
 }
 
@@ -2767,10 +2711,11 @@ export async function adminSetJobCompletionsFromInput() {
   });
 }
 
-export async function adminMaxPortfolio() {
+export async function adminSetPortfolioSharesFromInput() {
+  const shares = Math.max(0, Math.floor(readAdminNumberInput("adminPortfolioAmount", 0)));
   await applyAdminActionToTargets({
-    actionName: "MAX PORTFOLIO",
-    emptyToast: "SELECT A TARGET FIRST",
+    actionName: "SET PORTFOLIO SHARES",
+    emptyToast: "NO PLAYERS MATCHED",
     mutateRemote: (targetData) => {
       const targetStock = {
         holdings: { ...(targetData?.stockData?.holdings || {}) },
@@ -2778,19 +2723,19 @@ export async function adminMaxPortfolio() {
         buyMultiplier: targetData?.stockData?.buyMultiplier || 1,
       };
       marketState.stocks.forEach((stock) => {
-        targetStock.holdings[stock.symbol] = 9999;
+        targetStock.holdings[stock.symbol] = shares;
       });
       return { stockData: targetStock };
     },
     mutateLocal: () => {
       ensureStockProfile();
       marketState.stocks.forEach((stock) => {
-        stockData.holdings[stock.symbol] = 9999;
+        stockData.holdings[stock.symbol] = shares;
       });
       stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
     },
-    successToast: (targets) => `PORTFOLIO MAXED FOR ${targets.length} PLAYER(S)`,
-    failToast: "PORTFOLIO MAX FAILED",
+    successToast: (targets) => `UPDATED PORTFOLIO SHARES FOR ${targets.length} PLAYER(S)`,
+    failToast: "PORTFOLIO UPDATE FAILED",
   });
 }
 
@@ -2842,31 +2787,10 @@ async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = mini
   }
 }
 
-export async function adminMarketMoonshot() {
-  if (!isGodUser()) return;
-  await setMarketShift(1.35);
-  showToast("MARKET SENT TO THE MOON", "🚀");
-  await saveStats();
-}
-
-export async function adminMarketMeltdown() {
-  if (!isGodUser()) return;
-  await setMarketShift(0.55);
-  showToast("MARKET MELTDOWN TRIGGERED", "💥");
-  await saveStats();
-}
-
 export async function adminMarketCrashToZero() {
   if (!isGodUser()) return;
   await setMarketShift(0, 0.01, 0.01);
   showToast("MARKET CRASHED TO ZERO", "📉");
-  await saveStats();
-}
-
-export async function adminMarketTimesThousand() {
-  if (!isGodUser()) return;
-  await setMarketShift(1000000000000000000, 0.01, 1);
-  showToast("MARKET MULTIPLIED x1000000000000000000", "📈");
   await saveStats();
 }
 

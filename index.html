@@ -170,17 +170,15 @@
             <button class="term-btn" onclick="window.adminMultiplyCashFromInput()">
               MULTIPLY CASH BY AMOUNT
             </button>
-            <button class="term-btn" onclick="window.adminInjectJackpot()">
-              INJECT JACKPOT
-            </button>
             <button class="term-btn" onclick="window.adminSetDebtFromInput()">
               SET DEBT TO AMOUNT
             </button>
             <button class="term-btn" onclick="window.adminForgiveInterest()">
               FORGIVE INTEREST
             </button>
-            <button class="term-btn" onclick="window.adminMaxPortfolio()">
-              FILL STOCK PORTFOLIO
+            <input class="term-input" id="adminPortfolioAmount" type="number" step="1" min="0" placeholder="SHARES PER STOCK" />
+            <button class="term-btn" onclick="window.adminSetPortfolioSharesFromInput()">
+              SET PORTFOLIO SHARES
             </button>
           </div>
 
@@ -210,12 +208,6 @@
           <div class="admin-section">
             <p class="admin-section-title">MARKET CONTROL</p>
             <input class="term-input" id="adminMarketAmount" type="number" step="0.01" min="0" placeholder="PERCENT OR MULTIPLIER" />
-            <button class="term-btn" onclick="window.adminMarketMoonshot()">
-              MARKET MOONSHOT
-            </button>
-            <button class="term-btn" onclick="window.adminMarketMeltdown()">
-              MARKET MELTDOWN
-            </button>
             <button class="term-btn" onclick="window.adminMarketPumpFromInput()">
               INCREASE MARKET BY % INPUT
             </button>
@@ -224,9 +216,6 @@
             </button>
             <button class="term-btn" onclick="window.adminMarketCrashToZero()">
               CRASH MARKET TO ZERO
-            </button>
-            <button class="term-btn" onclick="window.adminMarketTimesThousand()">
-              EXTREME MARKET MULTIPLIER
             </button>
             <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">
               MULTIPLY MARKET BY INPUT
