@@ -1299,20 +1299,24 @@ canvas {
 
 
 .overlay.has-game-side-shop {
-  padding-left: 20px;
+  --game-side-shop-width: clamp(220px, 26vw, 300px);
+  padding-left: calc(var(--game-side-shop-width) + 24px);
 }
 
 .game-side-shop {
   position: absolute;
-  right: 14px;
+  left: 14px;
   top: 74px;
-  width: min(250px, 30vw);
+  width: var(--game-side-shop-width, min(250px, 30vw));
+  height: clamp(280px, 62vh, 560px);
+  max-height: calc(100vh - var(--topbar-clearance) - 110px);
   border: 1px solid var(--accent);
   background: rgba(0, 0, 0, 0.9);
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
   z-index: 8;
 }
 
@@ -1358,15 +1362,25 @@ canvas {
 }
 
 @media (max-width: 1100px) {
+  .overlay.has-game-side-shop {
+    --game-side-shop-width: clamp(200px, 30vw, 260px);
+  }
+
   .game-side-shop {
-    width: min(210px, 38vw);
+    height: clamp(240px, 58vh, 500px);
   }
 }
 
 @media (max-width: 760px) {
+  .overlay.has-game-side-shop {
+    padding-left: 20px;
+  }
+
   .game-side-shop {
     position: static;
     width: min(92vw, 420px);
+    height: auto;
+    max-height: none;
     margin: 8px auto 0;
   }
 }
