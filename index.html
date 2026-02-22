@@ -142,89 +142,234 @@
         <p style="text-align: center; font-size: 10px">
           GOD ACCESS: <span id="adminName">UNKNOWN</span>
         </p>
-        <div class="admin-actions">
+        <div class="admin-actions admin-actions-overhaul">
+          <div class="admin-section admin-section-hero">
+            <p class="admin-section-title">ADMIN CONTROL CENTER</p>
+            <p class="admin-section-subtitle">Choose a scope, enter values, and run actions with plain Set / Add / Remove controls.</p>
+          </div>
+
           <div class="admin-section">
-            <p class="admin-section-title">TARGETED ACTIONS</p>
+            <p class="admin-section-title">APPLY TO</p>
             <select class="term-input" id="adminTargetScope">
-              <option value="selected">TARGET: SELECTED PLAYER</option>
-              <option value="all">TARGET: ALL PLAYERS</option>
-              <option value="others">TARGET: OTHERS (EXCLUDING YOU)</option>
-              <option value="self">TARGET: SELF ONLY</option>
+              <option value="self">SELF</option>
+              <option value="others">OTHERS</option>
+              <option value="all">ALL</option>
+              <option value="username">SPECIFIC USERNAME</option>
             </select>
-            <select class="term-input" id="adminTargetUser">
-              <option value="">SELECT USER</option>
+            <input class="term-input" id="adminTargetUser" list="adminTargetUserList" pattern="[A-Za-z0-9_]{3,10}" maxlength="10" placeholder="USERNAME (OPTIONAL)" />
+            <datalist id="adminTargetUserList"></datalist>
+            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">REFRESH USER LIST</button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">MONEY AND MARKET</p>
+            <input class="term-input" id="adminCashAmount" list="adminCashAmountList" type="number" step="1" placeholder="MONEY VALUE" />
+            <datalist id="adminCashAmountList">
+              <option value="100"></option>
+              <option value="1000"></option>
+              <option value="10000"></option>
+              <option value="50000"></option>
+              <option value="100000"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminGrantCashFromInput()">ADD MONEY</button>
+            <button class="term-btn" onclick="window.adminSetCashFromInput()">SET MONEY</button>
+            <button class="term-btn" onclick="window.adminMultiplyCashFromInput()">MULTIPLY MONEY</button>
+            <button class="term-btn" onclick="window.adminSetDebtFromInput()">SET DEBT</button>
+            <button class="term-btn" onclick="window.adminForgiveInterest()">REMOVE INTEREST</button>
+            <input class="term-input" id="adminPortfolioAmount" list="adminPortfolioAmountList" type="number" step="1" min="0" placeholder="SHARES PER STOCK" />
+            <datalist id="adminPortfolioAmountList">
+              <option value="0"></option>
+              <option value="10"></option>
+              <option value="100"></option>
+              <option value="1000"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminSetPortfolioSharesFromInput()">SET STOCK SHARES</button>
+            <input class="term-input" id="adminMarketAmount" list="adminMarketAmountList" type="number" step="0.01" min="0" placeholder="MARKET PERCENT OR MULTIPLIER" />
+            <datalist id="adminMarketAmountList">
+              <option value="5"></option>
+              <option value="10"></option>
+              <option value="25"></option>
+              <option value="50"></option>
+              <option value="2"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminMarketPumpFromInput()">ADD MARKET PERCENT</button>
+            <button class="term-btn" onclick="window.adminMarketDropFromInput()">REMOVE MARKET PERCENT</button>
+            <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">SET MARKET MULTIPLIER</button>
+            <button class="term-btn" onclick="window.adminMarketCrashToZero()">SET MARKET TO MINIMUM</button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">ACCOUNT AND ACCESS</p>
+            <input class="term-input" id="adminRoleInput" list="adminRoleList" type="text" maxlength="16" placeholder="ROLE (PLAYER, MOD, ADMIN, OWNER)" />
+            <datalist id="adminRoleList">
+              <option value="PLAYER"></option>
+              <option value="MOD"></option>
+              <option value="ADMIN"></option>
+              <option value="OWNER"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminSetRoleFromInput()">SET ROLE</button>
+            <input class="term-input" id="adminStatusInput" list="adminStatusList" type="text" maxlength="16" placeholder="STATUS (ACTIVE, MUTED, SUSPENDED, BANNED)" />
+            <datalist id="adminStatusList">
+              <option value="ACTIVE"></option>
+              <option value="MUTED"></option>
+              <option value="SUSPENDED"></option>
+              <option value="BANNED"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminSetStatusFromInput()">SET STATUS</button>
+            <input class="term-input" id="adminPermissionInput" list="adminPermissionList" type="text" maxlength="32" placeholder="PERMISSION KEY" />
+            <datalist id="adminPermissionList">
+              <option value="ADMIN_PANEL"></option>
+              <option value="CHAT_MOD"></option>
+              <option value="ECONOMY_EDIT"></option>
+              <option value="MARKET_EDIT"></option>
+              <option value="USER_MANAGE"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminGrantPermissionFromInput()">ADD PERMISSION</button>
+            <button class="term-btn" onclick="window.adminRevokePermissionFromInput()">REMOVE PERMISSION</button>
+            <input class="term-input" id="adminTagInput" list="adminTagList" type="text" maxlength="24" placeholder="TAG" />
+            <datalist id="adminTagList">
+              <option value="TRUSTED"></option>
+              <option value="VIP"></option>
+              <option value="EVENT"></option>
+              <option value="TESTER"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminAddTagFromInput()">ADD TAG</button>
+            <button class="term-btn" onclick="window.adminRemoveTagFromInput()">REMOVE TAG</button>
+            <input class="term-input" id="adminRestrictionInput" list="adminRestrictionList" type="text" maxlength="24" placeholder="RESTRICTION KEY" />
+            <datalist id="adminRestrictionList">
+              <option value="CHAT_LOCK"></option>
+              <option value="TRADE_LOCK"></option>
+              <option value="MARKET_LOCK"></option>
+              <option value="LOGIN_LOCK"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminRemoveRestrictionFromInput()">REMOVE RESTRICTION</button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">PROGRESS AND LIMITS</p>
+            <input class="term-input" id="adminStatAmount" list="adminStatAmountList" type="number" step="1" min="1" placeholder="STATS VALUE" />
+            <datalist id="adminStatAmountList">
+              <option value="1"></option>
+              <option value="10"></option>
+              <option value="50"></option>
+              <option value="100"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminBoostStatsFromInput()">ADD STATS</button>
+            <button class="term-btn" onclick="window.adminSetJobCompletionsFromInput()">SET JOB COMPLETIONS</button>
+            <button class="term-btn" onclick="window.adminUnlockAllAchievements()">SET ACHIEVEMENTS TO UNLOCKED</button>
+            <button class="term-btn" onclick="window.adminGrantAllShopItems()">SET ITEMS TO OWNED</button>
+            <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">SET DEBT AND COOLDOWNS TO CLEAR</button>
+            <input class="term-input" id="adminLimitKeyInput" list="adminLimitKeyList" type="text" maxlength="24" placeholder="LIMIT KEY" />
+            <datalist id="adminLimitKeyList">
+              <option value="daily_chat"></option>
+              <option value="daily_trade"></option>
+              <option value="job_runs"></option>
+              <option value="market_orders"></option>
+            </datalist>
+            <input class="term-input" id="adminLimitValueInput" list="adminLimitValueList" type="number" step="1" min="0" placeholder="LIMIT VALUE" />
+            <datalist id="adminLimitValueList">
+              <option value="0"></option>
+              <option value="10"></option>
+              <option value="50"></option>
+              <option value="100"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminSetLimitFromInput()">SET LIMIT</button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">CHAT, NOTICES, AND LOGS</p>
+            <input class="term-input" id="adminChatMessage" list="adminChatMessageList" type="text" maxlength="80" placeholder="MESSAGE" />
+            <datalist id="adminChatMessageList">
+              <option value="Server maintenance starts in 10 minutes."></option>
+              <option value="Event is now live."></option>
+              <option value="Please follow chat rules."></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminSendChatAnnouncement()">SEND NOTICE AS ADMIN</button>
+            <button class="term-btn" onclick="window.adminSendChatSystemMessage()">SEND NOTICE AS SYSTEM</button>
+            <input class="term-input" id="adminChatClearCount" list="adminChatClearCountList" type="number" min="1" step="1" placeholder="MESSAGES TO REMOVE" />
+            <datalist id="adminChatClearCountList">
+              <option value="1"></option>
+              <option value="5"></option>
+              <option value="10"></option>
+              <option value="25"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">REMOVE RECENT CHAT</button>
+            <input class="term-input" id="adminActionLogInput" type="text" maxlength="100" placeholder="ACTION LOG MESSAGE" />
+            <button class="term-btn" onclick="window.adminLogAdminActionFromInput()">ADD ACTION LOG</button>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-title">SETTINGS ENGINE (ADD / REMOVE / SET)</p>
+            <input class="term-input" id="adminSettingKey" list="adminSettingKeyList" type="text" maxlength="32" placeholder="SETTING KEY" />
+            <datalist id="adminSettingKeyList">
+              <option value="role"></option>
+              <option value="status"></option>
+              <option value="permissions"></option>
+              <option value="tags"></option>
+              <option value="restrictions"></option>
+            </datalist>
+            <select class="term-input" id="adminSettingType">
+              <option value="string">STRING</option>
+              <option value="integer">INTEGER</option>
+              <option value="boolean">BOOLEAN</option>
+              <option value="list">LIST (COMMA SEPARATED)</option>
             </select>
-            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">
-              REFRESH USER LIST
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCashToUser(1000)">
-              GIVE SELECTED USER +$1,000
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCashToUser(10000)">
-              GIVE SELECTED USER +$10,000
-            </button>
-            <button class="term-btn" onclick="window.adminForgiveInterestForUser()">
-              FORGIVE INTEREST (SELECTED USER)
-            </button>
+            <input class="term-input" id="adminSettingValue" list="adminSettingValueList" type="text" maxlength="120" placeholder="SETTING VALUE" />
+            <datalist id="adminSettingValueList">
+              <option value="ADMIN"></option>
+              <option value="ACTIVE"></option>
+              <option value="true"></option>
+              <option value="100"></option>
+            </datalist>
+            <select class="term-input" id="adminSettingAction">
+              <option value="set">SET</option>
+              <option value="add">ADD</option>
+              <option value="remove">REMOVE</option>
+            </select>
+            <button class="term-btn" onclick="window.adminApplySettingActionFromInput()">RUN SETTING ACTION</button>
+            <input class="term-input" id="adminPreferenceKeyInput" list="adminPreferenceKeyList" type="text" maxlength="24" placeholder="PREFERENCE KEY" />
+            <datalist id="adminPreferenceKeyList">
+              <option value="theme"></option>
+              <option value="notifications"></option>
+              <option value="privacy"></option>
+              <option value="language"></option>
+            </datalist>
+            <input class="term-input" id="adminPreferenceValueInput" list="adminPreferenceValueList" type="text" maxlength="60" placeholder="PREFERENCE VALUE" />
+            <datalist id="adminPreferenceValueList">
+              <option value="dark"></option>
+              <option value="on"></option>
+              <option value="friends"></option>
+              <option value="en"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
           </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">ECONOMY</p>
-            <button class="term-btn" onclick="window.adminGrantCash(1000)">
-              GRANT +$1,000
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCash(10000)">
-              GRANT +$10,000
-            </button>
-            <button class="term-btn" onclick="window.adminGrantCash(100000)">
-              GRANT +$100,000
-            </button>
-            <button class="term-btn" onclick="window.adminInjectJackpot()">
-              INJECT JACKPOT (+$5,000,000)
-            </button>
-            <button class="term-btn" onclick="window.adminSetMaxCash()">
-              SET BANK TO $999,999,999
-            </button>
-            <button class="term-btn" onclick="window.adminMaxPortfolio()">
-              MAX STOCK PORTFOLIO (9,999 SHARES EACH)
-            </button>
+          <div class="admin-section admin-section-danger">
+            <p class="admin-section-title">AUTOMATION</p>
+            <input class="term-input" id="adminTaskNameInput" list="adminTaskNameList" type="text" maxlength="40" placeholder="TASK NAME" />
+            <datalist id="adminTaskNameList">
+              <option value="cleanup_chat"></option>
+              <option value="rotate_event"></option>
+              <option value="announce_reset"></option>
+            </datalist>
+            <input class="term-input" id="adminTaskTimeInput" list="adminTaskTimeList" type="number" step="1" min="1" placeholder="RUN AFTER MINUTES" />
+            <datalist id="adminTaskTimeList">
+              <option value="5"></option>
+              <option value="15"></option>
+              <option value="30"></option>
+              <option value="60"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminScheduleTaskFromInput()">ADD SCHEDULED TASK</button>
+            <input class="term-input" id="adminTaskClearCount" list="adminTaskClearCountList" type="number" step="1" min="1" placeholder="TASKS TO REMOVE" />
+            <datalist id="adminTaskClearCountList">
+              <option value="1"></option>
+              <option value="3"></option>
+              <option value="5"></option>
+              <option value="10"></option>
+            </datalist>
+            <button class="term-btn" onclick="window.adminClearScheduledTasksFromInput()">REMOVE SCHEDULED TASKS</button>
           </div>
-
-          <div class="admin-section">
-            <p class="admin-section-title">PROGRESSION</p>
-            <button class="term-btn" onclick="window.adminGrantAllShopItems()">
-              UNLOCK + ENABLE ALL SHOP ITEMS
-            </button>
-            <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">
-              CLEAR DEBT + RESET JOB COOLDOWNS
-            </button>
-            <button class="term-btn" onclick="window.adminBoostStats()">
-              BOOST STATS (+100 WINS / +250 GAMES)
-            </button>
-            <button class="term-btn" onclick="window.adminPrestigePack()">
-              PRESTIGE PACK (MONEY + ITEMS + ACHIEVEMENTS)
-            </button>
-            <button class="term-btn" onclick="window.adminUnlockAllAchievements()">
-              UNLOCK ALL ACHIEVEMENTS
-            </button>
-          </div>
-
-          <div class="admin-section">
-            <p class="admin-section-title">MARKET CONTROL</p>
-            <button class="term-btn" onclick="window.adminMarketMoonshot()">
-              MARKET MOONSHOT (+35% ALL STOCKS)
-            </button>
-            <button class="term-btn" onclick="window.adminMarketMeltdown()">
-              MARKET MELTDOWN (-45% ALL STOCKS)
-            </button>
-            <button class="term-btn" onclick="window.adminMarketCrashToZero()">
-              CRASH MARKET TO ZERO
-            </button>
-            <button class="term-btn" onclick="window.adminMarketTimesThousand()">
-              MULTIPLY MARKET x1000000000000000000
-            </button>
-          </div>
-
+        </div>
         </div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
           CLOSE

@@ -2429,26 +2429,28 @@ export async function adminGrantCash(amount) {
 }
 
 function getAdminTargetUser() {
-  const userSelect = document.getElementById("adminTargetUser");
-  return String(userSelect?.value || "")
+  const userInput = document.getElementById("adminTargetUser");
+  const candidate = String(userInput?.value || "")
     .trim()
     .toUpperCase();
+  if (!candidate) return "";
+  if (!/^[A-Z0-9_]{3,10}$/.test(candidate)) return "";
+  return candidate;
 }
 
 function getAdminTargetScope() {
   const scopeSelect = document.getElementById("adminTargetScope");
-  const scope = String(scopeSelect?.value || "selected").trim().toLowerCase();
-  if (["all", "others", "self", "selected"].includes(scope)) return scope;
-  return "selected";
+  const scope = String(scopeSelect?.value || "self").trim().toLowerCase();
+  if (["all", "others", "self", "username"].includes(scope)) return scope;
+  return "self";
 }
 
 async function resolveAdminTargetUsers() {
   const scope = getAdminTargetScope();
+  const selected = getAdminTargetUser();
+  if (selected) return [selected];
   if (scope === "self") return [myName];
-  if (scope === "selected") {
-    const selected = getAdminTargetUser();
-    return selected ? [selected] : [];
-  }
+  if (scope === "username") return [myName];
 
   const names = [];
   const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
@@ -2500,13 +2502,14 @@ async function applyAdminActionToTargets({ actionName, emptyToast, mutateRemote,
 
 export async function adminRefreshTargetUsers() {
   if (!isGodUser()) return;
-  const userSelect = document.getElementById("adminTargetUser");
-  if (!userSelect) return;
+  const userInput = document.getElementById("adminTargetUser");
+  const userList = document.getElementById("adminTargetUserList");
+  if (!userInput || !userList) return;
 
-  const previous = String(userSelect.value || "")
+  const previous = String(userInput.value || "")
     .trim()
     .toUpperCase();
-  userSelect.innerHTML = '<option value="">SELECT USER</option>';
+  userList.innerHTML = "";
 
   try {
     const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
@@ -2523,22 +2526,193 @@ export async function adminRefreshTargetUsers() {
       .forEach((name) => {
         const option = document.createElement("option");
         option.value = name;
-        option.innerText = name;
-        userSelect.appendChild(option);
+        userList.appendChild(option);
       });
 
-    if (previous && names.includes(previous)) userSelect.value = previous;
+    if (previous && names.includes(previous)) userInput.value = previous;
     showToast(`TARGET LIST READY (${names.length})`, "🎯");
   } catch {
     showToast("FAILED TO LOAD TARGETS", "⚠️", "Check connection.");
   }
 }
 
-export async function adminGrantCashToUser(amount) {
-  await adminGrantCash(amount);
+function readAdminNumberInput(id, fallback = 0) {
+  const input = document.getElementById(id);
+  const value = Number(input?.value);
+  return Number.isFinite(value) ? value : fallback;
 }
 
-export async function adminForgiveInterestForUser() {
+function readAdminTextInput(id) {
+  const input = document.getElementById(id);
+  return String(input?.value || "").trim();
+}
+
+function clearAdminTextInput(id) {
+  const input = document.getElementById(id);
+  if (input) input.value = "";
+}
+
+function readAdminActionChoice(id, allowed, fallback) {
+  const input = document.getElementById(id);
+  const value = String(input?.value || "")
+    .trim()
+    .toLowerCase();
+  return allowed.includes(value) ? value : fallback;
+}
+
+function parseTypedAdminValue(type, raw) {
+  if (type === "string") return String(raw || "").trim();
+  if (type === "integer") {
+    const value = Math.floor(Number(raw));
+    return Number.isFinite(value) ? value : null;
+  }
+  if (type === "boolean") {
+    const normalized = String(raw || "").trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "off"].includes(normalized)) return false;
+    return null;
+  }
+  if (type === "list") {
+    return String(raw || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return null;
+}
+
+function validateAdminSettingValue(key, type, value) {
+  const setting = String(key || "")
+    .trim()
+    .toLowerCase();
+  if (!/^[a-z0-9_]{3,32}$/.test(setting)) return { ok: false, message: "INVALID SETTING KEY" };
+  if (type === "integer" && (!Number.isInteger(value) || value < 0 || value > 1000000000)) {
+    return { ok: false, message: "INTEGER OUT OF RANGE" };
+  }
+  if (setting === "role") {
+    const allowed = ["PLAYER", "MOD", "ADMIN", "OWNER"];
+    if (type !== "string" || !allowed.includes(String(value || "").toUpperCase())) {
+      return { ok: false, message: "INVALID ROLE" };
+    }
+  }
+  if (setting === "status") {
+    const allowed = ["ACTIVE", "MUTED", "SUSPENDED", "BANNED"];
+    if (type !== "string" || !allowed.includes(String(value || "").toUpperCase())) {
+      return { ok: false, message: "INVALID STATUS" };
+    }
+  }
+  if (["permissions", "tags", "restrictions"].includes(setting)) {
+    const list = Array.isArray(value) ? value : [String(value || "")];
+    if (!list.every((entry) => /^[A-Z0-9_]{2,32}$/i.test(String(entry || "").trim()))) {
+      return { ok: false, message: "INVALID LIST ENTRY" };
+    }
+  }
+  return { ok: true };
+}
+
+function applySettingAction(currentValue, action, type, value) {
+  if (action === "set") return value;
+  if (type === "integer") {
+    const base = Number.isInteger(currentValue) ? currentValue : 0;
+    if (action === "add") return base + value;
+    if (action === "remove") return Math.max(0, base - value);
+  }
+  if (type === "boolean") {
+    if (action === "add") return true;
+    if (action === "remove") return false;
+  }
+  if (type === "string") {
+    const base = String(currentValue || "");
+    if (action === "add") return `${base}${value}`.trim();
+    if (action === "remove") return base.replace(String(value), "").trim();
+  }
+  if (type === "list") {
+    const base = new Set(Array.isArray(currentValue) ? currentValue.map((entry) => String(entry).trim()) : []);
+    const updates = Array.isArray(value) ? value : [value];
+    if (action === "add") updates.forEach((entry) => base.add(String(entry).trim()));
+    if (action === "remove") updates.forEach((entry) => base.delete(String(entry).trim()));
+    return Array.from(base).filter(Boolean);
+  }
+  return value;
+}
+
+async function adminApplySettingAction({ key, type, action, value, successLabel = "SETTING UPDATED" }) {
+  const validation = validateAdminSettingValue(key, type, value);
+  if (!validation.ok) {
+    showToast(validation.message, "⚠️");
+    return;
+  }
+  await applyAdminActionToTargets({
+    actionName: `SETTING:${key.toUpperCase()}`,
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const settings = { ...(targetData?.adminSettings || {}) };
+      const currentValue = settings[key];
+      settings[key] = applySettingAction(currentValue, action, type, value);
+      return { adminSettings: settings };
+    },
+    mutateLocal: () => {
+      state.adminSettings = state.adminSettings || {};
+      const currentValue = state.adminSettings[key];
+      state.adminSettings[key] = applySettingAction(currentValue, action, type, value);
+    },
+    successToast: (targets) => `${successLabel} FOR ${targets.length} PLAYER(S)`,
+    failToast: "SETTING UPDATE FAILED",
+  });
+}
+
+export async function adminGrantCashFromInput() {
+  await adminGrantCash(readAdminNumberInput("adminCashAmount", 0));
+}
+
+export async function adminSetCashFromInput() {
+  const amount = Math.max(0, Math.floor(readAdminNumberInput("adminCashAmount", 0)));
+  await applyAdminActionToTargets({
+    actionName: "SET CASH",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: () => ({ money: amount }),
+    mutateLocal: () => {
+      const previous = Math.floor(Number(myMoney) || 0);
+      myMoney = amount;
+      logTransaction("ADMIN CASH SET", myMoney - previous);
+    },
+    successToast: (targets) => `SET CASH FOR ${targets.length} PLAYER(S)`,
+    failToast: "SET CASH FAILED",
+  });
+}
+
+export async function adminMultiplyCashFromInput() {
+  const multiplier = Math.max(0, readAdminNumberInput("adminCashAmount", 1));
+  await applyAdminActionToTargets({
+    actionName: "MULTIPLY CASH",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => ({ money: Math.floor((Number(targetData?.money) || 0) * multiplier) }),
+    mutateLocal: () => {
+      const previous = Math.floor(Number(myMoney) || 0);
+      myMoney = Math.floor(previous * multiplier);
+      logTransaction("ADMIN CASH MULTIPLIER", myMoney - previous);
+    },
+    successToast: (targets) => `MULTIPLIED CASH FOR ${targets.length} PLAYER(S)`,
+    failToast: "MULTIPLY CASH FAILED",
+  });
+}
+
+export async function adminSetDebtFromInput() {
+  const debt = Math.max(0, Math.floor(readAdminNumberInput("adminCashAmount", 0)));
+  const now = Date.now();
+  await applyAdminActionToTargets({
+    actionName: "SET DEBT",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => ({ loanData: { ...(targetData?.loanData || {}), debt, lastInterestAt: now } }),
+    mutateLocal: () => {
+      loanData = { ...(loanData || {}), debt, lastInterestAt: now };
+    },
+    successToast: (targets) => `SET DEBT FOR ${targets.length} PLAYER(S)`,
+    failToast: "SET DEBT FAILED",
+  });
+}
+
+export async function adminForgiveInterest() {
   const now = Date.now();
   await applyAdminActionToTargets({
     actionName: "FORGIVE INTEREST",
@@ -2556,27 +2730,6 @@ export async function adminForgiveInterestForUser() {
     },
     successToast: (targets) => `FORGAVE INTEREST FOR ${targets.length} PLAYER(S)`,
     failToast: "INTEREST FORGIVENESS FAILED",
-  });
-}
-
-export async function adminInjectJackpot() {
-  const jackpot = 5000000;
-  await adminGrantCash(jackpot);
-}
-
-export async function adminSetMaxCash() {
-  await applyAdminActionToTargets({
-    actionName: "SET MAX CASH",
-    emptyToast: "SELECT A TARGET FIRST",
-    mutateRemote: () => ({ money: 999999999 }),
-    mutateLocal: () => {
-      const previous = Math.floor(Number(myMoney) || 0);
-      myMoney = 999999999;
-      const delta = Math.max(0, myMoney - previous);
-      if (delta > 0) logTransaction("ADMIN BANK OVERRIDE", delta);
-    },
-    successToast: (targets) => `SET BANK TO $999,999,999 FOR ${targets.length} PLAYER(S)`,
-    failToast: "MAX CASH OVERRIDE FAILED",
   });
 }
 
@@ -2625,45 +2778,58 @@ export async function adminClearDebtAndCooldowns() {
   });
 }
 
-export async function adminBoostStats() {
+export async function adminBoostStatsFromInput() {
+  const amount = Math.max(1, Math.floor(readAdminNumberInput("adminStatAmount", 100)));
   await applyAdminActionToTargets({
     actionName: "BOOST STATS",
-    emptyToast: "SELECT A TARGET FIRST",
+    emptyToast: "NO PLAYERS MATCHED",
     mutateRemote: (targetData) => ({
       stats: {
-        games: Math.max(0, Number(targetData?.stats?.games) || 0) + 250,
-        wins: Math.max(0, Number(targetData?.stats?.wins) || 0) + 100,
+        games: Math.max(0, Number(targetData?.stats?.games) || 0) + amount * 2,
+        wins: Math.max(0, Number(targetData?.stats?.wins) || 0) + amount,
         wpm: Math.max(120, Number(targetData?.stats?.wpm) || 0),
-      },
-      jobs: {
-        ...(targetData?.jobs || {}),
-        completed: {
-          ...(targetData?.jobs?.completed || {}),
-          math: Math.max(50, Number(targetData?.jobs?.completed?.math) || 0),
-          code: Math.max(50, Number(targetData?.jobs?.completed?.code) || 0),
-          click: Math.max(50, Number(targetData?.jobs?.completed?.click) || 0),
-        },
       },
     }),
     mutateLocal: () => {
-      myStats.games = Math.max(0, Number(myStats.games) || 0) + 250;
-      myStats.wins = Math.max(0, Number(myStats.wins) || 0) + 100;
+      myStats.games = Math.max(0, Number(myStats.games) || 0) + amount * 2;
+      myStats.wins = Math.max(0, Number(myStats.wins) || 0) + amount;
       myStats.wpm = Math.max(120, Number(myStats.wpm) || 0);
-      jobData.completed = {
-        math: Math.max(50, Number(jobData.completed?.math) || 0),
-        code: Math.max(50, Number(jobData.completed?.code) || 0),
-        click: Math.max(50, Number(jobData.completed?.click) || 0),
-      };
     },
     successToast: (targets) => `STATS BOOSTED FOR ${targets.length} PLAYER(S)`,
     failToast: "STAT BOOST FAILED",
   });
 }
 
-export async function adminMaxPortfolio() {
+export async function adminSetJobCompletionsFromInput() {
+  const amount = Math.max(0, Math.floor(readAdminNumberInput("adminStatAmount", 0)));
+  const jobKeys = ["cashier", "frontdesk", "delivery", "stocker", "janitor", "barista", "math", "code", "click"];
   await applyAdminActionToTargets({
-    actionName: "MAX PORTFOLIO",
-    emptyToast: "SELECT A TARGET FIRST",
+    actionName: "SET JOB COMPLETIONS",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const completed = { ...(targetData?.jobs?.completed || {}) };
+      jobKeys.forEach((key) => {
+        completed[key] = amount;
+      });
+      return { jobs: { ...(targetData?.jobs || {}), completed } };
+    },
+    mutateLocal: () => {
+      const completed = { ...(jobData?.completed || {}) };
+      jobKeys.forEach((key) => {
+        completed[key] = amount;
+      });
+      jobData.completed = completed;
+    },
+    successToast: (targets) => `UPDATED JOB COMPLETIONS FOR ${targets.length} PLAYER(S)`,
+    failToast: "JOB COMPLETION UPDATE FAILED",
+  });
+}
+
+export async function adminSetPortfolioSharesFromInput() {
+  const shares = Math.max(0, Math.floor(readAdminNumberInput("adminPortfolioAmount", 0)));
+  await applyAdminActionToTargets({
+    actionName: "SET PORTFOLIO SHARES",
+    emptyToast: "NO PLAYERS MATCHED",
     mutateRemote: (targetData) => {
       const targetStock = {
         holdings: { ...(targetData?.stockData?.holdings || {}) },
@@ -2671,19 +2837,19 @@ export async function adminMaxPortfolio() {
         buyMultiplier: targetData?.stockData?.buyMultiplier || 1,
       };
       marketState.stocks.forEach((stock) => {
-        targetStock.holdings[stock.symbol] = 9999;
+        targetStock.holdings[stock.symbol] = shares;
       });
       return { stockData: targetStock };
     },
     mutateLocal: () => {
       ensureStockProfile();
       marketState.stocks.forEach((stock) => {
-        stockData.holdings[stock.symbol] = 9999;
+        stockData.holdings[stock.symbol] = shares;
       });
       stockData.selected = marketState.stocks[0]?.symbol || stockData.selected;
     },
-    successToast: (targets) => `PORTFOLIO MAXED FOR ${targets.length} PLAYER(S)`,
-    failToast: "PORTFOLIO MAX FAILED",
+    successToast: (targets) => `UPDATED PORTFOLIO SHARES FOR ${targets.length} PLAYER(S)`,
+    failToast: "PORTFOLIO UPDATE FAILED",
   });
 }
 
@@ -2735,20 +2901,6 @@ async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = mini
   }
 }
 
-export async function adminMarketMoonshot() {
-  if (!isGodUser()) return;
-  await setMarketShift(1.35);
-  showToast("MARKET SENT TO THE MOON", "🚀");
-  await saveStats();
-}
-
-export async function adminMarketMeltdown() {
-  if (!isGodUser()) return;
-  await setMarketShift(0.55);
-  showToast("MARKET MELTDOWN TRIGGERED", "💥");
-  await saveStats();
-}
-
 export async function adminMarketCrashToZero() {
   if (!isGodUser()) return;
   await setMarketShift(0, 0.01, 0.01);
@@ -2756,11 +2908,200 @@ export async function adminMarketCrashToZero() {
   await saveStats();
 }
 
-export async function adminMarketTimesThousand() {
+export async function adminMarketPumpFromInput() {
   if (!isGodUser()) return;
-  await setMarketShift(1000000000000000000, 0.01, 1);
-  showToast("MARKET MULTIPLIED x1000000000000000000", "📈");
+  const percent = Math.max(1, readAdminNumberInput("adminMarketAmount", 35));
+  await setMarketShift(1 + percent / 100);
+  showToast(`MARKET UP +${percent}%`, "📈");
   await saveStats();
+}
+
+export async function adminMarketDropFromInput() {
+  if (!isGodUser()) return;
+  const percent = Math.max(1, readAdminNumberInput("adminMarketAmount", 35));
+  await setMarketShift(Math.max(0, 1 - percent / 100), 0.01, 0.01);
+  showToast(`MARKET DOWN -${percent}%`, "📉");
+  await saveStats();
+}
+
+export async function adminMarketMultiplyFromInput() {
+  if (!isGodUser()) return;
+  const multiplier = Math.max(0, readAdminNumberInput("adminMarketAmount", 2));
+  await setMarketShift(multiplier, 0.01, 0.01);
+  showToast(`MARKET MULTIPLIED x${multiplier}`, "📊");
+  await saveStats();
+}
+
+export async function adminSendChatAnnouncement() {
+  if (!isGodUser()) return;
+  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
+  if (!message) {
+    showToast("CHAT MESSAGE REQUIRED", "⚠️");
+    return;
+  }
+  const sent = await runFirestoreTask(
+    () => addDoc(collection(db, "gooner_global_chat"), { user: myName, msg: `[ADMIN] ${message}`, ts: Date.now() }),
+    "ADMIN CHAT",
+    "Announcement failed."
+  );
+  if (!sent) return;
+  clearAdminTextInput("adminChatMessage");
+  showToast("ANNOUNCEMENT SENT", "📣");
+}
+
+export async function adminSendChatSystemMessage() {
+  if (!isGodUser()) return;
+  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
+  if (!message) {
+    showToast("CHAT MESSAGE REQUIRED", "⚠️");
+    return;
+  }
+  const sent = await runFirestoreTask(
+    () => addDoc(collection(db, "gooner_global_chat"), { user: "SYSTEM", msg: message, ts: Date.now() }),
+    "ADMIN CHAT",
+    "System message failed."
+  );
+  if (!sent) return;
+  clearAdminTextInput("adminChatMessage");
+  showToast("SYSTEM MESSAGE SENT", "🛰️");
+}
+
+export async function adminClearRecentChatFromInput() {
+  if (!isGodUser()) return;
+  const count = Math.max(1, Math.floor(readAdminNumberInput("adminChatClearCount", 10)));
+  try {
+    const snap = await getDocs(query(collection(db, "gooner_global_chat"), orderBy("ts", "desc"), limit(count)));
+    if (snap.empty) {
+      showToast("NO CHAT MESSAGES FOUND", "ℹ️");
+      return;
+    }
+    await Promise.all(snap.docs.map((row) => deleteDoc(row.ref)));
+    showToast(`REMOVED ${snap.docs.length} CHAT MESSAGE(S)`, "🧹");
+  } catch {
+    showToast("CHAT CLEAR FAILED", "⚠️", "Try again shortly.");
+  }
+}
+
+export async function adminApplySettingActionFromInput() {
+  const key = String(readAdminTextInput("adminSettingKey") || "")
+    .trim()
+    .toLowerCase();
+  const type = readAdminActionChoice("adminSettingType", ["string", "integer", "boolean", "list"], "string");
+  const action = readAdminActionChoice("adminSettingAction", ["add", "remove", "set"], "set");
+  const parsed = parseTypedAdminValue(type, readAdminTextInput("adminSettingValue"));
+  if (parsed === null || key.length < 3) {
+    showToast("INVALID SETTING INPUT", "⚠️");
+    return;
+  }
+  await adminApplySettingAction({ key, type, action, value: parsed, successLabel: "SETTING APPLIED" });
+}
+
+export async function adminSetRoleFromInput() {
+  const role = String(readAdminTextInput("adminRoleInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "role", type: "string", action: "set", value: role, successLabel: "ROLE SET" });
+}
+
+export async function adminSetStatusFromInput() {
+  const status = String(readAdminTextInput("adminStatusInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "status", type: "string", action: "set", value: status, successLabel: "STATUS SET" });
+}
+
+export async function adminGrantPermissionFromInput() {
+  const permission = String(readAdminTextInput("adminPermissionInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "permissions", type: "list", action: "add", value: [permission], successLabel: "PERMISSION ADDED" });
+}
+
+export async function adminRevokePermissionFromInput() {
+  const permission = String(readAdminTextInput("adminPermissionInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "permissions", type: "list", action: "remove", value: [permission], successLabel: "PERMISSION REMOVED" });
+}
+
+export async function adminAddTagFromInput() {
+  const tag = String(readAdminTextInput("adminTagInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "tags", type: "list", action: "add", value: [tag], successLabel: "TAG ADDED" });
+}
+
+export async function adminRemoveTagFromInput() {
+  const tag = String(readAdminTextInput("adminTagInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "tags", type: "list", action: "remove", value: [tag], successLabel: "TAG REMOVED" });
+}
+
+export async function adminSetLimitFromInput() {
+  const key = String(readAdminTextInput("adminLimitKeyInput") || "")
+    .trim()
+    .toLowerCase();
+  const value = Math.max(0, Math.floor(readAdminNumberInput("adminLimitValueInput", 0)));
+  await adminApplySettingAction({ key: `limit_${key}`, type: "integer", action: "set", value, successLabel: "LIMIT SET" });
+}
+
+export async function adminSetPreferenceFromInput() {
+  const key = String(readAdminTextInput("adminPreferenceKeyInput") || "")
+    .trim()
+    .toLowerCase();
+  const value = readAdminTextInput("adminPreferenceValueInput");
+  await adminApplySettingAction({ key: `pref_${key}`, type: "string", action: "set", value, successLabel: "PREFERENCE SET" });
+}
+
+export async function adminRemoveRestrictionFromInput() {
+  const restriction = String(readAdminTextInput("adminRestrictionInput") || "").toUpperCase();
+  await adminApplySettingAction({ key: "restrictions", type: "list", action: "remove", value: [restriction], successLabel: "RESTRICTION REMOVED" });
+}
+
+export async function adminLogAdminActionFromInput() {
+  if (!isGodUser()) return;
+  const message = readAdminTextInput("adminActionLogInput");
+  if (!message) {
+    showToast("LOG MESSAGE REQUIRED", "⚠️");
+    return;
+  }
+  const ok = await runFirestoreTask(
+    () => addDoc(collection(db, "gooner_admin_ops"), { actor: myName, message: message.slice(0, 100), ts: Date.now() }),
+    "ADMIN LOG",
+    "Admin log failed."
+  );
+  if (!ok) return;
+  clearAdminTextInput("adminActionLogInput");
+  showToast("ADMIN ACTION LOGGED", "🧾");
+}
+
+export async function adminScheduleTaskFromInput() {
+  const taskName = readAdminTextInput("adminTaskNameInput");
+  const delayMinutes = Math.max(1, Math.floor(readAdminNumberInput("adminTaskTimeInput", 1)));
+  if (!taskName) {
+    showToast("TASK NAME REQUIRED", "⚠️");
+    return;
+  }
+  await applyAdminActionToTargets({
+    actionName: "SCHEDULE TASK",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const queued = Array.isArray(targetData?.adminScheduledTasks) ? targetData.adminScheduledTasks : [];
+      return {
+        adminScheduledTasks: [
+          ...queued,
+          { name: taskName.slice(0, 40), runAt: Date.now() + delayMinutes * 60000, createdBy: myName },
+        ].slice(-50),
+      };
+    },
+    mutateLocal: () => {},
+    successToast: (targets) => `TASK SCHEDULED FOR ${targets.length} PLAYER(S)`,
+    failToast: "TASK SCHEDULE FAILED",
+  });
+}
+
+export async function adminClearScheduledTasksFromInput() {
+  const removeCount = Math.max(1, Math.floor(readAdminNumberInput("adminTaskClearCount", 1)));
+  await applyAdminActionToTargets({
+    actionName: "CLEAR SCHEDULED TASKS",
+    emptyToast: "NO PLAYERS MATCHED",
+    mutateRemote: (targetData) => {
+      const queued = Array.isArray(targetData?.adminScheduledTasks) ? targetData.adminScheduledTasks : [];
+      return { adminScheduledTasks: queued.slice(removeCount) };
+    },
+    mutateLocal: () => {},
+    successToast: (targets) => `REMOVED SCHEDULED TASKS FOR ${targets.length} PLAYER(S)`,
+    failToast: "TASK CLEAR FAILED",
+  });
 }
 
 export async function adminPrestigePack() {

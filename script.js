@@ -14,20 +14,38 @@ import {
   submitJob,
   state,
   adminGrantCash,
-  adminInjectJackpot,
-  adminSetMaxCash,
+  adminGrantCashFromInput,
+  adminSetCashFromInput,
+  adminMultiplyCashFromInput,
+  adminSetDebtFromInput,
   adminGrantAllShopItems,
   adminClearDebtAndCooldowns,
-  adminBoostStats,
-  adminMaxPortfolio,
-  adminMarketMoonshot,
-  adminMarketMeltdown,
+  adminSetPortfolioSharesFromInput,
   adminMarketCrashToZero,
-  adminMarketTimesThousand,
   adminPrestigePack,
   adminRefreshTargetUsers,
-  adminGrantCashToUser,
-  adminForgiveInterestForUser,
+  adminForgiveInterest,
+  adminBoostStatsFromInput,
+  adminSetJobCompletionsFromInput,
+  adminMarketPumpFromInput,
+  adminMarketDropFromInput,
+  adminMarketMultiplyFromInput,
+  adminSendChatAnnouncement,
+  adminSendChatSystemMessage,
+  adminClearRecentChatFromInput,
+  adminApplySettingActionFromInput,
+  adminSetRoleFromInput,
+  adminSetStatusFromInput,
+  adminGrantPermissionFromInput,
+  adminRevokePermissionFromInput,
+  adminAddTagFromInput,
+  adminRemoveTagFromInput,
+  adminSetLimitFromInput,
+  adminSetPreferenceFromInput,
+  adminRemoveRestrictionFromInput,
+  adminLogAdminActionFromInput,
+  adminScheduleTaskFromInput,
+  adminClearScheduledTasksFromInput,
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
@@ -74,20 +92,38 @@ window.submitJob = submitJob;
 window.initTypeGame = initTypeGame;
 window.setPongDiff = setPongDiff;
 window.adminGrantCash = adminGrantCash;
-window.adminInjectJackpot = adminInjectJackpot;
-window.adminSetMaxCash = adminSetMaxCash;
+window.adminGrantCashFromInput = adminGrantCashFromInput;
+window.adminSetCashFromInput = adminSetCashFromInput;
+window.adminMultiplyCashFromInput = adminMultiplyCashFromInput;
+window.adminSetDebtFromInput = adminSetDebtFromInput;
 window.adminGrantAllShopItems = adminGrantAllShopItems;
 window.adminClearDebtAndCooldowns = adminClearDebtAndCooldowns;
-window.adminBoostStats = adminBoostStats;
-window.adminMaxPortfolio = adminMaxPortfolio;
-window.adminMarketMoonshot = adminMarketMoonshot;
-window.adminMarketMeltdown = adminMarketMeltdown;
+window.adminSetPortfolioSharesFromInput = adminSetPortfolioSharesFromInput;
 window.adminMarketCrashToZero = adminMarketCrashToZero;
-window.adminMarketTimesThousand = adminMarketTimesThousand;
 window.adminPrestigePack = adminPrestigePack;
 window.adminRefreshTargetUsers = adminRefreshTargetUsers;
-window.adminGrantCashToUser = adminGrantCashToUser;
-window.adminForgiveInterestForUser = adminForgiveInterestForUser;
+window.adminForgiveInterest = adminForgiveInterest;
+window.adminBoostStatsFromInput = adminBoostStatsFromInput;
+window.adminSetJobCompletionsFromInput = adminSetJobCompletionsFromInput;
+window.adminMarketPumpFromInput = adminMarketPumpFromInput;
+window.adminMarketDropFromInput = adminMarketDropFromInput;
+window.adminMarketMultiplyFromInput = adminMarketMultiplyFromInput;
+window.adminSendChatAnnouncement = adminSendChatAnnouncement;
+window.adminSendChatSystemMessage = adminSendChatSystemMessage;
+window.adminClearRecentChatFromInput = adminClearRecentChatFromInput;
+window.adminApplySettingActionFromInput = adminApplySettingActionFromInput;
+window.adminSetRoleFromInput = adminSetRoleFromInput;
+window.adminSetStatusFromInput = adminSetStatusFromInput;
+window.adminGrantPermissionFromInput = adminGrantPermissionFromInput;
+window.adminRevokePermissionFromInput = adminRevokePermissionFromInput;
+window.adminAddTagFromInput = adminAddTagFromInput;
+window.adminRemoveTagFromInput = adminRemoveTagFromInput;
+window.adminSetLimitFromInput = adminSetLimitFromInput;
+window.adminSetPreferenceFromInput = adminSetPreferenceFromInput;
+window.adminRemoveRestrictionFromInput = adminRemoveRestrictionFromInput;
+window.adminLogAdminActionFromInput = adminLogAdminActionFromInput;
+window.adminScheduleTaskFromInput = adminScheduleTaskFromInput;
+window.adminClearScheduledTasksFromInput = adminClearScheduledTasksFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
