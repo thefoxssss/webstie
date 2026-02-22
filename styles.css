@@ -648,20 +648,31 @@ canvas {
   box-shadow: 0 0 20px var(--accent-dim);
 }
 
+.game-overlay {
+  gap: 14px;
+}
+
+.game-content-shell {
+  width: min(95vw, 1200px);
+  border: 2px solid var(--accent);
+  background: rgba(0, 0, 0, 0.86);
+  box-shadow: 0 0 20px var(--accent-dim);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
 .overlay-controls-fixed {
-  position: sticky;
-  bottom: 20px;
-  margin: auto 0 10px;
+  position: static;
+  margin: 0 0 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: min(95vw, 430px);
   z-index: 1001;
-}
-
-.game-overlay {
-  padding-bottom: 96px;
 }
 
 .fullscreen-btn-fixed {
@@ -2527,6 +2538,10 @@ canvas {
 
 
 @media (max-width: 560px) {
+  .game-content-shell {
+    padding: 14px 10px;
+  }
+
   .overlay-controls-fixed {
     width: min(95vw, 320px);
     flex-direction: column;

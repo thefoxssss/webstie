@@ -387,11 +387,21 @@ function initGameFullscreenControls() {
 
     overlay.classList.add("game-overlay");
 
+    let gameShell = overlay.querySelector(".game-content-shell");
+    if (!gameShell) {
+      gameShell = document.createElement("div");
+      gameShell.className = "game-content-shell";
+      Array.from(overlay.children)
+        .filter((child) => !child.classList.contains("overlay-controls-fixed"))
+        .forEach((child) => gameShell.appendChild(child));
+      overlay.appendChild(gameShell);
+    }
+
     let controlsBar = overlay.querySelector(".overlay-controls-fixed");
     if (!controlsBar) {
       controlsBar = document.createElement("div");
       controlsBar.className = "overlay-controls-fixed";
-      exitBtn.insertAdjacentElement("beforebegin", controlsBar);
+      overlay.appendChild(controlsBar);
     }
 
     controlsBar.appendChild(exitBtn);
