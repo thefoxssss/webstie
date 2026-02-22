@@ -1485,20 +1485,31 @@ function formatTrendingWindowLabel() {
   return `LAST REFRESH ${now.toLocaleTimeString("en-GB")} // WINDOW 24H`;
 }
 
+function formatTrendingTimestamp(tsValue) {
+  const numericTs = Number(tsValue || 0);
+  if (!numericTs) return "--:--:--";
+  return new Date(numericTs).toLocaleTimeString("en-GB");
+}
+
 async function refreshTrendingGames() {
   const wrap = document.getElementById("trendingGamesList");
   const meta = document.getElementById("trendingGamesMeta");
+  const overlayWrap = document.getElementById("overlayTrendingGamesList");
+  const overlayMeta = document.getElementById("overlayTrendingGamesMeta");
   if (!wrap || !meta) return;
   const since = Date.now() - 24 * 60 * 60 * 1000;
 
   try {
     const snap = await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", since), limit(800)));
     const counts = new Map();
+    const latestPlayByGame = new Map();
     snap.forEach((entry) => {
       const data = entry.data() || {};
       const key = String(data.game || "").toLowerCase().trim();
       if (!key) return;
+      const ts = Number(data.ts || 0);
       counts.set(key, (counts.get(key) || 0) + 1);
+      if (ts > Number(latestPlayByGame.get(key) || 0)) latestPlayByGame.set(key, ts);
     });
 
     const rows = [...counts.entries()]
@@ -1506,8 +1517,12 @@ async function refreshTrendingGames() {
       .slice(0, 5);
 
     if (!rows.length) {
-      wrap.innerHTML = '<div class="trending-empty">NO GAME PLAYS IN THE LAST 24H.</div>';
-      meta.innerText = formatTrendingWindowLabel();
+      const emptyMarkup = '<div class="trending-empty">NO GAME PLAYS IN THE LAST 24H.</div>';
+      wrap.innerHTML = emptyMarkup;
+      if (overlayWrap) overlayWrap.innerHTML = emptyMarkup;
+      const label = formatTrendingWindowLabel();
+      meta.innerText = label;
+      if (overlayMeta) overlayMeta.innerText = label;
       return;
     }
 
@@ -1518,24 +1533,44 @@ async function refreshTrendingGames() {
       })
       .join("");
 
-    meta.innerText = formatTrendingWindowLabel();
+    if (overlayWrap) {
+      overlayWrap.innerHTML = rows
+        .map(([game, plays], idx) => {
+          const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
+          const latestTs = latestPlayByGame.get(game) || 0;
+          return `<div class="trending-overlay-row"><span class="trending-rank">#${idx + 1}</span><button class="trending-game-btn" type="button" data-game="${escapeHtml(game)}"><span>${escapeHtml(label)}</span><span class="trending-count">${plays} PLAYS</span></button><button class="trending-game-time" type="button" data-game="${escapeHtml(game)}" title="Launch ${escapeHtml(label)}">${formatTrendingTimestamp(latestTs)}</button></div>`;
+        })
+        .join("");
+    }
+
+    const label = formatTrendingWindowLabel();
+    meta.innerText = label;
+    if (overlayMeta) overlayMeta.innerText = label;
   } catch (error) {
-    meta.innerText = "TRENDING SIGNAL OFFLINE";
+    const offlineLabel = "TRENDING SIGNAL OFFLINE";
+    meta.innerText = offlineLabel;
     wrap.innerHTML = '<div class="trending-empty">UNABLE TO LOAD TRENDING GAMES.</div>';
+    if (overlayMeta) overlayMeta.innerText = offlineLabel;
+    if (overlayWrap) overlayWrap.innerHTML = '<div class="trending-empty">UNABLE TO LOAD TRENDING GAMES.</div>';
   }
 }
 
 
+
 function renderUpdateLogMessage(message, tag = "SYNC") {
-  const list = document.getElementById("updateLogList");
-  if (!list) return;
-  list.innerHTML = `<li><span>${escapeHtml(tag)}</span> ${escapeHtml(message)}</li>`;
+  const lists = [document.getElementById("updateLogList"), document.getElementById("overlayUpdateLogList")].filter(Boolean);
+  if (!lists.length) return;
+  const row = `<li><span>${escapeHtml(tag)}</span> ${escapeHtml(message)}</li>`;
+  lists.forEach((list) => {
+    list.innerHTML = row;
+  });
 }
 
 
 async function refreshUpdateLogFromMergedPrs() {
   const panel = document.getElementById("updateLogPanel");
   const list = document.getElementById("updateLogList");
+  const overlayList = document.getElementById("overlayUpdateLogList");
   if (!panel || !list) return;
 
   const owner = String(panel.dataset.githubOwner || "").trim();
@@ -1550,7 +1585,9 @@ async function refreshUpdateLogFromMergedPrs() {
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
     if (cached && Date.now() - Number(cached.ts || 0) < cacheTtlMs && Array.isArray(cached.rows)) {
-      list.innerHTML = cached.rows.join("");
+      const cachedHtml = cached.rows.join("");
+      list.innerHTML = cachedHtml;
+      if (overlayList) overlayList.innerHTML = cachedHtml;
       return;
     }
   } catch {}
@@ -1581,7 +1618,9 @@ async function refreshUpdateLogFromMergedPrs() {
       return `<li><span>${escapeHtml(rowNumber)}</span> ${escapeHtml(title)}</li>`;
     });
 
-    list.innerHTML = rows.join("");
+    const html = rows.join("");
+    list.innerHTML = html;
+    if (overlayList) overlayList.innerHTML = html;
     localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows }));
   } catch (_error) {
     renderUpdateLogMessage("UNABLE TO LOAD MERGED PR FEED", "OFFLINE");
@@ -1590,38 +1629,57 @@ async function refreshUpdateLogFromMergedPrs() {
 
 function initTrendingGamesPanel() {
   const wrap = document.getElementById("trendingGamesList");
+  const overlayWrap = document.getElementById("overlayTrendingGamesList");
+  const openMenuBtn = document.getElementById("trendingGamesMenuBtn");
   if (!wrap || wrap.dataset.ready === "1") return;
   wrap.dataset.ready = "1";
 
-  wrap.addEventListener("click", (event) => {
+  const handleLaunchFromTarget = (event) => {
     const button = event.target.closest("[data-game]");
     const game = button?.dataset.game;
     if (!game) return;
     if (typeof window.launchGame === "function") {
       window.launchGame(game);
     }
-  });
+  };
+
+  wrap.addEventListener("click", handleLaunchFromTarget);
+  if (overlayWrap) overlayWrap.addEventListener("click", handleLaunchFromTarget);
+  if (openMenuBtn) {
+    openMenuBtn.addEventListener("click", () => {
+      openGame("overlayTrendingGames");
+      refreshTrendingGames();
+    });
+  }
 
   refreshTrendingGames();
   setInterval(refreshTrendingGames, 60000);
 }
 
 function initRandomGameButton() {
-  const button = document.getElementById("randomGameBtn");
+  const menuButton = document.getElementById("randomGameBtn");
+  const launchButton = document.getElementById("randomGameLaunchBtn");
+  if (menuButton && menuButton.dataset.ready !== "1") {
+    menuButton.dataset.ready = "1";
+    menuButton.addEventListener("click", () => {
+      openGame("overlayGames");
+    });
+  }
+
+  if (!launchButton || launchButton.dataset.ready === "1") return;
+  launchButton.dataset.ready = "1";
+  launchButton.addEventListener("click", () => {
+    openGame("overlayGames");
+  });
+}
+
+function initUpdateLogMenuButton() {
+  const button = document.getElementById("updateLogMenuBtn");
   if (!button || button.dataset.ready === "1") return;
   button.dataset.ready = "1";
-
   button.addEventListener("click", () => {
-    const gameButtons = Array.from(document.querySelectorAll(".games-grid .game-card[data-game]"));
-    if (!gameButtons.length || typeof window.launchGame !== "function") return;
-
-    const visibleGames = gameButtons.filter((gameBtn) => gameBtn.offsetParent !== null);
-    const pool = visibleGames.length ? visibleGames : gameButtons;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    const game = String(pick?.dataset.game || "").trim();
-    if (!game) return;
-
-    window.launchGame(game);
+    openGame("overlayUpdateLog");
+    refreshUpdateLogFromMergedPrs();
   });
 }
 
@@ -1985,6 +2043,7 @@ loadSeasonData();
 renderLiveOps();
 initTrendingGamesPanel();
 initRandomGameButton();
+initUpdateLogMenuButton();
 refreshUpdateLogFromMergedPrs();
 setupBankTransferUX();
 setupLoanUX();

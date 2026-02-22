@@ -408,6 +408,88 @@ body::before {
   color: #fff;
 }
 
+
+.random-game-cta h2,
+.trending-games h2,
+.update-log h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-menu-btn {
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.section-menu-btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.menu-feed-box {
+  width: min(92vw, 760px);
+}
+
+.menu-scroll-panel {
+  margin-top: 8px;
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.72);
+  padding: 10px;
+}
+
+.trending-overlay-list {
+  display: grid;
+  gap: 8px;
+}
+
+.trending-overlay-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.trending-game-time {
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.trending-game-time:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.update-log-overlay-list {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 10px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.update-log-overlay-list li span {
+  color: var(--accent);
+}
+
 .trending-meta {
   font-size: 8px;
   color: var(--accent);
