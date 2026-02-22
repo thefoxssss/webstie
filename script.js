@@ -462,6 +462,11 @@ function initMainSiteSearch() {
   const gamesFilter = document.getElementById("gamesFilter");
   if (!form || !input || !meta || !dropdown) return;
 
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("autocorrect", "off");
+  input.setAttribute("autocapitalize", "off");
+  input.setAttribute("spellcheck", "false");
+
   const QUICK_ROUTES = [
     { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY", overlayId: "overlayGames" },
     { aliases: ["trending", "trend"], action: () => openGame("overlayTrending"), label: "OPENED TRENDING GAMES", overlayId: "overlayTrending" },
@@ -565,7 +570,7 @@ function initMainSiteSearch() {
       .map((item) => ({
         type: "game",
         value: item.entry.title,
-        subtitle: `GAME • ${item.entry.tags.join("/").toUpperCase()}`,
+        subtitle: item.entry.description,
       }));
 
     const routeSuggestions = QUICK_ROUTES
