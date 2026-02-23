@@ -84,10 +84,49 @@ function readFirebaseOverrides() {
 
 function sanitizeFirebaseConfig(config) {
   const merged = { ...defaultFirebaseConfig, ...config };
+  const applyDefault = (key, validator, warning) => {
+    if (!validator(merged[key])) {
+      console.warn(warning);
+      merged[key] = defaultFirebaseConfig[key];
+    }
+  };
+
   if (!/^AIza[\w-]{20,}$/.test(String(merged.apiKey || ""))) {
     console.warn("Firebase apiKey override is invalid, falling back to default key.");
     merged.apiKey = defaultFirebaseConfig.apiKey;
   }
+
+  applyDefault(
+    "projectId",
+    (value) => /^[a-z0-9-]{5,}$/.test(String(value || "")),
+    "Firebase projectId override is invalid, falling back to default project."
+  );
+  applyDefault(
+    "authDomain",
+    (value) => /\.(firebaseapp\.com|web\.app)$/.test(String(value || "")),
+    "Firebase authDomain override is invalid, falling back to default domain."
+  );
+  applyDefault(
+    "storageBucket",
+    (value) => /\.(appspot\.com|firebasestorage\.app)$/.test(String(value || "")),
+    "Firebase storageBucket override is invalid, falling back to default bucket."
+  );
+  applyDefault(
+    "messagingSenderId",
+    (value) => /^\d{6,}$/.test(String(value || "")),
+    "Firebase messagingSenderId override is invalid, falling back to default sender ID."
+  );
+  applyDefault(
+    "appId",
+    (value) => /^\d+:\d+:web:[0-9a-f]+$/i.test(String(value || "")),
+    "Firebase appId override is invalid, falling back to default app ID."
+  );
+
+  if (merged.measurementId && !/^G-[A-Z0-9]+$/i.test(String(merged.measurementId || ""))) {
+    console.warn("Firebase measurementId override is invalid, falling back to default measurement ID.");
+    merged.measurementId = defaultFirebaseConfig.measurementId;
+  }
+
   return merged;
 }
 
