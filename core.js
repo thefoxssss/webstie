@@ -139,17 +139,17 @@ const firebaseConfig = sanitizeFirebaseConfig({
 
 function getFirebaseErrorCode(error) {
   const code = String(error?.code || "").toLowerCase();
-  return code.startsWith("firebase/") ? code.replace("firebase/", "") : code;
+  return code.startsWith("firebase/") ? code.slice("firebase/".length) : code;
 }
 
 export function isFirebaseQuotaError(error) {
   const code = getFirebaseErrorCode(error);
-  return code === "resource-exhausted" || code === "auth/quota-exceeded";
+  return code === "resource-exhausted" || code === "quota-exceeded";
 }
 
 export function handleFirebaseError(error, context = "FIREBASE", fallback = "") {
   const code = getFirebaseErrorCode(error);
-  if (code === "auth/invalid-api-key") {
+  if (code === "invalid-api-key") {
     showToast("FIREBASE API KEY REJECTED", "⚠️", "Check runtime config.");
     return true;
   }
@@ -519,6 +519,11 @@ async function runFirestoreTask(task, context, fallback) {
     handleFirebaseError(error, context, fallback);
     return null;
   }
+}
+
+function reportFirestoreListenError(error, context, fallback) {
+  console.error(`[${context}]`, error);
+  handleFirebaseError(error, context, fallback);
 }
 
 export const firebase = {
@@ -2374,12 +2379,20 @@ function isValidCredentials(username, pin) {
   return /^[A-Z0-9_]{3,10}$/.test(username) && /^\d{4}$/.test(pin);
 }
 
-async function getRemoteProfileByUsername(normalized) {
-  const directSnap = await getDoc(doc(db, "gooner_users", normalized));
-  if (directSnap.exists()) return directSnap.data();
+async function getRemoteProfileByUsername(username) {
+  const raw = String(username || "").trim();
+  const normalized = normalizeUsername(raw);
+  const candidates = [...new Set([normalized, raw, raw.toLowerCase(), raw.toUpperCase()].filter(Boolean))];
 
-  const fallbackQuery = await getDocs(query(collection(db, "gooner_users"), where("name", "==", normalized), limit(1)));
-  if (!fallbackQuery.empty) return fallbackQuery.docs[0].data();
+  for (const candidate of candidates) {
+    const directSnap = await getDoc(doc(db, "gooner_users", candidate));
+    if (directSnap.exists()) return directSnap.data();
+  }
+
+  for (const candidate of candidates) {
+    const fallbackQuery = await getDocs(query(collection(db, "gooner_users"), where("name", "==", candidate), limit(1)));
+    if (!fallbackQuery.empty) return fallbackQuery.docs[0].data();
+  }
 
   return null;
 }
@@ -2393,7 +2406,7 @@ async function login(username, pin) {
   }
   try {
     await authInitPromise;
-    const profile = await getRemoteProfileByUsername(normalized);
+    const profile = await getRemoteProfileByUsername(username);
     if (profile) {
       if (normalizePin(profile.pin) === normalizedPin) {
         saveLocalProfileSnapshot(profile);
@@ -5070,20 +5083,24 @@ function loadLeaderboardColumn(column, body) {
   if (column.type === "players") {
     const q = query(collection(db, "gooner_users"), orderBy("name"), limit(100));
     leaderboardUnsubs.push(
-      onSnapshot(q, (snap) => {
-        const rows = [];
-        snap.forEach((d) => {
-          const data = d.data();
-          const playerName = data.name || d.id;
-          rows.push({
-            name: playerName,
-            score: data.rank || getRank(Number(data.money) || 0, playerName),
-            rankData: getRankData(Number(data.money) || 0, playerName),
-            canRemove: playerName !== myName && !isGodUser(playerName),
+      onSnapshot(
+        q,
+        (snap) => {
+          const rows = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            const playerName = data.name || d.id;
+            rows.push({
+              name: playerName,
+              score: data.rank || getRank(Number(data.money) || 0, playerName),
+              rankData: getRankData(Number(data.money) || 0, playerName),
+              canRemove: playerName !== myName && !isGodUser(playerName),
+            });
           });
-        });
-        renderLeaderboardRows(body, rows, { showAdminRemove: true });
-      })
+          renderLeaderboardRows(body, rows, { showAdminRemove: true });
+        },
+        (error) => reportFirestoreListenError(error, "LEADERBOARD", "Could not load player leaderboard.")
+      )
     );
     return;
   }
@@ -5091,39 +5108,47 @@ function loadLeaderboardColumn(column, body) {
   if (column.type === "richest") {
     const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(10));
     leaderboardUnsubs.push(
-      onSnapshot(q, (snap) => {
-        const rows = [];
-        snap.forEach((d) => {
-          const data = d.data();
-          rows.push({ name: data.name || d.id, score: data.money ?? 0 });
-        });
-        renderLeaderboardRows(body, rows, { valuePrefix: "$" });
-      })
+      onSnapshot(
+        q,
+        (snap) => {
+          const rows = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            rows.push({ name: data.name || d.id, score: data.money ?? 0 });
+          });
+          renderLeaderboardRows(body, rows, { valuePrefix: "$" });
+        },
+        (error) => reportFirestoreListenError(error, "LEADERBOARD", "Could not load richest leaderboard.")
+      )
     );
     return;
   }
 
   const q = query(collection(db, "gooner_scores"), where("game", "==", column.gameId), limit(200));
   leaderboardUnsubs.push(
-    onSnapshot(q, (snap) => {
-      const data = [];
-      snap.forEach((d) => data.push(d.data()));
-      const modeFiltered = data.filter((row) => {
-        const entryMode = normalizeLeaderboardMode(row.mode);
-        if (column.mode && entryMode !== column.mode) return false;
-        return shouldIncludeScoreRowByFilters(entryMode);
-      });
-      const uniqueScores = {};
-      modeFiltered.forEach((scoreRow) => {
-        if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
-          uniqueScores[scoreRow.name] = scoreRow;
-        }
-      });
-      const filtered = Object.values(uniqueScores)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
-      renderLeaderboardRows(body, filtered);
-    })
+    onSnapshot(
+      q,
+      (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push(d.data()));
+        const modeFiltered = data.filter((row) => {
+          const entryMode = normalizeLeaderboardMode(row.mode);
+          if (column.mode && entryMode !== column.mode) return false;
+          return shouldIncludeScoreRowByFilters(entryMode);
+        });
+        const uniqueScores = {};
+        modeFiltered.forEach((scoreRow) => {
+          if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
+            uniqueScores[scoreRow.name] = scoreRow;
+          }
+        });
+        const filtered = Object.values(uniqueScores)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10);
+        renderLeaderboardRows(body, filtered);
+      },
+      (error) => reportFirestoreListenError(error, "LEADERBOARD", "Could not load game leaderboard.")
+    )
   );
 }
 
