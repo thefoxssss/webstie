@@ -2188,13 +2188,16 @@ export function updateBankLog() {
 // Kick off anonymous auth so we can load/save data immediately.
 const initAuth = async () => {
   try {
-    await signInAnonymously(auth);
+    const cred = await signInAnonymously(auth);
+    if (cred?.user?.uid && !myUid) myUid = cred.user.uid;
+    return true;
   } catch (e) {
     console.error(e);
     handleFirebaseError(e, "AUTH", "Login services are temporarily offline.");
+    return false;
   }
 };
-initAuth();
+const authInitPromise = initAuth();
 loadCrewData();
 loadSeasonData();
 renderLiveOps();
@@ -2371,6 +2374,16 @@ function isValidCredentials(username, pin) {
   return /^[A-Z0-9_]{3,10}$/.test(username) && /^\d{4}$/.test(pin);
 }
 
+async function getRemoteProfileByUsername(normalized) {
+  const directSnap = await getDoc(doc(db, "gooner_users", normalized));
+  if (directSnap.exists()) return directSnap.data();
+
+  const fallbackQuery = await getDocs(query(collection(db, "gooner_users"), where("name", "==", normalized), limit(1)));
+  if (!fallbackQuery.empty) return fallbackQuery.docs[0].data();
+
+  return null;
+}
+
 // Attempt to log in with username + PIN and load their profile.
 async function login(username, pin) {
   const normalized = normalizeUsername(username);
@@ -2379,10 +2392,9 @@ async function login(username, pin) {
     return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
   }
   try {
-    const ref = doc(db, "gooner_users", normalized);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const profile = snap.data();
+    await authInitPromise;
+    const profile = await getRemoteProfileByUsername(normalized);
+    if (profile) {
       if (normalizePin(profile.pin) === normalizedPin) {
         saveLocalProfileSnapshot(profile);
         loadProfile(profile);
@@ -2612,6 +2624,7 @@ async function register(username, pin) {
   if (localProfile) return "USERNAME TAKEN";
 
   try {
+    await authInitPromise;
     if (!myUid) throw new Error("OFFLINE");
     const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
@@ -4238,10 +4251,12 @@ export function showToast(title, icon, subtitle = "") {
 
 // Auto-login if credentials exist in local storage.
 if (localStorage.getItem("goonerUser")) {
-  login(
-    localStorage.getItem("goonerUser"),
-    localStorage.getItem("goonerPin")
-  );
+  authInitPromise.finally(() => {
+    login(
+      localStorage.getItem("goonerUser"),
+      localStorage.getItem("goonerPin")
+    );
+  });
 }
 // Login form handlers.
 document.getElementById("btnLogin").onclick = async () => {
