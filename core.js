@@ -2203,18 +2203,20 @@ export function updateBankLog() {
 }
 
 // Kick off anonymous auth so we can load/save data immediately.
+let authInitError = null;
 const initAuth = async () => {
   try {
     const cred = await signInAnonymously(auth);
     if (cred?.user?.uid && !myUid) myUid = cred.user.uid;
     return true;
   } catch (e) {
+    authInitError = e;
     console.error(e);
     handleFirebaseError(e, "AUTH", "Login services are temporarily offline.");
-    return false;
+    throw e;
   }
 };
-const authInitPromise = initAuth();
+const authInitPromise = initAuth().catch(() => false);
 loadCrewData();
 loadSeasonData();
 renderLiveOps();
@@ -2418,6 +2420,10 @@ async function login(username, pin) {
   }
   try {
     await authInitPromise;
+    if (!myUid) {
+      const authDetails = getFirebaseErrorDetails(authInitError || new Error("Anonymous auth did not initialize."));
+      return `AUTH ERROR [${authDetails.code}]: ${authDetails.message}`;
+    }
     const profile = await getRemoteProfileByUsername(username);
     if (profile) {
       if (normalizePin(profile.pin) === normalizedPin) {
@@ -2435,6 +2441,10 @@ async function login(username, pin) {
     }
     return "USER NOT FOUND";
   } catch (e) {
+    if (authInitError) {
+      const authDetails = getFirebaseErrorDetails(authInitError);
+      return `AUTH ERROR [${authDetails.code}]: ${authDetails.message}`;
+    }
     const localProfile = getLocalProfile(normalized);
     if (localProfile) {
       if (normalizePin(localProfile.pin) !== normalizedPin) return "INVALID PIN";
@@ -2651,7 +2661,7 @@ async function register(username, pin) {
 
   try {
     await authInitPromise;
-    if (!myUid) throw new Error("OFFLINE");
+    if (!myUid) throw authInitError || new Error("OFFLINE");
     const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
     if (snap.exists()) return "USERNAME TAKEN";
