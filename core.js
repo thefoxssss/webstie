@@ -142,26 +142,36 @@ function getFirebaseErrorCode(error) {
   return code.startsWith("firebase/") ? code.slice("firebase/".length) : code;
 }
 
+function getFirebaseErrorDetails(error) {
+  const code = getFirebaseErrorCode(error) || "unknown";
+  const message = String(error?.message || "No error message provided.").replace(/^Firebase:\s*/i, "").trim();
+  return {
+    code,
+    message,
+    compact: `[${code}] ${message}`.slice(0, 180),
+  };
+}
+
 export function isFirebaseQuotaError(error) {
   const code = getFirebaseErrorCode(error);
   return code === "resource-exhausted" || code === "quota-exceeded";
 }
 
 export function handleFirebaseError(error, context = "FIREBASE", fallback = "") {
-  const code = getFirebaseErrorCode(error);
-  if (code === "invalid-api-key") {
-    showToast("FIREBASE API KEY REJECTED", "⚠️", "Check runtime config.");
+  const details = getFirebaseErrorDetails(error);
+  if (details.code === "invalid-api-key") {
+    showToast("FIREBASE API KEY REJECTED", "⚠️", details.compact);
     return true;
   }
   if (isFirebaseQuotaError(error)) {
-    showToast("FIREBASE AT CAPACITY", "⏳", "Online features will retry later.");
+    showToast("FIREBASE AT CAPACITY", "⏳", details.compact);
     return true;
   }
-  if (code === "unavailable") {
-    showToast("FIREBASE UNAVAILABLE", "📡", "Check your connection and retry.");
+  if (details.code === "unavailable") {
+    showToast("FIREBASE UNAVAILABLE", "📡", details.compact);
     return true;
   }
-  if (fallback) showToast(context, "⚠️", fallback);
+  if (fallback) showToast(context, "⚠️", `${fallback} ${details.compact}`.trim());
   return false;
 }
 const app = initializeApp(firebaseConfig);
@@ -522,8 +532,10 @@ async function runFirestoreTask(task, context, fallback) {
 }
 
 function reportFirestoreListenError(error, context, fallback) {
-  console.error(`[${context}]`, error);
+  const details = getFirebaseErrorDetails(error);
+  console.error(`[${context}]`, details.compact, error);
   handleFirebaseError(error, context, fallback);
+  return details;
 }
 
 export const firebase = {
@@ -2429,7 +2441,8 @@ async function login(username, pin) {
       loadProfile(localProfile);
       return true;
     }
-    return "ERROR: " + e.message;
+    const details = getFirebaseErrorDetails(e);
+    return `LOGIN ERROR [${details.code}]: ${details.message}`;
   }
 }
 
@@ -5099,7 +5112,10 @@ function loadLeaderboardColumn(column, body) {
           });
           renderLeaderboardRows(body, rows, { showAdminRemove: true });
         },
-        (error) => reportFirestoreListenError(error, "LEADERBOARD", "Could not load player leaderboard.")
+        (error) => {
+          const details = reportFirestoreListenError(error, "LEADERBOARD", "Could not load player leaderboard.");
+          body.innerHTML = `<div class="score-item">PLAYER BOARD ERROR: ${details.compact}</div>`;
+        }
       )
     );
     return;
@@ -5118,7 +5134,10 @@ function loadLeaderboardColumn(column, body) {
           });
           renderLeaderboardRows(body, rows, { valuePrefix: "$" });
         },
-        (error) => reportFirestoreListenError(error, "LEADERBOARD", "Could not load richest leaderboard.")
+        (error) => {
+          const details = reportFirestoreListenError(error, "LEADERBOARD", "Could not load richest leaderboard.");
+          body.innerHTML = `<div class="score-item">RICHEST BOARD ERROR: ${details.compact}</div>`;
+        }
       )
     );
     return;
@@ -5147,7 +5166,10 @@ function loadLeaderboardColumn(column, body) {
           .slice(0, 10);
         renderLeaderboardRows(body, filtered);
       },
-      (error) => reportFirestoreListenError(error, "LEADERBOARD", "Could not load game leaderboard.")
+      (error) => {
+        const details = reportFirestoreListenError(error, "LEADERBOARD", "Could not load game leaderboard.");
+        body.innerHTML = `<div class="score-item">GAME BOARD ERROR: ${details.compact}</div>`;
+      }
     )
   );
 }
