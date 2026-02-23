@@ -2217,6 +2217,39 @@ const initAuth = async () => {
   }
 };
 const authInitPromise = initAuth().catch(() => false);
+
+async function ensureAuthReadyForFirestore() {
+  await authInitPromise;
+
+  if (typeof auth.authStateReady === "function") {
+    await auth.authStateReady();
+  }
+
+  if (!auth.currentUser) {
+    try {
+      const cred = await signInAnonymously(auth);
+      if (cred?.user?.uid) myUid = cred.user.uid;
+    } catch (error) {
+      authInitError = authInitError || error;
+      throw authInitError;
+    }
+  }
+
+  if (!auth.currentUser) {
+    throw authInitError || new Error("No authenticated Firebase user for Firestore requests.");
+  }
+
+  try {
+    await auth.currentUser.getIdToken();
+  } catch (error) {
+    authInitError = authInitError || error;
+    throw authInitError;
+  }
+
+  myUid = auth.currentUser.uid;
+  return true;
+}
+
 loadCrewData();
 loadSeasonData();
 renderLiveOps();
@@ -2419,11 +2452,7 @@ async function login(username, pin) {
     return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
   }
   try {
-    await authInitPromise;
-    if (!myUid) {
-      const authDetails = getFirebaseErrorDetails(authInitError || new Error("Anonymous auth did not initialize."));
-      return `AUTH ERROR [${authDetails.code}]: ${authDetails.message}`;
-    }
+    await ensureAuthReadyForFirestore();
     const profile = await getRemoteProfileByUsername(username);
     if (profile) {
       if (normalizePin(profile.pin) === normalizedPin) {
@@ -2660,8 +2689,7 @@ async function register(username, pin) {
   if (localProfile) return "USERNAME TAKEN";
 
   try {
-    await authInitPromise;
-    if (!myUid) throw authInitError || new Error("OFFLINE");
+    await ensureAuthReadyForFirestore();
     const ref = doc(db, "gooner_users", normalized);
     const snap = await getDoc(ref);
     if (snap.exists()) return "USERNAME TAKEN";
@@ -5185,12 +5213,21 @@ function loadLeaderboardColumn(column, body) {
 }
 
 // Render all leaderboard columns and subscribe to each data feed.
-function loadLeaderboard() {
+async function loadLeaderboard() {
   const list = document.getElementById("scoreList");
   const filterInput = document.getElementById("leaderboardFilter");
   const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
   const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
   if (!list) return;
+
+  try {
+    await ensureAuthReadyForFirestore();
+  } catch (error) {
+    const details = getFirebaseErrorDetails(error);
+    list.innerHTML = `<div class="score-item">LEADERBOARD AUTH ERROR: ${details.compact}</div>`;
+    handleFirebaseError(error, "LEADERBOARD", "Could not authenticate for leaderboard reads.");
+    return;
+  }
 
   if (filterInput && !filterInput.dataset.bound) {
     filterInput.addEventListener("input", () => loadLeaderboard());
