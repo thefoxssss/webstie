@@ -4563,6 +4563,7 @@ let lastChatAt = 0;
 let lastChatMsg = "";
 let activeChatTab = "global";
 let stopChatListener = null;
+let activeDmUser = "";
 
 function getChatTabConfig(tab) {
   const crewTag = normalizeCrewTag(crewData?.tag || "");
@@ -4574,10 +4575,25 @@ function getChatTabConfig(tab) {
       // Keep DM queries index-light so chats work without requiring a composite Firestore index.
       getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), limit(80)),
       send: (txt) => {
-        const match = txt.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
-        if (!match) return { error: "USE @USERNAME FOLLOWED BY A MESSAGE." };
-        const to = normalizeUsername(match[1]);
-        const body = filterChatMessage(match[2] || "").slice(0, 60);
+        const targetOnly = txt.match(/^\/to\s+@?([A-Za-z0-9_\-]{2,16})$/i);
+        if (targetOnly) {
+          const selected = normalizeUsername(targetOnly[1]);
+          if (selected === normalizeUsername(myName)) return { error: "CAN'T DM YOURSELF." };
+          activeDmUser = selected;
+          return { localOnly: true, notice: `DM TARGET SET TO @${selected}` };
+        }
+
+        let to = normalizeUsername(activeDmUser);
+        let body = txt;
+        const inlineMatch = txt.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
+        if (inlineMatch) {
+          to = normalizeUsername(inlineMatch[1]);
+          body = inlineMatch[2] || "";
+          activeDmUser = to;
+        }
+
+        body = filterChatMessage(body || "").slice(0, 60);
+        if (!to) return { error: "SET A DM USER FIRST WITH /TO @USERNAME." };
         if (!body) return { error: "MESSAGE BODY CANNOT BE EMPTY." };
         if (to === normalizeUsername(myName)) return { error: "CAN'T DM YOURSELF." };
         return {
@@ -4589,7 +4605,8 @@ function getChatTabConfig(tab) {
         const sender = normalizeUsername(m.user || "ANON");
         const to = normalizeUsername(m.to || "");
         const mine = sender === normalizeUsername(myName);
-        const prefix = mine ? `TO ${to || "UNKNOWN"}` : `FROM ${sender}`;
+        const partner = mine ? to || "UNKNOWN" : sender;
+        const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
         return `<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
@@ -4742,6 +4759,12 @@ function initChat() {
     const sendConfig = tabConfig.send(txt);
     if (sendConfig.error) {
       showToast(tabConfig.label, "⚠️", sendConfig.error);
+      return;
+    }
+    if (sendConfig.localOnly) {
+      showToast(tabConfig.label, "📨", sendConfig.notice || "DM TARGET UPDATED");
+      e.target.value = "";
+      renderChatTab();
       return;
     }
 
