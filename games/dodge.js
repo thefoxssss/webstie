@@ -171,6 +171,50 @@ function drawHud() {
   dCtx.strokeRect(8, 8, CANVAS_W - 16, CANVAS_H - 16);
 }
 
+function drawGridArt(now) {
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00f5d4";
+  const spacing = 35;
+  const horizon = CANVAS_H * 0.33;
+  const pulse = (Math.sin(now * 0.0015) + 1) * 0.5;
+  const drift = (now * 0.015) % spacing;
+
+  dCtx.save();
+  dCtx.globalAlpha = 0.24 + pulse * 0.12;
+  dCtx.strokeStyle = accent;
+  dCtx.lineWidth = 1;
+
+  for (let x = -spacing + drift; x <= CANVAS_W + spacing; x += spacing) {
+    dCtx.beginPath();
+    dCtx.moveTo(x, horizon);
+    dCtx.lineTo(CANVAS_W / 2 + (x - CANVAS_W / 2) * 2.25, CANVAS_H);
+    dCtx.stroke();
+  }
+
+  for (let i = 0; i < 10; i++) {
+    const t = i / 9;
+    const y = horizon + t * t * (CANVAS_H - horizon);
+    dCtx.beginPath();
+    dCtx.moveTo(0, y);
+    dCtx.lineTo(CANVAS_W, y);
+    dCtx.stroke();
+  }
+
+  dCtx.globalAlpha = 0.08;
+  dCtx.fillStyle = "#ffffff";
+  for (let i = 0; i < 45; i++) {
+    const sx = (i * 97 + now * 0.02) % CANVAS_W;
+    const sy = (i * 37) % (horizon - 20);
+    dCtx.fillRect(sx, sy, 2, 2);
+  }
+
+  const skyGlow = dCtx.createLinearGradient(0, 0, 0, CANVAS_H * 0.7);
+  skyGlow.addColorStop(0, "rgba(255,255,255,0.06)");
+  skyGlow.addColorStop(1, "rgba(0,0,0,0)");
+  dCtx.fillStyle = skyGlow;
+  dCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  dCtx.restore();
+}
+
 function updateScoreFromTime() {
   const timeScore = Math.floor(dElapsed);
   if (timeScore === dScore) return;
@@ -197,6 +241,7 @@ function loopDodge(now) {
   wallTimer += dtFrames;
   dCtx.fillStyle = "#000";
   dCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  drawGridArt(now);
 
   updatePlayer(dtFrames);
   drawHud();
