@@ -4570,12 +4570,10 @@ function getChatTabConfig(tab) {
   const configs = {
     dm: {
       label: "MESSAGES",
-      placeholder: activeDmUser ? `MESSAGE @${activeDmUser}...` : "SET RECIPIENT: /TO @USER",
-      meta: activeDmUser
-        ? `DIRECT MESSAGES // CHAT WITH @${activeDmUser} // /TO @USER TO SWITCH`
-        : "DIRECT MESSAGES // SET RECIPIENT WITH /TO @USERNAME",
+      placeholder: "@USER MESSAGE...",
+      meta: "DIRECT MESSAGES // USE @USERNAME MESSAGE",
       // Keep DM queries index-light so chats work without requiring a composite Firestore index.
-      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), limit(120)),
+      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), limit(80)),
       send: (txt) => {
         const targetOnly = txt.match(/^\/to\s+@?([A-Za-z0-9_\-]{2,16})$/i);
         if (targetOnly) {
@@ -4670,36 +4668,17 @@ function renderChatTab() {
     const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
     snap.forEach((d) => msgs.push(d.data()));
-    const sorted = msgs.sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0));
-    let visibleMessages = sorted;
-
-    if (activeChatTab === "dm") {
-      const me = normalizeUsername(myName);
-      const target = normalizeUsername(activeDmUser);
-      if (target) {
-        visibleMessages = sorted.filter((m) => {
-          const sender = normalizeUsername(m.user || "");
-          const to = normalizeUsername(m.to || "");
-          return (sender === me && to === target) || (sender === target && to === me);
-        });
-      }
-      visibleMessages = visibleMessages.slice(-25);
-      if (!target && !visibleMessages.length) {
-        list.innerHTML = '<div class="chat-msg">NO DMS YET. USE /TO @USERNAME TO START A CHAT.</div>';
-        return;
-      }
-    } else {
-      visibleMessages = visibleMessages.slice(-25);
-    }
-
-    visibleMessages.forEach((m) => {
+    msgs
+      .sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0))
+      .slice(-25)
+      .forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
       if (blocklist.has(user) || muted.has(user)) return;
       const d = document.createElement("div");
       d.className = "chat-msg";
       d.innerHTML = tabConfig.renderMessage(m);
       list.appendChild(d);
-    });
+      });
     list.scrollTop = list.scrollHeight;
   });
 }
