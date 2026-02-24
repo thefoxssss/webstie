@@ -4563,20 +4563,39 @@ let lastChatAt = 0;
 let lastChatMsg = "";
 let activeChatTab = "global";
 let stopChatListener = null;
+let activeDmUser = "";
 
 function getChatTabConfig(tab) {
   const crewTag = normalizeCrewTag(crewData?.tag || "");
   const configs = {
     dm: {
       label: "MESSAGES",
-      placeholder: "@USER MESSAGE...",
-      meta: "DIRECT MESSAGES // USE @USERNAME MESSAGE",
-      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), orderBy("ts", "desc"), limit(25)),
+      placeholder: activeDmUser ? `MESSAGE @${activeDmUser}...` : "SET RECIPIENT: /TO @USER",
+      meta: activeDmUser
+        ? `DIRECT MESSAGES // CHAT WITH @${activeDmUser} // /TO @USER TO SWITCH`
+        : "DIRECT MESSAGES // SET RECIPIENT WITH /TO @USERNAME",
+      // Keep DM queries index-light so chats work without requiring a composite Firestore index.
+      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), limit(120)),
       send: (txt) => {
-        const match = txt.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
-        if (!match) return { error: "USE @USERNAME FOLLOWED BY A MESSAGE." };
-        const to = normalizeUsername(match[1]);
-        const body = filterChatMessage(match[2] || "").slice(0, 60);
+        const targetOnly = txt.match(/^\/to\s+@?([A-Za-z0-9_\-]{2,16})$/i);
+        if (targetOnly) {
+          const selected = normalizeUsername(targetOnly[1]);
+          if (selected === normalizeUsername(myName)) return { error: "CAN'T DM YOURSELF." };
+          activeDmUser = selected;
+          return { localOnly: true, notice: `DM TARGET SET TO @${selected}` };
+        }
+
+        let to = normalizeUsername(activeDmUser);
+        let body = txt;
+        const inlineMatch = txt.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
+        if (inlineMatch) {
+          to = normalizeUsername(inlineMatch[1]);
+          body = inlineMatch[2] || "";
+          activeDmUser = to;
+        }
+
+        body = filterChatMessage(body || "").slice(0, 60);
+        if (!to) return { error: "SET A DM USER FIRST WITH /TO @USERNAME." };
         if (!body) return { error: "MESSAGE BODY CANNOT BE EMPTY." };
         if (to === normalizeUsername(myName)) return { error: "CAN'T DM YOURSELF." };
         return {
@@ -4588,7 +4607,8 @@ function getChatTabConfig(tab) {
         const sender = normalizeUsername(m.user || "ANON");
         const to = normalizeUsername(m.to || "");
         const mine = sender === normalizeUsername(myName);
-        const prefix = mine ? `TO ${to || "UNKNOWN"}` : `FROM ${sender}`;
+        const partner = mine ? to || "UNKNOWN" : sender;
+        const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
         return `<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
@@ -4609,7 +4629,8 @@ function getChatTabConfig(tab) {
       meta: crewTag ? `CREW CHANNEL [${crewTag}]` : "CREW CHANNEL // JOIN A CREW TO CHAT",
       getQuery: () => {
         if (!crewTag) return null;
-        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag), orderBy("ts", "desc"), limit(25));
+        // Keep crew queries index-light so chats work without requiring a composite Firestore index.
+        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag), limit(80));
       },
       send: (txt) => {
         if (!crewTag) return { error: "JOIN A CREW BEFORE USING CREW CHAT." };
@@ -4649,7 +4670,29 @@ function renderChatTab() {
     const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
     snap.forEach((d) => msgs.push(d.data()));
-    msgs.reverse().forEach((m) => {
+    const sorted = msgs.sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0));
+    let visibleMessages = sorted;
+
+    if (activeChatTab === "dm") {
+      const me = normalizeUsername(myName);
+      const target = normalizeUsername(activeDmUser);
+      if (target) {
+        visibleMessages = sorted.filter((m) => {
+          const sender = normalizeUsername(m.user || "");
+          const to = normalizeUsername(m.to || "");
+          return (sender === me && to === target) || (sender === target && to === me);
+        });
+      }
+      visibleMessages = visibleMessages.slice(-25);
+      if (!target && !visibleMessages.length) {
+        list.innerHTML = '<div class="chat-msg">NO DMS YET. USE /TO @USERNAME TO START A CHAT.</div>';
+        return;
+      }
+    } else {
+      visibleMessages = visibleMessages.slice(-25);
+    }
+
+    visibleMessages.forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
       if (blocklist.has(user) || muted.has(user)) return;
       const d = document.createElement("div");
@@ -4737,6 +4780,12 @@ function initChat() {
     const sendConfig = tabConfig.send(txt);
     if (sendConfig.error) {
       showToast(tabConfig.label, "⚠️", sendConfig.error);
+      return;
+    }
+    if (sendConfig.localOnly) {
+      showToast(tabConfig.label, "📨", sendConfig.notice || "DM TARGET UPDATED");
+      e.target.value = "";
+      renderChatTab();
       return;
     }
 
