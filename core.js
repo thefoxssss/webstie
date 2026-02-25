@@ -982,6 +982,7 @@ const GAME_PAYOUT_CONFIG = Object.freeze({
   corebreaker: { rate: 0.2, xpRate: 1.3 },
   neondefender: { rate: 3, xpRate: 1.25 },
   voidminer: { rate: 2.5, xpRate: 1.25 },
+  coredriller: { rate: 2.9, xpRate: 1.3 },
   default: { rate: 3, xpRate: 1.1 },
 });
 
@@ -1503,6 +1504,7 @@ const TRENDING_GAME_LABELS = {
   corebreaker: "COREBREAKER",
   neondefender: "NEON DEFENDER",
   voidminer: "VOID MINER",
+  coredriller: "CORE DRILLER",
   emulator: "CPU EMULATOR",
 };
 
@@ -4899,6 +4901,7 @@ export function loadHighScores() {
   setText("hsCorebreaker", localStorage.getItem("hs_corebreaker") || 0);
   setText("hsNeondefender", localStorage.getItem("hs_neondefender") || 0);
   setText("hsVoidminer", localStorage.getItem("hs_voidminer") || 0);
+  setText("hsCoredriller", localStorage.getItem("hs_coredriller") || 0);
 }
 
 // Persist a high score globally so it appears on the leaderboard.

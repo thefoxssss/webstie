@@ -7,6 +7,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "corebreaker", title: "CORE BREAKER", description: "Break glowing blocks and protect your core.", icon: "🧱", tags: ["arcade", "skill"] },
   { id: "neondefender", title: "NEON DEFENDER", description: "Aim, auto-fire, and hold the line.", icon: "🎯", tags: ["arcade", "skill"] },
   { id: "voidminer", title: "VOID MINER", description: "Thrust through deep space for score.", icon: "🚀", tags: ["arcade", "skill"] },
+  { id: "coredriller", title: "CORE DRILLER", description: "Dive through strata, mine ore, and keep your rig alive.", icon: "⛏️", tags: ["arcade", "skill", "strategy"] },
   { id: "shadowassassin", title: "SHADOW ASSASSIN", description: "Castle infiltration with boss encounters.", icon: "🗡️", tags: ["arcade", "skill"] },
   { id: "dodge", title: "DODGE GRID", description: "Stay alive in a high-speed hazard field.", icon: "⚡", tags: ["arcade", "skill"], shopItems: ["item_dodge_stabilizer"] },
   { id: "roulette", title: "ROULETTE", description: "Bet, spin, and chase streaks.", icon: "🎡", tags: ["casino", "luck", "table"] },

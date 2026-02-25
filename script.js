@@ -68,6 +68,7 @@ import { initDrift } from "./games/drift.js";
 import { initCoreBreaker } from "./games/corebreaker.js";
 import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
+import { initCoreDriller } from "./games/coredriller.js";
 import { initEmulator } from "./games/emulator.js";
 import { initByteBlitz } from "./games/byteblitz.js";
 import { initCipherCrack } from "./games/ciphercrack.js";
@@ -275,6 +276,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "corebreaker") initCoreBreaker();
   if (game === "neondefender") initNeonDefender();
   if (game === "voidminer") initVoidMiner();
+  if (game === "coredriller") initCoreDriller();
   if (game === "emulator") initEmulator();
   if (game === "byteblitz") initByteBlitz();
   if (game === "ciphercrack") initCipherCrack();
@@ -305,6 +307,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayCorebreaker",
   "overlayNeondefender",
   "overlayVoidminer",
+  "overlayCoredriller",
   "overlayShadowassassin",
   "overlayDodge",
   "overlayRoulette",
@@ -1164,6 +1167,7 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "corebreaker") initCoreBreaker();
   if (state.currentGame === "neondefender") initNeonDefender();
   if (state.currentGame === "voidminer") initVoidMiner();
+  if (state.currentGame === "coredriller") initCoreDriller();
   if (state.currentGame === "byteblitz") initByteBlitz();
   if (state.currentGame === "ciphercrack") initCipherCrack();
   if (state.currentGame === "astrohop") initAstroHop();
