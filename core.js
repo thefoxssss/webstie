@@ -4902,6 +4902,7 @@ export function loadHighScores() {
   setText("hsNeondefender", localStorage.getItem("hs_neondefender") || 0);
   setText("hsVoidminer", localStorage.getItem("hs_voidminer") || 0);
   setText("hsCoredriller", localStorage.getItem("hs_coredriller") || 0);
+  setText("hsSubwaysurfer", localStorage.getItem("hs_subwaysurfer") || 0);
 }
 
 // Persist a high score globally so it appears on the leaderboard.
