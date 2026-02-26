@@ -4,6 +4,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "pong", title: "PONG", description: "Retro paddle battle with adjustable difficulty.", icon: "🏓", tags: ["arcade", "pvp", "retro", "duel"], shopItems: ["item_aimbot"] },
   { id: "snake", title: "SNAKE", description: "Grow longer while avoiding walls and yourself.", icon: "🐍", tags: ["arcade", "skill"], shopItems: ["item_double"] },
   { id: "runner", title: "RUNNER V2", description: "Endless sprint with jump timing focus.", icon: "🏃", tags: ["arcade", "skill"], shopItems: ["item_slowmo"] },
+  { id: "subwaysurfer", title: "SUBWAY SURFER", description: "Lane-switching endless dash with jumps, rolls, trains, and coins.", icon: "🚆", tags: ["arcade", "skill", "reflex"] },
   { id: "corebreaker", title: "CORE BREAKER", description: "Break glowing blocks and protect your core.", icon: "🧱", tags: ["arcade", "skill"] },
   { id: "neondefender", title: "NEON DEFENDER", description: "Aim, auto-fire, and hold the line.", icon: "🎯", tags: ["arcade", "skill"] },
   { id: "voidminer", title: "VOID MINER", description: "Thrust through deep space for score.", icon: "🚀", tags: ["arcade", "skill"] },
