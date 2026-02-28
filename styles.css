@@ -798,6 +798,7 @@ body::before {
   color: #fff;
   border-color: rgba(0, 255, 136, 0.7);
   background: rgba(0, 255, 136, 0.12);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.45);
 }
 
 .trend-legend-swatch {
@@ -843,6 +844,7 @@ body::before {
 .trend-line.active {
   opacity: 1;
   stroke-width: 3.2;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
 .trend-line-hit {
@@ -854,6 +856,11 @@ body::before {
 
 .trend-point {
   opacity: 0.65;
+  transition: opacity 0.12s ease, r 0.12s ease;
+}
+
+.trend-point.active {
+  opacity: 1;
 }
 
 .trend-point-hit {

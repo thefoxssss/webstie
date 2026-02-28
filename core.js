@@ -1532,7 +1532,8 @@ async function refreshTrendingGames() {
     const counts = new Map();
     snap.forEach((entry) => {
       const data = entry.data() || {};
-      const key = String(data.game || "").toLowerCase().trim();
+      const legacyGameKey = data.key || data.gameKey || data.game_key;
+      const key = String(data.game || legacyGameKey || "").toLowerCase().trim();
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
@@ -1660,7 +1661,13 @@ function renderMonthlyTrendingGraph(model) {
   const readout = document.getElementById("trendChartHoverReadout");
   const legend = document.getElementById("trendChartLegend");
   const lineEls = chart.querySelectorAll(".trend-line");
+  const pointEls = chart.querySelectorAll(".trend-point");
   const svg = document.getElementById("trendChartSvg");
+  const defaultReadout = "HOVER A LINE TO INSPECT PLAY COUNT.";
+  const cssEscape = (value) => {
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(value);
+    return String(value).replace(/["\\]/g, "\\$&");
+  };
 
   const bindLegendLaunch = () => {
     legend?.querySelectorAll(".trend-legend-item").forEach((legendItem) => {
@@ -1676,6 +1683,7 @@ function renderMonthlyTrendingGraph(model) {
     if (!legend) return;
     legend.innerHTML = renderLegend(monthRows, "MONTH VIEW // MOST TO LEAST PLAYED");
     bindLegendLaunch();
+    bindLegendHover();
   };
 
   const setDayLegend = (dayIdx) => {
@@ -1689,10 +1697,12 @@ function renderMonthlyTrendingGraph(model) {
       .sort((a, b) => b.count - a.count);
     legend.innerHTML = renderLegend(rows, `${formatTrendDayLabel(dayMs)} // 24H PLAY ORDER`);
     bindLegendLaunch();
+    bindLegendHover();
   };
 
   const clearActive = () => {
     lineEls.forEach((line) => line.classList.remove("active"));
+    pointEls.forEach((point) => point.classList.remove("active"));
     legend?.querySelectorAll(".trend-legend-item").forEach((item) => item.classList.remove("active"));
   };
 
@@ -1703,11 +1713,28 @@ function renderMonthlyTrendingGraph(model) {
     const dayKey = new Date(dayMs).toISOString().slice(0, 10);
     const value = Number((model.dailyMatrix.get(game) || {})[dayKey] || 0);
     const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
+    const escapedGame = cssEscape(game);
     clearActive();
-    chart.querySelector(`.trend-line[data-game="${CSS.escape(game)}"]`)?.classList.add("active");
-    legend?.querySelector(`.trend-legend-item[data-game="${CSS.escape(game)}"]`)?.classList.add("active");
+    chart.querySelector(`.trend-line[data-game="${escapedGame}"]`)?.classList.add("active");
+    chart.querySelectorAll(`.trend-point[data-game="${escapedGame}"]`).forEach((point) => point.classList.add("active"));
+    legend?.querySelector(`.trend-legend-item[data-game="${escapedGame}"]`)?.classList.add("active");
     readout.innerText = `${label} // DAY ${dayIdx + 1} (${formatTrendDayLabel(dayMs)}) // ${value} PLAYS`;
   };
+
+  function bindLegendHover() {
+    legend?.querySelectorAll(".trend-legend-item").forEach((legendItem) => {
+      legendItem.addEventListener("mouseenter", () => {
+        const game = String(legendItem.getAttribute("data-game") || "");
+        const box = svg?.getBoundingClientRect();
+        if (!game || !box) return;
+        activateGameAtX(game, box.left, box.left, box.width);
+      });
+      legendItem.addEventListener("mouseleave", () => {
+        clearActive();
+        readout.innerText = defaultReadout;
+      });
+    });
+  }
 
   chart.querySelectorAll(".trend-line-hit").forEach((hit) => {
     hit.addEventListener("mousemove", (event) => {
@@ -1718,7 +1745,7 @@ function renderMonthlyTrendingGraph(model) {
     });
     hit.addEventListener("mouseleave", () => {
       clearActive();
-      readout.innerText = "HOVER A LINE TO INSPECT PLAY COUNT.";
+      readout.innerText = defaultReadout;
     });
   });
 
@@ -1735,7 +1762,7 @@ function renderMonthlyTrendingGraph(model) {
     if (target.closest(".trend-line-hit") || target.closest(".trend-point-hit") || target.closest(".trend-line") || target.closest(".trend-point")) return;
     setMonthLegend();
     clearActive();
-    readout.innerText = "HOVER A LINE TO INSPECT PLAY COUNT.";
+    readout.innerText = defaultReadout;
   });
 
   setMonthLegend();
@@ -1798,7 +1825,8 @@ async function refreshTrendingMonthGraph() {
     snap.forEach((entry) => {
       const data = entry.data() || {};
       const ts = normalizeTs(data.ts);
-      const game = String(data.game || "").toLowerCase().trim();
+      const legacyGameKey = data.key || data.gameKey || data.game_key;
+      const game = String(data.game || legacyGameKey || "").toLowerCase().trim();
       if (!game || ts < windowStart) return;
       const dayKey = toDayKey(ts);
       if (!dayKey) return;
