@@ -661,14 +661,16 @@ body::before {
   border: 1px solid var(--accent-dim);
   background: rgba(0, 0, 0, 0.45);
   padding: 10px;
-  min-height: 360px;
+  min-height: 260px;
+  max-height: min(52vh, 430px);
 }
 
 .trend-line-chart {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: 200px 1fr;
   gap: 10px;
   align-items: stretch;
+  height: min(46vh, 360px);
 }
 
 .trend-chart-legend {
@@ -676,18 +678,37 @@ body::before {
   background: rgba(255, 255, 255, 0.03);
   padding: 8px;
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 6px;
-  align-content: start;
+  min-height: 0;
+}
+
+.trend-chart-legend-head {
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: rgba(220, 255, 235, 0.75);
+}
+
+.trend-chart-legend-list {
+  display: grid;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px;
 }
 
 .trend-legend-item {
   border: 1px solid rgba(0, 255, 136, 0.16);
   padding: 4px 6px;
   font-size: 9px;
-  display: flex;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 6px;
   color: rgba(220, 255, 235, 0.8);
+  background: transparent;
+  text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
 }
@@ -707,6 +728,10 @@ body::before {
   width: 10px;
   height: 10px;
   flex: 0 0 10px;
+}
+
+.trend-legend-count {
+  color: rgba(220, 255, 235, 0.7);
 }
 
 .trend-chart-stage {
@@ -751,35 +776,19 @@ body::before {
   cursor: crosshair;
 }
 
+.trend-point {
+  opacity: 0.65;
+}
+
+.trend-point-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
 .trend-x-day {
   cursor: pointer;
 }
 
-.trending-day-activity {
-  margin-top: 10px;
-  border: 1px solid var(--accent-dim);
-  background: rgba(0, 0, 0, 0.45);
-  padding: 10px;
-  font-size: 9px;
-}
-
-.trending-day-activity h3 {
-  margin: 0 0 6px;
-  color: var(--accent);
-  font-size: 10px;
-  letter-spacing: 1px;
-}
-
-.trending-day-activity ul {
-  margin: 0;
-  padding-left: 16px;
-  display: grid;
-  gap: 4px;
-}
-
-.trending-day-activity strong {
-  color: var(--accent);
-}
 
 @media (max-width: 760px) {
   .trend-line-chart {

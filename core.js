@@ -1571,39 +1571,19 @@ function formatTrendDayLabel(dayMs) {
   return new Date(dayMs).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
 }
 
-function renderTrendingDayActivity(dayMs, topGames, dailyMatrix) {
-  const activity = document.getElementById("trendingDayActivity");
-  if (!activity) return;
-  const key = new Date(dayMs).toISOString().slice(0, 10);
-  const gameRows = topGames
-    .map((game) => ({ game, count: Number((dailyMatrix.get(game) || {})[key] || 0) }))
-    .filter((row) => row.count > 0)
-    .sort((a, b) => b.count - a.count);
-  if (!gameRows.length) {
-    activity.innerHTML = `<h3>${escapeHtml(formatTrendDayLabel(dayMs))} // 24H ACTIVITY</h3><div class="trending-empty">NO RECORDED GAME PLAYS FOR THIS DAY.</div>`;
-    return;
-  }
-  const total = gameRows.reduce((sum, row) => sum + row.count, 0);
-  activity.innerHTML = `<h3>${escapeHtml(formatTrendDayLabel(dayMs))} // 24H ACTIVITY</h3><p><strong>${total}</strong> TOTAL PLAYS</p><ul>${gameRows
-    .map((row) => `<li>${escapeHtml(TRENDING_GAME_LABELS[row.game] || row.game.toUpperCase())}: <strong>${row.count}</strong></li>`)
-    .join("")}</ul>`;
-}
-
 function renderMonthlyTrendingGraph(model) {
   const chart = document.getElementById("trendingMonthChart");
   const meta = document.getElementById("trendingMonthlyMeta");
-  const activity = document.getElementById("trendingDayActivity");
-  if (!chart || !meta || !activity) return;
+  if (!chart || !meta) return;
 
   if (!model || !model.days.length || !model.topGames.length) {
     chart.innerHTML = '<div class="trending-empty">NO TREND DATA YET FOR THE LAST 30 DAYS.</div>';
-    activity.innerHTML = '<div class="trending-empty">CLICK A DAY IN THE GRAPH TO OPEN ITS 24H ACTIVITY.</div>';
     meta.innerText = "MONTHLY TRAFFIC WINDOW: EMPTY";
     return;
   }
 
   const width = 760;
-  const height = 320;
+  const height = 300;
   const left = 44;
   const right = 12;
   const top = 14;
@@ -1613,13 +1593,19 @@ function renderMonthlyTrendingGraph(model) {
   const maxY = Math.max(model.maxCount, 1);
   const xAt = (idx) => left + (idx / Math.max(model.days.length - 1, 1)) * chartW;
   const yAt = (value) => top + chartH - (value / maxY) * chartH;
+  const gameColor = (game) => trendLineColorForIndex(model.gameIndex.get(game) || 0);
 
-  const legendRows = model.topGames
-    .map((game, idx) => {
-      const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
-      return `<div class="trend-legend-item" id="trendLegend-${escapeHtml(game)}" data-game="${escapeHtml(game)}"><span class="trend-legend-swatch" style="background:${trendLineColorForIndex(idx)}"></span><span>${escapeHtml(label)}</span></div>`;
-    })
-    .join("");
+  const renderLegend = (rows, modeLabel) => {
+    const legendBody = rows
+      .map((row) => {
+        const label = TRENDING_GAME_LABELS[row.game] || row.game.toUpperCase();
+        return `<button class="trend-legend-item" type="button" data-game="${escapeHtml(row.game)}"><span class="trend-legend-swatch" style="background:${gameColor(row.game)}"></span><span>${escapeHtml(label)}</span><span class="trend-legend-count">${row.count}</span></button>`;
+      })
+      .join("");
+    return `<div class="trend-chart-legend-head">${escapeHtml(modeLabel)}</div><div class="trend-chart-legend-list">${legendBody || '<div class="trending-empty">NO GAME PLAYS IN THIS 24H WINDOW.</div>'}</div>`;
+  };
+
+  const monthRows = model.topGames.map((game) => ({ game, count: Number(model.monthTotals.get(game) || 0) }));
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1]
     .map((ratio) => {
@@ -1640,7 +1626,7 @@ function renderMonthlyTrendingGraph(model) {
     .join("");
 
   const paths = model.topGames
-    .map((game, idx) => {
+    .map((game) => {
       const points = model.days
         .map((dayMs, dayIdx) => {
           const dayKey = new Date(dayMs).toISOString().slice(0, 10);
@@ -1648,28 +1634,58 @@ function renderMonthlyTrendingGraph(model) {
           return `${xAt(dayIdx)},${yAt(value)}`;
         })
         .join(" ");
-      const color = trendLineColorForIndex(idx);
-      return `<g data-game-group="${escapeHtml(game)}"><polyline class="trend-line" data-game="${escapeHtml(game)}" points="${points}" stroke="${color}" /><polyline class="trend-line-hit" data-game="${escapeHtml(game)}" points="${points}" /></g>`;
+      const pointNodes = model.days
+        .map((dayMs, dayIdx) => {
+          const dayKey = new Date(dayMs).toISOString().slice(0, 10);
+          const value = Number((model.dailyMatrix.get(game) || {})[dayKey] || 0);
+          const cx = xAt(dayIdx);
+          const cy = yAt(value);
+          return `<g><circle class="trend-point" data-game="${escapeHtml(game)}" cx="${cx}" cy="${cy}" r="2" fill="${gameColor(game)}" /><circle class="trend-point-hit" data-game="${escapeHtml(game)}" data-day-idx="${dayIdx}" cx="${cx}" cy="${cy}" r="6" /></g>`;
+        })
+        .join("");
+      return `<g data-game-group="${escapeHtml(game)}"><polyline class="trend-line" data-game="${escapeHtml(game)}" points="${points}" stroke="${gameColor(game)}" /><polyline class="trend-line-hit" data-game="${escapeHtml(game)}" points="${points}" />${pointNodes}</g>`;
     })
     .join("");
 
-  chart.innerHTML = `<div class="trend-line-chart"><div class="trend-chart-legend">${legendRows}</div><div class="trend-chart-stage"><div class="trend-chart-hover-readout" id="trendChartHoverReadout">HOVER A LINE TO INSPECT PLAY COUNT.</div><svg class="trend-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><g>${yTicks}</g><g>${paths}</g><line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="rgba(0,255,136,0.45)" stroke-width="1"/>${dayLabels}</svg></div></div>`;
+  chart.innerHTML = `<div class="trend-line-chart"><div class="trend-chart-legend" id="trendChartLegend">${renderLegend(monthRows, 'MONTH VIEW // MOST TO LEAST PLAYED')}</div><div class="trend-chart-stage"><div class="trend-chart-hover-readout" id="trendChartHoverReadout">HOVER A LINE TO INSPECT PLAY COUNT.</div><svg class="trend-chart-svg" id="trendChartSvg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><g>${yTicks}</g><g>${paths}</g><line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="rgba(0,255,136,0.45)" stroke-width="1"/>${dayLabels}</svg></div></div>`;
 
   const readout = document.getElementById("trendChartHoverReadout");
+  const legend = document.getElementById("trendChartLegend");
   const lineEls = chart.querySelectorAll(".trend-line");
-  const legendEls = chart.querySelectorAll(".trend-legend-item");
+  const svg = document.getElementById("trendChartSvg");
 
-  legendEls.forEach((legendItem) => {
-    legendItem.addEventListener("click", () => {
-      const game = String(legendItem.getAttribute("data-game") || "");
-      if (!game || typeof window.launchGame !== "function") return;
-      window.launchGame(game, "trending-monthly");
+  const bindLegendLaunch = () => {
+    legend?.querySelectorAll(".trend-legend-item").forEach((legendItem) => {
+      legendItem.addEventListener("click", () => {
+        const game = String(legendItem.getAttribute("data-game") || "");
+        if (!game || typeof window.launchGame !== "function") return;
+        window.launchGame(game, "trending-monthly");
+      });
     });
-  });
+  };
+
+  const setMonthLegend = () => {
+    if (!legend) return;
+    legend.innerHTML = renderLegend(monthRows, "MONTH VIEW // MOST TO LEAST PLAYED");
+    bindLegendLaunch();
+  };
+
+  const setDayLegend = (dayIdx) => {
+    if (!legend) return;
+    const safeIdx = Math.max(0, Math.min(model.days.length - 1, Number(dayIdx)));
+    const dayMs = model.days[safeIdx];
+    const dayKey = new Date(dayMs).toISOString().slice(0, 10);
+    const rows = model.topGames
+      .map((game) => ({ game, count: Number((model.dailyMatrix.get(game) || {})[dayKey] || 0) }))
+      .filter((row) => row.count > 0)
+      .sort((a, b) => b.count - a.count);
+    legend.innerHTML = renderLegend(rows, `${formatTrendDayLabel(dayMs)} // 24H PLAY ORDER`);
+    bindLegendLaunch();
+  };
 
   const clearActive = () => {
     lineEls.forEach((line) => line.classList.remove("active"));
-    legendEls.forEach((item) => item.classList.remove("active"));
+    legend?.querySelectorAll(".trend-legend-item").forEach((item) => item.classList.remove("active"));
   };
 
   const activateGameAtX = (game, clientX, boundsLeft, boundsWidth) => {
@@ -1681,7 +1697,7 @@ function renderMonthlyTrendingGraph(model) {
     const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
     clearActive();
     chart.querySelector(`.trend-line[data-game="${CSS.escape(game)}"]`)?.classList.add("active");
-    chart.querySelector(`.trend-legend-item[data-game="${CSS.escape(game)}"]`)?.classList.add("active");
+    legend?.querySelector(`.trend-legend-item[data-game="${CSS.escape(game)}"]`)?.classList.add("active");
     readout.innerText = `${label} // DAY ${dayIdx + 1} (${formatTrendDayLabel(dayMs)}) // ${value} PLAYS`;
   };
 
@@ -1698,30 +1714,30 @@ function renderMonthlyTrendingGraph(model) {
     });
   });
 
-  const openDay = (dayIdx) => {
-    const safeIdx = Math.max(0, Math.min(model.days.length - 1, Number(dayIdx)));
-    renderTrendingDayActivity(model.days[safeIdx], model.topGames, model.dailyMatrix);
-  };
-
-  chart.querySelectorAll(".trend-x-day").forEach((label) => {
-    label.addEventListener("click", () => openDay(Number(label.getAttribute("data-day-idx"))));
+  chart.querySelectorAll(".trend-point-hit").forEach((point) => {
+    point.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setDayLegend(Number(point.getAttribute("data-day-idx")));
+    });
   });
 
-  const stage = chart.querySelector(".trend-chart-stage");
-  stage?.addEventListener("click", (event) => {
-    const box = stage.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientX - box.left) / Math.max(box.width, 1)));
-    openDay(Math.round(ratio * Math.max(model.days.length - 1, 0)));
+  svg?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest(".trend-line-hit") || target.closest(".trend-point-hit") || target.closest(".trend-line") || target.closest(".trend-point")) return;
+    setMonthLegend();
+    clearActive();
+    readout.innerText = "HOVER A LINE TO INSPECT PLAY COUNT.";
   });
 
-  meta.innerText = `MONTHLY TRAFFIC WINDOW: LAST 30 DAYS // TOP ${model.topGames.length} GAMES`;
+  setMonthLegend();
+  meta.innerText = `MONTHLY TRAFFIC WINDOW: LAST 30 DAYS // ${model.topGames.length} GAMES`;
 }
 
 async function refreshTrendingMonthGraph() {
   const chart = document.getElementById("trendingMonthChart");
   const meta = document.getElementById("trendingMonthlyMeta");
-  const activity = document.getElementById("trendingDayActivity");
-  if (!chart || !meta || !activity) return;
+  if (!chart || !meta) return;
 
   const dayMs = 24 * 60 * 60 * 1000;
   const start = new Date();
@@ -1789,6 +1805,8 @@ async function refreshTrendingMonthGraph() {
     const topGames = [...totals.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([game]) => game);
+    const monthTotals = new Map(topGames.map((game) => [game, Number(totals.get(game) || 0)]));
+    const gameIndex = new Map(topGames.map((game, idx) => [game, idx]));
 
     let maxCount = 0;
     topGames.forEach((game) => {
@@ -1799,10 +1817,9 @@ async function refreshTrendingMonthGraph() {
       });
     });
 
-    renderMonthlyTrendingGraph({ days, topGames, dailyMatrix, maxCount });
+    renderMonthlyTrendingGraph({ days, topGames, dailyMatrix, monthTotals, gameIndex, maxCount });
   } catch (_error) {
     chart.innerHTML = '<div class="trending-empty">UNABLE TO LOAD MONTHLY TREND GRAPH.</div>';
-    activity.innerHTML = '<div class="trending-empty">DAY ACTIVITY FEED OFFLINE.</div>';
     meta.innerText = "MONTHLY TREND FEED OFFLINE";
   }
 }
