@@ -4460,9 +4460,19 @@ export function showToast(title, icon, subtitle = "") {
 
   const t = document.createElement("div");
   t.className = "toast";
-  t.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-desc">${subtitle}</div></div>`;
+  t.innerHTML = `<button class="toast-close-btn" type="button" aria-label="Close notification">✕</button><div class="toast-icon">${icon}</div><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-desc">${subtitle}</div></div>`;
   toastBox.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+
+  const removeToast = () => {
+    clearTimeout(autoDismissHandle);
+    t.remove();
+  };
+
+  const autoDismissHandle = setTimeout(removeToast, 4000);
+  const closeBtn = t.querySelector(".toast-close-btn");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", removeToast);
+  }
 }
 
 // Auto-login if credentials exist in local storage.

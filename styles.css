@@ -2810,20 +2810,38 @@ body.reduce-motion *::after {
   pointer-events: none;
 }
 .toast {
+  position: relative;
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid var(--accent);
   color: var(--accent);
   min-width: 220px;
   max-width: 340px;
-  padding: 10px 14px;
+  padding: 10px 36px 10px 14px;
   text-align: center;
   box-shadow: 0 0 10px var(--accent-glow);
   display: flex;
   align-items: center;
   gap: 15px;
+  pointer-events: auto;
   animation:
     slideUp 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28),
     fadeOut 0.5s ease-in 3.5s forwards;
+}
+.toast-close-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.toast-close-btn:hover {
+  color: #fff;
 }
 .toast-icon {
   font-size: 30px;
