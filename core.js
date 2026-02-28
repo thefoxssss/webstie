@@ -22,7 +22,7 @@ import {
   deleteDoc,
   getDocs,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { LEADERBOARD_GAME_COLUMNS } from "./gameCatalog.js";
+import { GAME_DIRECTORY_ENTRIES, LEADERBOARD_GAME_COLUMNS } from "./gameCatalog.js";
 
 // Firebase project configuration.
 const defaultFirebaseConfig = {
@@ -1998,13 +1998,13 @@ function initRandomGameButton() {
   button.dataset.ready = "1";
 
   button.addEventListener("click", () => {
-    const gameButtons = Array.from(document.querySelectorAll(".games-grid .game-card[data-game]"));
-    if (!gameButtons.length || typeof window.launchGame !== "function") return;
-
-    const visibleGames = gameButtons.filter((gameBtn) => gameBtn.offsetParent !== null);
-    const pool = visibleGames.length ? visibleGames : gameButtons;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    const game = String(pick?.dataset.game || "").trim();
+    if (typeof window.launchGame !== "function") return;
+    const availableGames = GAME_DIRECTORY_ENTRIES
+      .filter((entry) => !entry.hidden)
+      .map((entry) => String(entry.id || "").trim())
+      .filter((gameId) => Boolean(gameId));
+    if (!availableGames.length) return;
+    const game = availableGames[Math.floor(Math.random() * availableGames.length)] || "";
     if (!game) return;
     window.launchGame(game, "random");
   });
@@ -2431,11 +2431,10 @@ const TOP_PANEL_OVERLAY_IDS = [
   "overlayBank",
   "overlayShop",
   "overlayProfile",
-  "overlayScores",
   "overlaySeason",
   "overlayCrew",
   "overlayAdmin",
-  "overlayGames",
+  "overlayGamebox",
 ];
 
 function runOverlayOpenHooks(id) {
@@ -2452,8 +2451,8 @@ function runOverlayOpenHooks(id) {
     setText("bankLoanMsg", "");
     setText("stockTradeMsg", "");
   }
-  if (id === "overlayScores") {
-    loadLeaderboard();
+  if (id === "overlayGamebox") {
+    if (typeof window.__ensureGameboxHasGame === "function") window.__ensureGameboxHasGame();
   }
   if (id === "overlayTrending") {
     refreshTrendingMonthGraph();
@@ -2513,7 +2512,6 @@ window.toggleTopPanelOverlay = (id) => {
 
   const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
   document.body.classList.toggle("overlay-open", hasActiveOverlay);
-  document.body.classList.toggle("games-directory-open", Boolean(document.getElementById("overlayGames")?.classList.contains("active")));
 };
 
 // Open an overlay by id, optionally render its contents.
@@ -2527,7 +2525,6 @@ export function openGame(id) {
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
   document.body.classList.toggle("overlay-open", Boolean(el));
-  document.body.classList.toggle("games-directory-open", id === "overlayGames");
   runOverlayOpenHooks(id);
 }
 
@@ -2540,7 +2537,6 @@ export function closeOverlays() {
   clearLeaderboardSubscriptions();
   const menuDropdown = document.getElementById("menuDropdown");
   if (menuDropdown) menuDropdown.classList.remove("show");
-  document.body.classList.remove("games-directory-open");
   document.body.classList.remove("overlay-open");
 }
 
@@ -4622,7 +4618,7 @@ function applyReducedMotion(enabled) {
   const motionToggle = document.getElementById("motionToggle");
   if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
 }
-// Open the games directory from top navigation and keep menu-mash tracking.
+// Open the shared games panel from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
 const menuDropdownEl = document.getElementById("menuDropdown");
 if (menuToggleBtn) {
@@ -4631,10 +4627,10 @@ if (menuToggleBtn) {
     registerMenuMash();
     if (menuDropdownEl) menuDropdownEl.classList.remove("show");
     if (typeof window.toggleTopPanelOverlay === "function") {
-      window.toggleTopPanelOverlay("overlayGames");
+      window.toggleTopPanelOverlay("overlayGamebox");
       return;
     }
-    openGame("overlayGames");
+    openGame("overlayGamebox");
   };
 }
 // Click outside closes the dropdown menu if the legacy dropdown exists.
@@ -5287,6 +5283,7 @@ const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
 let leaderboardSelectedBoardId = "players";
 let leaderboardSelectedMode = "single";
 let leaderboardSearchQuery = "";
+let leaderboardCenterOnBoardId = "";
 
 function normalizeLeaderboardMode(mode) {
   const normalized = String(mode || "").toLowerCase().trim();
@@ -5629,6 +5626,12 @@ function renderLeaderboardGameStrip() {
   if (!strip) return;
   strip.innerHTML = "";
 
+  const centerCardInStrip = (cardEl) => {
+    if (!cardEl) return;
+    const left = Math.max(0, cardEl.offsetLeft - (strip.clientWidth - cardEl.clientWidth) / 2);
+    strip.scrollTo({ left, behavior: "smooth" });
+  };
+
   const visibleBoards = getVisibleLeaderboardBoards();
 
   if (!visibleBoards.length) {
@@ -5640,9 +5643,11 @@ function renderLeaderboardGameStrip() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = `leaderboard-game-card${leaderboardSelectedBoardId === board.id ? " active" : ""}`;
+    btn.dataset.board = board.id;
     btn.innerHTML = `<span>${board.icon || "🎮"}</span><strong>${board.title}</strong><small>${board.subtitle || ""}</small>`;
     btn.addEventListener("click", () => {
       leaderboardSelectedBoardId = board.id;
+      leaderboardCenterOnBoardId = board.id;
       const selectedBoard = getSelectedLeaderboardBoard();
       if (selectedBoard.type === "game") {
         const firstMode = selectedBoard.modes?.[0] || "single";
@@ -5652,32 +5657,26 @@ function renderLeaderboardGameStrip() {
     });
     strip.appendChild(btn);
   });
+
+  if (leaderboardCenterOnBoardId) {
+    const selectedCard = strip.querySelector(`[data-board="${leaderboardCenterOnBoardId}"]`);
+    if (selectedCard) requestAnimationFrame(() => centerCardInStrip(selectedCard));
+    leaderboardCenterOnBoardId = "";
+  }
 }
 
 // Render selected leaderboard and subscribe to one data feed.
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
-  const searchToggle = document.getElementById("leaderboardSearchToggle");
-  const searchInput = document.getElementById("leaderboardSearchInput");
+  const searchInput = document.getElementById("leaderboardSearchInput") || document.getElementById("gameboxSearchInput");
   if (!list) return;
-
-  if (searchToggle && searchInput && !searchToggle.dataset.bound) {
-    searchToggle.addEventListener("click", () => {
-      const opening = searchInput.style.display === "none";
-      searchInput.style.display = opening ? "block" : "none";
-      if (opening) searchInput.focus();
-      else {
-        searchInput.value = "";
-        leaderboardSearchQuery = "";
-        loadLeaderboard();
-      }
-    });
-    searchToggle.dataset.bound = "1";
-  }
 
   if (searchInput && !searchInput.dataset.bound) {
     searchInput.addEventListener("input", () => {
       leaderboardSearchQuery = String(searchInput.value || "");
+      if (typeof window.__setGameScrollerSearchQuery === "function") {
+        window.__setGameScrollerSearchQuery(leaderboardSearchQuery);
+      }
       loadLeaderboard();
     });
     searchInput.dataset.bound = "1";
@@ -5700,6 +5699,29 @@ function loadLeaderboard() {
   loadLeaderboardBoard(board, list);
 }
 
+window.loadLeaderboard = loadLeaderboard;
+
+window.__setLeaderboardSearchQuery = (query, options = {}) => {
+  const deferLoad = Boolean(options?.deferLoad);
+  leaderboardSearchQuery = String(query || "");
+  const searchInput = document.getElementById("leaderboardSearchInput");
+  if (searchInput) searchInput.value = leaderboardSearchQuery;
+  const leaderboardVisible = typeof window.__isGameboxLeaderboardVisible === "function"
+    ? window.__isGameboxLeaderboardVisible()
+    : false;
+  if (!deferLoad || leaderboardVisible) {
+    loadLeaderboard();
+    return;
+  }
+  renderLeaderboardGameStrip();
+};
+
+window.__getSelectedLeaderboardGameId = () => {
+  const board = getSelectedLeaderboardBoard();
+  if (!board || board.type !== "game") return "";
+  return board.id;
+};
+
 
 function initGameLeaderboardButton() {
   const btn = document.getElementById("gameLeaderboardJumpBtn");
@@ -5721,13 +5743,15 @@ function syncGameLeaderboardButton() {
 }
 
 export function openGameLeaderboard(gameId) {
-  openGame("overlayScores");
+  openGame("overlayGamebox");
+  if (typeof window.__setGameboxView === "function") window.__setGameboxView("leaderboard");
 
   const normalizedGameId = String(gameId || "").toLowerCase();
   const requestedBoard = LEADERBOARD_BOARDS.find((board) => board.id === normalizedGameId);
 
   if (requestedBoard) {
     leaderboardSelectedBoardId = requestedBoard.id;
+    leaderboardCenterOnBoardId = requestedBoard.id;
     if (requestedBoard.type === "game") leaderboardSelectedMode = requestedBoard.modes?.[0] || "single";
   }
 

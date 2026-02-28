@@ -50,9 +50,6 @@
         <button id="tabProfile" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayProfile')">
           PROFILE
         </button>
-        <button id="tabScores" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayScores')">
-          SCORES
-        </button>
         <button id="tabSeason" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlaySeason')">
           SEASON
         </button>
@@ -77,40 +74,6 @@
     </div>
 
     <div class="dropdown-content" id="menuDropdown"></div>
-
-    <!-- Dedicated games directory overlay. -->
-    <div class="overlay menu-overlay games-directory-overlay" id="overlayGames">
-      <h1>GAMES DIRECTORY</h1>
-      <div class="games-toolbar">
-        <input
-          id="gamesSearch"
-          class="term-input games-search"
-          type="text"
-          placeholder="SEARCH GAMES OR TAGS..."
-          maxlength="30"
-        />
-        <select id="gamesFilter" class="term-input games-select">
-          <option value="all">ALL</option>
-          <option value="arcade">ARCADE</option>
-          <option value="pvp">PVP</option>
-          <option value="casino">CASINO</option>
-          <option value="skill">SKILL</option>
-          <option value="favorites">FAVORITES</option>
-        </select>
-        <select id="gamesSort" class="term-input games-select">
-          <option value="az">A-Z</option>
-          <option value="za">Z-A</option>
-          <option value="recent">RECENT</option>
-          <option value="favorite">FAVORITED FIRST</option>
-        </select>
-        <button id="gamesClearFilters" class="term-btn games-clear" type="button">
-          RESET
-        </button>
-      </div>
-      <p id="gamesResultsMeta" class="games-results-meta">TIP: SHIFT+CLICK OR RIGHT-CLICK A GAME TO TOGGLE FAVORITE ⭐</p>
-      <div class="games-grid">
-      </div>
-    </div>
 
     <div class="overlay menu-overlay" id="overlayTrending">
       <div class="score-box panel-overlay-box">
@@ -432,7 +395,7 @@
         >
       </div>
       <section class="random-game-cta" aria-label="Games">
-        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayGames">GAMES</button></h2>
+        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayGamebox">GAMES</button></h2>
         <button class="trending-game-btn random-game-btn" id="randomGameBtn" type="button">
           <span class="trending-rank">🎲</span>
           <span>RANDOM GAME</span>
@@ -889,47 +852,6 @@
       </div>
     </div>
 
-    <!-- Scores overlay for local + global leaderboards. -->
-    <div class="overlay menu-overlay" id="overlayScores">
-      <div class="score-box">
-        <div class="leaderboard-heading-row">
-          <h2 style="text-align: center; margin-bottom: 0">GLOBAL LEADERBOARD</h2>
-          <button class="menu-btn leaderboard-search-toggle" id="leaderboardSearchToggle" type="button">SEARCH</button>
-        </div>
-        <input
-          class="term-input leaderboard-search-input"
-          id="leaderboardSearchInput"
-          type="search"
-          placeholder="SEARCH BOARDS..."
-          autocomplete="off"
-          style="display: none"
-        />
-        <p style="text-align: center; font-size: 10px; margin-bottom: 10px">
-          PICK A BOARD, THEN A MODE FROM THE SIDE PANEL
-        </p>
-        <div class="leaderboard-game-strip" id="leaderboardGameStrip" aria-label="Leaderboard selector">
-          <div class="score-item">LOADING BOARDS...</div>
-        </div>
-        <div class="leaderboard-layout">
-          <aside class="leaderboard-side-modes" id="leaderboardModePanel" aria-label="Mode selector">
-            <h3>GAME MODES</h3>
-            <p class="leaderboard-mode-meta">SELECT A GAME BOARD TO SEE MODES.</p>
-            <div class="leaderboard-mode-list" id="leaderboardModeList"></div>
-          </aside>
-          <div class="score-list" id="scoreList">
-            <div class="score-item">LOADING DATA...</div>
-          </div>
-        </div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
     <div class="overlay menu-overlay" id="overlaySeason">
       <div class="score-box">
         <h2 style="text-align: center">SEASON PROTOCOL</h2>
@@ -1055,14 +977,39 @@
 
     <div class="overlay game-overlay" id="overlayGamebox">
       <div class="game-content-shell gamebox-shell">
-        <div class="gamebox-header-row">
-          <div class="gamebox-header-actions">
-            <button class="menu-btn" id="gameboxLeaderboardBtn" type="button">VIEW LEADERBOARD</button>
+        <div class="leaderboard-heading-row gamebox-heading-row">
+          <h2 id="gameboxHeadingTitle">GAMES</h2>
+          <div class="leaderboard-heading-actions">
+            <button class="menu-btn leaderboard-search-toggle" id="gameboxFavoritesToggle" type="button" title="TOGGLE FAVORITES ONLY">★</button>
+            <button class="menu-btn leaderboard-search-toggle" id="gameboxSearchToggle" type="button">SEARCH</button>
+            <button class="menu-btn leaderboard-search-toggle" id="gameboxSwitchBtn" type="button">LEADERBOARD</button>
             <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">FULLSCREEN</button>
           </div>
         </div>
-        <p class="gamebox-subtitle" id="gameboxSubtitle">SELECT A GAME FROM THE DIRECTORY TO LOAD IT HERE.</p>
-        <div id="gameboxContent" class="gamebox-content"></div>
+        <input
+          class="term-input leaderboard-search-input gamebox-search-input"
+          id="gameboxSearchInput"
+          type="search"
+          placeholder="SEARCH GAMES..."
+          autocomplete="off"
+          style="display: none"
+        />
+        <div class="leaderboard-game-strip gamebox-game-strip" id="gameboxGameStrip" aria-label="Game selector strip"></div>
+        <div id="gameboxLeaderboardPanel" class="gamebox-leaderboard-panel" style="display: none">
+          <div class="leaderboard-game-strip" id="leaderboardGameStrip" aria-label="Leaderboard selector">
+            <div class="score-item">LOADING BOARDS...</div>
+          </div>
+          <div class="score-list" id="scoreList">
+            <div class="score-item">LOADING DATA...</div>
+          </div>
+          <div class="gamebox-leaderboard-mode-store" id="leaderboardModePanel" aria-hidden="true">
+            <p class="leaderboard-mode-meta">SELECT A GAME BOARD TO SEE MODES.</p>
+            <div class="leaderboard-mode-list" id="leaderboardModeList"></div>
+          </div>
+        </div>
+        <div class="gamebox-frame">
+          <div id="gameboxContent" class="gamebox-content"></div>
+        </div>
       </div>
     </div>
 
