@@ -1261,39 +1261,33 @@ canvas {
   min-height: min(760px, calc(100vh - var(--topbar-clearance) - 40px));
 }
 
-.gamebox-header-row {
+.gamebox-frame {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  min-height: 580px;
+  flex: 1;
+  position: relative;
+  padding-top: 52px;
 }
 
-.gamebox-header-row .menu-btn {
+.gamebox-header-actions .menu-btn {
   width: auto;
   min-width: 220px;
 }
 
 .gamebox-header-actions {
+  position: absolute;
+  top: 10px;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.gamebox-subtitle {
-  width: 100%;
-  margin: 0;
-  text-align: left;
-  font-size: 10px;
-  opacity: 0.8;
-}
-
 .gamebox-content {
   width: 100%;
-  min-height: 580px;
-  flex: 1;
+  height: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -1723,8 +1717,14 @@ canvas {
   }
 
   .gamebox-header-actions {
+    position: static;
     flex-wrap: wrap;
     justify-content: flex-end;
+    margin: 0 0 8px auto;
+  }
+
+  .gamebox-frame {
+    padding-top: 0;
   }
 }
 
@@ -3668,9 +3668,13 @@ body.reduce-motion *::after {
     justify-content: center;
   }
 
-  .gamebox-header-row {
-    flex-direction: column;
-    align-items: flex-end;
+  .gamebox-header-actions {
+    width: 100%;
+  }
+
+  .gamebox-header-actions .menu-btn {
+    min-width: 0;
+    width: 100%;
   }
 }
 

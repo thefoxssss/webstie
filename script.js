@@ -203,10 +203,7 @@ const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
 let mountedGameOverlayId = "";
 
 function updateSharedGameboxHeader(gameId) {
-  const subtitle = document.getElementById("gameboxSubtitle");
   const leaderboardBtn = document.getElementById("gameboxLeaderboardBtn");
-  const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === gameId);
-  if (subtitle) subtitle.textContent = entry?.description || "GAME MODULE LOADED";
   if (leaderboardBtn) {
     leaderboardBtn.textContent = "VIEW LEADERBOARD";
     leaderboardBtn.onclick = () => openGameLeaderboard(gameId);
@@ -234,6 +231,9 @@ function mountGameOverlayIntoGamebox(gameId) {
   nextOverlay.classList.add("gamebox-mounted");
   gameboxContent.innerHTML = "";
   gameboxContent.appendChild(nextOverlay);
+  gameboxContent.scrollTop = 0;
+  nextOverlay.scrollTop = 0;
+  sharedOverlay.scrollTop = 0;
   mountedGameOverlayId = targetOverlayId;
   updateSharedGameboxHeader(gameId);
   return SHARED_GAME_OVERLAY_ID;
