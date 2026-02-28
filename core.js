@@ -4968,7 +4968,7 @@ function renderChatTab() {
         localMuteBtn.type = "button";
         localMuteBtn.className = "chat-mute-btn";
         localMuteBtn.title = isLocallyMuted ? `Unmute ${user} locally` : `Mute ${user} locally`;
-        localMuteBtn.textContent = isLocallyMuted ? "L🔊" : "L🔇";
+        localMuteBtn.textContent = isLocallyMuted ? "🔇" : "🔊";
         localMuteBtn.onclick = () => toggleLocalChatMute(user);
         row.appendChild(localMuteBtn);
 
@@ -4977,13 +4977,14 @@ function renderChatTab() {
           globalMuteBtn.type = "button";
           globalMuteBtn.className = "chat-mute-btn chat-global-mute-btn";
           globalMuteBtn.title = isGloballyMuted ? `Unmute ${user} globally` : `Mute ${user} globally`;
-          globalMuteBtn.textContent = isGloballyMuted ? "G🔊" : "G🔇";
+          globalMuteBtn.textContent = isGloballyMuted ? "🎤🚫" : "🎤";
           globalMuteBtn.onclick = () => toggleAdminChatMute(user);
           row.appendChild(globalMuteBtn);
         }
       }
 
-      if (isGodUser() && m.id) {
+      const isOwnMessage = normalizeUsername(m.user || "") === normalizeUsername(myName);
+      if ((isGodUser() || isOwnMessage) && m.id) {
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "chat-remove-btn";
@@ -5039,7 +5040,7 @@ function initGlobalChatMutes() {
 }
 
 async function removeChatMessage(tab, messageId) {
-  if (!isGodUser() || !messageId) return;
+  if (!messageId) return;
   const collectionByTab = {
     dm: "gooner_user_chat",
     global: "gooner_global_chat",
@@ -5047,8 +5048,24 @@ async function removeChatMessage(tab, messageId) {
   };
   const collectionName = collectionByTab[tab];
   if (!collectionName) return;
+  const messageRef = doc(db, collectionName, messageId);
+  const canDelete = await runFirestoreTask(
+    async () => {
+      if (isGodUser()) return true;
+      const snapshot = await getDoc(messageRef);
+      if (!snapshot.exists()) return false;
+      const author = normalizeUsername(snapshot.data()?.user || "");
+      return author && author === normalizeUsername(myName);
+    },
+    "CHAT",
+    "Message remove failed."
+  );
+  if (!canDelete) {
+    showToast("CHAT", "🚫", "You can only remove your own messages.");
+    return;
+  }
   const removed = await runFirestoreTask(
-    () => deleteDoc(doc(db, collectionName, messageId)),
+    () => deleteDoc(messageRef),
     "ADMIN CHAT",
     "Message remove failed."
   );
