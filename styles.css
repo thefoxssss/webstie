@@ -1182,8 +1182,8 @@ canvas {
 }
 
 .gamebox-shell {
-  width: min(96vw, 920px);
-  min-height: min(760px, calc(100vh - var(--topbar-clearance) - 40px));
+  width: min(96vw, 1300px);
+  min-height: min(860px, calc(100vh - var(--topbar-clearance) - 24px));
 }
 
 .gamebox-heading-row {
@@ -1205,12 +1205,28 @@ canvas {
   margin-bottom: 6px;
 }
 
+
+.gamebox-leaderboard-panel {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.gamebox-leaderboard-panel .score-list {
+  max-height: min(52vh, 520px);
+}
+
+.gamebox-leaderboard-modes {
+  min-height: auto;
+}
+
 .gamebox-frame {
   width: 100%;
-  min-height: 580px;
+  min-height: 700px;
   flex: 1;
   position: relative;
-  padding-top: 52px;
+  padding-top: 0;
 }
 
 .gamebox-header-actions .menu-btn {
@@ -1378,19 +1394,15 @@ canvas {
   gap: 6px;
 }
 
-.leaderboard-game-card .game-tags {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .gamebox-heading-row .leaderboard-search-toggle {
   min-width: 84px;
 }
 
 #gameboxFavoritesToggle {
-  min-width: 44px;
-  font-size: 14px;
+  min-width: 36px;
+  width: 36px;
+  padding: 8px 0;
+  font-size: 16px;
   line-height: 1;
 }
 
@@ -1966,7 +1978,7 @@ canvas {
 
 /* Leaderboard */
 .score-box {
-  width: min(96vw, 920px);
+  width: min(96vw, 1300px);
   border: 2px solid var(--accent);
   background: #000;
   padding: clamp(12px, 2.5vw, 24px);
@@ -2831,7 +2843,7 @@ body.reduce-motion *::after {
 }
 
 #overlayShop .score-box {
-  width: min(96vw, 920px);
+  width: min(96vw, 1300px);
   height: calc(100vh - var(--topbar-clearance) - 40px);
   max-height: none;
   display: flex;

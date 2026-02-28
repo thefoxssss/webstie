@@ -2426,7 +2426,6 @@ const TOP_PANEL_OVERLAY_IDS = [
   "overlayBank",
   "overlayShop",
   "overlayProfile",
-  "overlayScores",
   "overlaySeason",
   "overlayCrew",
   "overlayAdmin",
@@ -2446,9 +2445,6 @@ function runOverlayOpenHooks(id) {
     setText("bankTransferMsg", "");
     setText("bankLoanMsg", "");
     setText("stockTradeMsg", "");
-  }
-  if (id === "overlayScores") {
-    loadLeaderboard();
   }
   if (id === "overlayGamebox") {
     if (typeof window.__ensureGameboxHasGame === "function") window.__ensureGameboxHasGame();
@@ -5602,9 +5598,8 @@ function renderLeaderboardGameStrip() {
 // Render selected leaderboard and subscribe to one data feed.
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
-  const searchToggle = document.getElementById("leaderboardSearchToggle");
-  const searchInput = document.getElementById("leaderboardSearchInput");
-  const switchBtn = document.getElementById("leaderboardSwitchBtn");
+  const searchToggle = document.getElementById("leaderboardSearchToggle") || document.getElementById("gameboxSearchToggle");
+  const searchInput = document.getElementById("leaderboardSearchInput") || document.getElementById("gameboxSearchInput");
   if (!list) return;
 
   if (searchToggle && searchInput && !searchToggle.dataset.bound) {
@@ -5632,18 +5627,6 @@ function loadLeaderboard() {
     searchInput.dataset.bound = "1";
   }
 
-  if (switchBtn && !switchBtn.dataset.bound) {
-    switchBtn.addEventListener("click", () => {
-      const board = getSelectedLeaderboardBoard();
-      const targetGameId = board?.type === "game" ? board.id : String(currentGame || "").toLowerCase();
-      if (typeof window.openGame === "function") window.openGame("overlayGamebox");
-      if (targetGameId && typeof window.launchGame === "function") {
-        window.launchGame(targetGameId, "leaderboard-switch");
-      }
-    });
-    switchBtn.dataset.bound = "1";
-  }
-
   if (searchInput) leaderboardSearchQuery = String(searchInput.value || "");
 
   clearLeaderboardSubscriptions();
@@ -5661,12 +5644,17 @@ function loadLeaderboard() {
   loadLeaderboardBoard(board, list);
 }
 
+window.loadLeaderboard = loadLeaderboard;
+
 window.__setLeaderboardSearchQuery = (query, options = {}) => {
   const deferLoad = Boolean(options?.deferLoad);
   leaderboardSearchQuery = String(query || "");
   const searchInput = document.getElementById("leaderboardSearchInput");
   if (searchInput) searchInput.value = leaderboardSearchQuery;
-  if (!deferLoad || document.getElementById("overlayScores")?.classList.contains("active")) {
+  const leaderboardVisible = typeof window.__isGameboxLeaderboardVisible === "function"
+    ? window.__isGameboxLeaderboardVisible()
+    : false;
+  if (!deferLoad || leaderboardVisible) {
     loadLeaderboard();
     return;
   }
@@ -5700,7 +5688,8 @@ function syncGameLeaderboardButton() {
 }
 
 export function openGameLeaderboard(gameId) {
-  openGame("overlayScores");
+  openGame("overlayGamebox");
+  if (typeof window.__setGameboxView === "function") window.__setGameboxView("leaderboard");
 
   const normalizedGameId = String(gameId || "").toLowerCase();
   const requestedBoard = LEADERBOARD_BOARDS.find((board) => board.id === normalizedGameId);

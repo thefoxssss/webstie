@@ -852,50 +852,6 @@
       </div>
     </div>
 
-    <!-- Scores overlay for local + global leaderboards. -->
-    <div class="overlay menu-overlay" id="overlayScores">
-      <div class="score-box">
-        <div class="leaderboard-heading-row">
-          <h2 style="text-align: center; margin-bottom: 0">GLOBAL LEADERBOARD</h2>
-          <div class="leaderboard-heading-actions">
-            <button class="menu-btn leaderboard-search-toggle" id="leaderboardSearchToggle" type="button">SEARCH</button>
-            <button class="menu-btn leaderboard-search-toggle" id="leaderboardSwitchBtn" type="button">GAMES</button>
-          </div>
-        </div>
-        <input
-          class="term-input leaderboard-search-input"
-          id="leaderboardSearchInput"
-          type="search"
-          placeholder="SEARCH BOARDS..."
-          autocomplete="off"
-          style="display: none"
-        />
-        <p style="text-align: center; font-size: 10px; margin-bottom: 10px">
-          PICK A BOARD, THEN A MODE FROM THE SIDE PANEL
-        </p>
-        <div class="leaderboard-game-strip" id="leaderboardGameStrip" aria-label="Leaderboard selector">
-          <div class="score-item">LOADING BOARDS...</div>
-        </div>
-        <div class="leaderboard-layout">
-          <aside class="leaderboard-side-modes" id="leaderboardModePanel" aria-label="Mode selector">
-            <h3>GAME MODES</h3>
-            <p class="leaderboard-mode-meta">SELECT A GAME BOARD TO SEE MODES.</p>
-            <div class="leaderboard-mode-list" id="leaderboardModeList"></div>
-          </aside>
-          <div class="score-list" id="scoreList">
-            <div class="score-item">LOADING DATA...</div>
-          </div>
-        </div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
-      </div>
-    </div>
-
     <div class="overlay menu-overlay" id="overlaySeason">
       <div class="score-box">
         <h2 style="text-align: center">SEASON PROTOCOL</h2>
@@ -1022,11 +978,12 @@
     <div class="overlay game-overlay" id="overlayGamebox">
       <div class="game-content-shell gamebox-shell">
         <div class="leaderboard-heading-row gamebox-heading-row">
-          <h2>GAMES</h2>
+          <h2 id="gameboxHeadingTitle">GAMES</h2>
           <div class="leaderboard-heading-actions">
             <button class="menu-btn leaderboard-search-toggle" id="gameboxFavoritesToggle" type="button" title="TOGGLE FAVORITES ONLY">★</button>
             <button class="menu-btn leaderboard-search-toggle" id="gameboxSearchToggle" type="button">SEARCH</button>
             <button class="menu-btn leaderboard-search-toggle" id="gameboxSwitchBtn" type="button">LEADERBOARD</button>
+            <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">FULLSCREEN</button>
           </div>
         </div>
         <input
@@ -1038,10 +995,20 @@
           style="display: none"
         />
         <div class="leaderboard-game-strip gamebox-game-strip" id="gameboxGameStrip" aria-label="Game selector strip"></div>
-        <div class="gamebox-frame">
-          <div class="gamebox-header-actions">
-            <button id="topFullscreenBtn" class="menu-btn" type="button" style="display: none">FULLSCREEN</button>
+        <div id="gameboxLeaderboardPanel" class="gamebox-leaderboard-panel" style="display: none">
+          <div class="leaderboard-game-strip" id="leaderboardGameStrip" aria-label="Leaderboard selector">
+            <div class="score-item">LOADING BOARDS...</div>
           </div>
+          <div class="score-list" id="scoreList">
+            <div class="score-item">LOADING DATA...</div>
+          </div>
+          <aside class="leaderboard-side-modes gamebox-leaderboard-modes" id="leaderboardModePanel" aria-label="Mode selector">
+            <h3>GAME MODES</h3>
+            <p class="leaderboard-mode-meta">SELECT A GAME BOARD TO SEE MODES.</p>
+            <div class="leaderboard-mode-list" id="leaderboardModeList"></div>
+          </aside>
+        </div>
+        <div class="gamebox-frame">
           <div id="gameboxContent" class="gamebox-content"></div>
         </div>
       </div>

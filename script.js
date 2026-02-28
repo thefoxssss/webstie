@@ -81,7 +81,7 @@ import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
-import { GAME_DIRECTORY_ENTRIES, GAME_TAG_EMOJI } from "./gameCatalog.js";
+import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -341,7 +341,7 @@ function disableInGameExitButtons() {
 }
 
 const CANVAS_UI_PADDING = 230;
-const GAMEBOX_UI_PADDING = 220;
+const GAMEBOX_UI_PADDING = 130;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
 const GAME_LIBRARY_RECENTS_KEY = "goonerRecentGames";
 const GAME_LIBRARY_RECENT_LIMIT = 6;
@@ -492,11 +492,7 @@ function initGameScroller() {
       btn.type = "button";
       btn.className = `leaderboard-game-card${selectedGameId === game.id ? " active" : ""}${favoriteSet.has(game.id) ? " is-favorite" : ""}`;
       btn.dataset.game = game.id;
-      const tagIcons = game.tags
-        .slice(0, 4)
-        .map((tag) => `<span class="game-tag" data-tag-label="${String(tag || "").toUpperCase()}">${GAME_TAG_EMOJI[tag] || "🏷️"}</span>`)
-        .join("");
-      btn.innerHTML = `<span class="game-strip-icon-row"><span>${game.icon || "🎮"}</span><span class="game-tags">${tagIcons}</span></span><strong>${game.title}</strong><small>${game.description || ""}</small>`;
+      btn.innerHTML = `<span class="game-strip-icon-row"><span>${game.icon || "🎮"}</span></span><strong>${game.title}</strong><small>${game.description || ""}</small>`;
       btn.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         toggleFavorite(game.id);
@@ -563,8 +559,6 @@ function initGameScroller() {
     dragLastT = performance.now();
     dragVelocity = 0;
     didDrag = false;
-    strip.classList.add("is-dragging");
-    strip.setPointerCapture?.(event.pointerId);
   });
 
   strip.addEventListener("pointermove", (event) => {
@@ -575,7 +569,11 @@ function initGameScroller() {
     dragVelocity = (event.clientX - dragLastX) / dt;
     dragLastX = event.clientX;
     dragLastT = now;
-    if (Math.abs(delta) > 6) didDrag = true;
+    if (!didDrag && Math.abs(delta) > 6) {
+      didDrag = true;
+      strip.classList.add("is-dragging");
+      strip.setPointerCapture?.(event.pointerId);
+    }
     if (!didDrag) return;
     strip.scrollLeft = dragStartScrollLeft - delta;
   });
@@ -593,6 +591,11 @@ function initGameScroller() {
 
   strip.addEventListener("pointerup", endDrag);
   strip.addEventListener("pointercancel", endDrag);
+  strip.addEventListener("lostpointercapture", () => {
+    strip.classList.remove("is-dragging");
+    dragPointerId = null;
+    didDrag = false;
+  });
 
   favoritesToggle.addEventListener("click", () => {
     favoritesOnly = !favoritesOnly;
@@ -618,13 +621,34 @@ function initGameScroller() {
     renderStrip();
   });
 
+  const headingTitle = document.getElementById("gameboxHeadingTitle");
+  const leaderboardPanel = document.getElementById("gameboxLeaderboardPanel");
+  const gameFrame = document.querySelector("#overlayGamebox .gamebox-frame");
+
+  const setGameboxView = (view) => {
+    const normalized = view === "leaderboard" ? "leaderboard" : "games";
+    const inLeaderboard = normalized === "leaderboard";
+    if (headingTitle) headingTitle.textContent = inLeaderboard ? "LEADERBOARD" : "GAMES";
+    switchBtn.textContent = inLeaderboard ? "GAMES" : "LEADERBOARD";
+    favoritesToggle.style.display = inLeaderboard ? "none" : "inline-flex";
+    strip.style.display = inLeaderboard ? "none" : "flex";
+    if (gameFrame) gameFrame.style.display = inLeaderboard ? "none" : "flex";
+    if (leaderboardPanel) leaderboardPanel.style.display = inLeaderboard ? "grid" : "none";
+    if (inLeaderboard && typeof window.loadLeaderboard === "function") window.loadLeaderboard();
+  };
+
   switchBtn.addEventListener("click", () => {
+    const isLeaderboard = switchBtn.textContent === "GAMES";
+    if (isLeaderboard) {
+      setGameboxView("games");
+      return;
+    }
     const targetGame = selectedGameId || String(state.currentGame || "").toLowerCase();
     if (targetGame && typeof openGameLeaderboard === "function") {
       openGameLeaderboard(targetGame);
       return;
     }
-    openGame("overlayScores");
+    setGameboxView("leaderboard");
   });
 
   window.__updateGameSwitcherState = (activeGameId) => {
@@ -643,7 +667,12 @@ function initGameScroller() {
 
   window.__getSelectedGameScrollerId = () => String(selectedGameId || strip.dataset.selectedGame || "");
 
+
+  window.__setGameboxView = (view) => setGameboxView(view);
+  window.__isGameboxLeaderboardVisible = () => Boolean(leaderboardPanel && leaderboardPanel.style.display !== "none");
+
   window.__ensureGameboxHasGame = () => {
+    setGameboxView("games");
     if (mountedGameOverlayId) return;
     const firstGame = getVisibleGames()[0] || orderedGames[0];
     if (!firstGame) return;
@@ -653,7 +682,9 @@ function initGameScroller() {
   };
 
   renderStrip();
+  setGameboxView("games");
 }
+
 
 function getFullscreenTarget(overlay) {
   return overlay.querySelector("canvas, iframe") || overlay;
@@ -690,7 +721,7 @@ function initMainSiteSearch() {
     { aliases: ["bank", "money"], action: () => openGame("overlayBank"), label: "OPENED BANK PANEL", overlayId: "overlayBank" },
     { aliases: ["shop", "store", "black market"], action: () => openGame("overlayShop"), label: "OPENED SHOP PANEL", overlayId: "overlayShop" },
     { aliases: ["profile", "account", "stats"], action: () => openGame("overlayProfile"), label: "OPENED PROFILE PANEL", overlayId: "overlayProfile" },
-    { aliases: ["scores", "leaderboard", "ranks"], action: () => openGame("overlayScores"), label: "OPENED SCORES PANEL", overlayId: "overlayScores" },
+    { aliases: ["scores", "leaderboard", "ranks"], action: () => { openGame("overlayGamebox"); if (typeof window.__setGameboxView === "function") window.__setGameboxView("leaderboard"); }, label: "OPENED LEADERBOARD PANEL", overlayId: "overlayGamebox" },
     { aliases: ["season", "battle pass"], action: () => openGame("overlaySeason"), label: "OPENED SEASON PANEL", overlayId: "overlaySeason" },
     { aliases: ["crew", "clan", "guild"], action: () => openGame("overlayCrew"), label: "OPENED CREW PANEL", overlayId: "overlayCrew" },
     { aliases: ["config", "settings"], action: () => openGame("overlayConfig"), label: "OPENED CONFIG PANEL", overlayId: "overlayConfig" },
@@ -985,7 +1016,6 @@ function initTopBarOverlayControls() {
     "overlayBank",
     "overlayShop",
     "overlayProfile",
-    "overlayScores",
     "overlaySeason",
     "overlayCrew",
     "overlayAdmin",
