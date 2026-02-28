@@ -1293,6 +1293,10 @@ canvas {
   opacity: 0.8;
 }
 
+body.hide-game-tips .gamebox-subtitle {
+  display: none;
+}
+
 .gamebox-content {
   width: 100%;
   min-height: 580px;
@@ -2311,6 +2315,38 @@ canvas {
 #overlayConfig .config-box {
   margin-top: 0;
   margin-left: 0;
+}
+
+.config-title {
+  text-align: center;
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.config-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.config-tab {
+  padding: 6px 8px;
+  font-size: 9px;
+}
+
+.config-tab.active {
+  box-shadow: 0 0 10px var(--accent-dim);
+  background: rgba(0, 255, 0, 0.08);
+}
+
+.config-panel {
+  display: none;
+}
+
+.config-panel.active {
+  display: block;
 }
 .config-row {
   display: flex;

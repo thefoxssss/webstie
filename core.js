@@ -4453,6 +4453,9 @@ export function toggleItem(id) {
 
 // Display a toast notification with optional subtitle.
 export function showToast(title, icon, subtitle = "") {
+  const config = readUiConfig();
+  if (config.toastAlerts === false) return;
+
   const toastBox = document.getElementById("toastBox");
   if (!toastBox) return;
 
@@ -4508,7 +4511,7 @@ document.getElementById("btnLogout").onclick = () => {
   location.reload();
 };
 
-const UI_CONFIG_KEY = "goonerUiConfigV1";
+const UI_CONFIG_KEY = "goonerUiConfigV2";
 
 function readUiConfig() {
   try {
@@ -4520,6 +4523,12 @@ function readUiConfig() {
 
 function writeUiConfig(nextConfig) {
   localStorage.setItem(UI_CONFIG_KEY, JSON.stringify({ ...readUiConfig(), ...nextConfig }));
+}
+
+function updateToggleLabel(toggleId, enabled, onLabel = "ON", offLabel = "OFF") {
+  const toggle = document.getElementById(toggleId);
+  if (!toggle) return;
+  toggle.textContent = enabled ? onLabel : offLabel;
 }
 
 function applyUiScale(value) {
@@ -4541,6 +4550,40 @@ function applyReducedMotion(enabled) {
   document.body.classList.toggle("reduce-motion", enabled);
   const motionToggle = document.getElementById("motionToggle");
   if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
+}
+
+function applyToastAlerts(enabled) {
+  updateToggleLabel("toastToggle", enabled);
+}
+
+function applyDesktopAlerts(enabled) {
+  updateToggleLabel("desktopNotifyToggle", enabled);
+}
+
+function applyGameTips(enabled) {
+  document.body.classList.toggle("hide-game-tips", !enabled);
+  updateToggleLabel("gameTipsToggle", enabled);
+}
+
+function initConfigTabs() {
+  const tabs = Array.from(document.querySelectorAll("[data-config-tab]"));
+  const panels = Array.from(document.querySelectorAll("[data-config-panel]"));
+  if (!tabs.length || !panels.length) return;
+
+  const setActiveTab = (tabName) => {
+    tabs.forEach((tab) => {
+      tab.classList.toggle("active", tab.dataset.configTab === tabName);
+    });
+    panels.forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.configPanel === tabName);
+    });
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => setActiveTab(tab.dataset.configTab || "theme"));
+  });
+
+  setActiveTab("theme");
 }
 // Open the games directory from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
@@ -4606,7 +4649,9 @@ document.getElementById("themeColor").oninput = (e) => {
 };
 // Volume slider controls global audio volume.
 document.getElementById("volSlider").oninput = (e) => {
-  globalVol = e.target.value / 100;
+  const volume = e.target.value / 100;
+  globalVol = volume;
+  writeUiConfig({ volume });
 };
 // Scanline slider controls overlay opacity.
 document.getElementById("scanSlider").oninput = (e) =>
@@ -4650,18 +4695,56 @@ document.getElementById("motionToggle").onclick = () => {
   writeUiConfig({ reducedMotion: enabled });
 };
 
+document.getElementById("toastToggle").onclick = () => {
+  const config = readUiConfig();
+  const enabled = config.toastAlerts !== false ? false : true;
+  applyToastAlerts(enabled);
+  writeUiConfig({ toastAlerts: enabled });
+};
+
+document.getElementById("desktopNotifyToggle").onclick = async () => {
+  const config = readUiConfig();
+  let enabled = config.desktopAlerts === true;
+  if (!enabled && "Notification" in window) {
+    const permission = await Notification.requestPermission();
+    enabled = permission === "granted";
+  } else {
+    enabled = !enabled;
+  }
+  if (!("Notification" in window)) enabled = false;
+  applyDesktopAlerts(enabled);
+  writeUiConfig({ desktopAlerts: enabled });
+};
+
+document.getElementById("gameTipsToggle").onclick = () => {
+  const config = readUiConfig();
+  const enabled = config.gameTips !== false ? false : true;
+  applyGameTips(enabled);
+  writeUiConfig({ gameTips: enabled });
+};
+
+initConfigTabs();
+
 (function hydrateUiConfig() {
   const config = readUiConfig();
   const uiScale = Number(config.uiScale || 1);
   const uiTextSize = Number(config.uiTextSize || 11);
+  const volume = Number.isFinite(Number(config.volume)) ? Number(config.volume) : 0.5;
   applyUiScale(uiScale);
   applyUiTextSize(uiTextSize);
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
+  applyToastAlerts(config.toastAlerts !== false);
+  applyDesktopAlerts(Boolean(config.desktopAlerts));
+  applyGameTips(config.gameTips !== false);
+  globalVol = volume;
+
   const uiScaleSlider = document.getElementById("uiScaleSlider");
   const uiTextSlider = document.getElementById("uiTextSlider");
+  const volSlider = document.getElementById("volSlider");
   if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
   if (uiTextSlider) uiTextSlider.value = String(uiTextSize);
+  if (volSlider) volSlider.value = String(Math.round(volume * 100));
 })();
 
 // Konami code sequence for a hidden Matrix unlock.
