@@ -407,6 +407,19 @@ body::before {
   flex: 1;
   min-width: 0;
 }
+.chat-mute-btn {
+  border: none;
+  background: transparent;
+  color: #7ec8ff;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.chat-mute-btn:hover {
+  color: #fff;
+}
 .chat-remove-btn {
   border: none;
   background: transparent;

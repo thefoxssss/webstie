@@ -603,6 +603,7 @@ function updateAdminMenu() {
   const hasAccess = isGodUser();
   if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
+  if (isChatInitialized && document.getElementById("chatHistory")) renderChatTab();
 }
 
 
@@ -4610,7 +4611,10 @@ let lastChatAt = 0;
 let lastChatMsg = "";
 let activeChatTab = "global";
 let stopChatListener = null;
+let stopChatMuteListener = null;
 let activeDmUser = "";
+let globallyMutedUsers = new Set();
+let isChatInitialized = false;
 
 function getChatTabConfig(tab) {
   const crewTag = normalizeCrewTag(crewData?.tag || "");
@@ -4620,7 +4624,7 @@ function getChatTabConfig(tab) {
       placeholder: "@USER MESSAGE...",
       meta: "DIRECT MESSAGES // USE @USERNAME MESSAGE",
       // Keep DM queries index-light so chats work without requiring a composite Firestore index.
-      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), limit(80)),
+      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName))),
       send: (txt) => {
         const targetOnly = txt.match(/^\/to\s+@?([A-Za-z0-9_\-]{2,16})$/i);
         if (targetOnly) {
@@ -4661,7 +4665,7 @@ function getChatTabConfig(tab) {
       label: "GLOBAL",
       placeholder: "TYPE MESSAGE...",
       meta: "GLOBAL CHANNEL // TYPE MESSAGE...",
-      getQuery: () => query(collection(db, "gooner_global_chat"), orderBy("ts", "desc"), limit(25)),
+      getQuery: () => query(collection(db, "gooner_global_chat"), orderBy("ts", "desc")),
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
@@ -4675,7 +4679,7 @@ function getChatTabConfig(tab) {
       getQuery: () => {
         if (!crewTag) return null;
         // Keep crew queries index-light so chats work without requiring a composite Firestore index.
-        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag), limit(80));
+        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag));
       },
       send: (txt) => {
         if (!crewTag) return { error: "JOIN A CREW BEFORE USING CREW CHAT." };
@@ -4718,7 +4722,6 @@ function renderChatTab() {
     snap.forEach((d) => msgs.push({ id: d.id, ...d.data() }));
     msgs
       .sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0))
-      .slice(-25)
       .forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
       if (blocklist.has(user) || muted.has(user)) return;
@@ -4729,6 +4732,26 @@ function renderChatTab() {
       text.className = "chat-msg-text";
       text.innerHTML = tabConfig.renderMessage(m);
       row.appendChild(text);
+
+      const canTargetUser = user && user !== "ANON" && user !== normalizeUsername(myName);
+      if (canTargetUser) {
+        const muteBtn = document.createElement("button");
+        muteBtn.type = "button";
+        muteBtn.className = "chat-mute-btn";
+
+        if (isGodUser()) {
+          const globallyMuted = globallyMutedUsers.has(user);
+          muteBtn.title = globallyMuted ? `Unmute ${user} globally` : `Mute ${user} globally`;
+          muteBtn.textContent = globallyMuted ? "🔊" : "🔇";
+          muteBtn.onclick = () => toggleAdminChatMute(user);
+        } else {
+          const mutedLocally = muted.has(user);
+          muteBtn.title = mutedLocally ? `Unmute ${user} locally` : `Mute ${user} locally`;
+          muteBtn.textContent = mutedLocally ? "🔊" : "🔇";
+          muteBtn.onclick = () => toggleLocalChatMute(user);
+        }
+        row.appendChild(muteBtn);
+      }
 
       if (isGodUser() && m.id) {
         const removeBtn = document.createElement("button");
@@ -4743,6 +4766,45 @@ function renderChatTab() {
       list.appendChild(row);
       });
     list.scrollTop = list.scrollHeight;
+  });
+}
+
+function toggleLocalChatMute(username) {
+  const user = normalizeUsername(username);
+  if (!user) return;
+  const muted = getChatSet(CHAT_MUTED_KEY);
+  if (muted.has(user)) {
+    muted.delete(user);
+    showToast("UNMUTED (LOCAL)", "🔊", user);
+  } else {
+    muted.add(user);
+    showToast("MUTED (LOCAL)", "🔇", user);
+  }
+  setChatSet(CHAT_MUTED_KEY, muted);
+  renderChatTab();
+}
+
+async function toggleAdminChatMute(username) {
+  if (!isGodUser()) return;
+  const user = normalizeUsername(username);
+  if (!user) return;
+  const targetRef = doc(db, "gooner_chat_mutes", user);
+  const muted = globallyMutedUsers.has(user);
+  const ok = await runFirestoreTask(
+    () => (muted ? deleteDoc(targetRef) : setDoc(targetRef, { user, mutedBy: normalizeUsername(myName), ts: Date.now() })),
+    "ADMIN CHAT",
+    muted ? "Unmute failed." : "Mute failed."
+  );
+  if (!ok) return;
+  showToast(muted ? "GLOBAL UNMUTE" : "GLOBAL MUTE", muted ? "🔊" : "🔇", user);
+}
+
+function initGlobalChatMutes() {
+  if (stopChatMuteListener) stopChatMuteListener();
+  stopChatMuteListener = onSnapshot(collection(db, "gooner_chat_mutes"), (snap) => {
+    globallyMutedUsers = new Set();
+    snap.forEach((row) => globallyMutedUsers.add(normalizeUsername(row.id || row.data()?.user || "")));
+    renderChatTab();
   });
 }
 
@@ -4780,6 +4842,7 @@ function initChat() {
     minimizeBtn.addEventListener("click", () => {
       chatRoot.classList.toggle("minimized");
       syncChatMinimizeUi();
+      renderChatTab();
     });
   }
   syncChatMinimizeUi();
@@ -4790,7 +4853,9 @@ function initChat() {
       renderChatTab();
     });
   });
+  initGlobalChatMutes();
   renderChatTab();
+  isChatInitialized = true;
   document.getElementById("chatInput").addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
 
@@ -4841,6 +4906,11 @@ function initChat() {
       setChatSet(CHAT_MUTED_KEY, muted);
       showToast("UNMUTED USER", "🔊", user);
       e.target.value = "";
+      return;
+    }
+
+    if (globallyMutedUsers.has(normalizeUsername(myName))) {
+      showToast("CHAT MUTED", "🔇", "An admin muted your chat access.");
       return;
     }
 
