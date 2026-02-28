@@ -56,6 +56,15 @@ const wind = {
   timer: 0,
 };
 
+function normalizeAngle(angle) {
+  const fullTurn = Math.PI * 2;
+  return ((angle + Math.PI) % fullTurn + fullTurn) % fullTurn - Math.PI;
+}
+
+function angleDelta(a, b) {
+  return normalizeAngle(a - b);
+}
+
 function randomRange(min, max) {
   return min + Math.random() * (max - min);
 }
@@ -133,6 +142,9 @@ function startNextRun() {
   ship.vx = 0;
   ship.vy = 0;
   ship.ang = -Math.PI / 2;
+  ship.px = ship.x;
+  ship.py = ship.y;
+  ship.pAng = ship.ang;
   ship.fuel = maxFuel();
   ship.shield = upgrades.shield;
 
@@ -152,6 +164,7 @@ export function updateVoidMiner() {
 
   if (leftOn) ship.ang -= ROT_SPEED * dt * (1 + upgrades.stabilizer * 0.08);
   if (rightOn) ship.ang += ROT_SPEED * dt * (1 + upgrades.stabilizer * 0.08);
+  ship.ang = normalizeAngle(ship.ang);
 
   wind.timer -= dt;
   if (wind.timer <= 0) {
@@ -183,13 +196,35 @@ export function updateVoidMiner() {
 
   ship.x = Math.max(10, Math.min(WIDTH - 10, ship.x));
 
+  if (ship.y < 8) {
+    ship.y = 8;
+    ship.vy = Math.max(ship.vy, 0);
+  }
+
+  if (ship.y > HEIGHT + 14) {
+    if (ship.shield > 0) {
+      ship.shield -= 1;
+      ship.y = HEIGHT - 24;
+      ship.vx *= 0.4;
+      ship.vy = -Math.max(12, Math.abs(ship.vy) * 0.35);
+      showToast("BOUNDARY SHIELD TRIGGERED", "🛡️");
+    } else {
+      showGameOver("voidminer", Math.floor(score));
+      return;
+    }
+  }
+
   const groundDist = signedDistanceToGround(ship.x, ship.y);
   if (groundDist < 11) {
     const padY = landingZoneY(ship.x);
     const safeVx = Math.max(7, 18 - level * 0.7 + upgrades.stabilizer * 1.5);
     const safeVy = Math.max(11, 28 - level * 0.85 + upgrades.stabilizer * 1.8);
     const safeAngle = 0.3 + upgrades.stabilizer * 0.03;
-    const safe = padY > 0 && Math.abs(ship.vx) <= safeVx && Math.abs(ship.vy) <= safeVy && Math.abs(ship.ang + Math.PI / 2) < safeAngle;
+    const safe =
+      padY > 0 &&
+      Math.abs(ship.vx) <= safeVx &&
+      Math.abs(ship.vy) <= safeVy &&
+      Math.abs(angleDelta(ship.ang, -Math.PI / 2)) < safeAngle;
 
     if (safe) {
       const levelReward = 400 + level * 180;
@@ -284,6 +319,9 @@ export function initVoidMiner() {
   ship.vx = 0;
   ship.vy = 0;
   ship.ang = -Math.PI / 2;
+  ship.px = ship.x;
+  ship.py = ship.y;
+  ship.pAng = ship.ang;
   ship.fuel = maxFuel();
   ship.shield = 0;
   thrustOn = false;
