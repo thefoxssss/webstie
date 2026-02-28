@@ -303,7 +303,7 @@ function loopDodge(now) {
       player.y < s.y + s.h &&
       player.y + player.h > s.y
     ) {
-      if (consumeShield()) {
+      if (consumeShield("dodge")) {
         shards.splice(i, 1);
         showToast("SHIELD USED", "🛡️");
         continue;

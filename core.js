@@ -3668,8 +3668,8 @@ export async function tradeMoney() {
 }
 
 // Consume exactly one shield charge if available.
-export function consumeShield() {
-  const gameKey = String(currentGame || "global").toLowerCase();
+export function consumeShield(gameId = currentGame) {
+  const gameKey = String(gameId || currentGame || "global").toLowerCase();
   const now = Date.now();
   if (shieldCooldowns[gameKey] && shieldCooldowns[gameKey] > now) return true;
   if (!hasActiveItem("item_shield")) return false;

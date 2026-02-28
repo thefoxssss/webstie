@@ -137,7 +137,7 @@ function onTick(dt) {
         obstacleH[i]
       )
     ) {
-      if (consumeShield()) {
+      if (consumeShield("runner")) {
         freeObstacle(i);
         showToast("SHIELD USED", "🛡️");
         continue;
