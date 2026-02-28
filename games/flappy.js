@@ -84,7 +84,7 @@ function loopFlappy(now) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(fBird.x, fBird.y, 20, 20);
   if (fBird.y > 600 || fBird.y < 0) {
-    if (consumeShield()) {
+    if (consumeShield("flappy")) {
       fBird.y = Math.max(0, Math.min(580, fBird.y));
       fBird.dy = 0;
       showToast("SHIELD USED", "🛡️");
@@ -116,7 +116,7 @@ function loopFlappy(now) {
       fBird.x < p.x + 40 &&
       (fBird.y < p.h || fBird.y + 20 > p.h + p.gap)
     ) {
-      if (consumeShield()) {
+      if (consumeShield("flappy")) {
         fPipes.splice(i, 1);
         showToast("SHIELD USED", "🛡️");
         continue;

@@ -95,7 +95,7 @@ function tick() {
   const self = snake.some((s) => s.x === head.x && s.y === head.y);
 
   if (wall || self) {
-    if (consumeShield()) {
+    if (consumeShield("snake")) {
       snake = [{ x: Math.max(0, Math.min(GRID_W - 1, head.x)), y: Math.max(0, Math.min(GRID_H - 1, head.y)) }];
       showToast("SHIELD USED", "🛡️");
       return;

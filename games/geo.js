@@ -174,7 +174,7 @@ function loopGeometry(ctx, now) {
       gPlayer.y < o.y + o.h - 5 &&
       gPlayer.y + gPlayer.h > o.y + 5
     ) {
-      if (consumeShield()) {
+      if (consumeShield("geo")) {
         gObs.splice(i, 1);
         showToast("SHIELD USED", "🛡️");
         continue;
