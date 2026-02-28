@@ -10,6 +10,7 @@ import {
   updateHighScore,
   loadHighScores,
   consumeShield,
+  getShieldStatusLabel,
   state,
   hasActiveItem,
 } from "../core.js";
@@ -59,7 +60,7 @@ export function initDodge() {
   wallTimer = 0;
   dLastTime = 0;
   dodgeStarted = false;
-  setText("dodgeScore", "TIME: 0s");
+  updateDodgeHud();
   loopDodge(performance.now());
 }
 
@@ -171,6 +172,10 @@ function drawHud() {
   dCtx.strokeRect(8, 8, CANVAS_W - 16, CANVAS_H - 16);
 }
 
+function updateDodgeHud() {
+  setText("dodgeScore", `TIME: ${dScore}s • ${getShieldStatusLabel("dodge")}`);
+}
+
 function drawGridArt(now) {
   const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00f5d4";
   const spacing = 35;
@@ -220,13 +225,14 @@ function updateScoreFromTime() {
   if (timeScore === dScore) return;
   dScore = timeScore;
   updateHighScore("dodge", dScore);
-  setText("dodgeScore", "TIME: " + dScore + "s");
+  updateDodgeHud();
   if (dScore === 25) unlockAchievement("grid_runner");
   resetLossStreak();
 }
 
 function loopDodge(now) {
   if (state.currentGame !== "dodge") return;
+  updateDodgeHud();
   const movementInput =
     state.keysPressed.ArrowLeft || state.keysPressed.a || state.keysPressed.ArrowRight || state.keysPressed.d ||
     state.keysPressed.ArrowUp || state.keysPressed.w || state.keysPressed.ArrowDown || state.keysPressed.s;
@@ -303,9 +309,10 @@ function loopDodge(now) {
       player.y < s.y + s.h &&
       player.y + player.h > s.y
     ) {
-      if (consumeShield("dodge")) {
+      const shieldResult = consumeShield("dodge");
+      if (shieldResult) {
         shards.splice(i, 1);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       checkLossStreak();

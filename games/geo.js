@@ -7,6 +7,7 @@ import {
   loadHighScores,
   showToast,
   consumeShield,
+  getShieldStatusLabel,
   state,
   hasActiveItem,
 } from "../core.js";
@@ -56,6 +57,10 @@ let gLevelSelectRef = null;
 const BASE_FRAME_MS = 1000 / 60;
 const MAX_DT_FRAMES = 2.5;
 
+function updateGeoHud() {
+  setText("geoScore", `LEVEL: ${gCurrentLevel.name} • SCORE: ${gScore} • ${getShieldStatusLabel("geo")}`);
+}
+
 export function initGeometry() {
   state.currentGame = "geo";
   loadHighScores();
@@ -74,7 +79,7 @@ export function initGeometry() {
   gLastTime = 0;
   gLevelPatternIndex = 0;
   geoStarted = false;
-  setText("geoScore", `LEVEL: ${gCurrentLevel.name} • SCORE: 0`);
+  updateGeoHud();
   bindGeoControls();
   loopGeometry(ctx, performance.now());
 }
@@ -120,6 +125,7 @@ function spawnObstacle() {
 // Main loop for the geometry runner: physics, obstacles, rendering.
 function loopGeometry(ctx, now) {
   if (state.currentGame !== "geo") return;
+  updateGeoHud();
   const dtFrames = gLastTime
     ? Math.min((now - gLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
     : 0;
@@ -174,9 +180,10 @@ function loopGeometry(ctx, now) {
       gPlayer.y < o.y + o.h - 5 &&
       gPlayer.y + gPlayer.h > o.y + 5
     ) {
-      if (consumeShield("geo")) {
+      const shieldResult = consumeShield("geo");
+      if (shieldResult) {
         gObs.splice(i, 1);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       showGameOver("geo", Math.floor(gScore));
@@ -186,7 +193,7 @@ function loopGeometry(ctx, now) {
       gObs.splice(i, 1);
       gScore++;
       updateHighScore("geo", gScore);
-      setText("geoScore", `LEVEL: ${gCurrentLevel.name} • SCORE: ${gScore}`);
+      updateGeoHud();
     }
   }
   gAnim = requestAnimationFrame((nextNow) => loopGeometry(ctx, nextNow));

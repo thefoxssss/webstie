@@ -11,6 +11,7 @@ import {
   updateHighScore,
   loadHighScores,
   consumeShield,
+  getShieldStatusLabel,
   state,
   hasActiveItem,
   dispatch,
@@ -33,6 +34,10 @@ let stepAccumulator = 0;
 let inputQueue = [];
 let snakeStarted = false;
 
+function updateSnakeHud() {
+  setText("snakeScoreVal", `${score} • ${getShieldStatusLabel("snake")}`);
+}
+
 const opposite = { U: "D", D: "U", L: "R", R: "L" };
 const toVec = {
   U: { x: 0, y: -1 },
@@ -53,7 +58,7 @@ export function initSnake() {
   stepAccumulator = 0;
   inputQueue = [];
   snakeStarted = false;
-  setText("snakeScoreVal", 0);
+  updateSnakeHud();
   subscribeToGameLoop("snake", onFrame);
 }
 
@@ -75,6 +80,7 @@ function consumeInput() {
 
 function onFrame(dt) {
   if (state.currentGame !== "snake") return;
+  updateSnakeHud();
   if (!snakeStarted) {
     draw();
     return;
@@ -95,9 +101,10 @@ function tick() {
   const self = snake.some((s) => s.x === head.x && s.y === head.y);
 
   if (wall || self) {
-    if (consumeShield("snake")) {
+    const shieldResult = consumeShield("snake");
+    if (shieldResult) {
       snake = [{ x: Math.max(0, Math.min(GRID_W - 1, head.x)), y: Math.max(0, Math.min(GRID_H - 1, head.y)) }];
-      showToast("SHIELD USED", "🛡️");
+      if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
       return;
     }
     checkLossStreak();
@@ -111,7 +118,7 @@ function tick() {
     const pts = hasActiveItem("item_double") ? 20 : 10;
     score += pts;
     updateHighScore("snake", score);
-    setText("snakeScoreVal", score);
+    updateSnakeHud();
     food = randomFood();
     beep(600);
     resetLossStreak();

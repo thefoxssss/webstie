@@ -7,6 +7,7 @@ import {
   updateHighScore,
   loadHighScores,
   consumeShield,
+  getShieldStatusLabel,
   state,
 } from "../core.js";
 
@@ -28,6 +29,10 @@ const MAX_PIPE_SPAWN_CHANCE = 0.03;
 const PIPE_MIN_DISTANCE = 220;
 const BASE_FRAME_MS = 1000 / 60;
 const MAX_DT_FRAMES = 2.5;
+
+function updateFlappyHud() {
+  setText("flappyScore", `SCORE: ${fScore} • ${getShieldStatusLabel("flappy")}`);
+}
 
 function getDifficultyFactor() {
   return Math.min(fScore, 30) / 30;
@@ -57,13 +62,14 @@ export function initFlappy() {
   fLastTime = 0;
   fSpawnAccumulator = 0;
   flappyStarted = false;
-  setText("flappyScore", "SCORE: 0");
+  updateFlappyHud();
   loopFlappy(performance.now());
 }
 
 // Main game loop: physics update, pipe spawn, collision, render.
 function loopFlappy(now) {
   if (state.currentGame !== "flappy") return;
+  updateFlappyHud();
   const dtFrames = flappyStarted && fLastTime
     ? Math.min((now - fLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
     : 1;
@@ -84,10 +90,11 @@ function loopFlappy(now) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(fBird.x, fBird.y, 20, 20);
   if (fBird.y > 600 || fBird.y < 0) {
-    if (consumeShield("flappy")) {
+    const shieldResult = consumeShield("flappy");
+    if (shieldResult) {
       fBird.y = Math.max(0, Math.min(580, fBird.y));
       fBird.dy = 0;
-      showToast("SHIELD USED", "🛡️");
+      if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
       fAnim = requestAnimationFrame(loopFlappy);
       return;
     }
@@ -116,9 +123,10 @@ function loopFlappy(now) {
       fBird.x < p.x + 40 &&
       (fBird.y < p.h || fBird.y + 20 > p.h + p.gap)
     ) {
-      if (consumeShield("flappy")) {
+      const shieldResult = consumeShield("flappy");
+      if (shieldResult) {
         fPipes.splice(i, 1);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       showGameOver("flappy", fScore);
@@ -128,7 +136,7 @@ function loopFlappy(now) {
       fPipes.splice(i, 1);
       fScore++;
       updateHighScore("flappy", fScore);
-      setText("flappyScore", "SCORE: " + fScore);
+      updateFlappyHud();
     }
   }
   fAnim = requestAnimationFrame(loopFlappy);

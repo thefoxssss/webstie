@@ -131,6 +131,12 @@ window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 
 
+
+function isCountBasedShopItem(item) {
+  if (!item) return false;
+  return Boolean(item.stackable || item.countBased || item.type === "consumable");
+}
+
 function renderInGameShopPanel(game, overlayId) {
   const overlay = document.getElementById(overlayId);
   if (!overlay) return;
@@ -156,38 +162,51 @@ function renderInGameShopPanel(game, overlayId) {
   relatedItems.forEach((itemId) => {
     const item = getShopItemById(itemId);
     if (!item) return;
-    const ownsItem = state.myInventory.includes(itemId);
+    const ownedCount = state.myInventory.filter((ownedId) => ownedId === itemId).length;
+    const ownsItem = ownedCount > 0;
     const isEnabled = state.myItemToggles[itemId] !== false;
+    const isCountBased = isCountBasedShopItem(item);
 
     const row = document.createElement("div");
     row.className = "game-side-shop-row";
 
     const details = document.createElement("div");
     details.className = "game-side-shop-details";
-    details.innerHTML = `<strong>${item.icon || "🛒"} ${item.name}</strong><small>${item.desc}</small><small>${ownsItem ? "OWNED" : `$${item.cost}`}</small>`;
+    details.innerHTML = `<strong>${item.icon || "🛒"} ${item.name}</strong><small>${item.desc}</small><small>${ownsItem ? `OWNED x${ownedCount}` : `$${item.cost}`}</small>`;
 
-    const action = document.createElement("button");
-    action.className = "term-btn game-side-shop-action";
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "6px";
+
+    const buyBtn = document.createElement("button");
+    buyBtn.className = "term-btn game-side-shop-action";
+    const canBuyAgain = !ownsItem || isCountBased;
+    buyBtn.textContent = state.myMoney >= item.cost ? `BUY $${item.cost}` : `NEED $${item.cost}`;
+    buyBtn.disabled = state.myMoney < item.cost || !canBuyAgain;
+    if (!canBuyAgain) buyBtn.textContent = "OWNED";
+    buyBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      buyItem(itemId);
+      renderInGameShopPanel(game, overlayId);
+    });
+
+    actions.appendChild(buyBtn);
+
     if (ownsItem) {
-      action.textContent = isEnabled ? "ON" : "OFF";
-      action.addEventListener("click", (event) => {
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "term-btn game-side-shop-action";
+      toggleBtn.textContent = isEnabled ? "ON" : "OFF";
+      toggleBtn.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         toggleItem(itemId);
         renderInGameShopPanel(game, overlayId);
       });
-    } else {
-      action.textContent = state.myMoney >= item.cost ? `BUY $${item.cost}` : `NEED $${item.cost}`;
-      if (state.myMoney < item.cost) action.disabled = true;
-      action.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        buyItem(itemId);
-        renderInGameShopPanel(game, overlayId);
-      });
+      actions.appendChild(toggleBtn);
     }
 
-    row.append(details, action);
+    row.append(details, actions);
     panel.appendChild(row);
   });
 
