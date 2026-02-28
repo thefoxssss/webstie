@@ -1745,9 +1745,13 @@ async function refreshTrendingMonthGraph() {
 
   const getSnap = async () => {
     try {
-      return await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", windowStart), limit(12000)));
+      return await getDocs(query(collection(db, "gooner_game_plays"), where("ts", ">=", windowStart), orderBy("ts", "desc"), limit(4000)));
     } catch (_queryError) {
-      return await getDocs(query(collection(db, "gooner_game_plays"), limit(12000)));
+      try {
+        return await getDocs(query(collection(db, "gooner_game_plays"), orderBy("ts", "desc"), limit(4000)));
+      } catch (_orderFallbackError) {
+        return await getDocs(query(collection(db, "gooner_game_plays"), limit(2000)));
+      }
     }
   };
 
