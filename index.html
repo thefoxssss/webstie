@@ -78,40 +78,6 @@
 
     <div class="dropdown-content" id="menuDropdown"></div>
 
-    <!-- Dedicated games directory overlay. -->
-    <div class="overlay menu-overlay games-directory-overlay" id="overlayGames">
-      <h1>GAMES DIRECTORY</h1>
-      <div class="games-toolbar">
-        <input
-          id="gamesSearch"
-          class="term-input games-search"
-          type="text"
-          placeholder="SEARCH GAMES OR TAGS..."
-          maxlength="30"
-        />
-        <select id="gamesFilter" class="term-input games-select">
-          <option value="all">ALL</option>
-          <option value="arcade">ARCADE</option>
-          <option value="pvp">PVP</option>
-          <option value="casino">CASINO</option>
-          <option value="skill">SKILL</option>
-          <option value="favorites">FAVORITES</option>
-        </select>
-        <select id="gamesSort" class="term-input games-select">
-          <option value="az">A-Z</option>
-          <option value="za">Z-A</option>
-          <option value="recent">RECENT</option>
-          <option value="favorite">FAVORITED FIRST</option>
-        </select>
-        <button id="gamesClearFilters" class="term-btn games-clear" type="button">
-          RESET
-        </button>
-      </div>
-      <p id="gamesResultsMeta" class="games-results-meta">TIP: SHIFT+CLICK OR RIGHT-CLICK A GAME TO TOGGLE FAVORITE ⭐</p>
-      <div class="games-grid">
-      </div>
-    </div>
-
     <div class="overlay menu-overlay" id="overlayTrending">
       <div class="score-box panel-overlay-box">
         <h2>TRENDING GAMES // MONTHLY GRAPH</h2>
@@ -432,7 +398,7 @@
         >
       </div>
       <section class="random-game-cta" aria-label="Games">
-        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayGames">GAMES</button></h2>
+        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayGamebox">GAMES</button></h2>
         <button class="trending-game-btn random-game-btn" id="randomGameBtn" type="button">
           <span class="trending-rank">🎲</span>
           <span>RANDOM GAME</span>
@@ -894,7 +860,10 @@
       <div class="score-box">
         <div class="leaderboard-heading-row">
           <h2 style="text-align: center; margin-bottom: 0">GLOBAL LEADERBOARD</h2>
-          <button class="menu-btn leaderboard-search-toggle" id="leaderboardSearchToggle" type="button">SEARCH</button>
+          <div class="leaderboard-heading-actions">
+            <button class="menu-btn leaderboard-search-toggle" id="leaderboardSearchToggle" type="button">SEARCH</button>
+            <button class="menu-btn leaderboard-search-toggle" id="leaderboardSwitchBtn" type="button">GAMES</button>
+          </div>
         </div>
         <input
           class="term-input leaderboard-search-input"
@@ -1057,7 +1026,10 @@
       <div class="game-content-shell gamebox-shell">
         <div class="leaderboard-heading-row gamebox-heading-row">
           <h2>GAMES</h2>
-          <button class="menu-btn leaderboard-search-toggle" id="gameboxSearchToggle" type="button">SEARCH</button>
+          <div class="leaderboard-heading-actions">
+            <button class="menu-btn leaderboard-search-toggle" id="gameboxSearchToggle" type="button">SEARCH</button>
+            <button class="menu-btn leaderboard-search-toggle" id="gameboxSwitchBtn" type="button">LEADERBOARD</button>
+          </div>
         </div>
         <input
           class="term-input leaderboard-search-input gamebox-search-input"

@@ -424,14 +424,23 @@ function initGameVisibilityGuards() {
 
 function initGameScroller() {
   const orderedGames = GAME_DIRECTORY_ENTRIES
-    .map((entry) => ({ id: entry.id, title: entry.title, overlayId: getOverlayIdForGame(entry.id) }))
+    .map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      icon: entry.icon,
+      description: entry.description,
+      tags: Array.isArray(entry.tags) ? entry.tags : [],
+      overlayId: getOverlayIdForGame(entry.id),
+      searchText: `${entry.id} ${entry.title} ${entry.description || ""} ${(entry.tags || []).join(" ")}`.toUpperCase(),
+    }))
     .filter((entry) => document.getElementById(entry.overlayId));
   if (!orderedGames.length) return;
 
   const strip = document.getElementById("gameboxGameStrip");
   const searchToggle = document.getElementById("gameboxSearchToggle");
   const searchInput = document.getElementById("gameboxSearchInput");
-  if (!strip || !searchToggle || !searchInput) return;
+  const switchBtn = document.getElementById("gameboxSwitchBtn");
+  if (!strip || !searchToggle || !searchInput || !switchBtn) return;
 
   let gameSearchQuery = "";
   let selectedGameId = "";
@@ -446,7 +455,7 @@ function initGameScroller() {
   const getVisibleGames = () => {
     const query = String(gameSearchQuery || "").trim().toUpperCase();
     if (!query) return orderedGames;
-    return orderedGames.filter((game) => `${game.id} ${game.title}`.toUpperCase().includes(query));
+    return orderedGames.filter((game) => game.searchText.includes(query));
   };
 
   const renderStrip = () => {
@@ -459,11 +468,10 @@ function initGameScroller() {
 
     visibleGames.forEach((game) => {
       const btn = document.createElement("button");
-      const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === game.id);
       btn.type = "button";
       btn.className = `leaderboard-game-card${selectedGameId === game.id ? " active" : ""}`;
       btn.dataset.game = game.id;
-      btn.innerHTML = `<span>${entry?.icon || "🎮"}</span><strong>${game.title}</strong><small>${entry?.description || ""}</small>`;
+      btn.innerHTML = `<span>${game.icon || "🎮"}</span><strong>${game.title}</strong><small>${game.description || ""}</small>`;
       btn.addEventListener("click", () => {
         selectedGameId = game.id;
         centerOnGameId = game.id;
@@ -492,15 +500,36 @@ function initGameScroller() {
 
   searchInput.addEventListener("input", () => {
     gameSearchQuery = String(searchInput.value || "");
+    if (typeof window.__setLeaderboardSearchQuery === "function") {
+      window.__setLeaderboardSearchQuery(gameSearchQuery, { deferLoad: true });
+    }
     renderStrip();
+  });
+
+  switchBtn.addEventListener("click", () => {
+    const targetGame = selectedGameId || String(state.currentGame || "").toLowerCase();
+    if (targetGame && typeof openGameLeaderboard === "function") {
+      openGameLeaderboard(targetGame);
+      return;
+    }
+    openGame("overlayScores");
   });
 
   window.__updateGameSwitcherState = (activeGameId) => {
     if (!activeGameId) return;
     selectedGameId = activeGameId;
+    strip.dataset.selectedGame = activeGameId;
     centerOnGameId = activeGameId;
     renderStrip();
   };
+
+  window.__setGameScrollerSearchQuery = (query) => {
+    gameSearchQuery = String(query || "");
+    searchInput.value = gameSearchQuery;
+    renderStrip();
+  };
+
+  window.__getSelectedGameScrollerId = () => String(selectedGameId || strip.dataset.selectedGame || "");
 
   renderStrip();
 }
@@ -519,179 +548,6 @@ async function toggleGameFullscreen(overlay, button) {
   button.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
 }
 
-function initGamesLibraryDiscovery() {
-  const overlay = document.getElementById("overlayGames");
-  const grid = overlay?.querySelector(".games-grid");
-  const search = document.getElementById("gamesSearch");
-  const filter = document.getElementById("gamesFilter");
-  const sort = document.getElementById("gamesSort");
-  const clearBtn = document.getElementById("gamesClearFilters");
-  const meta = document.getElementById("gamesResultsMeta");
-  if (!overlay || !grid || !search || !filter || !sort || !clearBtn || !meta) return;
-
-  grid.innerHTML = "";
-  GAME_DIRECTORY_ENTRIES.forEach((entry) => {
-    const card = document.createElement("div");
-    card.className = "game-card";
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.dataset.game = entry.id;
-    card.dataset.tags = entry.tags.join(" ");
-    card.innerHTML = `<span class="game-icon">${entry.icon}</span><strong>${entry.title}</strong><small>${entry.description}</small>`;
-    if (entry.hidden) {
-      card.id = "btnFlappy";
-      card.style.display = "none";
-    }
-    grid.appendChild(card);
-  });
-
-  const cards = Array.from(grid.querySelectorAll(".game-card"));
-  cards.forEach((card) => {
-    const name = (card.querySelector("strong")?.textContent || "").trim();
-    const description = (card.querySelector("small")?.textContent || "").trim();
-    const tags = (card.dataset.tags || "")
-      .split(/\s+/)
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-
-    card.dataset.name = name;
-    card.dataset.search = `${name} ${description} ${(card.dataset.tags || "")}`.toLowerCase();
-
-    let tagsRow = card.querySelector(".game-tags");
-    if (!tagsRow) {
-      tagsRow = document.createElement("div");
-      tagsRow.className = "game-tags";
-      card.appendChild(tagsRow);
-    }
-    tagsRow.innerHTML = tags
-      .map((tag) => {
-        const emoji = GAME_TAG_EMOJI[tag] || "🏷️";
-        const label = tag.toUpperCase();
-        return `<span class="game-tag" data-tag-label="${label}" aria-label="${label}" role="img" tabindex="0">${emoji}</span>`;
-      })
-      .join("");
-
-    if (card.id === "btnFlappy" && card.style.display === "none") card.dataset.locked = "1";
-    card.title = "CLICK TO LAUNCH • SHIFT+CLICK OR RIGHT-CLICK TO FAVORITE";
-
-    card.addEventListener("click", (event) => {
-      if (event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        toggleFavorite(card.dataset.game || "");
-        return;
-      }
-      window.launchGame(card.dataset.game || "", "directory");
-    });
-
-    card.addEventListener("contextmenu", (event) => {
-      event.preventDefault();
-      toggleFavorite(card.dataset.game || "");
-    });
-
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        window.launchGame(card.dataset.game || "", "directory");
-      }
-    });
-  });
-
-  function getFavorites() {
-    return readStoredGameList(GAME_LIBRARY_FAVORITES_KEY);
-  }
-
-  function setFavorites(games) {
-    localStorage.setItem(GAME_LIBRARY_FAVORITES_KEY, JSON.stringify(Array.from(new Set(games))));
-  }
-
-  function toggleFavorite(game) {
-    if (!game) return;
-    const favorites = getFavorites();
-    const updated = favorites.includes(game)
-      ? favorites.filter((item) => item !== game)
-      : [...favorites, game];
-    setFavorites(updated);
-    applyLibraryView();
-  }
-
-  function sortCards(visibleCards) {
-    const sortMode = sort.value;
-    const favorites = getFavorites();
-    const recents = readStoredGameList(GAME_LIBRARY_RECENTS_KEY);
-    const recentIndex = new Map(recents.map((name, idx) => [name, idx]));
-    const favoriteSet = new Set(favorites);
-
-    visibleCards.sort((a, b) => {
-      const nameA = (a.dataset.name || "").toLowerCase();
-      const nameB = (b.dataset.name || "").toLowerCase();
-      if (sortMode === "za") return nameB.localeCompare(nameA);
-      if (sortMode === "recent") {
-        const idxA = recentIndex.has(a.dataset.game || "") ? recentIndex.get(a.dataset.game || "") : 999;
-        const idxB = recentIndex.has(b.dataset.game || "") ? recentIndex.get(b.dataset.game || "") : 999;
-        if (idxA !== idxB) return idxA - idxB;
-        return nameA.localeCompare(nameB);
-      }
-      if (sortMode === "favorite") {
-        const favA = favoriteSet.has(a.dataset.game || "") ? 0 : 1;
-        const favB = favoriteSet.has(b.dataset.game || "") ? 0 : 1;
-        if (favA !== favB) return favA - favB;
-        return nameA.localeCompare(nameB);
-      }
-      return nameA.localeCompare(nameB);
-    });
-  }
-
-  function applyLibraryView() {
-    const query = search.value.trim().toLowerCase();
-    const filterMode = filter.value;
-    const favoriteSet = new Set(getFavorites());
-    const visibleCards = [];
-
-    cards.forEach((card) => {
-      const game = card.dataset.game || "";
-      const isFavorite = favoriteSet.has(game);
-      const isLocked = card.dataset.locked === "1" && card.style.display === "none";
-      card.classList.toggle("is-favorite", isFavorite);
-      card.dataset.badge = isFavorite ? "★" : "";
-
-      if (isLocked) {
-        card.style.display = "none";
-        return;
-      }
-
-      const matchesQuery = !query || (card.dataset.search || "").includes(query);
-      const tags = (card.dataset.tags || "").split(/\s+/).filter(Boolean);
-      const matchesFilter =
-        filterMode === "all" ||
-        (filterMode === "favorites" ? isFavorite : tags.includes(filterMode));
-
-      const show = matchesQuery && matchesFilter;
-      card.style.display = show ? "flex" : "none";
-      if (show) visibleCards.push(card);
-    });
-
-
-    sortCards(visibleCards);
-    visibleCards.forEach((card) => grid.appendChild(card));
-    meta.textContent = `SHOWING ${visibleCards.length}/${cards.length} GAMES • FAVORITES: ${favoriteSet.size} • RECENTS TRACKED: ${readStoredGameList(GAME_LIBRARY_RECENTS_KEY).length}`;
-  }
-
-  [search, filter, sort].forEach((el) => el.addEventListener("input", applyLibraryView));
-  clearBtn.addEventListener("click", () => {
-    search.value = "";
-    filter.value = "all";
-    sort.value = "az";
-    applyLibraryView();
-  });
-
-  const observer = new MutationObserver(() => {
-    if (overlay.classList.contains("active")) applyLibraryView();
-  });
-  observer.observe(overlay, { attributes: true, attributeFilter: ["class"] });
-  document.addEventListener("gooner:games-library-updated", applyLibraryView);
-  applyLibraryView();
-}
 
 
 function initMainSiteSearch() {
@@ -699,8 +555,6 @@ function initMainSiteSearch() {
   const input = document.getElementById("siteSearchInput");
   const meta = document.getElementById("siteSearchMeta");
   const dropdown = document.getElementById("siteSearchDropdown");
-  const gamesSearch = document.getElementById("gamesSearch");
-  const gamesFilter = document.getElementById("gamesFilter");
   if (!form || !input || !meta || !dropdown) return;
 
   input.setAttribute("autocomplete", "off");
@@ -709,7 +563,7 @@ function initMainSiteSearch() {
   input.setAttribute("spellcheck", "false");
 
   const QUICK_ROUTES = [
-    { aliases: ["games", "game", "directory"], action: () => openGame("overlayGames"), label: "OPENED GAMES DIRECTORY", overlayId: "overlayGames" },
+    { aliases: ["games", "game", "directory"], action: () => openGame("overlayGamebox"), label: "OPENED GAMES PANEL", overlayId: "overlayGamebox" },
     { aliases: ["trending", "trend"], action: () => openGame("overlayTrending"), label: "OPENED TRENDING GAMES", overlayId: "overlayTrending" },
     { aliases: ["updates", "update", "log", "update log", "patch notes"], action: () => openGame("overlayUpdates"), label: "OPENED UPDATE LOG", overlayId: "overlayUpdates" },
     { aliases: ["bank", "money"], action: () => openGame("overlayBank"), label: "OPENED BANK PANEL", overlayId: "overlayBank" },
@@ -897,16 +751,13 @@ function initMainSiteSearch() {
       return;
     }
 
-    if (gamesSearch) {
-      openGame("overlayGames");
-      gamesSearch.value = query;
-      if (gamesFilter) gamesFilter.value = "all";
-      gamesSearch.dispatchEvent(new Event("input", { bubbles: true }));
-      meta.textContent = `NO DIRECT MATCH. OPENED DIRECTORY SEARCH FOR "${query.toUpperCase()}".`;
-      return;
+    openGame("overlayGamebox");
+    if (typeof window.__setGameScrollerSearchQuery === "function") {
+      window.__setGameScrollerSearchQuery(query);
     }
+    meta.textContent = `NO DIRECT MATCH. OPENED GAMES SEARCH FOR "${query.toUpperCase()}".`;
+    return;
 
-    meta.textContent = `NO MATCH FOR "${query.toUpperCase()}".`;
   }
 
   input.addEventListener("focus", () => renderSuggestions(input.value));
@@ -978,7 +829,7 @@ function initTopBarOverlayControls() {
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
-    overlayGames: "menuToggle",
+    overlayGamebox: "menuToggle",
     overlayTrending: "menuToggle",
     overlayUpdates: "menuToggle",
   };
@@ -998,7 +849,7 @@ function initTopBarOverlayControls() {
         window.toggleTopPanelOverlay(activeOverlay.id);
       } else if (activeOverlay && GAME_OVERLAY_IDS.includes(activeOverlay.id)) {
         if (window.__goonerLastGameLaunchSource === "directory") {
-          openGame("overlayGames");
+          openGame("overlayGamebox");
         } else {
           closeOverlays();
         }
@@ -1018,7 +869,7 @@ function initTopBarOverlayControls() {
     "overlaySeason",
     "overlayCrew",
     "overlayAdmin",
-    "overlayGames",
+    "overlayGamebox",
   ];
 
   const getActiveOverlay = () => {
@@ -1092,7 +943,6 @@ initOverlayBackdropExit();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGameScroller();
-initGamesLibraryDiscovery();
 initMainSiteSearch();
 
 function hideGameOverModal() {
