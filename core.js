@@ -141,7 +141,7 @@ let myItemToggles = {};
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
-const SHIELD_ACTIVE_MS = 2500;
+const SHIELD_ACTIVE_MS = 2000;
 const SHIELD_COOLDOWN_MS = 5000;
 const shieldCooldowns = Object.create(null);
 const shieldActiveUntil = Object.create(null);
@@ -3906,10 +3906,11 @@ export function getShieldStatusLabel(gameId = currentGame) {
 }
 
 // Consume a shield charge and activate a short invulnerability window.
+// Returns one of: "activated", "active", or false.
 export function consumeShield(gameId = currentGame) {
   const gameKey = String(gameId || currentGame || "global").toLowerCase();
   const now = Date.now();
-  if ((shieldActiveUntil[gameKey] || 0) > now) return true;
+  if ((shieldActiveUntil[gameKey] || 0) > now) return "active";
   if ((shieldCooldowns[gameKey] || 0) > now) return false;
   if (!hasActiveItem("item_shield")) return false;
   const shieldIndex = myInventory.indexOf("item_shield");
@@ -3918,7 +3919,7 @@ export function consumeShield(gameId = currentGame) {
   shieldActiveUntil[gameKey] = now + SHIELD_ACTIVE_MS;
   shieldCooldowns[gameKey] = now + SHIELD_COOLDOWN_MS;
   saveStats();
-  return true;
+  return "activated";
 }
 
 // Unlock an achievement, award money, and show a toast.

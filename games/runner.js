@@ -143,9 +143,10 @@ function onTick(dt) {
         obstacleH[i]
       )
     ) {
-      if (consumeShield("runner")) {
+      const shieldResult = consumeShield("runner");
+      if (shieldResult) {
         freeObstacle(i);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       checkLossStreak();

@@ -180,9 +180,10 @@ function loopGeometry(ctx, now) {
       gPlayer.y < o.y + o.h - 5 &&
       gPlayer.y + gPlayer.h > o.y + 5
     ) {
-      if (consumeShield("geo")) {
+      const shieldResult = consumeShield("geo");
+      if (shieldResult) {
         gObs.splice(i, 1);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       showGameOver("geo", Math.floor(gScore));

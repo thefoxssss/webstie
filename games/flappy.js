@@ -90,10 +90,11 @@ function loopFlappy(now) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(fBird.x, fBird.y, 20, 20);
   if (fBird.y > 600 || fBird.y < 0) {
-    if (consumeShield("flappy")) {
+    const shieldResult = consumeShield("flappy");
+    if (shieldResult) {
       fBird.y = Math.max(0, Math.min(580, fBird.y));
       fBird.dy = 0;
-      showToast("SHIELD USED", "🛡️");
+      if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
       fAnim = requestAnimationFrame(loopFlappy);
       return;
     }
@@ -122,9 +123,10 @@ function loopFlappy(now) {
       fBird.x < p.x + 40 &&
       (fBird.y < p.h || fBird.y + 20 > p.h + p.gap)
     ) {
-      if (consumeShield("flappy")) {
+      const shieldResult = consumeShield("flappy");
+      if (shieldResult) {
         fPipes.splice(i, 1);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       showGameOver("flappy", fScore);

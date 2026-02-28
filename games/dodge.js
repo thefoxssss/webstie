@@ -309,9 +309,10 @@ function loopDodge(now) {
       player.y < s.y + s.h &&
       player.y + player.h > s.y
     ) {
-      if (consumeShield("dodge")) {
+      const shieldResult = consumeShield("dodge");
+      if (shieldResult) {
         shards.splice(i, 1);
-        showToast("SHIELD USED", "🛡️");
+        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
       checkLossStreak();
