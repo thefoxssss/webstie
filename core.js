@@ -5598,23 +5598,8 @@ function renderLeaderboardGameStrip() {
 // Render selected leaderboard and subscribe to one data feed.
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
-  const searchToggle = document.getElementById("leaderboardSearchToggle") || document.getElementById("gameboxSearchToggle");
   const searchInput = document.getElementById("leaderboardSearchInput") || document.getElementById("gameboxSearchInput");
   if (!list) return;
-
-  if (searchToggle && searchInput && !searchToggle.dataset.bound) {
-    searchToggle.addEventListener("click", () => {
-      const opening = searchInput.style.display === "none";
-      searchInput.style.display = opening ? "block" : "none";
-      if (opening) searchInput.focus();
-      else {
-        searchInput.value = "";
-        leaderboardSearchQuery = "";
-        loadLeaderboard();
-      }
-    });
-    searchToggle.dataset.bound = "1";
-  }
 
   if (searchInput && !searchInput.dataset.bound) {
     searchInput.addEventListener("input", () => {

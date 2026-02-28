@@ -1202,7 +1202,7 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 150px;
+  min-height: 116px;
   margin-bottom: 10px;
 }
 
@@ -1222,16 +1222,18 @@ canvas {
 .gamebox-leaderboard-modes {
   min-height: auto;
   width: 100%;
-  max-height: 180px;
+  max-height: 160px;
   overflow-y: auto;
 }
 
 .gamebox-frame {
   width: 100%;
-  min-height: 700px;
+  min-height: 760px;
   flex: 1;
   position: relative;
   padding-top: 0;
+  border: 1px solid var(--accent-dim);
+  padding: 8px;
 }
 
 .gamebox-header-actions .menu-btn {
@@ -1250,12 +1252,11 @@ canvas {
 
 .gamebox-content {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .gamebox-mounted {
@@ -1263,13 +1264,13 @@ canvas {
   inset: auto;
   display: flex;
   width: 100%;
-  height: 100%;
+  height: auto;
+  min-height: 100%;
   align-items: center;
   justify-content: flex-start;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 8px;
-  border: 1px solid var(--accent-dim);
+  overflow: visible;
+  padding: 0;
+  border: 0;
 }
 
 .gamebox-mounted canvas,

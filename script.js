@@ -634,6 +634,14 @@ function initGameScroller() {
     strip.style.display = inLeaderboard ? "none" : "flex";
     if (gameFrame) gameFrame.style.display = inLeaderboard ? "none" : "flex";
     if (leaderboardPanel) leaderboardPanel.style.display = inLeaderboard ? "grid" : "none";
+    const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
+    if (sharedOverlay) {
+      sharedOverlay.querySelectorAll(".game-side-shop").forEach((panel) => panel.remove());
+      sharedOverlay.classList.toggle("has-game-side-shop", !inLeaderboard);
+    }
+    if (!inLeaderboard && selectedGameId) {
+      renderInGameShopPanel(selectedGameId, SHARED_GAME_OVERLAY_ID);
+    }
     if (inLeaderboard && typeof window.loadLeaderboard === "function") window.loadLeaderboard();
   };
 
