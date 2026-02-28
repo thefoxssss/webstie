@@ -688,7 +688,13 @@ body::before {
   align-items: center;
   gap: 6px;
   color: rgba(220, 255, 235, 0.8);
+  cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.trend-legend-item:hover {
+  border-color: rgba(0, 255, 136, 0.45);
+  color: #fff;
 }
 
 .trend-legend-item.active {

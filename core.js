@@ -1562,7 +1562,10 @@ function renderUpdateLogMessage(message, tag = "SYNC") {
   if (fullList) fullList.innerHTML = row;
 }
 
-const TRENDING_LINE_COLORS = ["#00ff88", "#00d9ff", "#ff6ad5", "#ffc857", "#8a7dff", "#ff7a59"];
+function trendLineColorForIndex(idx) {
+  const hue = Math.round((idx * 137.508) % 360);
+  return `hsl(${hue} 88% 62%)`;
+}
 
 function formatTrendDayLabel(dayMs) {
   return new Date(dayMs).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
@@ -1614,7 +1617,7 @@ function renderMonthlyTrendingGraph(model) {
   const legendRows = model.topGames
     .map((game, idx) => {
       const label = TRENDING_GAME_LABELS[game] || game.toUpperCase();
-      return `<div class="trend-legend-item" id="trendLegend-${escapeHtml(game)}" data-game="${escapeHtml(game)}"><span class="trend-legend-swatch" style="background:${TRENDING_LINE_COLORS[idx % TRENDING_LINE_COLORS.length]}"></span><span>${escapeHtml(label)}</span></div>`;
+      return `<div class="trend-legend-item" id="trendLegend-${escapeHtml(game)}" data-game="${escapeHtml(game)}"><span class="trend-legend-swatch" style="background:${trendLineColorForIndex(idx)}"></span><span>${escapeHtml(label)}</span></div>`;
     })
     .join("");
 
@@ -1645,7 +1648,7 @@ function renderMonthlyTrendingGraph(model) {
           return `${xAt(dayIdx)},${yAt(value)}`;
         })
         .join(" ");
-      const color = TRENDING_LINE_COLORS[idx % TRENDING_LINE_COLORS.length];
+      const color = trendLineColorForIndex(idx);
       return `<g data-game-group="${escapeHtml(game)}"><polyline class="trend-line" data-game="${escapeHtml(game)}" points="${points}" stroke="${color}" /><polyline class="trend-line-hit" data-game="${escapeHtml(game)}" points="${points}" /></g>`;
     })
     .join("");
@@ -1655,6 +1658,14 @@ function renderMonthlyTrendingGraph(model) {
   const readout = document.getElementById("trendChartHoverReadout");
   const lineEls = chart.querySelectorAll(".trend-line");
   const legendEls = chart.querySelectorAll(".trend-legend-item");
+
+  legendEls.forEach((legendItem) => {
+    legendItem.addEventListener("click", () => {
+      const game = String(legendItem.getAttribute("data-game") || "");
+      if (!game || typeof window.launchGame !== "function") return;
+      window.launchGame(game, "trending-monthly");
+    });
+  });
 
   const clearActive = () => {
     lineEls.forEach((line) => line.classList.remove("active"));
@@ -1777,7 +1788,6 @@ async function refreshTrendingMonthGraph() {
     const days = Array.from({ length: 30 }, (_, idx) => windowStart + idx * dayMs);
     const topGames = [...totals.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
       .map(([game]) => game);
 
     let maxCount = 0;
