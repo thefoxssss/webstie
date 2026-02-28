@@ -2450,6 +2450,9 @@ function runOverlayOpenHooks(id) {
   if (id === "overlayScores") {
     loadLeaderboard();
   }
+  if (id === "overlayGamebox") {
+    if (typeof window.__ensureGameboxHasGame === "function") window.__ensureGameboxHasGame();
+  }
   if (id === "overlayTrending") {
     refreshTrendingMonthGraph();
   }

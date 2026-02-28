@@ -202,13 +202,7 @@ function getOverlayIdForGame(gameId) {
 const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
 let mountedGameOverlayId = "";
 
-function updateSharedGameboxHeader(gameId) {
-  const leaderboardBtn = document.getElementById("gameboxLeaderboardBtn");
-  if (leaderboardBtn) {
-    leaderboardBtn.textContent = "VIEW LEADERBOARD";
-    leaderboardBtn.onclick = () => openGameLeaderboard(gameId);
-  }
-}
+function updateSharedGameboxHeader(_gameId) {}
 
 function mountGameOverlayIntoGamebox(gameId) {
   const targetOverlayId = getOverlayIdForGame(gameId);
@@ -347,6 +341,7 @@ function disableInGameExitButtons() {
 }
 
 const CANVAS_UI_PADDING = 230;
+const GAMEBOX_UI_PADDING = 220;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
 const GAME_LIBRARY_RECENTS_KEY = "goonerRecentGames";
 const GAME_LIBRARY_RECENT_LIMIT = 6;
@@ -389,7 +384,7 @@ function sizeCanvasToViewport(canvas) {
   const availH = isFullscreen
     ? window.innerHeight
     : gameboxContent && gameboxActive
-      ? Math.max(140, gameboxContent.clientHeight - 20)
+      ? Math.max(120, gameboxContent.clientHeight - GAMEBOX_UI_PADDING)
       : Math.max(120, window.innerHeight - CANVAS_UI_PADDING);
   const scale = Math.max(0.1, Math.min(availW / intrinsicW, availH / intrinsicH));
   canvas.style.width = `${Math.round(intrinsicW * scale)}px`;
@@ -531,13 +526,42 @@ function initGameScroller() {
   let dragPointerId = null;
   let dragStartX = 0;
   let dragStartScrollLeft = 0;
+  let dragVelocity = 0;
+  let dragLastX = 0;
+  let dragLastT = 0;
   let didDrag = false;
+  let inertiaFrame = 0;
+
+  const stopInertia = () => {
+    if (!inertiaFrame) return;
+    cancelAnimationFrame(inertiaFrame);
+    inertiaFrame = 0;
+  };
+
+  const startInertia = () => {
+    stopInertia();
+    if (Math.abs(dragVelocity) < 0.05) return;
+    const tick = () => {
+      strip.scrollLeft -= dragVelocity * 16;
+      dragVelocity *= 0.93;
+      if (Math.abs(dragVelocity) < 0.05) {
+        inertiaFrame = 0;
+        return;
+      }
+      inertiaFrame = requestAnimationFrame(tick);
+    };
+    inertiaFrame = requestAnimationFrame(tick);
+  };
 
   strip.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    stopInertia();
     dragPointerId = event.pointerId;
     dragStartX = event.clientX;
     dragStartScrollLeft = strip.scrollLeft;
+    dragLastX = event.clientX;
+    dragLastT = performance.now();
+    dragVelocity = 0;
     didDrag = false;
     strip.classList.add("is-dragging");
     strip.setPointerCapture?.(event.pointerId);
@@ -546,6 +570,11 @@ function initGameScroller() {
   strip.addEventListener("pointermove", (event) => {
     if (event.pointerId !== dragPointerId) return;
     const delta = event.clientX - dragStartX;
+    const now = performance.now();
+    const dt = Math.max(8, now - dragLastT);
+    dragVelocity = (event.clientX - dragLastX) / dt;
+    dragLastX = event.clientX;
+    dragLastT = now;
     if (Math.abs(delta) > 6) didDrag = true;
     if (!didDrag) return;
     strip.scrollLeft = dragStartScrollLeft - delta;
@@ -553,7 +582,10 @@ function initGameScroller() {
 
   const endDrag = (event) => {
     if (event.pointerId !== dragPointerId) return;
-    if (didDrag) suppressClickUntil = Date.now() + 180;
+    if (didDrag) {
+      suppressClickUntil = Date.now() + 180;
+      startInertia();
+    }
     strip.classList.remove("is-dragging");
     dragPointerId = null;
     didDrag = false;
@@ -610,6 +642,15 @@ function initGameScroller() {
   };
 
   window.__getSelectedGameScrollerId = () => String(selectedGameId || strip.dataset.selectedGame || "");
+
+  window.__ensureGameboxHasGame = () => {
+    if (mountedGameOverlayId) return;
+    const firstGame = getVisibleGames()[0] || orderedGames[0];
+    if (!firstGame) return;
+    selectedGameId = firstGame.id;
+    centerOnGameId = firstGame.id;
+    window.launchGame(firstGame.id, "gamebox-default");
+  };
 
   renderStrip();
 }
@@ -905,7 +946,6 @@ function initTopBarOverlayControls() {
     overlayBank: "tabBank",
     overlayShop: "tabShop",
     overlayProfile: "tabProfile",
-    overlayScores: "tabScores",
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
     overlayAdmin: "tabAdmin",
@@ -914,7 +954,7 @@ function initTopBarOverlayControls() {
     overlayUpdates: "menuToggle",
   };
 
-  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabScores", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
+  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 
