@@ -485,7 +485,7 @@ function initGameSwitcher() {
       button.addEventListener("click", () => {
         if (Date.now() < suppressClickUntil) return;
         const targetGame = button.dataset.game;
-        if (!targetGame) return;
+        if (!targetGame || targetGame === (switcher.dataset.activeGame || game.id)) return;
         window.launchGame(targetGame, "game-switcher-click");
       });
     });
@@ -499,10 +499,12 @@ function initGameSwitcher() {
 
     function getDragState(deltaX) {
       const rawShift = -deltaX / DRAG_STEP;
+      const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
+      const renderIndex = wrapGameIndex(activeIndex + wholeShift);
       const commitShift = Math.round(rawShift);
       const commitIndex = wrapGameIndex(activeIndex + commitShift);
       const smoothOffset = Math.max(-DRAG_STEP, Math.min(DRAG_STEP, deltaX));
-      return { smoothOffset, commitIndex };
+      return { renderIndex, smoothOffset, commitIndex };
     }
 
     switcher.addEventListener("pointerdown", (event) => {
@@ -519,7 +521,7 @@ function initGameSwitcher() {
       didDrag = didDrag || Math.abs(deltaX) > 6;
       const state = getDragState(deltaX);
       previewIndex = state.commitIndex;
-      renderSwitcherAtIndex(switcher, activeIndex, state.smoothOffset);
+      renderSwitcherAtIndex(switcher, state.renderIndex, state.smoothOffset);
     });
 
     function commitDrag(event) {
