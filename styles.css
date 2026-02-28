@@ -1202,7 +1202,7 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 104px;
+  min-height: 92px;
   margin-bottom: 10px;
   overflow-y: hidden;
 }
@@ -1211,7 +1211,7 @@ canvas {
 .gamebox-leaderboard-panel {
   width: 100%;
   display: grid;
-  grid-template-rows: auto minmax(260px, 1fr) auto;
+  grid-template-rows: auto minmax(260px, 1fr);
   gap: 10px;
   margin-bottom: 6px;
 }
@@ -1220,21 +1220,18 @@ canvas {
   max-height: min(52vh, 520px);
 }
 
-.gamebox-leaderboard-modes {
-  min-height: auto;
-  width: 100%;
-  max-height: 160px;
-  overflow-y: auto;
+.gamebox-leaderboard-mode-store {
+  display: none;
 }
 
 .gamebox-frame {
   width: 100%;
-  min-height: 820px;
+  min-height: 800px;
   flex: 1;
   position: relative;
   padding-top: 0;
-  border: 1px solid var(--accent-dim);
-  padding: 8px;
+  border: 0;
+  padding: 0;
 }
 
 .gamebox-header-actions .menu-btn {
@@ -1390,7 +1387,7 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 96px;
+  min-height: 0;
   cursor: pointer;
 }
 
