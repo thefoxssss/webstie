@@ -340,8 +340,14 @@ body::before {
   color: #fff;
 }
 #globalChat.minimized {
+  width: 220px;
   height: auto;
   max-height: none;
+  bottom: auto;
+}
+#globalChat.minimized .chat-header {
+  border-bottom: none;
+  padding: 7px 8px;
 }
 #globalChat.minimized .chat-tabs,
 #globalChat.minimized .chat-meta,
@@ -2427,6 +2433,11 @@ body.reduce-motion *::after {
     width: min(92vw, 420px);
     height: 220px;
     margin: 10px auto 16px;
+  }
+
+  #globalChat.minimized {
+    width: min(92vw, 260px);
+    margin: 10px auto;
   }
 
   .top-bar {
