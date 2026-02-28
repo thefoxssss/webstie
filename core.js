@@ -4458,7 +4458,7 @@ function renderShop() {
         disabled = true;
       }
     }
-    const toggleBtn = isOwned && !isStackableItem(item.id)
+    const toggleBtn = isOwned
       ? `<button class="shop-toggle-btn" onclick="window.toggleItem('${item.id}')">${
           isEnabled ? "ON" : "OFF"
         }</button>`
