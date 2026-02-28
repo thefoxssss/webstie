@@ -145,6 +145,8 @@ const SHIELD_ACTIVE_MS = 2000;
 const SHIELD_COOLDOWN_MS = 5000;
 const shieldCooldowns = Object.create(null);
 const shieldActiveUntil = Object.create(null);
+const shieldDeactivateTimerIds = Object.create(null);
+const shieldReadyTimerIds = Object.create(null);
 let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
@@ -870,6 +872,7 @@ const SHOP_ITEMS = [
     name: "1-HIT SHIELD",
     cost: 500,
     type: "consumable",
+    stackable: true,
     desc: "Survive one crash",
   },
   {
@@ -3883,6 +3886,38 @@ export async function tradeMoney() {
   }
 }
 
+function isStackableItem(itemId) {
+  const item = SHOP_ITEMS.find((entry) => entry.id === itemId);
+  return Boolean(item?.stackable);
+}
+
+function clearShieldTimers(gameKey) {
+  if (shieldDeactivateTimerIds[gameKey]) {
+    clearTimeout(shieldDeactivateTimerIds[gameKey]);
+    delete shieldDeactivateTimerIds[gameKey];
+  }
+  if (shieldReadyTimerIds[gameKey]) {
+    clearTimeout(shieldReadyTimerIds[gameKey]);
+    delete shieldReadyTimerIds[gameKey];
+  }
+}
+
+function scheduleShieldNotifications(gameKey, activeUntil, cooldownUntil) {
+  clearShieldTimers(gameKey);
+  shieldDeactivateTimerIds[gameKey] = setTimeout(() => {
+    delete shieldDeactivateTimerIds[gameKey];
+    if ((shieldActiveUntil[gameKey] || 0) !== activeUntil) return;
+    if (String(currentGame || "").toLowerCase() !== gameKey) return;
+    showToast("SHIELD DEACTIVATED", "🛡️");
+  }, SHIELD_ACTIVE_MS);
+  shieldReadyTimerIds[gameKey] = setTimeout(() => {
+    delete shieldReadyTimerIds[gameKey];
+    if ((shieldCooldowns[gameKey] || 0) !== cooldownUntil) return;
+    if (String(currentGame || "").toLowerCase() !== gameKey) return;
+    showToast("SHIELD READY", "✅");
+  }, SHIELD_COOLDOWN_MS);
+}
+
 // Return live shield timing data for HUD and gameplay checks.
 export function getShieldState(gameId = currentGame) {
   const gameKey = String(gameId || currentGame || "global").toLowerCase();
@@ -3918,6 +3953,7 @@ export function consumeShield(gameId = currentGame) {
   myInventory.splice(shieldIndex, 1);
   shieldActiveUntil[gameKey] = now + SHIELD_ACTIVE_MS;
   shieldCooldowns[gameKey] = now + SHIELD_COOLDOWN_MS;
+  scheduleShieldNotifications(gameKey, shieldActiveUntil[gameKey], shieldCooldowns[gameKey]);
   saveStats();
   return "activated";
 }
@@ -4415,13 +4451,13 @@ function renderShop() {
     let btnText = "BUY";
     let disabled = myMoney < item.cost;
     if (isOwned) {
-      label = item.type === "consumable" ? `OWNED x${ownedCount}` : "OWNED";
-      if (item.type !== "consumable") {
+      label = `OWNED x${ownedCount}`;
+      if (!isStackableItem(item.id)) {
         btnText = "OWNED";
         disabled = true;
       }
     }
-    const toggleBtn = isOwned
+    const toggleBtn = isOwned && !isStackableItem(item.id)
       ? `<button class="shop-toggle-btn" onclick="window.toggleItem('${item.id}')">${
           isEnabled ? "ON" : "OFF"
         }</button>`
@@ -4438,6 +4474,11 @@ function renderShop() {
 // Purchase an item, apply its effects, and update the UI.
 export function buyItem(id) {
   const item = SHOP_ITEMS.find((i) => i.id === id);
+  if (!item) return;
+  if (!isStackableItem(id) && myInventory.includes(id)) {
+    showToast("ALREADY OWNED", "🛒", item.name);
+    return;
+  }
   if (myMoney >= item.cost) {
     myMoney -= item.cost;
     myInventory.push(id);
@@ -4459,7 +4500,8 @@ export function buyItem(id) {
     saveStats();
     renderShop();
     playSuccessSound();
-    showToast(`BOUGHT: ${item.name}`, "🛒");
+    const ownedCount = myInventory.filter((ownedId) => ownedId === id).length;
+    showToast(`BOUGHT: ${item.name}`, "🛒", `OWNED x${ownedCount}`);
   }
 }
 
