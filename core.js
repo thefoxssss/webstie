@@ -4790,8 +4790,8 @@ const gameLeaderboardCache = {};
 const leaderboardScoreSyncState = {};
 const LEADERBOARD_SCORE_SYNC_COOLDOWN_MS = 60000;
 const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
-let leaderboardDifficultyFilter = "all";
-let leaderboardPlayerCountFilter = "all";
+let leaderboardSelectedBoardId = "players";
+let leaderboardSelectedMode = "single";
 
 function normalizeLeaderboardMode(mode) {
   const normalized = String(mode || "").toLowerCase().trim();
@@ -4808,30 +4808,21 @@ function getLeaderboardBaseline(game) {
   const fallback = Math.max(25, Number(localStorage.getItem(`hs_${key}`)) || 100);
   if (!cached?.loading) {
     gameLeaderboardCache[key] = {
-      baseline: cached?.baseline || fallback,
-      updatedAt: cached?.updatedAt || 0,
+      baseline: fallback,
+      updatedAt: Date.now(),
       loading: true,
     };
-
-    getDocs(query(collection(db, "gooner_scores"), where("game", "==", key), limit(200)))
+    const q = query(collection(db, "gooner_scores"), where("game", "==", key), orderBy("score", "desc"), limit(25));
+    getDocs(q)
       .then((snap) => {
-        const bestByPlayer = {};
-        snap.forEach((docSnap) => {
-          const data = docSnap.data() || {};
-          const player = String(data.name || "ANON");
-          const score = Math.max(0, Number(data.score) || 0);
-          if (!bestByPlayer[player] || score > bestByPlayer[player]) bestByPlayer[player] = score;
+        const values = [];
+        snap.forEach((d) => {
+          const score = Number(d.data()?.score) || 0;
+          if (score > 0) values.push(score);
         });
-
-        const topScores = Object.values(bestByPlayer)
-          .sort((a, b) => b - a)
-          .slice(0, 10);
-        const baseline = topScores.length
-          ? topScores[Math.floor((topScores.length - 1) / 2)]
-          : fallback;
-
+        const baseline = values.length ? Math.max(25, Math.round(values.reduce((sum, val) => sum + val, 0) / values.length)) : fallback;
         gameLeaderboardCache[key] = {
-          baseline: Math.max(25, Math.floor(baseline)),
+          baseline,
           updatedAt: Date.now(),
           loading: false,
         };
@@ -4845,38 +4836,41 @@ function getLeaderboardBaseline(game) {
       });
   }
 
-  return cached?.baseline || fallback;
+  return fallback;
 }
 
-function awardScoreCash(game, score) {
+export function calculateScoreCashReward(game, score, options = {}) {
   const key = String(game || "").toLowerCase().trim();
-  const current = Math.max(0, Number(score) || 0);
-  if (!key || !Number.isFinite(current)) return;
+  if (!key) return 0;
+  const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+  if (safeScore <= 0) return 0;
 
-  const previous = gameCashProgress[key] || 0;
-  if (current <= previous) return;
-
-  const delta = current - previous;
+  const mode = normalizeLeaderboardMode(options.mode);
+  const bonusScale = mode === "hard" ? 1.28 : mode === "multiplayer" ? 1.16 : mode === "easy" ? 0.86 : 1;
   const leaderboardBaseline = getLeaderboardBaseline(key);
   const perPoint = Math.max(0.25, Math.min(10, 180 / Math.max(25, leaderboardBaseline)));
-  const progressionCash = Math.max(1, Math.round(delta * perPoint));
-  const firstRunBonus = previous === 0 ? 20 : 0;
-  const payout = Math.min(5000, progressionCash + firstRunBonus);
 
-  gameCashProgress[key] = current;
-  myMoney += payout;
-  logTransaction(`GAME PAYOUT: ${key.toUpperCase()} +${delta} SCORE`, payout);
-}
+  const recent = gameCashProgress[key] || {
+    startStamp: Date.now(),
+    totalCash: 0,
+  };
 
-// Update and persist a local high score for a given game.
-export function updateHighScore(game, score, options = {}) {
-  awardScoreCash(game, score);
-  const key = String(game || "").toLowerCase().trim();
-  const k = `hs_${key}`;
-  const old = parseInt(localStorage.getItem(k) || 0);
-  if (score > old) {
-    localStorage.setItem(k, score);
-    const mode = normalizeLeaderboardMode(options.mode);
+  if (Date.now() - recent.startStamp > 60000) {
+    recent.startStamp = Date.now();
+    recent.totalCash = 0;
+  }
+
+  const softCap = 2200;
+  const hardCap = 3600;
+  const projected = recent.totalCash;
+  let dampener = 1;
+  if (projected > softCap) dampener = Math.max(0.18, 1 - (projected - softCap) / (hardCap - softCap));
+
+  const reward = Math.max(5, Math.round(safeScore * perPoint * bonusScale * dampener));
+  recent.totalCash += reward;
+  gameCashProgress[key] = recent;
+
+  if (dbReady && myName !== "ANON") {
     const forceGlobalSync = options.forceGlobalSync === true;
     const syncState = leaderboardScoreSyncState[key] || { lastSentAt: 0, lastSentScore: 0 };
     const enoughTimeElapsed = Date.now() - syncState.lastSentAt >= LEADERBOARD_SCORE_SYNC_COOLDOWN_MS;
@@ -4931,21 +4925,18 @@ const formatLeaderboardModeLabel = (mode) => {
   return "SINGLE PLAYER";
 };
 
-const LEADERBOARD_COLUMNS = [
-  { id: "players", title: "PLAYERS", type: "players", tags: ["players", "operator", "rank"] },
-  { id: "richest", title: "RICHEST", type: "richest", tags: ["bank", "money", "cash", "economy"] },
-  ...LEADERBOARD_GAME_COLUMNS.flatMap((game) => {
-    const modes = (game.leaderboardModes || ["single"]).filter(Boolean);
-    return modes.map((mode) => ({
-      id: `${game.id}__${mode}`,
-      gameId: game.id,
-      mode,
-      title: `${game.title} // ${formatLeaderboardModeLabel(mode)}`,
-      type: "game",
-      tags: [...(game.tags || []), mode, formatLeaderboardModeLabel(mode).toLowerCase()],
-      leaderboardModes: [mode],
-    }));
-  }),
+const LEADERBOARD_BOARDS = [
+  { id: "players", title: "PLAYERS", subtitle: "PLAYER RANKS", type: "players", icon: "👤", modes: [] },
+  { id: "richest", title: "RICHEST", subtitle: "MOST CASH", type: "richest", icon: "💸", modes: [] },
+  ...LEADERBOARD_GAME_COLUMNS.map((game) => ({
+    id: game.id,
+    gameId: game.id,
+    title: game.title,
+    subtitle: "GAME SCORES",
+    type: "game",
+    icon: game.icon || "🎮",
+    modes: (game.leaderboardModes || ["single"]).filter(Boolean).map((mode) => normalizeLeaderboardMode(mode)),
+  })),
 ];
 
 const clearLeaderboardSubscriptions = () => {
@@ -4955,25 +4946,7 @@ const clearLeaderboardSubscriptions = () => {
   leaderboardUnsubs = [];
 };
 
-const getLeaderboardFilterValue = () => {
-  const filterInput = document.getElementById("leaderboardFilter");
-  return String(filterInput?.value || "")
-    .trim()
-    .toUpperCase();
-};
-
-function getModePlayerCount(mode) {
-  return mode === "multiplayer" ? "multiplayer" : "single";
-}
-
-function shouldIncludeScoreRowByFilters(mode) {
-  const normalizedMode = normalizeLeaderboardMode(mode);
-  if (leaderboardDifficultyFilter !== "all") {
-    if (!["easy", "hard"].includes(normalizedMode) || normalizedMode !== leaderboardDifficultyFilter) return false;
-  }
-  if (leaderboardPlayerCountFilter !== "all" && getModePlayerCount(normalizedMode) !== leaderboardPlayerCountFilter) return false;
-  return true;
-}
+const getSelectedLeaderboardBoard = () => LEADERBOARD_BOARDS.find((board) => board.id === leaderboardSelectedBoardId) || LEADERBOARD_BOARDS[0];
 
 const renderLeaderboardRows = (
   list,
@@ -5041,10 +5014,10 @@ async function adminRemoveAccount(targetName) {
   }
 }
 
-function loadLeaderboardColumn(column, body) {
-  body.innerHTML = "<div class=\"score-item\">LOADING...</div>";
+function loadLeaderboardBoard(board, list) {
+  list.innerHTML = '<div class="score-item">LOADING...</div>';
 
-  if (column.type === "players") {
+  if (board.type === "players") {
     const q = query(collection(db, "gooner_users"), orderBy("name"), limit(100));
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
@@ -5059,13 +5032,13 @@ function loadLeaderboardColumn(column, body) {
             canRemove: playerName !== myName && !isGodUser(playerName),
           });
         });
-        renderLeaderboardRows(body, rows, { showAdminRemove: true });
+        renderLeaderboardRows(list, rows, { showAdminRemove: true });
       })
     );
     return;
   }
 
-  if (column.type === "richest") {
+  if (board.type === "richest") {
     const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(10));
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
@@ -5074,22 +5047,19 @@ function loadLeaderboardColumn(column, body) {
           const data = d.data();
           rows.push({ name: data.name || d.id, score: data.money ?? 0 });
         });
-        renderLeaderboardRows(body, rows, { valuePrefix: "$" });
+        renderLeaderboardRows(list, rows, { valuePrefix: "$" });
       })
     );
     return;
   }
 
-  const q = query(collection(db, "gooner_scores"), where("game", "==", column.gameId), limit(200));
+  const selectedMode = normalizeLeaderboardMode(leaderboardSelectedMode);
+  const q = query(collection(db, "gooner_scores"), where("game", "==", board.gameId), limit(200));
   leaderboardUnsubs.push(
     onSnapshot(q, (snap) => {
       const data = [];
       snap.forEach((d) => data.push(d.data()));
-      const modeFiltered = data.filter((row) => {
-        const entryMode = normalizeLeaderboardMode(row.mode);
-        if (column.mode && entryMode !== column.mode) return false;
-        return shouldIncludeScoreRowByFilters(entryMode);
-      });
+      const modeFiltered = data.filter((row) => normalizeLeaderboardMode(row.mode) === selectedMode);
       const uniqueScores = {};
       modeFiltered.forEach((scoreRow) => {
         if (!uniqueScores[scoreRow.name] || scoreRow.score > uniqueScores[scoreRow.name].score) {
@@ -5099,91 +5069,79 @@ function loadLeaderboardColumn(column, body) {
       const filtered = Object.values(uniqueScores)
         .sort((a, b) => b.score - a.score)
         .slice(0, 10);
-      renderLeaderboardRows(body, filtered);
+      renderLeaderboardRows(list, filtered);
     })
   );
 }
 
-// Render all leaderboard columns and subscribe to each data feed.
-function loadLeaderboard() {
-  const list = document.getElementById("scoreList");
-  const filterInput = document.getElementById("leaderboardFilter");
-  const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
-  const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
-  if (!list) return;
+function renderLeaderboardModePanel(board) {
+  const modePanel = document.getElementById("leaderboardModePanel");
+  const modeList = document.getElementById("leaderboardModeList");
+  const modeMeta = modePanel?.querySelector(".leaderboard-mode-meta");
+  if (!modeList || !modeMeta) return;
 
-  if (filterInput && !filterInput.dataset.bound) {
-    filterInput.addEventListener("input", () => loadLeaderboard());
-    filterInput.dataset.bound = "1";
-  }
+  modeList.innerHTML = "";
 
-  if (difficultySelect && !difficultySelect.dataset.bound) {
-    difficultySelect.addEventListener("change", () => {
-      leaderboardDifficultyFilter = String(difficultySelect.value || "all").toLowerCase();
-      loadLeaderboard();
-    });
-    difficultySelect.dataset.bound = "1";
-  }
-
-  if (playerCountSelect && !playerCountSelect.dataset.bound) {
-    playerCountSelect.addEventListener("change", () => {
-      leaderboardPlayerCountFilter = String(playerCountSelect.value || "all").toLowerCase();
-      loadLeaderboard();
-    });
-    playerCountSelect.dataset.bound = "1";
-  }
-
-  if (difficultySelect) leaderboardDifficultyFilter = String(difficultySelect.value || "all").toLowerCase();
-  if (playerCountSelect) leaderboardPlayerCountFilter = String(playerCountSelect.value || "all").toLowerCase();
-
-  clearLeaderboardSubscriptions();
-  list.innerHTML = "";
-
-  const filterValue = getLeaderboardFilterValue();
-  const visibleColumns = filterValue
-    ? LEADERBOARD_COLUMNS.filter((column) => {
-        const searchable = `${column.id} ${column.title} ${(column.tags || []).join(" ")}`.toUpperCase();
-        return searchable.includes(filterValue);
-      })
-    : LEADERBOARD_COLUMNS;
-
-  const filteredColumns = visibleColumns.filter((column) => {
-    if (column.type !== "game") return true;
-
-    if (leaderboardDifficultyFilter !== "all" && !(column.leaderboardModes || []).includes(leaderboardDifficultyFilter)) return false;
-
-    if (leaderboardPlayerCountFilter !== "all") {
-      const gamePlayerCount = (column.leaderboardModes || []).includes("multiplayer") ? "multiplayer" : "single";
-      if (gamePlayerCount !== leaderboardPlayerCountFilter) return false;
-    }
-
-    return true;
-  });
-
-  if (!filteredColumns.length) {
-    list.innerHTML = `<div class="score-item">NO LEADERBOARD TYPE MATCHES CURRENT FILTERS</div>`;
+  if (board.type !== "game") {
+    modeMeta.textContent = "THIS BOARD HAS NO GAME MODE FILTERS.";
+    const empty = document.createElement("div");
+    empty.className = "score-item";
+    empty.textContent = "NO MODES AVAILABLE";
+    modeList.appendChild(empty);
     return;
   }
 
-  const columnsWrap = document.createElement("div");
-  columnsWrap.className = "score-columns";
+  const modes = Array.isArray(board.modes) ? board.modes : ["single"];
+  if (!modes.includes(leaderboardSelectedMode)) leaderboardSelectedMode = modes[0] || "single";
+  modeMeta.textContent = `MODES FOR ${board.title}`;
 
-  filteredColumns.forEach((column) => {
-    const card = document.createElement("section");
-    card.className = "score-column";
-
-    const title = document.createElement("h3");
-    title.innerText = column.title;
-
-    const body = document.createElement("div");
-    body.className = "score-column-body";
-
-    card.append(title, body);
-    columnsWrap.appendChild(card);
-    loadLeaderboardColumn(column, body);
+  modes.forEach((mode) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `menu-btn leaderboard-mode-btn${leaderboardSelectedMode === mode ? " active" : ""}`;
+    btn.textContent = formatLeaderboardModeLabel(mode);
+    btn.addEventListener("click", () => {
+      leaderboardSelectedMode = mode;
+      loadLeaderboard();
+    });
+    modeList.appendChild(btn);
   });
+}
 
-  list.appendChild(columnsWrap);
+function renderLeaderboardGameStrip() {
+  const strip = document.getElementById("leaderboardGameStrip");
+  if (!strip) return;
+  strip.innerHTML = "";
+
+  LEADERBOARD_BOARDS.forEach((board) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `leaderboard-game-card${leaderboardSelectedBoardId === board.id ? " active" : ""}`;
+    btn.innerHTML = `<span>${board.icon || "🎮"}</span><strong>${board.title}</strong><small>${board.subtitle || ""}</small>`;
+    btn.addEventListener("click", () => {
+      leaderboardSelectedBoardId = board.id;
+      const selectedBoard = getSelectedLeaderboardBoard();
+      if (selectedBoard.type === "game") {
+        const firstMode = selectedBoard.modes?.[0] || "single";
+        if (!selectedBoard.modes?.includes(leaderboardSelectedMode)) leaderboardSelectedMode = firstMode;
+      }
+      loadLeaderboard();
+    });
+    strip.appendChild(btn);
+  });
+}
+
+// Render selected leaderboard and subscribe to one data feed.
+function loadLeaderboard() {
+  const list = document.getElementById("scoreList");
+  if (!list) return;
+
+  clearLeaderboardSubscriptions();
+  renderLeaderboardGameStrip();
+
+  const board = getSelectedLeaderboardBoard();
+  renderLeaderboardModePanel(board);
+  loadLeaderboardBoard(board, list);
 }
 
 
@@ -5207,19 +5165,15 @@ function syncGameLeaderboardButton() {
 }
 
 export function openGameLeaderboard(gameId) {
-  leaderboardDifficultyFilter = "all";
-  leaderboardPlayerCountFilter = "all";
   openGame("overlayScores");
 
   const normalizedGameId = String(gameId || "").toLowerCase();
-  const gameColumn = LEADERBOARD_COLUMNS.find((column) => column.type === "game" && column.gameId === normalizedGameId);
-  const filterInput = document.getElementById("leaderboardFilter");
-  if (filterInput) filterInput.value = normalizedGameId || gameColumn?.title || String(gameId || "");
+  const requestedBoard = LEADERBOARD_BOARDS.find((board) => board.id === normalizedGameId);
 
-  const difficultySelect = document.getElementById("leaderboardDifficultyFilter");
-  if (difficultySelect) difficultySelect.value = "all";
-  const playerCountSelect = document.getElementById("leaderboardPlayerCountFilter");
-  if (playerCountSelect) playerCountSelect.value = "all";
+  if (requestedBoard) {
+    leaderboardSelectedBoardId = requestedBoard.id;
+    if (requestedBoard.type === "game") leaderboardSelectedMode = requestedBoard.modes?.[0] || "single";
+  }
 
   loadLeaderboard();
 }
