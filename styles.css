@@ -1183,7 +1183,7 @@ canvas {
 
 .gamebox-shell {
   width: min(96vw, 1300px);
-  min-height: min(920px, calc(100vh - var(--topbar-clearance) - 20px));
+  min-height: calc(100vh - var(--topbar-clearance) - 20px);
 }
 
 .gamebox-heading-row {
@@ -1202,7 +1202,7 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 108px;
+  min-height: 120px;
   margin-bottom: 10px;
   overflow-y: hidden;
 }
@@ -1211,13 +1211,15 @@ canvas {
 .gamebox-leaderboard-panel {
   width: 100%;
   display: grid;
-  grid-template-rows: auto minmax(260px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   margin-bottom: 6px;
+  min-height: 760px;
 }
 
 .gamebox-leaderboard-panel .score-list {
-  max-height: min(52vh, 520px);
+  max-height: none;
+  height: 100%;
 }
 
 .gamebox-leaderboard-mode-store {
@@ -1230,8 +1232,8 @@ canvas {
   flex: 1;
   position: relative;
   padding-top: 0;
-  border: 0;
-  padding: 0;
+  border: 1px solid var(--accent-dim);
+  padding: 8px;
 }
 
 .gamebox-header-actions .menu-btn {
@@ -1250,7 +1252,8 @@ canvas {
 
 .gamebox-content {
   width: 100%;
-  min-height: 760px;
+  min-height: 0;
+  height: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1263,7 +1266,7 @@ canvas {
   display: flex;
   width: 100%;
   height: auto;
-  min-height: 100%;
+  min-height: 0;
   align-items: center;
   justify-content: flex-start;
   overflow: hidden;
