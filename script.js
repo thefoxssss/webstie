@@ -453,16 +453,17 @@ function initGameScroller() {
   if (!orderedGames.length) return;
 
   const strip = document.getElementById("gameboxGameStrip");
-  const favoritesToggle = document.getElementById("gameboxFavoritesToggle");
+  const filterToggle = document.getElementById("gameboxFilterToggle");
   const searchToggle = document.getElementById("gameboxSearchToggle");
   const searchInput = document.getElementById("gameboxSearchInput");
   const switchBtn = document.getElementById("gameboxSwitchBtn");
-  if (!strip || !favoritesToggle || !searchToggle || !searchInput || !switchBtn) return;
+  if (!strip || !filterToggle || !searchToggle || !searchInput || !switchBtn) return;
 
   let gameSearchQuery = "";
   let selectedGameId = "";
   let centerOnGameId = "";
-  let favoritesFirst = true;
+  const FILTER_MODES = ["az", "za", "trending", "favorites"];
+  let currentFilterIndex = 0;
   let suppressClickUntil = 0;
 
   const getFavorites = () => {
@@ -488,23 +489,47 @@ function initGameScroller() {
   const getVisibleGames = () => {
     const query = String(gameSearchQuery || "").trim().toUpperCase();
     const favorites = new Set(getFavorites());
+    const recents = readStoredGameList(GAME_LIBRARY_RECENTS_KEY);
+    const recentRank = new Map(recents.map((gameId, idx) => [gameId, idx]));
+    const mode = FILTER_MODES[currentFilterIndex] || "az";
     const filtered = orderedGames.filter((game) => {
       if (!query) return true;
       return game.searchText.includes(query);
     });
-    if (!favoritesFirst) return filtered;
-    return filtered.slice().sort((a, b) => {
-      const aFav = favorites.has(a.id) ? 1 : 0;
-      const bFav = favorites.has(b.id) ? 1 : 0;
-      if (aFav !== bFav) return bFav - aFav;
-      return a.title.localeCompare(b.title);
-    });
+
+    if (mode === "favorites") {
+      return filtered
+        .filter((game) => favorites.has(game.id))
+        .sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    if (mode === "za") {
+      return filtered.slice().sort((a, b) => b.title.localeCompare(a.title));
+    }
+
+    if (mode === "trending") {
+      return filtered.slice().sort((a, b) => {
+        const aRank = recentRank.has(a.id) ? recentRank.get(a.id) : Number.POSITIVE_INFINITY;
+        const bRank = recentRank.has(b.id) ? recentRank.get(b.id) : Number.POSITIVE_INFINITY;
+        if (aRank !== bRank) return aRank - bRank;
+        return a.title.localeCompare(b.title);
+      });
+    }
+
+    return filtered.slice().sort((a, b) => a.title.localeCompare(b.title));
   };
 
   const renderStrip = () => {
     strip.innerHTML = "";
-    favoritesToggle.classList.toggle("active", favoritesFirst);
-    favoritesToggle.textContent = favoritesFirst ? "★" : "☆";
+    const mode = FILTER_MODES[currentFilterIndex] || "az";
+    filterToggle.classList.toggle("active", mode === "favorites" || mode === "trending");
+    const filterLabels = {
+      az: "FILTER: A-Z",
+      za: "FILTER: Z-A",
+      trending: "FILTER: TRENDING",
+      favorites: "FILTER: FAVORITES",
+    };
+    filterToggle.textContent = filterLabels[mode] || "FILTER: A-Z";
     const favoriteSet = new Set(getFavorites());
     const visibleGames = getVisibleGames();
     if (!visibleGames.length) {
@@ -622,8 +647,8 @@ function initGameScroller() {
     didDrag = false;
   });
 
-  favoritesToggle.addEventListener("click", () => {
-    favoritesFirst = !favoritesFirst;
+  filterToggle.addEventListener("click", () => {
+    currentFilterIndex = (currentFilterIndex + 1) % FILTER_MODES.length;
     renderStrip();
   });
 
@@ -655,7 +680,7 @@ function initGameScroller() {
     const inLeaderboard = normalized === "leaderboard";
     if (headingTitle) headingTitle.textContent = inLeaderboard ? "LEADERBOARD" : "GAMES";
     switchBtn.textContent = inLeaderboard ? "GAMES" : "LEADERBOARD";
-    favoritesToggle.style.display = inLeaderboard ? "none" : "inline-flex";
+    filterToggle.style.display = inLeaderboard ? "none" : "inline-flex";
     strip.style.display = inLeaderboard ? "none" : "flex";
     if (gameFrame) gameFrame.style.display = inLeaderboard ? "none" : "flex";
     if (leaderboardPanel) leaderboardPanel.style.display = inLeaderboard ? "grid" : "none";
