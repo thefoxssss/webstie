@@ -141,6 +141,8 @@ let myItemToggles = {};
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
+const SHIELD_COOLDOWN_MS = 1500;
+const shieldCooldowns = Object.create(null);
 let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
@@ -3667,10 +3669,14 @@ export async function tradeMoney() {
 
 // Consume exactly one shield charge if available.
 export function consumeShield() {
+  const gameKey = String(currentGame || "global").toLowerCase();
+  const now = Date.now();
+  if (shieldCooldowns[gameKey] && shieldCooldowns[gameKey] > now) return true;
   if (!hasActiveItem("item_shield")) return false;
   const shieldIndex = myInventory.indexOf("item_shield");
   if (shieldIndex === -1) return false;
   myInventory.splice(shieldIndex, 1);
+  shieldCooldowns[gameKey] = now + SHIELD_COOLDOWN_MS;
   saveStats();
   return true;
 }

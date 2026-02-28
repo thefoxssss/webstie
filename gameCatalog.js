@@ -1,15 +1,15 @@
 export const GAME_DIRECTORY_ENTRIES = Object.freeze([
-  { id: "geo", title: "GEO DASH", description: "Play official-style levels from Stereo Madness to Dash.", icon: "🟨", tags: ["arcade", "skill", "platformer", "reflex"], shopItems: ["item_slowmo"] },
+  { id: "geo", title: "GEO DASH", description: "Play official-style levels from Stereo Madness to Dash.", icon: "🟨", tags: ["arcade", "skill", "platformer", "reflex"], shopItems: ["item_slowmo", "item_shield"] },
   { id: "type", title: "TYPE RUNNER", description: "Type fast to outrun incoming threats.", icon: "⌨️", tags: ["arcade", "skill", "typing", "reflex"], shopItems: ["item_autotype"] },
   { id: "pong", title: "PONG", description: "Retro paddle battle with adjustable difficulty.", icon: "🏓", tags: ["arcade", "pvp", "retro", "duel"], shopItems: ["item_aimbot"] },
-  { id: "snake", title: "SNAKE", description: "Grow longer while avoiding walls and yourself.", icon: "🐍", tags: ["arcade", "skill"], shopItems: ["item_double"] },
-  { id: "runner", title: "RUNNER V2", description: "Endless sprint with jump timing focus.", icon: "🏃", tags: ["arcade", "skill"], shopItems: ["item_slowmo"] },
+  { id: "snake", title: "SNAKE", description: "Grow longer while avoiding walls and yourself.", icon: "🐍", tags: ["arcade", "skill"], shopItems: ["item_double", "item_shield"] },
+  { id: "runner", title: "RUNNER V2", description: "Endless sprint with jump timing focus.", icon: "🏃", tags: ["arcade", "skill"], shopItems: ["item_slowmo", "item_shield"] },
   { id: "corebreaker", title: "CORE BREAKER", description: "Break glowing blocks and protect your core.", icon: "🧱", tags: ["arcade", "skill"] },
   { id: "neondefender", title: "NEON DEFENDER", description: "Aim, auto-fire, and hold the line.", icon: "🎯", tags: ["arcade", "skill"] },
   { id: "voidminer", title: "VOID MINER", description: "Thrust through deep space for score.", icon: "🚀", tags: ["arcade", "skill"] },
   { id: "coredriller", title: "CORE DRILLER", description: "Dive through strata, mine ore, and keep your rig alive.", icon: "⛏️", tags: ["arcade", "skill", "strategy"] },
   { id: "shadowassassin", title: "SHADOW ASSASSIN", description: "Castle infiltration with boss encounters.", icon: "🗡️", tags: ["arcade", "skill"] },
-  { id: "dodge", title: "DODGE GRID", description: "Stay alive in a high-speed hazard field.", icon: "⚡", tags: ["arcade", "skill"], shopItems: ["item_dodge_stabilizer"] },
+  { id: "dodge", title: "DODGE GRID", description: "Stay alive in a high-speed hazard field.", icon: "⚡", tags: ["arcade", "skill"], shopItems: ["item_dodge_stabilizer", "item_shield"] },
   { id: "roulette", title: "ROULETTE", description: "Bet, spin, and chase streaks.", icon: "🎡", tags: ["casino", "luck", "table"] },
   { id: "blackjack", title: "BLACKJACK", description: "Card table duels with live opponents.", icon: "🂡", tags: ["casino", "pvp", "cards", "table"], shopItems: ["item_xray", "item_cardcount"] },
   { id: "ttt", title: "TIC TAC TOE", description: "Classic 3x3 tactical showdown.", icon: "❎", tags: ["pvp", "skill"] },
@@ -28,7 +28,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "metromaze", title: "METRO MAZE", description: "Procedural mazes with relics, sentinels, and level exits.", icon: "🚇", tags: ["skill", "maze", "puzzle", "strategy"] },
   { id: "stacksmash", title: "STACK SMASH", description: "Break layered stacks for big spike payouts.", icon: "🪨", tags: ["arcade", "timing", "reflex"] },
   { id: "quantumflip", title: "QUANTUM FLIP", description: "Pilot a phase core: chain matching orbs and survive hunter waves.", icon: "⚛️", tags: ["skill", "strategy", "survival"] },
-  { id: "flappy", title: "FLAPPY GOON", description: "Secret bonus mode: tap to survive.", icon: "🐤", tags: ["arcade", "skill"], hidden: true, shopItems: ["item_flappy"] },
+  { id: "flappy", title: "FLAPPY GOON", description: "Secret bonus mode: tap to survive.", icon: "🐤", tags: ["arcade", "skill"], hidden: true, shopItems: ["item_flappy", "item_shield"] },
 ]);
 
 export const LEADERBOARD_GAME_COLUMNS = Object.freeze(
