@@ -323,6 +323,11 @@ body::before {
   align-items: center;
   justify-content: space-between;
 }
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .chat-minimize-btn {
   border: 1px solid var(--accent-dim);
   background: transparent;
@@ -338,6 +343,13 @@ body::before {
 .chat-minimize-btn:hover {
   border-color: var(--accent);
   color: #fff;
+}
+.chat-moderation-btn {
+  font-size: 11px;
+}
+.chat-moderation-btn.off {
+  opacity: 0.5;
+  filter: grayscale(0.8);
 }
 #globalChat.minimized {
   width: 220px;
