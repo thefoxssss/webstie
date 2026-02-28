@@ -203,14 +203,12 @@ const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
 let mountedGameOverlayId = "";
 
 function updateSharedGameboxHeader(gameId) {
-  const title = document.getElementById("gameboxTitle");
   const subtitle = document.getElementById("gameboxSubtitle");
   const leaderboardBtn = document.getElementById("gameboxLeaderboardBtn");
   const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === gameId);
-  if (title) title.textContent = entry?.title || String(gameId || "GAME").toUpperCase();
   if (subtitle) subtitle.textContent = entry?.description || "GAME MODULE LOADED";
   if (leaderboardBtn) {
-    leaderboardBtn.textContent = `VIEW ${String(gameId || "GAME").toUpperCase()} LEADERBOARD`;
+    leaderboardBtn.textContent = "VIEW LEADERBOARD";
     leaderboardBtn.onclick = () => openGameLeaderboard(gameId);
   }
 }
@@ -472,9 +470,7 @@ function initGameSwitcher() {
     switcher.innerHTML = `
       <div class="game-switcher-track" aria-label="Game switcher">
         <button class="game-switcher-title" type="button" data-pos="-1"></button>
-        <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="0"></button>
-        <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="1"></button>
       </div>
     `;
@@ -503,13 +499,10 @@ function initGameSwitcher() {
 
     function getDragState(deltaX) {
       const rawShift = -deltaX / DRAG_STEP;
-      const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
-      const remainder = rawShift - wholeShift;
-      const renderIndex = wrapGameIndex(activeIndex + wholeShift);
-      const smoothOffset = -remainder * DRAG_STEP;
-      const commitShift = wholeShift + (remainder >= 0.5 ? 1 : remainder <= -0.5 ? -1 : 0);
+      const commitShift = Math.round(rawShift);
       const commitIndex = wrapGameIndex(activeIndex + commitShift);
-      return { renderIndex, smoothOffset, commitIndex };
+      const smoothOffset = Math.max(-DRAG_STEP, Math.min(DRAG_STEP, deltaX));
+      return { smoothOffset, commitIndex };
     }
 
     switcher.addEventListener("pointerdown", (event) => {
@@ -526,7 +519,7 @@ function initGameSwitcher() {
       didDrag = didDrag || Math.abs(deltaX) > 6;
       const state = getDragState(deltaX);
       previewIndex = state.commitIndex;
-      renderSwitcherAtIndex(switcher, state.renderIndex, state.smoothOffset);
+      renderSwitcherAtIndex(switcher, activeIndex, state.smoothOffset);
     });
 
     function commitDrag(event) {
