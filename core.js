@@ -4468,6 +4468,10 @@ function renderShop() {
   });
 }
 
+function emitShopStateChanged() {
+  document.dispatchEvent(new CustomEvent("gooner:shop-state-changed"));
+}
+
 // Purchase an item, apply its effects, and update the UI.
 export function buyItem(id) {
   const item = SHOP_ITEMS.find((i) => i.id === id);
@@ -4496,6 +4500,7 @@ export function buyItem(id) {
     logTransaction(`BOUGHT: ${item.name}`, -item.cost);
     saveStats();
     renderShop();
+    emitShopStateChanged();
     playSuccessSound();
     const ownedCount = myInventory.filter((ownedId) => ownedId === id).length;
     showToast(`BOUGHT: ${item.name}`, "🛒", `OWNED x${ownedCount}`);
@@ -4513,6 +4518,7 @@ export function toggleItem(id) {
   updateMatrixToggle();
   saveStats();
   renderShop();
+  emitShopStateChanged();
   const itemName = SHOP_ITEMS.find((item) => item.id === id)?.name || "ITEM";
   showToast(`${enabled ? "ENABLED" : "DISABLED"}: ${itemName}`, enabled ? "🟢" : "🔴");
 }
