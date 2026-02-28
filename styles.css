@@ -1174,6 +1174,7 @@ canvas {
   border: 2px solid var(--accent);
   background: rgba(0, 0, 0, 0.86);
   box-shadow: 0 0 20px var(--accent-dim);
+  min-height: unset;
   padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
@@ -1183,7 +1184,6 @@ canvas {
 
 .gamebox-shell {
   width: min(96vw, 1300px);
-  min-height: calc(100vh - var(--topbar-clearance) - 20px);
 }
 
 .gamebox-heading-row {
@@ -1409,15 +1409,14 @@ canvas {
   min-width: 84px;
 }
 
-#gameboxFavoritesToggle {
+#gameboxFilterToggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  width: 36px;
+  min-width: 98px;
   height: 36px;
-  padding: 0;
-  font-size: 16px;
+  padding: 0 8px;
+  font-size: 11px;
   line-height: 1;
 }
 
