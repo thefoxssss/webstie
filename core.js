@@ -603,6 +603,7 @@ function updateAdminMenu() {
   const hasAccess = isGodUser();
   if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
+  if (isChatInitialized && document.getElementById("chatHistory")) renderChatTab();
 }
 
 
@@ -3116,38 +3117,83 @@ export async function adminMarketMultiplyFromInput() {
   await saveStats();
 }
 
-export async function adminSendChatAnnouncement() {
+function getAdminChatTerminal() {
+  const terminalInput = document.getElementById("adminChatTerminal");
+  const selected = String(terminalInput?.value || "global").toLowerCase();
+  return ["dm", "global", "crew"].includes(selected) ? selected : "global";
+}
+
+function buildAdminChatPayload(message, senderName) {
+  const terminal = getAdminChatTerminal();
+  const cleanMessage = filterChatMessage(message).slice(0, 80);
+  if (!cleanMessage) return { error: "CHAT MESSAGE REQUIRED" };
+
+  if (terminal === "global") {
+    return {
+      terminal,
+      collectionName: "gooner_global_chat",
+      payload: { user: senderName, msg: cleanMessage, ts: Date.now() },
+    };
+  }
+
+  if (terminal === "crew") {
+    const crewTag = normalizeCrewTag(crewData?.tag || "");
+    if (!crewTag) return { error: "JOIN A CREW BEFORE SENDING CREW NOTICES." };
+    return {
+      terminal,
+      collectionName: "gooner_crew_chat",
+      payload: { user: senderName, crewTag, msg: cleanMessage, ts: Date.now() },
+    };
+  }
+
+  const targetInput = readAdminTextInput("adminChatTargetUser");
+  const explicitTarget = normalizeUsername(targetInput || "");
+  const inlineTarget = cleanMessage.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
+  const to = explicitTarget || normalizeUsername(inlineTarget?.[1] || "");
+  const body = filterChatMessage((inlineTarget?.[2] || cleanMessage) || "").slice(0, 80);
+  if (!to) return { error: "SET A TARGET USER FOR MESSAGE USERS." };
+  if (to === normalizeUsername(myName)) return { error: "CAN'T SEND DM TO YOURSELF." };
+  if (!body) return { error: "MESSAGE BODY CANNOT BE EMPTY." };
+  return {
+    terminal,
+    collectionName: "gooner_user_chat",
+    payload: { user: senderName, to, participants: [to, normalizeUsername(myName)], msg: body, ts: Date.now() },
+  };
+}
+
+async function adminSendTerminalMessage({ senderName, messagePrefix = "", successText, failText }) {
   if (!isGodUser()) return;
-  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
-  if (!message) {
-    showToast("CHAT MESSAGE REQUIRED", "⚠️");
+  const rawMessage = readAdminTextInput("adminChatMessage");
+  const sendConfig = buildAdminChatPayload(`${messagePrefix}${rawMessage}`.trim(), senderName);
+  if (sendConfig.error) {
+    showToast(sendConfig.error, "⚠️");
     return;
   }
   const sent = await runFirestoreTask(
-    () => addDoc(collection(db, "gooner_global_chat"), { user: myName, msg: `[ADMIN] ${message}`, ts: Date.now() }),
+    () => addDoc(collection(db, sendConfig.collectionName), sendConfig.payload),
     "ADMIN CHAT",
-    "Announcement failed."
+    failText
   );
   if (!sent) return;
   clearAdminTextInput("adminChatMessage");
-  showToast("ANNOUNCEMENT SENT", "📣");
+  showToast(`${successText} (${sendConfig.terminal.toUpperCase()})`, "📣");
+}
+
+export async function adminSendChatAnnouncement() {
+  return adminSendTerminalMessage({
+    senderName: myName,
+    messagePrefix: "[ADMIN] ",
+    successText: "ANNOUNCEMENT SENT",
+    failText: "Announcement failed.",
+  });
 }
 
 export async function adminSendChatSystemMessage() {
-  if (!isGodUser()) return;
-  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
-  if (!message) {
-    showToast("CHAT MESSAGE REQUIRED", "⚠️");
-    return;
-  }
-  const sent = await runFirestoreTask(
-    () => addDoc(collection(db, "gooner_global_chat"), { user: "SYSTEM", msg: message, ts: Date.now() }),
-    "ADMIN CHAT",
-    "System message failed."
-  );
-  if (!sent) return;
-  clearAdminTextInput("adminChatMessage");
-  showToast("SYSTEM MESSAGE SENT", "🛰️");
+  return adminSendTerminalMessage({
+    senderName: "SYSTEM",
+    successText: "SYSTEM MESSAGE SENT",
+    failText: "System message failed.",
+  });
 }
 
 export async function adminClearRecentChatFromInput() {
@@ -4565,7 +4611,10 @@ let lastChatAt = 0;
 let lastChatMsg = "";
 let activeChatTab = "global";
 let stopChatListener = null;
+let stopChatMuteListener = null;
 let activeDmUser = "";
+let globallyMutedUsers = new Set();
+let isChatInitialized = false;
 
 function getChatTabConfig(tab) {
   const crewTag = normalizeCrewTag(crewData?.tag || "");
@@ -4575,7 +4624,7 @@ function getChatTabConfig(tab) {
       placeholder: "@USER MESSAGE...",
       meta: "DIRECT MESSAGES // USE @USERNAME MESSAGE",
       // Keep DM queries index-light so chats work without requiring a composite Firestore index.
-      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName)), limit(80)),
+      getQuery: () => query(collection(db, "gooner_user_chat"), where("participants", "array-contains", normalizeUsername(myName))),
       send: (txt) => {
         const targetOnly = txt.match(/^\/to\s+@?([A-Za-z0-9_\-]{2,16})$/i);
         if (targetOnly) {
@@ -4616,7 +4665,7 @@ function getChatTabConfig(tab) {
       label: "GLOBAL",
       placeholder: "TYPE MESSAGE...",
       meta: "GLOBAL CHANNEL // TYPE MESSAGE...",
-      getQuery: () => query(collection(db, "gooner_global_chat"), orderBy("ts", "desc"), limit(25)),
+      getQuery: () => query(collection(db, "gooner_global_chat"), orderBy("ts", "desc")),
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
@@ -4630,7 +4679,7 @@ function getChatTabConfig(tab) {
       getQuery: () => {
         if (!crewTag) return null;
         // Keep crew queries index-light so chats work without requiring a composite Firestore index.
-        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag), limit(80));
+        return query(collection(db, "gooner_crew_chat"), where("crewTag", "==", crewTag));
       },
       send: (txt) => {
         if (!crewTag) return { error: "JOIN A CREW BEFORE USING CREW CHAT." };
@@ -4649,9 +4698,10 @@ function renderChatTab() {
   const input = document.getElementById("chatInput");
   const list = document.getElementById("chatHistory");
   const meta = document.getElementById("chatMeta");
-  const tabConfig = getChatTabConfig(activeChatTab);
+  const currentTab = activeChatTab;
+  const tabConfig = getChatTabConfig(currentTab);
   document.querySelectorAll(".chat-tab").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.chatTab === activeChatTab);
+    btn.classList.toggle("active", btn.dataset.chatTab === currentTab);
   });
   if (input) input.placeholder = tabConfig.placeholder;
   if (meta) meta.textContent = tabConfig.meta;
@@ -4669,31 +4719,153 @@ function renderChatTab() {
     const blocklist = getChatSet(CHAT_BLOCKLIST_KEY);
     const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
-    snap.forEach((d) => msgs.push(d.data()));
+    snap.forEach((d) => msgs.push({ id: d.id, ...d.data() }));
     msgs
       .sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0))
-      .slice(-25)
       .forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
-      if (blocklist.has(user) || muted.has(user)) return;
-      const d = document.createElement("div");
-      d.className = "chat-msg";
-      d.innerHTML = tabConfig.renderMessage(m);
-      list.appendChild(d);
+      if (blocklist.has(user)) return;
+      const isLocallyMuted = muted.has(user);
+      const isGloballyMuted = globallyMutedUsers.has(user);
+      const row = document.createElement("div");
+      row.className = "chat-msg";
+
+      const text = document.createElement("div");
+      text.className = "chat-msg-text";
+      if (isLocallyMuted || isGloballyMuted) {
+        const muteScope = isGloballyMuted ? "GLOBAL" : "LOCAL";
+        text.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+      } else {
+        text.innerHTML = tabConfig.renderMessage(m);
+      }
+      row.appendChild(text);
+
+      const canTargetUser = user && user !== "ANON" && user !== normalizeUsername(myName);
+      if (canTargetUser) {
+        const isAdminView = isGodUser();
+
+        const localMuteBtn = document.createElement("button");
+        localMuteBtn.type = "button";
+        localMuteBtn.className = "chat-mute-btn";
+        localMuteBtn.title = isLocallyMuted ? `Unmute ${user} locally` : `Mute ${user} locally`;
+        localMuteBtn.textContent = isLocallyMuted ? "L🔊" : "L🔇";
+        localMuteBtn.onclick = () => toggleLocalChatMute(user);
+        row.appendChild(localMuteBtn);
+
+        if (isAdminView) {
+          const globalMuteBtn = document.createElement("button");
+          globalMuteBtn.type = "button";
+          globalMuteBtn.className = "chat-mute-btn chat-global-mute-btn";
+          globalMuteBtn.title = isGloballyMuted ? `Unmute ${user} globally` : `Mute ${user} globally`;
+          globalMuteBtn.textContent = isGloballyMuted ? "G🔊" : "G🔇";
+          globalMuteBtn.onclick = () => toggleAdminChatMute(user);
+          row.appendChild(globalMuteBtn);
+        }
+      }
+
+      if (isGodUser() && m.id) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "chat-remove-btn";
+        removeBtn.title = "Remove message";
+        removeBtn.textContent = "✕";
+        removeBtn.onclick = () => removeChatMessage(currentTab, m.id);
+        row.appendChild(removeBtn);
+      }
+
+      list.appendChild(row);
       });
     list.scrollTop = list.scrollHeight;
   });
 }
 
+function toggleLocalChatMute(username) {
+  const user = normalizeUsername(username);
+  if (!user) return;
+  const muted = getChatSet(CHAT_MUTED_KEY);
+  if (muted.has(user)) {
+    muted.delete(user);
+    showToast("UNMUTED (LOCAL)", "🔊", user);
+  } else {
+    muted.add(user);
+    showToast("MUTED (LOCAL)", "🔇", user);
+  }
+  setChatSet(CHAT_MUTED_KEY, muted);
+  renderChatTab();
+}
+
+async function toggleAdminChatMute(username) {
+  if (!isGodUser()) return;
+  const user = normalizeUsername(username);
+  if (!user) return;
+  const targetRef = doc(db, "gooner_chat_mutes", user);
+  const muted = globallyMutedUsers.has(user);
+  const ok = await runFirestoreTask(
+    () => (muted ? deleteDoc(targetRef) : setDoc(targetRef, { user, mutedBy: normalizeUsername(myName), ts: Date.now() })),
+    "ADMIN CHAT",
+    muted ? "Unmute failed." : "Mute failed."
+  );
+  if (!ok) return;
+  showToast(muted ? "GLOBAL UNMUTE" : "GLOBAL MUTE", muted ? "🔊" : "🔇", user);
+}
+
+function initGlobalChatMutes() {
+  if (stopChatMuteListener) stopChatMuteListener();
+  stopChatMuteListener = onSnapshot(collection(db, "gooner_chat_mutes"), (snap) => {
+    globallyMutedUsers = new Set();
+    snap.forEach((row) => globallyMutedUsers.add(normalizeUsername(row.id || row.data()?.user || "")));
+    renderChatTab();
+  });
+}
+
+async function removeChatMessage(tab, messageId) {
+  if (!isGodUser() || !messageId) return;
+  const collectionByTab = {
+    dm: "gooner_user_chat",
+    global: "gooner_global_chat",
+    crew: "gooner_crew_chat",
+  };
+  const collectionName = collectionByTab[tab];
+  if (!collectionName) return;
+  const removed = await runFirestoreTask(
+    () => deleteDoc(doc(db, collectionName, messageId)),
+    "ADMIN CHAT",
+    "Message remove failed."
+  );
+  if (removed) showToast("MESSAGE REMOVED", "🧹");
+}
+
 // Initialize realtime chat streaming and input handling.
 function initChat() {
+  const chatRoot = document.getElementById("globalChat");
+  const minimizeBtn = document.getElementById("chatMinimizeBtn");
+
+  const syncChatMinimizeUi = () => {
+    const isMinimized = chatRoot?.classList.contains("minimized");
+    if (!minimizeBtn) return;
+    minimizeBtn.textContent = isMinimized ? "+" : "−";
+    minimizeBtn.setAttribute("aria-expanded", isMinimized ? "false" : "true");
+    minimizeBtn.setAttribute("aria-label", isMinimized ? "Expand chat" : "Minimize chat");
+  };
+
+  if (minimizeBtn && chatRoot) {
+    minimizeBtn.addEventListener("click", () => {
+      chatRoot.classList.toggle("minimized");
+      syncChatMinimizeUi();
+      renderChatTab();
+    });
+  }
+  syncChatMinimizeUi();
+
   document.querySelectorAll(".chat-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeChatTab = btn.dataset.chatTab || "global";
       renderChatTab();
     });
   });
+  initGlobalChatMutes();
   renderChatTab();
+  isChatInitialized = true;
   document.getElementById("chatInput").addEventListener("keydown", async (e) => {
     if (e.key !== "Enter") return;
 
@@ -4744,6 +4916,11 @@ function initChat() {
       setChatSet(CHAT_MUTED_KEY, muted);
       showToast("UNMUTED USER", "🔊", user);
       e.target.value = "";
+      return;
+    }
+
+    if (globallyMutedUsers.has(normalizeUsername(myName))) {
+      showToast("CHAT MUTED", "🔇", "An admin muted your chat access.");
       return;
     }
 

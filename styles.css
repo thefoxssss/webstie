@@ -295,10 +295,11 @@ body::before {
 /* Global chat dock on the home screen. */
 #globalChat {
   position: fixed;
+  top: 64px;
   bottom: 20px;
   left: 20px;
-  width: 300px;
-  height: 200px;
+  width: min(420px, calc(100vw - 40px));
+  height: auto;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid var(--accent);
   z-index: 60;
@@ -317,13 +318,47 @@ body::before {
   border-bottom: 1px solid var(--accent-dim);
   font-size: 9px;
   letter-spacing: 1px;
-  text-align: center;
   color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.chat-minimize-btn {
+  border: 1px solid var(--accent-dim);
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.chat-minimize-btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+#globalChat.minimized {
+  width: 220px;
+  height: auto;
+  max-height: none;
+  bottom: auto;
+}
+#globalChat.minimized .chat-header {
+  border-bottom: none;
+  padding: 7px 8px;
+}
+#globalChat.minimized .chat-tabs,
+#globalChat.minimized .chat-meta,
+#globalChat.minimized #chatHistory,
+#globalChat.minimized #chatInput {
+  display: none;
 }
 
 .chat-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--accent-dim);
 }
 .chat-tab {
@@ -361,8 +396,49 @@ body::before {
   user-select: text;
 }
 .chat-msg {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 5px;
   word-wrap: break-word;
+}
+.chat-msg-text {
+  flex: 1;
+  min-width: 0;
+}
+.chat-muted-placeholder {
+  color: #7f8c9a;
+  font-style: italic;
+}
+.chat-mute-btn {
+  border: none;
+  background: transparent;
+  color: #7ec8ff;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.chat-mute-btn:hover {
+  color: #fff;
+}
+.chat-global-mute-btn {
+  color: #ffd36a;
+}
+.chat-remove-btn {
+  border: none;
+  background: transparent;
+  color: #ff7e7e;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.chat-remove-btn:hover {
+  color: #fff;
 }
 .chat-user {
   color: var(--accent);
@@ -2440,6 +2516,11 @@ body.reduce-motion *::after {
     width: min(92vw, 420px);
     height: 220px;
     margin: 10px auto 16px;
+  }
+
+  #globalChat.minimized {
+    width: min(92vw, 260px);
+    margin: 10px auto;
   }
 
   .top-bar {
