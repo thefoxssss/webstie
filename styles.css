@@ -661,30 +661,124 @@ body::before {
   border: 1px solid var(--accent-dim);
   background: rgba(0, 0, 0, 0.45);
   padding: 10px;
-  display: grid;
-  gap: 8px;
-  max-height: min(65vh, 640px);
-  overflow-y: auto;
+  min-height: 360px;
 }
 
-.trend-row {
+.trend-line-chart {
   display: grid;
-  grid-template-columns: 72px 1fr auto;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.trend-chart-legend {
+  border: 1px solid var(--accent-dim);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.trend-legend-item {
+  border: 1px solid rgba(0, 255, 136, 0.16);
+  padding: 4px 6px;
+  font-size: 9px;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  color: rgba(220, 255, 235, 0.8);
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.trend-legend-item.active {
+  color: #fff;
+  border-color: rgba(0, 255, 136, 0.7);
+  background: rgba(0, 255, 136, 0.12);
+}
+
+.trend-legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+}
+
+.trend-chart-stage {
+  border: 1px solid var(--accent-dim);
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+}
+
+.trend-chart-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.trend-chart-hover-readout {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 9px;
+  color: rgba(220, 255, 235, 0.95);
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  padding: 4px 6px;
+}
+
+.trend-line {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.35;
+  transition: opacity 0.12s ease, stroke-width 0.12s ease;
+}
+
+.trend-line.active {
+  opacity: 1;
+  stroke-width: 3.2;
+}
+
+.trend-line-hit {
+  fill: none;
+  stroke-width: 14;
+  stroke: transparent;
+  cursor: crosshair;
+}
+
+.trend-x-day {
+  cursor: pointer;
+}
+
+.trending-day-activity {
+  margin-top: 10px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 10px;
   font-size: 9px;
 }
 
-.trend-bar-track {
-  border: 1px solid var(--accent-dim);
-  height: 14px;
-  background: rgba(255, 255, 255, 0.03);
+.trending-day-activity h3 {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 1px;
 }
 
-.trend-bar-fill {
-  height: 100%;
-  min-width: 2px;
-  background: linear-gradient(90deg, rgba(0, 255, 136, 0.3), rgba(0, 255, 136, 0.9));
+.trending-day-activity ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+}
+
+.trending-day-activity strong {
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .trend-line-chart {
+    grid-template-columns: 1fr;
+  }
 }
 
 .update-log-scroll {
