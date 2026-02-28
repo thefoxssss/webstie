@@ -4792,6 +4792,7 @@ const LEADERBOARD_SCORE_SYNC_COOLDOWN_MS = 60000;
 const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
 let leaderboardSelectedBoardId = "players";
 let leaderboardSelectedMode = "single";
+let leaderboardSearchQuery = "";
 
 function normalizeLeaderboardMode(mode) {
   const normalized = String(mode || "").toLowerCase().trim();
@@ -4825,7 +4826,7 @@ function getLeaderboardBaseline(game) {
 
         const topScores = Object.values(bestByPlayer)
           .sort((a, b) => b - a)
-          .slice(0, 10);
+          .slice(0, 50);
         const baseline = topScores.length
           ? topScores[Math.floor((topScores.length - 1) / 2)]
           : fallback;
@@ -4874,20 +4875,22 @@ export function updateHighScore(game, score, options = {}) {
   const key = String(game || "").toLowerCase().trim();
   const k = `hs_${key}`;
   const old = parseInt(localStorage.getItem(k) || 0);
-  if (score > old) {
-    localStorage.setItem(k, score);
+  const numericScore = Math.max(0, Math.floor(Number(score) || 0));
+  if (numericScore > old) localStorage.setItem(k, numericScore);
+
+  if (numericScore > 0) {
     const mode = normalizeLeaderboardMode(options.mode);
     const forceGlobalSync = options.forceGlobalSync === true;
     const syncState = leaderboardScoreSyncState[key] || { lastSentAt: 0, lastSentScore: 0 };
     const enoughTimeElapsed = Date.now() - syncState.lastSentAt >= LEADERBOARD_SCORE_SYNC_COOLDOWN_MS;
-    const enoughScoreDelta = score - syncState.lastSentScore >= LEADERBOARD_SCORE_SYNC_MIN_DELTA;
+    const enoughScoreDelta = numericScore - syncState.lastSentScore >= LEADERBOARD_SCORE_SYNC_MIN_DELTA;
     if (forceGlobalSync || enoughTimeElapsed || enoughScoreDelta) {
-      leaderboardScoreSyncState[key] = { lastSentAt: Date.now(), lastSentScore: score };
-      saveGlobalScore(key, score, { mode });
+      leaderboardScoreSyncState[key] = { lastSentAt: Date.now(), lastSentScore: numericScore };
+      saveGlobalScore(key, numericScore, { mode });
     }
-    return score;
   }
-  return old;
+
+  return Math.max(old, numericScore);
 }
 
 // Load per-game high scores into the profile overlay.
@@ -4941,6 +4944,7 @@ const LEADERBOARD_BOARDS = [
     subtitle: "GAME SCORES",
     type: "game",
     icon: game.icon || "🎮",
+    searchText: `${game.id} ${game.title} ${(game.tags || []).join(" ")}`,
     modes: (game.leaderboardModes || ["single"]).filter(Boolean).map((mode) => normalizeLeaderboardMode(mode)),
   })),
 ];
@@ -4952,7 +4956,19 @@ const clearLeaderboardSubscriptions = () => {
   leaderboardUnsubs = [];
 };
 
-const getSelectedLeaderboardBoard = () => LEADERBOARD_BOARDS.find((board) => board.id === leaderboardSelectedBoardId) || LEADERBOARD_BOARDS[0];
+const getVisibleLeaderboardBoards = () => {
+  const query = String(leaderboardSearchQuery || "").trim().toUpperCase();
+  if (!query) return LEADERBOARD_BOARDS;
+  return LEADERBOARD_BOARDS.filter((board) => {
+    const searchable = `${board.id} ${board.title} ${board.subtitle || ""} ${board.searchText || ""}`.toUpperCase();
+    return searchable.includes(query);
+  });
+};
+
+const getSelectedLeaderboardBoard = () => {
+  const visibleBoards = getVisibleLeaderboardBoards();
+  return visibleBoards.find((board) => board.id === leaderboardSelectedBoardId) || visibleBoards[0] || LEADERBOARD_BOARDS[0];
+};
 
 const renderLeaderboardRows = (
   list,
@@ -5045,7 +5061,7 @@ function loadLeaderboardBoard(board, list) {
   }
 
   if (board.type === "richest") {
-    const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(10));
+    const q = query(collection(db, "gooner_users"), orderBy("money", "desc"), limit(50));
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
         const rows = [];
@@ -5060,7 +5076,7 @@ function loadLeaderboardBoard(board, list) {
   }
 
   const selectedMode = normalizeLeaderboardMode(leaderboardSelectedMode);
-  const q = query(collection(db, "gooner_scores"), where("game", "==", board.gameId), limit(200));
+  const q = query(collection(db, "gooner_scores"), where("game", "==", board.gameId), limit(500));
   leaderboardUnsubs.push(
     onSnapshot(q, (snap) => {
       const data = [];
@@ -5074,7 +5090,7 @@ function loadLeaderboardBoard(board, list) {
       });
       const filtered = Object.values(uniqueScores)
         .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+        .slice(0, 50);
       renderLeaderboardRows(list, filtered);
     })
   );
@@ -5119,7 +5135,14 @@ function renderLeaderboardGameStrip() {
   if (!strip) return;
   strip.innerHTML = "";
 
-  LEADERBOARD_BOARDS.forEach((board) => {
+  const visibleBoards = getVisibleLeaderboardBoards();
+
+  if (!visibleBoards.length) {
+    strip.innerHTML = '<div class="score-item">NO BOARDS MATCH SEARCH</div>';
+    return;
+  }
+
+  visibleBoards.forEach((board) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = `leaderboard-game-card${leaderboardSelectedBoardId === board.id ? " active" : ""}`;
@@ -5140,12 +5163,45 @@ function renderLeaderboardGameStrip() {
 // Render selected leaderboard and subscribe to one data feed.
 function loadLeaderboard() {
   const list = document.getElementById("scoreList");
+  const searchToggle = document.getElementById("leaderboardSearchToggle");
+  const searchInput = document.getElementById("leaderboardSearchInput");
   if (!list) return;
+
+  if (searchToggle && searchInput && !searchToggle.dataset.bound) {
+    searchToggle.addEventListener("click", () => {
+      const opening = searchInput.style.display === "none";
+      searchInput.style.display = opening ? "block" : "none";
+      if (opening) searchInput.focus();
+      else {
+        searchInput.value = "";
+        leaderboardSearchQuery = "";
+        loadLeaderboard();
+      }
+    });
+    searchToggle.dataset.bound = "1";
+  }
+
+  if (searchInput && !searchInput.dataset.bound) {
+    searchInput.addEventListener("input", () => {
+      leaderboardSearchQuery = String(searchInput.value || "");
+      loadLeaderboard();
+    });
+    searchInput.dataset.bound = "1";
+  }
+
+  if (searchInput) leaderboardSearchQuery = String(searchInput.value || "");
 
   clearLeaderboardSubscriptions();
   renderLeaderboardGameStrip();
 
   const board = getSelectedLeaderboardBoard();
+  if (!board) {
+    list.innerHTML = '<div class="score-item">NO LEADERBOARD DATA AVAILABLE</div>';
+    const modeList = document.getElementById("leaderboardModeList");
+    if (modeList) modeList.innerHTML = "";
+    return;
+  }
+  leaderboardSelectedBoardId = board.id;
   renderLeaderboardModePanel(board);
   loadLeaderboardBoard(board, list);
 }

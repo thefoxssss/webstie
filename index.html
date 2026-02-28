@@ -883,9 +883,18 @@
     <!-- Scores overlay for local + global leaderboards. -->
     <div class="overlay menu-overlay" id="overlayScores">
       <div class="score-box">
-        <h2 style="text-align: center; margin-bottom: 20px">
-          GLOBAL LEADERBOARD
-        </h2>
+        <div class="leaderboard-heading-row">
+          <h2 style="text-align: center; margin-bottom: 0">GLOBAL LEADERBOARD</h2>
+          <button class="menu-btn leaderboard-search-toggle" id="leaderboardSearchToggle" type="button">SEARCH</button>
+        </div>
+        <input
+          class="term-input leaderboard-search-input"
+          id="leaderboardSearchInput"
+          type="search"
+          placeholder="SEARCH BOARDS..."
+          autocomplete="off"
+          style="display: none"
+        />
         <p style="text-align: center; font-size: 10px; margin-bottom: 10px">
           PICK A BOARD, THEN A MODE FROM THE SIDE PANEL
         </p>

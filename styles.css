@@ -1202,6 +1202,24 @@ canvas {
   margin-bottom: 12px;
 }
 
+.leaderboard-heading-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.leaderboard-search-toggle {
+  justify-self: end;
+  min-width: 92px;
+  font-size: 10px;
+}
+
+.leaderboard-search-input {
+  margin-bottom: 10px;
+}
+
 .leaderboard-game-card {
   border: 1px solid var(--accent);
   background: rgba(0, 0, 0, 0.7);
