@@ -407,6 +407,10 @@ body::before {
   flex: 1;
   min-width: 0;
 }
+.chat-muted-placeholder {
+  color: #7f8c9a;
+  font-style: italic;
+}
 .chat-mute-btn {
   border: none;
   background: transparent;
@@ -419,6 +423,9 @@ body::before {
 }
 .chat-mute-btn:hover {
   color: #fff;
+}
+.chat-global-mute-btn {
+  color: #ffd36a;
 }
 .chat-remove-btn {
   border: none;

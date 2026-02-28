@@ -4724,33 +4724,43 @@ function renderChatTab() {
       .sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0))
       .forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
-      if (blocklist.has(user) || muted.has(user)) return;
+      if (blocklist.has(user)) return;
+      const isLocallyMuted = muted.has(user);
+      const isGloballyMuted = globallyMutedUsers.has(user);
       const row = document.createElement("div");
       row.className = "chat-msg";
 
       const text = document.createElement("div");
       text.className = "chat-msg-text";
-      text.innerHTML = tabConfig.renderMessage(m);
+      if (isLocallyMuted || isGloballyMuted) {
+        const muteScope = isGloballyMuted ? "GLOBAL" : "LOCAL";
+        text.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+      } else {
+        text.innerHTML = tabConfig.renderMessage(m);
+      }
       row.appendChild(text);
 
       const canTargetUser = user && user !== "ANON" && user !== normalizeUsername(myName);
       if (canTargetUser) {
-        const muteBtn = document.createElement("button");
-        muteBtn.type = "button";
-        muteBtn.className = "chat-mute-btn";
+        const isAdminView = isGodUser();
 
-        if (isGodUser()) {
-          const globallyMuted = globallyMutedUsers.has(user);
-          muteBtn.title = globallyMuted ? `Unmute ${user} globally` : `Mute ${user} globally`;
-          muteBtn.textContent = globallyMuted ? "🔊" : "🔇";
-          muteBtn.onclick = () => toggleAdminChatMute(user);
-        } else {
-          const mutedLocally = muted.has(user);
-          muteBtn.title = mutedLocally ? `Unmute ${user} locally` : `Mute ${user} locally`;
-          muteBtn.textContent = mutedLocally ? "🔊" : "🔇";
-          muteBtn.onclick = () => toggleLocalChatMute(user);
+        const localMuteBtn = document.createElement("button");
+        localMuteBtn.type = "button";
+        localMuteBtn.className = "chat-mute-btn";
+        localMuteBtn.title = isLocallyMuted ? `Unmute ${user} locally` : `Mute ${user} locally`;
+        localMuteBtn.textContent = isLocallyMuted ? "L🔊" : "L🔇";
+        localMuteBtn.onclick = () => toggleLocalChatMute(user);
+        row.appendChild(localMuteBtn);
+
+        if (isAdminView) {
+          const globalMuteBtn = document.createElement("button");
+          globalMuteBtn.type = "button";
+          globalMuteBtn.className = "chat-mute-btn chat-global-mute-btn";
+          globalMuteBtn.title = isGloballyMuted ? `Unmute ${user} globally` : `Mute ${user} globally`;
+          globalMuteBtn.textContent = isGloballyMuted ? "G🔊" : "G🔇";
+          globalMuteBtn.onclick = () => toggleAdminChatMute(user);
+          row.appendChild(globalMuteBtn);
         }
-        row.appendChild(muteBtn);
       }
 
       if (isGodUser() && m.id) {
