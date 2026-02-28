@@ -1184,6 +1184,7 @@ canvas {
 
 .gamebox-shell {
   width: min(96vw, 1300px);
+  --gamebox-panel-min-height: clamp(420px, calc(100vh - var(--topbar-clearance) - 210px), 760px);
 }
 
 .gamebox-heading-row {
@@ -1214,7 +1215,7 @@ canvas {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   margin-bottom: 6px;
-  min-height: 760px;
+  min-height: var(--gamebox-panel-min-height);
 }
 
 .gamebox-leaderboard-panel .score-list {
@@ -1228,7 +1229,7 @@ canvas {
 
 .gamebox-frame {
   width: 100%;
-  min-height: 760px;
+  min-height: var(--gamebox-panel-min-height);
   flex: 1;
   position: relative;
   padding-top: 0;
@@ -1384,9 +1385,9 @@ canvas {
   background: rgba(0, 0, 0, 0.7);
   color: var(--accent);
   text-align: left;
-  min-width: 180px;
-  max-width: 220px;
-  padding: 10px;
+  min-width: clamp(150px, 16vw, 180px);
+  max-width: clamp(180px, 20vw, 220px);
+  padding: clamp(8px, 1vw, 10px);
   display: flex;
   flex-direction: column;
   gap: 6px;
