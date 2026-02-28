@@ -1138,9 +1138,21 @@ function initTopBarOverlayControls() {
   updateControls();
 }
 
+function initOverlayBackdropExit() {
+  document.querySelectorAll(".overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (event) => {
+      if (!overlay.classList.contains("active")) return;
+      if (event.target !== overlay) return;
+      if (overlay.id === "overlayLogin") return;
+      closeOverlays();
+    });
+  });
+}
+
 initSharedGamebox();
 disableInGameExitButtons();
 initTopBarOverlayControls();
+initOverlayBackdropExit();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGameSwitcher();
