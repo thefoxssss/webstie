@@ -3888,7 +3888,8 @@ export async function tradeMoney() {
 
 function isStackableItem(itemId) {
   const item = SHOP_ITEMS.find((entry) => entry.id === itemId);
-  return Boolean(item?.stackable);
+  if (!item) return false;
+  return Boolean(item.stackable || item.countBased || item.type === "consumable");
 }
 
 function clearShieldTimers(gameKey) {
