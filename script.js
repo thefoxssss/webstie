@@ -443,7 +443,7 @@ function initGameScroller() {
   let gameSearchQuery = "";
   let selectedGameId = "";
   let centerOnGameId = "";
-  let favoritesOnly = false;
+  let favoritesFirst = true;
   let suppressClickUntil = 0;
 
   const getFavorites = () => {
@@ -469,17 +469,23 @@ function initGameScroller() {
   const getVisibleGames = () => {
     const query = String(gameSearchQuery || "").trim().toUpperCase();
     const favorites = new Set(getFavorites());
-    return orderedGames.filter((game) => {
-      if (favoritesOnly && !favorites.has(game.id)) return false;
+    const filtered = orderedGames.filter((game) => {
       if (!query) return true;
       return game.searchText.includes(query);
+    });
+    if (!favoritesFirst) return filtered;
+    return filtered.slice().sort((a, b) => {
+      const aFav = favorites.has(a.id) ? 1 : 0;
+      const bFav = favorites.has(b.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return a.title.localeCompare(b.title);
     });
   };
 
   const renderStrip = () => {
     strip.innerHTML = "";
-    favoritesToggle.classList.toggle("active", favoritesOnly);
-    favoritesToggle.textContent = favoritesOnly ? "★" : "☆";
+    favoritesToggle.classList.toggle("active", favoritesFirst);
+    favoritesToggle.textContent = favoritesFirst ? "★" : "☆";
     const favoriteSet = new Set(getFavorites());
     const visibleGames = getVisibleGames();
     if (!visibleGames.length) {
@@ -598,7 +604,7 @@ function initGameScroller() {
   });
 
   favoritesToggle.addEventListener("click", () => {
-    favoritesOnly = !favoritesOnly;
+    favoritesFirst = !favoritesFirst;
     renderStrip();
   });
 
