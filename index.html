@@ -986,70 +986,41 @@
     <!-- Configuration overlay for display/audio toggles. -->
     <div class="overlay menu-overlay" id="overlayConfig">
       <div class="config-box">
-        <h2
-          style="
-            text-align: center;
-            border-bottom: 1px solid var(--accent);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-          "
-        >
-          CONFIG
-        </h2>
-        <div class="config-row">
-          <span>THEME</span
-          ><input type="color" id="themeColor" value="#ffffff" />
+        <h2 class="config-title">CONFIG</h2>
+        <div class="config-tabs" role="tablist" aria-label="Config categories">
+          <button class="menu-btn config-tab active" id="configTabTheme" type="button" data-config-tab="theme">THEME</button>
+          <button class="menu-btn config-tab" id="configTabAccessibility" type="button" data-config-tab="accessibility">ACCESSIBILITY</button>
+          <button class="menu-btn config-tab" id="configTabNotifications" type="button" data-config-tab="notifications">NOTIFICATIONS</button>
+          <button class="menu-btn config-tab" id="configTabGames" type="button" data-config-tab="games">GAMES</button>
         </div>
-        <div class="config-row">
-          <span>MATRIX</span
-          ><button class="menu-btn" id="matrixToggle">OFF</button>
+
+        <div class="config-panel active" id="configPanelTheme" data-config-panel="theme">
+          <div class="config-row"><span>ACCENT COLOR</span><input type="color" id="themeColor" value="#ffffff" /></div>
+          <div class="config-row"><span>SCANLINES</span><input type="range" id="scanSlider" min="0" max="100" value="50" /></div>
+          <div class="config-row"><span>FLICKER</span><button class="menu-btn" id="flickerToggle">ON</button></div>
         </div>
-        <div class="config-row">
-          <span>SCANLINES</span
-          ><input type="range" id="scanSlider" min="0" max="100" value="50" />
+
+        <div class="config-panel" id="configPanelAccessibility" data-config-panel="accessibility">
+          <div class="config-row"><span>UI SCALE</span><input type="range" id="uiScaleSlider" min="85" max="110" step="1" value="100" /></div>
+          <div class="config-row"><span>TEXT SIZE</span><input type="range" id="uiTextSlider" min="9" max="13" step="1" value="11" /></div>
+          <div class="config-row"><span>HIGH CONTRAST</span><button class="menu-btn" id="contrastToggle">OFF</button></div>
+          <div class="config-row"><span>REDUCED MOTION</span><button class="menu-btn" id="motionToggle">OFF</button></div>
         </div>
-        <div class="config-row">
-          <span>FLICKER</span
-          ><button class="menu-btn" id="flickerToggle">ON</button>
+
+        <div class="config-panel" id="configPanelNotifications" data-config-panel="notifications">
+          <div class="config-row"><span>SFX VOLUME</span><input type="range" id="volSlider" min="0" max="100" value="50" /></div>
+          <div class="config-row"><span>TOAST ALERTS</span><button class="menu-btn" id="toastToggle">ON</button></div>
+          <div class="config-row"><span>DESKTOP ALERTS</span><button class="menu-btn" id="desktopNotifyToggle">OFF</button></div>
         </div>
-        <div class="config-row">
-          <span>VOLUME</span
-          ><input type="range" id="volSlider" min="0" max="100" value="50" />
+
+        <div class="config-panel" id="configPanelGames" data-config-panel="games">
+          <div class="config-row"><span>MATRIX</span><button class="menu-btn" id="matrixToggle">OFF</button></div>
+          <div class="config-row"><span>FULLSCREEN</span><button class="menu-btn" id="fsToggle">TOGGLE</button></div>
+          <div class="config-row"><span>GAME TIPS</span><button class="menu-btn" id="gameTipsToggle">ON</button></div>
         </div>
-        <div class="config-row">
-          <span>FULLSCREEN</span
-          ><button class="menu-btn" id="fsToggle">TOGGLE</button>
-        </div>
-        <div class="config-row">
-          <span>UI SCALE</span
-          ><input type="range" id="uiScaleSlider" min="85" max="110" step="1" value="100" />
-        </div>
-        <div class="config-row">
-          <span>TEXT SIZE</span
-          ><input type="range" id="uiTextSlider" min="9" max="13" step="1" value="11" />
-        </div>
-        <div class="config-row">
-          <span>HIGH CONTRAST</span
-          ><button class="menu-btn" id="contrastToggle">OFF</button>
-        </div>
-        <div class="config-row">
-          <span>REDUCED MOTION</span
-          ><button class="menu-btn" id="motionToggle">OFF</button>
-        </div>
-        <button
-          class="term-btn"
-          id="btnLogout"
-          style="border-color: red; color: red; margin-top: 10px"
-        >
-          LOGOUT
-        </button>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeConfigOverlay()"
-        >
-          CLOSE
-        </button>
+
+        <button class="term-btn" id="btnLogout" style="border-color: red; color: red; margin-top: 10px">LOGOUT</button>
+        <button class="term-btn" style="margin-top: 20px" onclick="window.closeConfigOverlay()">CLOSE</button>
       </div>
     </div>
 
