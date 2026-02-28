@@ -2896,7 +2896,7 @@ async function resolveAdminTargetUsers() {
 }
 
 async function applyAdminActionToTargets({ actionName, emptyToast, mutateRemote, mutateLocal, successToast, failToast }) {
-  if (!isGodUser()) return;
+  if (!canUseChatModeration()) return;
   try {
     const targets = await resolveAdminTargetUsers();
     if (!targets.length) {
@@ -4939,6 +4939,11 @@ let stopChatMuteListener = null;
 let activeDmUser = "";
 let globallyMutedUsers = new Set();
 let isChatInitialized = false;
+let isChatModerationModeEnabled = true;
+
+function canUseChatModeration() {
+  return isGodUser() && isChatModerationModeEnabled;
+}
 
 function getChatTabConfig(tab) {
   const crewTag = normalizeCrewTag(crewData?.tag || "");
@@ -5027,6 +5032,12 @@ function renderChatTab() {
   document.querySelectorAll(".chat-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.chatTab === currentTab);
   });
+  const moderationBtn = document.getElementById("chatModerationToggleBtn");
+  if (moderationBtn) {
+    const adminView = isGodUser();
+    moderationBtn.style.display = adminView ? "" : "none";
+    moderationBtn.classList.toggle("off", !isChatModerationModeEnabled);
+  }
   if (input) input.placeholder = tabConfig.placeholder;
   if (meta) meta.textContent = tabConfig.meta;
   if (stopChatListener) {
@@ -5066,7 +5077,7 @@ function renderChatTab() {
 
       const canTargetUser = user && user !== "ANON" && user !== normalizeUsername(myName);
       if (canTargetUser) {
-        const isAdminView = isGodUser();
+        const canModerateChat = canUseChatModeration();
 
         const localMuteBtn = document.createElement("button");
         localMuteBtn.type = "button";
@@ -5076,7 +5087,7 @@ function renderChatTab() {
         localMuteBtn.onclick = () => toggleLocalChatMute(user);
         row.appendChild(localMuteBtn);
 
-        if (isAdminView) {
+        if (canModerateChat) {
           const globalMuteBtn = document.createElement("button");
           globalMuteBtn.type = "button";
           globalMuteBtn.className = "chat-mute-btn chat-global-mute-btn";
@@ -5088,7 +5099,7 @@ function renderChatTab() {
       }
 
       const isOwnMessage = normalizeUsername(m.user || "") === normalizeUsername(myName);
-      if ((isGodUser() || isOwnMessage) && m.id) {
+      if ((canUseChatModeration() || isOwnMessage) && m.id) {
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "chat-remove-btn";
@@ -5120,7 +5131,7 @@ function toggleLocalChatMute(username) {
 }
 
 async function toggleAdminChatMute(username) {
-  if (!isGodUser()) return;
+  if (!canUseChatModeration()) return;
   const user = normalizeUsername(username);
   if (!user) return;
   const targetRef = doc(db, "gooner_chat_mutes", user);
@@ -5155,7 +5166,7 @@ async function removeChatMessage(tab, messageId) {
   const messageRef = doc(db, collectionName, messageId);
   const canDelete = await runFirestoreTask(
     async () => {
-      if (isGodUser()) return true;
+      if (canUseChatModeration()) return true;
       const snapshot = await getDoc(messageRef);
       if (!snapshot.exists()) return false;
       const author = normalizeUsername(snapshot.data()?.user || "");
@@ -5180,6 +5191,18 @@ async function removeChatMessage(tab, messageId) {
 function initChat() {
   const chatRoot = document.getElementById("globalChat");
   const minimizeBtn = document.getElementById("chatMinimizeBtn");
+  const moderationBtn = document.getElementById("chatModerationToggleBtn");
+
+  const syncChatModerationUi = () => {
+    if (!moderationBtn) return;
+    const adminView = isGodUser();
+    moderationBtn.style.display = adminView ? "" : "none";
+    if (!adminView) return;
+    moderationBtn.classList.toggle("off", !isChatModerationModeEnabled);
+    moderationBtn.setAttribute("aria-pressed", isChatModerationModeEnabled ? "true" : "false");
+    moderationBtn.setAttribute("aria-label", isChatModerationModeEnabled ? "Disable moderation mode" : "Enable moderation mode");
+    moderationBtn.title = isChatModerationModeEnabled ? "Moderation mode on" : "Moderation mode off";
+  };
 
   const syncChatMinimizeUi = () => {
     const isMinimized = chatRoot?.classList.contains("minimized");
@@ -5196,7 +5219,16 @@ function initChat() {
       renderChatTab();
     });
   }
+  if (moderationBtn) {
+    moderationBtn.addEventListener("click", () => {
+      if (!isGodUser()) return;
+      isChatModerationModeEnabled = !isChatModerationModeEnabled;
+      syncChatModerationUi();
+      renderChatTab();
+    });
+  }
   syncChatMinimizeUi();
+  syncChatModerationUi();
 
   document.querySelectorAll(".chat-tab").forEach((btn) => {
     btn.addEventListener("click", () => {

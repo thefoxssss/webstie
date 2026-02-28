@@ -352,7 +352,17 @@
     <div id="globalChat" class="home-chat minimized">
       <div class="chat-header">
         <span>CHAT TERMINAL</span>
-        <button id="chatMinimizeBtn" class="chat-minimize-btn" type="button" aria-expanded="false" aria-controls="chatTabs chatMeta chatHistory chatInput">+</button>
+        <div class="chat-header-actions">
+          <button
+            id="chatModerationToggleBtn"
+            class="chat-minimize-btn chat-moderation-btn"
+            type="button"
+            aria-pressed="true"
+            aria-label="Disable moderation mode"
+            title="Moderation mode on"
+          >🔨</button>
+          <button id="chatMinimizeBtn" class="chat-minimize-btn" type="button" aria-expanded="false" aria-controls="chatTabs chatMeta chatHistory chatInput">+</button>
+        </div>
       </div>
       <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="Chat channels">
         <button class="chat-tab" data-chat-tab="dm" type="button">MESSAGE USERS</button>
