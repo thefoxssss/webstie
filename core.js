@@ -4808,21 +4808,30 @@ function getLeaderboardBaseline(game) {
   const fallback = Math.max(25, Number(localStorage.getItem(`hs_${key}`)) || 100);
   if (!cached?.loading) {
     gameLeaderboardCache[key] = {
-      baseline: fallback,
-      updatedAt: Date.now(),
+      baseline: cached?.baseline || fallback,
+      updatedAt: cached?.updatedAt || 0,
       loading: true,
     };
-    const q = query(collection(db, "gooner_scores"), where("game", "==", key), orderBy("score", "desc"), limit(25));
-    getDocs(q)
+
+    getDocs(query(collection(db, "gooner_scores"), where("game", "==", key), limit(200)))
       .then((snap) => {
-        const values = [];
-        snap.forEach((d) => {
-          const score = Number(d.data()?.score) || 0;
-          if (score > 0) values.push(score);
+        const bestByPlayer = {};
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const player = String(data.name || "ANON");
+          const score = Math.max(0, Number(data.score) || 0);
+          if (!bestByPlayer[player] || score > bestByPlayer[player]) bestByPlayer[player] = score;
         });
-        const baseline = values.length ? Math.max(25, Math.round(values.reduce((sum, val) => sum + val, 0) / values.length)) : fallback;
+
+        const topScores = Object.values(bestByPlayer)
+          .sort((a, b) => b - a)
+          .slice(0, 10);
+        const baseline = topScores.length
+          ? topScores[Math.floor((topScores.length - 1) / 2)]
+          : fallback;
+
         gameLeaderboardCache[key] = {
-          baseline,
+          baseline: Math.max(25, Math.floor(baseline)),
           updatedAt: Date.now(),
           loading: false,
         };
@@ -4836,41 +4845,38 @@ function getLeaderboardBaseline(game) {
       });
   }
 
-  return fallback;
+  return cached?.baseline || fallback;
 }
 
-export function calculateScoreCashReward(game, score, options = {}) {
+function awardScoreCash(game, score) {
   const key = String(game || "").toLowerCase().trim();
-  if (!key) return 0;
-  const safeScore = Math.max(0, Math.floor(Number(score) || 0));
-  if (safeScore <= 0) return 0;
+  const current = Math.max(0, Number(score) || 0);
+  if (!key || !Number.isFinite(current)) return;
 
-  const mode = normalizeLeaderboardMode(options.mode);
-  const bonusScale = mode === "hard" ? 1.28 : mode === "multiplayer" ? 1.16 : mode === "easy" ? 0.86 : 1;
+  const previous = gameCashProgress[key] || 0;
+  if (current <= previous) return;
+
+  const delta = current - previous;
   const leaderboardBaseline = getLeaderboardBaseline(key);
   const perPoint = Math.max(0.25, Math.min(10, 180 / Math.max(25, leaderboardBaseline)));
+  const progressionCash = Math.max(1, Math.round(delta * perPoint));
+  const firstRunBonus = previous === 0 ? 20 : 0;
+  const payout = Math.min(5000, progressionCash + firstRunBonus);
 
-  const recent = gameCashProgress[key] || {
-    startStamp: Date.now(),
-    totalCash: 0,
-  };
+  gameCashProgress[key] = current;
+  myMoney += payout;
+  logTransaction(`GAME PAYOUT: ${key.toUpperCase()} +${delta} SCORE`, payout);
+}
 
-  if (Date.now() - recent.startStamp > 60000) {
-    recent.startStamp = Date.now();
-    recent.totalCash = 0;
-  }
-
-  const softCap = 2200;
-  const hardCap = 3600;
-  const projected = recent.totalCash;
-  let dampener = 1;
-  if (projected > softCap) dampener = Math.max(0.18, 1 - (projected - softCap) / (hardCap - softCap));
-
-  const reward = Math.max(5, Math.round(safeScore * perPoint * bonusScale * dampener));
-  recent.totalCash += reward;
-  gameCashProgress[key] = recent;
-
-  if (dbReady && myName !== "ANON") {
+// Update and persist a local high score for a given game.
+export function updateHighScore(game, score, options = {}) {
+  awardScoreCash(game, score);
+  const key = String(game || "").toLowerCase().trim();
+  const k = `hs_${key}`;
+  const old = parseInt(localStorage.getItem(k) || 0);
+  if (score > old) {
+    localStorage.setItem(k, score);
+    const mode = normalizeLeaderboardMode(options.mode);
     const forceGlobalSync = options.forceGlobalSync === true;
     const syncState = leaderboardScoreSyncState[key] || { lastSentAt: 0, lastSentScore: 0 };
     const enoughTimeElapsed = Date.now() - syncState.lastSentAt >= LEADERBOARD_SCORE_SYNC_COOLDOWN_MS;
