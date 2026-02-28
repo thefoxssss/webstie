@@ -280,6 +280,12 @@
 
           <div class="admin-section">
             <p class="admin-section-title">CHAT, NOTICES, AND LOGS</p>
+            <select class="term-input" id="adminChatTerminal">
+              <option value="dm">TERMINAL: MESSAGE USERS</option>
+              <option value="global" selected>TERMINAL: GLOBAL</option>
+              <option value="crew">TERMINAL: CREW</option>
+            </select>
+            <input class="term-input" id="adminChatTargetUser" type="text" maxlength="16" placeholder="TARGET USER (MESSAGE USERS ONLY)" />
             <input class="term-input" id="adminChatMessage" list="adminChatMessageList" type="text" maxlength="80" placeholder="MESSAGE" />
             <datalist id="adminChatMessageList">
               <option value="Server maintenance starts in 10 minutes."></option>

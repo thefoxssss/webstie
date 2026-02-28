@@ -3116,38 +3116,83 @@ export async function adminMarketMultiplyFromInput() {
   await saveStats();
 }
 
-export async function adminSendChatAnnouncement() {
+function getAdminChatTerminal() {
+  const terminalInput = document.getElementById("adminChatTerminal");
+  const selected = String(terminalInput?.value || "global").toLowerCase();
+  return ["dm", "global", "crew"].includes(selected) ? selected : "global";
+}
+
+function buildAdminChatPayload(message, senderName) {
+  const terminal = getAdminChatTerminal();
+  const cleanMessage = filterChatMessage(message).slice(0, 80);
+  if (!cleanMessage) return { error: "CHAT MESSAGE REQUIRED" };
+
+  if (terminal === "global") {
+    return {
+      terminal,
+      collectionName: "gooner_global_chat",
+      payload: { user: senderName, msg: cleanMessage, ts: Date.now() },
+    };
+  }
+
+  if (terminal === "crew") {
+    const crewTag = normalizeCrewTag(crewData?.tag || "");
+    if (!crewTag) return { error: "JOIN A CREW BEFORE SENDING CREW NOTICES." };
+    return {
+      terminal,
+      collectionName: "gooner_crew_chat",
+      payload: { user: senderName, crewTag, msg: cleanMessage, ts: Date.now() },
+    };
+  }
+
+  const targetInput = readAdminTextInput("adminChatTargetUser");
+  const explicitTarget = normalizeUsername(targetInput || "");
+  const inlineTarget = cleanMessage.match(/^@([A-Za-z0-9_\-]{2,16})\s+(.+)$/);
+  const to = explicitTarget || normalizeUsername(inlineTarget?.[1] || "");
+  const body = filterChatMessage((inlineTarget?.[2] || cleanMessage) || "").slice(0, 80);
+  if (!to) return { error: "SET A TARGET USER FOR MESSAGE USERS." };
+  if (to === normalizeUsername(myName)) return { error: "CAN'T SEND DM TO YOURSELF." };
+  if (!body) return { error: "MESSAGE BODY CANNOT BE EMPTY." };
+  return {
+    terminal,
+    collectionName: "gooner_user_chat",
+    payload: { user: senderName, to, participants: [to, normalizeUsername(myName)], msg: body, ts: Date.now() },
+  };
+}
+
+async function adminSendTerminalMessage({ senderName, messagePrefix = "", successText, failText }) {
   if (!isGodUser()) return;
-  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
-  if (!message) {
-    showToast("CHAT MESSAGE REQUIRED", "⚠️");
+  const rawMessage = readAdminTextInput("adminChatMessage");
+  const sendConfig = buildAdminChatPayload(`${messagePrefix}${rawMessage}`.trim(), senderName);
+  if (sendConfig.error) {
+    showToast(sendConfig.error, "⚠️");
     return;
   }
   const sent = await runFirestoreTask(
-    () => addDoc(collection(db, "gooner_global_chat"), { user: myName, msg: `[ADMIN] ${message}`, ts: Date.now() }),
+    () => addDoc(collection(db, sendConfig.collectionName), sendConfig.payload),
     "ADMIN CHAT",
-    "Announcement failed."
+    failText
   );
   if (!sent) return;
   clearAdminTextInput("adminChatMessage");
-  showToast("ANNOUNCEMENT SENT", "📣");
+  showToast(`${successText} (${sendConfig.terminal.toUpperCase()})`, "📣");
+}
+
+export async function adminSendChatAnnouncement() {
+  return adminSendTerminalMessage({
+    senderName: myName,
+    messagePrefix: "[ADMIN] ",
+    successText: "ANNOUNCEMENT SENT",
+    failText: "Announcement failed.",
+  });
 }
 
 export async function adminSendChatSystemMessage() {
-  if (!isGodUser()) return;
-  const message = filterChatMessage(readAdminTextInput("adminChatMessage")).slice(0, 80);
-  if (!message) {
-    showToast("CHAT MESSAGE REQUIRED", "⚠️");
-    return;
-  }
-  const sent = await runFirestoreTask(
-    () => addDoc(collection(db, "gooner_global_chat"), { user: "SYSTEM", msg: message, ts: Date.now() }),
-    "ADMIN CHAT",
-    "System message failed."
-  );
-  if (!sent) return;
-  clearAdminTextInput("adminChatMessage");
-  showToast("SYSTEM MESSAGE SENT", "🛰️");
+  return adminSendTerminalMessage({
+    senderName: "SYSTEM",
+    successText: "SYSTEM MESSAGE SENT",
+    failText: "System message failed.",
+  });
 }
 
 export async function adminClearRecentChatFromInput() {
@@ -4649,9 +4694,10 @@ function renderChatTab() {
   const input = document.getElementById("chatInput");
   const list = document.getElementById("chatHistory");
   const meta = document.getElementById("chatMeta");
-  const tabConfig = getChatTabConfig(activeChatTab);
+  const currentTab = activeChatTab;
+  const tabConfig = getChatTabConfig(currentTab);
   document.querySelectorAll(".chat-tab").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.chatTab === activeChatTab);
+    btn.classList.toggle("active", btn.dataset.chatTab === currentTab);
   });
   if (input) input.placeholder = tabConfig.placeholder;
   if (meta) meta.textContent = tabConfig.meta;
@@ -4669,20 +4715,52 @@ function renderChatTab() {
     const blocklist = getChatSet(CHAT_BLOCKLIST_KEY);
     const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
-    snap.forEach((d) => msgs.push(d.data()));
+    snap.forEach((d) => msgs.push({ id: d.id, ...d.data() }));
     msgs
       .sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0))
       .slice(-25)
       .forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
       if (blocklist.has(user) || muted.has(user)) return;
-      const d = document.createElement("div");
-      d.className = "chat-msg";
-      d.innerHTML = tabConfig.renderMessage(m);
-      list.appendChild(d);
+      const row = document.createElement("div");
+      row.className = "chat-msg";
+
+      const text = document.createElement("div");
+      text.className = "chat-msg-text";
+      text.innerHTML = tabConfig.renderMessage(m);
+      row.appendChild(text);
+
+      if (isGodUser() && m.id) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "chat-remove-btn";
+        removeBtn.title = "Remove message";
+        removeBtn.textContent = "✕";
+        removeBtn.onclick = () => removeChatMessage(currentTab, m.id);
+        row.appendChild(removeBtn);
+      }
+
+      list.appendChild(row);
       });
     list.scrollTop = list.scrollHeight;
   });
+}
+
+async function removeChatMessage(tab, messageId) {
+  if (!isGodUser() || !messageId) return;
+  const collectionByTab = {
+    dm: "gooner_user_chat",
+    global: "gooner_global_chat",
+    crew: "gooner_crew_chat",
+  };
+  const collectionName = collectionByTab[tab];
+  if (!collectionName) return;
+  const removed = await runFirestoreTask(
+    () => deleteDoc(doc(db, collectionName, messageId)),
+    "ADMIN CHAT",
+    "Message remove failed."
+  );
+  if (removed) showToast("MESSAGE REMOVED", "🧹");
 }
 
 // Initialize realtime chat streaming and input handling.
