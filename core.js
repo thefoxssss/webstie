@@ -2763,6 +2763,7 @@ function updateUI() {
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
   updateAdminMenu();
+  emitShopStateChanged();
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;

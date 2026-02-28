@@ -223,7 +223,8 @@ let mountedGameOverlayId = "";
 
 document.addEventListener("gooner:shop-state-changed", () => {
   const overlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
-  if (!overlay || !overlay.classList.contains("active")) return;
+  if (!overlay) return;
+  if (!overlay.querySelector(".game-side-shop")) return;
   if (typeof window.__isGameboxLeaderboardVisible === "function" && window.__isGameboxLeaderboardVisible()) return;
   const selectedGame =
     typeof window.__getSelectedGameScrollerId === "function"
