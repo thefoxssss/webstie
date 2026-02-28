@@ -1046,6 +1046,7 @@ body.games-directory-open .wrap {
 }
 
 .game-switcher-title[data-pos="0"] {
+  color: #fff;
   opacity: 1;
   transform: scale(1.16);
   font-size: 20px;
@@ -1068,12 +1069,6 @@ body.games-directory-open .wrap {
   transform: none;
 }
 
-.game-switcher-arrow {
-  color: var(--accent-dim);
-  font-size: 13px;
-  opacity: 0.8;
-  user-select: none;
-}
 
 /* Menu-style overlays sit above the home scene so chat/glow stay visible. */
 .menu-overlay {
@@ -1270,7 +1265,7 @@ canvas {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
 }
 
@@ -3675,7 +3670,7 @@ body.reduce-motion *::after {
 
   .gamebox-header-row {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
   }
 }
 

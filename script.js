@@ -203,14 +203,12 @@ const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
 let mountedGameOverlayId = "";
 
 function updateSharedGameboxHeader(gameId) {
-  const title = document.getElementById("gameboxTitle");
   const subtitle = document.getElementById("gameboxSubtitle");
   const leaderboardBtn = document.getElementById("gameboxLeaderboardBtn");
   const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === gameId);
-  if (title) title.textContent = entry?.title || String(gameId || "GAME").toUpperCase();
   if (subtitle) subtitle.textContent = entry?.description || "GAME MODULE LOADED";
   if (leaderboardBtn) {
-    leaderboardBtn.textContent = `VIEW ${String(gameId || "GAME").toUpperCase()} LEADERBOARD`;
+    leaderboardBtn.textContent = "VIEW LEADERBOARD";
     leaderboardBtn.onclick = () => openGameLeaderboard(gameId);
   }
 }
@@ -472,9 +470,7 @@ function initGameSwitcher() {
     switcher.innerHTML = `
       <div class="game-switcher-track" aria-label="Game switcher">
         <button class="game-switcher-title" type="button" data-pos="-1"></button>
-        <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="0"></button>
-        <span class="game-switcher-arrow" aria-hidden="true">→</span>
         <button class="game-switcher-title" type="button" data-pos="1"></button>
       </div>
     `;
@@ -485,69 +481,95 @@ function initGameSwitcher() {
     const startIndex = gameIndexById.get(game.id) || 0;
     renderSwitcherAtIndex(switcher, startIndex, 0);
 
-    switcher.querySelectorAll(".game-switcher-title").forEach((button) => {
-      button.addEventListener("click", () => {
-        if (Date.now() < suppressClickUntil) return;
-        const targetGame = button.dataset.game;
-        if (!targetGame) return;
-        window.launchGame(targetGame, "game-switcher-click");
-      });
-    });
-
+    let dragPointerId = null;
     let dragStartX = null;
     let activeIndex = startIndex;
     let previewIndex = startIndex;
     let didDrag = false;
     let suppressClickUntil = 0;
+    let pointerDownTitleGame = "";
     const DRAG_STEP = 130;
+    const DRAG_THRESHOLD = 8;
+
+    switcher.querySelectorAll(".game-switcher-title").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (Date.now() < suppressClickUntil) return;
+        const targetGame = button.dataset.game;
+        const currentGame = switcher.dataset.activeGame || game.id;
+        if (!targetGame || targetGame === currentGame) return;
+        window.launchGame(targetGame, "game-switcher-click");
+      });
+    });
 
     function getDragState(deltaX) {
       const rawShift = -deltaX / DRAG_STEP;
       const wholeShift = rawShift >= 0 ? Math.floor(rawShift) : Math.ceil(rawShift);
       const remainder = rawShift - wholeShift;
       const renderIndex = wrapGameIndex(activeIndex + wholeShift);
-      const smoothOffset = -remainder * DRAG_STEP;
-      const commitShift = wholeShift + (remainder >= 0.5 ? 1 : remainder <= -0.5 ? -1 : 0);
+      const commitShift = Math.round(rawShift);
       const commitIndex = wrapGameIndex(activeIndex + commitShift);
+      const smoothOffset = -remainder * DRAG_STEP;
       return { renderIndex, smoothOffset, commitIndex };
     }
 
     switcher.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      dragPointerId = event.pointerId;
       dragStartX = event.clientX;
       activeIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
       previewIndex = activeIndex;
+      pointerDownTitleGame = event.target?.closest?.(".game-switcher-title")?.dataset?.game || "";
+      didDrag = false;
       switcher.classList.add("is-dragging");
       switcher.setPointerCapture?.(event.pointerId);
     });
 
     switcher.addEventListener("pointermove", (event) => {
-      if (dragStartX === null) return;
+      if (dragStartX === null || event.pointerId !== dragPointerId) return;
       const deltaX = event.clientX - dragStartX;
-      didDrag = didDrag || Math.abs(deltaX) > 6;
+      didDrag = didDrag || Math.abs(deltaX) > DRAG_THRESHOLD;
+      if (!didDrag) return;
       const state = getDragState(deltaX);
       previewIndex = state.commitIndex;
       renderSwitcherAtIndex(switcher, state.renderIndex, state.smoothOffset);
     });
 
     function commitDrag(event) {
-      if (dragStartX === null) return;
+      if (dragStartX === null || event?.pointerId !== dragPointerId) return;
       const deltaX = (event?.clientX ?? dragStartX) - dragStartX;
+      const currentIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+      const clickedTitleGame = event?.target?.closest?.(".game-switcher-title")?.dataset?.game || pointerDownTitleGame;
       const state = getDragState(deltaX);
       previewIndex = state.commitIndex;
+      dragPointerId = null;
       dragStartX = null;
       switcher.classList.remove("is-dragging");
-      const currentIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
+
+      if (!didDrag) {
+        renderSwitcherAtIndex(switcher, currentIndex, 0);
+        const currentGame = switcher.dataset.activeGame || game.id;
+        if (clickedTitleGame && clickedTitleGame !== currentGame) {
+          suppressClickUntil = Date.now() + 220;
+          window.launchGame(clickedTitleGame, "game-switcher-click");
+        }
+        pointerDownTitleGame = "";
+        return;
+      }
+
       renderSwitcherAtIndex(switcher, previewIndex, 0);
-      if (didDrag) suppressClickUntil = Date.now() + 220;
+      suppressClickUntil = Date.now() + 220;
       if (previewIndex !== currentIndex) launchFromIndex(previewIndex);
       didDrag = false;
+      pointerDownTitleGame = "";
     }
 
     switcher.addEventListener("pointerup", commitDrag);
     switcher.addEventListener("pointercancel", () => {
       if (dragStartX === null) return;
+      dragPointerId = null;
       dragStartX = null;
       didDrag = false;
+      pointerDownTitleGame = "";
       switcher.classList.remove("is-dragging");
       const resetIndex = gameIndexById.get(switcher.dataset.activeGame || game.id) || startIndex;
       previewIndex = resetIndex;
