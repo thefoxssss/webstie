@@ -4765,6 +4765,25 @@ async function removeChatMessage(tab, messageId) {
 
 // Initialize realtime chat streaming and input handling.
 function initChat() {
+  const chatRoot = document.getElementById("globalChat");
+  const minimizeBtn = document.getElementById("chatMinimizeBtn");
+
+  const syncChatMinimizeUi = () => {
+    const isMinimized = chatRoot?.classList.contains("minimized");
+    if (!minimizeBtn) return;
+    minimizeBtn.textContent = isMinimized ? "+" : "−";
+    minimizeBtn.setAttribute("aria-expanded", isMinimized ? "false" : "true");
+    minimizeBtn.setAttribute("aria-label", isMinimized ? "Expand chat" : "Minimize chat");
+  };
+
+  if (minimizeBtn && chatRoot) {
+    minimizeBtn.addEventListener("click", () => {
+      chatRoot.classList.toggle("minimized");
+      syncChatMinimizeUi();
+    });
+  }
+  syncChatMinimizeUi();
+
   document.querySelectorAll(".chat-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeChatTab = btn.dataset.chatTab || "global";

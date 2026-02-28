@@ -386,8 +386,11 @@
     </div>
 
     <!-- Global text chat dock (always visible on home). -->
-    <div id="globalChat" class="home-chat">
-      <div class="chat-header">CHAT TERMINAL</div>
+    <div id="globalChat" class="home-chat minimized">
+      <div class="chat-header">
+        <span>CHAT TERMINAL</span>
+        <button id="chatMinimizeBtn" class="chat-minimize-btn" type="button" aria-expanded="false" aria-controls="chatTabs chatMeta chatHistory chatInput">+</button>
+      </div>
       <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="Chat channels">
         <button class="chat-tab" data-chat-tab="dm" type="button">MESSAGE USERS</button>
         <button class="chat-tab active" data-chat-tab="global" type="button">GLOBAL</button>

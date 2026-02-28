@@ -318,8 +318,36 @@ body::before {
   border-bottom: 1px solid var(--accent-dim);
   font-size: 9px;
   letter-spacing: 1px;
-  text-align: center;
   color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.chat-minimize-btn {
+  border: 1px solid var(--accent-dim);
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.chat-minimize-btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+#globalChat.minimized {
+  height: auto;
+  max-height: none;
+}
+#globalChat.minimized .chat-tabs,
+#globalChat.minimized .chat-meta,
+#globalChat.minimized #chatHistory,
+#globalChat.minimized #chatInput {
+  display: none;
 }
 
 .chat-tabs {
