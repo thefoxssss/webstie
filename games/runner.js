@@ -9,6 +9,7 @@ import {
   updateHighScore,
   loadHighScores,
   consumeShield,
+  getShieldStatusLabel,
   state,
   hasActiveItem,
   EngineKernel,
@@ -53,6 +54,10 @@ let speed = 5;
 let spawnTicks = 0;
 let groundColor = "#0f0";
 
+function updateRunnerHud() {
+  setText("runnerScoreBoard", `SCORE: ${score} • ${getShieldStatusLabel("runner")}`);
+}
+
 function resetPool() {
   freeTop = MAX_OBSTACLES;
   for (let i = 0; i < MAX_OBSTACLES; i++) {
@@ -95,6 +100,7 @@ function intersects(x, y, w, h, ox, oy, ow, oh) {
 
 function onTick(dt) {
   if (state.currentGame !== "runner") return;
+  updateRunnerHud();
 
   spawnTicks += 1;
   const currentSpeed = speed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
@@ -151,7 +157,7 @@ function onTick(dt) {
       freeObstacle(i);
       score += 1;
       updateHighScore("runner", score);
-      setText("runnerScoreBoard", `SCORE: ${score}`);
+      updateRunnerHud();
       if (score % 5 === 0) speed += 0.5;
       resetLossStreak();
     }
@@ -195,7 +201,7 @@ export function initRunner() {
   groundColor = getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#0f0";
   resetPool();
 
-  setText("runnerScoreBoard", "SCORE: 0");
+  updateRunnerHud();
   kernel.start(onTick, onRender, { startPausedUntilInput: true });
 }
 

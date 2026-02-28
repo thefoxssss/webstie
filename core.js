@@ -141,8 +141,10 @@ let myItemToggles = {};
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
-const SHIELD_COOLDOWN_MS = 1500;
+const SHIELD_ACTIVE_MS = 2500;
+const SHIELD_COOLDOWN_MS = 5000;
 const shieldCooldowns = Object.create(null);
+const shieldActiveUntil = Object.create(null);
 let keysPressed = {};
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
@@ -3881,15 +3883,39 @@ export async function tradeMoney() {
   }
 }
 
-// Consume exactly one shield charge if available and not on cooldown.
+// Return live shield timing data for HUD and gameplay checks.
+export function getShieldState(gameId = currentGame) {
+  const gameKey = String(gameId || currentGame || "global").toLowerCase();
+  const now = Date.now();
+  const activeRemainingMs = Math.max(0, (shieldActiveUntil[gameKey] || 0) - now);
+  const cooldownRemainingMs = Math.max(0, (shieldCooldowns[gameKey] || 0) - now);
+  return {
+    activeRemainingMs,
+    cooldownRemainingMs,
+    isActive: activeRemainingMs > 0,
+    isCoolingDown: cooldownRemainingMs > 0,
+  };
+}
+
+// Human-readable shield status for game HUDs.
+export function getShieldStatusLabel(gameId = currentGame) {
+  const status = getShieldState(gameId);
+  if (status.isActive) return `SHIELD: ACTIVE ${Math.ceil(status.activeRemainingMs / 1000)}s`;
+  if (status.isCoolingDown) return `SHIELD: CD ${Math.ceil(status.cooldownRemainingMs / 1000)}s`;
+  return "SHIELD: READY";
+}
+
+// Consume a shield charge and activate a short invulnerability window.
 export function consumeShield(gameId = currentGame) {
   const gameKey = String(gameId || currentGame || "global").toLowerCase();
   const now = Date.now();
-  if (shieldCooldowns[gameKey] && shieldCooldowns[gameKey] > now) return false;
+  if ((shieldActiveUntil[gameKey] || 0) > now) return true;
+  if ((shieldCooldowns[gameKey] || 0) > now) return false;
   if (!hasActiveItem("item_shield")) return false;
   const shieldIndex = myInventory.indexOf("item_shield");
   if (shieldIndex === -1) return false;
   myInventory.splice(shieldIndex, 1);
+  shieldActiveUntil[gameKey] = now + SHIELD_ACTIVE_MS;
   shieldCooldowns[gameKey] = now + SHIELD_COOLDOWN_MS;
   saveStats();
   return true;
