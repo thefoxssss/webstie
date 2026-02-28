@@ -3881,11 +3881,11 @@ export async function tradeMoney() {
   }
 }
 
-// Consume exactly one shield charge if available.
+// Consume exactly one shield charge if available and not on cooldown.
 export function consumeShield(gameId = currentGame) {
   const gameKey = String(gameId || currentGame || "global").toLowerCase();
   const now = Date.now();
-  if (shieldCooldowns[gameKey] && shieldCooldowns[gameKey] > now) return true;
+  if (shieldCooldowns[gameKey] && shieldCooldowns[gameKey] > now) return false;
   if (!hasActiveItem("item_shield")) return false;
   const shieldIndex = myInventory.indexOf("item_shield");
   if (shieldIndex === -1) return false;
