@@ -883,38 +883,33 @@
     <!-- Scores overlay for local + global leaderboards. -->
     <div class="overlay menu-overlay" id="overlayScores">
       <div class="score-box">
-        <h2 style="text-align: center; margin-bottom: 20px">
-          GLOBAL LEADERBOARD
-        </h2>
-        <p style="text-align: center; font-size: 10px; margin-bottom: 10px">
-          SCROLL LEFT-RIGHT TO VIEW EVERY LEADERBOARD
-        </p>
-        <input
-          class="term-input"
-          id="leaderboardFilter"
-          placeholder="FILTER LEADERBOARD TYPES/TAGS (E.G. PONG, PVP, RICHEST)"
-          style="margin-bottom: 12px"
-        />
-        <div class="leaderboard-subfilters">
-          <label>
-            <span>DIFFICULTY</span>
-            <select class="term-input" id="leaderboardDifficultyFilter">
-              <option value="all">ALL</option>
-              <option value="easy">EASY</option>
-              <option value="hard">HARD</option>
-            </select>
-          </label>
-          <label>
-            <span>PLAYER COUNT</span>
-            <select class="term-input" id="leaderboardPlayerCountFilter">
-              <option value="all">ALL</option>
-              <option value="single">SINGLE PLAYER</option>
-              <option value="multiplayer">MULTIPLAYER</option>
-            </select>
-          </label>
+        <div class="leaderboard-heading-row">
+          <h2 style="text-align: center; margin-bottom: 0">GLOBAL LEADERBOARD</h2>
+          <button class="menu-btn leaderboard-search-toggle" id="leaderboardSearchToggle" type="button">SEARCH</button>
         </div>
-        <div class="score-list" id="scoreList">
-          <div class="score-item">LOADING DATA...</div>
+        <input
+          class="term-input leaderboard-search-input"
+          id="leaderboardSearchInput"
+          type="search"
+          placeholder="SEARCH BOARDS..."
+          autocomplete="off"
+          style="display: none"
+        />
+        <p style="text-align: center; font-size: 10px; margin-bottom: 10px">
+          PICK A BOARD, THEN A MODE FROM THE SIDE PANEL
+        </p>
+        <div class="leaderboard-game-strip" id="leaderboardGameStrip" aria-label="Leaderboard selector">
+          <div class="score-item">LOADING BOARDS...</div>
+        </div>
+        <div class="leaderboard-layout">
+          <aside class="leaderboard-side-modes" id="leaderboardModePanel" aria-label="Mode selector">
+            <h3>GAME MODES</h3>
+            <p class="leaderboard-mode-meta">SELECT A GAME BOARD TO SEE MODES.</p>
+            <div class="leaderboard-mode-list" id="leaderboardModeList"></div>
+          </aside>
+          <div class="score-list" id="scoreList">
+            <div class="score-item">LOADING DATA...</div>
+          </div>
         </div>
         <button
           class="term-btn"
