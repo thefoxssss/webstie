@@ -361,7 +361,9 @@ function readStoredGameList(key) {
 }
 
 function writeStoredGameList(key, list) {
-  localStorage.setItem(key, JSON.stringify(Array.from(new Set(list)).slice(0, GAME_LIBRARY_RECENT_LIMIT)));
+  const unique = Array.from(new Set(list));
+  const capped = key === GAME_LIBRARY_RECENTS_KEY ? unique.slice(0, GAME_LIBRARY_RECENT_LIMIT) : unique;
+  localStorage.setItem(key, JSON.stringify(capped));
 }
 
 function updateRecentGames(game) {
@@ -437,14 +439,31 @@ function initGameScroller() {
   if (!orderedGames.length) return;
 
   const strip = document.getElementById("gameboxGameStrip");
+  const favoritesToggle = document.getElementById("gameboxFavoritesToggle");
   const searchToggle = document.getElementById("gameboxSearchToggle");
   const searchInput = document.getElementById("gameboxSearchInput");
   const switchBtn = document.getElementById("gameboxSwitchBtn");
-  if (!strip || !searchToggle || !searchInput || !switchBtn) return;
+  if (!strip || !favoritesToggle || !searchToggle || !searchInput || !switchBtn) return;
 
   let gameSearchQuery = "";
   let selectedGameId = "";
   let centerOnGameId = "";
+  let favoritesOnly = false;
+  let suppressClickUntil = 0;
+
+  const getFavorites = () => {
+    const valid = new Set(orderedGames.map((entry) => entry.id));
+    return readStoredGameList(GAME_LIBRARY_FAVORITES_KEY).filter((gameId) => valid.has(gameId));
+  };
+
+  const toggleFavorite = (gameId) => {
+    if (!gameId) return;
+    const favorites = getFavorites();
+    const nextFavorites = favorites.includes(gameId)
+      ? favorites.filter((item) => item !== gameId)
+      : [gameId, ...favorites];
+    writeStoredGameList(GAME_LIBRARY_FAVORITES_KEY, nextFavorites);
+  };
 
   const centerCardInStrip = (cardEl) => {
     if (!cardEl) return;
@@ -454,12 +473,19 @@ function initGameScroller() {
 
   const getVisibleGames = () => {
     const query = String(gameSearchQuery || "").trim().toUpperCase();
-    if (!query) return orderedGames;
-    return orderedGames.filter((game) => game.searchText.includes(query));
+    const favorites = new Set(getFavorites());
+    return orderedGames.filter((game) => {
+      if (favoritesOnly && !favorites.has(game.id)) return false;
+      if (!query) return true;
+      return game.searchText.includes(query);
+    });
   };
 
   const renderStrip = () => {
     strip.innerHTML = "";
+    favoritesToggle.classList.toggle("active", favoritesOnly);
+    favoritesToggle.textContent = favoritesOnly ? "★" : "☆";
+    const favoriteSet = new Set(getFavorites());
     const visibleGames = getVisibleGames();
     if (!visibleGames.length) {
       strip.innerHTML = '<div class="score-item">NO GAMES MATCH SEARCH</div>';
@@ -469,10 +495,25 @@ function initGameScroller() {
     visibleGames.forEach((game) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = `leaderboard-game-card${selectedGameId === game.id ? " active" : ""}`;
+      btn.className = `leaderboard-game-card${selectedGameId === game.id ? " active" : ""}${favoriteSet.has(game.id) ? " is-favorite" : ""}`;
       btn.dataset.game = game.id;
-      btn.innerHTML = `<span>${game.icon || "🎮"}</span><strong>${game.title}</strong><small>${game.description || ""}</small>`;
-      btn.addEventListener("click", () => {
+      const tagIcons = game.tags
+        .slice(0, 4)
+        .map((tag) => `<span class="game-tag" data-tag-label="${String(tag || "").toUpperCase()}">${GAME_TAG_EMOJI[tag] || "🏷️"}</span>`)
+        .join("");
+      btn.innerHTML = `<span class="game-strip-icon-row"><span>${game.icon || "🎮"}</span><span class="game-tags">${tagIcons}</span></span><strong>${game.title}</strong><small>${game.description || ""}</small>`;
+      btn.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        toggleFavorite(game.id);
+        renderStrip();
+      });
+      btn.addEventListener("click", (event) => {
+        if (Date.now() < suppressClickUntil) return;
+        if (event.shiftKey) {
+          toggleFavorite(game.id);
+          renderStrip();
+          return;
+        }
         selectedGameId = game.id;
         centerOnGameId = game.id;
         window.launchGame(game.id, "game-strip");
@@ -486,6 +527,45 @@ function initGameScroller() {
       centerOnGameId = "";
     }
   };
+
+  let dragPointerId = null;
+  let dragStartX = 0;
+  let dragStartScrollLeft = 0;
+  let didDrag = false;
+
+  strip.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartScrollLeft = strip.scrollLeft;
+    didDrag = false;
+    strip.classList.add("is-dragging");
+    strip.setPointerCapture?.(event.pointerId);
+  });
+
+  strip.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== dragPointerId) return;
+    const delta = event.clientX - dragStartX;
+    if (Math.abs(delta) > 6) didDrag = true;
+    if (!didDrag) return;
+    strip.scrollLeft = dragStartScrollLeft - delta;
+  });
+
+  const endDrag = (event) => {
+    if (event.pointerId !== dragPointerId) return;
+    if (didDrag) suppressClickUntil = Date.now() + 180;
+    strip.classList.remove("is-dragging");
+    dragPointerId = null;
+    didDrag = false;
+  };
+
+  strip.addEventListener("pointerup", endDrag);
+  strip.addEventListener("pointercancel", endDrag);
+
+  favoritesToggle.addEventListener("click", () => {
+    favoritesOnly = !favoritesOnly;
+    renderStrip();
+  });
 
   searchToggle.addEventListener("click", () => {
     const opening = searchInput.style.display === "none";

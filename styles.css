@@ -1358,6 +1358,38 @@ canvas {
   cursor: pointer;
 }
 
+.leaderboard-game-card.is-favorite {
+  border-color: #ffd447;
+  box-shadow: inset 0 0 0 1px rgba(255, 212, 71, 0.35);
+}
+
+.game-strip-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leaderboard-game-card .game-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gamebox-heading-row .leaderboard-search-toggle {
+  min-width: 84px;
+}
+
+#gameboxFavoritesToggle {
+  min-width: 44px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.leaderboard-game-strip.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .leaderboard-game-card strong {
   font-size: 12px;
   line-height: 1.3;
