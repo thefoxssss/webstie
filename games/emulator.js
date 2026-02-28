@@ -616,7 +616,7 @@ function runBurst() {
 export function initEmulator() {
   if (initialized) {
     renderState();
-    document.getElementById("emuTerminalInput")?.focus();
+    document.getElementById("emuTerminalInput")?.focus({ preventScroll: true });
     return;
   }
 
@@ -680,7 +680,7 @@ export function initEmulator() {
     const message = terminalInput.value.replace(/\r/g, "").trim();
     emulator.enqueueTerminalInput(message);
     terminalInput.value = "";
-    terminalInput.focus();
+    terminalInput.focus({ preventScroll: true });
     renderState();
   };
 
@@ -699,6 +699,6 @@ export function initEmulator() {
   programInput.value = emulator.bytesToHex(bootBytes);
   emulator.loadProgram(programInput.value);
   renderState();
-  terminalInput.focus();
+  terminalInput.focus({ preventScroll: true });
   initialized = true;
 }

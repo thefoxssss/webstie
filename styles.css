@@ -1202,8 +1202,9 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 116px;
+  min-height: 104px;
   margin-bottom: 10px;
+  overflow-y: hidden;
 }
 
 
@@ -1228,7 +1229,7 @@ canvas {
 
 .gamebox-frame {
   width: 100%;
-  min-height: 760px;
+  min-height: 820px;
   flex: 1;
   position: relative;
   padding-top: 0;
@@ -1256,7 +1257,7 @@ canvas {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .gamebox-mounted {
@@ -1268,7 +1269,7 @@ canvas {
   min-height: 100%;
   align-items: center;
   justify-content: flex-start;
-  overflow: visible;
+  overflow: hidden;
   padding: 0;
   border: 0;
 }
@@ -1276,7 +1277,7 @@ canvas {
 .gamebox-mounted canvas,
 .gamebox-mounted .embedded-game-frame {
   max-width: 100%;
-  max-height: 100%;
+  height: auto;
 }
 
 .game-content-shell > h1 {
@@ -1349,6 +1350,7 @@ canvas {
   display: flex;
   gap: 10px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 8px;
   margin-bottom: 12px;
 }
@@ -1388,7 +1390,7 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 126px;
+  min-height: 96px;
   cursor: pointer;
 }
 

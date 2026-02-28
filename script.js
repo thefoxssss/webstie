@@ -637,13 +637,59 @@ function initGameScroller() {
     const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
     if (sharedOverlay) {
       sharedOverlay.querySelectorAll(".game-side-shop").forEach((panel) => panel.remove());
-      sharedOverlay.classList.toggle("has-game-side-shop", !inLeaderboard);
+      sharedOverlay.classList.add("has-game-side-shop");
     }
     if (!inLeaderboard && selectedGameId) {
       renderInGameShopPanel(selectedGameId, SHARED_GAME_OVERLAY_ID);
     }
-    if (inLeaderboard && typeof window.loadLeaderboard === "function") window.loadLeaderboard();
+    if (inLeaderboard && typeof window.loadLeaderboard === "function") {
+      window.loadLeaderboard();
+      requestAnimationFrame(renderLeaderboardModesInShopPanel);
+    }
   };
+
+  const renderLeaderboardModesInShopPanel = () => {
+    const overlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
+    const modeList = document.getElementById("leaderboardModeList");
+    if (!overlay || !modeList) return;
+    overlay.querySelectorAll(".game-side-shop").forEach((panel) => panel.remove());
+
+    const panel = document.createElement("aside");
+    panel.className = "game-side-shop";
+    panel.innerHTML = '<h3>GAME MODES</h3><p class="game-side-shop-meta">SELECT DIFFICULTY / MODE</p>';
+
+    const modeButtons = Array.from(modeList.querySelectorAll("button"));
+    if (!modeButtons.length) {
+      const empty = document.createElement("p");
+      empty.className = "game-side-shop-empty";
+      empty.textContent = "NO MODES AVAILABLE";
+      panel.appendChild(empty);
+    } else {
+      modeButtons.forEach((modeButton) => {
+        const row = document.createElement("div");
+        row.className = "game-side-shop-row";
+        const action = document.createElement("button");
+        action.className = `term-btn game-side-shop-action${modeButton.classList.contains("active") ? " active" : ""}`;
+        action.textContent = modeButton.textContent || "MODE";
+        action.addEventListener("click", () => {
+          modeButton.click();
+          requestAnimationFrame(renderLeaderboardModesInShopPanel);
+        });
+        row.appendChild(action);
+        panel.appendChild(row);
+      });
+    }
+
+    overlay.appendChild(panel);
+  };
+
+  const modeList = document.getElementById("leaderboardModeList");
+  if (modeList) {
+    const modeObserver = new MutationObserver(() => {
+      if (switchBtn.textContent === "GAMES") renderLeaderboardModesInShopPanel();
+    });
+    modeObserver.observe(modeList, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+  }
 
   switchBtn.addEventListener("click", () => {
     const isLeaderboard = switchBtn.textContent === "GAMES";
