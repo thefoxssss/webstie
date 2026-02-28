@@ -1055,6 +1055,19 @@
 
     <div class="overlay game-overlay" id="overlayGamebox">
       <div class="game-content-shell gamebox-shell">
+        <div class="leaderboard-heading-row gamebox-heading-row">
+          <h2>GAMES</h2>
+          <button class="menu-btn leaderboard-search-toggle" id="gameboxSearchToggle" type="button">SEARCH</button>
+        </div>
+        <input
+          class="term-input leaderboard-search-input gamebox-search-input"
+          id="gameboxSearchInput"
+          type="search"
+          placeholder="SEARCH GAMES..."
+          autocomplete="off"
+          style="display: none"
+        />
+        <div class="leaderboard-game-strip gamebox-game-strip" id="gameboxGameStrip" aria-label="Game selector strip"></div>
         <div class="gamebox-frame">
           <div class="gamebox-header-actions">
             <button class="menu-btn" id="gameboxLeaderboardBtn" type="button">VIEW LEADERBOARD</button>

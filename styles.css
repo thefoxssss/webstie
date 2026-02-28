@@ -1261,6 +1261,25 @@ canvas {
   min-height: min(760px, calc(100vh - var(--topbar-clearance) - 40px));
 }
 
+.gamebox-heading-row {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.gamebox-heading-row h2 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.gamebox-search-input {
+  margin-bottom: 8px;
+}
+
+.gamebox-game-strip {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
 .gamebox-frame {
   width: 100%;
   min-height: 580px;

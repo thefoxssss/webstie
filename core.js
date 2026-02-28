@@ -5217,6 +5217,7 @@ const LEADERBOARD_SCORE_SYNC_MIN_DELTA = 25;
 let leaderboardSelectedBoardId = "players";
 let leaderboardSelectedMode = "single";
 let leaderboardSearchQuery = "";
+let leaderboardCenterOnBoardId = "";
 
 function normalizeLeaderboardMode(mode) {
   const normalized = String(mode || "").toLowerCase().trim();
@@ -5559,6 +5560,12 @@ function renderLeaderboardGameStrip() {
   if (!strip) return;
   strip.innerHTML = "";
 
+  const centerCardInStrip = (cardEl) => {
+    if (!cardEl) return;
+    const left = Math.max(0, cardEl.offsetLeft - (strip.clientWidth - cardEl.clientWidth) / 2);
+    strip.scrollTo({ left, behavior: "smooth" });
+  };
+
   const visibleBoards = getVisibleLeaderboardBoards();
 
   if (!visibleBoards.length) {
@@ -5570,9 +5577,11 @@ function renderLeaderboardGameStrip() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = `leaderboard-game-card${leaderboardSelectedBoardId === board.id ? " active" : ""}`;
+    btn.dataset.board = board.id;
     btn.innerHTML = `<span>${board.icon || "🎮"}</span><strong>${board.title}</strong><small>${board.subtitle || ""}</small>`;
     btn.addEventListener("click", () => {
       leaderboardSelectedBoardId = board.id;
+      leaderboardCenterOnBoardId = board.id;
       const selectedBoard = getSelectedLeaderboardBoard();
       if (selectedBoard.type === "game") {
         const firstMode = selectedBoard.modes?.[0] || "single";
@@ -5582,6 +5591,12 @@ function renderLeaderboardGameStrip() {
     });
     strip.appendChild(btn);
   });
+
+  if (leaderboardCenterOnBoardId) {
+    const selectedCard = strip.querySelector(`[data-board="${leaderboardCenterOnBoardId}"]`);
+    if (selectedCard) requestAnimationFrame(() => centerCardInStrip(selectedCard));
+    leaderboardCenterOnBoardId = "";
+  }
 }
 
 // Render selected leaderboard and subscribe to one data feed.
@@ -5658,6 +5673,7 @@ export function openGameLeaderboard(gameId) {
 
   if (requestedBoard) {
     leaderboardSelectedBoardId = requestedBoard.id;
+    leaderboardCenterOnBoardId = requestedBoard.id;
     if (requestedBoard.type === "game") leaderboardSelectedMode = requestedBoard.modes?.[0] || "single";
   }
 
