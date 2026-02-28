@@ -82,6 +82,8 @@ function applyUpgrade(key) {
 function resetRun() {
   drill.x = WIDTH * 0.5;
   drill.y = 84;
+  drill.px = drill.x;
+  drill.py = drill.y;
   drill.vx = 0;
   drill.vy = 0;
   drill.fuel = maxFuel();
