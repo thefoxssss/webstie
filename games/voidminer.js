@@ -39,6 +39,7 @@ let leftOn = false;
 let rightOn = false;
 let draw;
 let kernel;
+let fullscreenBtn;
 let score = 0;
 let level = 1;
 let upgradePoints = 0;
@@ -151,6 +152,22 @@ function startNextRun() {
   wind.force = 0;
   wind.target = 0;
   wind.timer = 0;
+}
+
+function updateFullscreenButtonLabel() {
+  if (!fullscreenBtn) return;
+  fullscreenBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
+}
+
+async function toggleVoidMinerFullscreen() {
+  const canvas = document.getElementById("voidMinerCanvas");
+  if (!canvas) return;
+
+  if (document.fullscreenElement === canvas) {
+    await document.exitFullscreen();
+  } else {
+    await canvas.requestFullscreen();
+  }
 }
 
 export function updateVoidMiner() {
@@ -301,6 +318,20 @@ export function initVoidMiner() {
 
   const canvas = document.getElementById("voidMinerCanvas");
   if (!canvas) return;
+  fullscreenBtn = document.getElementById("voidMinerFullscreenBtn");
+  if (fullscreenBtn && !fullscreenBtn.dataset.bound) {
+    fullscreenBtn.dataset.bound = "1";
+    fullscreenBtn.addEventListener("click", async () => {
+      try {
+        await toggleVoidMinerFullscreen();
+      } catch (error) {
+        console.warn("Void Miner fullscreen toggle failed", error);
+      }
+      updateFullscreenButtonLabel();
+    });
+  }
+  updateFullscreenButtonLabel();
+
   draw = new DrawSystem(canvas.getContext("2d"));
   kernel = new EngineKernel({ fixedHz: 60 });
 
@@ -346,6 +377,8 @@ document.addEventListener("keyup", (e) => {
   if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") leftOn = false;
   if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") rightOn = false;
 });
+
+document.addEventListener("fullscreenchange", updateFullscreenButtonLabel);
 
 registerGameStop(() => {
   kernel?.stop();
