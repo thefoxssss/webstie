@@ -221,6 +221,19 @@ function getOverlayIdForGame(gameId) {
 const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
 let mountedGameOverlayId = "";
 
+document.addEventListener("gooner:shop-state-changed", () => {
+  const overlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
+  if (!overlay) return;
+  if (!overlay.querySelector(".game-side-shop")) return;
+  if (typeof window.__isGameboxLeaderboardVisible === "function" && window.__isGameboxLeaderboardVisible()) return;
+  const selectedGame =
+    typeof window.__getSelectedGameScrollerId === "function"
+      ? window.__getSelectedGameScrollerId()
+      : String(state.currentGame || "").toLowerCase();
+  if (!selectedGame) return;
+  renderInGameShopPanel(selectedGame, SHARED_GAME_OVERLAY_ID);
+});
+
 function updateSharedGameboxHeader(_gameId) {}
 
 function mountGameOverlayIntoGamebox(gameId) {
