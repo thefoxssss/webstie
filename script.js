@@ -359,6 +359,39 @@ function disableInGameExitButtons() {
   });
 }
 
+function initPerGameFullscreenButtons() {
+  GAME_TEMPLATE_OVERLAY_IDS.forEach((overlayId) => {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+
+    const existingFullscreenBtn = overlay.querySelector(".fullscreen-btn-fixed, #voidMinerFullscreenBtn");
+    if (existingFullscreenBtn) {
+      existingFullscreenBtn.classList.add("fullscreen-btn-fixed");
+      return;
+    }
+
+    if (!getFullscreenTarget(overlay)) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "fullscreen-btn-fixed";
+    button.textContent = "FULLSCREEN";
+    button.addEventListener("click", async () => {
+      try {
+        await toggleGameFullscreen(overlay, button);
+      } catch (error) {
+        console.warn("Game fullscreen toggle failed", error);
+      }
+    });
+    overlay.appendChild(button);
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    document.querySelectorAll(".fullscreen-btn-fixed").forEach((button) => {
+      button.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
+    });
+  });
+}
+
 const CANVAS_UI_PADDING = 230;
 const GAMEBOX_UI_PADDING = 130;
 const GAME_LIBRARY_FAVORITES_KEY = "goonerFavoriteGames";
@@ -542,7 +575,7 @@ function initGameScroller() {
       btn.type = "button";
       btn.className = `leaderboard-game-card${selectedGameId === game.id ? " active" : ""}${favoriteSet.has(game.id) ? " is-favorite" : ""}`;
       btn.dataset.game = game.id;
-      btn.innerHTML = `<span class="game-strip-icon-row"><span>${game.icon || "🎮"}</span></span><strong>${game.title}</strong><small>${game.description || ""}</small>`;
+      btn.innerHTML = `<span class="game-strip-icon-row"><span>${game.icon || "🎮"}</span></span><strong>${game.title}</strong><small>${game.description || ""}</small><small class="game-picker-hint">CLICK TO PLAY</small>`;
       btn.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         toggleFavorite(game.id);
@@ -1192,6 +1225,7 @@ function initOverlayBackdropExit() {
 
 initSharedGamebox();
 disableInGameExitButtons();
+initPerGameFullscreenButtons();
 initTopBarOverlayControls();
 initOverlayBackdropExit();
 initGameCanvasSizing();
