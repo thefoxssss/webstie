@@ -1222,11 +1222,11 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 116px;
+  min-height: 128px;
   margin-bottom: 10px;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  padding: 0 2px 8px;
+  scroll-snap-type: x proximity;
+  padding: 2px 2px 8px;
 }
 
 
@@ -1406,8 +1406,8 @@ canvas {
   background: rgba(0, 0, 0, 0.7);
   color: var(--accent);
   text-align: left;
-  min-width: clamp(148px, 16vw, 186px);
-  max-width: clamp(180px, 20vw, 220px);
+  min-width: clamp(168px, 18vw, 210px);
+  max-width: clamp(190px, 22vw, 240px);
   padding: clamp(8px, 1vw, 10px);
   display: flex;
   flex-direction: column;
@@ -1463,7 +1463,7 @@ canvas {
   font-size: 8px;
   letter-spacing: 0.35px;
   color: #8fffd0;
-  opacity: 0.75;
+  opacity: 0.9;
   text-transform: uppercase;
 }
 
