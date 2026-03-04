@@ -1661,6 +1661,23 @@ canvas {
   z-index: 8;
 }
 
+
+#overlayGamebox.has-game-side-shop {
+  padding-left: 20px;
+}
+
+#overlayGamebox.has-game-side-shop .gamebox-frame {
+  padding-right: calc(var(--game-side-shop-width, 260px) + 18px);
+}
+
+#overlayGamebox .game-side-shop {
+  left: auto;
+  right: 14px;
+  top: 186px;
+  height: calc(var(--gamebox-panel-min-height) - 18px);
+  max-height: calc(var(--gamebox-panel-min-height) - 18px);
+}
+
 .game-side-shop h3 {
   margin: 0;
   font-size: 11px;
@@ -1717,6 +1734,14 @@ canvas {
     --game-side-shop-height: 460px;
   }
 
+  #overlayGamebox.has-game-side-shop .gamebox-frame {
+    padding-right: calc(var(--game-side-shop-width, 220px) + 14px);
+  }
+
+  #overlayGamebox .game-side-shop {
+    top: 178px;
+  }
+
   .gamebox-header-actions {
     position: static;
     flex-wrap: wrap;
@@ -1732,6 +1757,10 @@ canvas {
 @media (max-width: 760px) {
   .overlay.has-game-side-shop {
     padding-left: 20px;
+  }
+
+  #overlayGamebox.has-game-side-shop .gamebox-frame {
+    padding-right: 8px;
   }
 
   .game-side-shop {
