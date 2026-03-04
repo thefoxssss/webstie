@@ -1222,9 +1222,11 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 120px;
+  min-height: 116px;
   margin-bottom: 10px;
   overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding: 0 2px 8px;
 }
 
 
@@ -1404,7 +1406,7 @@ canvas {
   background: rgba(0, 0, 0, 0.7);
   color: var(--accent);
   text-align: left;
-  min-width: clamp(150px, 16vw, 180px);
+  min-width: clamp(148px, 16vw, 186px);
   max-width: clamp(180px, 20vw, 220px);
   padding: clamp(8px, 1vw, 10px);
   display: flex;
@@ -1412,6 +1414,7 @@ canvas {
   gap: 6px;
   min-height: 0;
   cursor: pointer;
+  scroll-snap-align: center;
 }
 
 .leaderboard-game-card.is-favorite {
@@ -1453,6 +1456,15 @@ canvas {
 .leaderboard-game-card small {
   font-size: 9px;
   color: #ddd;
+}
+
+
+.game-picker-hint {
+  font-size: 8px;
+  letter-spacing: 0.35px;
+  color: #8fffd0;
+  opacity: 0.75;
+  text-transform: uppercase;
 }
 
 .leaderboard-game-card.active,
@@ -1649,6 +1661,23 @@ canvas {
   z-index: 8;
 }
 
+
+#overlayGamebox.has-game-side-shop {
+  padding-left: 20px;
+}
+
+#overlayGamebox.has-game-side-shop .gamebox-frame {
+  padding-right: calc(var(--game-side-shop-width, 260px) + 18px);
+}
+
+#overlayGamebox .game-side-shop {
+  left: auto;
+  right: 14px;
+  top: 186px;
+  height: calc(var(--gamebox-panel-min-height) - 18px);
+  max-height: calc(var(--gamebox-panel-min-height) - 18px);
+}
+
 .game-side-shop h3 {
   margin: 0;
   font-size: 11px;
@@ -1705,6 +1734,14 @@ canvas {
     --game-side-shop-height: 460px;
   }
 
+  #overlayGamebox.has-game-side-shop .gamebox-frame {
+    padding-right: calc(var(--game-side-shop-width, 220px) + 14px);
+  }
+
+  #overlayGamebox .game-side-shop {
+    top: 178px;
+  }
+
   .gamebox-header-actions {
     position: static;
     flex-wrap: wrap;
@@ -1720,6 +1757,10 @@ canvas {
 @media (max-width: 760px) {
   .overlay.has-game-side-shop {
     padding-left: 20px;
+  }
+
+  #overlayGamebox.has-game-side-shop .gamebox-frame {
+    padding-right: 8px;
   }
 
   .game-side-shop {
