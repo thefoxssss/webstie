@@ -5712,6 +5712,11 @@ function renderLeaderboardGameStrip() {
       if (selectedBoard.type === "game") {
         const firstMode = selectedBoard.modes?.[0] || "single";
         if (!selectedBoard.modes?.includes(leaderboardSelectedMode)) leaderboardSelectedMode = firstMode;
+        if (typeof window.__setGameboxView === "function") window.__setGameboxView("games");
+        if (typeof window.launchGame === "function") {
+          window.launchGame(selectedBoard.id, "leaderboard-strip");
+          return;
+        }
       }
       loadLeaderboard();
     });
