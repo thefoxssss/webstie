@@ -51,7 +51,6 @@ const pActive = new Uint8Array(MAX_PARTICLES);
 const pFree = new Uint16Array(MAX_PARTICLES);
 let pFreeTop = 0;
 
-let ctx;
 let draw;
 let kernel;
 let score = 0;
@@ -59,6 +58,16 @@ let lives = 3;
 let shakeTime = 0;
 let shakeMag = 0;
 let moveDir = 0;
+let level = 1;
+let combo = 0;
+let phase = "ready";
+let blocksRemaining = 0;
+
+const LEVEL_LAYOUTS = [
+  { rows: 7, cols: 11, top: 46, explosiveMod: 9, ghostMod: 13 },
+  { rows: 8, cols: 12, top: 42, explosiveMod: 7, ghostMod: 9 },
+  { rows: 9, cols: 12, top: 36, explosiveMod: 6, ghostMod: 8 },
+];
 
 function resetPools() {
   puFreeTop = MAX_POWERUPS;
@@ -122,31 +131,46 @@ function spawnPowerup(x, y) {
   puX[idx] = x;
   puY[idx] = y;
   puVY[idx] = 120;
-  puType[idx] = Math.random() < 0.5 ? 1 : 2;
+  puType[idx] = Math.random() < 0.65 ? 1 : 2;
 }
 
 function initBricks() {
   for (let i = 0; i < MAX_BLOCKS; i++) blockActive[i] = 0;
+  blocksRemaining = 0;
+  const layout = LEVEL_LAYOUTS[(level - 1) % LEVEL_LAYOUTS.length];
   let n = 0;
-  const rows = 8;
-  const cols = 12;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
+  for (let r = 0; r < layout.rows; r++) {
+    for (let c = 0; c < layout.cols; c++) {
       if (n >= MAX_BLOCKS) return;
       blockActive[n] = 1;
-      blockW[n] = 58;
+      blockW[n] = 56;
       blockH[n] = 18;
-      blockX[n] = 40 + c * 62;
-      blockY[n] = 40 + r * 24;
+      blockX[n] = 54 + c * 58;
+      blockY[n] = layout.top + r * 24;
       let mask = 0;
-      if (r < 2) mask |= BLOCK_ARMORED;
-      if ((r + c) % 7 === 0) mask |= BLOCK_EXPLOSIVE;
-      if ((r + c) % 9 === 0) mask |= BLOCK_GHOST;
+      if (r < 1 + Math.floor(level * 0.6)) mask |= BLOCK_ARMORED;
+      if ((r + c + level) % layout.explosiveMod === 0) mask |= BLOCK_EXPLOSIVE;
+      if ((r + c + level * 2) % layout.ghostMod === 0) mask |= BLOCK_GHOST;
       blockMask[n] = mask;
       blockHP[n] = (mask & BLOCK_ARMORED) ? 2 : 1;
+      blocksRemaining += 1;
       n++;
     }
   }
+}
+
+function resetBall(attachToPaddle = false) {
+  ball.vx = 230 + Math.min(120, (level - 1) * 24);
+  ball.vy = -260 - Math.min(120, (level - 1) * 18);
+  if (attachToPaddle) {
+    ball.x = paddle.x + paddle.w * 0.5;
+    ball.y = paddle.y - ball.r - 1;
+  } else {
+    ball.x = WIDTH * 0.5;
+    ball.y = HEIGHT * 0.65;
+  }
+  ball.px = ball.x;
+  ball.py = ball.y;
 }
 
 function intersectAABB(ax, ay, aw, ah, bx, by, bw, bh) {
@@ -183,7 +207,9 @@ function resolveBallVsBlock(i) {
     blockHP[i] = Math.max(0, blockHP[i] - 1);
     if (blockHP[i] === 0) {
       blockActive[i] = 0;
-      score += 25;
+      blocksRemaining -= 1;
+      combo += 1;
+      score += 25 + Math.min(75, combo * 5);
       updateHighScore("corebreaker", score);
       if (Math.random() < 0.25) spawnPowerup(bx + bw * 0.5, by + bh * 0.5);
       if (mask & BLOCK_EXPLOSIVE) {
@@ -195,6 +221,7 @@ function resolveBallVsBlock(i) {
           if (dx * dx + dy * dy < 80 * 80) {
             blockHP[j] = 0;
             blockActive[j] = 0;
+            blocksRemaining -= 1;
             score += 15;
           }
         }
@@ -213,21 +240,26 @@ export function updateCoreBreaker() {
   paddle.x += moveDir * paddle.speed * dt;
   paddle.x = Math.max(0, Math.min(WIDTH - paddle.w, paddle.x));
 
-  ball.px = ball.x;
-  ball.py = ball.y;
-  ball.x += ball.vx * dt;
-  ball.y += ball.vy * dt;
+  if (phase === "ready") {
+    ball.x = paddle.x + paddle.w * 0.5;
+    ball.y = paddle.y - ball.r - 1;
+  } else {
+    ball.px = ball.x;
+    ball.py = ball.y;
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+  }
 
-  if (ball.x - ball.r < 0 || ball.x + ball.r > WIDTH) {
+  if (phase !== "ready" && (ball.x - ball.r < 0 || ball.x + ball.r > WIDTH)) {
     ball.vx *= -1;
     ball.x = Math.max(ball.r, Math.min(WIDTH - ball.r, ball.x));
   }
-  if (ball.y - ball.r < 0) {
+  if (phase !== "ready" && ball.y - ball.r < 0) {
     ball.vy *= -1;
     ball.y = ball.r;
   }
 
-  if (intersectAABB(ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2, paddle.x, paddle.y, paddle.w, paddle.h)) {
+  if (phase !== "ready" && intersectAABB(ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2, paddle.x, paddle.y, paddle.w, paddle.h)) {
     const t = (ball.x - paddle.x) / paddle.w;
     const ang = (t - 0.5) * 1.2;
     const speed = Math.hypot(ball.vx, ball.vy);
@@ -236,22 +268,34 @@ export function updateCoreBreaker() {
     ball.y = paddle.y - ball.r - 1;
   }
 
-  for (let i = 0; i < MAX_BLOCKS; i++) {
-    if (!blockActive[i]) continue;
-    if (resolveBallVsBlock(i)) break;
+  if (phase !== "ready") {
+    for (let i = 0; i < MAX_BLOCKS; i++) {
+      if (!blockActive[i]) continue;
+      if (resolveBallVsBlock(i)) break;
+    }
   }
 
-  if (ball.y - ball.r > HEIGHT) {
+  if (phase !== "ready" && blocksRemaining <= 0) {
+    level += 1;
+    phase = "ready";
+    combo = 0;
+    initBricks();
+    paddle.w = Math.max(84, paddle.w - 6);
+    resetBall(true);
+    showToast(`LEVEL ${level}`, "🧨");
+    screenShake(6, 0.2);
+  }
+
+  if (phase !== "ready" && ball.y - ball.r > HEIGHT) {
     lives -= 1;
+    combo = 0;
     if (lives <= 0) {
       showGameOver("corebreaker", score);
       if (score >= 1500) unlockAchievement("brick_breaker");
       return;
     }
-    ball.x = WIDTH * 0.5;
-    ball.y = HEIGHT * 0.65;
-    ball.vx = 220;
-    ball.vy = -250;
+    phase = "ready";
+    resetBall(true);
     screenShake(8, 0.2);
   }
 
@@ -259,7 +303,7 @@ export function updateCoreBreaker() {
     if (!puActive[i]) continue;
     puY[i] += puVY[i] * dt;
     if (intersectAABB(puX[i] - 8, puY[i] - 8, 16, 16, paddle.x, paddle.y, paddle.w, paddle.h)) {
-      if (puType[i] === 1) paddle.w = Math.min(160, paddle.w + 20);
+      if (puType[i] === 1) paddle.w = Math.min(180, paddle.w + 20);
       else lives = Math.min(5, lives + 1);
       freePowerup(i);
       showToast("POWER-UP", "⚡");
@@ -285,7 +329,7 @@ export function updateCoreBreaker() {
     if (shakeTime <= 0) shakeMag = 0;
   }
 
-  setText("coreBreakerScore", `SCORE: ${score} | LIVES: ${lives}`);
+  setText("coreBreakerScore", `L${level} | SCORE: ${score} | LIVES: ${lives} | COMBO: x${Math.max(combo, 1)}`);
 }
 
 export function drawCoreBreaker() {
@@ -296,6 +340,10 @@ export function drawCoreBreaker() {
   draw.clear("#06080f", 0, 0, WIDTH, HEIGHT);
   draw.rect("#66ffcc", paddle.x + ox, paddle.y + oy, paddle.w, paddle.h);
   draw.rect("#ffffff", ball.x - ball.r + ox, ball.y - ball.r + oy, ball.r * 2, ball.r * 2);
+
+  if (phase === "ready") {
+    draw.text("PRESS SPACE / ENTER TO LAUNCH", WIDTH * 0.5 - 150 + ox, HEIGHT * 0.62 + oy, "#8cf7ff", 18, "monospace");
+  }
 
   for (let i = 0; i < MAX_BLOCKS; i++) {
     if (!blockActive[i]) continue;
@@ -321,25 +369,25 @@ export function initCoreBreaker() {
 
   const canvas = document.getElementById("coreBreakerCanvas");
   if (!canvas) return;
-  ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d");
   draw = new DrawSystem(ctx);
   kernel = new EngineKernel({ fixedHz: 60 });
 
   score = 0;
   lives = 3;
+  level = 1;
+  combo = 0;
+  phase = "ready";
   moveDir = 0;
   paddle.w = 100;
   paddle.x = 350;
-  ball.x = WIDTH * 0.5;
-  ball.y = HEIGHT * 0.65;
-  ball.vx = 220;
-  ball.vy = -250;
   shakeTime = 0;
   shakeMag = 0;
 
   initBricks();
+  resetBall(true);
   resetPools();
-  setText("coreBreakerScore", "SCORE: 0 | LIVES: 3");
+  setText("coreBreakerScore", "L1 | SCORE: 0 | LIVES: 3 | COMBO: x1");
   kernel.start(updateCoreBreaker, drawCoreBreaker, { startPausedUntilInput: true });
 }
 
@@ -347,6 +395,10 @@ document.addEventListener("keydown", (event) => {
   if (state.currentGame !== "corebreaker") return;
   if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") moveDir = -1;
   if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") moveDir = 1;
+  if ((event.code === "Space" || event.key === "Enter") && phase === "ready") {
+    phase = "playing";
+    combo = 0;
+  }
 });
 
 document.addEventListener("keyup", (event) => {
