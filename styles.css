@@ -1369,11 +1369,12 @@ canvas {
 
 
 .leaderboard-game-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 8px;
+  overflow-y: auto;
+  max-height: 270px;
+  padding: 4px 2px 10px;
   margin-bottom: 12px;
 }
 
@@ -1383,6 +1384,8 @@ canvas {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 255, 195, 0.2);
 }
 
 .leaderboard-heading-actions {
@@ -1399,22 +1402,23 @@ canvas {
 
 .leaderboard-search-input {
   margin-bottom: 10px;
+  min-height: 38px;
 }
 
 .leaderboard-game-card {
   border: 1px solid var(--accent);
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.72);
   color: var(--accent);
   text-align: left;
-  min-width: clamp(168px, 18vw, 210px);
-  max-width: clamp(190px, 22vw, 240px);
-  padding: clamp(8px, 1vw, 10px);
+  width: 100%;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-height: 0;
   cursor: pointer;
-  scroll-snap-align: center;
+  border-radius: 6px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .leaderboard-game-card.is-favorite {
@@ -1429,7 +1433,7 @@ canvas {
 }
 
 .gamebox-heading-row .leaderboard-search-toggle {
-  min-width: 84px;
+  min-width: 100px;
 }
 
 #gameboxFilterToggle {
@@ -1471,6 +1475,7 @@ canvas {
 .leaderboard-game-card:hover {
   background: var(--accent-dim);
   box-shadow: 0 0 10px var(--accent-dim);
+  transform: translateY(-1px);
 }
 
 .leaderboard-layout {

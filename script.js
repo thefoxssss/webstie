@@ -80,6 +80,7 @@ import { initLaserLock } from "./games/laserlock.js";
 import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
+import { initHexfall } from "./games/hexfall.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
@@ -299,6 +300,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "metromaze") initMetroMaze();
   if (game === "stacksmash") initStackSmash();
   if (game === "quantumflip") initQuantumFlip();
+  if (game === "hexfall") initHexfall();
   if (game === "ultimatettt") initUltimateTTT();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
   resizeAllGameCanvases();
@@ -339,6 +341,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayMetromaze",
   "overlayStacksmash",
   "overlayQuantumflip",
+  "overlayHexfall",
   "overlayUltimatettt",
 ];
 
@@ -686,14 +689,10 @@ function initGameScroller() {
   });
 
   searchToggle.addEventListener("click", () => {
-    const opening = searchInput.style.display === "none";
-    searchInput.style.display = opening ? "block" : "none";
-    if (opening) searchInput.focus();
-    else {
-      searchInput.value = "";
-      gameSearchQuery = "";
-      renderStrip();
-    }
+    searchInput.value = "";
+    gameSearchQuery = "";
+    renderStrip();
+    searchInput.focus();
   });
 
   searchInput.addEventListener("input", () => {
@@ -714,7 +713,7 @@ function initGameScroller() {
     if (headingTitle) headingTitle.textContent = inLeaderboard ? "LEADERBOARD" : "GAMES";
     switchBtn.textContent = inLeaderboard ? "GAMES" : "LEADERBOARD";
     filterToggle.style.display = inLeaderboard ? "none" : "inline-flex";
-    strip.style.display = inLeaderboard ? "none" : "flex";
+    strip.style.display = inLeaderboard ? "none" : "grid";
     if (gameFrame) gameFrame.style.display = inLeaderboard ? "none" : "flex";
     if (leaderboardPanel) leaderboardPanel.style.display = inLeaderboard ? "grid" : "none";
     const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
@@ -1264,6 +1263,7 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "metromaze") initMetroMaze();
   if (state.currentGame === "stacksmash") initStackSmash();
   if (state.currentGame === "quantumflip") initQuantumFlip();
+  if (state.currentGame === "hexfall") initHexfall();
   if (state.currentGame === "roulette") {
     initRoulette();
     document.getElementById("overlayRoulette").classList.add("active");
