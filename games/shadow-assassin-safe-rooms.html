@@ -7766,68 +7766,201 @@
             }
 
             draw() {
-                // Parallax offset based on player position
+                // Parallax offsets based on player position to create depth
                 const px = player ? player.x : canvas.width / 2;
                 const py = player ? player.y : canvas.height / 2;
+                // Normalize player movement relative to center for smooth parallax
                 const pOffsetX = (px - canvas.width / 2) * 0.05;
                 const pOffsetY = (py - canvas.height / 2) * 0.02;
 
-                // 1. Deepest Background (Solid Color Gradient)
+                // 1. Deepest Background (Night Sky)
+                // We use a deep, mystical blue gradient fading to black near the bottom.
                 const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
                 if (this.isSafeRoom) {
-                    gradient.addColorStop(0, '#152515');
-                    gradient.addColorStop(1, '#0a150a');
+                    gradient.addColorStop(0, '#0a1a2f'); // Darker blue/green tint
+                    gradient.addColorStop(0.6, '#050a12');
+                    gradient.addColorStop(1, '#020305');
                 } else {
-                    const theme = this.getBossThemeColors();
-                    const topShade = theme ? theme.primary : '#1a1a24';
-                    gradient.addColorStop(0, topShade);
-                    gradient.addColorStop(1, '#050505');
+                    gradient.addColorStop(0, '#0d1b38'); // Cool mysterious blue
+                    gradient.addColorStop(0.5, '#070a18');
+                    gradient.addColorStop(1, '#020205');
                 }
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // 2. Distant Parallax Layer (Large columns/archways)
-                const pOffsetDistX = pOffsetX * 0.3;
-                ctx.fillStyle = this.isSafeRoom ? '#1c301c' : '#141418';
-                for (let i = -1; i < 8; i++) {
-                    const colX = i * 200 - pOffsetDistX;
-                    ctx.fillRect(colX, 0, 60, canvas.height);
-                    // Distant arches connecting columns
-                    if (i < 7) {
-                        ctx.beginPath();
-                        ctx.arc(colX + 130, 150, 100, Math.PI, 0);
-                        ctx.fill();
-                    }
+                // 1.1 Starry Sky (Static-ish, very slow parallax)
+                const starOffsetX = pOffsetX * 0.01;
+                const starOffsetY = pOffsetY * 0.01;
+                ctx.save();
+                ctx.translate(-starOffsetX, -starOffsetY);
+                // Draw seeded stars so they don't flicker every frame
+                // We'll use the room seed to keep them consistent
+                let starSeed = this.seed * 3.14159;
+                function nextStarRand() {
+                    starSeed = (starSeed * 9301 + 49297) % 233280;
+                    return starSeed / 233280;
                 }
 
-                // 3. Mid-Background Parallax Layer (Stone brick wall)
-                const pOffsetMidX = pOffsetX * 0.6;
-                const pOffsetMidY = pOffsetY * 0.6;
-                
+                for (let i = 0; i < 150; i++) {
+                    const x = nextStarRand() * (canvas.width + 200) - 100;
+                    const y = nextStarRand() * (canvas.height * 0.7) - 50; // mostly in upper 70%
+                    const size = 0.5 + nextStarRand() * 1.5;
+                    const brightness = 0.2 + nextStarRand() * 0.8;
+                    // Make some stars twinkle based on time and their index
+                    const twinkle = Math.sin(Date.now() / (500 + nextStarRand() * 1000) + i);
+                    const finalAlpha = Math.max(0.1, brightness + twinkle * 0.3);
+
+                    ctx.globalAlpha = finalAlpha;
+                    // Slightly bluish-white stars
+                    ctx.fillStyle = '#e6f0ff';
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // 1.5 Massive Glowing Moon Layer
+                const moonOffsetX = pOffsetX * 0.03;
+                const moonOffsetY = pOffsetY * 0.02;
                 ctx.save();
-                ctx.translate(-pOffsetMidX, -pOffsetMidY);
+                ctx.translate(-moonOffsetX, -moonOffsetY);
 
-                // Fill mid-background with base stone color
-                ctx.fillStyle = this.isSafeRoom ? '#253d25' : '#1e1e24';
-                // Oversize the fill to cover the screen even when shifted
-                ctx.fillRect(-100, -100, canvas.width + 200, canvas.height + 200);
+                const moonX = canvas.width * 0.75;
+                const moonY = 200;
+                const moonRadius = 90;
 
-                // Mid-background stone texture lines
-                ctx.strokeStyle = this.isSafeRoom ? '#1a2b1a' : '#15151a';
-                ctx.lineWidth = 2;
-                const startX = -100 - ((-100 + pOffsetMidX) % 80);
-                const startY = -100 - ((-100 + pOffsetMidY) % 40);
+                // Outer massive ethereal blue glow
+                const moonGlowOut = ctx.createRadialGradient(moonX, moonY, moonRadius, moonX, moonY, moonRadius * 4);
+                moonGlowOut.addColorStop(0, 'rgba(80, 150, 255, 0.25)');
+                moonGlowOut.addColorStop(0.5, 'rgba(40, 80, 200, 0.08)');
+                moonGlowOut.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = moonGlowOut;
+                // Add composite operation for nicer light blending
+                ctx.globalCompositeOperation = 'screen';
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, moonRadius * 4, 0, Math.PI * 2);
+                ctx.fill();
 
-                for (let x = startX; x < canvas.width + 100; x += 80) {
-                    for (let y = startY; y < canvas.height + 100; y += 40) {
-                        const offset = (Math.floor(y / 40) % 2) * 40;
-                        ctx.strokeRect(x + offset, y, 80, 40);
+                // Inner bright moon glow
+                const moonGlowIn = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 1.5);
+                moonGlowIn.addColorStop(0, 'rgba(220, 240, 255, 0.9)');
+                moonGlowIn.addColorStop(0.4, 'rgba(150, 200, 255, 0.6)');
+                moonGlowIn.addColorStop(1, 'rgba(80, 150, 255, 0)');
+                ctx.fillStyle = moonGlowIn;
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, moonRadius * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
 
-                        // Add some texture detail to random bricks
-                        if ((x * y) % 7 === 0) {
-                            ctx.fillStyle = this.isSafeRoom ? '#2a442a' : '#222228';
-                            ctx.fillRect(x + offset + 2, y + 2, 76, 36);
-                        }
+                // Solid moon base
+                ctx.fillStyle = '#dbe9ff';
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Subtle blue/gray craters on the moon
+                ctx.fillStyle = 'rgba(40, 60, 100, 0.15)';
+                ctx.beginPath(); ctx.arc(moonX - 30, moonY - 20, 22, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(moonX + 25, moonY + 40, 16, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(moonX + 40, moonY - 10, 12, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(moonX - 10, moonY + 45, 18, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+
+                // 1.8 Distant Jagged Mountains
+                const mtnOffsetX = pOffsetX * 0.08;
+                const mtnOffsetY = pOffsetY * 0.05;
+                ctx.save();
+                ctx.translate(-mtnOffsetX, -mtnOffsetY);
+                // Use a deep midnight blue for the mountains
+                const mtnGrad = ctx.createLinearGradient(0, canvas.height * 0.3, 0, canvas.height);
+                mtnGrad.addColorStop(0, '#0a1024'); // Top of mountains
+                mtnGrad.addColorStop(1, '#04060d'); // Bottom of mountains
+                ctx.fillStyle = mtnGrad;
+
+                ctx.beginPath();
+                ctx.moveTo(-200, canvas.height);
+                // Draw seeded jagged peaks
+                let mtnSeed = this.seed * 1.5;
+                function nextMtnRand() {
+                    mtnSeed = (mtnSeed * 9301 + 49297) % 233280;
+                    return mtnSeed / 233280;
+                }
+
+                let currentX = -200;
+                while (currentX < canvas.width + 200) {
+                    const peakX = currentX + 80 + nextMtnRand() * 100;
+                    // Mountains are higher up (y is smaller) in the back
+                    const peakY = canvas.height * 0.45 + (nextMtnRand() - 0.5) * 150;
+                    ctx.lineTo(peakX, peakY);
+
+                    const valleyX = peakX + 60 + nextMtnRand() * 80;
+                    const valleyY = peakY + 100 + nextMtnRand() * 100;
+                    ctx.lineTo(valleyX, valleyY);
+
+                    currentX = valleyX;
+                }
+                ctx.lineTo(canvas.width + 200, canvas.height);
+                ctx.fill();
+
+                // Add a faint blue atmospheric fog behind the nearest pillars
+                const fogGrad = ctx.createLinearGradient(0, canvas.height * 0.5, 0, canvas.height);
+                fogGrad.addColorStop(0, 'rgba(20, 40, 80, 0)');
+                fogGrad.addColorStop(1, 'rgba(20, 50, 100, 0.4)');
+                ctx.fillStyle = fogGrad;
+                ctx.fillRect(-200, canvas.height * 0.5, canvas.width + 400, canvas.height * 0.5);
+                ctx.restore();
+
+                // 2. Mid-Background Parallax Layer (Ruined Castle Pillars/Arches)
+                // We completely removed the solid stone wall filling the screen.
+                // Now we have massive, dark silhouetted pillars that frame the moonlight.
+                const pOffsetDistX = pOffsetX * 0.2;
+                const pOffsetDistY = pOffsetY * 0.15;
+                ctx.save();
+                ctx.translate(-pOffsetDistX, -pOffsetDistY);
+
+                const pillarColor = '#060912'; // Very dark blue/black silhouette
+                const highlightColor = 'rgba(80, 120, 200, 0.1)'; // Faint moonlight edge
+
+                for (let i = -1; i < 6; i++) {
+                    const colX = i * 280 + 100;
+                    const colWidth = 90;
+
+                    // Main pillar body
+                    ctx.fillStyle = pillarColor;
+                    ctx.fillRect(colX, -100, colWidth, canvas.height + 200);
+
+                    // Left edge moonlight highlight (assuming moon is generally top-right)
+                    ctx.fillStyle = highlightColor;
+                    ctx.fillRect(colX, -100, 8, canvas.height + 200);
+
+                    // Architectural details (horizontal bands)
+                    ctx.fillStyle = '#04060c';
+                    ctx.fillRect(colX - 10, canvas.height * 0.3, colWidth + 20, 30); // Capital/Band
+                    ctx.fillRect(colX - 5, canvas.height * 0.6, colWidth + 10, 20); // Mid band
+
+                    // Highlight on bands
+                    ctx.fillStyle = highlightColor;
+                    ctx.fillRect(colX - 10, canvas.height * 0.3, 4, 30);
+
+                    // Gothic pointed arches connecting them
+                    if (i < 5) {
+                        ctx.fillStyle = pillarColor;
+                        ctx.beginPath();
+                        ctx.moveTo(colX + colWidth, -100);
+                        // Left side of arch curves up and right
+                        ctx.quadraticCurveTo(colX + colWidth, canvas.height * 0.25, colX + colWidth + 95, canvas.height * 0.3 - 80);
+                        // Right side of arch curves down and right
+                        ctx.quadraticCurveTo(colX + colWidth + 190, canvas.height * 0.25, colX + colWidth + 190, -100);
+                        ctx.fill();
+
+                        // Inner arch highlight
+                        ctx.strokeStyle = highlightColor;
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(colX + colWidth, canvas.height * 0.25 - 40);
+                        ctx.quadraticCurveTo(colX + colWidth, canvas.height * 0.25, colX + colWidth + 95, canvas.height * 0.3 - 80);
+                        ctx.stroke();
                     }
                 }
                 ctx.restore();
@@ -7848,12 +7981,16 @@
                     const x = 150 + i * 220;
                     const y = 80;
                     
-                    const torchColor = this.isSafeRoom ? 'rgba(0, 255, 100, 0.15)' : 'rgba(255, 140, 0, 0.15)';
-                    const torchGradient = ctx.createRadialGradient(x, y, 0, x, y, 60);
+                    const flicker = Math.sin(Date.now() / 150 + i) * 15;
+                    const torchColor = this.isSafeRoom ? 'rgba(0, 255, 100, 0.3)' : 'rgba(255, 140, 0, 0.3)';
+                    const torchGradient = ctx.createRadialGradient(x, y, 0, x, y, 80 + flicker);
                     torchGradient.addColorStop(0, torchColor);
-                    torchGradient.addColorStop(1, torchColor.replace('0.15', '0'));
+                    torchGradient.addColorStop(1, torchColor.replace('0.3', '0'));
+
+                    ctx.globalCompositeOperation = 'screen';
                     ctx.fillStyle = torchGradient;
-                    ctx.fillRect(x - 60, y - 60, 120, 120);
+                    ctx.fillRect(x - (80 + flicker), y - (80 + flicker), (80 + flicker) * 2, (80 + flicker) * 2);
+                    ctx.globalCompositeOperation = 'source-over';
                     
                     ctx.fillStyle = this.isSafeRoom ? '#00ff64' : '#ff8c00';
                     ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 100 + i) * 0.2;
@@ -7871,66 +8008,152 @@
 
                 // Platforms
                 for (const platform of this.platforms) {
-                    // Deep drop shadow
-                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                    ctx.fillRect(platform.x + 8, platform.y + 12, platform.width, platform.height);
-                    
-                    // 3D bottom edge
-                    ctx.fillStyle = '#111';
-                    ctx.fillRect(platform.x, platform.y + platform.height, platform.width, 8);
+                    // Deep, long drop shadow to ground it in the darker environment
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                    ctx.fillRect(platform.x + 12, platform.y + 16, platform.width, platform.height + 20);
 
-                    // Main platform body
+                    // Ambient glow behind platforms
+                    ctx.save();
+                    const platformGlow = ctx.createRadialGradient(
+                        platform.x + platform.width / 2, platform.y + platform.height / 2, 0,
+                        platform.x + platform.width / 2, platform.y + platform.height / 2, platform.width * 1.5
+                    );
+                    const glowColor = this.isSafeRoom ? 'rgba(80, 200, 100, 0.15)' : 'rgba(100, 140, 255, 0.1)';
+                    platformGlow.addColorStop(0, glowColor);
+                    platformGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = platformGlow;
+                    ctx.globalCompositeOperation = 'screen';
+                    ctx.fillRect(platform.x - platform.width, platform.y - platform.height * 3, platform.width * 3, platform.height * 7);
+                    ctx.restore();
+
+                    // 3D Block Base (Dark stone/void base)
+                    ctx.fillStyle = '#080a10';
+                    // Main bottom block structure
+                    ctx.fillRect(platform.x + 2, platform.y + platform.height, platform.width - 4, 18);
+
+                    // Left 3D bevel (Catching edge light)
+                    ctx.fillStyle = '#1c223a';
+                    ctx.beginPath();
+                    ctx.moveTo(platform.x, platform.y);
+                    ctx.lineTo(platform.x + 6, platform.y + 6);
+                    ctx.lineTo(platform.x + 6, platform.y + platform.height + 14);
+                    ctx.lineTo(platform.x + 2, platform.y + platform.height + 18);
+                    ctx.fill();
+
+                    // Right 3D bevel (In shadow)
+                    ctx.fillStyle = '#05070a';
+                    ctx.beginPath();
+                    ctx.moveTo(platform.x + platform.width, platform.y);
+                    ctx.lineTo(platform.x + platform.width - 6, platform.y + 6);
+                    ctx.lineTo(platform.x + platform.width - 6, platform.y + platform.height + 14);
+                    ctx.lineTo(platform.x + platform.width - 2, platform.y + platform.height + 18);
+                    ctx.fill();
+
+                    // Main platform body gradient (cool stone)
                     const platformGradient = ctx.createLinearGradient(0, platform.y, 0, platform.y + platform.height);
                     if (this.isSafeRoom) {
-                        platformGradient.addColorStop(0, '#4a5a4a');
-                        platformGradient.addColorStop(1, '#2a3a2a');
+                        platformGradient.addColorStop(0, '#3a5a4a');
+                        platformGradient.addColorStop(1, '#1a2a1a');
                     } else {
-                        platformGradient.addColorStop(0, '#44444c');
-                        platformGradient.addColorStop(1, '#222228');
+                        platformGradient.addColorStop(0, '#303850');
+                        platformGradient.addColorStop(1, '#151824');
                     }
                     ctx.fillStyle = platformGradient;
-                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.fillRect(platform.x + 6, platform.y + 6, platform.width - 12, platform.height + 8);
+
+                    // Top glowing mystical edge
+                    ctx.fillStyle = this.isSafeRoom ? '#8affaa' : '#b0d0ff';
+                    ctx.fillRect(platform.x, platform.y, platform.width, 3);
                     
-                    // Top highlight edge
-                    ctx.fillStyle = this.isSafeRoom ? '#6a7a6a' : '#555560';
-                    ctx.fillRect(platform.x, platform.y, platform.width, 4);
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    const topGlowColor = this.isSafeRoom ? 'rgba(100, 255, 150, 0.6)' : 'rgba(100, 180, 255, 0.5)';
+                    ctx.shadowColor = topGlowColor;
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = topGlowColor;
+                    ctx.fillRect(platform.x, platform.y - 1, platform.width, 4);
+                    ctx.restore();
                     
-                    // Texture and details
-                    ctx.strokeStyle = '#15151a';
+                    // Broken masonry lines and texture
+                    ctx.strokeStyle = '#0a0d14';
                     ctx.lineWidth = 2;
-                    // Vertical lines to look like assembled stone blocks
-                    for (let x = platform.x + 20; x < platform.x + platform.width; x += 30) {
+                    for (let x = platform.x + 25; x < platform.x + platform.width - 15; x += 40) {
                         ctx.beginPath();
-                        ctx.moveTo(x, platform.y + 4);
-                        ctx.lineTo(x, platform.y + platform.height);
+                        ctx.moveTo(x, platform.y + 6);
+                        // Jagged vertical line
+                        ctx.lineTo(x + 2, platform.y + platform.height / 2);
+                        ctx.lineTo(x - 1, platform.y + platform.height + 10);
+                        ctx.stroke();
+
+                        // Horizontal cracks
+                        ctx.beginPath();
+                        ctx.moveTo(x - 15, platform.y + platform.height / 2 + (x % 5));
+                        ctx.lineTo(x + 10, platform.y + platform.height / 2 + (x % 7));
                         ctx.stroke();
                     }
 
-                    // Safe room specific moss/vines
-                    if (this.isSafeRoom) {
-                        ctx.fillStyle = '#228b22';
-                        for (let x = platform.x + 5; x < platform.x + platform.width - 15; x += 25) {
-                            if (Math.random() < 0.7) {
-                                ctx.fillRect(x, platform.y, 10 + Math.random() * 10, 4);
-                                // Dangling vine
-                                ctx.fillRect(x + 5, platform.y + 4, 3, 5 + Math.random() * 8);
+                    // Vines and overgrowth (Cyan/Blue-green mystical vines)
+                    const vineColor = this.isSafeRoom ? '#3cb371' : '#20b2aa';
+                    const mossColor = this.isSafeRoom ? '#98fb98' : '#7fffd4';
+                    for (let x = platform.x + 8; x < platform.x + platform.width - 18; x += 18) {
+                        // Seed based random to keep vines consistent per platform
+                        const seed = platform.x + x;
+                        const rand = (Math.sin(seed) * 10000) - Math.floor(Math.sin(seed) * 10000);
+
+                        if (rand < 0.6) {
+                            // Moss clumping on top
+                            ctx.fillStyle = mossColor;
+                            ctx.globalAlpha = 0.8;
+                            ctx.fillRect(x, platform.y, 12 + rand * 10, 4);
+                            ctx.globalAlpha = 1;
+
+                            // Dangling glowing vine
+                            const vineLength = 12 + rand * 35;
+                            const vineX = x + 6;
+
+                            ctx.beginPath();
+                            ctx.moveTo(vineX, platform.y + 4);
+                            // Wavy hanging vine moving slightly in the wind
+                            for (let v = 0; v < vineLength; v += 5) {
+                                ctx.lineTo(vineX + Math.sin((v + Date.now()/800)) * 3, platform.y + 4 + v);
+                            }
+                            ctx.lineWidth = 2;
+                            ctx.strokeStyle = vineColor;
+                            ctx.stroke();
+
+                            // Tiny glowing leaves/spores on the vine
+                            if (rand < 0.7) {
+                                ctx.fillStyle = mossColor;
+                                ctx.shadowColor = mossColor;
+                                ctx.shadowBlur = 5;
+                                ctx.beginPath();
+                                ctx.arc(vineX - 3, platform.y + 4 + vineLength/1.5, 2, 0, Math.PI*2);
+                                ctx.arc(vineX + 2, platform.y + 4 + vineLength/2.5, 1.5, 0, Math.PI*2);
+                                ctx.fill();
+                                ctx.shadowBlur = 0;
                             }
                         }
                     }
                 }
                 
-                // Ground
-                ctx.fillStyle = '#2a2a2a';
+                // Ground update to match cooler environment
+                ctx.fillStyle = '#0a0d18';
                 ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
                 
-                ctx.strokeStyle = '#1a1a1a';
+                // Grid/Tile lines
+                ctx.strokeStyle = '#05070a';
                 ctx.lineWidth = 2;
-                for (let i = 0; i < canvas.width / 60; i++) {
-                    ctx.strokeRect(i * 60, canvas.height - 50, 60, 50);
+                for (let i = 0; i < canvas.width / 80; i++) {
+                    ctx.strokeRect(i * 80, canvas.height - 50, 80, 50);
                 }
                 
-                ctx.fillStyle = '#4a4a4a';
-                ctx.fillRect(0, canvas.height - 50, canvas.width, 3);
+                // Glowing lip on the ground edge
+                ctx.fillStyle = '#304060';
+                ctx.fillRect(0, canvas.height - 50, canvas.width, 4);
+                ctx.globalCompositeOperation = 'screen';
+                ctx.fillStyle = 'rgba(100, 150, 255, 0.3)';
+                ctx.fillRect(0, canvas.height - 50, canvas.width, 6);
+                ctx.globalCompositeOperation = 'source-over';
 
                 if (this.isPuzzleRoom && this.puzzleKey && !this.keyCollected) {
                     const keyY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
@@ -9170,38 +9393,57 @@
             
             // Ambient particle generation
             if (!showingUpgrade && !gameOver) {
-                if (Math.random() < 0.3) {
-                    const type = currentRoom.isSafeRoom ? 'spore' : (currentRoom.isBossRoom ? 'ember' : 'dust');
-                    let color, life, speedX, speedY;
+                // More particles overall
+                if (Math.random() < 0.8) {
+                    const types = currentRoom.isSafeRoom ? ['spore', 'magicdust'] : (currentRoom.isBossRoom ? ['ember', 'magicdust', 'fog'] : ['magicdust', 'fog', 'ember']);
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    let color, life, speedX, speedY, size, yPos;
 
                     if (type === 'spore') {
-                        color = 'rgba(100, 255, 100, ' + (0.2 + Math.random() * 0.4) + ')';
-                        life = 100 + Math.random() * 100;
-                        speedX = (Math.random() - 0.5) * 0.5;
-                        speedY = -0.5 - Math.random() * 1;
+                        color = 'rgba(100, 255, 150, ' + (0.3 + Math.random() * 0.5) + ')';
+                        life = 120 + Math.random() * 150;
+                        speedX = (Math.random() - 0.5) * 0.8;
+                        speedY = -0.3 - Math.random() * 0.8;
+                        size = 1.5 + Math.random() * 2.5;
+                        yPos = Math.random() * canvas.height;
                     } else if (type === 'ember') {
                         const theme = currentRoom.getBossThemeColors();
-                        const accent = theme ? theme.accent : '#ff4500';
+                        const accent = theme ? theme.accent : '#5090ff';
                         color = accent;
-                        life = 60 + Math.random() * 80;
-                        speedX = (Math.random() - 0.5) * 1.5;
-                        speedY = -1 - Math.random() * 2;
-                    } else { // dust
-                        color = 'rgba(150, 150, 150, ' + (0.1 + Math.random() * 0.2) + ')';
-                        life = 150 + Math.random() * 150;
-                        speedX = (Math.random() - 0.5) * 0.8;
-                        speedY = (Math.random() - 0.5) * 0.8;
+                        life = 80 + Math.random() * 100;
+                        speedX = (Math.random() - 0.5) * 2.0;
+                        speedY = -1.5 - Math.random() * 2.5;
+                        size = 1 + Math.random() * 2.5;
+                        yPos = canvas.height;
+                    } else if (type === 'fog') {
+                        // Blue-tinted atmospheric fog
+                        color = currentRoom.isSafeRoom ? 'rgba(30, 100, 50, ' : 'rgba(20, 40, 90, ';
+                        color += (0.03 + Math.random() * 0.05) + ')';
+                        life = 400 + Math.random() * 300;
+                        speedX = (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.4);
+                        speedY = -0.1;
+                        size = 60 + Math.random() * 120;
+                        yPos = canvas.height - 20 - Math.random() * 150; // Low lying fog rolling over the ground
+                    } else { // magicdust
+                        // Glowing blue/cyan dust motes floating around
+                        color = 'rgba(150, 200, 255, ' + (0.4 + Math.random() * 0.4) + ')';
+                        life = 200 + Math.random() * 200;
+                        speedX = (Math.random() - 0.5) * 0.5;
+                        speedY = (Math.random() - 0.5) * 0.5 - 0.2;
+                        size = 1 + Math.random() * 2;
+                        yPos = Math.random() * canvas.height;
                     }
 
                     ambientParticles.push({
+                        type: type,
                         x: Math.random() * canvas.width,
-                        y: type === 'ember' ? canvas.height : Math.random() * canvas.height,
+                        y: yPos,
                         color: color,
                         vx: speedX,
                         vy: speedY,
                         life: life,
                         maxLife: life,
-                        size: 1 + Math.random() * 2
+                        size: size
                     });
                 }
             }
@@ -9213,8 +9455,11 @@
                     ambientParticles[i].y += ambientParticles[i].vy;
                     ambientParticles[i].life--;
 
-                    if (currentRoom.isSafeRoom) {
+                    if (ambientParticles[i].type === 'spore' || ambientParticles[i].type === 'dust') {
                         ambientParticles[i].vx += (Math.random() - 0.5) * 0.1; // Gentle flutter
+                        ambientParticles[i].vy += (Math.random() - 0.5) * 0.1;
+                    } else if (ambientParticles[i].type === 'fog') {
+                        ambientParticles[i].x += Math.sin(Date.now() / 1000 + i) * 0.2; // Wavy fog
                     }
                 }
 
@@ -9224,9 +9469,20 @@
                     const p = ambientParticles[i];
                     ctx.globalAlpha = p.life / p.maxLife;
                     ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    ctx.fill();
+
+                    if (p.type === 'fog') {
+                        // Soft glow for fog
+                        const fogGlow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                        fogGlow.addColorStop(0, p.color);
+                        fogGlow.addColorStop(1, p.color.replace(/[\d.]+\)$/g, '0)')); // replace alpha with 0
+                        ctx.fillStyle = fogGlow;
+                        ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
                     ctx.globalAlpha = 1;
                 }
             }
@@ -9454,44 +9710,51 @@
             
             // Dynamic Screen Vignette & Player Lighting
             if (gameStarted && !gameOver && !showingUpgrade) {
+                // Deep cool blue night vignette
                 const vignetteGrad = ctx.createRadialGradient(
-                    player.x, player.y, 50,
-                    player.x, player.y, canvas.width * 0.8
+                    player.x, player.y, 80,
+                    player.x, player.y, canvas.width * 0.7
                 );
 
-                let ambientColor = 'rgba(0, 0, 0, 0.7)';
+                let ambientColor = 'rgba(2, 5, 15, 0.9)'; // Dark navy vignette
                 if (currentRoom.isSafeRoom) {
-                    ambientColor = 'rgba(0, 20, 0, 0.5)'; // Brighter green for safe rooms
+                    ambientColor = 'rgba(2, 15, 10, 0.8)';
                 } else if (currentRoom.isBossRoom) {
-                    const theme = currentRoom.getBossThemeColors();
-                    // Extract rgb values safely for rgba construction
-                    const rawColor = theme ? theme.primary : '#3a0000';
-                    // Fallback to simple dark vignette if parsing is too complex
-                    ambientColor = 'rgba(15, 0, 0, 0.75)';
+                    ambientColor = 'rgba(15, 5, 25, 0.9)'; // Purple/blue for boss
                 }
 
                 vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                vignetteGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.1)');
+                vignetteGrad.addColorStop(0.3, 'rgba(5, 10, 20, 0.3)');
                 vignetteGrad.addColorStop(1, ambientColor);
 
+                // Multiply makes the dark edges actually darken everything beneath
+                ctx.globalCompositeOperation = 'multiply';
                 ctx.fillStyle = vignetteGrad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = 'source-over';
 
-                // Pulsing player light
+                // Pulsing player light - mystical blue/cyan glow
+                const isAttackingOrDashing = player.attacking || player.dashing;
                 const lightPulse = 0.5 + Math.sin(Date.now() / 200) * 0.2;
+                const lightSize = 160 + lightPulse * 40 + (isAttackingOrDashing ? 60 : 0);
                 const lightGrad = ctx.createRadialGradient(
-                    player.x, player.y, 0,
-                    player.x, player.y, 120 + lightPulse * 20
+                    player.x, player.y - 10, 0,
+                    player.x, player.y - 10, lightSize
                 );
 
-                const lightColor = currentRoom.isSafeRoom ? 'rgba(100, 255, 100, 0.15)' : 'rgba(255, 200, 100, 0.08)';
+                let lightColor = currentRoom.isSafeRoom ? 'rgba(100, 255, 150, 0.25)' : 'rgba(120, 180, 255, 0.2)';
+                if (isAttackingOrDashing) {
+                    lightColor = currentRoom.isSafeRoom ? 'rgba(150, 255, 200, 0.4)' : 'rgba(150, 220, 255, 0.35)';
+                }
+
                 lightGrad.addColorStop(0, lightColor);
+                lightGrad.addColorStop(0.5, lightColor.replace(/[\d.]+\)$/g, '0.05)'));
                 lightGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-                // Use lighter composite operation to add light
+                // Screen blending mode makes it look like actual light
                 ctx.globalCompositeOperation = 'screen';
                 ctx.fillStyle = lightGrad;
-                ctx.fillRect(player.x - 150, player.y - 150, 300, 300);
+                ctx.fillRect(player.x - lightSize, player.y - lightSize - 10, lightSize * 2, lightSize * 2);
                 ctx.globalCompositeOperation = 'source-over'; // Reset
             }
 
