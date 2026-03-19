@@ -946,6 +946,42 @@
             }
         }
 
+        // FloatingText class
+        class FloatingText {
+            constructor(x, y, text, color, isCrit = false) {
+                this.x = x + (Math.random() - 0.5) * 20;
+                this.y = y - 20 + (Math.random() - 0.5) * 20;
+                this.text = text;
+                this.color = color;
+                this.life = 60;
+                this.maxLife = 60;
+                this.vy = -1.5;
+                this.isCrit = isCrit;
+            }
+
+            update() {
+                if (showingUpgrade) return;
+                this.y += this.vy;
+                this.life--;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.font = `bold ${this.isCrit ? 22 : 16}px Courier New`;
+                ctx.textAlign = 'center';
+
+                // Add stroke for readability
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+
+                ctx.globalAlpha = 1;
+            }
+        }
+
         // Projectile class  
         class Projectile {
             constructor(x, y, angle, speed, owner) {
@@ -986,6 +1022,11 @@
                 this.y += this.vy;
                 this.life--;
                 
+                // Off-screen cleanup
+                if (this.x < -100 || this.x > canvas.width + 100 || this.y < -100 || this.y > canvas.height + 100) {
+                    this.life = 0;
+                }
+
                 // Trail particle
                 if (Math.random() < 0.2) {
                     particles.push(new Particle(
@@ -995,7 +1036,7 @@
                     ));
                 }
                 
-                return this.life > 0 && this.x > 0 && this.x < canvas.width && this.y > 0 && this.y < canvas.height;
+                return this.life > 0 && this.x > -100 && this.x < canvas.width + 100 && this.y > -100 && this.y < canvas.height + 100;
             }
             
             draw() {
@@ -1791,6 +1832,40 @@
             executeSpecialAbility(abilityName) {
 
                 switch(abilityName) {
+                    case 'shadowNova':
+                        // Emit a ring of projectiles
+                        for (let i = 0; i < 24; i++) {
+                            const angle = (Math.PI * 2 / 24) * i;
+                            projectiles.push(new Projectile(this.x, this.y, angle, 8, 'player'));
+                            particles.push(new Particle(
+                                this.x, this.y, '#8b008b',
+                                Math.cos(angle) * 10,
+                                Math.sin(angle) * 10,
+                                30
+                            ));
+                        }
+
+                        // Push back and damage enemies
+                        const novaRadius = 250;
+                        const novaDamage = this.attackDamage * 4;
+                        for (const enemy of currentRoom.enemies) {
+                            const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                            if (dist <= novaRadius) {
+                                enemy.takeDamage(novaDamage);
+                                const knockbackAngle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+                                enemy.vx += Math.cos(knockbackAngle) * 15;
+                                enemy.vy += Math.sin(knockbackAngle) * 15 - 5;
+                            }
+                        }
+
+                        if (currentRoom.boss && currentRoom.boss.health > 0) {
+                            const dist = Math.hypot(currentRoom.boss.x - this.x, currentRoom.boss.y - this.y);
+                            if (dist <= novaRadius) {
+                                currentRoom.boss.takeDamage(novaDamage * 0.7);
+                            }
+                        }
+                        break;
+
                     case 'shadowClone':
                         shadowClones.push(new ShadowClone(this.x, this.y));
                         for (let i = 0; i < 30; i++) {
@@ -1848,6 +1923,8 @@
                         }
                         break;
                         
+
+
                     case 'deathWave':
                         for (let i = 0; i < 8; i++) {
                             const angle = (Math.PI * 2 / 8) * i;
@@ -4658,6 +4735,9 @@
                     return;
                 }
 
+                screenFlashTimer = 5;
+                floatingTexts.push(new FloatingText(this.x, this.y, Math.floor(amount), '#ff4444', true));
+
                 metaProgress.damageTaken += amount;
                 checkAchievements();
                 this.health -= amount;
@@ -4689,14 +4769,15 @@
                 this.gravity = 0.6;
                 
                 const enemyStats = {
-                    'basic': { health: 35, speed: 2, color: '#808080', damage: 8 },
-                    'advanced': { health: 40, speed: 2.5, color: '#8b4513', damage: 10 },
-                    'heavy': { health: 70, speed: 1, color: '#4a4a4a', damage: 12 },
-                    'assassin': { health: 25, speed: 4, color: '#1a1a1a', damage: 6 },
-                    'mage': { health: 25, speed: 1.5, color: '#4b0082', damage: 6 },
-                    'berserker': { health: 58, speed: 2.7, color: '#7a0f0f', damage: 13 },
-                    'sentinel': { health: 85, speed: 1.1, color: '#3f4f5f', damage: 11 },
-                    'warlock': { health: 32, speed: 1.8, color: '#260047', damage: 8 }
+                    'basic': { health: 45, speed: 2.2, color: '#808080', damage: 10 },
+                    'advanced': { health: 50, speed: 2.8, color: '#8b4513', damage: 12 },
+                    'heavy': { health: 85, speed: 1.2, color: '#4a4a4a', damage: 15 },
+                    'assassin': { health: 30, speed: 4.5, color: '#1a1a1a', damage: 8 },
+                    'mage': { health: 35, speed: 1.8, color: '#4b0082', damage: 8 },
+                    'berserker': { health: 70, speed: 3, color: '#7a0f0f', damage: 16 },
+                    'sentinel': { health: 100, speed: 1.3, color: '#3f4f5f', damage: 14 },
+                    'warlock': { health: 40, speed: 2, color: '#260047', damage: 10 },
+                    'ninja': { health: 35, speed: 3.8, color: '#222222', damage: 9 }
                 };
                 
                 const stats = enemyStats[type] || enemyStats['basic'];
@@ -4801,6 +4882,35 @@
                         }
                         break;
                         
+
+                    case 'ninja':
+                        // Ninja: dash mechanics and throw shurikens
+                        if (dist < 80 && this.teleportCooldown <= 0) {
+                            // Dodge/Dash away
+                            this.teleportCooldown = 150;
+                            this.vx = -this.facing * this.speed * 4;
+                            this.vy = -5;
+                            for (let i = 0; i < 10; i++) {
+                                particles.push(new Particle(
+                                    this.x, this.y, '#222222',
+                                    (Math.random() - 0.5) * 8,
+                                    (Math.random() - 0.5) * 8,
+                                    20
+                                ));
+                            }
+                        } else if (dist > 250) {
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            this.vx *= 0.8; // Maintain distance
+                        }
+
+                        if (this.shootCooldown <= 0 && dist < 350) {
+                            this.shootCooldown = 60;
+                            const angle = Math.atan2(dy, dx);
+                            projectiles.push(new Projectile(this.x, this.y, angle, 10, 'enemy'));
+                        }
+                        break;
+
                     case 'assassin':
                     case 'berserker':
                         // Fast melee
@@ -4866,225 +4976,6 @@
                         break;
 
                     case 'sentinel':
-                        // Defensive bruiser: slow advance, punishes close range
-                        if (dist > 80) {
-                            this.vx = this.facing * this.speed;
-                        } else {
-                            this.vx *= 0.8;
-                            if (this.attackCooldown <= 0) {
-                                this.attackCooldown = 75;
-                                player.takeDamage(this.baseDamage + 2);
-                            }
-                        }
-
-                        if (this.shootCooldown <= 0 && dist < 220) {
-                            this.shootCooldown = 110;
-                            const pulse = new Projectile(this.x, this.y, Math.atan2(dy, dx), 6, 'enemy');
-                            pulse.vx *= 0.8;
-                            pulse.vy *= 0.8;
-                            projectiles.push(pulse);
-                        }
-                        break;
-                }
-                
-                // Animation
-                this.animCounter++;
-                if (this.animCounter > 10) {
-                    this.animFrame = (this.animFrame + 1) % 3;
-                    this.animCounter = 0;
-                }
-            }
-
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.scale(this.facing, 1);
-                
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.beginPath();
-                ctx.ellipse(0, this.height / 2 + 5, this.width / 2, 5, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                switch(this.type) {
-                    case 'basic':
-                        // Sword Knight
-                        ctx.fillStyle = '#808080';
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                        
-                        ctx.fillStyle = '#a0a0a0';
-                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, this.height / 2);
-                        
-                        ctx.fillStyle = '#696969';
-                        ctx.beginPath();
-                        ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        ctx.fillStyle = '#000000';
-                        ctx.fillRect(-6, -this.height / 2 + 4, 12, 3);
-                        
-                        // Shield
-                        ctx.fillStyle = '#8b0000';
-                        ctx.beginPath();
-                        ctx.arc(-8, 0, 8, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.strokeStyle = '#ffd700';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                        
-                        // Sword
-                        ctx.strokeStyle = '#c0c0c0';
-                        ctx.lineWidth = 3;
-                        ctx.beginPath();
-                        ctx.moveTo(8, -4);
-                        ctx.lineTo(8, -16);
-                        ctx.stroke();
-                        
-                        ctx.fillStyle = '#8b4513';
-                        ctx.fillRect(6, -6, 4, 6);
-                        break;
-                        
-                    case 'advanced':
-                        // Archer Knight
-                        ctx.fillStyle = '#8b4513';
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                        
-                        ctx.fillStyle = '#654321';
-                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 8, this.width - 8, this.height - 12);
-                        
-                        ctx.fillStyle = '#a0a0a0';
-                        ctx.beginPath();
-                        ctx.arc(0, -this.height / 2 + 6, 9, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        ctx.fillStyle = '#ffe0bd';
-                        ctx.fillRect(-4, -this.height / 2 + 4, 8, 6);
-                        
-                        ctx.fillStyle = '#000000';
-                        ctx.fillRect(-3, -this.height / 2 + 5, 2, 2);
-                        ctx.fillRect(1, -this.height / 2 + 5, 2, 2);
-                        
-                        // Bow
-                        ctx.strokeStyle = '#8b4513';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(10, 0, 12, -Math.PI/3, Math.PI/3);
-                        ctx.stroke();
-                        
-                        ctx.strokeStyle = '#d3d3d3';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(10 + Math.cos(-Math.PI/3) * 12, Math.sin(-Math.PI/3) * 12);
-                        ctx.lineTo(10 + Math.cos(Math.PI/3) * 12, Math.sin(Math.PI/3) * 12);
-                        ctx.stroke();
-                        
-                        ctx.fillStyle = '#654321';
-                        ctx.fillRect(-10, this.height / 4, 4, 8);
-                        break;
-                        
-                    case 'heavy':
-                        // Tank
-                        ctx.fillStyle = '#4a4a4a';
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                        
-                        ctx.fillStyle = '#5a5a5a';
-                        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, 8);
-                        ctx.fillRect(-this.width / 2 + 2, 0, this.width - 4, 6);
-                        
-                        ctx.fillStyle = '#3a3a3a';
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 10);
-                        
-                        // Spikes
-                        ctx.fillStyle = '#8b4513';
-                        for (let i = -1; i <= 1; i++) {
-                            ctx.beginPath();
-                            ctx.moveTo(i * 8, -this.height / 2);
-                            ctx.lineTo(i * 8 - 3, -this.height / 2 - 6);
-                            ctx.lineTo(i * 8 + 3, -this.height / 2 - 6);
-                            ctx.fill();
-                        }
-                        
-                        ctx.fillStyle = '#ff0000';
-                        ctx.fillRect(-8, -this.height / 2 + 12, 16, 3);
-                        
-                        // Hammer
-                        ctx.fillStyle = '#696969';
-                        ctx.fillRect(8, -8, 4, 16);
-                        ctx.fillRect(6, -12, 8, 8);
-                        break;
-                        
-                    case 'assassin':
-                        // Fast assassin
-                        ctx.fillStyle = '#1a1a1a';
-                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2, this.width - 8, this.height);
-                        
-                        ctx.fillStyle = '#0a0a0a';
-                        ctx.beginPath();
-                        ctx.arc(0, -this.height / 2 + 4, 8, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        ctx.fillStyle = '#ff0000';
-                        ctx.fillRect(-3, -this.height / 2 + 6, 2, 2);
-                        ctx.fillRect(1, -this.height / 2 + 6, 2, 2);
-                        
-                        // Daggers
-                        ctx.fillStyle = '#c0c0c0';
-                        ctx.fillRect(8, -2, 8, 2);
-                        ctx.fillRect(8, 2, 8, 2);
-                        break;
-                        
-                    case 'mage':
-                        // Mage
-                        ctx.fillStyle = '#4b0082';
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                        
-                        ctx.fillStyle = '#6a0dad';
-                        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 8, this.width - 8, this.height - 12);
-                        
-                        ctx.fillStyle = '#3a2a5a';
-                        ctx.beginPath();
-                        ctx.arc(0, -this.height / 2 + 4, 10, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // Hat
-                        ctx.fillStyle = '#2a1a4a';
-                        ctx.beginPath();
-                        ctx.moveTo(0, -this.height / 2 - 8);
-                        ctx.lineTo(-8, -this.height / 2 + 4);
-                        ctx.lineTo(8, -this.height / 2 + 4);
-                        ctx.fill();
-                        
-                        // Staff
-                        ctx.strokeStyle = '#8b4513';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(10, 0);
-                        ctx.lineTo(10, -18);
-                        ctx.stroke();
-                        
-                        ctx.fillStyle = '#9400d3';
-                        ctx.beginPath();
-                        ctx.arc(10, -20, 4, 0, Math.PI * 2);
-                        ctx.fill();
-                        break;
-
-                    case 'berserker':
-                        ctx.fillStyle = '#7a0f0f';
-                        ctx.fillRect(-this.width / 2 + 2, -this.height / 2, this.width - 4, this.height);
-
-                        ctx.fillStyle = '#220000';
-                        ctx.fillRect(-this.width / 2 + 5, -this.height / 2 + 6, this.width - 10, this.height - 12);
-
-                        ctx.fillStyle = '#ff2a2a';
-                        ctx.fillRect(-7, -this.height / 2 + 6, 4, 3);
-                        ctx.fillRect(3, -this.height / 2 + 6, 4, 3);
-
-                        ctx.fillStyle = '#b22222';
-                        ctx.fillRect(this.width / 2 - 1, -8, 10, 4);
-                        ctx.fillRect(this.width / 2 - 1, 2, 10, 4);
-                        break;
-
-                    case 'sentinel':
                         ctx.fillStyle = '#3f4f5f';
                         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
                         ctx.fillStyle = '#6e7f8f';
@@ -5097,6 +4988,25 @@
                         ctx.fillStyle = '#c0c0c0';
                         ctx.fillRect(-this.width / 2 - 7, -6, 7, 12);
                         ctx.fillRect(this.width / 2, -6, 7, 12);
+                        break;
+
+                    case 'ninja':
+                        // Ninja appearance
+                        ctx.fillStyle = '#222222';
+                        ctx.fillRect(-this.width / 2 + 2, -this.height / 2, this.width - 4, this.height);
+
+                        ctx.fillStyle = '#111111';
+                        ctx.beginPath();
+                        ctx.arc(0, -this.height / 2 + 4, 8, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#ffffff'; // White eyes
+                        ctx.fillRect(-3, -this.height / 2 + 6, 3, 2);
+                        ctx.fillRect(1, -this.height / 2 + 6, 3, 2);
+
+                        // Headband
+                        ctx.fillStyle = '#8b0000'; // Dark red headband
+                        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, 3);
                         break;
 
                     case 'warlock':
@@ -5139,10 +5049,12 @@
                 const baseDamage = player.attackDamage * (1 + player.upgrades.damage * 0.15);
                 const damageMultiplier = player.damageMultiplier * (mythicMode ? 5 : 1);
                 let finalDamage = amount * damageMultiplier;
+                let isCrit = false;
                 
                 // Critical hit
                 const critChance = 0.1 + (player.upgrades.critChance * 0.05);
                 if (Math.random() < critChance) {
+                    isCrit = true;
                     const critDamage = 2 + (player.upgrades.critDamage * 0.3);
                     finalDamage *= critDamage;
                     
@@ -5181,6 +5093,7 @@
                 
                 this.health -= finalDamage;
                 this.health = Math.max(0, this.health);
+                floatingTexts.push(new FloatingText(this.x, this.y, Math.floor(finalDamage), isCrit ? '#ffff00' : '#ffffff', isCrit));
                 
                 // Lifesteal
                 if (player.upgrades.lifesteal > 0) {
@@ -7380,9 +7293,16 @@
             }
 
             takeDamage(damage) {
-                const scaledDamage = damage * (0.9 + Math.min(0.3, roomNumber * 0.004));
+                // Adjust boss damage scaling: higher chambers require more damage,
+                // but we cap the resistance so it doesn't get impossible.
+                const defenseScaling = Math.max(0.5, 0.9 - Math.min(0.4, roomNumber * 0.005));
+                const scaledDamage = damage * defenseScaling;
                 this.health -= scaledDamage;
                 this.health = Math.max(0, this.health);
+                // Boss damage text is larger, maybe a slight crit check?
+                // we'll just check if it's high damage for the crit effect
+                const isCrit = scaledDamage > player.attackDamage * 2;
+                floatingTexts.push(new FloatingText(this.x, this.y, Math.floor(scaledDamage), isCrit ? '#ffff00' : '#ffffff', isCrit));
                 
                 for (let i = 0; i < 20; i++) {
                     particles.push(new Particle(
@@ -7472,20 +7392,20 @@
 
         const BOSS_MINION_POOLS = {
             'Crimson Knight': ['heavy', 'berserker', 'advanced'],
-            'Shadow Lord': ['assassin', 'warlock', 'basic'],
+            'Shadow Lord': ['assassin', 'warlock', 'ninja'],
             'Frost Warden': ['mage', 'sentinel', 'advanced'],
             'Flame Tyrant': ['berserker', 'advanced', 'mage'],
             'Stone Golem': ['heavy', 'sentinel', 'basic'],
-            'Toxic Assassin': ['assassin', 'warlock', 'mage'],
+            'Toxic Assassin': ['ninja', 'warlock', 'mage'],
             'Thunder King': ['advanced', 'mage', 'warlock'],
             'Necromancer': ['warlock', 'mage', 'sentinel'],
             'Blood Reaper': ['berserker', 'assassin', 'heavy'],
-            'Void Walker': ['warlock', 'assassin', 'sentinel'],
+            'Void Walker': ['warlock', 'ninja', 'sentinel'],
             'Crystal Sage': ['mage', 'advanced', 'warlock'],
             'Iron Colossus': ['sentinel', 'heavy', 'advanced'],
-            'Phantom Assassin': ['assassin', 'berserker', 'warlock'],
+            'Phantom Assassin': ['ninja', 'berserker', 'warlock'],
             'Plague Doctor': ['mage', 'warlock', 'heavy'],
-            'Storm Herald': ['advanced', 'warlock', 'assassin']
+            'Storm Herald': ['advanced', 'warlock', 'ninja']
         };
 
         function getBossEncounterIndexForRoom(roomNum) {
@@ -7611,7 +7531,7 @@
                     
                     const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
                     const usedPlatforms = [];
-                    const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock'];
+                    const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock', 'ninja'];
                     
                     for (let i = 0; i < enemyCount; i++) {
                         let platformIndex;
@@ -8062,6 +7982,7 @@
             massacreMode: { name: 'Massacre Mode', desc: '5 kills = massive buffs', rarity: 'epic', maxLevel: 3, type: 'passive' },
             
             // LEGENDARY (Active abilities)
+            shadowNova: { name: 'Shadow Nova', desc: 'Expanding ring of dark energy', rarity: 'legendary', type: 'special', cooldown: 300 },
             shadowClone: { name: 'Shadow Clone', desc: 'Summon fighting clone', rarity: 'legendary', type: 'special', cooldown: 300 },
             fireStorm: { name: 'Fire Storm', desc: 'Rain fire from above', rarity: 'legendary', type: 'special', cooldown: 300 },
             timeStop: { name: 'Time Stop', desc: 'Freeze all enemies', rarity: 'legendary', type: 'special', cooldown: 300 },
@@ -8535,6 +8456,8 @@
         let particles = [];
         let projectiles = [];
         let shadowClones = [];
+        let floatingTexts = [];
+        let screenFlashTimer = 0;
         let hitStopFrames = 0;
         let gameStarted = false;
         let showingUpgrade = false;
@@ -8797,6 +8720,7 @@
             const timer = executionCinematic.timer;
             const progress = 1 - Math.max(0, timer) / duration;
             const phasePulse = Math.sin(progress * Math.PI * 4);
+
             const centerX = executionCinematic.x;
             const centerY = executionCinematic.y;
 
@@ -8807,13 +8731,14 @@
             // Cinematic letterbox bars for a finisher feel
             const barHeight = 38 + Math.sin(progress * Math.PI) * 26;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-            ctx.fillRect(0, 0, canvas.width, barHeight);
-            ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+            // Use negative coordinates to cover edges during screen shake
+            ctx.fillRect(-50, -50, canvas.width + 100, barHeight + 50);
+            ctx.fillRect(-50, canvas.height - barHeight, canvas.width + 100, barHeight + 50);
 
             // Cinematic blackout + flash timing
             const blackoutAlpha = 0.32 + (Math.sin(progress * Math.PI) * 0.44);
-            ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.86, blackoutAlpha)})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.92, blackoutAlpha)})`; // Darker blackout
+            ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
 
             // Rotating sigil circle around the boss
             const sigilRadius = 70 + progress * 120;
@@ -8865,26 +8790,34 @@
             ctx.shadowBlur = 0;
 
             // Floating embers during the finisher
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 15; i++) { // Increased particle count
                 const emberAngle = Math.random() * Math.PI * 2;
                 const emberRadius = 30 + Math.random() * (40 + progress * 110);
                 const px = centerX + Math.cos(emberAngle) * emberRadius;
                 const py = centerY + Math.sin(emberAngle) * emberRadius;
-                ctx.fillStyle = ['#ff2a2a', '#ffd700', '#ffffff'][Math.floor(Math.random() * 3)];
-                ctx.globalAlpha = 0.28 + Math.random() * 0.45;
-                ctx.fillRect(px, py, 2 + Math.random() * 2, 2 + Math.random() * 2);
+                ctx.fillStyle = ['#ff2a2a', '#ffd700', '#ffffff', '#ff8c00'][Math.floor(Math.random() * 4)];
+                ctx.globalAlpha = 0.4 + Math.random() * 0.6; // Increased opacity
+                ctx.fillRect(px, py, 3 + Math.random() * 3, 3 + Math.random() * 3); // Larger particles
             }
             ctx.globalAlpha = 1;
 
             // Final flash + shockwave at the end of execution
             if (timer < 12) {
                 const flash = (12 - timer) / 12;
-                ctx.fillStyle = `rgba(255,255,255,${flash * 0.62})`;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.strokeStyle = `rgba(255,255,255,${0.75 - flash * 0.45})`;
-                ctx.lineWidth = 6;
+                ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.8})`; // Stronger flash
+                ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+
+                // Multi-layered shockwave
+                ctx.strokeStyle = `rgba(255,255,255,${0.9 - flash * 0.7})`;
+                ctx.lineWidth = 8;
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, 80 + flash * 220, 0, Math.PI * 2);
+                ctx.arc(centerX, centerY, 80 + flash * 300, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = `rgba(255, 215, 0, ${0.7 - flash * 0.5})`;
+                ctx.lineWidth = 12;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 100 + flash * 250, 0, Math.PI * 2);
                 ctx.stroke();
             }
 
@@ -9035,12 +8968,25 @@
             for (let step = 0; step < steps; step++) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
+                ctx.save();
+
+                if (executionCinematic) {
+                    const duration = executionCinematic.duration || EXECUTION_CINEMATIC_DURATION;
+                    const timer = executionCinematic.timer;
+                    const progress = 1 - Math.max(0, timer) / duration;
+                    const shakeAmount = Math.max(0, Math.sin(progress * Math.PI) * 12);
+                    const shakeX = (Math.random() - 0.5) * shakeAmount;
+                    const shakeY = (Math.random() - 0.5) * shakeAmount;
+                    ctx.translate(shakeX, shakeY);
+                }
+
                 // Always draw the room (even during upgrade/safe room screens)
                 if (gameStarted && !gameOver) {
                     currentRoom.draw();
                 }
                 
                 if (!gameStarted || gameOver || showingUpgrade) {
+                    ctx.restore();
                     break;
                 }
 
@@ -9063,8 +9009,21 @@
                         particle.draw();
                     }
 
+                    for (const text of floatingTexts) {
+                        text.draw();
+                    }
+
                     player.draw();
                     drawExecutionCinematic();
+
+                    // Screen flash effect when hit
+                    if (screenFlashTimer > 0) {
+                        ctx.fillStyle = `rgba(255, 0, 0, ${screenFlashTimer * 0.1})`;
+                        ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+                        screenFlashTimer--;
+                    }
+
+                    ctx.restore();
                     continue;
                 }
             
@@ -9257,8 +9216,30 @@
             // Draw player
             player.draw();
 
+            // Update and draw floating texts
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                floatingTexts[i].update();
+                floatingTexts[i].draw();
+                if (floatingTexts[i].life <= 0) {
+                    floatingTexts.splice(i, 1);
+                }
+            }
+
             drawExecutionCinematic();
             
+            // Screen flash effect when hit
+            if (screenFlashTimer > 0) {
+                ctx.fillStyle = `rgba(255, 0, 0, ${screenFlashTimer * 0.1})`;
+                ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+                screenFlashTimer--;
+            }
+
+            ctx.restore();
+
+
+            if (particles.length > 500) {
+                particles.splice(0, particles.length - 500);
+            }
             currentRoom.updateRoomState();
 
             // Check for room transition
