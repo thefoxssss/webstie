@@ -1,0 +1,26 @@
+<<<<<<< SEARCH
+                // 1.5 Moon Layer
+                const moonOffsetX = pOffsetX * 0.05;
+                const moonOffsetY = pOffsetY * 0.05;
+                ctx.save();
+                ctx.translate(-moonOffsetX, -moonOffsetY);
+=======
+                // 1.5 Moon Layer
+                const moonOffsetX = pOffsetX * 0.05;
+                const moonOffsetY = 0; // Fixed pOffsetY ReferenceError
+                ctx.save();
+                ctx.translate(-moonOffsetX, -moonOffsetY);
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                // 1.8 Distant Mountains Layer
+                const mtnOffsetX = pOffsetX * 0.15;
+                const mtnOffsetY = pOffsetY * 0.1;
+                ctx.save();
+                ctx.translate(-mtnOffsetX, -mtnOffsetY);
+=======
+                // 1.8 Distant Mountains Layer
+                const mtnOffsetX = pOffsetX * 0.15;
+                const mtnOffsetY = 0; // Fixed pOffsetY ReferenceError
+                ctx.save();
+                ctx.translate(-mtnOffsetX, -mtnOffsetY);
+>>>>>>> REPLACE

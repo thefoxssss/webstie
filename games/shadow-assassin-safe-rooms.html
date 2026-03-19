@@ -7788,7 +7788,7 @@
 
                 // 1.5 Moon Layer
                 const moonOffsetX = pOffsetX * 0.05;
-                const moonOffsetY = pOffsetY * 0.05;
+                const moonOffsetY = pOffsetY * 0.05; // Note: pOffsetY was added earlier
                 ctx.save();
                 ctx.translate(-moonOffsetX, -moonOffsetY);
                 const moonGlow = ctx.createRadialGradient(canvas.width * 0.8, 150, 0, canvas.width * 0.8, 150, 150);
