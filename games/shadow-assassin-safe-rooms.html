@@ -7530,6 +7530,7 @@
                 this.enemies = [];
                 this.boss = null;
                 this.platforms = [];
+                this.hazards = [];
                 this.cleared = false;
                 this.keyCollected = false;
                 this.puzzleKey = null;
@@ -7643,6 +7644,41 @@
                                 platform.y - 40,
                                 type
                             ));
+                        }
+                    }
+
+                    // Generate Hazards
+                    if (this.roomNumber >= 2 && !this.isBossRoom && !this.isSafeRoom && !this.isPuzzleRoom) {
+                        const hazardCount = Math.floor(rand() * 3) + (this.roomNumber > 5 ? 1 : 0);
+                        const unusedPlatforms = this.platforms.map((_, i) => i).filter(i => !usedPlatforms.includes(i));
+
+                        for (let i = 0; i < hazardCount; i++) {
+                            const isGroundSpike = rand() < 0.5;
+
+                            if (isGroundSpike) {
+                                // Place spikes on ground
+                                const x = 300 + rand() * (canvas.width - 600);
+                                this.hazards.push({
+                                    type: 'spikes',
+                                    x: x,
+                                    y: canvas.height - 50 - 15,
+                                    width: 40 + rand() * 40,
+                                    height: 15
+                                });
+                            } else if (unusedPlatforms.length > 0) {
+                                // Place hazard on an unused platform
+                                const pIdx = Math.floor(rand() * unusedPlatforms.length);
+                                const platformIndex = unusedPlatforms.splice(pIdx, 1)[0];
+                                const platform = this.platforms[platformIndex];
+
+                                this.hazards.push({
+                                    type: 'spikes',
+                                    x: platform.x + 10,
+                                    y: platform.y - 15,
+                                    width: platform.width - 20,
+                                    height: 15
+                                });
+                            }
                         }
                     }
                 }
@@ -7852,6 +7888,33 @@
                         ctx.moveTo(crackX, platform.y);
                         ctx.lineTo(crackX + 5, platform.y + platform.height);
                         ctx.stroke();
+                    }
+                }
+
+                // Hazards
+                for (const hazard of this.hazards) {
+                    if (hazard.type === 'spikes') {
+                        ctx.fillStyle = '#8a8a8a';
+                        const spikeWidth = 10;
+                        const spikeCount = Math.floor(hazard.width / spikeWidth);
+
+                        for (let i = 0; i < spikeCount; i++) {
+                            const sx = hazard.x + i * spikeWidth;
+                            ctx.beginPath();
+                            ctx.moveTo(sx, hazard.y + hazard.height);
+                            ctx.lineTo(sx + spikeWidth / 2, hazard.y);
+                            ctx.lineTo(sx + spikeWidth, hazard.y + hazard.height);
+                            ctx.closePath();
+                            ctx.fill();
+
+                            // Highlight
+                            ctx.strokeStyle = '#b0b0b0';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(sx, hazard.y + hazard.height);
+                            ctx.lineTo(sx + spikeWidth / 2, hazard.y);
+                            ctx.stroke();
+                        }
                     }
                 }
                 
@@ -9260,6 +9323,33 @@
             drawExecutionCinematic();
             
             currentRoom.updateRoomState();
+
+            // Hazard Collision
+            if (currentRoom.hazards) {
+                for (const hazard of currentRoom.hazards) {
+                    if (player.x + player.width / 2 > hazard.x &&
+                        player.x - player.width / 2 < hazard.x + hazard.width &&
+                        player.y + player.height / 2 > hazard.y &&
+                        player.y - player.height / 2 < hazard.y + hazard.height) {
+
+                        // Small invulnerability check so player doesn't instantly die in one frame
+                        if (!player.invincible && !player.dashing) {
+                            player.takeDamage(15);
+                            player.vy = -8; // Knockback up
+
+                            // Visual feedback
+                            for (let i = 0; i < 15; i++) {
+                                particles.push(new Particle(
+                                    player.x, player.y, '#ff0000',
+                                    (Math.random() - 0.5) * 8,
+                                    (Math.random() - 0.5) * 8,
+                                    25
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
 
             // Check for room transition
             const roomCleared = currentRoom.isSafeRoom || (currentRoom.boss ?
