@@ -4657,7 +4657,7 @@
                 // Eyes (glowing)
                 ctx.fillStyle = skinColors.eyes;
                 ctx.fillRect(2, -8, 3, 2);
-                
+
                 // Cloak
                 ctx.fillStyle = skinColors.hood;
                 ctx.beginPath();
@@ -4666,7 +4666,7 @@
                 ctx.lineTo(-this.width / 2 - 4, this.height / 2);
                 ctx.lineTo(-this.width / 2, this.height / 2);
                 ctx.fill();
-                
+
                 // Belt
                 ctx.fillStyle = skinColors.belt;
                 ctx.fillRect(-this.width / 2, 0, this.width, 4);
@@ -4806,7 +4806,10 @@
                     'mage': { health: 25, speed: 1.5, color: '#4b0082', damage: 6 },
                     'berserker': { health: 58, speed: 2.7, color: '#7a0f0f', damage: 13 },
                     'sentinel': { health: 85, speed: 1.1, color: '#3f4f5f', damage: 11 },
-                    'warlock': { health: 32, speed: 1.8, color: '#260047', damage: 8 }
+                    'warlock': { health: 32, speed: 1.8, color: '#260047', damage: 8 },
+                    'flyer': { health: 20, speed: 3.5, color: '#7b68ee', damage: 5 },
+                    'brute': { health: 120, speed: 0.8, color: '#8b0000', damage: 20 },
+                    'sniper': { health: 30, speed: 3, color: '#2f4f4f', damage: 15 }
                 };
                 
                 const stats = enemyStats[type] || enemyStats['basic'];
@@ -4890,6 +4893,65 @@
                             if (this.attackCooldown <= 0) {
                                 this.attackCooldown = 60;
                                 player.takeDamage(this.baseDamage);
+                            }
+                        }
+                        break;
+
+                    case 'flyer':
+                        // Hovers above player and occasionally dives
+                        this.vy = 0; // Neutralize gravity
+                        this.gravity = 0;
+                        if (dist > 30) {
+                            const angle = Math.atan2(dy, dx);
+                            this.vx = Math.cos(angle) * this.speed;
+                            this.vy = Math.sin(angle) * this.speed;
+                        } else {
+                            this.vx = 0;
+                            this.vy = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = 50;
+                                player.takeDamage(this.baseDamage);
+                            }
+                        }
+                        break;
+
+                    case 'brute':
+                        // Slow, high health, high damage melee
+                        if (dist > 60) {
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            this.vx = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = 90; // Slow attacks
+                                player.takeDamage(this.baseDamage);
+                                // Small knockback
+                                player.vx = this.facing * 10;
+                                player.vy = -5;
+                            }
+                        }
+                        break;
+
+                    case 'sniper':
+                        // Tries to stay far away and shoot fast projectiles
+                        if (dist < 200) {
+                            // Run away
+                            this.vx = -this.facing * this.speed;
+                        } else if (dist > 350) {
+                            // Move closer
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            // Stand and shoot
+                            this.vx = 0;
+                            if (this.shootCooldown <= 0) {
+                                this.shootCooldown = 120; // Long cooldown
+                                const angle = Math.atan2(dy, dx);
+                                projectiles.push(new Projectile(
+                                    this.x,
+                                    this.y,
+                                    angle,
+                                    15, // Very fast projectile
+                                    'enemy'
+                                ));
                             }
                         }
                         break;
@@ -5032,7 +5094,7 @@
                         
                         ctx.fillStyle = '#000000';
                         ctx.fillRect(-6, -this.height / 2 + 4, 12, 3);
-                        
+
                         // Shield
                         ctx.fillStyle = '#8b0000';
                         ctx.beginPath();
@@ -5061,7 +5123,7 @@
                         
                         ctx.fillStyle = '#654321';
                         ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 8, this.width - 8, this.height - 12);
-                        
+
                         ctx.fillStyle = '#a0a0a0';
                         ctx.beginPath();
                         ctx.arc(0, -this.height / 2 + 6, 9, 0, Math.PI * 2);
@@ -5228,6 +5290,64 @@
                         ctx.lineTo(-18, -18);
                         ctx.lineTo(-6, -14);
                         ctx.stroke();
+                        break;
+
+                    case 'flyer':
+                        // Small hovering orb with wings
+                        ctx.fillStyle = '#7b68ee';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#9370db';
+                        ctx.beginPath();
+                        ctx.ellipse(-10, -5, 8, 4, Math.PI / 4, 0, Math.PI * 2);
+                        ctx.ellipse(10, -5, 8, 4, -Math.PI / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+
+                    case 'brute':
+                        // Bulky, spiked armor
+                        ctx.fillStyle = '#8b0000';
+                        ctx.fillRect(-this.width / 2 - 5, -this.height / 2, this.width + 10, this.height);
+
+                        ctx.fillStyle = '#4a0404';
+                        ctx.fillRect(-this.width / 2 - 2, -this.height / 2 + 10, this.width + 4, this.height - 10);
+
+                        // Spikes
+                        ctx.fillStyle = '#666';
+                        ctx.beginPath();
+                        ctx.moveTo(-10, -this.height / 2);
+                        ctx.lineTo(-5, -this.height / 2 - 10);
+                        ctx.lineTo(0, -this.height / 2);
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.moveTo(0, -this.height / 2);
+                        ctx.lineTo(5, -this.height / 2 - 10);
+                        ctx.lineTo(10, -this.height / 2);
+                        ctx.fill();
+
+                        // Glowing eyes
+                        ctx.fillStyle = '#ff4500';
+                        ctx.fillRect(-8, -this.height / 2 + 5, 4, 3);
+                        ctx.fillRect(4, -this.height / 2 + 5, 4, 3);
+                        break;
+
+                    case 'sniper':
+                        // Sleek, tall, sniper look
+                        ctx.fillStyle = '#2f4f4f';
+                        ctx.fillRect(-this.width / 4, -this.height / 2 - 10, this.width / 2, this.height + 10);
+
+                        // Glowing visor
+                        ctx.fillStyle = '#00ffff';
+                        ctx.fillRect(-this.width / 4, -this.height / 2 - 5, this.width / 2, 4);
+
+                        // Long rifle
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(5, -this.height / 2 + 5, 30, 4);
+                        ctx.fillStyle = '#00ffff'; // Rifle core
+                        ctx.fillRect(10, -this.height / 2 + 6, 15, 2);
                         break;
                 }
                 
@@ -7706,21 +7826,21 @@
         };
 
         const BOSS_MINION_POOLS = {
-            'Crimson Knight': ['heavy', 'berserker', 'advanced'],
-            'Shadow Lord': ['assassin', 'warlock', 'basic'],
-            'Frost Warden': ['mage', 'sentinel', 'advanced'],
-            'Flame Tyrant': ['berserker', 'advanced', 'mage'],
-            'Stone Golem': ['heavy', 'sentinel', 'basic'],
-            'Toxic Assassin': ['assassin', 'warlock', 'mage'],
-            'Thunder King': ['advanced', 'mage', 'warlock'],
-            'Necromancer': ['warlock', 'mage', 'sentinel'],
-            'Blood Reaper': ['berserker', 'assassin', 'heavy'],
-            'Void Walker': ['warlock', 'assassin', 'sentinel'],
-            'Crystal Sage': ['mage', 'advanced', 'warlock'],
-            'Iron Colossus': ['sentinel', 'heavy', 'advanced'],
-            'Phantom Assassin': ['assassin', 'berserker', 'warlock'],
-            'Plague Doctor': ['mage', 'warlock', 'heavy'],
-            'Storm Herald': ['advanced', 'warlock', 'assassin']
+            'Crimson Knight': ['heavy', 'berserker', 'advanced', 'brute'],
+            'Shadow Lord': ['assassin', 'warlock', 'basic', 'sniper'],
+            'Frost Warden': ['mage', 'sentinel', 'advanced', 'flyer'],
+            'Flame Tyrant': ['berserker', 'advanced', 'mage', 'brute'],
+            'Stone Golem': ['heavy', 'sentinel', 'basic', 'brute'],
+            'Toxic Assassin': ['assassin', 'warlock', 'mage', 'sniper'],
+            'Thunder King': ['advanced', 'mage', 'warlock', 'flyer'],
+            'Necromancer': ['warlock', 'mage', 'sentinel', 'flyer'],
+            'Blood Reaper': ['berserker', 'assassin', 'heavy', 'brute'],
+            'Void Walker': ['warlock', 'assassin', 'sentinel', 'sniper'],
+            'Crystal Sage': ['mage', 'advanced', 'warlock', 'flyer'],
+            'Iron Colossus': ['sentinel', 'heavy', 'advanced', 'brute'],
+            'Phantom Assassin': ['assassin', 'berserker', 'warlock', 'sniper'],
+            'Plague Doctor': ['mage', 'warlock', 'heavy', 'flyer'],
+            'Storm Herald': ['advanced', 'warlock', 'assassin', 'sniper']
         };
 
         function getBossEncounterIndexForRoom(roomNum) {
@@ -7938,7 +8058,7 @@
                     
                     const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
                     const usedPlatforms = [];
-                    const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock'];
+                    const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock', 'flyer', 'brute', 'sniper'];
                     
                     for (let i = 0; i < enemyCount; i++) {
                         let platformIndex;
