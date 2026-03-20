@@ -4595,17 +4595,71 @@
 
                 if (this.grappling && this.grapplePoint) {
                     ctx.save();
-                    ctx.strokeStyle = '#c0c0c0';
+
+                    // Draw Chain
+                    const dx = this.grapplePoint.x - this.x;
+                    const dy = this.grapplePoint.y - (this.y - 6);
+                    const dist = Math.hypot(dx, dy);
+                    const angle = Math.atan2(dy, dx);
+
+                    const linkLength = 8;
+                    const numLinks = Math.floor(dist / linkLength);
+
+                    ctx.strokeStyle = '#708090'; // Slate gray chain
                     ctx.lineWidth = 2;
+
+                    for (let i = 0; i < numLinks; i++) {
+                        const linkX = this.x + Math.cos(angle) * (i * linkLength);
+                        const linkY = (this.y - 6) + Math.sin(angle) * (i * linkLength);
+
+                        ctx.save();
+                        ctx.translate(linkX, linkY);
+                        // Alternate link rotation for 3D effect
+                        ctx.rotate(angle + (i % 2 === 0 ? 0 : Math.PI / 4));
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, linkLength / 2, 2, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    ctx.restore();
+                    ctx.save();
+                    // Draw Anchor/Hook
+                    ctx.translate(this.grapplePoint.x, this.grapplePoint.y);
+                    ctx.rotate(angle);
+
+                    ctx.fillStyle = '#4a5568'; // Darker gray metal
+                    ctx.strokeStyle = '#2d3748';
+                    ctx.lineWidth = 1;
+
+                    // Main anchor shaft
+                    ctx.fillRect(-6, -2, 12, 4);
+
+                    // Crossbar
+                    ctx.fillRect(-4, -6, 2, 12);
+
+                    // The hook/claws
                     ctx.beginPath();
-                    ctx.moveTo(this.x, this.y - 6);
-                    ctx.lineTo(this.grapplePoint.x, this.grapplePoint.y);
+                    ctx.arc(4, 0, 8, -Math.PI/2, Math.PI/2, false);
+                    ctx.lineTo(0, 6);
+                    ctx.lineTo(0, -6);
+                    ctx.fill();
                     ctx.stroke();
 
-                    ctx.fillStyle = '#ffd700';
+                    // Sharp tips
+                    ctx.fillStyle = '#cbd5e0';
                     ctx.beginPath();
-                    ctx.arc(this.grapplePoint.x, this.grapplePoint.y, 4, 0, Math.PI * 2);
+                    ctx.moveTo(4, -8);
+                    ctx.lineTo(8, -8);
+                    ctx.lineTo(4, -4);
                     ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(4, 8);
+                    ctx.lineTo(8, 8);
+                    ctx.lineTo(4, 4);
+                    ctx.fill();
+
                     ctx.restore();
                 }
 
@@ -7894,9 +7948,14 @@
             return roomNum >= 4 && roomNum % 10 === 2 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
+        function isWaveRoomNumber(roomNum) {
+            // Wave rooms randomly but at least once every 10 rooms (using 7th slot)
+            return roomNum > 0 && roomNum % 10 === 7 && !isSafeRoomNumber(roomNum) && !isBossRoomNumber(roomNum);
+        }
+
         // Room class (keeping original castle look)
         class Room {
-            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false, isSpikeRoom = false, isLavaRoom = false, isTreasureRoom = false, isTrapRoom = false, isMimicRoom = false) {
+            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false, isSpikeRoom = false, isLavaRoom = false, isTreasureRoom = false, isTrapRoom = false, isMimicRoom = false, isWaveRoom = false) {
                 this.seed = seed;
                 this.roomNumber = Math.max(1, Math.round(seed / 12345));
                 this.isBossRoom = isBossRoom;
@@ -7907,7 +7966,16 @@
                 this.isTreasureRoom = isTreasureRoom;
                 this.isTrapRoom = isTrapRoom;
                 this.isMimicRoom = isMimicRoom;
+                this.isWaveRoom = isWaveRoom;
                 this.enemies = [];
+
+                // Wave mechanics
+                if (this.isWaveRoom) {
+                    this.currentWave = 1;
+                    this.maxWaves = 3;
+                    this.waveTimer = 0;
+                    this.waveSpawned = true; // Wave 1 spawns via initial generate()
+                }
                 this.boss = null;
                 this.platforms = [];
                 this.cleared = false;
@@ -8193,6 +8261,45 @@
                                         30
                                     ));
                                 }
+                            }
+                        }
+                    }
+                }
+
+                if (this.isWaveRoom) {
+                    if (this.enemies.length === 0 && this.currentWave < this.maxWaves) {
+                        this.waveTimer++;
+                        // 2 seconds delay at 60fps = 120 frames
+                        if (this.waveTimer >= 120) {
+                            this.currentWave++;
+                            this.waveTimer = 0;
+
+                            // Spawn next wave
+                            const numEnemies = 2 + this.currentWave + Math.floor(this.roomNumber / 4);
+                            const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['standard', 'advanced', 'heavy'];
+
+                            for (let i = 0; i < numEnemies; i++) {
+                                const typeRoll = this.seededRandom();
+                                let type;
+                                // Increase difficulty based on wave
+                                const advancedChance = 0.5 - (this.currentWave * 0.1);
+                                const heavyChance = 0.9 - (this.currentWave * 0.15);
+
+                                if (typeRoll < advancedChance) {
+                                    type = thematicPool[0] || 'standard';
+                                } else if (typeRoll < heavyChance) {
+                                    type = thematicPool[1] || 'advanced';
+                                } else {
+                                    type = thematicPool[2] || 'heavy';
+                                }
+
+                                // Random spawn point on the ground
+                                const spawnX = 100 + this.seededRandom() * (canvas.width - 200);
+                                this.enemies.push(new Enemy(
+                                    spawnX,
+                                    canvas.height - 90,
+                                    type
+                                ));
                             }
                         }
                     }
@@ -8840,10 +8947,26 @@
 
                 // Door
                 if (this.enemies.length === 0 && !this.cleared) {
-                    this.cleared = true;
+                    if (!this.isWaveRoom || this.currentWave >= this.maxWaves) {
+                        this.cleared = true;
+                    }
                 }
                 
-                if (this.cleared || this.enemies.length === 0) {
+                // Draw wave counter UI
+                if (this.isWaveRoom) {
+                    ctx.save();
+                    ctx.fillStyle = '#ff3333';
+                    ctx.font = 'bold 24px var(--font-main, monospace)';
+                    ctx.textAlign = 'center';
+                    if (this.currentWave < this.maxWaves || this.enemies.length > 0) {
+                        ctx.fillText(`WAVE ${this.currentWave} / ${this.maxWaves}`, canvas.width / 2, 60);
+                    } else {
+                        ctx.fillText('WAVES CLEARED', canvas.width / 2, 60);
+                    }
+                    ctx.restore();
+                }
+
+                if (this.cleared || (this.enemies.length === 0 && (!this.isWaveRoom || this.currentWave >= this.maxWaves))) {
                     const doorX = canvas.width - 60;
                     const doorY = canvas.height - 180;
                     const doorLocked = this.isPuzzleRoom && !this.keyCollected;
@@ -10308,7 +10431,7 @@
             // Check for room transition
             const roomCleared = currentRoom.isSafeRoom || currentRoom.isSpikeRoom || currentRoom.isLavaRoom || currentRoom.isTreasureRoom || currentRoom.isTrapRoom || currentRoom.isMimicRoom || (currentRoom.boss ?
                 (currentRoom.boss.health <= 0) :
-                (currentRoom.isPuzzleRoom ? currentRoom.keyCollected : currentRoom.enemies.length === 0));
+                (currentRoom.isPuzzleRoom ? currentRoom.keyCollected : (currentRoom.isWaveRoom ? (currentRoom.enemies.length === 0 && currentRoom.currentWave >= currentRoom.maxWaves) : currentRoom.enemies.length === 0)));
                 
             if (roomCleared && player.x > canvas.width - 60) {
                 roomNumber++;
@@ -10324,7 +10447,8 @@
                 const isTreasureRoom = isTreasureRoomNumber(roomNumber);
                 const isTrapRoom = isTrapRoomNumber(roomNumber);
                 const isMimicRoom = isMimicRoomNumber(roomNumber);
-                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom, isSpikeRoom, isLavaRoom, isTreasureRoom, isTrapRoom, isMimicRoom);
+                const isWaveRoom = isWaveRoomNumber(roomNumber);
+                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom, isSpikeRoom, isLavaRoom, isTreasureRoom, isTrapRoom, isMimicRoom, isWaveRoom);
                 
                 player.x = 100;
                 player.y = canvas.height - 200;
@@ -10592,7 +10716,8 @@
             const isTreasureRoom = isTreasureRoomNumber(roomNumber);
             const isTrapRoom = isTrapRoomNumber(roomNumber);
             const isMimicRoom = isMimicRoomNumber(roomNumber);
-            currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom, isSpikeRoom, isLavaRoom, isTreasureRoom, isTrapRoom, isMimicRoom);
+                const isWaveRoom = isWaveRoomNumber(roomNumber);
+                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom, isSpikeRoom, isLavaRoom, isTreasureRoom, isTrapRoom, isMimicRoom, isWaveRoom);
 
             player.x = 100;
             player.y = canvas.height - 200;
