@@ -41,6 +41,13 @@
             font-size: 14px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             z-index: 10;
+            width: max-content;
+            max-width: min(260px, calc(100vw - 40px));
+        }
+
+        .special-abilities-panel {
+            margin-top: 15px;
+            padding-top: 10px;
         }
 
         #keybinds {
@@ -706,7 +713,7 @@
         <div>Enemies: <span id="enemies">0</span></div>
         <div>Shadow Coins: <span id="shadowCoins">0</span></div>
         
-        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #666;">
+        <div class="special-abilities-panel">
             <div style="font-size: 12px; color: #ffd700; margin-bottom: 5px;">⚡ SPECIAL ABILITIES</div>
             <div id="specialAbilitiesList" style="font-size: 11px;"></div>
         </div>
@@ -1732,9 +1739,8 @@
             }
 
             applyMeleeImpact(dirX, dirY, impactX, impactY) {
-                this.vx += dirX * 1.4;
-                this.vy += dirY * 0.45;
-                triggerHitStop(3);
+                this.vx += dirX * 1.1;
+                this.vy += dirY * 0.35;
 
                 for (let i = 0; i < 8; i++) {
                     particles.push(new Particle(
@@ -10561,17 +10567,17 @@
                 ctx.globalCompositeOperation = 'source-over';
 
                 // Pulsing player light - mystical blue/cyan glow
-                const isAttackingOrDashing = player.attacking || player.dashing;
+                const isDashing = player.dashing;
                 const lightPulse = 0.5 + Math.sin(Date.now() / 200) * 0.2;
-                const lightSize = 160 + lightPulse * 40 + (isAttackingOrDashing ? 60 : 0);
+                const lightSize = 160 + lightPulse * 40 + (isDashing ? 34 : 0);
                 const lightGrad = ctx.createRadialGradient(
                     player.x, player.y - 10, 0,
                     player.x, player.y - 10, lightSize
                 );
 
                 let lightColor = currentRoom.isSafeRoom ? 'rgba(100, 255, 150, 0.25)' : 'rgba(120, 180, 255, 0.2)';
-                if (isAttackingOrDashing) {
-                    lightColor = currentRoom.isSafeRoom ? 'rgba(150, 255, 200, 0.4)' : 'rgba(150, 220, 255, 0.35)';
+                if (isDashing) {
+                    lightColor = currentRoom.isSafeRoom ? 'rgba(138, 255, 194, 0.3)' : 'rgba(142, 208, 255, 0.27)';
                 }
 
                 lightGrad.addColorStop(0, lightColor);
