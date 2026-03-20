@@ -7950,7 +7950,7 @@
 
         function isWaveRoomNumber(roomNum) {
             // Wave rooms randomly but at least once every 10 rooms (using 7th slot)
-            return roomNum > 0 && roomNum % 10 === 7 && !isSafeRoomNumber(roomNum) && !isBossRoomNumber(roomNum);
+            return roomNum > 0 && roomNum % 10 === 7 && !(roomNum % 6 === 0) && !(roomNum % 5 === 0);
         }
 
         // Room class (keeping original castle look)
@@ -8279,7 +8279,7 @@
                             const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['standard', 'advanced', 'heavy'];
 
                             for (let i = 0; i < numEnemies; i++) {
-                                const typeRoll = this.seededRandom();
+                                const typeRoll = Math.random();
                                 let type;
                                 // Increase difficulty based on wave
                                 const advancedChance = 0.5 - (this.currentWave * 0.1);
@@ -8294,7 +8294,7 @@
                                 }
 
                                 // Random spawn point on the ground
-                                const spawnX = 100 + this.seededRandom() * (canvas.width - 200);
+                                const spawnX = 100 + Math.random() * (canvas.width - 200);
                                 this.enemies.push(new Enemy(
                                     spawnX,
                                     canvas.height - 90,
@@ -10094,6 +10094,36 @@
         });
         
         // Game loop
+
+        function drawDynamicLighting() {
+            // Apply vignette and hit stop effects
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (hitStopFrames > 0) {
+                const intensity = Math.min(hitStopFrames / 5, 1);
+                ctx.fillStyle = `rgba(255, 255, 255, ${intensity * 0.3})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw player light
+            if (!gameOver && gameStarted) {
+                const gradient = ctx.createRadialGradient(
+                    player.x, player.y, 0,
+                    player.x, player.y, 150
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, 150, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+
         function gameLoop(now = performance.now()) {
             const frameDelta = Math.min(MAX_FRAME_DELTA_MS, Math.max(0, now - lastFrameTime));
             lastFrameTime = now;
@@ -10136,6 +10166,7 @@
 
                     player.draw();
                     drawExecutionCinematic();
+                    drawDynamicLighting();
                     continue;
                 }
             
