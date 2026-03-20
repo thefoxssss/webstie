@@ -7950,7 +7950,7 @@
 
         function isWaveRoomNumber(roomNum) {
             // Wave rooms randomly but at least once every 10 rooms (using 7th slot)
-            return roomNum > 0 && roomNum % 10 === 7 && !(roomNum % 6 === 0) && !(roomNum % 5 === 0);
+            return roomNum >= 4 && roomNum % 10 === 7 && !(roomNum % 6 === 0) && !(roomNum % 5 === 0) && roomNum % 7 !== 0;
         }
 
         // Room class (keeping original castle look)
@@ -7972,7 +7972,7 @@
                 // Wave mechanics
                 if (this.isWaveRoom) {
                     this.currentWave = 1;
-                    this.maxWaves = 3;
+                    this.maxWaves = 5;
                     this.waveTimer = 0;
                     this.waveSpawned = true; // Wave 1 spawns via initial generate()
                 }
@@ -8275,15 +8275,16 @@
                             this.waveTimer = 0;
 
                             // Spawn next wave
-                            const numEnemies = 2 + this.currentWave + Math.floor(this.roomNumber / 4);
+                            // Increase enemy count slightly more based on wave and room number
+                            const numEnemies = 3 + Math.floor(this.currentWave * 1.5) + Math.floor(this.roomNumber / 3);
                             const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['standard', 'advanced', 'heavy'];
 
                             for (let i = 0; i < numEnemies; i++) {
                                 const typeRoll = Math.random();
                                 let type;
-                                // Increase difficulty based on wave
-                                const advancedChance = 0.5 - (this.currentWave * 0.1);
-                                const heavyChance = 0.9 - (this.currentWave * 0.15);
+                                // Increase difficulty based on wave (harder scaling)
+                                const advancedChance = Math.max(0.1, 0.5 - (this.currentWave * 0.15));
+                                const heavyChance = Math.max(0.2, 0.85 - (this.currentWave * 0.2));
 
                                 if (typeRoll < advancedChance) {
                                     type = thematicPool[0] || 'standard';
