@@ -7754,14 +7754,39 @@
             return roomNum >= 4 && (roomNum % 10 === 3 || roomNum % 10 === 8) && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
+        function isSpikeRoomNumber(roomNum) {
+            return roomNum >= 4 && roomNum % 10 === 1 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+        }
+
+        function isLavaRoomNumber(roomNum) {
+            return roomNum >= 4 && roomNum % 10 === 4 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+        }
+
+        function isTreasureRoomNumber(roomNum) {
+            return roomNum >= 4 && roomNum % 10 === 6 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+        }
+
+        function isTrapRoomNumber(roomNum) {
+            return roomNum >= 4 && roomNum % 10 === 9 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+        }
+
+        function isMimicRoomNumber(roomNum) {
+            return roomNum >= 4 && roomNum % 10 === 2 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+        }
+
         // Room class (keeping original castle look)
         class Room {
-            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false) {
+            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false, isSpikeRoom = false, isLavaRoom = false, isTreasureRoom = false, isTrapRoom = false, isMimicRoom = false) {
                 this.seed = seed;
                 this.roomNumber = Math.max(1, Math.round(seed / 12345));
                 this.isBossRoom = isBossRoom;
                 this.isSafeRoom = isSafeRoom;
                 this.isPuzzleRoom = isPuzzleRoom;
+                this.isSpikeRoom = isSpikeRoom;
+                this.isLavaRoom = isLavaRoom;
+                this.isTreasureRoom = isTreasureRoom;
+                this.isTrapRoom = isTrapRoom;
+                this.isMimicRoom = isMimicRoom;
                 this.enemies = [];
                 this.boss = null;
                 this.platforms = [];
@@ -7793,6 +7818,73 @@
                         radius: 14,
                         bobOffset: rand() * Math.PI * 2
                     };
+                } else if (this.isSpikeRoom) {
+                    this.platforms = [
+                        { x: 50, y: canvas.height - 150, width: 150, height: 15 },
+                        { x: 280, y: canvas.height - 220, width: 80, height: 15 },
+                        { x: 450, y: canvas.height - 300, width: 80, height: 15 },
+                        { x: 650, y: canvas.height - 350, width: 80, height: 15 },
+                        { x: 880, y: canvas.height - 250, width: 80, height: 15 },
+                        { x: canvas.width - 200, y: canvas.height - 150, width: 150, height: 15 }
+                    ];
+                } else if (this.isLavaRoom) {
+                    this.platforms = [
+                        { x: 50, y: canvas.height - 150, width: 120, height: 15 },
+                        { x: 220, y: canvas.height - 250, width: 100, height: 15 },
+                        { x: 100, y: canvas.height - 350, width: 100, height: 15 },
+                        { x: 300, y: canvas.height - 450, width: 100, height: 15 },
+                        { x: 500, y: canvas.height - 520, width: 100, height: 15 },
+                        { x: 700, y: canvas.height - 450, width: 100, height: 15 },
+                        { x: 900, y: canvas.height - 350, width: 100, height: 15 },
+                        { x: canvas.width - 150, y: canvas.height - 250, width: 150, height: 15 }
+                    ];
+                    this.lavaHeight = 0;
+                } else if (this.isTreasureRoom) {
+                    this.platforms = [
+                        { x: 50, y: canvas.height - 150, width: canvas.width - 100, height: 15 }
+                    ];
+                    this.coins = [];
+                    for (let i = 0; i < 20; i++) {
+                        this.coins.push({
+                            x: 200 + rand() * (canvas.width - 400),
+                            y: canvas.height - 200 - rand() * 100,
+                            collected: false,
+                            bobOffset: rand() * Math.PI * 2
+                        });
+                    }
+                } else if (this.isTrapRoom) {
+                    this.platforms = [
+                        { x: 50, y: canvas.height - 150, width: 200, height: 15 },
+                        { x: 350, y: canvas.height - 150, width: 500, height: 15 },
+                        { x: canvas.width - 250, y: canvas.height - 150, width: 200, height: 15 }
+                    ];
+                    this.traps = [];
+                    for(let i=0; i<3; i++) {
+                        this.traps.push({
+                            x: 400 + i * 150,
+                            y: 100,
+                            width: 30,
+                            height: canvas.height - 250,
+                            phase: i * Math.PI / 1.5,
+                            speed: 0.05
+                        });
+                    }
+                } else if (this.isMimicRoom) {
+                    this.platforms = [
+                        { x: 50, y: canvas.height - 150, width: canvas.width - 100, height: 15 }
+                    ];
+                    this.chests = [];
+                    const numChests = 4;
+                    const spacing = (canvas.width - 300) / numChests;
+                    const mimicIndex = Math.floor(rand() * numChests);
+                    for (let i = 0; i < numChests; i++) {
+                        this.chests.push({
+                            x: 200 + i * spacing,
+                            y: canvas.height - 180,
+                            isMimic: (i === mimicIndex),
+                            opened: false
+                        });
+                    }
                 } else {
                     // Generate platforms
                     const platformCount = 3 + Math.floor(rand() * 4);
@@ -7822,7 +7914,7 @@
                 }
                 
                 // Safe rooms have no enemies
-                if (this.isSafeRoom || this.isPuzzleRoom) {
+                if (this.isSafeRoom || this.isPuzzleRoom || this.isSpikeRoom || this.isLavaRoom || this.isTreasureRoom || this.isTrapRoom || this.isMimicRoom) {
                     // Empty room - safe zone!
                 } else if (this.isBossRoom) {
                     const bossType = getBossTypeForBossRoom(this.roomNumber);
@@ -7884,18 +7976,105 @@
             }
 
             updateRoomState() {
-                if (!this.isPuzzleRoom || this.keyCollected || !this.puzzleKey) return;
-                const bobY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
-                const dist = Math.hypot(player.x - this.puzzleKey.x, player.y - bobY);
-                if (dist < 34) {
-                    this.keyCollected = true;
-                    for (let i = 0; i < 16; i++) {
-                        particles.push(new Particle(
-                            this.puzzleKey.x + (Math.random() - 0.5) * 24,
-                            bobY + (Math.random() - 0.5) * 24,
-                            '#9be07d',
-                            3 + Math.random() * 2
-                        ));
+                if (this.isPuzzleRoom && !this.keyCollected && this.puzzleKey) {
+                    const bobY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
+                    const dist = Math.hypot(player.x - this.puzzleKey.x, player.y - bobY);
+                    if (dist < 34) {
+                        this.keyCollected = true;
+                        for (let i = 0; i < 16; i++) {
+                            particles.push(new Particle(
+                                this.puzzleKey.x + (Math.random() - 0.5) * 24,
+                                bobY + (Math.random() - 0.5) * 24,
+                                '#9be07d',
+                                3 + Math.random() * 2
+                            ));
+                        }
+                    }
+                }
+
+                if (this.isSpikeRoom) {
+                    if (player.y > canvas.height - 80) {
+                        if (!player.invincible) {
+                            player.takeDamage(15);
+                            player.invincible = true;
+                            setTimeout(() => player.invincible = false, 500);
+                        }
+                        player.x = 100;
+                        player.y = canvas.height - 250;
+                        player.vx = 0;
+                        player.vy = 0;
+                    }
+                }
+
+                if (this.isLavaRoom) {
+                    this.lavaHeight += 0.5;
+                    const lavaTop = canvas.height - this.lavaHeight;
+                    if (player.y > lavaTop - 20) {
+                        if (!player.invincible) {
+                            player.takeDamage(10);
+                            player.invincible = true;
+                            setTimeout(() => player.invincible = false, 500);
+                        }
+                    }
+                }
+
+                if (this.isTreasureRoom && this.coins) {
+                    for (let i = 0; i < this.coins.length; i++) {
+                        if (!this.coins[i].collected) {
+                            const bobY = this.coins[i].y + Math.sin(Date.now() / 200 + this.coins[i].bobOffset) * 4;
+                            const dist = Math.hypot(player.x - this.coins[i].x, player.y - bobY);
+                            if (dist < 30) {
+                                this.coins[i].collected = true;
+                                addCoins(5);
+                                for (let j = 0; j < 5; j++) {
+                                    particles.push(new Particle(
+                                        this.coins[i].x, bobY, '#ffd700',
+                                        (Math.random() - 0.5) * 10,
+                                        (Math.random() - 0.5) * 10,
+                                        20
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (this.isTrapRoom && this.traps) {
+                    for (const trap of this.traps) {
+                        trap.phase += trap.speed;
+                        const trapBottomY = trap.y + trap.height + Math.sin(trap.phase) * 150;
+                        if (player.x > trap.x && player.x < trap.x + trap.width &&
+                            player.y > trap.y && player.y < trapBottomY) {
+                            if (!player.dashing && !player.invincible) {
+                                player.takeDamage(20);
+                                player.invincible = true;
+                                setTimeout(() => player.invincible = false, 500);
+                                // knockback
+                                player.vx = player.x < trap.x + trap.width / 2 ? -10 : 10;
+                            }
+                        }
+                    }
+                }
+
+                if (this.isMimicRoom && this.chests) {
+                    for (const chest of this.chests) {
+                        if (!chest.opened && Math.hypot(player.x - chest.x, player.y - chest.y) < 50) {
+                            chest.opened = true;
+                            if (chest.isMimic) {
+                                // spawn enemy
+                                this.enemies.push(new Enemy(chest.x, chest.y - 20, 'advanced'));
+                            } else {
+                                addCoins(15);
+                                for (let j = 0; j < 10; j++) {
+                                    particles.push(new Particle(
+                                        chest.x, chest.y, '#ffd700',
+                                        (Math.random() - 0.5) * 15,
+                                        (Math.random() - 0.5) * 15,
+                                        30
+                                    ));
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -8413,6 +8592,132 @@
                     ctx.fillText('PARKOUR FOR THE KEY', canvas.width / 2, 70);
                 }
                 
+                if (this.isSpikeRoom) {
+                    ctx.fillStyle = '#ff4444';
+                    ctx.font = '16px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('DON\'T TOUCH THE FLOOR', canvas.width / 2, 70);
+
+                    // Draw spikes on ground
+                    ctx.fillStyle = '#555';
+                    for (let x = 0; x < canvas.width; x += 20) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, canvas.height - 50);
+                        ctx.lineTo(x + 10, canvas.height - 80);
+                        ctx.lineTo(x + 20, canvas.height - 50);
+                        ctx.fill();
+
+                        ctx.strokeStyle = '#888';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+
+                if (this.isLavaRoom) {
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.font = '16px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('THE LAVA IS RISING', canvas.width / 2, 70);
+
+                    const lavaTop = canvas.height - this.lavaHeight;
+                    ctx.fillStyle = 'rgba(255, 69, 0, 0.8)';
+                    ctx.fillRect(0, lavaTop, canvas.width, this.lavaHeight);
+
+                    ctx.fillStyle = '#ff8c00';
+                    for (let x = 0; x < canvas.width; x += 40) {
+                        const wave = Math.sin(Date.now() / 500 + x * 0.05) * 10;
+                        ctx.beginPath();
+                        ctx.arc(x + 20, lavaTop + wave, 20, Math.PI, 0);
+                        ctx.fill();
+                    }
+                }
+
+                if (this.isTreasureRoom && this.coins) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = '16px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('TREASURE ROOM', canvas.width / 2, 70);
+                    for (const coin of this.coins) {
+                        if (!coin.collected) {
+                            const bobY = coin.y + Math.sin(Date.now() / 200 + coin.bobOffset) * 4;
+                            ctx.fillStyle = '#ffd700';
+                            ctx.beginPath();
+                            ctx.arc(coin.x, bobY, 8, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.fillStyle = '#daa520';
+                            ctx.beginPath();
+                            ctx.arc(coin.x, bobY, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                if (this.isTrapRoom && this.traps) {
+                    ctx.fillStyle = '#ff4444';
+                    ctx.font = '16px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('WATCH OUT FOR TRAPS', canvas.width / 2, 70);
+                    for (const trap of this.traps) {
+                        const trapBottomY = trap.y + trap.height + Math.sin(trap.phase) * 150;
+                        // Chain
+                        ctx.strokeStyle = '#888';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(trap.x + trap.width / 2, trap.y);
+                        ctx.lineTo(trap.x + trap.width / 2, trapBottomY - 20);
+                        ctx.stroke();
+
+                        // Blade
+                        ctx.fillStyle = '#555';
+                        ctx.beginPath();
+                        ctx.moveTo(trap.x, trapBottomY - 30);
+                        ctx.lineTo(trap.x + trap.width, trapBottomY - 30);
+                        ctx.lineTo(trap.x + trap.width / 2, trapBottomY);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.moveTo(trap.x + 5, trapBottomY - 28);
+                        ctx.lineTo(trap.x + trap.width - 5, trapBottomY - 28);
+                        ctx.lineTo(trap.x + trap.width / 2, trapBottomY - 2);
+                        ctx.fill();
+                    }
+                }
+
+                if (this.isMimicRoom && this.chests) {
+                    ctx.fillStyle = '#ffcc00';
+                    ctx.font = '16px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('CHOOSE WISELY', canvas.width / 2, 70);
+                    for (const chest of this.chests) {
+                        if (!chest.opened) {
+                            ctx.fillStyle = '#8b4513'; // brown
+                            ctx.fillRect(chest.x - 20, chest.y - 15, 40, 30);
+                            ctx.fillStyle = '#d2691e'; // lighter brown top
+                            ctx.beginPath();
+                            ctx.arc(chest.x, chest.y - 15, 20, Math.PI, 0);
+                            ctx.fill();
+                            // lock
+                            ctx.fillStyle = '#ffd700';
+                            ctx.fillRect(chest.x - 4, chest.y - 18, 8, 10);
+                        } else {
+                            if (chest.isMimic) {
+                                // Destroyed chest look
+                                ctx.fillStyle = '#4a2f1d';
+                                ctx.fillRect(chest.x - 25, chest.y, 50, 15);
+                            } else {
+                                // Open chest look
+                                ctx.fillStyle = '#8b4513';
+                                ctx.fillRect(chest.x - 20, chest.y, 40, 15);
+                                ctx.fillStyle = '#442200'; // inside
+                                ctx.fillRect(chest.x - 18, chest.y - 10, 36, 10);
+                                ctx.fillStyle = '#d2691e'; // lid
+                                ctx.fillRect(chest.x - 20, chest.y - 25, 40, 15);
+                            }
+                        }
+                    }
+                }
+
                 // Door
                 if (this.enemies.length === 0 && !this.cleared) {
                     this.cleared = true;
@@ -9881,7 +10186,7 @@
             currentRoom.updateRoomState();
 
             // Check for room transition
-            const roomCleared = currentRoom.isSafeRoom || (currentRoom.boss ?
+            const roomCleared = currentRoom.isSafeRoom || currentRoom.isSpikeRoom || currentRoom.isLavaRoom || currentRoom.isTreasureRoom || currentRoom.isTrapRoom || currentRoom.isMimicRoom || (currentRoom.boss ?
                 (currentRoom.boss.health <= 0) :
                 (currentRoom.isPuzzleRoom ? currentRoom.keyCollected : currentRoom.enemies.length === 0));
                 
@@ -9894,7 +10199,12 @@
                 const isSafeRoom = (roomNumber % 7 === 0);
                 const isBossRoom = (roomNumber % 5 === 0) && !isSafeRoom;
                 const isPuzzleRoom = isPuzzleRoomNumber(roomNumber);
-                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom);
+                const isSpikeRoom = isSpikeRoomNumber(roomNumber);
+                const isLavaRoom = isLavaRoomNumber(roomNumber);
+                const isTreasureRoom = isTreasureRoomNumber(roomNumber);
+                const isTrapRoom = isTrapRoomNumber(roomNumber);
+                const isMimicRoom = isMimicRoomNumber(roomNumber);
+                currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom, isSpikeRoom, isLavaRoom, isTreasureRoom, isTrapRoom, isMimicRoom);
                 
                 player.x = 100;
                 player.y = canvas.height - 200;
@@ -10157,7 +10467,12 @@
             const isSafeRoom = (roomNumber % 7 === 0);
             const isBossRoom = (roomNumber % 5 === 0) && !isSafeRoom;
             const isPuzzleRoom = isPuzzleRoomNumber(roomNumber);
-            currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom);
+            const isSpikeRoom = isSpikeRoomNumber(roomNumber);
+            const isLavaRoom = isLavaRoomNumber(roomNumber);
+            const isTreasureRoom = isTreasureRoomNumber(roomNumber);
+            const isTrapRoom = isTrapRoomNumber(roomNumber);
+            const isMimicRoom = isMimicRoomNumber(roomNumber);
+            currentRoom = new Room(roomNumber * 12345, isBossRoom, isSafeRoom, isPuzzleRoom, isSpikeRoom, isLavaRoom, isTreasureRoom, isTrapRoom, isMimicRoom);
 
             player.x = 100;
             player.y = canvas.height - 200;
