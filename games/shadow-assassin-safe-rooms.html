@@ -7968,6 +7968,7 @@
                 this.isMimicRoom = isMimicRoom;
                 this.isWaveRoom = isWaveRoom;
                 this.enemies = [];
+                this.randState = (this.seed >>> 0) || 1;
 
                 // Wave mechanics
                 if (this.isWaveRoom) {
@@ -8161,6 +8162,11 @@
                         }
                     }
                 }
+            }
+
+            seededRandom() {
+                this.randState = (this.randState * 1664525 + 1013904223) >>> 0;
+                return this.randState / 4294967296;
             }
 
             updateRoomState() {
