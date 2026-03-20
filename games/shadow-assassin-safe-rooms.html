@@ -1473,7 +1473,7 @@
 
                 this.invincible = true;
                 boss.frozen = true;
-                hitStopFrames = Math.max(hitStopFrames, 6);
+                triggerHitStop(6, 0.22);
 
                 for (let i = 0; i < 120; i++) {
                     particles.push(new Particle(
@@ -1734,7 +1734,7 @@
             applyMeleeImpact(dirX, dirY, impactX, impactY) {
                 this.vx += dirX * 1.4;
                 this.vy += dirY * 0.45;
-                hitStopFrames = Math.max(hitStopFrames, 3);
+                triggerHitStop(3);
 
                 for (let i = 0; i < 8; i++) {
                     particles.push(new Particle(
@@ -5743,7 +5743,7 @@
                         45
                     ));
                 }
-                hitStopFrames = Math.max(hitStopFrames, 4);
+                triggerHitStop(4, 0.12);
 
                 switch (this.type) {
                     case 'Crimson Knight':
@@ -9608,6 +9608,7 @@
         let projectiles = [];
         let shadowClones = [];
         let hitStopFrames = 0;
+        let hitStopFlash = 0;
         let gameStarted = false;
         let showingUpgrade = false;
         let gameOver = false;
@@ -10096,14 +10097,18 @@
         
         // Game loop
 
+        function triggerHitStop(frames, flashAlpha = 0) {
+            hitStopFrames = Math.max(hitStopFrames, frames);
+            hitStopFlash = Math.max(hitStopFlash, flashAlpha);
+        }
+
         function drawDynamicLighting() {
             // Apply vignette and hit stop effects
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            if (hitStopFrames > 0) {
-                const intensity = Math.min(hitStopFrames / 5, 1);
-                ctx.fillStyle = `rgba(255, 255, 255, ${intensity * 0.3})`;
+            if (hitStopFlash > 0.001) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${hitStopFlash})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
@@ -10148,6 +10153,7 @@
 
                 if (hitStopFrames > 0) {
                     hitStopFrames--;
+                    hitStopFlash = Math.max(0, hitStopFlash - 0.035);
 
                     for (const enemy of currentRoom.enemies) {
                         enemy.draw();
