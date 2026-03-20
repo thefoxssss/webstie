@@ -4595,17 +4595,57 @@
 
                 if (this.grappling && this.grapplePoint) {
                     ctx.save();
-                    ctx.strokeStyle = '#c0c0c0';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(this.x, this.y - 6);
-                    ctx.lineTo(this.grapplePoint.x, this.grapplePoint.y);
-                    ctx.stroke();
 
-                    ctx.fillStyle = '#ffd700';
+                    const startX = this.x;
+                    const startY = this.y - 6;
+                    const endX = this.grapplePoint.x;
+                    const endY = this.grapplePoint.y;
+                    const dx = endX - startX;
+                    const dy = endY - startY;
+                    const dist = Math.hypot(dx, dy);
+                    const angle = Math.atan2(dy, dx);
+
+                    // Draw chain links
+                    ctx.strokeStyle = '#c0c0c0';
+                    ctx.lineWidth = 1.5;
+                    const linkLength = 8;
+                    const linkCount = Math.floor(dist / linkLength);
+
+                    for (let i = 0; i < linkCount; i++) {
+                        const t = i / linkCount;
+                        const lx = startX + dx * t;
+                        const ly = startY + dy * t;
+
+                        ctx.save();
+                        ctx.translate(lx, ly);
+                        ctx.rotate(angle);
+                        ctx.beginPath();
+                        if (i % 2 === 0) {
+                            ctx.ellipse(linkLength/2, 0, linkLength/2, 2, 0, 0, Math.PI * 2);
+                        } else {
+                            ctx.ellipse(linkLength/2, 0, 1, 3, 0, 0, Math.PI * 2);
+                        }
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    // Draw spiked head
+                    ctx.translate(endX, endY);
+                    ctx.rotate(angle);
+
+                    ctx.fillStyle = '#a9a9a9';
                     ctx.beginPath();
-                    ctx.arc(this.grapplePoint.x, this.grapplePoint.y, 4, 0, Math.PI * 2);
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-10, -5);
+                    ctx.lineTo(5, 0);
+                    ctx.lineTo(-10, 5);
                     ctx.fill();
+
+                    ctx.fillStyle = '#ff4500';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 2, 0, Math.PI * 2);
+                    ctx.fill();
+
                     ctx.restore();
                 }
 
@@ -4623,7 +4663,7 @@
                 if (this.dashing) {
                     ctx.globalAlpha = 0.5;
                     for (let i = 0; i < 3; i++) {
-                        ctx.fillStyle = '#1a1a1a';
+                        ctx.fillStyle = '#2a2a2a'; // lighter trail for new look
                         ctx.fillRect(-this.width / 2 - i * 10, -this.height / 2, this.width, this.height);
                     }
                     ctx.globalAlpha = 1;
@@ -4639,37 +4679,66 @@
                     ctx.arc(0, 0, this.width * 2, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                
-                // Body (assassin in dark cloak)
+
+                // --- NEW PLAYER VISUALS ---
+
+                // Base Body (tunic/armor base)
                 ctx.fillStyle = skinColors.body;
                 ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
                 
-                // Hood
+                // Secondary color/trim details (vest or armor plates)
+                ctx.fillStyle = skinColors.belt || '#4a4a4a';
+                ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 10, this.width - 8, 12);
+
+                // Shoulders / Epaulets
                 ctx.fillStyle = skinColors.hood;
                 ctx.beginPath();
-                ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
+                ctx.arc(-this.width / 2 + 2, -this.height / 2 + 6, 4, 0, Math.PI * 2);
+                ctx.arc(this.width / 2 - 2, -this.height / 2 + 6, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Hood / Head
+                ctx.fillStyle = skinColors.hood;
+                ctx.beginPath();
+                ctx.arc(0, -this.height / 2 + 2, 11, 0, Math.PI * 2); // slightly larger, rounded hood
                 ctx.fill();
                 
-                // Face shadow
-                ctx.fillStyle = '#2a2a2a';
-                ctx.fillRect(-this.width / 2 + 6, -this.height / 2 + 8, this.width - 12, 8);
+                // Face opening / shadow
+                ctx.fillStyle = '#1a1a1a';
+                ctx.beginPath();
+                ctx.arc(4, -this.height / 2 + 4, 6, 0, Math.PI * 2);
+                ctx.fill();
                 
-                // Eyes (glowing)
+                // Eyes (glowing, slightly more menacing)
                 ctx.fillStyle = skinColors.eyes;
-                ctx.fillRect(2, -8, 3, 2);
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = skinColors.eyes;
+                ctx.fillRect(4, -this.height / 2 + 2, 4, 2);
+                ctx.shadowBlur = 0; // reset shadow
                 
-                // Cloak
+                // Dynamic Cloak / Scarf
                 ctx.fillStyle = skinColors.hood;
                 ctx.beginPath();
-                ctx.moveTo(-this.width / 2, -this.height / 2 + 12);
-                ctx.lineTo(-this.width / 2 - 6, -this.height / 2 + 20 + Math.sin(Date.now() / 100) * 3);
-                ctx.lineTo(-this.width / 2 - 4, this.height / 2);
-                ctx.lineTo(-this.width / 2, this.height / 2);
+                // Attach at neck
+                ctx.moveTo(-4, -this.height / 2 + 10);
+                // Wavy back edge
+                ctx.lineTo(-this.width / 2 - 12, -this.height / 2 + 18 + Math.sin(Date.now() / 150) * 4);
+                // Bottom point
+                ctx.lineTo(-this.width / 2 - 6, this.height / 2 - 2);
+                // Return to body
+                ctx.lineTo(-this.width / 2, this.height / 2 - 8);
                 ctx.fill();
                 
-                // Belt
+                // Belt / Sash (angled for style)
                 ctx.fillStyle = skinColors.belt;
-                ctx.fillRect(-this.width / 2, 0, this.width, 4);
+                ctx.beginPath();
+                ctx.moveTo(-this.width / 2, 2);
+                ctx.lineTo(this.width / 2, 6);
+                ctx.lineTo(this.width / 2, 10);
+                ctx.lineTo(-this.width / 2, 6);
+                ctx.fill();
+
+                // --------------------------
                 
                 // Weapon (dagger)
                 if (this.attacking && this.attackDirection !== null) {
@@ -4806,7 +4875,10 @@
                     'mage': { health: 25, speed: 1.5, color: '#4b0082', damage: 6 },
                     'berserker': { health: 58, speed: 2.7, color: '#7a0f0f', damage: 13 },
                     'sentinel': { health: 85, speed: 1.1, color: '#3f4f5f', damage: 11 },
-                    'warlock': { health: 32, speed: 1.8, color: '#260047', damage: 8 }
+                    'warlock': { health: 32, speed: 1.8, color: '#260047', damage: 8 },
+                    'flyer': { health: 20, speed: 3.5, color: '#7b68ee', damage: 5 },
+                    'brute': { health: 120, speed: 0.8, color: '#8b0000', damage: 20 },
+                    'sniper': { health: 30, speed: 3, color: '#2f4f4f', damage: 15 }
                 };
                 
                 const stats = enemyStats[type] || enemyStats['basic'];
@@ -4890,6 +4962,65 @@
                             if (this.attackCooldown <= 0) {
                                 this.attackCooldown = 60;
                                 player.takeDamage(this.baseDamage);
+                            }
+                        }
+                        break;
+
+                    case 'flyer':
+                        // Hovers above player and occasionally dives
+                        this.vy = 0; // Neutralize gravity
+                        this.gravity = 0;
+                        if (dist > 30) {
+                            const angle = Math.atan2(dy, dx);
+                            this.vx = Math.cos(angle) * this.speed;
+                            this.vy = Math.sin(angle) * this.speed;
+                        } else {
+                            this.vx = 0;
+                            this.vy = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = 50;
+                                player.takeDamage(this.baseDamage);
+                            }
+                        }
+                        break;
+
+                    case 'brute':
+                        // Slow, high health, high damage melee
+                        if (dist > 60) {
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            this.vx = 0;
+                            if (this.attackCooldown <= 0) {
+                                this.attackCooldown = 90; // Slow attacks
+                                player.takeDamage(this.baseDamage);
+                                // Small knockback
+                                player.vx = this.facing * 10;
+                                player.vy = -5;
+                            }
+                        }
+                        break;
+
+                    case 'sniper':
+                        // Tries to stay far away and shoot fast projectiles
+                        if (dist < 200) {
+                            // Run away
+                            this.vx = -this.facing * this.speed;
+                        } else if (dist > 350) {
+                            // Move closer
+                            this.vx = this.facing * this.speed;
+                        } else {
+                            // Stand and shoot
+                            this.vx = 0;
+                            if (this.shootCooldown <= 0) {
+                                this.shootCooldown = 120; // Long cooldown
+                                const angle = Math.atan2(dy, dx);
+                                projectiles.push(new Projectile(
+                                    this.x,
+                                    this.y,
+                                    angle,
+                                    15, // Very fast projectile
+                                    'enemy'
+                                ));
                             }
                         }
                         break;
@@ -5228,6 +5359,64 @@
                         ctx.lineTo(-18, -18);
                         ctx.lineTo(-6, -14);
                         ctx.stroke();
+                        break;
+
+                    case 'flyer':
+                        // Small hovering orb with wings
+                        ctx.fillStyle = '#7b68ee';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#9370db';
+                        ctx.beginPath();
+                        ctx.ellipse(-10, -5, 8, 4, Math.PI / 4, 0, Math.PI * 2);
+                        ctx.ellipse(10, -5, 8, 4, -Math.PI / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+
+                    case 'brute':
+                        // Bulky, spiked armor
+                        ctx.fillStyle = '#8b0000';
+                        ctx.fillRect(-this.width / 2 - 5, -this.height / 2, this.width + 10, this.height);
+
+                        ctx.fillStyle = '#4a0404';
+                        ctx.fillRect(-this.width / 2 - 2, -this.height / 2 + 10, this.width + 4, this.height - 10);
+
+                        // Spikes
+                        ctx.fillStyle = '#666';
+                        ctx.beginPath();
+                        ctx.moveTo(-10, -this.height / 2);
+                        ctx.lineTo(-5, -this.height / 2 - 10);
+                        ctx.lineTo(0, -this.height / 2);
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.moveTo(0, -this.height / 2);
+                        ctx.lineTo(5, -this.height / 2 - 10);
+                        ctx.lineTo(10, -this.height / 2);
+                        ctx.fill();
+
+                        // Glowing eyes
+                        ctx.fillStyle = '#ff4500';
+                        ctx.fillRect(-8, -this.height / 2 + 5, 4, 3);
+                        ctx.fillRect(4, -this.height / 2 + 5, 4, 3);
+                        break;
+
+                    case 'sniper':
+                        // Sleek, tall, sniper look
+                        ctx.fillStyle = '#2f4f4f';
+                        ctx.fillRect(-this.width / 4, -this.height / 2 - 10, this.width / 2, this.height + 10);
+
+                        // Glowing visor
+                        ctx.fillStyle = '#00ffff';
+                        ctx.fillRect(-this.width / 4, -this.height / 2 - 5, this.width / 2, 4);
+
+                        // Long rifle
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(5, -this.height / 2 + 5, 30, 4);
+                        ctx.fillStyle = '#00ffff'; // Rifle core
+                        ctx.fillRect(10, -this.height / 2 + 6, 15, 2);
                         break;
                 }
                 
@@ -7706,21 +7895,21 @@
         };
 
         const BOSS_MINION_POOLS = {
-            'Crimson Knight': ['heavy', 'berserker', 'advanced'],
-            'Shadow Lord': ['assassin', 'warlock', 'basic'],
-            'Frost Warden': ['mage', 'sentinel', 'advanced'],
-            'Flame Tyrant': ['berserker', 'advanced', 'mage'],
-            'Stone Golem': ['heavy', 'sentinel', 'basic'],
-            'Toxic Assassin': ['assassin', 'warlock', 'mage'],
-            'Thunder King': ['advanced', 'mage', 'warlock'],
-            'Necromancer': ['warlock', 'mage', 'sentinel'],
-            'Blood Reaper': ['berserker', 'assassin', 'heavy'],
-            'Void Walker': ['warlock', 'assassin', 'sentinel'],
-            'Crystal Sage': ['mage', 'advanced', 'warlock'],
-            'Iron Colossus': ['sentinel', 'heavy', 'advanced'],
-            'Phantom Assassin': ['assassin', 'berserker', 'warlock'],
-            'Plague Doctor': ['mage', 'warlock', 'heavy'],
-            'Storm Herald': ['advanced', 'warlock', 'assassin']
+            'Crimson Knight': ['heavy', 'berserker', 'advanced', 'brute'],
+            'Shadow Lord': ['assassin', 'warlock', 'basic', 'sniper'],
+            'Frost Warden': ['mage', 'sentinel', 'advanced', 'flyer'],
+            'Flame Tyrant': ['berserker', 'advanced', 'mage', 'brute'],
+            'Stone Golem': ['heavy', 'sentinel', 'basic', 'brute'],
+            'Toxic Assassin': ['assassin', 'warlock', 'mage', 'sniper'],
+            'Thunder King': ['advanced', 'mage', 'warlock', 'flyer'],
+            'Necromancer': ['warlock', 'mage', 'sentinel', 'flyer'],
+            'Blood Reaper': ['berserker', 'assassin', 'heavy', 'brute'],
+            'Void Walker': ['warlock', 'assassin', 'sentinel', 'sniper'],
+            'Crystal Sage': ['mage', 'advanced', 'warlock', 'flyer'],
+            'Iron Colossus': ['sentinel', 'heavy', 'advanced', 'brute'],
+            'Phantom Assassin': ['assassin', 'berserker', 'warlock', 'sniper'],
+            'Plague Doctor': ['mage', 'warlock', 'heavy', 'flyer'],
+            'Storm Herald': ['advanced', 'warlock', 'assassin', 'sniper']
         };
 
         function getBossEncounterIndexForRoom(roomNum) {
@@ -7787,6 +7976,10 @@
                 this.isTreasureRoom = isTreasureRoom;
                 this.isTrapRoom = isTrapRoom;
                 this.isMimicRoom = isMimicRoom;
+                this.isWaveRoom = (this.roomNumber % 10 === 9) && !isBossRoom && !isSafeRoom && !isPuzzleRoom && !isSpikeRoom && !isLavaRoom && !isTreasureRoom && !isTrapRoom && !isMimicRoom;
+                this.currentWave = 1;
+                this.maxWaves = this.isWaveRoom ? 3 : 1;
+                this.waveTimer = 0;
                 this.enemies = [];
                 this.boss = null;
                 this.platforms = [];
@@ -7920,14 +8113,14 @@
                     const bossType = getBossTypeForBossRoom(this.roomNumber);
                     this.boss = new Boss(canvas.width / 2, canvas.height - 200, bossType);
                 } else {
-                    let baseEnemyCount = 4 + Math.floor(rand() * 4);
+                    let baseEnemyCount = 5 + Math.floor(rand() * 5); // Increased base enemy count
                     const nextBossRoom = getNextBossRoomNumber(this.roomNumber);
                     const roomsUntilBoss = nextBossRoom - this.roomNumber;
 
                     if (this.roomNumber < 3) {
-                        baseEnemyCount = 2 + Math.floor(rand() * 2);
+                        baseEnemyCount = 3 + Math.floor(rand() * 2); // Increased
                     } else if (this.roomNumber < 5) {
-                        baseEnemyCount = 3 + Math.floor(rand() * 2);
+                        baseEnemyCount = 4 + Math.floor(rand() * 3); // Increased
                     }
 
                     if (roomsUntilBoss <= 2) {
@@ -7936,46 +8129,90 @@
                         baseEnemyCount += 1;
                     }
                     
-                    const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
-                    const usedPlatforms = [];
-                    const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock'];
-                    
-                    for (let i = 0; i < enemyCount; i++) {
-                        let platformIndex;
-                        let attempts = 0;
-                        do {
-                            platformIndex = Math.floor(rand() * this.platforms.length);
-                            attempts++;
-                        } while (usedPlatforms.includes(platformIndex) && attempts < 20);
+                    if (this.isWaveRoom) {
+                        this.spawnWave(rand);
+                    } else {
+                        const enemyCount = Math.min(baseEnemyCount, this.platforms.length);
+                        const usedPlatforms = [];
+                        const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock', 'flyer', 'brute', 'sniper'];
                         
-                        if (!usedPlatforms.includes(platformIndex)) {
-                            usedPlatforms.push(platformIndex);
-                            const platform = this.platforms[platformIndex];
+                        for (let i = 0; i < enemyCount; i++) {
+                            let platformIndex;
+                            let attempts = 0;
+                            do {
+                                platformIndex = Math.floor(rand() * this.platforms.length);
+                                attempts++;
+                            } while (usedPlatforms.includes(platformIndex) && attempts < 20);
                             
-                            const typeRoll = rand();
-                            let type;
+                            if (!usedPlatforms.includes(platformIndex)) {
+                                usedPlatforms.push(platformIndex);
+                                const platform = this.platforms[platformIndex];
 
-                            if (typeRoll < 0.62) {
-                                type = thematicPool[Math.floor(rand() * thematicPool.length)];
-                            } else if (typeRoll < 0.8) {
-                                type = thematicPool[0];
-                            } else if (typeRoll < 0.92) {
-                                type = thematicPool[1] || 'advanced';
-                            } else {
-                                type = thematicPool[2] || 'heavy';
+                                const typeRoll = rand();
+                                let type;
+
+                                if (typeRoll < 0.62) {
+                                    type = thematicPool[Math.floor(rand() * thematicPool.length)];
+                                } else if (typeRoll < 0.8) {
+                                    type = thematicPool[0];
+                                } else if (typeRoll < 0.92) {
+                                    type = thematicPool[1] || 'advanced';
+                                } else {
+                                    type = thematicPool[2] || 'heavy';
+                                }
+
+                                this.enemies.push(new Enemy(
+                                    platform.x + platform.width / 2,
+                                    platform.y - 40,
+                                    type
+                                ));
                             }
-                            
-                            this.enemies.push(new Enemy(
-                                platform.x + platform.width / 2,
-                                platform.y - 40,
-                                type
-                            ));
                         }
                     }
                 }
             }
 
+            spawnWave(randFunc) {
+                const baseEnemyCount = 1 + Math.floor(this.roomNumber / 4);
+                // Ramp up enemies per wave
+                const waveEnemyCount = Math.min(baseEnemyCount + (this.currentWave - 1), this.platforms.length);
+                const usedPlatforms = [];
+                const thematicPool = BOSS_MINION_POOLS[this.upcomingBossType] || ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock', 'flyer', 'brute', 'sniper'];
+
+                for (let i = 0; i < waveEnemyCount; i++) {
+                    let platformIndex;
+                    let attempts = 0;
+                    do {
+                        platformIndex = Math.floor(randFunc() * this.platforms.length);
+                        attempts++;
+                    } while (usedPlatforms.includes(platformIndex) && attempts < 20);
+
+                    if (!usedPlatforms.includes(platformIndex)) {
+                        usedPlatforms.push(platformIndex);
+                        const platform = this.platforms[platformIndex];
+                        const type = thematicPool[Math.floor(randFunc() * thematicPool.length)];
+
+                        this.enemies.push(new Enemy(
+                            platform.x + platform.width / 2,
+                            platform.y - 40,
+                            type
+                        ));
+                    }
+                }
+            }
+
             updateRoomState() {
+                if (this.isWaveRoom && this.enemies.length === 0 && this.currentWave < this.maxWaves) {
+                    this.waveTimer++;
+                    if (this.waveTimer > 60) { // 1 second delay between waves
+                        this.currentWave++;
+                        this.waveTimer = 0;
+                        // Use a dummy rand to keep waves varied
+                        this.spawnWave(() => Math.random());
+                        createParticles(canvas.width / 2, canvas.height / 2, '#fff', 20, 3);
+                    }
+                }
+
                 if (this.isPuzzleRoom && !this.keyCollected && this.puzzleKey) {
                     const bobY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
                     const dist = Math.hypot(player.x - this.puzzleKey.x, player.y - bobY);
@@ -10186,9 +10423,10 @@
             currentRoom.updateRoomState();
 
             // Check for room transition
+            const waveCleared = currentRoom.isWaveRoom ? (currentRoom.enemies.length === 0 && currentRoom.currentWave >= currentRoom.maxWaves) : true;
             const roomCleared = currentRoom.isSafeRoom || currentRoom.isSpikeRoom || currentRoom.isLavaRoom || currentRoom.isTreasureRoom || currentRoom.isTrapRoom || currentRoom.isMimicRoom || (currentRoom.boss ?
                 (currentRoom.boss.health <= 0) :
-                (currentRoom.isPuzzleRoom ? currentRoom.keyCollected : currentRoom.enemies.length === 0));
+                (currentRoom.isPuzzleRoom ? currentRoom.keyCollected : (currentRoom.enemies.length === 0 && waveCleared)));
                 
             if (roomCleared && player.x > canvas.width - 60) {
                 roomNumber++;
@@ -10306,7 +10544,7 @@
             // Update UI
             document.getElementById('health').textContent = Math.floor(player.health);
             document.getElementById('healthBar').style.width = (player.health / player.maxHealth * 100) + '%';
-            document.getElementById('room').textContent = roomNumber;
+            document.getElementById('room').textContent = currentRoom.isWaveRoom ? `${roomNumber} (Wave ${currentRoom.currentWave}/${currentRoom.maxWaves})` : roomNumber;
             document.getElementById('upcomingBoss').textContent = getUpcomingBossType(roomNumber);
             const enemyCount = currentRoom.enemies.length + (currentRoom.boss && currentRoom.boss.health > 0 ? 1 : 0);
             document.getElementById('enemies').textContent = enemyCount;
