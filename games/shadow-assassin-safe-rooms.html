@@ -41,6 +41,24 @@
             font-size: 14px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             z-index: 10;
+            width: max-content;
+            max-width: min(260px, calc(100vw - 40px));
+        }
+
+        .special-abilities-panel {
+            margin-top: 15px;
+            padding-top: 10px;
+            position: relative;
+        }
+
+        .special-abilities-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 78%;
+            max-width: 188px;
+            border-top: 1px solid rgba(255, 255, 255, 0.38);
         }
 
         #keybinds {
@@ -706,7 +724,7 @@
         <div>Enemies: <span id="enemies">0</span></div>
         <div>Shadow Coins: <span id="shadowCoins">0</span></div>
         
-        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #666;">
+        <div class="special-abilities-panel">
             <div style="font-size: 12px; color: #ffd700; margin-bottom: 5px;">⚡ SPECIAL ABILITIES</div>
             <div id="specialAbilitiesList" style="font-size: 11px;"></div>
         </div>
@@ -10561,17 +10579,21 @@
                 ctx.globalCompositeOperation = 'source-over';
 
                 // Pulsing player light - mystical blue/cyan glow
-                const isAttackingOrDashing = player.attacking || player.dashing;
+                const isDashing = player.dashing;
+                const isSwinging = player.attacking;
                 const lightPulse = 0.5 + Math.sin(Date.now() / 200) * 0.2;
-                const lightSize = 160 + lightPulse * 40 + (isAttackingOrDashing ? 60 : 0);
+                const lightSize = 160 + lightPulse * 40 + (isDashing ? 42 : (isSwinging ? 12 : 0));
                 const lightGrad = ctx.createRadialGradient(
                     player.x, player.y - 10, 0,
                     player.x, player.y - 10, lightSize
                 );
 
                 let lightColor = currentRoom.isSafeRoom ? 'rgba(100, 255, 150, 0.25)' : 'rgba(120, 180, 255, 0.2)';
-                if (isAttackingOrDashing) {
-                    lightColor = currentRoom.isSafeRoom ? 'rgba(150, 255, 200, 0.4)' : 'rgba(150, 220, 255, 0.35)';
+                if (isSwinging) {
+                    lightColor = currentRoom.isSafeRoom ? 'rgba(125, 255, 185, 0.28)' : 'rgba(132, 194, 255, 0.24)';
+                }
+                if (isDashing) {
+                    lightColor = currentRoom.isSafeRoom ? 'rgba(150, 255, 200, 0.34)' : 'rgba(150, 220, 255, 0.3)';
                 }
 
                 lightGrad.addColorStop(0, lightColor);
