@@ -4594,54 +4594,17 @@
                 const skinColors = getEquippedSkin().colors;
 
                 if (this.grappling && this.grapplePoint) {
-                    // Grapple line (Detailed Chain & Spike)
-                    const dx = this.grapplePoint.x - this.x;
-                    const dy = this.grapplePoint.y - (this.y - 6);
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const angle = Math.atan2(dy, dx);
-
                     ctx.save();
-                    ctx.translate(this.x, this.y - 6);
-                    ctx.rotate(angle);
-
-                    const linkLength = 8;
-                    const numLinks = Math.floor(dist / linkLength);
-
-                    ctx.strokeStyle = '#888'; // Lighter silver for chain
+                    ctx.strokeStyle = '#c0c0c0';
                     ctx.lineWidth = 2;
-
-                    for (let i = 0; i < numLinks; i++) {
-                        ctx.beginPath();
-                        // Draw alternating links (oval vs line)
-                        if (i % 2 === 0) {
-                            ctx.ellipse(i * linkLength, 0, 4, 2, 0, 0, Math.PI * 2);
-                        } else {
-                            ctx.moveTo(i * linkLength - 2, 0);
-                            ctx.lineTo(i * linkLength + 2, 0);
-                        }
-                        ctx.stroke();
-                    }
-                    ctx.restore();
-
-                    // Draw the Grapple Hook Spike at the end
-                    ctx.save();
-                    ctx.translate(this.grapplePoint.x, this.grapplePoint.y);
-                    ctx.rotate(angle);
-
-                    ctx.fillStyle = '#aaa'; // Metallic head
                     ctx.beginPath();
-                    ctx.moveTo(-10, -5);
-                    ctx.lineTo(0, 0);
-                    ctx.lineTo(-10, 5);
-                    ctx.lineTo(-6, 0);
-                    ctx.fill();
+                    ctx.moveTo(this.x, this.y - 6);
+                    ctx.lineTo(this.grapplePoint.x, this.grapplePoint.y);
+                    ctx.stroke();
 
-                    // Center spike
-                    ctx.fillStyle = '#fff';
+                    ctx.fillStyle = '#ffd700';
                     ctx.beginPath();
-                    ctx.moveTo(-6, -1);
-                    ctx.lineTo(2, 0);
-                    ctx.lineTo(-6, 1);
+                    ctx.arc(this.grapplePoint.x, this.grapplePoint.y, 4, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
                 }
@@ -4677,49 +4640,36 @@
                     ctx.fill();
                 }
                 
-                // Shadow assassin appearance (Enhanced Detail)
-                // Base body (cloak)
+                // Body (assassin in dark cloak)
                 ctx.fillStyle = skinColors.body;
                 ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
                 
-                // Cloak shading and trim
-                ctx.fillStyle = '#111'; // Darker inner shading
-                ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 10, this.width - 8, this.height - 12);
-
-                // Belt and Buckle
-                ctx.fillStyle = '#3e2723'; // Leather brown
-                ctx.fillRect(-this.width / 2, -this.height / 2 + 20, this.width, 4);
-                ctx.fillStyle = '#ffd700'; // Gold buckle
-                ctx.fillRect(-3, -this.height / 2 + 19, 6, 6);
-                ctx.fillStyle = '#3e2723'; // Buckle inner
-                ctx.fillRect(-1, -this.height / 2 + 21, 2, 2);
-
-                // Scarf/Neck Wrap
-                ctx.fillStyle = skinColors.accent || '#8b0000'; // Deep red or accent
-                ctx.fillRect(-this.width / 2 - 2, -this.height / 2 + 8, this.width + 4, 6);
-                // Scarf tail hanging down back
-                ctx.beginPath();
-                ctx.moveTo(-this.width / 2 - 2, -this.height / 2 + 10);
-                ctx.lineTo(-this.width / 2 - 6, -this.height / 2 + 22);
-                ctx.lineTo(-this.width / 2, -this.height / 2 + 14);
-                ctx.fill();
-
                 // Hood
                 ctx.fillStyle = skinColors.hood;
                 ctx.beginPath();
                 ctx.arc(0, -this.height / 2 + 6, 10, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Face void inside hood
-                ctx.fillStyle = '#000';
-                ctx.fillRect(-6, -this.height / 2, 12, 8);
+                // Face shadow
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(-this.width / 2 + 6, -this.height / 2 + 8, this.width - 12, 8);
                 
-                // Glowing Eyes
+                // Eyes (glowing)
                 ctx.fillStyle = skinColors.eyes;
-                ctx.shadowColor = skinColors.eyes;
-                ctx.shadowBlur = 5;
-                ctx.fillRect(2, -6, 3, 2); // Right eye
-                ctx.shadowBlur = 0;
+                ctx.fillRect(2, -8, 3, 2);
+
+                // Cloak
+                ctx.fillStyle = skinColors.hood;
+                ctx.beginPath();
+                ctx.moveTo(-this.width / 2, -this.height / 2 + 12);
+                ctx.lineTo(-this.width / 2 - 6, -this.height / 2 + 20 + Math.sin(Date.now() / 100) * 3);
+                ctx.lineTo(-this.width / 2 - 4, this.height / 2);
+                ctx.lineTo(-this.width / 2, this.height / 2);
+                ctx.fill();
+
+                // Belt
+                ctx.fillStyle = skinColors.belt;
+                ctx.fillRect(-this.width / 2, 0, this.width, 4);
                 
                 // Weapon (dagger)
                 if (this.attacking && this.attackDirection !== null) {
@@ -5340,6 +5290,64 @@
                         ctx.lineTo(-18, -18);
                         ctx.lineTo(-6, -14);
                         ctx.stroke();
+                        break;
+
+                    case 'flyer':
+                        // Small hovering orb with wings
+                        ctx.fillStyle = '#7b68ee';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#9370db';
+                        ctx.beginPath();
+                        ctx.ellipse(-10, -5, 8, 4, Math.PI / 4, 0, Math.PI * 2);
+                        ctx.ellipse(10, -5, 8, 4, -Math.PI / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+
+                    case 'brute':
+                        // Bulky, spiked armor
+                        ctx.fillStyle = '#8b0000';
+                        ctx.fillRect(-this.width / 2 - 5, -this.height / 2, this.width + 10, this.height);
+
+                        ctx.fillStyle = '#4a0404';
+                        ctx.fillRect(-this.width / 2 - 2, -this.height / 2 + 10, this.width + 4, this.height - 10);
+
+                        // Spikes
+                        ctx.fillStyle = '#666';
+                        ctx.beginPath();
+                        ctx.moveTo(-10, -this.height / 2);
+                        ctx.lineTo(-5, -this.height / 2 - 10);
+                        ctx.lineTo(0, -this.height / 2);
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.moveTo(0, -this.height / 2);
+                        ctx.lineTo(5, -this.height / 2 - 10);
+                        ctx.lineTo(10, -this.height / 2);
+                        ctx.fill();
+
+                        // Glowing eyes
+                        ctx.fillStyle = '#ff4500';
+                        ctx.fillRect(-8, -this.height / 2 + 5, 4, 3);
+                        ctx.fillRect(4, -this.height / 2 + 5, 4, 3);
+                        break;
+
+                    case 'sniper':
+                        // Sleek, tall, sniper look
+                        ctx.fillStyle = '#2f4f4f';
+                        ctx.fillRect(-this.width / 4, -this.height / 2 - 10, this.width / 2, this.height + 10);
+
+                        // Glowing visor
+                        ctx.fillStyle = '#00ffff';
+                        ctx.fillRect(-this.width / 4, -this.height / 2 - 5, this.width / 2, 4);
+
+                        // Long rifle
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(5, -this.height / 2 + 5, 30, 4);
+                        ctx.fillStyle = '#00ffff'; // Rifle core
+                        ctx.fillRect(10, -this.height / 2 + 6, 15, 2);
                         break;
                 }
                 
@@ -7818,21 +7826,21 @@
         };
 
         const BOSS_MINION_POOLS = {
-            'Crimson Knight': ['heavy', 'berserker', 'brute'],
-            'Shadow Lord': ['assassin', 'warlock', 'sniper'],
-            'Frost Warden': ['mage', 'sentinel', 'flyer'],
-            'Flame Tyrant': ['berserker', 'brute', 'mage'],
-            'Stone Golem': ['heavy', 'sentinel', 'brute'],
-            'Toxic Assassin': ['assassin', 'warlock', 'sniper'],
-            'Thunder King': ['advanced', 'flyer', 'warlock'],
-            'Necromancer': ['warlock', 'sniper', 'sentinel'],
-            'Blood Reaper': ['berserker', 'assassin', 'brute'],
-            'Void Walker': ['warlock', 'assassin', 'sniper'],
-            'Crystal Sage': ['mage', 'flyer', 'warlock'],
-            'Iron Colossus': ['sentinel', 'brute', 'advanced'],
-            'Phantom Assassin': ['assassin', 'sniper', 'warlock'],
-            'Plague Doctor': ['mage', 'flyer', 'heavy'],
-            'Storm Herald': ['flyer', 'warlock', 'assassin']
+            'Crimson Knight': ['heavy', 'berserker', 'advanced', 'brute'],
+            'Shadow Lord': ['assassin', 'warlock', 'basic', 'sniper'],
+            'Frost Warden': ['mage', 'sentinel', 'advanced', 'flyer'],
+            'Flame Tyrant': ['berserker', 'advanced', 'mage', 'brute'],
+            'Stone Golem': ['heavy', 'sentinel', 'basic', 'brute'],
+            'Toxic Assassin': ['assassin', 'warlock', 'mage', 'sniper'],
+            'Thunder King': ['advanced', 'mage', 'warlock', 'flyer'],
+            'Necromancer': ['warlock', 'mage', 'sentinel', 'flyer'],
+            'Blood Reaper': ['berserker', 'assassin', 'heavy', 'brute'],
+            'Void Walker': ['warlock', 'assassin', 'sentinel', 'sniper'],
+            'Crystal Sage': ['mage', 'advanced', 'warlock', 'flyer'],
+            'Iron Colossus': ['sentinel', 'heavy', 'advanced', 'brute'],
+            'Phantom Assassin': ['assassin', 'berserker', 'warlock', 'sniper'],
+            'Plague Doctor': ['mage', 'warlock', 'heavy', 'flyer'],
+            'Storm Herald': ['advanced', 'warlock', 'assassin', 'sniper']
         };
 
         function getBossEncounterIndexForRoom(roomNum) {
@@ -7862,37 +7870,33 @@
             return getBossTypeForBossRoom(nextBossRoom);
         }
 
-        function isWaveRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 10 === 9 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
-        }
-
         function isPuzzleRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 20 === 13 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && (roomNum % 10 === 3 || roomNum % 10 === 8) && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         function isSpikeRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 20 === 1 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && roomNum % 10 === 1 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         function isLavaRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 20 === 11 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && roomNum % 10 === 4 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         function isTreasureRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 20 === 6 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && roomNum % 10 === 6 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         function isTrapRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 20 === 19 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && roomNum % 10 === 9 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         function isMimicRoomNumber(roomNum) {
-            return roomNum >= 4 && roomNum % 20 === 2 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
+            return roomNum >= 4 && roomNum % 10 === 2 && roomNum % 5 !== 0 && roomNum % 7 !== 0;
         }
 
         // Room class (keeping original castle look)
         class Room {
-            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false, isSpikeRoom = false, isLavaRoom = false, isTreasureRoom = false, isTrapRoom = false, isMimicRoom = false, isWaveRoom = false) {
+            constructor(seed, isBossRoom = false, isSafeRoom = false, isPuzzleRoom = false, isSpikeRoom = false, isLavaRoom = false, isTreasureRoom = false, isTrapRoom = false, isMimicRoom = false) {
                 this.seed = seed;
                 this.roomNumber = Math.max(1, Math.round(seed / 12345));
                 this.isBossRoom = isBossRoom;
@@ -8032,13 +8036,6 @@
                 // Safe rooms have no enemies
                 if (this.isSafeRoom || this.isPuzzleRoom || this.isSpikeRoom || this.isLavaRoom || this.isTreasureRoom || this.isTrapRoom || this.isMimicRoom) {
                     // Empty room - safe zone!
-                } else if (this.isWaveRoom) {
-                    // Start wave sequence
-                    this.currentWave = 1;
-                    this.maxWaves = 3;
-                    this.waveTimer = 60; // short initial delay
-                    this.waveInProgress = true;
-                    this.cleared = false; // Wave rooms lock doors until all waves cleared
                 } else if (this.isBossRoom) {
                     const bossType = getBossTypeForBossRoom(this.roomNumber);
                     this.boss = new Boss(canvas.width / 2, canvas.height - 200, bossType);
@@ -8098,64 +8095,7 @@
                 }
             }
 
-            spawnWave() {
-                // Wave difficulty increases with currentWave
-                const waveMultiplier = this.currentWave * 0.5;
-                const numEnemies = Math.floor((3 + Math.floor(Math.random() * 2) + Math.floor(this.roomNumber / 4)) * waveMultiplier);
-                const types = ['basic', 'advanced', 'heavy', 'assassin', 'mage', 'berserker', 'sentinel', 'warlock', 'flyer', 'brute', 'sniper'];
-
-                for (let i = 0; i < numEnemies; i++) {
-                    let typeIndex;
-                    if (this.roomNumber < 5) typeIndex = Math.floor(Math.random() * 2);
-                    else if (this.roomNumber < 10) typeIndex = Math.floor(Math.random() * 4);
-                    else if (this.roomNumber < 15) typeIndex = Math.floor(Math.random() * 6);
-                    else typeIndex = Math.floor(Math.random() * types.length);
-
-                    // Add some bias towards harder enemies in later waves
-                    if (this.currentWave > 1 && Math.random() < 0.3) {
-                         typeIndex = Math.min(types.length - 1, typeIndex + 2);
-                    }
-
-                    this.enemies.push(new Enemy(
-                        100 + Math.random() * (canvas.width - 200),
-                        100,
-                        types[typeIndex]
-                    ));
-
-                    // Spawn particle effect
-                    for(let j=0; j<10; j++) {
-                        particles.push(new Particle(
-                            this.enemies[this.enemies.length - 1].x, this.enemies[this.enemies.length - 1].y, '#ff00ff',
-                            (Math.random() - 0.5) * 8,
-                            (Math.random() - 0.5) * 8,
-                            20
-                        ));
-                    }
-                }
-            }
-
             updateRoomState() {
-                if (this.isWaveRoom && !this.cleared) {
-                    // Start next wave if enemies are clear and not already waiting
-                    if (this.enemies.length === 0 && !this.waveInProgress) {
-                        this.waveInProgress = true;
-                        this.waveTimer = 120; // 2 seconds between waves
-                    }
-
-                    if (this.waveInProgress) {
-                        this.waveTimer--;
-                        if (this.waveTimer <= 0) {
-                            if (this.currentWave <= this.maxWaves) {
-                                this.spawnWave();
-                                this.currentWave++;
-                                this.waveInProgress = false;
-                            } else {
-                                this.cleared = true;
-                            }
-                        }
-                    }
-                }
-
                 if (this.isPuzzleRoom && !this.keyCollected && this.puzzleKey) {
                     const bobY = this.puzzleKey.y + Math.sin(Date.now() / 280 + this.puzzleKey.bobOffset) * 6;
                     const dist = Math.hypot(player.x - this.puzzleKey.x, player.y - bobY);
@@ -8899,11 +8839,11 @@
                 }
 
                 // Door
-                if (this.enemies.length === 0 && !this.cleared && !this.isWaveRoom) {
+                if (this.enemies.length === 0 && !this.cleared) {
                     this.cleared = true;
                 }
                 
-                if (this.cleared || (this.enemies.length === 0 && !this.isWaveRoom)) {
+                if (this.cleared || this.enemies.length === 0) {
                     const doorX = canvas.width - 60;
                     const doorY = canvas.height - 180;
                     const doorLocked = this.isPuzzleRoom && !this.keyCollected;
