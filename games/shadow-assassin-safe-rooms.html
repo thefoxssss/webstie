@@ -958,6 +958,16 @@
                 this.explosive = false;
                 this.homing = false;
                 this.angle = angle;
+
+                // Cache visual style at spawn time safely
+                if (owner !== 'player' && typeof currentRoom !== 'undefined' && currentRoom) {
+                    this.bossType = currentRoom.boss ? currentRoom.boss.type : currentRoom.upcomingBossType;
+                    const bossTheme = (typeof currentRoom.getBossThemeColors === 'function') ? currentRoom.getBossThemeColors() : null;
+                    this.pColor = bossTheme ? bossTheme.accent : '#ff4500';
+                } else {
+                    this.bossType = null;
+                    this.pColor = '#ff4500';
+                }
             }
             
             update() {
@@ -988,11 +998,52 @@
                 
                 // Trail particle
                 if (Math.random() < 0.2) {
-                    particles.push(new Particle(
-                        this.x, this.y,
-                        this.owner === 'player' ? '#1a1a1a' : '#ff4500',
-                        0, 0, 10
-                    ));
+                    let pColor = this.owner === 'player' ? '#1a1a1a' : this.pColor;
+                    particles.push(new Particle(this.x, this.y, pColor, 0, 0, 10));
+                }
+
+                // Advanced enemy projectile trails
+                if (this.owner !== 'player') {
+                    const bossType = this.bossType;
+                    const pColor = this.pColor;
+
+                    if (bossType === 'Flame Tyrant' && Math.random() < 0.5) {
+                        particles.push(new Particle(
+                            this.x, this.y, '#ff4500',
+                            -this.vx * 0.2 + (Math.random()-0.5), -this.vy * 0.2 + (Math.random()-0.5), 15
+                        ));
+                    } else if ((bossType === 'Thunder King' || bossType === 'Storm Herald') && Math.random() < 0.3) {
+                        particles.push(new Particle(
+                            this.x, this.y, '#ffffff',
+                            (Math.random()-0.5)*2, (Math.random()-0.5)*2, 10
+                        ));
+                    } else if (bossType === 'Shadow Lord' || bossType === 'Void Walker') {
+                        const sColor = bossType === 'Shadow Lord' ? '#ff0000' : '#9370db';
+                        particles.push(new Particle(
+                            this.x, this.y, sColor,
+                            (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, 20
+                        ));
+                    } else if ((bossType === 'Toxic Assassin' || bossType === 'Plague Doctor') && Math.random() < 0.4) {
+                        particles.push(new Particle(
+                            this.x, this.y, '#32cd32',
+                            0, 2, 15
+                        ));
+                    } else if (bossType === 'Crystal Sage' && Math.random() < 0.2) {
+                        particles.push(new Particle(
+                            this.x, this.y, '#ffffff',
+                            0, 0, 10
+                        ));
+                    } else if ((bossType === 'Stone Golem' || bossType === 'Iron Colossus') && Math.random() < 0.3) {
+                        particles.push(new Particle(
+                            this.x, this.y, '#808080',
+                            (Math.random()-0.5), (Math.random()-0.5), 15
+                        ));
+                    } else if (Math.random() < 0.25) {
+                        particles.push(new Particle(
+                            this.x, this.y, pColor,
+                            -this.vx * 0.1, -this.vy * 0.1, 15
+                        ));
+                    }
                 }
                 
                 return this.life > 0 && this.x > 0 && this.x < canvas.width && this.y > 0 && this.y < canvas.height;
@@ -1006,21 +1057,80 @@
                 
                 // Knife shape
                 if (this.owner === 'player') {
-                    ctx.fillStyle = '#c0c0c0';
-                    ctx.fillRect(0, -2, 12, 4);
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(-4, -1, 4, 2);
-                } else {
-                    // Enemy projectile (arrow)
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(-4, -1, 8, 2);
+                    // Detailed throwing knife
                     ctx.fillStyle = '#c0c0c0';
                     ctx.beginPath();
-                    ctx.moveTo(8, 0);
-                    ctx.lineTo(4, -4);
-                    ctx.lineTo(4, 4);
+                    ctx.moveTo(-4, -2);
+                    ctx.lineTo(8, 0);
+                    ctx.lineTo(-4, 2);
                     ctx.closePath();
                     ctx.fill();
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(-8, -1.5, 4, 3);
+                    ctx.fillStyle = '#e0e0e0';
+                    ctx.beginPath();
+                    ctx.arc(-8, 0, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (this.explosive) {
+                        ctx.fillStyle = '#ff4500';
+                        ctx.beginPath();
+                        ctx.arc(4, 0, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    const pColor = this.pColor;
+                    const bossType = this.bossType;
+
+                    ctx.shadowColor = pColor;
+                    ctx.shadowBlur = 10;
+
+                    if (bossType === 'Frost Warden') {
+                        ctx.fillStyle = '#e0ffff';
+                        ctx.beginPath();
+                        ctx.moveTo(10, 0); ctx.lineTo(0, 4); ctx.lineTo(-8, 0); ctx.lineTo(0, -4);
+                        ctx.closePath(); ctx.fill();
+                    } else if (bossType === 'Flame Tyrant') {
+                        const fireGrad = ctx.createRadialGradient(2, 0, 0, 0, 0, 8);
+                        fireGrad.addColorStop(0, '#ffff00');
+                        fireGrad.addColorStop(0.5, '#ff4500');
+                        fireGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                        ctx.fillStyle = fireGrad;
+                        ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+                    } else if (bossType === 'Thunder King' || bossType === 'Storm Herald') {
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-6, -2); ctx.lineTo(2, 4); ctx.lineTo(-2, 0); ctx.lineTo(8, -2);
+                        ctx.stroke();
+                    } else if (bossType === 'Shadow Lord' || bossType === 'Void Walker') {
+                        ctx.fillStyle = bossType === 'Shadow Lord' ? '#1a1a1a' : '#4b0082';
+                        ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+                        ctx.strokeStyle = bossType === 'Shadow Lord' ? '#ff0000' : '#9370db';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.stroke();
+                    } else if (bossType === 'Toxic Assassin' || bossType === 'Plague Doctor') {
+                        ctx.fillStyle = '#32cd32';
+                        ctx.beginPath(); ctx.ellipse(2, 0, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = '#adff2f';
+                        ctx.beginPath(); ctx.arc(4, -1, 2, 0, Math.PI * 2); ctx.fill();
+                    } else if (bossType === 'Crystal Sage') {
+                        ctx.fillStyle = '#ff69b4';
+                        ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-2, 3); ctx.lineTo(-6, 0); ctx.lineTo(-2, -3);
+                        ctx.closePath(); ctx.fill();
+                    } else if (bossType === 'Stone Golem' || bossType === 'Iron Colossus') {
+                        ctx.fillStyle = bossType === 'Stone Golem' ? '#696969' : '#b0b0b0';
+                        ctx.beginPath(); ctx.moveTo(-4, -4); ctx.lineTo(4, -2); ctx.lineTo(6, 4); ctx.lineTo(-2, 6); ctx.lineTo(-6, 2);
+                        ctx.closePath(); ctx.fill();
+                    } else if (bossType === 'Blood Reaper') {
+                        ctx.fillStyle = '#dc143c';
+                        ctx.beginPath(); ctx.arc(0, 0, 8, -Math.PI/2, Math.PI/2); ctx.arc(4, 0, 6, Math.PI/2, -Math.PI/2, true); ctx.fill();
+                    } else {
+                        ctx.fillStyle = pColor;
+                        ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-4, -4); ctx.lineTo(-2, 0); ctx.lineTo(-4, 4);
+                        ctx.closePath(); ctx.fill();
+                    }
+                    ctx.shadowBlur = 0;
                 }
                 
                 ctx.restore();
@@ -5277,6 +5387,13 @@
                 this.enrageMultiplier = 1;
                 this.comboCooldown = 120;
 
+                // Telegraph state (Frame-based)
+                this.isTelegraphingSignature = false;
+                this.signatureTelegraphFrames = 0;
+
+                // Delayed attack queues
+                this.queuedAttacks = [];
+
                 const signatureData = BOSS_SIGNATURE_MOVES[type] || { name: 'Fatal Art', cooldown: 230 };
                 this.signatureMoveName = signatureData.name;
                 this.signatureBaseCooldown = signatureData.cooldown;
@@ -5358,6 +5475,41 @@
 
                 this.enrageMultiplier = 1 + Math.min(0.55, roomNumber * 0.01);
                 
+                // Process queued delayed attacks
+                for (let i = this.queuedAttacks.length - 1; i >= 0; i--) {
+                    const q = this.queuedAttacks[i];
+                    q.frames--;
+                    if (q.frames <= 0) {
+                        q.callback();
+                        this.queuedAttacks.splice(i, 1);
+                    }
+                }
+
+                if (this.isTelegraphingSignature) {
+                    this.signatureTelegraphFrames--;
+
+                    for (let p = 0; p < 3; p++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = 60 + Math.random() * 40;
+                        particles.push(new Particle(
+                            this.x + Math.cos(angle) * distance,
+                            this.y + Math.sin(angle) * distance,
+                            this.color,
+                            -Math.cos(angle) * (distance / 20),
+                            -Math.sin(angle) * (distance / 20),
+                            20
+                        ));
+                    }
+
+                    if (this.signatureTelegraphFrames <= 0) {
+                        this.isTelegraphingSignature = false;
+                        this.executeSignatureMove(dx, dy, dist);
+                    }
+
+                    this.animFrame++;
+                    return;
+                }
+
                 this.patternTimer++;
                 const patternCycle = this.phase === 3 ? 110 : (this.phase === 2 ? 150 : 220);
                 if (this.patternTimer > patternCycle) {
@@ -5390,21 +5542,34 @@
                 this.animFrame++;
             }
 
+            queueAttack(delayMs, callback) {
+                const frames = Math.ceil(delayMs / 16.66);
+                this.queuedAttacks.push({ frames, callback });
+            }
+
             performSignatureMove(dx, dy, dist) {
                 if (this.signatureCooldown > 0 || dist > 560) return;
 
-                this.signatureCooldown = Math.max(95, this.signatureBaseCooldown - this.phase * 18);
+                if (!this.isTelegraphingSignature) {
+                    this.isTelegraphingSignature = true;
+                    this.signatureTelegraphFrames = 45;
+                    this.signatureCooldown = Math.max(95, this.signatureBaseCooldown - this.phase * 18);
+                    return;
+                }
+            }
 
-                for (let i = 0; i < 28; i++) {
+            executeSignatureMove(dx, dy, dist) {
+                for (let i = 0; i < 40; i++) {
+                    const burstAngle = (Math.PI * 2 / 40) * i;
                     particles.push(new Particle(
-                        this.x,
-                        this.y,
-                        this.color,
-                        (Math.random() - 0.5) * 6,
-                        (Math.random() - 0.5) * 6,
-                        36
+                        this.x, this.y,
+                        ['#ffffff', this.color][i % 2],
+                        Math.cos(burstAngle) * 12,
+                        Math.sin(burstAngle) * 12,
+                        45
                     ));
                 }
+                hitStopFrames = Math.max(hitStopFrames, 4);
 
                 switch (this.type) {
                     case 'Crimson Knight':
@@ -5414,10 +5579,10 @@
                         break;
                     case 'Shadow Lord':
                         for (let i = 0; i < 8; i++) {
-                            setTimeout(() => {
-                                const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5;
+                            this.queueAttack(i * 60, () => {
+                                const a = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5) * 0.5;
                                 projectiles.push(new Projectile(this.x, this.y, a, 8, 'enemy'));
-                            }, i * 60);
+                            });
                         }
                         break;
                     case 'Frost Warden':
@@ -5438,16 +5603,16 @@
                         break;
                     case 'Toxic Assassin':
                         for (let i = 0; i < 10; i++) {
-                            const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.9;
+                            const angle = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5) * 0.9;
                             projectiles.push(new Projectile(this.x, this.y, angle, 6.5, 'enemy'));
                         }
                         break;
                     case 'Thunder King':
                         for (let i = 0; i < 4; i++) {
-                            setTimeout(() => {
+                            this.queueAttack(i * 90, () => {
                                 const angle = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5) * 0.4;
                                 projectiles.push(new Projectile(this.x, this.y, angle, 11, 'enemy'));
-                            }, i * 90);
+                            });
                         }
                         break;
                     case 'Necromancer':
@@ -5463,7 +5628,7 @@
                         break;
                     case 'Void Walker':
                         for (let i = 0; i < 5; i++) {
-                            const angle = Math.atan2(dy, dx) + (i - 2) * 0.25;
+                            const angle = Math.atan2(player.y - this.y, player.x - this.x) + (i - 2) * 0.25;
                             projectiles.push(new Projectile(this.x, this.y, angle, 9.2, 'enemy'));
                         }
                         break;
@@ -5490,12 +5655,12 @@
                         break;
                     case 'Storm Herald':
                         for (let i = -3; i <= 3; i++) {
-                            projectiles.push(new Projectile(this.x, this.y, Math.atan2(dy, dx) + i * 0.2, 8.5, 'enemy'));
+                            projectiles.push(new Projectile(this.x, this.y, Math.atan2(player.y - this.y, player.x - this.x) + i * 0.2, 8.5, 'enemy'));
                         }
                         break;
                 }
             }
-            
+
             executeAttackPattern(dx, dy, dist) {
                 switch(this.type) {
                     case 'Crimson Knight':
@@ -5520,21 +5685,21 @@
                                     ));
                                 }
                                 // Actual attack after delay
-                                setTimeout(() => {
+                                this.queueAttack(400, () => {
                                     for (let i = -1; i <= 1; i++) {
                                         const angle = (this.facing > 0 ? 0 : Math.PI) + i * 0.3;
                                         projectiles.push(new Projectile(this.x, this.y, angle, 7, 'enemy'));
                                     }
-                                }, 400);
+                                });
                             }
                         } else if (this.attackPattern === 1) {
                             // Shield spin - circular projectiles
                             if (this.patternTimer % 120 === 0) {
                                 for (let i = 0; i < 8; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 60, () => {
                                         const angle = (Math.PI * 2 / 8) * i;
                                         projectiles.push(new Projectile(this.x, this.y, angle, 5, 'enemy'));
-                                    }, i * 60);
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 2) {
@@ -5542,7 +5707,7 @@
                             if (this.onGround && this.patternTimer % 140 === 0) {
                                 // Jump warning
                                 this.vy = -8;
-                                setTimeout(() => {
+                                this.queueAttack(800, () => {
                                     if (this.onGround) {
                                         // Shockwave on landing
                                         for (let i = 0; i < 30; i++) {
@@ -5557,13 +5722,13 @@
                                         projectiles.push(new Projectile(this.x, this.y, 0, 6, 'enemy'));
                                         projectiles.push(new Projectile(this.x, this.y, Math.PI, 6, 'enemy'));
                                     }
-                                }, 800);
+                                });
                             }
                         } else if (this.attackPattern === 3) {
                             // NEW: Crimson Blade Dance - rapid spinning slash combo
                             if (this.patternTimer % 110 === 0) {
                                 for (let combo = 0; combo < 4; combo++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(combo * 250, () => {
                                         // Spinning slash particles
                                         for (let i = 0; i < 12; i++) {
                                             const angle = (Math.PI * 2 / 12) * i + (combo * 0.2);
@@ -5581,7 +5746,7 @@
                                             const angle = (Math.PI / 2) * i + (combo * 0.3);
                                             projectiles.push(new Projectile(this.x, this.y, angle, 8, 'enemy'));
                                         }
-                                    }, combo * 250);
+                                    });
                                 }
                             }
                         } else {
@@ -5601,23 +5766,23 @@
                                 }
                                 
                                 // Execute charge
-                                setTimeout(() => {
+                                this.queueAttack(700, () => {
                                     this.vx = Math.cos(angle) * 15;
                                     this.vy = Math.sin(angle) * 15;
                                     
                                     // Leave projectiles in wake
                                     for (let i = 0; i < 6; i++) {
-                                        setTimeout(() => {
+                                        this.queueAttack(i * 50, () => {
                                             projectiles.push(new Projectile(this.x, this.y, angle + Math.PI, 4, 'enemy'));
-                                        }, i * 50);
+                                        });
                                     }
                                     
                                     // Stop charge
-                                    setTimeout(() => {
+                                    this.queueAttack(300, () => {
                                         this.vx *= 0.2;
                                         this.vy *= 0.2;
-                                    }, 300);
-                                }, 700);
+                                    });
+                                });
                             }
                         }
                         break;
@@ -5635,7 +5800,7 @@
                             if (this.patternTimer % 150 === 0) {
                                 // Create shadow clones that shoot
                                 for (let i = 0; i < 3; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 400, () => {
                                         const cloneX = this.x + (Math.random() - 0.5) * 200;
                                         const cloneY = this.y - 100;
                                         
@@ -5650,11 +5815,11 @@
                                         }
                                         
                                         // Clone shoots
-                                        setTimeout(() => {
+                                        this.queueAttack(500, () => {
                                             const angle = Math.atan2(player.y - cloneY, player.x - cloneX);
                                             projectiles.push(new Projectile(cloneX, cloneY, angle, 7, 'enemy'));
-                                        }, 500);
-                                    }, i * 400);
+                                        });
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
@@ -5672,23 +5837,23 @@
                                 }
                                 
                                 // Dash after delay
-                                setTimeout(() => {
+                                this.queueAttack(600, () => {
                                     this.vx = this.facing * this.speed * 8;
-                                    setTimeout(() => {
+                                    this.queueAttack(200, () => {
                                         this.vx *= 0.3;
-                                    }, 200);
-                                }, 600);
+                                    });
+                                });
                             }
                         } else {
                             // Dark nova - expanding ring
                             if (this.patternTimer % 180 === 0) {
                                 for (let wave = 1; wave <= 3; wave++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(wave * 400, () => {
                                         for (let i = 0; i < 12; i++) {
                                             const angle = (Math.PI * 2 / 12) * i;
                                             projectiles.push(new Projectile(this.x, this.y, angle, 4 + wave, 'enemy'));
                                         }
-                                    }, wave * 400);
+                                    });
                                 }
                             }
                         }
@@ -5705,7 +5870,7 @@
                                 
                                 // Show ice forming
                                 for (let i = 0; i < 10; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 50, () => {
                                         const distance = i * 40;
                                         particles.push(new Particle(
                                             this.x + Math.cos(angle) * distance,
@@ -5713,15 +5878,15 @@
                                             '#00ffff',
                                             0, 0, 40
                                         ));
-                                    }, i * 50);
+                                    });
                                 }
                                 
                                 // Ice spike attack
-                                setTimeout(() => {
+                                this.queueAttack(600, () => {
                                     for (let i = 0; i < 5; i++) {
                                         projectiles.push(new Projectile(this.x, this.y, angle + (Math.random() - 0.5) * 0.2, 8, 'enemy'));
                                     }
-                                }, 600);
+                                });
                             }
                         } else if (this.attackPattern === 1) {
                             // Blizzard - random ice from above
@@ -5732,7 +5897,7 @@
                         } else {
                             // Ice wall - horizontal wave
                             if (this.patternTimer % 140 === 0) {
-                                setTimeout(() => {
+                                this.queueAttack(500, () => {
                                     for (let i = -2; i <= 2; i++) {
                                         projectiles.push(new Projectile(
                                             this.x + i * 40,
@@ -5742,7 +5907,7 @@
                                             'enemy'
                                         ));
                                     }
-                                }, 500);
+                                });
                             }
                         }
                         break;
@@ -5759,10 +5924,10 @@
                             // Fireball volley
                             if (this.patternTimer % 90 === 0) {
                                 for (let i = 0; i < 3; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 200, () => {
                                         const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.4;
                                         projectiles.push(new Projectile(this.x, this.y, angle, 7, 'enemy'));
-                                    }, i * 200);
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
@@ -5782,7 +5947,7 @@
                                 }
                                 
                                 // Flame eruption
-                                setTimeout(() => {
+                                this.queueAttack(800, () => {
                                     for (let i = 0; i < 8; i++) {
                                         projectiles.push(new Projectile(
                                             targetX + (Math.random() - 0.5) * 60,
@@ -5792,7 +5957,7 @@
                                             'enemy'
                                         ));
                                     }
-                                }, 800);
+                                });
                             }
                         } else {
                             // Fire ring
@@ -5828,21 +5993,21 @@
                                 }
                                 
                                 // Throw boulder
-                                setTimeout(() => {
+                                this.queueAttack(1000, () => {
                                     const angle = Math.atan2(dy, dx);
                                     for (let i = 0; i < 5; i++) {
-                                        setTimeout(() => {
+                                        this.queueAttack(i * 100, () => {
                                             projectiles.push(new Projectile(this.x, this.y, angle, 6, 'enemy'));
-                                        }, i * 100);
+                                        });
                                     }
-                                }, 1000);
+                                });
                             }
                         } else if (this.attackPattern === 1) {
                             // Ground slam - shockwave
                             if (this.onGround && this.patternTimer % 160 === 0) {
                                 this.vy = -10;
                                 
-                                setTimeout(() => {
+                                this.queueAttack(1200, () => {
                                     if (this.onGround) {
                                         // Massive shockwave
                                         for (let i = 0; i < 50; i++) {
@@ -5861,7 +6026,7 @@
                                             projectiles.push(new Projectile(this.x, this.y, angle, 5, 'enemy'));
                                         }
                                     }
-                                }, 1200);
+                                });
                             }
                         } else {
                             // Rock spray
@@ -5900,7 +6065,7 @@
                                 
                                 // Create poison cloud
                                 for (let i = 0; i < 80; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 10, () => {
                                         particles.push(new Particle(
                                             cloudX + (Math.random() - 0.5) * 100,
                                             cloudY + (Math.random() - 0.5) * 100,
@@ -5909,7 +6074,7 @@
                                             (Math.random() - 0.5) * 2,
                                             80
                                         ));
-                                    }, i * 10);
+                                    });
                                 }
                             }
                         } else {
@@ -5955,7 +6120,7 @@
                                 }
                                 
                                 // Lightning strike
-                                setTimeout(() => {
+                                this.queueAttack(600, () => {
                                     for (let i = 0; i < 3; i++) {
                                         projectiles.push(new Projectile(
                                             targetX + (Math.random() - 0.5) * 40,
@@ -5965,7 +6130,7 @@
                                             'enemy'
                                         ));
                                     }
-                                }, 600);
+                                });
                             }
                         } else if (this.attackPattern === 1) {
                             // Electric orb
@@ -5977,10 +6142,10 @@
                             // Chain lightning
                             if (this.patternTimer % 120 === 0) {
                                 for (let i = 0; i < 8; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 80, () => {
                                         const randomAngle = Math.random() * Math.PI * 2;
                                         projectiles.push(new Projectile(this.x, this.y, randomAngle, 7, 'enemy'));
-                                    }, i * 80);
+                                    });
                                 }
                             }
                         }
@@ -6008,7 +6173,7 @@
                                 
                                 // Show curse forming
                                 for (let i = 0; i < 60; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 20, () => {
                                         const angle = (Math.PI * 2 / 20) * (i % 20);
                                         particles.push(new Particle(
                                             curseX + Math.cos(angle) * 60,
@@ -6016,11 +6181,11 @@
                                             '#8b008b',
                                             0, 0, 60
                                         ));
-                                    }, i * 20);
+                                    });
                                 }
                                 
                                 // Curse activates
-                                setTimeout(() => {
+                                this.queueAttack(1200, () => {
                                     for (let i = 0; i < 12; i++) {
                                         const angle = (Math.PI * 2 / 12) * i;
                                         projectiles.push(new Projectile(
@@ -6031,16 +6196,16 @@
                                             'enemy'
                                         ));
                                     }
-                                }, 1200);
+                                });
                             }
                         } else {
                             // Skull barrage
                             if (this.patternTimer % 100 === 0) {
                                 for (let i = 0; i < 4; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 150, () => {
                                         const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.6;
                                         projectiles.push(new Projectile(this.x, this.y, angle, 6, 'enemy'));
-                                    }, i * 150);
+                                    });
                                 }
                             }
                         }
@@ -6083,10 +6248,10 @@
                                 }
                                 
                                 // Dash attack
-                                setTimeout(() => {
+                                this.queueAttack(500, () => {
                                     this.vx = this.facing * this.speed * 10;
                                     setTimeout(() => this.vx *= 0.2, 250);
-                                }, 500);
+                                });
                             }
                         }
                         break;
@@ -6115,10 +6280,10 @@
                                     }
                                     
                                     // Portal shoots
-                                    setTimeout(() => {
+                                    this.queueAttack(700, () => {
                                         const angle = Math.atan2(player.y - riftY, player.x - riftX);
                                         projectiles.push(new Projectile(riftX, riftY, angle, 7, 'enemy'));
-                                    }, 700);
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
@@ -6126,21 +6291,21 @@
                             if (this.patternTimer % 150 === 0) {
                                 const startAngle = Math.atan2(dy, dx);
                                 for (let i = 0; i < 7; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 100, () => {
                                         const angle = startAngle + (i - 3) * 0.15;
                                         projectiles.push(new Projectile(this.x, this.y, angle, 8, 'enemy'));
-                                    }, i * 100);
+                                    });
                                 }
                             }
                         } else {
                             // Void collapse (pulls toward center then explodes)
                             if (this.patternTimer % 180 === 0) {
-                                setTimeout(() => {
+                                this.queueAttack(800, () => {
                                     for (let i = 0; i < 16; i++) {
                                         const angle = (Math.PI * 2 / 16) * i;
                                         projectiles.push(new Projectile(this.x, this.y, angle, 6, 'enemy'));
                                     }
-                                }, 800);
+                                });
                             }
                         }
                         
@@ -6184,21 +6349,21 @@
                                     
                                     // Show crystal forming locations
                                     for (let j = 0; j < 15; j++) {
-                                        setTimeout(() => {
+                                        this.queueAttack(j * 50, () => {
                                             particles.push(new Particle(
                                                 x, y, '#ff1493',
                                                 (Math.random() - 0.5) * 3,
                                                 (Math.random() - 0.5) * 3,
                                                 30
                                             ));
-                                        }, j * 50);
+                                        });
                                     }
                                     
                                     // Then shoot inward
-                                    setTimeout(() => {
+                                    this.queueAttack(1000, () => {
                                         const angleToCenter = Math.atan2(player.y - y, player.x - x);
                                         projectiles.push(new Projectile(x, y, angleToCenter, 8, 'enemy'));
-                                    }, 1000);
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
@@ -6206,25 +6371,25 @@
                             if (this.patternTimer % 180 === 0) {
                                 // Charge up visual
                                 for (let i = 0; i < 50; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 20, () => {
                                         particles.push(new Particle(
                                             this.x, this.y, '#ff69b4',
                                             (Math.random() - 0.5) * 10,
                                             (Math.random() - 0.5) * 10,
                                             20
                                         ));
-                                    }, i * 20);
+                                    });
                                 }
                                 
                                 // Sweep laser (multiple projectiles in arc)
-                                setTimeout(() => {
+                                this.queueAttack(1000, () => {
                                     for (let sweep = 0; sweep < 15; sweep++) {
-                                        setTimeout(() => {
+                                        this.queueAttack(sweep * 40, () => {
                                             const angle = -Math.PI/3 + (sweep / 15) * (2 * Math.PI / 3);
                                             projectiles.push(new Projectile(this.x, this.y, angle, 12, 'enemy'));
-                                        }, sweep * 40);
+                                        });
                                     }
-                                }, 1000);
+                                });
                             }
                         } else {
                             // Crystal Rain - rains crystals from above in waves
@@ -6264,7 +6429,7 @@
                                 }
                                 
                                 // On landing create HUGE shockwave
-                                setTimeout(() => {
+                                this.queueAttack(1500, () => {
                                     if (this.onGround) {
                                         // Screen shake effect through particles
                                         for (let i = 0; i < 100; i++) {
@@ -6288,7 +6453,7 @@
                                         projectiles.push(new Projectile(this.x, this.y + this.height/2, 0, 8, 'enemy'));
                                         projectiles.push(new Projectile(this.x, this.y + this.height/2, Math.PI, 8, 'enemy'));
                                     }
-                                }, 1500);
+                                });
                             }
                         } else if (this.attackPattern === 1) {
                             // Iron Fortress - becomes invulnerable and shoots out spinning blades
@@ -6297,7 +6462,7 @@
                                 
                                 // Visual shield
                                 for (let i = 0; i < 80; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 10, () => {
                                         const angle = (Date.now() / 20) + i;
                                         particles.push(new Particle(
                                             this.x + Math.cos(angle) * 60,
@@ -6305,23 +6470,23 @@
                                             '#4169e1',
                                             0, 0, 10
                                         ));
-                                    }, i * 10);
+                                    });
                                 }
                                 
                                 // Spinning blade waves
                                 for (let wave = 0; wave < 4; wave++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(wave * 600, () => {
                                         for (let i = 0; i < 16; i++) {
                                             const angle = (Math.PI * 2 / 16) * i + wave * 0.2;
                                             projectiles.push(new Projectile(this.x, this.y, angle, 5 + wave, 'enemy'));
                                         }
-                                    }, wave * 600);
+                                    });
                                 }
                                 
                                 // End invulnerability
-                                setTimeout(() => {
+                                this.queueAttack(2800, () => {
                                     this.isInvulnerable = false;
-                                }, 2800);
+                                });
                             }
                         } else {
                             // Hammer Throw - telegraphed MASSIVE projectile
@@ -6330,22 +6495,22 @@
                                 
                                 // Huge windup telegraph
                                 for (let i = 0; i < 40; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 30, () => {
                                         particles.push(new Particle(
                                             this.x + Math.cos(angle) * 30 * (i / 40),
                                             this.y + Math.sin(angle) * 30 * (i / 40),
                                             '#ffd700',
                                             0, 0, 20
                                         ));
-                                    }, i * 30);
+                                    });
                                 }
                                 
                                 // Throw 3 huge projectiles
-                                setTimeout(() => {
+                                this.queueAttack(1200, () => {
                                     for (let i = -1; i <= 1; i++) {
                                         projectiles.push(new Projectile(this.x, this.y, angle + i * 0.25, 9, 'enemy'));
                                     }
-                                }, 1200);
+                                });
                             }
                         }
                         break;
@@ -6377,7 +6542,7 @@
                             // Phantom Strike - multiple rapid teleports with attacks
                             if (this.patternTimer % 130 === 0) {
                                 for (let strike = 0; strike < 5; strike++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(strike * 400, () => {
                                         // Teleport
                                         const angle = Math.random() * Math.PI * 2;
                                         this.x = player.x + Math.cos(angle) * 100;
@@ -6393,7 +6558,7 @@
                                         for (let i = 0; i < 15; i++) {
                                             particles.push(new Particle(this.x, this.y, '#ff00ff', (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, 25));
                                         }
-                                    }, strike * 400);
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
@@ -6407,18 +6572,18 @@
                                 ];
                                 
                                 clonePositions.forEach((pos, idx) => {
-                                    setTimeout(() => {
+                                    this.queueAttack(idx * 200, () => {
                                         // Show clone appearing
                                         for (let i = 0; i < 20; i++) {
                                             particles.push(new Particle(pos.x, pos.y, '#000000', (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, 40));
                                         }
                                         
                                         // Clone attacks
-                                        setTimeout(() => {
+                                        this.queueAttack(500, () => {
                                             const angle = Math.atan2(player.y - pos.y, player.x - pos.x);
                                             projectiles.push(new Projectile(pos.x, pos.y, angle, 10, 'enemy'));
-                                        }, 500);
-                                    }, idx * 200);
+                                        });
+                                    });
                                 });
                             }
                         } else {
@@ -6436,17 +6601,17 @@
                                 }
                                 
                                 // Execute dash
-                                setTimeout(() => {
+                                this.queueAttack(600, () => {
                                     const dashSpeed = 18;
                                     this.vx = Math.cos(angle) * dashSpeed;
                                     this.vy = Math.sin(angle) * dashSpeed;
                                     
                                     // Stop dash
-                                    setTimeout(() => {
+                                    this.queueAttack(250, () => {
                                         this.vx *= 0.1;
                                         this.vy *= 0.1;
-                                    }, 250);
-                                }, 600);
+                                    });
+                                });
                             }
                         }
                         break;
@@ -6466,7 +6631,7 @@
                             // Plague Bomb - throws bombs that create lingering poison clouds
                             if (this.patternTimer % 120 === 0) {
                                 for (let bomb = 0; bomb < 3; bomb++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(bomb * 400, () => {
                                         const targetX = player.x + (Math.random() - 0.5) * 150;
                                         const targetY = player.y;
                                         const angle = Math.atan2(targetY - this.y, targetX - this.x);
@@ -6475,9 +6640,9 @@
                                         projectiles.push(new Projectile(this.x, this.y, angle, 7, 'enemy'));
                                         
                                         // Create poison cloud at target
-                                        setTimeout(() => {
+                                        this.queueAttack(800, () => {
                                             for (let i = 0; i < 120; i++) {
-                                                setTimeout(() => {
+                                                this.queueAttack(i * 20, () => {
                                                     particles.push(new Particle(
                                                         targetX + (Math.random() - 0.5) * 120,
                                                         targetY + (Math.random() - 0.5) * 120,
@@ -6486,17 +6651,17 @@
                                                         -Math.random() * 2,
                                                         100
                                                     ));
-                                                }, i * 20);
+                                                });
                                             }
-                                        }, 800);
-                                    }, bomb * 400);
+                                        });
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
                             // Miasma Wave - sends out expanding toxic rings
                             if (this.patternTimer % 140 === 0) {
                                 for (let ring = 1; ring <= 4; ring++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(ring * 500, () => {
                                         for (let i = 0; i < 16; i++) {
                                             const angle = (Math.PI * 2 / 16) * i;
                                             projectiles.push(new Projectile(this.x, this.y, angle, 4 + ring * 0.5, 'enemy'));
@@ -6512,7 +6677,7 @@
                                                 0, 0, 30
                                             ));
                                         }
-                                    }, ring * 500);
+                                    });
                                 }
                             }
                         } else {
@@ -6520,11 +6685,11 @@
                             if (this.patternTimer % 90 === 0) {
                                 // Release swarm in random directions
                                 for (let i = 0; i < 15; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 50, () => {
                                         const angle = Math.random() * Math.PI * 2;
                                         const speed = 4 + Math.random() * 4;
                                         projectiles.push(new Projectile(this.x, this.y, angle, speed, 'enemy'));
-                                    }, i * 50);
+                                    });
                                 }
                             }
                         }
@@ -6548,7 +6713,7 @@
                             // Lightning Storm - calls down multiple lightning strikes
                             if (this.patternTimer % 150 === 0) {
                                 for (let strike = 0; strike < 8; strike++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(strike * 200, () => {
                                         const strikeX = player.x + (Math.random() - 0.5) * 300;
                                         
                                         // Lightning telegraph (from top)
@@ -6562,7 +6727,7 @@
                                         }
                                         
                                         // Lightning bolt
-                                        setTimeout(() => {
+                                        this.queueAttack(400, () => {
                                             for (let i = 0; i < 5; i++) {
                                                 projectiles.push(new Projectile(
                                                     strikeX + (Math.random() - 0.5) * 30,
@@ -6584,8 +6749,8 @@
                                                     40
                                                 ));
                                             }
-                                        }, 400);
-                                    }, strike * 200);
+                                        });
+                                    });
                                 }
                             }
                         } else if (this.attackPattern === 1) {
@@ -6596,7 +6761,7 @@
                                 
                                 // Tornado particles (spiraling outward)
                                 for (let i = 0; i < 200; i++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(i * 20, () => {
                                         const angle = (i / 10) + Date.now() / 200;
                                         const radius = (i / 5);
                                         particles.push(new Particle(
@@ -6607,17 +6772,17 @@
                                             Math.sin(angle) * 2,
                                             40
                                         ));
-                                    }, i * 20);
+                                    });
                                 }
                                 
                                 // Spiral projectiles
                                 for (let wave = 0; wave < 3; wave++) {
-                                    setTimeout(() => {
+                                    this.queueAttack(wave * 600, () => {
                                         for (let i = 0; i < 12; i++) {
                                             const angle = (Math.PI * 2 / 12) * i + wave * 0.3;
                                             projectiles.push(new Projectile(tornadoX, tornadoY, angle, 5 + wave, 'enemy'));
                                         }
-                                    }, wave * 600);
+                                    });
                                 }
                             }
                         } else {
@@ -6636,16 +6801,16 @@
                                 }
                                 
                                 // Expanding shockwave
-                                setTimeout(() => {
+                                this.queueAttack(500, () => {
                                     for (let ring = 1; ring <= 3; ring++) {
-                                        setTimeout(() => {
+                                        this.queueAttack(ring * 200, () => {
                                             for (let i = 0; i < 20; i++) {
                                                 const angle = (Math.PI * 2 / 20) * i;
                                                 projectiles.push(new Projectile(this.x, this.y, angle, 6 + ring, 'enemy'));
                                             }
-                                        }, ring * 200);
+                                        });
                                     }
-                                }, 500);
+                                });
                             }
                         }
                         break;
@@ -6653,6 +6818,20 @@
             }
 
             draw() {
+                // Render telegraphing flash
+                if (this.isTelegraphingSignature) {
+                    const flashProgress = 1 - (this.signatureTelegraphFrames / 45);
+                    if (Math.floor(this.signatureTelegraphFrames) % 5 === 0) {
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'screen';
+                        ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + flashProgress * 0.5})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.width, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+
                 // Boss aura/glow effect
                 const pulseIntensity = 0.7 + Math.sin(Date.now() / 300) * 0.3;
                 ctx.globalAlpha = 0.2 * pulseIntensity;
@@ -7252,9 +7431,65 @@
                         }
                         break;
                         
+                    case 'Crystal Sage':
+                        const crystalGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        crystalGrad.addColorStop(0, '#ff1493');
+                        crystalGrad.addColorStop(0.5, '#da70d6');
+                        crystalGrad.addColorStop(1, '#ff69b4');
+                        ctx.fillStyle = crystalGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -this.height/2 - 10); ctx.lineTo(-this.width/2, 0); ctx.lineTo(0, this.height/2 + 10); ctx.lineTo(this.width/2, 0);
+                        ctx.closePath(); ctx.fill();
+                        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.moveTo(0, -this.height/2 - 10); ctx.lineTo(0, this.height/2 + 10); ctx.moveTo(-this.width/2, 0); ctx.lineTo(this.width/2, 0);
+                        ctx.stroke();
+                        ctx.globalAlpha = 0.5 + Math.sin(Date.now()/200) * 0.2;
+                        const crystalAura = ctx.createRadialGradient(0, 0, 0, 0, 0, this.width);
+                        crystalAura.addColorStop(0, '#ff1493'); crystalAura.addColorStop(1, 'rgba(255, 20, 147, 0)');
+                        ctx.fillStyle = crystalAura; ctx.beginPath(); ctx.arc(0, 0, this.width * 1.5, 0, Math.PI * 2); ctx.fill();
+                        ctx.globalAlpha = 1;
+                        break;
+                    case 'Iron Colossus':
+                        const ironGrad = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
+                        ironGrad.addColorStop(0, '#4a4a4a'); ironGrad.addColorStop(0.5, '#b0b0b0'); ironGrad.addColorStop(1, '#2a2a2a');
+                        ctx.fillStyle = ironGrad; ctx.fillRect(-this.width / 2 - 10, -this.height / 2, this.width + 20, this.height);
+                        ctx.fillStyle = '#000000';
+                        for (let y = -this.height/2 + 10; y < this.height/2; y += 15) { ctx.fillRect(-this.width/2 - 5, y, 4, 4); ctx.fillRect(this.width/2 + 1, y, 4, 4); }
+                        const corePulse = 0.5 + Math.sin(Date.now() / 150) * 0.5;
+                        ctx.fillStyle = '#ff4500'; ctx.shadowColor = '#ff4500'; ctx.shadowBlur = 15 * corePulse;
+                        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+                        break;
+                    case 'Phantom Assassin':
+                        ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
+                        const phantomGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        phantomGrad.addColorStop(0, '#8b008b'); phantomGrad.addColorStop(1, 'rgba(139, 0, 139, 0)');
+                        ctx.fillStyle = phantomGrad; ctx.beginPath(); ctx.moveTo(0, -this.height/2);
+                        ctx.quadraticCurveTo(-this.width/2, 0, -this.width/2 + Math.sin(Date.now()/100)*10, this.height/2 + Math.random()*20);
+                        ctx.lineTo(this.width/2 + Math.cos(Date.now()/100)*10, this.height/2 + Math.random()*20);
+                        ctx.quadraticCurveTo(this.width/2, 0, 0, -this.height/2); ctx.fill();
+                        ctx.fillStyle = '#dda0dd'; ctx.shadowColor = '#dda0dd'; ctx.shadowBlur = 10;
+                        ctx.beginPath(); ctx.ellipse(-10, -this.height/4, 6, 3, Math.PI/6, 0, Math.PI * 2); ctx.ellipse(10, -this.height/4, 6, 3, -Math.PI/6, 0, Math.PI * 2); ctx.fill();
+                        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+                        break;
+                    case 'Plague Doctor':
+                        ctx.fillStyle = '#006400'; ctx.beginPath(); ctx.moveTo(0, -this.height/2); ctx.lineTo(-this.width/2 - 10, this.height/2); ctx.lineTo(this.width/2 + 10, this.height/2); ctx.closePath(); ctx.fill();
+                        ctx.fillStyle = '#dcdcdc'; ctx.beginPath(); ctx.moveTo(0, -this.height/2 + 10); ctx.lineTo(this.width/2 + 20, -this.height/2 + 15); ctx.lineTo(0, -this.height/2 + 25); ctx.closePath(); ctx.fill();
+                        ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(5, -this.height/2 + 12, 6, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = '#adff2f'; ctx.beginPath(); ctx.arc(6, -this.height/2 + 11, 2, 0, Math.PI * 2); ctx.fill();
+                        break;
+                    case 'Storm Herald':
+                        ctx.fillStyle = '#4169e1'; ctx.beginPath(); ctx.arc(0, 0, this.width/2 + 10, 0, Math.PI*2); ctx.arc(-15, 10, this.width/2, 0, Math.PI*2); ctx.arc(15, 10, this.width/2, 0, Math.PI*2); ctx.fill();
+                        ctx.strokeStyle = '#87cefa'; ctx.lineWidth = 2;
+                        for(let i=0; i<3; i++) { ctx.beginPath(); ctx.arc(0, 0, this.width/2 + i*5 + Math.sin(Date.now()/200)*5, Date.now()/500 + i, Date.now()/500 + i + Math.PI); ctx.stroke(); }
+                        if (Math.random() < 0.2) { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-10, -20); ctx.lineTo(5, 0); ctx.lineTo(-5, 5); ctx.lineTo(15, 25); ctx.stroke(); }
+                        break;
                     default:
-                        ctx.fillStyle = this.color;
-                        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        const genericGrad = ctx.createLinearGradient(0, -this.height/2, 0, this.height/2);
+                        genericGrad.addColorStop(0, this.color); genericGrad.addColorStop(1, '#000000');
+                        ctx.fillStyle = genericGrad; ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                        ctx.fillStyle = '#ff0000'; ctx.fillRect(-10, -this.height/4, 20, 5);
                         break;
                 }
 
