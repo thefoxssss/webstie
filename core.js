@@ -2284,6 +2284,19 @@ function loadSeasonLeaderboards() {
 }
 
 function renderCrewPanel() {
+  const dashboard = document.getElementById("crewDashboard");
+  const finder = document.getElementById("crewFinder");
+
+  if (!crewData.tag) {
+    if (dashboard) dashboard.style.display = "none";
+    if (finder) finder.style.display = "block";
+    loadOpenCrews();
+    return;
+  }
+
+  if (dashboard) dashboard.style.display = "grid";
+  if (finder) finder.style.display = "none";
+
   setText("crewName", crewData.tag || "NONE");
   setText("crewRole", crewData.role || "SOLO");
   setText("crewMotto", crewData.motto || "---");
@@ -2317,20 +2330,86 @@ function renderCrewPanel() {
 
 let crewLeaveConfirmTimer = null;
 
+async function loadOpenCrews() {
+  const meta = document.getElementById("crewFinderMeta");
+  const list = document.getElementById("crewFinderList");
+  if (!list || !meta) return;
+
+  try {
+    const snap = await getDocs(query(collection(db, "gooner_users"), orderBy("name"), limit(200)));
+    const openCrews = {};
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      if (data.crewData && data.crewData.tag && data.crewData.recruitmentOpen) {
+        const tag = data.crewData.tag;
+        // Keep the one with the highest wins/members as the representative
+        if (!openCrews[tag] || data.crewData.wins > openCrews[tag].wins) {
+          openCrews[tag] = {
+            tag: tag,
+            motto: data.crewData.motto || "---",
+            wins: data.crewData.wins || 0,
+            members: data.crewData.members?.length || 1,
+            goal: data.crewData.goal || 5000,
+          };
+        }
+      }
+    });
+
+    const crewsArray = Object.values(openCrews).sort((a, b) => b.wins - a.wins);
+
+    if (crewsArray.length === 0) {
+      list.innerHTML = `<div class="crew-roster-empty">NO OPEN CREWS FOUND.</div>`;
+      meta.textContent = "0 OPEN CREWS SCANNED.";
+      return;
+    }
+
+    meta.textContent = `${crewsArray.length} OPEN CREWS SCANNED.`;
+    list.innerHTML = crewsArray.map(crew => `
+      <div class="crew-roster-item" style="display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <span class="crew-roster-name" style="font-weight: bold; color: var(--accent);">${escapeHtml(crew.tag)}</span>
+          <span style="font-size: 10px;">${crew.members} MEMBERS | ${crew.wins} WINS</span>
+        </div>
+        <div style="font-size: 10px; color: #aaa;">"${escapeHtml(crew.motto)}"</div>
+        <button class="term-btn" style="margin-top: 5px; width: 100%; font-size: 10px; padding: 4px;" onclick="window.joinCrewFromFinder('${escapeHtml(crew.tag)}')">JOIN CREW</button>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    console.error("Failed to load open crews", err);
+    list.innerHTML = `<div class="crew-roster-empty">ERROR LOADING DIRECTORY.</div>`;
+  }
+}
+
+window.joinCrewFromFinder = (tag) => {
+  const normalizedTag = normalizeCrewTag(tag);
+  if (!normalizedTag) return;
+
+  crewData.tag = normalizedTag;
+  crewData.role = "MEMBER";
+  crewData.members = Array.from(new Set([...(crewData.members || []), myName]));
+  saveCrewData();
+  renderCrewPanel();
+  setText("crewMsg", `LINKED TO CREW ${normalizedTag}`);
+  showToast("CREW LINK ESTABLISHED", "🛰️", normalizedTag);
+};
+
 function initCrewUx() {
   const createBtn = document.getElementById("crewCreateBtn");
+  const finderCreateBtn = document.getElementById("crewFinderCreateBtn");
   const leaveBtn = document.getElementById("crewLeaveBtn");
   const contributeBtn = document.getElementById("crewContributeBtn");
   const mottoBtn = document.getElementById("crewMottoBtn");
   const recruitmentBtn = document.getElementById("crewRecruitmentBtn");
   const goalBtn = document.getElementById("crewGoalBtn");
   const input = document.getElementById("crewInput");
+  const finderInput = document.getElementById("crewFinderInput");
   const mottoInput = document.getElementById("crewMottoInput");
   const donateInput = document.getElementById("crewDonateAmount");
-  if (!createBtn || !leaveBtn || !contributeBtn || !input) return;
 
-  createBtn.onclick = () => {
-    const tag = normalizeCrewTag(input.value);
+  const handleCreateJoin = (val) => {
+    const tag = normalizeCrewTag(val);
     if (!/^[A-Z0-9_]{3,8}$/.test(tag)) {
       setText("crewMsg", "USE 3-8 LETTER/NUMBER TAG");
       return;
@@ -2344,6 +2423,11 @@ function initCrewUx() {
     setText("crewMsg", `LINKED TO CREW ${tag}`);
     showToast("CREW LINK ESTABLISHED", "🛰️", tag);
   };
+
+  if (createBtn && input) createBtn.onclick = () => handleCreateJoin(input.value);
+  if (finderCreateBtn && finderInput) finderCreateBtn.onclick = () => handleCreateJoin(finderInput.value);
+
+  if (!leaveBtn || !contributeBtn) return;
 
   leaveBtn.onclick = () => {
     if (!crewData.tag) return setText("crewMsg", "NOT IN A CREW");

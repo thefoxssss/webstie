@@ -964,6 +964,19 @@ body::before {
   align-items: flex-start;
 }
 
+.crew-finder {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.crew-directory-section {
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+}
+
 @media (max-width: 600px) {
   .crew-dashboard {
     grid-template-columns: 1fr;
