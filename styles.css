@@ -1950,6 +1950,19 @@ canvas {
   position: relative;
   color: var(--accent);
 }
+
+.bj-card.deal-anim {
+  animation: dealCard 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  opacity: 0;
+  transform: translateY(-20px) scale(0.9);
+}
+
+@keyframes dealCard {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 .bj-card.mini {
   width: 30px;
   height: 42px;
@@ -2024,8 +2037,18 @@ canvas {
   justify-content: center;
 }
 .active-seat {
-  box-shadow: 0 0 10px var(--accent);
+  box-shadow: 0 0 15px var(--accent);
   border-color: var(--accent);
+  animation: pulseSeat 1.5s infinite alternate;
+}
+
+@keyframes pulseSeat {
+  from {
+    box-shadow: 0 0 5px var(--accent);
+  }
+  to {
+    box-shadow: 0 0 15px var(--accent);
+  }
 }
 
 .bj-chip-rack {
