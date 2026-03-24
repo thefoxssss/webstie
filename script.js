@@ -259,7 +259,11 @@ function initSharedGamebox() {
     const overlay = document.getElementById(overlayId);
     if (!overlay) return;
     overlay.classList.remove("active");
-    templatesRoot.appendChild(overlay);
+    // Ensure we keep overlays top-level so they can take over the screen.
+    // Moving them to templatesRoot causes them to be hidden permanently unless mounted.
+    if (overlay.parentElement === templatesRoot) {
+      document.body.appendChild(overlay);
+    }
   });
 }
 
@@ -267,10 +271,17 @@ function initSharedGamebox() {
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
   window.closeOverlays();
-  const overlayId = mountGameOverlayIntoGamebox(game);
+
+  // We bypass mountGameOverlayIntoGamebox so the game takes over the screen
+  // with its own full-page overlay instead of opening in a sub-frame.
+  const overlayId = getOverlayIdForGame(game);
   const el = document.getElementById(overlayId);
-  if (el) el.classList.add("active");
-  renderInGameShopPanel(game, SHARED_GAME_OVERLAY_ID);
+  if (el) {
+    el.classList.remove("gamebox-mounted");
+    el.classList.add("active");
+  }
+
+  renderInGameShopPanel(game, overlayId);
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
@@ -590,7 +601,7 @@ function initGameScroller() {
         }
         selectedGameId = game.id;
         centerOnGameId = game.id;
-        window.launchGame(game.id, "game-strip");
+        window.launchGame(game.id, "directory");
       });
       strip.appendChild(btn);
     });
@@ -637,7 +648,7 @@ function initGameScroller() {
     switchBtn.textContent = inLeaderboard ? "GAMES" : "LEADERBOARD";
     filterToggle.style.display = inLeaderboard ? "none" : "inline-flex";
     strip.style.display = inLeaderboard ? "none" : "grid";
-    if (gameFrame) gameFrame.style.display = inLeaderboard ? "none" : "flex";
+    if (gameFrame) gameFrame.style.display = "none";
     if (leaderboardPanel) leaderboardPanel.style.display = inLeaderboard ? "grid" : "none";
     const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
     if (sharedOverlay) {
@@ -732,12 +743,6 @@ function initGameScroller() {
 
   window.__ensureGameboxHasGame = () => {
     setGameboxView("games");
-    if (mountedGameOverlayId) return;
-    const firstGame = getVisibleGames()[0] || orderedGames[0];
-    if (!firstGame) return;
-    selectedGameId = firstGame.id;
-    centerOnGameId = firstGame.id;
-    window.launchGame(firstGame.id, "gamebox-default");
   };
 
   renderStrip();

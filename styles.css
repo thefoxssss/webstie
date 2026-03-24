@@ -1222,19 +1222,19 @@ canvas {
 
 .gamebox-game-strip {
   width: 100%;
-  min-height: 128px;
+  min-height: var(--gamebox-panel-min-height);
   margin-bottom: 10px;
-  overflow-y: hidden;
-  scroll-snap-type: x proximity;
   padding: 2px 2px 8px;
 }
 
 .leaderboard-game-strip.gamebox-game-strip {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-auto-rows: min-content;
   gap: 10px;
   overflow-y: auto;
   overflow-x: hidden;
+  align-content: start;
 }
 
 .leaderboard-game-strip.gamebox-game-strip .leaderboard-game-card {
