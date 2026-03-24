@@ -956,6 +956,95 @@ body::before {
   gap: 8px;
 }
 
+.crew-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 10px;
+  align-items: flex-start;
+}
+
+@media (max-width: 600px) {
+  .crew-dashboard {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}
+
+.crew-dashboard-col {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.crew-section {
+  border: 1px solid var(--accent-dim);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 10px;
+  position: relative;
+}
+
+.crew-section-title {
+  text-align: left;
+  font-size: 11px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent-dim);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.crew-roster-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.crew-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 5px;
+  flex: 1;
+  min-height: 120px;
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px dashed var(--accent-dim);
+  padding: 5px;
+}
+
+.crew-roster-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  padding: 4px;
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid transparent;
+}
+
+.crew-roster-item:hover {
+  border-color: var(--accent-dim);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.crew-roster-name {
+  color: #fff;
+}
+
+.crew-roster-you {
+  color: var(--accent);
+}
+
+.crew-roster-empty {
+  text-align: center;
+  font-size: 10px;
+  color: #aaa;
+  margin: auto;
+  opacity: 0.5;
+}
+
 .live-ops-grid div {
   border: 1px solid var(--accent-dim);
   padding: 8px;
