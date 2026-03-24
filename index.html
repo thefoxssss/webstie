@@ -890,27 +890,60 @@
     <div class="overlay menu-overlay" id="overlayCrew">
       <div class="score-box">
         <h2 style="text-align: center">CREW TERMINAL</h2>
-        <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
-        <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
-        <div class="stat-row"><span>CREW BANK</span><span id="crewBank">$0</span></div>
-        <div class="stat-row"><span>WEEKLY WINS</span><span id="crewWins">0</span></div>
-        <div class="stat-row"><span>WEEKLY MONEY</span><span id="crewXp">0</span></div>
-        <div class="stat-row"><span>MEMBERS</span><span id="crewMembers">0</span></div>
-        <input class="term-input" id="crewInput" placeholder="CREW TAG (3-8)" maxlength="8" />
-        <input class="term-input" id="crewMottoInput" placeholder="CREW MOTTO (MAX 24)" maxlength="24" />
-        <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
-        <div class="stat-row"><span>RECRUITMENT</span><span id="crewRecruitment">OPEN</span></div>
-        <div class="stat-row"><span>WEEKLY GOAL</span><span id="crewGoal">$5000</span></div>
-        <input class="term-input" id="crewDonateAmount" placeholder="DONATE AMOUNT" maxlength="7" />
-        <div class="crew-actions">
-          <button class="term-btn" id="crewCreateBtn">CREATE / JOIN CREW</button>
-          <button class="term-btn" id="crewContributeBtn">DONATE TO CREW BANK</button>
-          <button class="term-btn" id="crewMottoBtn">UPDATE MOTTO</button>
-          <button class="term-btn" id="crewRecruitmentBtn">TOGGLE RECRUITMENT</button>
-          <button class="term-btn" id="crewGoalBtn">CYCLE WEEKLY GOAL</button>
-          <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00">LEAVE CREW</button>
+
+        <div class="crew-dashboard">
+          <div class="crew-dashboard-col">
+            <div class="crew-section">
+              <h3 class="crew-section-title">STATUS</h3>
+              <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
+              <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
+              <div class="stat-row"><span>YOUR WEEKLY XP</span><span id="crewXp">0</span></div>
+              <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
+            </div>
+
+            <div class="crew-section">
+              <h3 class="crew-section-title">BANK & GOAL</h3>
+              <div class="stat-row"><span>WEEKLY WINS</span><span id="crewWins">0</span></div>
+              <div class="stat-row"><span>WEEKLY GOAL</span><span id="crewGoal">$5000</span></div>
+              <div class="profile-progress-wrap" style="margin-top: 10px; margin-bottom: 5px;">
+                <div class="profile-progress-label" id="crewBankLabel">$0 / $5000</div>
+                <div class="profile-progress-track">
+                  <div class="profile-progress-fill" id="crewBankFill"></div>
+                </div>
+              </div>
+              <div style="text-align: right; font-size: 10px;">BANK: <span id="crewBank">$0</span></div>
+            </div>
+
+            <div class="crew-section">
+              <h3 class="crew-section-title">ACTIONS</h3>
+              <input class="term-input" id="crewInput" placeholder="CREW TAG (3-8)" maxlength="8" />
+              <input class="term-input" id="crewMottoInput" placeholder="CREW MOTTO (MAX 24)" maxlength="24" />
+              <input class="term-input" id="crewDonateAmount" placeholder="DONATE AMOUNT" maxlength="7" />
+              <div class="crew-actions">
+                <button class="term-btn" id="crewCreateBtn">JOIN / CREATE</button>
+                <button class="term-btn" id="crewContributeBtn">DONATE TO BANK</button>
+                <button class="term-btn" id="crewMottoBtn">UPDATE MOTTO</button>
+                <button class="term-btn" id="crewGoalBtn">CYCLE WEEKLY GOAL</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="crew-dashboard-col">
+            <div class="crew-section crew-roster-section">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="crew-section-title">ROSTER</h3>
+                <span style="font-size: 10px; opacity: 0.8;" id="crewRecruitment">OPEN</span>
+              </div>
+              <div class="crew-roster-list" id="crewMembersList">
+                <div class="crew-roster-empty">NOT IN A CREW.</div>
+              </div>
+              <button class="term-btn" id="crewRecruitmentBtn" style="margin-top: 10px; width: 100%;">TOGGLE RECRUITMENT</button>
+              <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00; margin-top: 10px; width: 100%;">LEAVE CREW</button>
+            </div>
+          </div>
         </div>
-        <p id="crewMsg" style="font-size: 10px; color: #aaa; margin-top: 10px"></p>
+
+        <p id="crewMsg" style="font-size: 10px; color: #aaa; margin-top: 10px; text-align: center; min-height: 12px;"></p>
         <button class="term-btn" style="margin-top: 14px" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>

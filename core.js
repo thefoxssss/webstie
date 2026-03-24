@@ -2292,8 +2292,30 @@ function renderCrewPanel() {
   setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
   setText("crewWins", Math.round(crewData.wins || 0));
   setText("crewXp", Math.round(myMoney || 0));
-  setText("crewMembers", (crewData.members || []).length);
+
+  const goal = Number(crewData.goal || 5000);
+  const bank = Number(crewData.bank || 0);
+  const pct = Math.min(100, Math.max(0, (bank / goal) * 100));
+  setText("crewBankLabel", `$${Math.round(bank)} / $${Math.round(goal)}`);
+  const fill = document.getElementById("crewBankFill");
+  if (fill) fill.style.width = `${pct}%`;
+
+  const list = document.getElementById("crewMembersList");
+  if (list) {
+    if (!crewData.tag || !crewData.members || crewData.members.length === 0) {
+      list.innerHTML = `<div class="crew-roster-empty">NOT IN A CREW.</div>`;
+    } else {
+      list.innerHTML = crewData.members.map(member =>
+        `<div class="crew-roster-item">
+           <span class="crew-roster-name">${escapeHtml(member)}</span>
+           ${member === myName ? '<span class="crew-roster-you">(YOU)</span>' : ''}
+         </div>`
+      ).join("");
+    }
+  }
 }
+
+let crewLeaveConfirmTimer = null;
 
 function initCrewUx() {
   const createBtn = document.getElementById("crewCreateBtn");
@@ -2324,6 +2346,22 @@ function initCrewUx() {
   };
 
   leaveBtn.onclick = () => {
+    if (!crewData.tag) return setText("crewMsg", "NOT IN A CREW");
+    if (!leaveBtn.classList.contains("confirming")) {
+      leaveBtn.classList.add("confirming");
+      leaveBtn.textContent = "CONFIRM LEAVE?";
+      clearTimeout(crewLeaveConfirmTimer);
+      crewLeaveConfirmTimer = setTimeout(() => {
+        leaveBtn.classList.remove("confirming");
+        leaveBtn.textContent = "LEAVE CREW";
+      }, 3000);
+      return setText("crewMsg", "CLICK AGAIN TO LEAVE");
+    }
+
+    clearTimeout(crewLeaveConfirmTimer);
+    leaveBtn.classList.remove("confirming");
+    leaveBtn.textContent = "LEAVE CREW";
+
     crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
     saveCrewData();
     renderCrewPanel();
