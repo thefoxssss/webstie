@@ -108,22 +108,45 @@ async function startSoloRound() {
   renderScore("bjPlayerScore", bjPlayerHand);
   const dDiv = document.getElementById("bjDealerHand");
   dDiv.innerHTML = "";
-  renderNewCard(bjDealerHand[0], "bjDealerHand");
+  renderNewCard(bjDealerHand[0], "bjDealerHand", false, 0, true);
   const hideDealer = !hasActiveItem("item_xray");
-  renderNewCard(bjDealerHand[1], "bjDealerHand", hideDealer);
+  renderNewCard(bjDealerHand[1], "bjDealerHand", hideDealer, 1, true);
   setText("bjDealerScore", hideDealer ? "" : calcHand(bjDealerHand));
   document.getElementById("bjGameBtns").style.display = "flex";
+  document.getElementById("bjDouble").style.display = "block";
   setText("bjMessage", "YOUR TURN");
   if (calcHand(bjPlayerHand) === 21) endSolo();
 }
 
 // Hit action for solo mode.
 function soloHit() {
+  document.getElementById("bjDouble").style.display = "none";
   const c = bjDeck.pop();
   bjPlayerHand.push(c);
-  renderNewCard(c, "bjPlayerHand");
+  renderNewCard(c, "bjPlayerHand", false, 0, true);
   renderScore("bjPlayerScore", bjPlayerHand);
   if (calcHand(bjPlayerHand) > 21) endSolo();
+}
+
+// Double action for solo mode.
+function soloDouble() {
+  if (state.myMoney < bjCurrentBet) {
+    showToast("Not enough cash to double.");
+    return;
+  }
+  state.myMoney -= bjCurrentBet;
+  bjCurrentBet *= 2;
+  updBJ();
+  document.getElementById("bjGameBtns").style.display = "none";
+  const c = bjDeck.pop();
+  bjPlayerHand.push(c);
+  renderNewCard(c, "bjPlayerHand", false, 0, true);
+  renderScore("bjPlayerScore", bjPlayerHand);
+  if (calcHand(bjPlayerHand) > 21) {
+    endSolo();
+  } else {
+    soloStand();
+  }
 }
 
 // Stand action for solo mode (dealer plays out hand).
@@ -131,14 +154,14 @@ async function soloStand() {
   document.getElementById("bjGameBtns").style.display = "none";
   const dDiv = document.getElementById("bjDealerHand");
   dDiv.innerHTML = "";
-  renderNewCard(bjDealerHand[0], "bjDealerHand");
-  renderNewCard(bjDealerHand[1], "bjDealerHand");
+  renderNewCard(bjDealerHand[0], "bjDealerHand", false, 0, false);
+  renderNewCard(bjDealerHand[1], "bjDealerHand", false, 0, false);
   renderScore("bjDealerScore", bjDealerHand);
   while (calcHand(bjDealerHand) < 17) {
     await new Promise((r) => setTimeout(r, 600));
     const c = bjDeck.pop();
     bjDealerHand.push(c);
-    renderNewCard(c, "bjDealerHand");
+    renderNewCard(c, "bjDealerHand", false, 0, true);
     renderScore("bjDealerScore", bjDealerHand);
   }
   endSolo();
@@ -150,16 +173,28 @@ async function endSolo() {
   const dDiv = document.getElementById("bjDealerHand");
   if (dDiv.querySelector(".hidden")) {
     dDiv.innerHTML = "";
-    bjDealerHand.forEach((c) => renderNewCard(c, "bjDealerHand"));
+    bjDealerHand.forEach((c) => renderNewCard(c, "bjDealerHand", false, 0, false));
     renderScore("bjDealerScore", bjDealerHand);
   }
   const ps = calcHand(bjPlayerHand);
   const ds = calcHand(bjDealerHand);
   let msg = "";
   let win = 0;
+  const isPlayerBlackjack = ps === 21 && bjPlayerHand.length === 2;
+  const isDealerBlackjack = ds === 21 && bjDealerHand.length === 2;
+
   if (ps > 21) {
     msg = "YOU BUST!";
     win = 0;
+  } else if (isPlayerBlackjack && !isDealerBlackjack) {
+    msg = "BLACKJACK!";
+    win = bjCurrentBet + (bjCurrentBet * 1.5);
+  } else if (!isPlayerBlackjack && isDealerBlackjack) {
+    msg = "DEALER BLACKJACK!";
+    win = 0;
+  } else if (isPlayerBlackjack && isDealerBlackjack) {
+    msg = "PUSH (BOTH BLACKJACK)";
+    win = bjCurrentBet;
   } else if (ds > 21) {
     msg = "DEALER BUST! YOU WIN";
     win = bjCurrentBet * 2;
@@ -323,26 +358,25 @@ function handleBJUpdate(d) {
   });
   const dDiv = document.getElementById("bjDealerHand");
   if (topSeat) {
-    dDiv.innerHTML = "";
-    topSeat.hand.forEach((c, cIdx) => {
-      let isHidden = false;
-      if (d.phase === "playing" && cIdx >= 2) isHidden = true;
-      if (d.phase === "resolution") isHidden = false;
-      renderNewCard(c, "bjDealerHand", isHidden);
-    });
-    setText("bjDealerScore", d.phase === "resolution" ? calcHand(topSeat.hand) : "");
+    if (dDiv.childElementCount !== topSeat.hand.length || d.phase === "resolution") {
+      // Clear out and re-render without animation for opponent
+      dDiv.innerHTML = "";
+      topSeat.hand.forEach((c, cIdx) => {
+        let isHidden = false;
+        if (d.phase === "playing" && cIdx >= 2) isHidden = true;
+        if (d.phase === "resolution") isHidden = false;
+        renderNewCard(c, "bjDealerHand", isHidden, 0, false);
+      });
+      setText("bjDealerScore", d.phase === "resolution" ? calcHand(topSeat.hand) : "");
+    }
   } else {
     dDiv.innerHTML = "";
     setText("bjDealerScore", "");
   }
   const me = d.seats[bjMySeatIdx];
   if (me) {
-    const pDiv = document.getElementById("bjPlayerHand");
-    if (pDiv.childElementCount !== me.hand.length) {
-      pDiv.innerHTML = "";
-      me.hand.forEach((c) => renderNewCard(c, "bjPlayerHand"));
-      renderScore("bjPlayerScore", me.hand);
-    }
+    renderHand(me.hand, "bjPlayerHand");
+    renderScore("bjPlayerScore", me.hand);
   }
   if (d.phase === "betting") {
     if (!me.ready) {
@@ -363,6 +397,11 @@ function handleBJUpdate(d) {
     deckLabel.innerText = "PLAY";
     if (d.activeSeat === bjMySeatIdx) {
       document.getElementById("bjGameBtns").style.display = "flex";
+      if (me && me.hand.length === 2) {
+        document.getElementById("bjDouble").style.display = "block";
+      } else {
+        document.getElementById("bjDouble").style.display = "none";
+      }
       setText("bjMessage", "YOUR TURN");
     } else {
       document.getElementById("bjGameBtns").style.display = "none";
@@ -445,36 +484,72 @@ document.getElementById("bjHit").onclick = () => {
   if (bjMode === "solo") soloHit();
   else doNetAct("hit");
 };
+document.getElementById("bjDouble").onclick = () => {
+  if (bjMode === "solo") soloDouble();
+  else doNetAct("double");
+};
 document.getElementById("bjStand").onclick = () => {
   if (bjMode === "solo") soloStand();
   else doNetAct("stand");
 };
 
-// Apply a multiplayer action (hit/stand) and sync to Firestore.
+// Apply a multiplayer action (hit/stand/double) and sync to Firestore.
+let isNetActInProgress = false;
 async function doNetAct(act) {
-  const ref = getBJRef(bjRoomCode);
-  const snap = await getDoc(ref);
-  const d = snap.data();
-  if (d.activeSeat !== bjMySeatIdx) return;
-  const deck = [...d.deck];
-  const ns = [...d.seats];
-  const me = ns[bjMySeatIdx];
-  if (act === "hit") {
-    me.hand.push(deck.pop());
-    if (calcHand(me.hand) > 21) {
-      me.status = "bust";
-      passTurn(ref, d.activeSeat, ns, deck);
-    } else {
-      await updateDoc(ref, { seats: ns, deck: deck });
+  if (isNetActInProgress) return;
+  isNetActInProgress = true;
+  try {
+    const ref = getBJRef(bjRoomCode);
+    const snap = await getDoc(ref);
+    const d = snap.data();
+    if (d.activeSeat !== bjMySeatIdx) {
+      isNetActInProgress = false;
+      return;
     }
-  } else {
-    me.status = "stand";
-    passTurn(ref, d.activeSeat, ns, deck);
+    const deck = [...d.deck];
+    const ns = [...d.seats];
+    const me = ns[bjMySeatIdx];
+    if (act === "hit") {
+      me.hand.push(deck.pop());
+      if (calcHand(me.hand) > 21) {
+        me.status = "bust";
+        await passTurn(ref, d.activeSeat, ns, deck);
+      } else {
+        await updateDoc(ref, { seats: ns, deck: deck });
+      }
+    } else if (act === "double") {
+      if (me.hand.length !== 2) {
+        isNetActInProgress = false;
+        return;
+      }
+      if (state.myMoney < me.bet) {
+        showToast("Not enough cash to double.");
+        return;
+      }
+      state.myMoney -= me.bet;
+      updBJ();
+      const extraBet = me.bet;
+      me.bet *= 2;
+      me.hand.push(deck.pop());
+      if (calcHand(me.hand) > 21) {
+        me.status = "bust";
+      } else {
+        me.status = "stand";
+      }
+      await passTurn(ref, d.activeSeat, ns, deck, d.pot + extraBet);
+    } else {
+      me.status = "stand";
+      await passTurn(ref, d.activeSeat, ns, deck);
+    }
+  } catch (error) {
+    handleFirebaseError(error, "BLACKJACK ACTION", "Failed to apply action.");
+  } finally {
+    isNetActInProgress = false;
   }
 }
 
 // Advance the turn, resolve the hand if all seats have acted.
-async function passTurn(ref, curr, seats, deck) {
+async function passTurn(ref, curr, seats, deck, newPot = null) {
   let next = curr + 1;
   while (next < 4 && seats[next] === null) next++;
   if (next >= 4) {
@@ -490,8 +565,14 @@ async function passTurn(ref, curr, seats, deck) {
       const sc = calcHand(s.hand);
       s.status = sc === best && best > 0 ? "win" : "lose";
     });
-    await updateDoc(ref, { seats: seats, deck: deck, phase: "resolution", activeSeat: -1 });
-  } else await updateDoc(ref, { seats: seats, deck: deck, activeSeat: next });
+    const updateObj = { seats: seats, deck: deck, phase: "resolution", activeSeat: -1 };
+    if (newPot !== null) updateObj.pot = newPot;
+    await updateDoc(ref, updateObj);
+  } else {
+    const updateObj = { seats: seats, deck: deck, activeSeat: next };
+    if (newPot !== null) updateObj.pot = newPot;
+    await updateDoc(ref, updateObj);
+  }
 }
 
 // Betting chip click handlers for adjusting current bet.
@@ -530,24 +611,84 @@ function calcHand(h) {
   return s;
 }
 // Render a single card into the specified hand element.
-function renderNewCard(c, elId, hidden = false) {
+function renderNewCard(c, elId, hidden = false, index = 0, animate = true) {
   const d = document.createElement("div");
-  d.className = "bj-card" + (hidden ? " hidden" : "");
+  d.className = "bj-card" + (hidden ? " hidden" : "") + (animate ? " deal-anim" : "");
+  if (animate) d.style.animationDelay = `${index * 0.15}s`;
   d.innerHTML = `<div>${c.v}</div><div>${c.s}</div><div>${c.v}</div>`;
   d.style.color = ["♥", "♦"].includes(c.s) ? "red" : "inherit";
   document.getElementById(elId).appendChild(d);
 }
-// Render a full hand of cards.
+// Render a full hand of cards, animating only newly added cards if updating.
 function renderHand(hand, elId) {
-  document.getElementById(elId).innerHTML = "";
-  hand.forEach((c) => renderNewCard(c, elId, c.h));
+  const el = document.getElementById(elId);
+  const currentCount = el.childElementCount;
+  // If the hand array is smaller or equal and we're just refreshing, we might just re-render without animation
+  // Actually, to make it simple and robust for multiplayer state updates:
+  // If the hand is new (currentCount == 0), animate all.
+  // If the hand has more cards, only animate the new ones.
+  // If it's the same, don't animate.
+
+  if (currentCount === 0) {
+    hand.forEach((c, index) => renderNewCard(c, elId, c.h, index, true));
+  } else if (hand.length > currentCount) {
+    // Keep existing, just append new ones.
+    // Wait, the existing DOM nodes might be stale (e.g. if a hidden card was revealed).
+    // Let's just clear and re-render, but only animate the indices >= currentCount.
+    el.innerHTML = "";
+    hand.forEach((c, index) => {
+      const shouldAnimate = index >= currentCount;
+      renderNewCard(c, elId, c.h, shouldAnimate ? (index - currentCount) : 0, shouldAnimate);
+    });
+  } else {
+    // Same or fewer cards (e.g. round reset or card reveal). No animation.
+    el.innerHTML = "";
+    hand.forEach((c) => renderNewCard(c, elId, c.h, 0, false));
+  }
 }
 // Render the current hand score into the UI.
 function renderScore(id, hand) {
   setText(id, calcHand(hand));
 }
 
+// Helper to remove player from room on exit
+async function exitBJRoom() {
+  if (bjMode === "multi" && bjRoomCode !== null && bjMySeatIdx !== -1) {
+    try {
+      const ref = getBJRef(bjRoomCode);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const d = snap.data();
+        const ns = [...d.seats];
+        ns[bjMySeatIdx] = null;
+        let isEmpty = true;
+        for (let i = 0; i < 4; i++) {
+          if (ns[i] !== null) {
+            isEmpty = false;
+            break;
+          }
+        }
+        if (isEmpty) {
+          // Could delete room here, but not critical
+        } else {
+          // If active seat is leaving, pass turn
+          if (d.activeSeat === bjMySeatIdx && d.phase === "playing") {
+             await passTurn(ref, d.activeSeat, ns, d.deck);
+          } else {
+             await updateDoc(ref, { seats: ns });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not cleanly exit Blackjack room", e);
+    }
+  }
+}
+
 // Cleanup the multiplayer listener and local state on exit.
-registerGameStop(() => {
+registerGameStop(async () => {
+  if (bjMode === "multi") {
+    await exitBJRoom();
+  }
   cleanupBJ();
 });
