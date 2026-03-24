@@ -1189,9 +1189,11 @@ canvas {
 }
 
 .game-content-shell {
+  position: relative;
+  z-index: 2;
   width: min(95vw, 1200px);
   border: 2px solid var(--accent);
-  background: rgba(0, 0, 0, 0.86);
+  background: rgba(0, 0, 0, 0.95);
   box-shadow: 0 0 20px var(--accent-dim);
   min-height: unset;
   padding: 10px 14px 12px;
@@ -1362,9 +1364,7 @@ canvas {
   color: #000;
 }
 
-.exit-btn-fixed {
-  display: none;
-}
+.exit-btn-fixed { display: block; margin-top: 10px; width: 100%; border: 1px solid var(--accent); background: transparent; color: var(--accent); padding: 12px; font-family: inherit; font-weight: bold; cursor: pointer; text-transform: uppercase; }
 
 .game-leaderboard-jump-btn {
   position: fixed;

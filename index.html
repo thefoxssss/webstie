@@ -1026,7 +1026,8 @@
     <div id="gameOverlayTemplates" style="display: none"></div>
 
     <!-- Geometry Dash style runner. -->
-    <div class="overlay" id="overlayGeo">
+    <div class="overlay menu-overlay game-overlay" id="overlayGeo">
+      <div class="game-content-shell">
       <h1>GEO DASH</h1>
       <div class="high-score-display">HIGH: <span id="hsGeo">0</span></div>
       <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap">
@@ -1042,9 +1043,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Typing speed mini-game. -->
-    <div class="overlay" id="overlayType">
+    <div class="overlay menu-overlay game-overlay" id="overlayType">
+      <div class="game-content-shell">
       <h1>TYPE RUNNER</h1>
       <div class="type-stats">
         <span>TIME: <span id="typeTimer">0</span>s</span
@@ -1068,9 +1071,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Pong mini-game. -->
-    <div class="overlay" id="overlayPong">
+    <div class="overlay menu-overlay game-overlay" id="overlayPong">
+      <div class="game-content-shell">
       <h1>PONG</h1>
       <div class="high-score-display">HIGH: <span id="hsPong">0</span></div>
       <div style="margin-bottom: 10px">
@@ -1088,9 +1093,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Snake mini-game. -->
-    <div class="overlay" id="overlaySnake">
+    <div class="overlay menu-overlay game-overlay" id="overlaySnake">
+      <div class="game-content-shell">
       <h1>SNAKE</h1>
       <div class="high-score-display">HIGH: <span id="hsSnake">0</span></div>
       <div style="margin-bottom: 10px">
@@ -1109,9 +1116,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Endless runner mini-game. -->
-    <div class="overlay" id="overlayRunner">
+    <div class="overlay menu-overlay game-overlay" id="overlayRunner">
+      <div class="game-content-shell">
       <h1>RUNNER</h1>
       <div class="high-score-display">HIGH: <span id="hsRunner">0</span></div>
       <div style="margin-bottom: 10px" id="runnerScoreBoard">SCORE: 0</div>
@@ -1123,9 +1132,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Core Breaker mini-game overlay. -->
-    <div class="overlay" id="overlayCorebreaker">
+    <div class="overlay menu-overlay game-overlay" id="overlayCorebreaker">
+      <div class="game-content-shell">
       <h1>CORE BREAKER</h1>
       <div class="high-score-display">HIGH: <span id="hsCorebreaker">0</span></div>
       <div style="margin-bottom: 10px" id="coreBreakerScore">SCORE: 0 | LIVES: 3</div>
@@ -1133,9 +1144,11 @@
       <div class="mobile-hint active" style="margin-top: 12px">A/D OR ←/→ TO MOVE</div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
     <!-- Neon Defender mini-game overlay. -->
-    <div class="overlay" id="overlayNeondefender">
+    <div class="overlay menu-overlay game-overlay" id="overlayNeondefender">
+      <div class="game-content-shell">
       <h1>NEON DEFENDER</h1>
       <div class="high-score-display">HIGH: <span id="hsNeondefender">0</span></div>
       <div style="margin-bottom: 10px" id="neonDefenderScore">SCORE: 0</div>
@@ -1143,9 +1156,11 @@
       <div class="mobile-hint active" style="margin-top: 12px">MOVE MOUSE TO AIM AUTO-FIRE</div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
     <!-- Void Miner mini-game overlay. -->
-    <div class="overlay" id="overlayVoidminer">
+    <div class="overlay menu-overlay game-overlay" id="overlayVoidminer">
+      <div class="game-content-shell">
       <h1>VOID MINER</h1>
       <div class="high-score-display">HIGH: <span id="hsVoidminer">0</span></div>
       <div style="margin-bottom: 10px" id="voidMinerHud">FUEL: 100 | VX: 0.0 | VY: 0.0 | SCORE: 0</div>
@@ -1154,9 +1169,11 @@
       <div class="mobile-hint active" style="margin-top: 12px">W/↑ THRUST • A,D / ←,→ ROTATE</div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
     <!-- Core Driller mini-game overlay. -->
-    <div class="overlay" id="overlayCoredriller">
+    <div class="overlay menu-overlay game-overlay" id="overlayCoredriller">
+      <div class="game-content-shell">
       <h1>CORE DRILLER</h1>
       <div class="high-score-display">HIGH: <span id="hsCoredriller">0</span></div>
       <div style="margin-bottom: 10px" id="coreDrillerHud">DEPTH:0m SCORE:0 FUEL:100 HEAT:0 HULL:100 UP:0</div>
@@ -1164,9 +1181,11 @@
       <div class="mobile-hint active" style="margin-top: 12px">W/↑ DRILL • S/↓ BRAKE • A,D / ←,→ STRAFE</div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
     <!-- Shadow Assassin embedded mini-game overlay. -->
-    <div class="overlay" id="overlayShadowassassin">
+    <div class="overlay menu-overlay game-overlay" id="overlayShadowassassin">
+      <div class="game-content-shell">
       <h1>SHADOW ASSASSIN</h1>
       <iframe
         class="embedded-game-frame"
@@ -1178,9 +1197,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Dodge Grid mini-game overlay. -->
-    <div class="overlay" id="overlayDodge">
+    <div class="overlay menu-overlay game-overlay" id="overlayDodge">
+      <div class="game-content-shell">
       <h1>DODGE GRID</h1>
       <div class="high-score-display">HIGH: <span id="hsDodge">0</span></div>
       <div style="margin-bottom: 10px" id="dodgeScore">SCORE: 0</div>
@@ -1192,10 +1213,12 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
 
     <!-- Roulette mini-game overlay. -->
-    <div class="overlay" id="overlayRoulette">
+    <div class="overlay menu-overlay game-overlay" id="overlayRoulette">
+      <div class="game-content-shell">
       <h1>ROULETTE</h1>
       <div class="roulette-balance">BANK: $<span id="rouletteBalance">0.00</span></div>
 
@@ -1255,9 +1278,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Multiplayer Tic Tac Toe overlay. -->
-    <div class="overlay" id="overlayTTT">
+    <div class="overlay menu-overlay game-overlay" id="overlayTTT">
+      <div class="game-content-shell">
       <h1>TIC TAC TOE</h1>
       <div id="tttMenu" class="menu-box">
         <button class="term-btn" id="btnCreateTTT">CREATE ROOM</button>
@@ -1309,9 +1334,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Ultimate Tic-Tac-Toe overlay (online multiplayer + AI). -->
-    <div class="overlay" id="overlayUltimatettt">
+    <div class="overlay menu-overlay game-overlay" id="overlayUltimatettt">
+      <div class="game-content-shell">
       <h1>ULTIMATE TIC-TAC-TOE</h1>
       <div id="utttMenu" class="menu-box">
         <button class="term-btn" id="btnCreateUTTT">CREATE ROOM</button>
@@ -1342,9 +1369,11 @@
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
     <!-- Multiplayer Hangman overlay. -->
-    <div class="overlay" id="overlayHangman">
+    <div class="overlay menu-overlay game-overlay" id="overlayHangman">
+      <div class="game-content-shell">
       <h1>HANGMAN</h1>
       <div id="hmMenu" class="menu-box">
         <input
@@ -1436,9 +1465,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Solo + multiplayer Blackjack overlay. -->
-    <div class="overlay" id="overlayBlackjack">
+    <div class="overlay menu-overlay game-overlay" id="overlayBlackjack">
+      <div class="game-content-shell">
       <h1>BLACKJACK</h1>
       <div id="bjMenu" class="menu-box">
         <button class="term-btn" id="btnCreateBJ">CREATE TABLE</button>
@@ -1530,9 +1561,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Firebase multiplayer physics arena game. -->
-    <div class="overlay" id="overlayBonk">
+    <div class="overlay menu-overlay game-overlay" id="overlayBonk">
+      <div class="game-content-shell">
       <h1>BONK ARENA</h1>
       <div class="bonk-sub">CUSTOM MULTIPLAYER PHYSICS BRAWL</div>
 
@@ -1581,9 +1614,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Flappy Goon mini-game overlay. -->
-    <div class="overlay" id="overlayFlappy">
+    <div class="overlay menu-overlay game-overlay" id="overlayFlappy">
+      <div class="game-content-shell">
       <h1>FLAPPY GOON</h1>
       <div class="high-score-display">HIGH: <span id="hsFlappy">0</span></div>
       <div style="margin-bottom: 10px" id="flappyScore">SCORE: 0</div>
@@ -1593,9 +1628,11 @@
         EXIT SYSTEM
       </button>
     </div>
+    </div>
 
     <!-- Firebase multiplayer top-down drift racing game. -->
-    <div class="overlay" id="overlayDrift">
+    <div class="overlay menu-overlay game-overlay" id="overlayDrift">
+      <div class="game-content-shell">
       <h1>NEON DRIFT</h1>
       <div class="bonk-sub">ONLINE 2D DRIFT DUELS</div>
 
@@ -1633,9 +1670,11 @@
 
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
     <!-- Custom 16-bit CPU emulator overlay. -->
-    <div class="overlay" id="overlayEmulator">
+    <div class="overlay menu-overlay game-overlay" id="overlayEmulator">
+      <div class="game-content-shell">
       <h1>CPU EMULATOR</h1>
       <div class="emu-layout">
         <div class="emu-panel">
@@ -1691,9 +1730,11 @@
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
 
-    <div class="overlay" id="overlayByteblitz">
+    <div class="overlay menu-overlay game-overlay" id="overlayByteblitz">
+      <div class="game-content-shell">
       <h1>BYTE BLITZ</h1>
       <div class="high-score-display">HIGH: <span id="hsByteblitz">0</span></div>
       <div style="margin-bottom: 10px" id="byteblitzTimer">TIME: 60.0s</div>
@@ -1704,8 +1745,10 @@
       <button class="term-btn" id="byteblitzAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayCiphercrack">
+    <div class="overlay menu-overlay game-overlay" id="overlayCiphercrack">
+      <div class="game-content-shell">
       <h1>CIPHER CRACK</h1>
       <div class="high-score-display">HIGH: <span id="hsCiphercrack">0</span></div>
       <div style="margin-bottom: 10px" id="ciphercrackTimer">TIME: 70.0s</div>
@@ -1716,8 +1759,10 @@
       <button class="term-btn" id="ciphercrackAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayAstrohop">
+    <div class="overlay menu-overlay game-overlay" id="overlayAstrohop">
+      <div class="game-content-shell">
       <h1>ASTRO HOP</h1>
       <div class="high-score-display">HIGH: <span id="hsAstrohop">0</span></div>
       <div style="margin-bottom: 10px" id="astrohopTimer">TIME: 17.0s</div>
@@ -1728,8 +1773,10 @@
       <button class="term-btn" id="astrohopAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayPulsestack">
+    <div class="overlay menu-overlay game-overlay" id="overlayPulsestack">
+      <div class="game-content-shell">
       <h1>PULSE STACK</h1>
       <div class="high-score-display">HIGH: <span id="hsPulsestack">0</span></div>
       <div style="margin-bottom: 10px" id="pulsestackTimer">TIME: 19.0s</div>
@@ -1740,8 +1787,10 @@
       <button class="term-btn" id="pulsestackAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayGlitchgate">
+    <div class="overlay menu-overlay game-overlay" id="overlayGlitchgate">
+      <div class="game-content-shell">
       <h1>GLITCH GATE</h1>
       <div class="high-score-display">HIGH: <span id="hsGlitchgate">0</span></div>
       <div style="margin-bottom: 10px" id="glitchgateTimer">TIME: 18.0s</div>
@@ -1752,8 +1801,10 @@
       <button class="term-btn" id="glitchgateAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayOrbweaver">
+    <div class="overlay menu-overlay game-overlay" id="overlayOrbweaver">
+      <div class="game-content-shell">
       <h1>ORB WEAVER</h1>
       <div class="high-score-display">HIGH: <span id="hsOrbweaver">0</span></div>
       <div style="margin-bottom: 10px" id="orbweaverTimer">TIME: 21.0s</div>
@@ -1764,8 +1815,10 @@
       <button class="term-btn" id="orbweaverAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayLaserlock">
+    <div class="overlay menu-overlay game-overlay" id="overlayLaserlock">
+      <div class="game-content-shell">
       <h1>LASER LOCK</h1>
       <div class="high-score-display">HIGH: <span id="hsLaserlock">0</span></div>
       <div style="margin-bottom: 10px" id="laserlockTimer">TIME: 18.0s</div>
@@ -1776,8 +1829,10 @@
       <button class="term-btn" id="laserlockAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayMetromaze">
+    <div class="overlay menu-overlay game-overlay" id="overlayMetromaze">
+      <div class="game-content-shell">
       <h1>METRO MAZE</h1>
       <div class="high-score-display">HIGH: <span id="hsMetromaze">0</span></div>
       <div style="margin-bottom: 10px" id="metromazeTimer">TIME: 70.0s</div>
@@ -1788,8 +1843,10 @@
       <button class="term-btn" id="metromazeAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayStacksmash">
+    <div class="overlay menu-overlay game-overlay" id="overlayStacksmash">
+      <div class="game-content-shell">
       <h1>STACK SMASH</h1>
       <div class="high-score-display">HIGH: <span id="hsStacksmash">0</span></div>
       <div style="margin-bottom: 10px" id="stacksmashTimer">TIME: 17.0s</div>
@@ -1800,8 +1857,10 @@
       <button class="term-btn" id="stacksmashAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
+    </div>
 
-    <div class="overlay" id="overlayQuantumflip">
+    <div class="overlay menu-overlay game-overlay" id="overlayQuantumflip">
+      <div class="game-content-shell">
       <h1>QUANTUM FLIP</h1>
       <div class="high-score-display">HIGH: <span id="hsQuantumflip">0</span></div>
       <div style="margin-bottom: 10px" id="quantumflipTimer">TIME: 60.0s</div>
@@ -1811,6 +1870,7 @@
       <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS TO MOVE. TAP TO DASH ON MOBILE</div>
       <button class="term-btn" id="quantumflipAction" style="margin-top: 14px">START ROUND</button>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
     </div>
 
     <!-- Game-over modal shared across mini-games. -->

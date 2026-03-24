@@ -225,42 +225,11 @@ function updateSharedGameboxHeader(_gameId) {}
 
 function mountGameOverlayIntoGamebox(gameId) {
   const targetOverlayId = getOverlayIdForGame(gameId);
-  const gameboxContent = document.getElementById("gameboxContent");
-  const templatesRoot = document.getElementById("gameOverlayTemplates");
-  const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
-  if (!gameboxContent || !templatesRoot || !sharedOverlay) return targetOverlayId;
-
-  if (mountedGameOverlayId && mountedGameOverlayId !== targetOverlayId) {
-    const previousOverlay = document.getElementById(mountedGameOverlayId);
-    if (previousOverlay) {
-      previousOverlay.classList.remove("active", "gamebox-mounted");
-      templatesRoot.appendChild(previousOverlay);
-    }
-  }
-
-  const nextOverlay = document.getElementById(targetOverlayId);
-  if (!nextOverlay) return targetOverlayId;
-  nextOverlay.classList.remove("active");
-  nextOverlay.classList.add("gamebox-mounted");
-  gameboxContent.innerHTML = "";
-  gameboxContent.appendChild(nextOverlay);
-  gameboxContent.scrollTop = 0;
-  nextOverlay.scrollTop = 0;
-  sharedOverlay.scrollTop = 0;
-  mountedGameOverlayId = targetOverlayId;
-  updateSharedGameboxHeader(gameId);
-  return SHARED_GAME_OVERLAY_ID;
+  return targetOverlayId;
 }
 
 function initSharedGamebox() {
-  const templatesRoot = document.getElementById("gameOverlayTemplates");
-  if (!templatesRoot) return;
-  GAME_TEMPLATE_OVERLAY_IDS.forEach((overlayId) => {
-    const overlay = document.getElementById(overlayId);
-    if (!overlay) return;
-    overlay.classList.remove("active");
-    templatesRoot.appendChild(overlay);
-  });
+  // disabled since games are now standalone overlays
 }
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
@@ -270,7 +239,7 @@ window.launchGame = (game, source = "direct") => {
   const overlayId = mountGameOverlayIntoGamebox(game);
   const el = document.getElementById(overlayId);
   if (el) el.classList.add("active");
-  renderInGameShopPanel(game, SHARED_GAME_OVERLAY_ID);
+  renderInGameShopPanel(game, overlayId);
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
@@ -350,13 +319,7 @@ const GAME_OVERLAY_IDS = [
 
 
 function disableInGameExitButtons() {
-  GAME_OVERLAY_IDS.forEach((overlayId) => {
-    const overlay = document.getElementById(overlayId);
-    if (!overlay) return;
-    overlay.querySelectorAll(".exit-btn-fixed").forEach((button) => {
-      button.style.display = "none";
-    });
-  });
+  // disabled since we now need exit buttons
 }
 
 function initPerGameFullscreenButtons() {
@@ -1146,7 +1109,7 @@ function initOverlayBackdropExit() {
 }
 
 initSharedGamebox();
-disableInGameExitButtons();
+// disableInGameExitButtons(); // Removed so exit buttons work
 initPerGameFullscreenButtons();
 initTopBarOverlayControls();
 initOverlayBackdropExit();
