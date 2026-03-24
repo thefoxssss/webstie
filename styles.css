@@ -1229,6 +1229,20 @@ canvas {
   padding: 2px 2px 8px;
 }
 
+.leaderboard-game-strip.gamebox-game-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.leaderboard-game-strip.gamebox-game-strip .leaderboard-game-card {
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+}
+
 
 .gamebox-leaderboard-panel {
   width: 100%;

@@ -602,84 +602,6 @@ function initGameScroller() {
     }
   };
 
-  let dragPointerId = null;
-  let dragStartX = 0;
-  let dragStartScrollLeft = 0;
-  let dragVelocity = 0;
-  let dragLastX = 0;
-  let dragLastT = 0;
-  let didDrag = false;
-  let inertiaFrame = 0;
-
-  const stopInertia = () => {
-    if (!inertiaFrame) return;
-    cancelAnimationFrame(inertiaFrame);
-    inertiaFrame = 0;
-  };
-
-  const startInertia = () => {
-    stopInertia();
-    if (Math.abs(dragVelocity) < 0.05) return;
-    const tick = () => {
-      strip.scrollLeft -= dragVelocity * 16;
-      dragVelocity *= 0.93;
-      if (Math.abs(dragVelocity) < 0.05) {
-        inertiaFrame = 0;
-        return;
-      }
-      inertiaFrame = requestAnimationFrame(tick);
-    };
-    inertiaFrame = requestAnimationFrame(tick);
-  };
-
-  strip.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    stopInertia();
-    dragPointerId = event.pointerId;
-    dragStartX = event.clientX;
-    dragStartScrollLeft = strip.scrollLeft;
-    dragLastX = event.clientX;
-    dragLastT = performance.now();
-    dragVelocity = 0;
-    didDrag = false;
-  });
-
-  strip.addEventListener("pointermove", (event) => {
-    if (event.pointerId !== dragPointerId) return;
-    const delta = event.clientX - dragStartX;
-    const now = performance.now();
-    const dt = Math.max(8, now - dragLastT);
-    dragVelocity = (event.clientX - dragLastX) / dt;
-    dragLastX = event.clientX;
-    dragLastT = now;
-    if (!didDrag && Math.abs(delta) > 6) {
-      didDrag = true;
-      strip.classList.add("is-dragging");
-      strip.setPointerCapture?.(event.pointerId);
-    }
-    if (!didDrag) return;
-    strip.scrollLeft = dragStartScrollLeft - delta;
-  });
-
-  const endDrag = (event) => {
-    if (event.pointerId !== dragPointerId) return;
-    if (didDrag) {
-      suppressClickUntil = Date.now() + 180;
-      startInertia();
-    }
-    strip.classList.remove("is-dragging");
-    dragPointerId = null;
-    didDrag = false;
-  };
-
-  strip.addEventListener("pointerup", endDrag);
-  strip.addEventListener("pointercancel", endDrag);
-  strip.addEventListener("lostpointercapture", () => {
-    strip.classList.remove("is-dragging");
-    dragPointerId = null;
-    didDrag = false;
-  });
-
   filterToggle.addEventListener("click", () => {
     currentFilterIndex = (currentFilterIndex + 1) % FILTER_MODES.length;
     renderStrip();
@@ -714,7 +636,7 @@ function initGameScroller() {
     if (headingTitle) headingTitle.textContent = inLeaderboard ? "LEADERBOARD" : "GAMES";
     switchBtn.textContent = inLeaderboard ? "GAMES" : "LEADERBOARD";
     filterToggle.style.display = inLeaderboard ? "none" : "inline-flex";
-    strip.style.display = inLeaderboard ? "none" : "flex";
+    strip.style.display = inLeaderboard ? "none" : "grid";
     if (gameFrame) gameFrame.style.display = inLeaderboard ? "none" : "flex";
     if (leaderboardPanel) leaderboardPanel.style.display = inLeaderboard ? "grid" : "none";
     const sharedOverlay = document.getElementById(SHARED_GAME_OVERLAY_ID);
