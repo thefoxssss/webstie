@@ -891,7 +891,7 @@
       <div class="score-box">
         <h2 style="text-align: center">CREW TERMINAL</h2>
 
-        <div class="crew-dashboard">
+        <div class="crew-dashboard" id="crewDashboard" style="display: none;">
           <div class="crew-dashboard-col">
             <div class="crew-section">
               <h3 class="crew-section-title">STATUS</h3>
@@ -939,6 +939,22 @@
               </div>
               <button class="term-btn" id="crewRecruitmentBtn" style="margin-top: 10px; width: 100%;">TOGGLE RECRUITMENT</button>
               <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00; margin-top: 10px; width: 100%;">LEAVE CREW</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="crew-finder" id="crewFinder" style="display: none;">
+          <div class="crew-section" style="margin-bottom: 20px;">
+            <h3 class="crew-section-title">JOIN OR CREATE A CREW</h3>
+            <p style="font-size: 10px; color: var(--accent); margin-bottom: 10px;">ENTER A 3-8 CHARACTER TAG TO CREATE OR JOIN A PRIVATE CREW.</p>
+            <input class="term-input" id="crewFinderInput" placeholder="CREW TAG (3-8)" maxlength="8" />
+            <button class="term-btn" id="crewFinderCreateBtn" style="margin-top: 10px;">JOIN / CREATE</button>
+          </div>
+          <div class="crew-section crew-directory-section">
+            <h3 class="crew-section-title">OPEN RECRUITMENT DIRECTORY</h3>
+            <p class="panel-overlay-meta" id="crewFinderMeta">SCANNING FOR OPEN CREWS...</p>
+            <div class="crew-roster-list" id="crewFinderList">
+              <div class="crew-roster-empty">LOADING DIRECTORY...</div>
             </div>
           </div>
         </div>
