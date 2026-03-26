@@ -8,7 +8,11 @@ const FRICTION = 0.86;
 const GROUND_Y = 380;
 const LEFT_EDGE = 28;
 const RIGHT_EDGE = 752;
+const BLAST_BOTTOM = 545;
+const BLAST_LEFT = -140;
+const BLAST_RIGHT = 920;
 const TICK_MS = 1000 / 40;
+const PLATFORM = { x: 390, y: 286, w: 210, h: 14 };
 
 let roomCode = null;
 let myPlayerId = null;
@@ -18,7 +22,9 @@ let hostLoop = null;
 let localLoop = null;
 let localState = null;
 let aiMode = false;
+let soloMode = false;
 const keys = { left: false, right: false, up: false, atk: false };
+const keyLatch = { up: false, atk: false };
 
 function roomRef(code) {
   return doc(firebase.db, "gooner_terminal_rooms", ROOM_PREFIX + code);
@@ -59,7 +65,7 @@ function resetOverlay() {
   setText("saRoomId", "----");
   setText("saLobbyStatus", "CREATE OR JOIN");
   setText("saKO", "0 - 0");
-  setText("saHint", "A/D MOVE • W JUMP • SPACE SMASH");
+  setText("saHint", "A/D MOVE • W JUMP • SPACE SMASH • FIRST TO 4 KOs");
 }
 
 export function initSmashArena() {
@@ -78,16 +84,21 @@ function stopSession() {
   myPlayerId = null;
   isHost = false;
   aiMode = false;
+  soloMode = false;
+  keyLatch.up = false;
+  keyLatch.atk = false;
   localState = null;
 }
 
-function aiInput(me, enemy) {
+function aiInput(me, enemy, pressure = 1) {
   if (!me?.alive || !enemy?.alive) return makeInput();
+  const shouldChase = Math.random() < 0.85 + Math.min(0.1, pressure * 0.03);
+  const close = Math.abs(enemy.x - me.x) < 80 && Math.abs(enemy.y - me.y) < 45;
   return {
-    left: enemy.x < me.x - 15,
-    right: enemy.x > me.x + 15,
-    up: Math.random() < 0.08 && me.jumps > 0,
-    atk: Math.abs(enemy.x - me.x) < 70 && Math.abs(enemy.y - me.y) < 40 && Math.random() < 0.24,
+    left: shouldChase && enemy.x < me.x - 12,
+    right: shouldChase && enemy.x > me.x + 12,
+    up: (Math.random() < 0.06 + pressure * 0.01 || enemy.y + 20 < me.y) && me.jumps > 0,
+    atk: close && Math.random() < 0.22 + pressure * 0.015,
     ts: Date.now(),
   };
 }
@@ -105,7 +116,7 @@ function stepPlayer(p, input) {
     p.vx += accel;
     p.facing = 1;
   }
-  if (input.up && p.jumps > 0 && p.stun <= 0) {
+  if (input.upPress && p.jumps > 0 && p.stun <= 0) {
     p.vy = -11.8;
     p.jumps -= 1;
   }
@@ -113,6 +124,16 @@ function stepPlayer(p, input) {
   p.vx *= FRICTION;
   p.x += p.vx;
   p.y += p.vy;
+
+  const insidePlatform = p.x > PLATFORM.x - PLATFORM.w / 2 && p.x < PLATFORM.x + PLATFORM.w / 2;
+  const wasAbovePlatform = p.y - p.vy <= PLATFORM.y - 20;
+  const isLandingOnPlatform = p.vy >= 0 && insidePlatform && p.y >= PLATFORM.y - 20 && wasAbovePlatform;
+  if (isLandingOnPlatform) {
+    p.y = PLATFORM.y - 20;
+    p.vy = 0;
+    p.jumps = Math.max(p.jumps, 1);
+  }
+
   if (p.y >= GROUND_Y) {
     p.y = GROUND_Y;
     p.vy = 0;
@@ -124,19 +145,19 @@ function stepPlayer(p, input) {
 
 function applyCombat(attacker, defender, input) {
   if (!attacker?.alive || !defender?.alive) return;
-  if (!input.atk || attacker.atkCd > 0 || attacker.stun > 0) return;
+  if (!input.atkPress || attacker.atkCd > 0 || attacker.stun > 0) return;
   const rangeX = 72;
   const inFront = attacker.facing > 0 ? defender.x >= attacker.x : defender.x <= attacker.x;
   const dx = Math.abs(defender.x - attacker.x);
   const dy = Math.abs(defender.y - attacker.y);
-  if (inFront && dx < rangeX && dy < 42) {
+  if (inFront && dx < rangeX && dy < 44) {
     const force = 5 + attacker.hp * 0.05;
     defender.vx += attacker.facing * force;
     defender.vy = -6 - attacker.hp * 0.02;
-    defender.hp += 9;
-    defender.stun = 8;
+    defender.hp += 10;
+    defender.stun = 9;
   }
-  attacker.atkCd = 14;
+  attacker.atkCd = 11;
 }
 
 function respawn(player, side) {
@@ -162,16 +183,19 @@ function simulateTick(match) {
   applyCombat(p1, p2, in1);
   applyCombat(p2, p1, in2);
 
-  if (p1.y > 520 || p1.x < -100 || p1.x > 900) {
+  if (p1.y > BLAST_BOTTOM || p1.x < BLAST_LEFT || p1.x > BLAST_RIGHT) {
     match.score.p2 += 1;
     respawn(p1, "left");
+    setText("saHudStatus", `${p1.name} WAS LAUNCHED`);
   }
-  if (p2.y > 520 || p2.x < -100 || p2.x > 900) {
+  if (p2.y > BLAST_BOTTOM || p2.x < BLAST_LEFT || p2.x > BLAST_RIGHT) {
     match.score.p1 += 1;
     respawn(p2, "right");
+    setText("saHudStatus", `${p2.name} WAS LAUNCHED`);
   }
 
-  if (match.score.p1 >= 3 || match.score.p2 >= 3) {
+  const koTarget = match.koTarget || 4;
+  if (match.score.p1 >= koTarget || match.score.p2 >= koTarget) {
     match.status = "finished";
     match.winner = match.score.p1 > match.score.p2 ? p1.name : p2.name;
   }
@@ -204,6 +228,8 @@ function render(stateData) {
   ctx.moveTo(120, GROUND_Y + 22);
   ctx.lineTo(660, GROUND_Y + 22);
   ctx.stroke();
+  ctx.fillStyle = "rgba(127,245,255,0.22)";
+  ctx.fillRect(PLATFORM.x - PLATFORM.w / 2, PLATFORM.y, PLATFORM.w, PLATFORM.h);
   ctx.shadowBlur = 0;
 
   [p1, p2].forEach((p) => {
@@ -220,9 +246,11 @@ function render(stateData) {
     ctx.fillText(`${Math.floor(p.hp)}%`, p.x - 14, p.y - 28);
   });
 
-  setText("saKO", `${stateData.score?.p1 || 0} - ${stateData.score?.p2 || 0}`);
+  const target = stateData.koTarget || (soloMode ? 6 : 4);
+  setText("saKO", `${stateData.score?.p1 || 0} - ${stateData.score?.p2 || 0} / ${target}`);
   if (stateData.status === "finished") {
-    setText("saHudStatus", `${stateData.winner} WINS THE SET`);
+    const suffix = stateData.mode === "solo" ? "CLEARS SOLO MODE" : "WINS THE SET";
+    setText("saHudStatus", `${stateData.winner} ${suffix}`);
   }
 }
 
@@ -269,6 +297,8 @@ async function createRoom() {
     hostUid: state.myUid,
     status: "lobby",
     winner: "",
+    mode: "online",
+    koTarget: 4,
     score: { p1: 0, p2: 0 },
     players: { p1: makeFighter(state.myUid, state.myName || "P1", "left") },
     inputs: { p1: makeInput() },
@@ -309,6 +339,7 @@ function joinRoom(code, pid, host) {
 function startAIMode() {
   stopSession();
   aiMode = true;
+  soloMode = false;
   state.currentGame = "smasharena";
   document.getElementById("saMenu").style.display = "none";
   document.getElementById("saLobby").style.display = "none";
@@ -316,6 +347,8 @@ function startAIMode() {
   localState = {
     status: "playing",
     winner: "",
+    mode: "ai",
+    koTarget: 4,
     score: { p1: 0, p2: 0 },
     players: {
       p1: makeFighter(state.myUid || "local", state.myName || "YOU", "left"),
@@ -325,9 +358,51 @@ function startAIMode() {
   };
   localLoop = setInterval(() => {
     if (!localState || localState.status !== "playing") return;
-    localState.inputs.p1 = { ...keys, ts: Date.now() };
+    localState.inputs.p1 = { ...keys, upPress: keyLatch.up, atkPress: keyLatch.atk, ts: Date.now() };
+    keyLatch.up = false;
+    keyLatch.atk = false;
     localState.inputs.p2 = aiInput(localState.players.p2, localState.players.p1);
     simulateTick(localState);
+    render(localState);
+  }, TICK_MS);
+}
+
+function startSoloMode() {
+  stopSession();
+  aiMode = true;
+  soloMode = true;
+  state.currentGame = "smasharena";
+  document.getElementById("saMenu").style.display = "none";
+  document.getElementById("saLobby").style.display = "none";
+  document.getElementById("saGame").style.display = "flex";
+  setText("saHudStatus", "SOLO MODE: SURVIVE 6 KOs");
+  localState = {
+    status: "playing",
+    winner: "",
+    mode: "solo",
+    koTarget: 6,
+    score: { p1: 0, p2: 0 },
+    players: {
+      p1: makeFighter(state.myUid || "local", state.myName || "YOU", "left"),
+      p2: makeFighter("bot", "ARENA BOT", "right"),
+    },
+    inputs: { p1: makeInput(), p2: makeInput() },
+  };
+  localLoop = setInterval(() => {
+    if (!localState || localState.status !== "playing") return;
+    localState.inputs.p1 = { ...keys, upPress: keyLatch.up, atkPress: keyLatch.atk, ts: Date.now() };
+    keyLatch.up = false;
+    keyLatch.atk = false;
+    const pressure = 1 + Math.floor((localState.score.p1 || 0) / 2);
+    localState.inputs.p2 = aiInput(localState.players.p2, localState.players.p1, pressure);
+    simulateTick(localState);
+    if (localState.score.p2 > 0 && localState.status === "playing") {
+      localState.status = "finished";
+      localState.winner = localState.players.p2.name;
+    }
+    if (localState.status === "finished" && localState.winner !== localState.players.p1.name) {
+      setText("saHudStatus", `SOLO FAIL • REACHED ${localState.score.p1} KOs`);
+    }
     render(localState);
   }, TICK_MS);
 }
@@ -335,7 +410,9 @@ function startAIMode() {
 async function sendInput() {
   if (aiMode || !roomCode || !myPlayerId || !localState || localState.status !== "playing") return;
   try {
-    await updateDoc(roomRef(roomCode), { [`inputs.${myPlayerId}`]: { ...keys, ts: Date.now() } });
+    await updateDoc(roomRef(roomCode), { [`inputs.${myPlayerId}`]: { ...keys, upPress: keyLatch.up, atkPress: keyLatch.atk, ts: Date.now() } });
+    keyLatch.up = false;
+    keyLatch.atk = false;
   } catch (_e) {}
 }
 
@@ -344,8 +421,14 @@ function bindControls() {
     if (state.currentGame !== "smasharena") return;
     if (e.key === "a" || e.key === "ArrowLeft") keys.left = true;
     if (e.key === "d" || e.key === "ArrowRight") keys.right = true;
-    if (e.key === "w" || e.key === "ArrowUp") keys.up = true;
-    if (e.key === " ") keys.atk = true;
+    if (e.key === "w" || e.key === "ArrowUp") {
+      if (!keys.up) keyLatch.up = true;
+      keys.up = true;
+    }
+    if (e.key === " ") {
+      if (!keys.atk) keyLatch.atk = true;
+      keys.atk = true;
+    }
     sendInput();
   });
   window.addEventListener("keyup", (e) => {
@@ -360,9 +443,10 @@ function bindControls() {
 document.getElementById("btnCreateSA")?.addEventListener("click", createRoom);
 document.getElementById("btnJoinSA")?.addEventListener("click", joinRoomByCode);
 document.getElementById("btnSAAI")?.addEventListener("click", startAIMode);
+document.getElementById("btnSASolo")?.addEventListener("click", startSoloMode);
 document.getElementById("saStartBtn")?.addEventListener("click", async () => {
   if (!roomCode || !isHost) return;
-  await updateDoc(roomRef(roomCode), { status: "playing", score: { p1: 0, p2: 0 }, winner: "" });
+  await updateDoc(roomRef(roomCode), { status: "playing", score: { p1: 0, p2: 0 }, winner: "", koTarget: 4, mode: "online" });
 });
 bindControls();
 registerGameStop(stopSession);
