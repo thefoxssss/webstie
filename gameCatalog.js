@@ -16,6 +16,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "ultimatettt", title: "ULTIMATE TIC-TAC-TOE", description: "Nested 3×3 boards where each move dictates your opponent's next board.", icon: "🧠", tags: ["pvp", "skill"] },
   { id: "hangman", title: "HANGMAN", description: "Guess words before the timer expires.", icon: "🧠", tags: ["pvp", "skill"] },
   { id: "bonk", title: "BONK ARENA", description: "Fast arena knockouts and dodges.", icon: "🥊", tags: ["pvp", "arcade"] },
+  { id: "smasharena", title: "SMASH ARENA", description: "Neon platform-fighter duels with room-code online play.", icon: "💥", tags: ["pvp", "arcade", "platformer", "skill"] },
   { id: "drift", title: "NEON DRIFT", description: "Slide corners and chain clean laps.", icon: "🏎️", tags: ["pvp", "arcade", "skill"] },
   { id: "emulator", title: "CPU EMULATOR", description: "Program-like puzzle sandbox challenge.", icon: "🖥️", tags: ["skill", "puzzle", "logic"] },
   { id: "byteblitz", title: "BYTE BLITZ", description: "Defend the buffer with ship controls, waves, and powerups.", icon: "💾", tags: ["arcade", "skill"] },

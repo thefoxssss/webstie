@@ -81,6 +81,7 @@ import { initMetroMaze } from "./games/metromaze.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
+import { initSmashArena } from "./games/smasharena.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -311,6 +312,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "stacksmash") initStackSmash();
   if (game === "quantumflip") initQuantumFlip();
   if (game === "ultimatettt") initUltimateTTT();
+  if (game === "smasharena") initSmashArena();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
   resizeAllGameCanvases();
   trackGamePlay(game);
@@ -351,6 +353,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayStacksmash",
   "overlayQuantumflip",
   "overlayUltimatettt",
+  "overlaySmasharena",
 ];
 
 const GAME_OVERLAY_IDS = [
@@ -1191,6 +1194,7 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "metromaze") initMetroMaze();
   if (state.currentGame === "stacksmash") initStackSmash();
   if (state.currentGame === "quantumflip") initQuantumFlip();
+  if (state.currentGame === "smasharena") initSmashArena();
   if (state.currentGame === "roulette") {
     initRoulette();
     document.getElementById("overlayRoulette").classList.add("active");

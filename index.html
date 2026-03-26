@@ -1632,6 +1632,45 @@
       </button>
     </div>
 
+
+    <!-- Smash-style platform fighter with online room duels. -->
+    <div class="overlay" id="overlaySmasharena">
+      <h1>SMASH ARENA</h1>
+      <div class="bonk-sub">NEON PLATFORM FIGHTER • ONLINE DUELS</div>
+
+      <div id="saMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateSA">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input
+          type="text"
+          id="joinSACode"
+          class="term-input"
+          placeholder="ROOM CODE"
+          maxlength="4"
+        />
+        <button class="term-btn" id="btnJoinSA">JOIN ROOM</button>
+        <button class="menu-btn" id="btnSAAI" style="margin-top: 10px">SINGLEPLAYER VS AI</button>
+      </div>
+
+      <div id="saLobby" class="menu-box" style="display: none">
+        <h2>ROOM: <span id="saRoomId">----</span></h2>
+        <div id="saPlayers" style="text-align: left; margin: 14px 0"></div>
+        <button class="term-btn" id="saStartBtn" style="display: none">START MATCH</button>
+        <div id="saLobbyStatus" style="font-size: 10px">CREATE OR JOIN</div>
+      </div>
+
+      <div id="saGame" class="bonk-wrap" style="display: none">
+        <div class="bonk-hud">
+          <span id="saHudStatus">SMASH READY</span>
+          <span>KO: <span id="saKO">0 - 0</span></span>
+          <span id="saHint">A/D MOVE • W JUMP • SPACE SMASH</span>
+        </div>
+        <canvas id="saCanvas" width="780" height="460"></canvas>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
     <!-- Flappy Goon mini-game overlay. -->
     <div class="overlay" id="overlayFlappy">
       <h1>FLAPPY GOON</h1>
