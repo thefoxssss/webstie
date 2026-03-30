@@ -64,10 +64,8 @@ function totalBet() {
 }
 
 function updateBank() {
-  const roundedBank = Number((Number(state.myMoney || 0)).toFixed(2));
-  state.myMoney = roundedBank;
-  const globalBankText = document.getElementById("globalBank")?.textContent?.trim();
-  setText("slotsBalance", globalBankText || roundedBank.toFixed(2));
+  setText("globalBank", Number(state.myMoney || 0).toFixed(2));
+  setText("slotsBalance", Number(state.myMoney || 0).toFixed(2));
   setText("slotsLineBet", betAmount);
   setText("slotsTotalBet", totalBet());
   setText("slotsJackpot", Math.floor(jackpotPool));
@@ -178,7 +176,7 @@ function settleRound(board) {
   }
 
   if (winTotal > 0) {
-    state.myMoney = Number((Number(state.myMoney || 0) + winTotal).toFixed(2));
+    state.myMoney += winTotal;
     setMessage(jackpotHit ? `JACKPOT! +$${winTotal}` : `WIN +$${winTotal}`, "win");
     beep(jackpotHit ? 1200 : 920, "square", jackpotHit ? 0.18 : 0.1);
   } else {
@@ -211,7 +209,7 @@ function spin() {
     return;
   }
 
-  state.myMoney = Number((Number(state.myMoney || 0) - totalBet()).toFixed(2));
+  state.myMoney -= totalBet();
   jackpotPool += totalBet() * 0.1;
   isSpinning = true;
   setMessage("SPINNING REELS...");
