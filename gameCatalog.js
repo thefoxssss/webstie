@@ -11,6 +11,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "shadowassassin", title: "SHADOW ASSASSIN", description: "Castle infiltration with boss encounters.", icon: "🗡️", tags: ["arcade", "skill"] },
   { id: "dodge", title: "DODGE GRID", description: "Stay alive in a high-speed hazard field.", icon: "⚡", tags: ["arcade", "skill"], shopItems: ["item_dodge_stabilizer", "item_shield"] },
   { id: "roulette", title: "ROULETTE", description: "Bet, spin, and chase streaks.", icon: "🎡", tags: ["casino", "luck", "table"] },
+  { id: "slots", title: "SLOTS", description: "Roulette-style color slots with quick spins.", icon: "🎰", tags: ["casino", "luck"] },
   { id: "blackjack", title: "BLACKJACK", description: "Card table duels with live opponents.", icon: "🂡", tags: ["casino", "pvp", "cards", "table"], shopItems: ["item_xray", "item_cardcount"] },
   { id: "ttt", title: "TIC TAC TOE", description: "Classic 3x3 tactical showdown.", icon: "❎", tags: ["pvp", "skill"] },
   { id: "ultimatettt", title: "ULTIMATE TIC-TAC-TOE", description: "Nested 3×3 boards where each move dictates your opponent's next board.", icon: "🧠", tags: ["pvp", "skill"] },
