@@ -36,6 +36,7 @@ export function initBJ() {
   document.getElementById("bjMenu").style.display = "flex";
   document.getElementById("bjLobby").style.display = "none";
   document.getElementById("bjTable").style.display = "none";
+  document.getElementById("bjCashOutBtn").style.display = "none";
   document.querySelector(".bj-pot-display").style.display = "none";
   document.getElementById("bjSide").innerHTML = "";
   updBJ();
@@ -56,11 +57,13 @@ window.bjSelect = (mode) => {
   document.getElementById("bjMenu").style.display = "none";
   if (mode === "solo") {
     document.getElementById("bjTable").style.display = "flex";
+    document.getElementById("bjCashOutBtn").style.display = "inline-block";
     setText("bjHostLabel", "DEALER");
     document.querySelector(".bj-pot-display").style.display = "none";
     document.getElementById("bjSide").innerHTML = "";
     startSoloBetting();
   } else {
+    document.getElementById("bjCashOutBtn").style.display = "none";
     document.querySelector(".bj-pot-display").style.display = "block";
   }
   beep(400, "square", 0.1);
@@ -321,6 +324,7 @@ function handleBJUpdate(d) {
   }
   document.getElementById("bjLobby").style.display = "none";
   document.getElementById("bjTable").style.display = "flex";
+  document.getElementById("bjCashOutBtn").style.display = "none";
   setText("bjPot", d.pot || 0);
   let opponentIdx = -1;
   if (bjMySeatIdx === 0) {
@@ -437,6 +441,10 @@ document.getElementById("bjStartBtn").onclick = async () => {
 };
 
 document.getElementById("btnBJSolo").onclick = () => window.bjSelect("solo");
+document.getElementById("bjCashOutBtn").onclick = () => {
+  if (state.currentGame !== "blackjack" || bjMode !== "solo") return;
+  window.closeOverlays();
+};
 
 // Deck click handler for both solo and multiplayer flows.
 document.getElementById("bjDeck").onclick = async () => {
