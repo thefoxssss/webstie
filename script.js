@@ -63,6 +63,7 @@ import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
 import { initRoulette } from "./games/roulette.js";
+import { initSlots } from "./games/slots.js";
 import { initBonkArena } from "./games/bonkarena.js";
 import { initDrift } from "./games/drift.js";
 import { initCoreBreaker } from "./games/corebreaker.js";
@@ -294,6 +295,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "flappy") initFlappy();
   if (game === "dodge") initDodge();
   if (game === "roulette") initRoulette();
+  if (game === "slots") initSlots();
   if (game === "bonk") initBonkArena();
   if (game === "drift") initDrift();
   if (game === "corebreaker") initCoreBreaker();
@@ -335,6 +337,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayShadowassassin",
   "overlayDodge",
   "overlayRoulette",
+  "overlaySlots",
   "overlayTTT",
   "overlayHangman",
   "overlayBlackjack",
@@ -1198,6 +1201,10 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "roulette") {
     initRoulette();
     document.getElementById("overlayRoulette").classList.add("active");
+  }
+  if (state.currentGame === "slots") {
+    initSlots();
+    document.getElementById("overlaySlots").classList.add("active");
   }
   if (state.currentGame === "blackjack") {
     state.myMoney = 1000;

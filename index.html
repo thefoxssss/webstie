@@ -1305,6 +1305,71 @@
       </button>
     </div>
 
+    <!-- Slot machine mini-game overlay. -->
+    <div class="overlay" id="overlaySlots">
+      <h1>SLOTS</h1>
+      <div class="roulette-balance">BANK: $<span id="slotsBalance">0.00</span></div>
+      <div class="slots-jackpot">JACKPOT: $<span id="slotsJackpot">5000</span></div>
+
+      <div class="slots-machine">
+        <div class="slots-grid">
+          <div class="slots-cell" id="slotsCell00">🎰</div>
+          <div class="slots-cell" id="slotsCell01">🎰</div>
+          <div class="slots-cell" id="slotsCell02">🎰</div>
+          <div class="slots-cell" id="slotsCell10">🎰</div>
+          <div class="slots-cell" id="slotsCell11">🎰</div>
+          <div class="slots-cell" id="slotsCell12">🎰</div>
+          <div class="slots-cell" id="slotsCell20">🎰</div>
+          <div class="slots-cell" id="slotsCell21">🎰</div>
+          <div class="slots-cell" id="slotsCell22">🎰</div>
+        </div>
+      </div>
+
+      <div class="roulette-status">
+        <span>LAST: <span id="slotsLast">--</span></span>
+        <span>LINE BET: $<span id="slotsLineBet">10</span></span>
+        <span>TOTAL BET: $<span id="slotsTotalBet">50</span></span>
+      </div>
+      <div class="roulette-message" id="slotsMessage">SPIN FOR PAYLINES + JACKPOTS.</div>
+
+      <div class="roulette-controls">
+        <div class="roulette-bet-row">
+          <label class="roulette-label" for="slotsBetInput">BET</label>
+          <input
+            type="number"
+            min="1"
+            id="slotsBetInput"
+            class="term-input"
+            value="10"
+            onchange="window.slotsInputBet()"
+          />
+        </div>
+        <div class="roulette-presets">
+          <button class="menu-btn" onclick="window.slotsSetBet(10)">$10</button>
+          <button class="menu-btn" onclick="window.slotsSetBet(50)">$50</button>
+          <button class="menu-btn" onclick="window.slotsSetBet(100)">$100</button>
+          <button class="menu-btn" onclick="window.slotsChangeBet(0.5)">1/2</button>
+          <button class="menu-btn" onclick="window.slotsChangeBet(2)">x2</button>
+          <button class="menu-btn" onclick="window.slotsMaxBet()">MAX</button>
+        </div>
+        <div class="slots-payline-hint">5 LINES ACTIVE • MID 7️⃣7️⃣7️⃣ WINS JACKPOT</div>
+
+        <div class="roulette-history-wrap" style="margin-top: 6px">
+          <div class="roulette-label">RECENT</div>
+          <div class="slots-history" id="slotsHistory"></div>
+        </div>
+
+        <div class="roulette-actions">
+          <button class="menu-btn" id="slotsClearBtn" onclick="window.slotsClear()">CLEAR</button>
+          <button class="term-btn" id="slotsSpinBtn" onclick="window.slotsSpin()">SPIN</button>
+        </div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
     <!-- Multiplayer Tic Tac Toe overlay. -->
     <div class="overlay" id="overlayTTT">
       <h1>TIC TAC TOE</h1>
