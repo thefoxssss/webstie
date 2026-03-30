@@ -207,126 +207,151 @@ window.warSelect = (mode) => {
   beep(400, "square", 0.08);
 };
 
-document.getElementById("btnWarSolo").onclick = () => window.warSelect("solo");
+let warHandlersBound = false;
 
-document.getElementById("btnCreateWar").onclick = async () => {
-  warMode = "multi";
-  if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
-  const code = Math.floor(1000 + Math.random() * 9000).toString();
-  const seats = [
-    { uid: state.myUid, name: state.myName, bet: 0, ready: false, card: null, score: 0 },
-    null,
-  ];
-  await setDoc(getWarRef(code), { seats, deck: createDeck(), phase: "lobby", pot: 0, round: 1 });
-  joinWar(code, 0);
-};
+function bindWarHandlers() {
+  if (warHandlersBound) return;
 
-document.getElementById("btnJoinWar").onclick = async () => {
-  warMode = "multi";
-  if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
-  const code = (document.getElementById("joinWarCode").value || "").trim();
-  await runTransaction(firebase.db, async (tx) => {
-    const ref = getWarRef(code);
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw "404";
-    const data = snap.data();
-    if (data.seats[1]) throw "Full";
-    const seats = [...data.seats];
-    seats[1] = { uid: state.myUid, name: state.myName, bet: 0, ready: false, card: null, score: 0 };
-    tx.update(ref, { seats });
-    joinWar(code, 1);
-  }).catch((error) => {
-    if (!handleFirebaseError(error, "WAR JOIN", "Could not join room.")) showToast("FAILED TO JOIN");
-  });
-};
+  const soloBtn = document.getElementById("btnWarSolo");
+  const createBtn = document.getElementById("btnCreateWar");
+  const joinBtn = document.getElementById("btnJoinWar");
+  const startBtn = document.getElementById("warStartBtn");
+  const drawBtn = document.getElementById("warDrawBtn");
 
-document.getElementById("warStartBtn").onclick = async () => {
-  if (!warRoomCode) return;
-  const ref = getWarRef(warRoomCode);
-  await runTransaction(firebase.db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw "404";
-    const data = snap.data();
-    if (!data?.seats?.[0] || !data?.seats?.[1]) throw "Need 2 players";
-    tx.update(ref, { phase: "betting", pot: 0 });
-  }).catch((error) => {
-    if (error === "Need 2 players") {
-      showToast("Need 2 players to start.");
-      return;
-    }
-    handleFirebaseError(error, "WAR START", "Could not start match.");
-  });
-};
-
-document.getElementById("warDrawBtn").onclick = async () => {
-  if (state.currentGame !== "war") return;
-  if (warMode === "solo") {
-    startSoloRound();
+  if (!soloBtn || !createBtn || !joinBtn || !startBtn || !drawBtn) {
+    console.warn("WAR UI missing required buttons; handlers not bound.");
     return;
   }
-  if (!warRoomCode) return;
-  const ref = getWarRef(warRoomCode);
-  const snap = await getDoc(ref);
-  const data = snap.data();
-  if (!data) return;
 
-  if (data.phase === "betting") {
-    if (warBet <= 0) return;
-    if (state.myMoney < warBet) return showToast("Not enough cash.");
-    const locked = await runTransaction(firebase.db, async (tx) => {
-      const freshSnap = await tx.get(ref);
-      if (!freshSnap.exists()) throw "404";
-      const fresh = freshSnap.data();
-      if (fresh.phase !== "betting") throw "Not betting";
-      const me = fresh.seats?.[warMySeatIdx];
-      if (!me) throw "Seat missing";
-      if (me.ready) throw "Already ready";
+  soloBtn.onclick = () => window.warSelect("solo");
 
-      const seats = [...fresh.seats];
-      seats[warMySeatIdx] = { ...seats[warMySeatIdx], bet: warBet, ready: true };
-      const nextPot = Number(fresh.pot || 0) + warBet;
-      const updates = { seats, pot: nextPot };
-
-      const everyoneReady = seats.every((seat) => seat && seat.ready);
-      if (everyoneReady) {
-        const deck = fresh.deck && fresh.deck.length >= 2 ? [...fresh.deck] : createDeck();
-        const nextSeats = seats.map((seat) => ({ ...seat, card: deck.pop() }));
-        const myRank = rankValue(nextSeats[0].card);
-        const oppRank = rankValue(nextSeats[1].card);
-        if (myRank > oppRank) nextSeats[0].score = Number(nextSeats[0].score || 0) + 1;
-        else if (oppRank > myRank) nextSeats[1].score = Number(nextSeats[1].score || 0) + 1;
-        updates.seats = nextSeats;
-        updates.deck = deck;
-        updates.phase = "reveal";
-      }
-
-      tx.update(ref, updates);
-      return true;
-    }).catch((error) => {
-      if (error === "Already ready") return false;
-      if (!handleFirebaseError(error, "WAR BET", "Could not lock bet.")) showToast("BET FAILED");
-      return false;
-    });
-
-    if (!locked) return;
-    state.myMoney = roundMoney(Number(state.myMoney || 0) - warBet);
-    updateWarBank();
-  } else if (data.phase === "reveal" && warMySeatIdx === 0) {
-    const seats = data.seats.map((seat) => ({ ...seat, bet: 0, ready: false, card: null }));
-    await updateDoc(ref, { seats, phase: "betting", pot: 0, round: Number(data.round || 1) + 1 });
-  }
-};
-
-document.querySelectorAll(".war-chip").forEach((chip) => {
-  chip.onclick = () => {
-    if (state.currentGame !== "war") return;
-    const value = parseInt(chip.dataset.v) || 0;
-    if (chip.id === "warClear") warBet = 0;
-    else if (chip.id === "warAllIn") warBet = Math.max(0, Math.floor(Number(state.myMoney || 0)));
-    else if (Number(state.myMoney || 0) >= warBet + value) warBet += value;
-    updateWarBank();
+  createBtn.onclick = async () => {
+    warMode = "multi";
+    if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const seats = [
+      { uid: state.myUid, name: state.myName, bet: 0, ready: false, card: null, score: 0 },
+      null,
+    ];
+    try {
+      await setDoc(getWarRef(code), { seats, deck: createDeck(), phase: "lobby", pot: 0, round: 1 });
+      joinWar(code, 0);
+    } catch (error) {
+      if (!handleFirebaseError(error, "WAR CREATE", "Could not create room.")) showToast("FAILED TO CREATE");
+    }
   };
-});
+
+  joinBtn.onclick = async () => {
+    warMode = "multi";
+    if (!state.myUid) return showToast("OFFLINE", "⚠️", "Connect to Firebase to play online.");
+    const code = (document.getElementById("joinWarCode")?.value || "").trim();
+    await runTransaction(firebase.db, async (tx) => {
+      const ref = getWarRef(code);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw "404";
+      const data = snap.data();
+      if (data.seats[1]) throw "Full";
+      const seats = [...data.seats];
+      seats[1] = { uid: state.myUid, name: state.myName, bet: 0, ready: false, card: null, score: 0 };
+      tx.update(ref, { seats });
+      joinWar(code, 1);
+    }).catch((error) => {
+      if (!handleFirebaseError(error, "WAR JOIN", "Could not join room.")) showToast("FAILED TO JOIN");
+    });
+  };
+
+  startBtn.onclick = async () => {
+    if (!warRoomCode) return;
+    const ref = getWarRef(warRoomCode);
+    await runTransaction(firebase.db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw "404";
+      const data = snap.data();
+      if (!data?.seats?.[0] || !data?.seats?.[1]) throw "Need 2 players";
+      tx.update(ref, { phase: "betting", pot: 0 });
+    }).catch((error) => {
+      if (error === "Need 2 players") {
+        showToast("Need 2 players to start.");
+        return;
+      }
+      handleFirebaseError(error, "WAR START", "Could not start match.");
+    });
+  };
+
+  drawBtn.onclick = async () => {
+    if (state.currentGame !== "war") return;
+    if (warMode === "solo") {
+      startSoloRound();
+      return;
+    }
+    if (!warRoomCode) return;
+    const ref = getWarRef(warRoomCode);
+    const snap = await getDoc(ref);
+    const data = snap.data();
+    if (!data) return;
+
+    if (data.phase === "betting") {
+      if (warBet <= 0) return;
+      if (state.myMoney < warBet) return showToast("Not enough cash.");
+      const locked = await runTransaction(firebase.db, async (tx) => {
+        const freshSnap = await tx.get(ref);
+        if (!freshSnap.exists()) throw "404";
+        const fresh = freshSnap.data();
+        if (fresh.phase !== "betting") throw "Not betting";
+        const me = fresh.seats?.[warMySeatIdx];
+        if (!me) throw "Seat missing";
+        if (me.ready) throw "Already ready";
+
+        const seats = [...fresh.seats];
+        seats[warMySeatIdx] = { ...seats[warMySeatIdx], bet: warBet, ready: true };
+        const nextPot = Number(fresh.pot || 0) + warBet;
+        const updates = { seats, pot: nextPot };
+
+        const everyoneReady = seats.every((seat) => seat && seat.ready);
+        if (everyoneReady) {
+          const deck = fresh.deck && fresh.deck.length >= 2 ? [...fresh.deck] : createDeck();
+          const nextSeats = seats.map((seat) => ({ ...seat, card: deck.pop() }));
+          const myRank = rankValue(nextSeats[0].card);
+          const oppRank = rankValue(nextSeats[1].card);
+          if (myRank > oppRank) nextSeats[0].score = Number(nextSeats[0].score || 0) + 1;
+          else if (oppRank > myRank) nextSeats[1].score = Number(nextSeats[1].score || 0) + 1;
+          updates.seats = nextSeats;
+          updates.deck = deck;
+          updates.phase = "reveal";
+        }
+
+        tx.update(ref, updates);
+        return true;
+      }).catch((error) => {
+        if (error === "Already ready") return false;
+        if (!handleFirebaseError(error, "WAR BET", "Could not lock bet.")) showToast("BET FAILED");
+        return false;
+      });
+
+      if (!locked) return;
+      state.myMoney = roundMoney(Number(state.myMoney || 0) - warBet);
+      updateWarBank();
+    } else if (data.phase === "reveal" && warMySeatIdx === 0) {
+      const seats = data.seats.map((seat) => ({ ...seat, bet: 0, ready: false, card: null }));
+      await updateDoc(ref, { seats, phase: "betting", pot: 0, round: Number(data.round || 1) + 1 });
+    }
+  };
+
+  document.querySelectorAll(".war-chip").forEach((chip) => {
+    chip.onclick = () => {
+      if (state.currentGame !== "war") return;
+      const value = parseInt(chip.dataset.v) || 0;
+      if (chip.id === "warClear") warBet = 0;
+      else if (chip.id === "warAllIn") warBet = Math.max(0, Math.floor(Number(state.myMoney || 0)));
+      else if (Number(state.myMoney || 0) >= warBet + value) warBet += value;
+      updateWarBank();
+    };
+  });
+
+  warHandlersBound = true;
+}
+
+bindWarHandlers();
 
 registerGameStop(() => {
   cleanupWar();
