@@ -61,7 +61,7 @@ function updateWarBank() {
 }
 
 function resetSoloTable() {
-  document.getElementById("warGameBtns").style.display = "none";
+  document.getElementById("warGameBtns").style.display = "flex";
   document.getElementById("warBetBtns").style.visibility = "visible";
   setText("warMessage", "PLACE BET + DRAW");
   setText("warResult", "-");
