@@ -45,6 +45,10 @@ let history = [];
 let jackpotPool = JACKPOT_SEED;
 let lastBoard = null;
 
+function roundMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
 function weightedRandomSymbol() {
   const total = SYMBOLS.reduce((sum, symbol) => sum + symbol.weight, 0);
   let cursor = Math.random() * total;
@@ -176,7 +180,7 @@ function settleRound(board) {
   }
 
   if (winTotal > 0) {
-    state.myMoney += winTotal;
+    state.myMoney = roundMoney(Number(state.myMoney || 0) + winTotal);
     setMessage(jackpotHit ? `JACKPOT! +$${winTotal}` : `WIN +$${winTotal}`, "win");
     beep(jackpotHit ? 1200 : 920, "square", jackpotHit ? 0.18 : 0.1);
   } else {
@@ -209,8 +213,8 @@ function spin() {
     return;
   }
 
-  state.myMoney -= totalBet();
-  jackpotPool += totalBet() * 0.1;
+  state.myMoney = roundMoney(Number(state.myMoney || 0) - totalBet());
+  jackpotPool = roundMoney(jackpotPool + totalBet() * 0.1);
   isSpinning = true;
   setMessage("SPINNING REELS...");
   updateBank();
@@ -277,7 +281,9 @@ export function initSlots() {
 
 window.slotsSetBet = (amount) => {
   if (isSpinning) return;
-  const next = Math.max(1, Math.floor(Number(amount) || 1));
+  const parsedAmount = Number(amount);
+  if (!Number.isFinite(parsedAmount)) return;
+  const next = Math.max(1, Math.floor(parsedAmount));
   betAmount = next;
   if (betInputEl) betInputEl.value = next;
   updateBank();
