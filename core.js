@@ -2129,8 +2129,7 @@ function renderSeasonBoard() {
 
   const archivedEntries = (seasonData.hall || [])
     .filter((entry) => String(entry.id || "").toUpperCase() === activeSeasonTab)
-    .sort((a, b) => Number(b.money || 0) - Number(a.money || 0))
-    .slice(0, 10);
+    .sort((a, b) => Number(b.money || 0) - Number(a.money || 0));
 
   if (activeSeasonSubTab === "gang") {
     const crewTotals = {};
@@ -2141,7 +2140,7 @@ function renderSeasonBoard() {
       crewTotals[crewTag].money += Number(entry.money || 0);
       crewTotals[crewTag].members += 1;
     });
-    const crewRows = Object.values(crewTotals).sort((a, b) => b.money - a.money).slice(0, 10);
+    const crewRows = Object.values(crewTotals).sort((a, b) => b.money - a.money);
     boardList.innerHTML = crewRows.length
       ? crewRows.map((row, idx) => `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // $${Math.round(row.money)} // ${row.members} OPS</div>`).join("")
       : '<div class="score-item">NO ARCHIVED GANG SCORES FOR THIS SEASON</div>';
@@ -2180,12 +2179,12 @@ function getLiveSeasonBoardRows(mode = "solo") {
       }
     }
 
-    return Object.values(gangTotals).sort((a, b) => b.money - a.money).slice(0, 10);
+    return Object.values(gangTotals).sort((a, b) => b.money - a.money);
   }
 
   const soloRows = (cachedSeasonBoards.solo || []).filter((row) => String(row.name || "").toUpperCase() !== normalizedName);
   soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag });
-  return soloRows.sort((a, b) => b.money - a.money).slice(0, 10);
+  return soloRows.sort((a, b) => b.money - a.money);
 }
 
 function renderSeasonPanel() {
@@ -2258,7 +2257,7 @@ function loadSeasonLeaderboards() {
   if (!boardList) return;
   if (seasonBoardUnsub) seasonBoardUnsub();
 
-  const q = query(collection(db, "gooner_users"), limit(200));
+  const q = query(collection(db, "gooner_users"));
   seasonBoardUnsub = onSnapshot(q, (snap) => {
     const players = [];
     const crews = {};
@@ -2277,8 +2276,8 @@ function loadSeasonLeaderboards() {
       }
     });
 
-    cachedSeasonBoards.solo = players.sort((a, b) => b.money - a.money).slice(0, 10);
-    cachedSeasonBoards.gang = Object.values(crews).sort((a, b) => b.money - a.money).slice(0, 10);
+    cachedSeasonBoards.solo = players.sort((a, b) => b.money - a.money);
+    cachedSeasonBoards.gang = Object.values(crews).sort((a, b) => b.money - a.money);
     renderSeasonBoard();
   });
 }
