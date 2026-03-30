@@ -23,6 +23,10 @@ let warRoomUnsub = null;
 let warMySeatIdx = -1;
 let warLastPhase = "";
 
+function roundMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
 function rankValue(card) {
   const map = { J: 11, Q: 12, K: 13, A: 14 };
   return map[card.v] || Number(card.v) || 0;
@@ -52,7 +56,7 @@ function renderCard(card, targetId) {
 function updateWarBank() {
   setText("warBetVal", warBet);
   const globalBankText = document.getElementById("globalBank")?.textContent?.trim();
-  setText("warBank", globalBankText || Number(state.myMoney || 0).toFixed(2));
+  setText("warBank", globalBankText || roundMoney(state.myMoney || 0).toFixed(2));
   saveStats();
 }
 
@@ -72,7 +76,7 @@ function startSoloRound() {
     return;
   }
 
-  state.myMoney = Number((Number(state.myMoney || 0) - warBet).toFixed(2));
+  state.myMoney = roundMoney(Number(state.myMoney || 0) - warBet);
   warDeck = warDeck.length > 10 ? warDeck : createDeck();
   const myCard = warDeck.pop();
   const enemyCard = warDeck.pop();
@@ -84,10 +88,10 @@ function startSoloRound() {
   const enemyRank = rankValue(enemyCard);
   let msg = "";
   if (myRank > enemyRank) {
-    state.myMoney = Number((Number(state.myMoney || 0) + warBet * 2).toFixed(2));
+    state.myMoney = roundMoney(Number(state.myMoney || 0) + warBet * 2);
     msg = `YOU WIN +$${warBet}`;
   } else if (myRank === enemyRank) {
-    state.myMoney = Number((Number(state.myMoney || 0) + warBet).toFixed(2));
+    state.myMoney = roundMoney(Number(state.myMoney || 0) + warBet);
     msg = "TIE - BET RETURNED";
   } else {
     msg = "YOU LOSE";
@@ -169,8 +173,8 @@ function handleWarUpdate(data) {
     setText("warResult", `${me?.card?.v || "?"}${me?.card?.s || ""} vs ${opp?.card?.v || "?"}${opp?.card?.s || ""}`);
 
     if (warLastPhase !== "reveal") {
-      if (outcome === "YOU WIN") state.myMoney = Number((Number(state.myMoney || 0) + (data.pot || 0)).toFixed(2));
-      if (outcome === "TIE") state.myMoney = Number((Number(state.myMoney || 0) + Number(me?.bet || 0)).toFixed(2));
+      if (outcome === "YOU WIN") state.myMoney = roundMoney(Number(state.myMoney || 0) + (data.pot || 0));
+      if (outcome === "TIE") state.myMoney = roundMoney(Number(state.myMoney || 0) + Number(me?.bet || 0));
       updateWarBank();
     }
   }
@@ -238,7 +242,20 @@ document.getElementById("btnJoinWar").onclick = async () => {
 
 document.getElementById("warStartBtn").onclick = async () => {
   if (!warRoomCode) return;
-  await updateDoc(getWarRef(warRoomCode), { phase: "betting", pot: 0 });
+  const ref = getWarRef(warRoomCode);
+  await runTransaction(firebase.db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw "404";
+    const data = snap.data();
+    if (!data?.seats?.[0] || !data?.seats?.[1]) throw "Need 2 players";
+    tx.update(ref, { phase: "betting", pot: 0 });
+  }).catch((error) => {
+    if (error === "Need 2 players") {
+      showToast("Need 2 players to start.");
+      return;
+    }
+    handleFirebaseError(error, "WAR START", "Could not start match.");
+  });
 };
 
 document.getElementById("warDrawBtn").onclick = async () => {
@@ -254,29 +271,46 @@ document.getElementById("warDrawBtn").onclick = async () => {
   if (!data) return;
 
   if (data.phase === "betting") {
-    const me = data.seats[warMySeatIdx];
-    if (!me) return;
-    if (me.ready) return;
     if (warBet <= 0) return;
     if (state.myMoney < warBet) return showToast("Not enough cash.");
-    state.myMoney = Number((Number(state.myMoney || 0) - warBet).toFixed(2));
+    const locked = await runTransaction(firebase.db, async (tx) => {
+      const freshSnap = await tx.get(ref);
+      if (!freshSnap.exists()) throw "404";
+      const fresh = freshSnap.data();
+      if (fresh.phase !== "betting") throw "Not betting";
+      const me = fresh.seats?.[warMySeatIdx];
+      if (!me) throw "Seat missing";
+      if (me.ready) throw "Already ready";
+
+      const seats = [...fresh.seats];
+      seats[warMySeatIdx] = { ...seats[warMySeatIdx], bet: warBet, ready: true };
+      const nextPot = Number(fresh.pot || 0) + warBet;
+      const updates = { seats, pot: nextPot };
+
+      const everyoneReady = seats.every((seat) => seat && seat.ready);
+      if (everyoneReady) {
+        const deck = fresh.deck && fresh.deck.length >= 2 ? [...fresh.deck] : createDeck();
+        const nextSeats = seats.map((seat) => ({ ...seat, card: deck.pop() }));
+        const myRank = rankValue(nextSeats[0].card);
+        const oppRank = rankValue(nextSeats[1].card);
+        if (myRank > oppRank) nextSeats[0].score = Number(nextSeats[0].score || 0) + 1;
+        else if (oppRank > myRank) nextSeats[1].score = Number(nextSeats[1].score || 0) + 1;
+        updates.seats = nextSeats;
+        updates.deck = deck;
+        updates.phase = "reveal";
+      }
+
+      tx.update(ref, updates);
+      return true;
+    }).catch((error) => {
+      if (error === "Already ready") return false;
+      if (!handleFirebaseError(error, "WAR BET", "Could not lock bet.")) showToast("BET FAILED");
+      return false;
+    });
+
+    if (!locked) return;
+    state.myMoney = roundMoney(Number(state.myMoney || 0) - warBet);
     updateWarBank();
-
-    const seats = [...data.seats];
-    seats[warMySeatIdx] = { ...seats[warMySeatIdx], bet: warBet, ready: true };
-    const nextPot = Number(data.pot || 0) + warBet;
-    await updateDoc(ref, { seats, pot: nextPot });
-
-    const everyoneReady = seats.every((seat) => seat && seat.ready);
-    if (warMySeatIdx === 0 && everyoneReady) {
-      const deck = data.deck && data.deck.length >= 2 ? [...data.deck] : createDeck();
-      const nextSeats = seats.map((seat) => ({ ...seat, card: deck.pop() }));
-      const myRank = rankValue(nextSeats[0].card);
-      const oppRank = rankValue(nextSeats[1].card);
-      if (myRank > oppRank) nextSeats[0].score = Number(nextSeats[0].score || 0) + 1;
-      else if (oppRank > myRank) nextSeats[1].score = Number(nextSeats[1].score || 0) + 1;
-      await updateDoc(ref, { seats: nextSeats, deck, phase: "reveal" });
-    }
   } else if (data.phase === "reveal" && warMySeatIdx === 0) {
     const seats = data.seats.map((seat) => ({ ...seat, bet: 0, ready: false, card: null }));
     await updateDoc(ref, { seats, phase: "betting", pot: 0, round: Number(data.round || 1) + 1 });
