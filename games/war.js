@@ -217,8 +217,12 @@ document.getElementById("btnCreateWar").onclick = async () => {
     { uid: state.myUid, name: state.myName, bet: 0, ready: false, card: null, score: 0 },
     null,
   ];
-  await setDoc(getWarRef(code), { seats, deck: createDeck(), phase: "lobby", pot: 0, round: 1 });
-  joinWar(code, 0);
+  try {
+    await setDoc(getWarRef(code), { seats, deck: createDeck(), phase: "lobby", pot: 0, round: 1 });
+    joinWar(code, 0);
+  } catch (error) {
+    if (!handleFirebaseError(error, "WAR CREATE", "Could not create room.")) showToast("FAILED TO CREATE");
+  }
 };
 
 document.getElementById("btnJoinWar").onclick = async () => {
