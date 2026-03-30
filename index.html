@@ -1646,6 +1646,63 @@
       </button>
     </div>
 
+    <!-- Solo + multiplayer War overlay. -->
+    <div class="overlay" id="overlayWar">
+      <h1>WAR</h1>
+      <div id="warMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateWar">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input type="text" id="joinWarCode" class="term-input" placeholder="CODE" maxlength="4" />
+        <button class="term-btn" id="btnJoinWar">JOIN ROOM</button>
+        <button class="menu-btn" id="btnWarSolo" style="margin-top: 10px">SINGLEPLAYER VS DEALER</button>
+      </div>
+
+      <div id="warLobby" class="menu-box" style="display: none">
+        <h2>ROOM: <span id="warRoomId">????</span></h2>
+        <div id="warPList" style="text-align: left; margin: 20px 0"></div>
+        <button class="term-btn" id="warStartBtn" style="display: none; color: #0f0">START MATCH</button>
+        <div id="warWait" style="font-size: 10px">WAITING...</div>
+      </div>
+
+      <div id="warTable" class="bj-table" style="display: none">
+        <div class="bj-pot-display war-topline">POT: $<span id="warPot">0</span> • BANK: $<span id="warBank">0</span></div>
+        <div class="war-scoreline">
+          <span id="warOpponentName">OPPONENT</span>
+          <span>WINS: <span id="warOppScore">0</span></span>
+          <span>YOU: <span id="warMyScore">0</span></span>
+        </div>
+
+        <div class="bj-area" style="margin-bottom: 10px">
+          <span class="bj-label">OPPONENT</span>
+          <div class="bj-hand" id="warEnemyCard"></div>
+        </div>
+
+        <div id="warGameBtns" style="display: flex; align-items: center; gap: 14px; margin: 10px">
+          <button class="term-btn" id="warDrawBtn">DRAW / NEXT</button>
+          <div id="warMessage" style="width: 220px; text-align: center; font-size: 10px">SET BET</div>
+        </div>
+        <div id="warResult" class="war-result">-</div>
+
+        <div class="bj-area active-seat">
+          <span class="bj-label">YOU</span>
+          <div class="bj-hand" id="warMyCard"></div>
+        </div>
+
+        <div id="warBetBtns">
+          <div style="text-align: center; margin-bottom: 5px">BET: $<span id="warBetVal">0</span></div>
+          <div class="bj-chip-rack">
+            <div class="bj-chip war-chip" data-v="10">10</div>
+            <div class="bj-chip war-chip" data-v="50">50</div>
+            <div class="bj-chip war-chip" data-v="100">100</div>
+            <div class="bj-chip bj-all-in war-chip" id="warAllIn">ALL</div>
+            <div class="bj-chip war-chip" id="warClear" style="border-color: var(--accent); color: var(--accent)">CLR</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
     <!-- Firebase multiplayer physics arena game. -->
     <div class="overlay" id="overlayBonk">
       <h1>BONK ARENA</h1>

@@ -2190,6 +2190,27 @@ canvas {
   padding: 0 10px;
 }
 
+/* --- WAR --- */
+.war-topline {
+  display: block;
+}
+
+.war-scoreline {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  border: 1px dashed var(--accent-dim);
+  padding: 8px 10px;
+}
+
+.war-result {
+  min-height: 18px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
 /* Leaderboard */
 .score-box {
   width: min(96vw, 1300px);
