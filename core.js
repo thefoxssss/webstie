@@ -4654,6 +4654,7 @@ export function renderInventory() {
 
 function renderShop() {
   const list = document.getElementById("shopList");
+  if (!list) return;
   setText("shopBank", myMoney);
   list.innerHTML = "";
   SHOP_ITEMS.forEach((item) => {
@@ -4731,6 +4732,7 @@ export function toggleItem(id) {
   updateMatrixToggle();
   saveStats();
   renderShop();
+  renderInventory();
   const itemName = SHOP_ITEMS.find((item) => item.id === id)?.name || "ITEM";
   showToast(`${enabled ? "ENABLED" : "DISABLED"}: ${itemName}`, enabled ? "🟢" : "🔴");
 }
