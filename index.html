@@ -1078,15 +1078,25 @@
     <div class="overlay" id="overlayGeo">
       <h1>GEO DASH</h1>
       <div class="high-score-display">HIGH: <span id="hsGeo">0</span></div>
-      <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap">
-        <label for="geoLevelSelect">LEVEL</label>
-        <select id="geoLevelSelect" class="menu-btn" style="padding: 4px 8px"></select>
+
+      <div id="geoMenu" class="menu-box">
+        <h2 style="margin-bottom: 20px">SELECT LEVEL</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px; max-width: 300px; margin: 0 auto;">
+          <button class="term-btn" onclick="window.startGeoLevel('stereo_madness')">LEVEL 1 - EASY</button>
+          <button class="term-btn" onclick="window.startGeoLevel('back_on_track')">LEVEL 2 - NORMAL</button>
+          <button class="term-btn" onclick="window.startGeoLevel('polargeist')">LEVEL 3 - HARD</button>
+        </div>
       </div>
-      <div style="margin-bottom: 10px" id="geoScore">SCORE: 0</div>
-      <canvas id="geoCanvas" width="800" height="400"></canvas>
-      <div class="mobile-hint active" style="margin-top: 20px">
-        CLICK OR SPACE TO JUMP
+
+      <div id="geoGame" style="display: none; text-align: center;">
+        <div style="margin-bottom: 10px" id="geoScore">SCORE: 0</div>
+        <canvas id="geoCanvas" width="800" height="400"></canvas>
+        <div class="mobile-hint active" style="margin-top: 20px">
+          CLICK OR SPACE TO JUMP
+        </div>
+        <button class="term-btn" style="margin-top: 20px;" onclick="window.showGeoMenu()">BACK TO MENU</button>
       </div>
+
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>

@@ -12,34 +12,24 @@ import {
   hasActiveItem,
 } from "../core.js";
 
+// Helper to build a long sequence. 'b' = block, 's' = spike, 'g' = gap, 'd' = double spike, 't' = triple block, '_' = long gap
+function parsePattern(str) {
+  return str.split("").filter(c => c !== " ");
+}
+
+const EASY_PATTERN = parsePattern("b_s_b_b_s_g_b_s_s_g_b_b_s_b_g_s_g_b_s_b_b_s_g_b_g_s_b_s_b_g_b_b_b_s_s_g_b_b_s_b_g_s_b_s_g_b_b_s_g_b_b_b_s_s_g_b_s_b");
+const NORMAL_PATTERN = parsePattern("s_s_g_b_s_g_b_b_s_g_b_s_s_b_g_b_s_b_s_g_s_s_b_g_b_s_b_b_s_g_s_b_s_s_g_b_b_s_b_s_g_s_s_b_g_b_b_b_s_s_g_s_s_g_b_s_b_s_b");
+const HARD_PATTERN = parsePattern("b_s_s_g_s_s_g_b_b_s_s_g_s_g_s_b_b_s_s_g_b_s_b_s_s_g_s_s_b_b_s_s_g_b_b_s_g_s_s_b_g_s_s_s_g_b_b_s_s_g_s_b_s_s_g_s_s_s_g_b_b");
+
 const GEO_LEVELS = [
-  { id: "stereo_madness", name: "Stereo Madness", speed: 5.2, gravity: 0.85, jump: 12, pattern: ["block", "spike", "gap", "block"] },
-  { id: "back_on_track", name: "Back on Track", speed: 5.4, gravity: 0.88, jump: 12.2, pattern: ["spike", "gap", "block", "spike"] },
-  { id: "polargeist", name: "Polargeist", speed: 5.6, gravity: 0.9, jump: 12.2, pattern: ["spike", "spike", "gap", "block"] },
-  { id: "dry_out", name: "Dry Out", speed: 5.7, gravity: 0.92, jump: 12.4, pattern: ["block", "gap", "spike", "spike"] },
-  { id: "base_after_base", name: "Base After Base", speed: 5.8, gravity: 0.93, jump: 12.5, pattern: ["block", "spike", "block", "gap"] },
-  { id: "cant_let_go", name: "Can't Let Go", speed: 6, gravity: 0.95, jump: 12.8, pattern: ["spike", "block", "spike", "gap"] },
-  { id: "jumper", name: "Jumper", speed: 6.1, gravity: 0.96, jump: 12.8, pattern: ["gap", "spike", "block", "spike"] },
-  { id: "time_machine", name: "Time Machine", speed: 6.3, gravity: 1, jump: 13, pattern: ["spike", "spike", "block", "gap"] },
-  { id: "cycles", name: "Cycles", speed: 6.4, gravity: 1, jump: 13, pattern: ["block", "spike", "spike", "gap"] },
-  { id: "xstep", name: "xStep", speed: 6.5, gravity: 1.01, jump: 13, pattern: ["spike", "gap", "spike", "block"] },
-  { id: "clutterfunk", name: "Clutterfunk", speed: 6.8, gravity: 1.02, jump: 13.1, pattern: ["spike", "spike", "spike", "gap"] },
-  { id: "toe", name: "Theory of Everything", speed: 6.9, gravity: 1.02, jump: 13.1, pattern: ["block", "spike", "spike", "block"] },
-  { id: "electroman", name: "Electroman Adventures", speed: 7, gravity: 1.03, jump: 13.2, pattern: ["gap", "block", "spike", "spike"] },
-  { id: "clubstep", name: "Clubstep", speed: 7.2, gravity: 1.03, jump: 13.2, pattern: ["spike", "spike", "block", "spike"] },
-  { id: "electrodynamix", name: "Electrodynamix", speed: 7.3, gravity: 1.04, jump: 13.3, pattern: ["spike", "gap", "spike", "spike"] },
-  { id: "hexagon_force", name: "Hexagon Force", speed: 7.4, gravity: 1.04, jump: 13.3, pattern: ["block", "spike", "gap", "spike"] },
-  { id: "blast_processing", name: "Blast Processing", speed: 7.5, gravity: 1.05, jump: 13.4, pattern: ["gap", "spike", "gap", "block"] },
-  { id: "toe2", name: "Theory of Everything 2", speed: 7.6, gravity: 1.05, jump: 13.5, pattern: ["spike", "spike", "gap", "spike"] },
-  { id: "geometrical_dominator", name: "Geometrical Dominator", speed: 7.7, gravity: 1.06, jump: 13.5, pattern: ["block", "block", "spike", "gap"] },
-  { id: "deadlocked", name: "Deadlocked", speed: 7.9, gravity: 1.07, jump: 13.6, pattern: ["spike", "spike", "spike", "block"] },
-  { id: "fingerdash", name: "Fingerdash", speed: 8, gravity: 1.08, jump: 13.6, pattern: ["gap", "spike", "block", "spike"] },
-  { id: "dash", name: "Dash", speed: 8.2, gravity: 1.1, jump: 13.8, pattern: ["spike", "block", "spike", "spike"] },
+  { id: "stereo_madness", name: "Level 1 - Easy", speed: 5.2, gravity: 0.85, jump: 12, sequence: EASY_PATTERN },
+  { id: "back_on_track", name: "Level 2 - Normal", speed: 6.0, gravity: 0.95, jump: 12.8, sequence: NORMAL_PATTERN },
+  { id: "polargeist", name: "Level 3 - Hard", speed: 7.0, gravity: 1.03, jump: 13.2, sequence: HARD_PATTERN },
 ];
 
 let gPlayer = {};
 let gObs = [];
-let gScore = 0;
+let gScore = 0; // Number of obstacles passed
 let gSpeed = 6;
 let gAnim;
 let gControlsBound = false;
@@ -52,16 +42,36 @@ let gLastTime = 0;
 let geoStarted = false;
 let gLevelPatternIndex = 0;
 let gCurrentLevel = GEO_LEVELS[0];
-let gLevelSelectRef = null;
+let gTotalObstacles = 0;
+let gFinished = false;
 
 const BASE_FRAME_MS = 1000 / 60;
 const MAX_DT_FRAMES = 2.5;
 
 function updateGeoHud() {
-  setText("geoScore", `LEVEL: ${gCurrentLevel.name} • SCORE: ${gScore} • ${getShieldStatusLabel("geo")}`);
+  if (!geoStarted && !gFinished && gScore === 0) {
+    setText("geoScore", `LEVEL: ${gCurrentLevel.name} • 0% • ${getShieldStatusLabel("geo")}`);
+    return;
+  }
+  let pct = Math.floor((gScore / gTotalObstacles) * 100);
+  if (pct > 100) pct = 100;
+  if (gFinished) pct = 100;
+  setText("geoScore", `LEVEL: ${gCurrentLevel.name} • ${pct}% • ${getShieldStatusLabel("geo")}`);
 }
 
-export function initGeometry() {
+window.showGeoMenu = () => {
+  document.getElementById("geoMenu").style.display = "block";
+  document.getElementById("geoGame").style.display = "none";
+  if (gAnim) cancelAnimationFrame(gAnim);
+};
+
+window.startGeoLevel = (levelId) => {
+  document.getElementById("geoMenu").style.display = "none";
+  document.getElementById("geoGame").style.display = "block";
+  initGeometry(levelId);
+};
+
+export function initGeometry(levelId = "stereo_madness") {
   state.currentGame = "geo";
   loadHighScores();
   const cv = document.getElementById("geoCanvas");
@@ -69,35 +79,21 @@ export function initGeometry() {
   if (gAnim) cancelAnimationFrame(gAnim);
   gCanvasRef = cv;
   gOverlayRef = document.getElementById("overlayGeo");
-  gLevelSelectRef = document.getElementById("geoLevelSelect");
-  ensureLevelSelector();
-  applySelectedLevel(gLevelSelectRef?.value || GEO_LEVELS[0].id);
+
+  applySelectedLevel(levelId);
   gPlayer = { x: 100, y: 300, w: 30, h: 30, dy: 0, ang: 0, grounded: true };
   gObs = [];
   gScore = 0;
-  gSpawnDistanceRemaining = 0;
+  gSpawnDistanceRemaining = 200; // Initial delay
   gLastTime = 0;
   gLevelPatternIndex = 0;
   geoStarted = false;
+  gFinished = false;
+  gTotalObstacles = gCurrentLevel.sequence.filter(c => c === "b" || c === "s").length;
+
   updateGeoHud();
   bindGeoControls();
   loopGeometry(ctx, performance.now());
-}
-
-function ensureLevelSelector() {
-  if (!gLevelSelectRef || gLevelSelectRef.dataset.ready === "1") return;
-  for (const level of GEO_LEVELS) {
-    const option = document.createElement("option");
-    option.value = level.id;
-    option.textContent = level.name;
-    gLevelSelectRef.appendChild(option);
-  }
-  gLevelSelectRef.value = gCurrentLevel.id;
-  gLevelSelectRef.addEventListener("change", () => {
-    if (state.currentGame !== "geo") return;
-    initGeometry();
-  });
-  gLevelSelectRef.dataset.ready = "1";
 }
 
 function applySelectedLevel(levelId) {
@@ -106,20 +102,28 @@ function applySelectedLevel(levelId) {
 }
 
 function spawnObstacle() {
-  const spawnType = gCurrentLevel.pattern[gLevelPatternIndex % gCurrentLevel.pattern.length];
-  gLevelPatternIndex += 1;
-  if (spawnType === "gap") {
-    gSpawnDistanceRemaining = 120 + Math.random() * 100;
+  if (gLevelPatternIndex >= gCurrentLevel.sequence.length) {
+    // End of level
+    gSpawnDistanceRemaining = 9999;
     return;
   }
-  gObs.push({
-    x: 800,
-    y: 320,
-    w: 30,
-    h: 30,
-    type: spawnType,
-  });
-  gSpawnDistanceRemaining = 140 + Math.random() * 90;
+
+  const spawnType = gCurrentLevel.sequence[gLevelPatternIndex];
+  gLevelPatternIndex += 1;
+
+  if (spawnType === "g") {
+    gSpawnDistanceRemaining = 120;
+  } else if (spawnType === "_") {
+    gSpawnDistanceRemaining = 200;
+  } else if (spawnType === "b") {
+    gObs.push({ x: 800, y: 320, w: 30, h: 30, type: "block" });
+    gSpawnDistanceRemaining = 30; // Close together if immediately followed by another
+  } else if (spawnType === "s") {
+    gObs.push({ x: 800, y: 320, w: 30, h: 30, type: "spike" });
+    gSpawnDistanceRemaining = 30;
+  } else {
+    gSpawnDistanceRemaining = 100;
+  }
 }
 
 // Main loop for the geometry runner: physics, obstacles, rendering.
@@ -129,7 +133,7 @@ function loopGeometry(ctx, now) {
   const dtFrames = gLastTime
     ? Math.min((now - gLastTime) / BASE_FRAME_MS, MAX_DT_FRAMES)
     : 0;
-  const simDtFrames = geoStarted ? dtFrames : 0;
+  const simDtFrames = (geoStarted && !gFinished) ? dtFrames : 0;
   gLastTime = now;
 
   const cv = document.getElementById("geoCanvas");
@@ -159,8 +163,12 @@ function loopGeometry(ctx, now) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(-gPlayer.w / 2, -gPlayer.h / 2, gPlayer.w, gPlayer.h);
   ctx.restore();
-  gSpawnDistanceRemaining -= currentSpeed * simDtFrames;
-  if (gSpawnDistanceRemaining <= 0 && Math.random() < 0.7) spawnObstacle();
+
+  if (geoStarted && !gFinished) {
+    gSpawnDistanceRemaining -= currentSpeed * simDtFrames;
+    if (gSpawnDistanceRemaining <= 0) spawnObstacle();
+  }
+
   for (let i = gObs.length - 1; i >= 0; i--) {
     const o = gObs[i];
     o.x -= currentSpeed * simDtFrames;
@@ -175,6 +183,7 @@ function loopGeometry(ctx, now) {
       ctx.fillRect(o.x, o.y, o.w, o.h);
     }
     if (
+      !gFinished &&
       gPlayer.x < o.x + o.w - 5 &&
       gPlayer.x + gPlayer.w > o.x + 5 &&
       gPlayer.y < o.y + o.h - 5 &&
@@ -186,16 +195,30 @@ function loopGeometry(ctx, now) {
         if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
         continue;
       }
-      showGameOver("geo", Math.floor(gScore));
+      let pct = Math.floor((gScore / gTotalObstacles) * 100);
+      if (pct > 100) pct = 100;
+      showGameOver("geo", `${pct}%`);
       return;
     }
     if (o.x < -50) {
       gObs.splice(i, 1);
       gScore++;
-      updateHighScore("geo", gScore);
+      // We are done updating the highscore with just "score" and are using percentages instead for win/loss
       updateGeoHud();
     }
   }
+
+  // Win condition:
+  // All obstacles have been spawned, passed, and the screen is clear
+  if (geoStarted && !gFinished && gLevelPatternIndex >= gCurrentLevel.sequence.length && gObs.length === 0) {
+    gFinished = true;
+    updateGeoHud();
+    showToast("LEVEL COMPLETE!", "🏆");
+    setTimeout(() => {
+      window.showGeoMenu();
+    }, 2000);
+  }
+
   gAnim = requestAnimationFrame((nextNow) => loopGeometry(ctx, nextNow));
 }
 

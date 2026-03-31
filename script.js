@@ -288,7 +288,10 @@ window.launchGame = (game, source = "direct") => {
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
-  if (game === "geo") initGeometry();
+  if (game === "geo") {
+    // Show the menu first instead of launching straight into the game
+    window.showGeoMenu();
+  }
   if (game === "type") initTypeGame();
   if (game === "blackjack") initBJ();
   if (game === "ttt") initTTT();
@@ -1182,7 +1185,10 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "snake") initSnake();
   if (state.currentGame === "pong") initPong();
   if (state.currentGame === "runner") initRunner();
-  if (state.currentGame === "geo") initGeometry();
+  if (state.currentGame === "geo") {
+    document.getElementById("overlayGeo").classList.add("active");
+    window.showGeoMenu();
+  }
   if (state.currentGame === "flappy") initFlappy();
   if (state.currentGame === "dodge") initDodge();
   if (state.currentGame === "corebreaker") initCoreBreaker();
