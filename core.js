@@ -2861,7 +2861,7 @@ function loadProfile(data) {
 }
 
 // Render all user-facing UI fields based on the latest state.
-function updateUI() {
+export function updateUI() {
   setText("displayUser", myName);
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
