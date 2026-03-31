@@ -83,6 +83,7 @@ import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
 import { initSmashArena } from "./games/smasharena.js";
+import { initWar } from "./games/war.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -315,6 +316,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "quantumflip") initQuantumFlip();
   if (game === "ultimatettt") initUltimateTTT();
   if (game === "smasharena") initSmashArena();
+  if (game === "war") initWar();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
   resizeAllGameCanvases();
   trackGamePlay(game);
@@ -1210,6 +1212,10 @@ document.getElementById("goRestart").onclick = () => {
     state.myMoney = 1000;
     initBJ();
     document.getElementById("overlayBlackjack").classList.add("active");
+  }
+  if (state.currentGame === "war") {
+    initWar();
+    document.getElementById("overlayWar").classList.add("active");
   }
 };
 
