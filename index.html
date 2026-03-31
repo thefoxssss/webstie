@@ -47,6 +47,9 @@
         <button id="tabShop" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayShop')">
           SHOP
         </button>
+        <button id="tabInventory" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayInventory')">
+          INVENTORY
+        </button>
         <button id="tabProfile" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayProfile')">
           PROFILE
         </button>
@@ -653,6 +656,26 @@
           </div>
         </div>
         <div class="bank-log" id="bankLog"></div>
+        <button
+          class="term-btn"
+          style="margin-top: 20px"
+          onclick="window.closeOverlays()"
+        >
+          CLOSE
+        </button>
+      </div>
+    </div>
+
+    <!-- Inventory overlay for viewing owned items. -->
+    <div class="overlay menu-overlay" id="overlayInventory">
+      <div class="score-box">
+        <h2 style="text-align: center">YOUR BAG</h2>
+        <div style="text-align: center; font-size: 10px; margin-bottom: 10px">
+          ITEMS OWNED: <span id="inventoryCount">0</span>
+        </div>
+        <div class="inventory-grid" id="inventoryList">
+          <div class="inventory-empty">BAG IS EMPTY.</div>
+        </div>
         <button
           class="term-btn"
           style="margin-top: 20px"
@@ -1673,6 +1696,183 @@
           </div>
         </div>
       </div>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Mines overlay. -->
+    <div class="overlay" id="overlayMines">
+      <h1>MINES</h1>
+      <div class="roulette-balance">BANK: $<span id="minesBalance">0.00</span></div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin: 20px 0; width: min(94vw, 400px);">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; border: 1px solid var(--accent-dim); padding: 10px;">
+          <div>TOTAL WIN: <span id="minesTotalWin" style="color: #0f0;">-</span></div>
+          <div>NEXT TILE: <span id="minesNextWin" style="color: #0f0;">-</span></div>
+        </div>
+
+        <div id="minesGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: rgba(0,0,0,0.8); border: 2px solid var(--accent); padding: 10px;">
+          <!-- Grid rendered via JS -->
+        </div>
+      </div>
+
+      <div class="roulette-message" id="minesMessage">PLACE YOUR BET</div>
+
+      <div class="roulette-controls">
+        <div id="minesCountBtns" style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; align-items: center;">
+          <span style="font-size: 10px;">MINES: <span id="minesCountText">3</span></span>
+          <button class="term-btn" style="padding: 5px 10px; width: auto;" onclick="window.minesSetMines(1)">1</button>
+          <button class="term-btn" style="padding: 5px 10px; width: auto;" onclick="window.minesSetMines(3)">3</button>
+          <button class="term-btn" style="padding: 5px 10px; width: auto;" onclick="window.minesSetMines(5)">5</button>
+          <button class="term-btn" style="padding: 5px 10px; width: auto;" onclick="window.minesSetMines(10)">10</button>
+          <button class="term-btn" style="padding: 5px 10px; width: auto;" onclick="window.minesSetMines(24)">24</button>
+        </div>
+
+        <div id="minesBetBtns">
+          <div class="roulette-bet-row" style="justify-content: center; margin-bottom: 10px;">
+            <label class="roulette-label">BET: $<span id="minesBetVal">10</span></label>
+          </div>
+          <div class="roulette-presets">
+            <button class="menu-btn" onclick="window.minesSetBet(10)">$10</button>
+            <button class="menu-btn" onclick="window.minesSetBet(50)">$50</button>
+            <button class="menu-btn" onclick="window.minesSetBet(100)">$100</button>
+            <button class="menu-btn" onclick="window.minesChangeBet(0.5)">1/2</button>
+            <button class="menu-btn" onclick="window.minesChangeBet(2)">x2</button>
+            <button class="menu-btn" onclick="window.minesMaxBet()">MAX</button>
+          </div>
+        </div>
+
+        <div class="roulette-actions" style="display: flex; justify-content: center; margin-top: 20px;">
+          <button class="term-btn" id="minesActionBtn" onclick="window.minesAction()" style="max-width: 300px;">START GAME</button>
+        </div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Baccarat overlay. -->
+    <div class="overlay" id="overlayBaccarat">
+      <h1>BACCARAT</h1>
+      <div class="roulette-balance">BANK: $<span id="bacBalance">0.00</span></div>
+
+      <div style="display: flex; gap: 20px; width: min(94vw, 600px); margin: 20px 0;">
+        <div class="bj-area" style="flex: 1;">
+          <span class="bj-label">PLAYER - <span id="bacPlayerScore">-</span></span>
+          <div class="bj-hand" id="bacPlayerHand"></div>
+        </div>
+        <div class="bj-area" style="flex: 1;">
+          <span class="bj-label">BANKER - <span id="bacBankerScore">-</span></span>
+          <div class="bj-hand" id="bacBankerHand"></div>
+        </div>
+      </div>
+
+      <div class="roulette-message" id="bacMessage">PLACE YOUR BET</div>
+
+      <div class="roulette-controls">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center;">
+          <button class="term-btn" id="bacType_player" onclick="window.baccaratSetType('player')">PLAYER</button>
+          <button class="term-btn" id="bacType_tie" onclick="window.baccaratSetType('tie')">TIE (8:1)</button>
+          <button class="term-btn" id="bacType_banker" onclick="window.baccaratSetType('banker')">BANKER (1:1 -5%)</button>
+        </div>
+
+        <div id="bacBetBtns">
+          <div class="roulette-bet-row" style="justify-content: center; margin-bottom: 10px;">
+            <label class="roulette-label">BET: $<span id="bacBetVal">10</span></label>
+          </div>
+          <div class="roulette-presets">
+            <button class="menu-btn" onclick="window.baccaratSetBet(10)">$10</button>
+            <button class="menu-btn" onclick="window.baccaratSetBet(50)">$50</button>
+            <button class="menu-btn" onclick="window.baccaratSetBet(100)">$100</button>
+            <button class="menu-btn" onclick="window.baccaratChangeBet(0.5)">1/2</button>
+            <button class="menu-btn" onclick="window.baccaratChangeBet(2)">x2</button>
+            <button class="menu-btn" onclick="window.baccaratMaxBet()">MAX</button>
+          </div>
+        </div>
+
+        <div class="roulette-actions" style="display: flex; justify-content: center; margin-top: 20px;">
+          <button class="term-btn" id="bacActionBtn" onclick="window.baccaratAction()" style="max-width: 300px;">DEAL</button>
+        </div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Craps overlay. -->
+    <div class="overlay" id="overlayCraps">
+      <h1>CRAPS</h1>
+      <div class="roulette-balance">BANK: $<span id="crapsBalance">0.00</span></div>
+
+      <div class="bj-area" style="margin-top: 20px; margin-bottom: 20px; min-height: 100px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 20px;">
+        <div style="font-size: 16px; border: 1px solid var(--accent); padding: 10px;">POINT: <span id="crapsPointText" style="color: #ff3d3d;">OFF</span></div>
+        <div style="display: flex; gap: 10px;">
+          <div class="bj-card" style="width: 60px; height: 60px; font-size: 30px; display: flex; align-items: center; justify-content: center; background: #fff; color: #000;" id="crapsDice1">?</div>
+          <div class="bj-card" style="width: 60px; height: 60px; font-size: 30px; display: flex; align-items: center; justify-content: center; background: #fff; color: #000;" id="crapsDice2">?</div>
+        </div>
+      </div>
+
+      <div class="roulette-message" id="crapsMessage">PASS LINE BET - COME OUT ROLL</div>
+
+      <div class="roulette-controls">
+        <div id="crapsBetBtns">
+          <div class="roulette-bet-row" style="justify-content: center; margin-bottom: 10px;">
+            <label class="roulette-label">BET: $<span id="crapsBetVal">10</span></label>
+          </div>
+          <div class="roulette-presets">
+            <button class="menu-btn" onclick="window.crapsSetBet(10)">$10</button>
+            <button class="menu-btn" onclick="window.crapsSetBet(50)">$50</button>
+            <button class="menu-btn" onclick="window.crapsSetBet(100)">$100</button>
+            <button class="menu-btn" onclick="window.crapsChangeBet(0.5)">1/2</button>
+            <button class="menu-btn" onclick="window.crapsChangeBet(2)">x2</button>
+            <button class="menu-btn" onclick="window.crapsMaxBet()">MAX</button>
+          </div>
+        </div>
+
+        <div class="roulette-actions" style="display: flex; justify-content: center; margin-top: 20px;">
+          <button class="term-btn" id="crapsActionBtn" onclick="window.crapsAction()" style="max-width: 300px;">COME OUT ROLL</button>
+        </div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Video Poker overlay. -->
+    <div class="overlay" id="overlayVideopoker">
+      <h1>VIDEO POKER</h1>
+      <div class="roulette-balance">BANK: $<span id="vpBalance">0.00</span></div>
+
+      <div class="bj-area" style="margin-top: 20px; margin-bottom: 20px; min-height: 140px;">
+        <div class="bj-hand" id="vpHand"></div>
+      </div>
+
+      <div class="roulette-message" id="vpMessage">PLACE YOUR BET</div>
+
+      <div class="roulette-controls">
+        <div id="vpBetBtns">
+          <div class="roulette-bet-row" style="justify-content: center; margin-bottom: 10px;">
+            <label class="roulette-label">BET: $<span id="vpBetVal">10</span></label>
+          </div>
+          <div class="roulette-presets">
+            <button class="menu-btn" onclick="window.vpSetBet(10)">$10</button>
+            <button class="menu-btn" onclick="window.vpSetBet(50)">$50</button>
+            <button class="menu-btn" onclick="window.vpSetBet(100)">$100</button>
+            <button class="menu-btn" onclick="window.vpChangeBet(0.5)">1/2</button>
+            <button class="menu-btn" onclick="window.vpChangeBet(2)">x2</button>
+            <button class="menu-btn" onclick="window.vpMaxBet()">MAX</button>
+          </div>
+        </div>
+
+        <div class="roulette-actions" style="display: flex; justify-content: center; margin-top: 20px;">
+          <button class="term-btn" id="vpActionBtn" onclick="window.vpAction()" style="max-width: 300px;">DEAL</button>
+        </div>
+      </div>
+
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>

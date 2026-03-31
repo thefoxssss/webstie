@@ -84,6 +84,10 @@ import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
 import { initSmashArena } from "./games/smasharena.js";
 import { initWar } from "./games/war.js";
+import { initVideoPoker } from "./games/videopoker.js";
+import { initCraps } from "./games/craps.js";
+import { initBaccarat } from "./games/baccarat.js";
+import { initMines } from "./games/mines.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -320,6 +324,10 @@ window.launchGame = (game, source = "direct") => {
   if (game === "ultimatettt") initUltimateTTT();
   if (game === "smasharena") initSmashArena();
   if (game === "war") initWar();
+  if (game === "videopoker") initVideoPoker();
+  if (game === "craps") initCraps();
+  if (game === "baccarat") initBaccarat();
+  if (game === "mines") initMines();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
   resizeAllGameCanvases();
   trackGamePlay(game);
@@ -362,6 +370,10 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayQuantumflip",
   "overlayUltimatettt",
   "overlaySmasharena",
+  "overlayVideopoker",
+  "overlayCraps",
+  "overlayBaccarat",
+  "overlayMines",
 ];
 
 const GAME_OVERLAY_IDS = [
@@ -1051,6 +1063,7 @@ function initTopBarOverlayControls() {
     overlayConfig: "tabConfig",
     overlayBank: "tabBank",
     overlayShop: "tabShop",
+    overlayInventory: "tabInventory",
     overlayProfile: "tabProfile",
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
@@ -1060,7 +1073,7 @@ function initTopBarOverlayControls() {
     overlayUpdates: "menuToggle",
   };
 
-  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabProfile", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
+  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 
@@ -1090,6 +1103,7 @@ function initTopBarOverlayControls() {
     "overlayConfig",
     "overlayBank",
     "overlayShop",
+    "overlayInventory",
     "overlayProfile",
     "overlaySeason",
     "overlayCrew",
@@ -1206,6 +1220,22 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "stacksmash") initStackSmash();
   if (state.currentGame === "quantumflip") initQuantumFlip();
   if (state.currentGame === "smasharena") initSmashArena();
+  if (state.currentGame === "mines") {
+    initMines();
+    document.getElementById("overlayMines").classList.add("active");
+  }
+  if (state.currentGame === "baccarat") {
+    initBaccarat();
+    document.getElementById("overlayBaccarat").classList.add("active");
+  }
+  if (state.currentGame === "craps") {
+    initCraps();
+    document.getElementById("overlayCraps").classList.add("active");
+  }
+  if (state.currentGame === "videopoker") {
+    initVideoPoker();
+    document.getElementById("overlayVideopoker").classList.add("active");
+  }
   if (state.currentGame === "roulette") {
     initRoulette();
     document.getElementById("overlayRoulette").classList.add("active");
