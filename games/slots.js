@@ -12,11 +12,11 @@ const SYMBOLS = Object.freeze([
 
 const JACKPOT_SEED = 5000;
 const LINE_PATTERNS = Object.freeze([
-  { name: "TOP", cells: [[0, 0], [0, 1], [0, 2]] },
-  { name: "MID", cells: [[1, 0], [1, 1], [1, 2]] },
-  { name: "BOT", cells: [[2, 0], [2, 1], [2, 2]] },
-  { name: "V", cells: [[0, 0], [1, 1], [2, 2]] },
-  { name: "Λ", cells: [[2, 0], [1, 1], [0, 2]] },
+  { name: "TOP", cells: [[0, 0], [0, 1], [0, 2]], id: "slotsLineTOP" },
+  { name: "MID", cells: [[1, 0], [1, 1], [1, 2]], id: "slotsLineMID" },
+  { name: "BOT", cells: [[2, 0], [2, 1], [2, 2]], id: "slotsLineBOT" },
+  { name: "V", cells: [[0, 0], [1, 1], [2, 2]], id: "slotsLineV" },
+  { name: "Λ", cells: [[2, 0], [1, 1], [0, 2]], id: "slotsLineINV_V" },
 ]);
 
 const TRIPLE_MULTIPLIERS = Object.freeze({
@@ -40,6 +40,8 @@ let machineEl;
 
 let betAmount = 10;
 let isSpinning = false;
+let autoSpinMode = false;
+let autoSpinTimer = null;
 let spinTimer = null;
 let history = [];
 let jackpotPool = JACKPOT_SEED;
@@ -86,21 +88,68 @@ function setMessage(text, tone = "neutral") {
 function updateButtons() {
   if (!spinButtonEl || !clearButtonEl) return;
   const blocked = isSpinning || state.myMoney < totalBet();
-  spinButtonEl.disabled = blocked;
-  clearButtonEl.disabled = isSpinning;
+  spinButtonEl.disabled = blocked && !autoSpinMode;
+  clearButtonEl.disabled = isSpinning || autoSpinMode;
+  const autoBtn = document.getElementById("slotsAutoBtn");
+  if (autoBtn) {
+    if (autoSpinMode) {
+      autoBtn.style.background = "var(--accent)";
+      autoBtn.style.color = "#000";
+      autoBtn.textContent = "STOP AUTO";
+    } else {
+      autoBtn.style.background = "transparent";
+      autoBtn.style.color = "#0f0";
+      autoBtn.textContent = "AUTO SPIN";
+    }
+  }
 }
 
-function renderBoard(board) {
+function renderBoard(board, revealStep = false) {
   if (!Array.isArray(board)) return;
   board.forEach((row, rowIndex) => {
     row.forEach((symbol, colIndex) => {
       const cell = gridEls[rowIndex]?.[colIndex];
       if (!cell) return;
-      cell.textContent = symbol.icon;
+
+      const inner = cell.querySelector('.slots-cell-inner');
+      if (inner) {
+        if (revealStep) {
+          // Add a simple vertical shift animation during spin
+          inner.style.transform = `translateY(${Math.random() > 0.5 ? '10px' : '-10px'})`;
+          setTimeout(() => {
+            inner.textContent = symbol.icon;
+            inner.style.transform = 'translateY(0)';
+          }, 30);
+        } else {
+          inner.textContent = symbol.icon;
+          inner.style.transform = 'translateY(0)';
+        }
+      } else {
+        cell.textContent = symbol.icon;
+      }
       cell.dataset.color = symbol.color;
     });
   });
   lastBoard = board;
+}
+
+function clearLines() {
+  LINE_PATTERNS.forEach(line => {
+    const el = document.getElementById(line.id);
+    if (el) el.classList.remove("active");
+  });
+  gridEls.flat().forEach(cell => {
+    if (cell) cell.classList.remove("win-pulse");
+  });
+}
+
+function highlightLine(line) {
+  const el = document.getElementById(line.id);
+  if (el) el.classList.add("active");
+  line.cells.forEach(([r, c]) => {
+    const cell = gridEls[r]?.[c];
+    if (cell) cell.classList.add("win-pulse");
+  });
 }
 
 function renderHistory() {
@@ -169,6 +218,7 @@ function settleRound(board) {
     if (result.win > 0) {
       winTotal += result.win;
       labels.push(`${line.name}:${result.label}`);
+      highlightLine(line);
     }
     if (result.jackpot && line.name === "MID") jackpotHit = true;
   });
@@ -203,6 +253,14 @@ function settleRound(board) {
   updateBank();
   updateButtons();
   saveStats();
+
+  if (autoSpinMode && state.myMoney >= totalBet()) {
+    autoSpinTimer = setTimeout(spin, 1200);
+  } else if (autoSpinMode) {
+    autoSpinMode = false;
+    setMessage("AUTO SPIN HALTED: INSUFFICIENT FUNDS", "loss");
+    updateButtons();
+  }
 }
 
 function spin() {
@@ -210,9 +268,12 @@ function spin() {
   if (state.myMoney < totalBet()) {
     setMessage("INSUFFICIENT FUNDS", "loss");
     beep(120, "sawtooth", 0.2);
+    autoSpinMode = false;
+    updateButtons();
     return;
   }
 
+  clearLines();
   state.myMoney = roundMoney(Number(state.myMoney || 0) - totalBet());
   jackpotPool = roundMoney(jackpotPool + totalBet() * 0.1);
   isSpinning = true;
@@ -228,7 +289,7 @@ function spin() {
   const animateStep = () => {
     step += 1;
     const board = step >= revealSteps ? finalBoard : createBoard();
-    renderBoard(board);
+    renderBoard(board, step < revealSteps);
     if (step >= revealSteps) {
       spinTimer = null;
       if (machineEl) machineEl.classList.remove("spinning");
@@ -239,6 +300,18 @@ function spin() {
   };
 
   animateStep();
+}
+
+function toggleAutoSpin() {
+  if (autoSpinMode) {
+    autoSpinMode = false;
+    if (autoSpinTimer) clearTimeout(autoSpinTimer);
+    updateButtons();
+  } else {
+    autoSpinMode = true;
+    updateButtons();
+    if (!isSpinning) spin();
+  }
 }
 
 function clearBet() {
@@ -273,6 +346,7 @@ export function initSlots() {
   if (!lastBoard) lastBoard = createBoard();
   renderBoard(lastBoard);
   renderHistory();
+  clearLines();
   updateBank();
   updateButtons();
   setText("slotsLast", "--");
@@ -312,13 +386,19 @@ window.slotsInputBet = () => {
 
 window.slotsClear = clearBet;
 window.slotsSpin = spin;
+window.slotsToggleAuto = toggleAutoSpin;
 
 registerGameStop(() => {
   if (spinTimer) {
     clearTimeout(spinTimer);
     spinTimer = null;
   }
+  if (autoSpinTimer) {
+    clearTimeout(autoSpinTimer);
+    autoSpinTimer = null;
+  }
   isSpinning = false;
+  autoSpinMode = false;
   if (machineEl) machineEl.classList.remove("spinning");
   updateButtons();
 });

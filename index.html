@@ -1311,17 +1311,35 @@
       <div class="roulette-balance">BANK: $<span id="slotsBalance">0.00</span></div>
       <div class="slots-jackpot">JACKPOT: $<span id="slotsJackpot">5000</span></div>
 
-      <div class="slots-machine">
-        <div class="slots-grid">
-          <div class="slots-cell" id="slotsCell00">🎰</div>
-          <div class="slots-cell" id="slotsCell01">🎰</div>
-          <div class="slots-cell" id="slotsCell02">🎰</div>
-          <div class="slots-cell" id="slotsCell10">🎰</div>
-          <div class="slots-cell" id="slotsCell11">🎰</div>
-          <div class="slots-cell" id="slotsCell12">🎰</div>
-          <div class="slots-cell" id="slotsCell20">🎰</div>
-          <div class="slots-cell" id="slotsCell21">🎰</div>
-          <div class="slots-cell" id="slotsCell22">🎰</div>
+      <div class="slots-machine-wrap">
+        <div class="slots-paytable">
+          <div class="slots-pt-row"><span>7️⃣7️⃣7️⃣</span> <span class="pt-val">JACKPOT / 50x</span></div>
+          <div class="slots-pt-row"><span>💎💎💎</span> <span class="pt-val">25x</span></div>
+          <div class="slots-pt-row"><span>🟢🟢🟢</span> <span class="pt-val">12x</span></div>
+          <div class="slots-pt-row"><span>🔴/⚫</span> <span class="pt-val">8x</span></div>
+          <div class="slots-pt-row"><span>🍒🍒🍒</span> <span class="pt-val">6x</span></div>
+          <div class="slots-pt-row"><span>🪙🪙🪙</span> <span class="pt-val">5x</span></div>
+          <div class="slots-pt-row"><span>ANY COLOR LINE</span> <span class="pt-val">4x</span></div>
+        </div>
+        <div class="slots-machine">
+          <div class="slots-machine-lights" id="slotsLights"></div>
+          <div class="slots-grid">
+            <div class="slots-cell" id="slotsCell00"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell01"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell02"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell10"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell11"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell12"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell20"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell21"><div class="slots-cell-inner">🎰</div></div>
+            <div class="slots-cell" id="slotsCell22"><div class="slots-cell-inner">🎰</div></div>
+          </div>
+          <!-- Line overlays for winning animation -->
+          <div class="slots-line-overlay" id="slotsLineTOP"></div>
+          <div class="slots-line-overlay" id="slotsLineMID"></div>
+          <div class="slots-line-overlay" id="slotsLineBOT"></div>
+          <div class="slots-line-overlay" id="slotsLineV"></div>
+          <div class="slots-line-overlay" id="slotsLineINV_V"></div>
         </div>
       </div>
 
@@ -1362,6 +1380,7 @@
         <div class="roulette-actions">
           <button class="menu-btn" id="slotsClearBtn" onclick="window.slotsClear()">CLEAR</button>
           <button class="term-btn" id="slotsSpinBtn" onclick="window.slotsSpin()">SPIN</button>
+          <button class="menu-btn" id="slotsAutoBtn" onclick="window.slotsToggleAuto()" style="border-color: #0f0; color: #0f0;">AUTO SPIN</button>
         </div>
       </div>
 
