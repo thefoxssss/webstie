@@ -2579,6 +2579,7 @@ const TOP_PANEL_OVERLAY_IDS = [
   "overlayConfig",
   "overlayBank",
   "overlayShop",
+  "overlayInventory",
   "overlayProfile",
   "overlaySeason",
   "overlayCrew",
@@ -2590,6 +2591,7 @@ function runOverlayOpenHooks(id) {
   if (id === "overlayAdmin") adminRefreshTargetUsers();
   if (id === "overlayProfile") renderBadges();
   if (id === "overlayShop") renderShop();
+  if (id === "overlayInventory") renderInventory();
   if (id === "overlaySeason") renderSeasonPanel();
   if (id === "overlayCrew") renderCrewPanel();
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
@@ -4590,6 +4592,66 @@ export function submitJob(type, payload = null) {
 }
 
 // Render the shop list with pricing + purchase state.
+export function renderInventory() {
+  const list = document.getElementById("inventoryList");
+  if (!list) return;
+
+  const uniqueItemIds = Array.from(new Set(myInventory));
+  setText("inventoryCount", myInventory.length);
+
+  list.innerHTML = "";
+
+  if (uniqueItemIds.length === 0) {
+    list.innerHTML = '<div class="inventory-empty">BAG IS EMPTY.</div>';
+    return;
+  }
+
+  uniqueItemIds.forEach((itemId) => {
+    const item = getShopItemById(itemId);
+    if (!item) return;
+
+    const ownedCount = myInventory.filter((id) => id === itemId).length;
+    const isEnabled = hasActiveItem(itemId);
+
+    const div = document.createElement("div");
+    div.className = "inventory-item";
+
+    const countLabel = isStackableItem(itemId) ? ` (x${ownedCount})` : "";
+
+    const header = document.createElement("div");
+    header.className = "inventory-item-header";
+    header.innerHTML = `<span>${item.icon || "🛒"}</span> <strong>${item.name}${countLabel}</strong>`;
+
+    const desc = document.createElement("div");
+    desc.className = "inventory-item-desc";
+    desc.innerText = item.desc;
+
+    div.appendChild(header);
+    div.appendChild(desc);
+
+    if (item.type !== "consumable") {
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "shop-toggle-btn";
+      toggleBtn.style.marginTop = "auto";
+      toggleBtn.innerText = isEnabled ? "ON" : "OFF";
+      toggleBtn.onclick = () => {
+        toggleItem(itemId);
+        renderInventory();
+      };
+      div.appendChild(toggleBtn);
+    } else {
+        const info = document.createElement("div");
+        info.style.fontSize = "8px";
+        info.style.marginTop = "auto";
+        info.style.color = "var(--accent-dim)";
+        info.innerText = "AUTO-CONSUMES ON USE";
+        div.appendChild(info);
+    }
+
+    list.appendChild(div);
+  });
+}
+
 function renderShop() {
   const list = document.getElementById("shopList");
   setText("shopBank", myMoney);
