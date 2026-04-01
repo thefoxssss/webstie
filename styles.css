@@ -258,6 +258,80 @@ body::before {
   display: none;
 }
 
+.april-fools-active .top-bar {
+  animation: aprilGlow 1.4s ease-in-out infinite;
+}
+
+.april-fools-banner {
+  position: fixed;
+  left: 50%;
+  top: 58px;
+  transform: translateX(-50%);
+  z-index: 3000;
+  border: 1px solid var(--accent);
+  background: rgba(0, 0, 0, 0.88);
+  color: var(--accent);
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.april-fools-banner strong {
+  color: #ffd700;
+}
+
+.april-fools-speech {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 3000;
+  max-width: min(360px, 90vw);
+  border: 1px solid #ffd700;
+  background: rgba(0, 0, 0, 0.92);
+  color: #ffd700;
+  padding: 10px 12px;
+  font-size: 10px;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.april-fools-speech.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.menu-btn.april-fools-pulse {
+  animation: aprilBtnPulse 0.7s ease-out;
+}
+
+@keyframes aprilGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
+  }
+}
+
+@keyframes aprilBtnPulse {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.08) rotate(-1.5deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .top-overlay-controls {
   display: flex;
   align-items: center;

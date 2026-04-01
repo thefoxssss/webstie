@@ -1194,11 +1194,58 @@ function initOverlayBackdropExit() {
   });
 }
 
+function initAprilFoolsBibiMode() {
+  const now = new Date();
+  const isAprilFools = now.getUTCMonth() === 3 && now.getUTCDate() === 1;
+  if (!isAprilFools) return;
+
+  document.body.classList.add("april-fools-active");
+
+  const banner = document.createElement("div");
+  banner.className = "april-fools-banner";
+  banner.innerHTML = '<strong>APRIL FOOLS MODE</strong><span>DRAMATIC SPEECH FILTER: ONLINE</span>';
+  document.body.appendChild(banner);
+
+  const dramaticLines = [
+    "My friends, this scoreboard is historic!",
+    "Nobody launches games faster than this terminal.",
+    "This combo? Very strong. Tremendous, even.",
+    "Today, we defend high scores with full power.",
+    "A total victory for arcade strategy.",
+  ];
+
+  let speechIndex = 0;
+  const flashSpeech = () => {
+    const toast = document.createElement("div");
+    toast.className = "april-fools-speech";
+    toast.textContent = `🎙️ ${dramaticLines[speechIndex % dramaticLines.length]}`;
+    speechIndex += 1;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add("show"), 20);
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 280);
+    }, 2600);
+  };
+
+  flashSpeech();
+  setInterval(flashSpeech, 15000);
+
+  const topButtons = document.querySelectorAll(".menu-btn");
+  topButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      button.classList.add("april-fools-pulse");
+      setTimeout(() => button.classList.remove("april-fools-pulse"), 700);
+    });
+  });
+}
+
 initSharedGamebox();
 disableInGameExitButtons();
 initPerGameFullscreenButtons();
 initTopBarOverlayControls();
 initOverlayBackdropExit();
+initAprilFoolsBibiMode();
 initAdminTabs();
 initGameCanvasSizing();
 initGameVisibilityGuards();
