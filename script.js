@@ -1238,6 +1238,26 @@ function initAprilFoolsBibiMode() {
       setTimeout(() => button.classList.remove("april-fools-pulse"), 700);
     });
   });
+
+  const homeWrap = document.querySelector(".wrap");
+  if (homeWrap) {
+    const prankCard = document.createElement("section");
+    prankCard.className = "april-fools-home-card";
+    prankCard.innerHTML = `
+      <div class="april-fools-home-title">🃏 HOME TERMINAL HOTFIX</div>
+      <p>Deploying emergency patch: <strong>+400% more confidence</strong>, <strong>-0% bugs</strong>.</p>
+      <div class="april-fools-loading" aria-hidden="true"><span></span></div>
+      <button type="button" class="term-btn april-fools-trigger">RUN VERY SERIOUS DIAGNOSTIC</button>
+    `;
+    homeWrap.appendChild(prankCard);
+
+    const trigger = prankCard.querySelector(".april-fools-trigger");
+    trigger?.addEventListener("click", () => {
+      document.body.classList.add("april-fools-shake");
+      setTimeout(() => document.body.classList.remove("april-fools-shake"), 640);
+      flashSpeech();
+    });
+  }
 }
 
 initSharedGamebox();
