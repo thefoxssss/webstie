@@ -208,6 +208,29 @@ body::before {
   align-items: center;
   gap: 12px;
 }
+
+.april-fools-banner {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1900;
+  padding: 6px 12px;
+  border: 1px dashed #ff5cad;
+  background: rgba(0, 0, 0, 0.9);
+  color: #ff88c8;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-shadow: 0 0 6px rgba(255, 92, 173, 0.8);
+  animation: aprilFoolsBlink 1s steps(2, end) infinite;
+}
+
+@keyframes aprilFoolsBlink {
+  50% {
+    opacity: 0.65;
+  }
+}
 .menu-btn {
   background: transparent;
   color: var(--accent);

@@ -51,6 +51,7 @@ import {
   updateHighScore,
   getShopItemById,
   openGameLeaderboard,
+  showToast,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -1194,6 +1195,20 @@ function initOverlayBackdropExit() {
   });
 }
 
+function initAprilFoolsMode() {
+  const now = new Date();
+  const isAprilFoolsDay = now.getMonth() === 3 && now.getDate() === 1;
+  if (!isAprilFoolsDay) return;
+
+  document.body.classList.add("rainbow-mode");
+  const banner = document.getElementById("aprilFoolsBanner");
+  if (banner) banner.hidden = false;
+
+  setTimeout(() => {
+    showToast("APRIL FOOLS MODE", "🤡", "This visual event auto-disables on April 2.");
+  }, 600);
+}
+
 initSharedGamebox();
 disableInGameExitButtons();
 initPerGameFullscreenButtons();
@@ -1204,6 +1219,7 @@ initGameCanvasSizing();
 initGameVisibilityGuards();
 initGameScroller();
 initMainSiteSearch();
+initAprilFoolsMode();
 
 function hideGameOverModal() {
   const modal = document.getElementById("modalGameOver");
