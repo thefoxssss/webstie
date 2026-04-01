@@ -4194,3 +4194,11 @@ body.reduce-motion *::after {
   padding: 0 !important;
   border: 0 !important;
 }
+
+/* Admin Panel Tabs Addition */
+.admin-tab-content {
+  display: none;
+}
+.admin-tab-content.active {
+  display: block;
+}

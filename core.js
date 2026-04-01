@@ -191,6 +191,7 @@ export const DEFAULT_CREW_LOGO = {
 };
 let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO };
 let seasonData = { id: "", xp: 0, hall: [] };
+let adminSettings = {};
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
 const SEASON_STARTING_MONEY = 1000;
@@ -3181,6 +3182,7 @@ function loadProfile(data) {
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
+  adminSettings = data.adminSettings || {};
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO, ...(data.crewData || crewData || {}) };
   seasonData = { id: getSeasonId(), xp: 0, hall: [], ...(data.seasonData || seasonData || {}) };
@@ -3196,6 +3198,7 @@ function loadProfile(data) {
     updateDoc(doc(db, "gooner_users", myName), {
       money: myMoney,
       seasonData,
+    adminSettings,
     }).catch(() => {});
   }
   ensureStockProfile();
@@ -3565,9 +3568,9 @@ async function adminApplySettingAction({ key, type, action, value, successLabel 
       return { adminSettings: settings };
     },
     mutateLocal: () => {
-      state.adminSettings = state.adminSettings || {};
-      const currentValue = state.adminSettings[key];
-      state.adminSettings[key] = applySettingAction(currentValue, action, type, value);
+      adminSettings = adminSettings || {};
+      const currentValue = adminSettings[key];
+      adminSettings[key] = applySettingAction(currentValue, action, type, value);
     },
     successToast: (targets) => `${successLabel} FOR ${targets.length} PLAYER(S)`,
     failToast: "SETTING UPDATE FAILED",
@@ -4159,6 +4162,7 @@ export async function saveStats() {
     stockData,
     crewData,
     seasonData,
+    adminSettings,
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
@@ -4175,6 +4179,7 @@ export async function saveStats() {
         stockData,
         crewData,
         seasonData,
+    adminSettings,
       }),
     "SAVE PROFILE",
     "Progress saved locally; cloud sync retry pending."

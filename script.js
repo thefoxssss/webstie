@@ -1053,6 +1053,29 @@ function initMainSiteSearch() {
   });
 }
 
+function initAdminTabs() {
+  const tabs = document.querySelectorAll('#adminTabs .score-tab');
+  const contents = document.querySelectorAll('.admin-tab-content');
+  if (!tabs.length || !contents.length) return;
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const targetId = tab.dataset.adminTab;
+      tabs.forEach((t) => t.classList.remove('active'));
+      contents.forEach((c) => {
+        c.style.display = 'none';
+        c.classList.remove('active');
+      });
+      tab.classList.add('active');
+      const targetContent = document.getElementById('adminTab' + targetId.charAt(0).toUpperCase() + targetId.slice(1));
+      if (targetContent) {
+        targetContent.style.display = 'block';
+        targetContent.classList.add('active');
+      }
+    });
+  });
+}
+
 function initTopBarOverlayControls() {
   const overlays = Array.from(document.querySelectorAll(".overlay"));
   const fsBtn = document.getElementById("topFullscreenBtn");
@@ -1180,6 +1203,7 @@ disableInGameExitButtons();
 initPerGameFullscreenButtons();
 initTopBarOverlayControls();
 initOverlayBackdropExit();
+initAdminTabs();
 initGameCanvasSizing();
 initGameVisibilityGuards();
 initGameScroller();
