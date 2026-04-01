@@ -1010,6 +1010,15 @@ const SHOP_ITEMS = [
     type: "perk",
     desc: "High-score bonus scales harder",
   },
+  {
+    id: "item_april_fools_top_secret",
+    icon: "🃏",
+    name: "TOP SECRET TOKEN",
+    cost: 1,
+    type: "perk",
+    hiddenInShop: true,
+    desc: "Awarded for finding the April 1 top-bar secret.",
+  },
 ];
 
 
@@ -5021,7 +5030,7 @@ function renderShop() {
   const list = document.getElementById("shopList");
   setText("shopBank", myMoney);
   list.innerHTML = "";
-  SHOP_ITEMS.forEach((item) => {
+  SHOP_ITEMS.filter((item) => !item.hiddenInShop).forEach((item) => {
     const div = document.createElement("div");
     div.className = "shop-item";
     const ownedCount = myInventory.filter((ownedId) => ownedId === item.id).length;
@@ -5359,8 +5368,43 @@ function activateMatrixHack() {
   playSuccessSound();
 }
 let logoClicks = 0;
+let aprilTopSecretClicks = 0;
+let aprilTopSecretTimer = null;
+
+function isAprilFoolsUtcToday() {
+  const now = new Date();
+  return now.getUTCMonth() === 3 && now.getUTCDate() === 1;
+}
+
+function grantAprilTopSecretToken() {
+  if (!isAprilFoolsUtcToday()) return false;
+  if (myInventory.includes("item_april_fools_top_secret")) return false;
+  myInventory.push("item_april_fools_top_secret");
+  setItemToggle("item_april_fools_top_secret", true);
+  unlockAchievement("spammer");
+  showToast("TOP SECRET FOUND", "🃏", "Inventory item unlocked");
+  saveStats();
+  return true;
+}
+
 // Secret: clicking the logo many times gives a reward.
 document.getElementById("mainBtn").onclick = () => {
+  if (isAprilFoolsUtcToday()) {
+    aprilTopSecretClicks++;
+    if (!aprilTopSecretTimer) {
+      aprilTopSecretTimer = setTimeout(() => {
+        aprilTopSecretClicks = 0;
+        aprilTopSecretTimer = null;
+      }, 5000);
+    }
+    if (aprilTopSecretClicks >= 10 && grantAprilTopSecretToken()) {
+      aprilTopSecretClicks = 0;
+      clearTimeout(aprilTopSecretTimer);
+      aprilTopSecretTimer = null;
+      return;
+    }
+  }
+
   logoClicks++;
   if (logoClicks === 50) {
     unlockAchievement("spammer");
