@@ -603,6 +603,56 @@ function saveLocalShopToggles() {
   localStorage.setItem(getShopToggleStorageKey(myName), JSON.stringify(myItemToggles || {}));
 }
 
+const APRIL_COMPLIMENT_LINES = [
+  "You are absolutely carrying this terminal.",
+  "Elite click accuracy. Certified legend.",
+  "Your strategy is looking unstoppable.",
+  "Huge brain arcade operator detected.",
+  "You make this place look easy.",
+];
+let aprilComplimentLoopHandle = null;
+
+function stopAprilComplimentLoop() {
+  if (aprilComplimentLoopHandle) {
+    clearInterval(aprilComplimentLoopHandle);
+    aprilComplimentLoopHandle = null;
+  }
+  document.querySelectorAll(".april-secret-compliment").forEach((node) => node.remove());
+}
+
+function showAprilComplimentBubble() {
+  const line = APRIL_COMPLIMENT_LINES[Math.floor(Math.random() * APRIL_COMPLIMENT_LINES.length)];
+  const bubble = document.createElement("div");
+  bubble.className = "april-fools-speech april-secret-compliment";
+  bubble.textContent = "💬 ";
+  document.body.appendChild(bubble);
+  requestAnimationFrame(() => bubble.classList.add("show"));
+
+  let idx = 0;
+  const typeInterval = setInterval(() => {
+    idx += 1;
+    bubble.textContent = `💬 ${line.slice(0, idx)}`;
+    if (idx >= line.length) {
+      clearInterval(typeInterval);
+      setTimeout(() => {
+        bubble.classList.remove("show");
+        setTimeout(() => bubble.remove(), 280);
+      }, 2600);
+    }
+  }, 24);
+}
+
+function syncAprilComplimentLoop() {
+  const active = hasActiveItem("item_april_fools_top_secret");
+  if (!active) {
+    stopAprilComplimentLoop();
+    return;
+  }
+  if (aprilComplimentLoopHandle) return;
+  showAprilComplimentBubble();
+  aprilComplimentLoopHandle = setInterval(showAprilComplimentBubble, 14000);
+}
+
 function applyOwnedVisuals() {
   const rainbowEnabled = hasActiveItem("item_rainbow");
   document.body.classList.toggle("rainbow-mode", rainbowEnabled);
@@ -611,6 +661,7 @@ function applyOwnedVisuals() {
   document.getElementById("btnFlappy").style.display = flappyEnabled
     ? "block"
     : "none";
+  syncAprilComplimentLoop();
 }
 
 
@@ -1009,6 +1060,15 @@ const SHOP_ITEMS = [
     cost: 18000,
     type: "perk",
     desc: "High-score bonus scales harder",
+  },
+  {
+    id: "item_april_fools_top_secret",
+    icon: "🃏",
+    name: "TOP SECRET TOKEN",
+    cost: 1,
+    type: "perk",
+    hiddenInShop: true,
+    desc: "Awarded for finding the April 1 sock secret.",
   },
 ];
 
@@ -5021,7 +5081,7 @@ function renderShop() {
   const list = document.getElementById("shopList");
   setText("shopBank", myMoney);
   list.innerHTML = "";
-  SHOP_ITEMS.forEach((item) => {
+  SHOP_ITEMS.filter((item) => !item.hiddenInShop).forEach((item) => {
     const div = document.createElement("div");
     div.className = "shop-item";
     const ownedCount = myInventory.filter((ownedId) => ownedId === item.id).length;
@@ -5359,6 +5419,23 @@ function activateMatrixHack() {
   playSuccessSound();
 }
 let logoClicks = 0;
+
+function isAprilFoolsUtcToday() {
+  const now = new Date();
+  return now.getUTCMonth() === 3 && now.getUTCDate() === 1;
+}
+
+export function claimAprilFoolsSecretItem() {
+  if (!isAprilFoolsUtcToday()) return false;
+  if (myInventory.includes("item_april_fools_top_secret")) return false;
+  myInventory.push("item_april_fools_top_secret");
+  setItemToggle("item_april_fools_top_secret", true);
+  unlockAchievement("spammer");
+  showToast("TOP SECRET FOUND", "🃏", "Inventory item unlocked");
+  saveStats();
+  return true;
+}
+
 // Secret: clicking the logo many times gives a reward.
 document.getElementById("mainBtn").onclick = () => {
   logoClicks++;
