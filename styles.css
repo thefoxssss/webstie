@@ -355,6 +355,81 @@ body::before {
   animation: aprilShake 0.32s linear 2;
 }
 
+.april-fools-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.april-fools-overlay.show {
+  display: flex;
+}
+
+.april-fools-overlay-card {
+  width: min(560px, 92vw);
+  border: 1px solid #ffd700;
+  background: radial-gradient(circle at top, rgba(255, 215, 0, 0.22), rgba(0, 0, 0, 0.95) 55%);
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.35);
+  padding: 16px 14px 14px;
+  position: relative;
+  color: #ffe58f;
+  text-align: center;
+  animation: aprilOverlayPop 0.3s ease-out;
+}
+
+.april-fools-overlay-head {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #ffd700;
+  margin-bottom: 10px;
+}
+
+.april-fools-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 229, 143, 0.75);
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffe58f;
+  cursor: pointer;
+}
+
+.april-fools-slot {
+  margin: 10px 0;
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  padding: 10px 6px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  font-size: clamp(24px, 5vw, 34px);
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.april-fools-slot span {
+  display: inline-block;
+  animation: aprilSlotBounce 0.9s ease-in-out infinite alternate;
+}
+
+.april-fools-slot span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.april-fools-slot span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.april-fools-overlay-result {
+  margin: 8px 0 12px;
+  line-height: 1.4;
+}
+
 @keyframes aprilGlow {
   0%,
   100% {
@@ -396,6 +471,28 @@ body::before {
   }
   75% {
     transform: translateX(4px);
+  }
+}
+
+@keyframes aprilOverlayPop {
+  from {
+    transform: scale(0.93);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes aprilSlotBounce {
+  from {
+    transform: translateY(0) rotate(-6deg);
+    filter: saturate(0.9);
+  }
+  to {
+    transform: translateY(-6px) rotate(5deg);
+    filter: saturate(1.4);
   }
 }
 
