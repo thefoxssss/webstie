@@ -2157,6 +2157,7 @@ function getLiveSeasonBoardRows(mode = "solo") {
   const normalizedName = String(myName || "ANON").toUpperCase();
   const normalizedCrewTag = normalizeCrewTag(crewData.tag) || "SOLO";
   const localMoney = Math.max(0, Number(myMoney) || 0);
+  const localBank = Math.max(0, Number(crewData.bank) || 0);
 
   if (mode === "gang") {
     const gangTotals = {};
@@ -2172,11 +2173,8 @@ function getLiveSeasonBoardRows(mode = "solo") {
 
     if (normalizedCrewTag !== "SOLO") {
       const existing = gangTotals[normalizedCrewTag];
-      if (existing) {
-        existing.money = Math.max(existing.money, localMoney);
-        existing.members = Math.max(existing.members, 1);
-      } else {
-        gangTotals[normalizedCrewTag] = { tag: normalizedCrewTag, money: localMoney, members: 1 };
+      if (!existing) {
+        gangTotals[normalizedCrewTag] = { tag: normalizedCrewTag, money: localBank, members: 1 };
       }
     }
 
@@ -2269,10 +2267,13 @@ function loadSeasonLeaderboards() {
       const playerMoney = Number(playerSeason.id === getSeasonId() ? data.money : SEASON_STARTING_MONEY) || 0;
       const playerCrew = data.crewData || {};
       const crewTag = String(playerCrew.tag || "").toUpperCase();
+      const playerBank = Number(playerCrew.bank) || 0;
+
       players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO" });
       if (crewTag) {
         if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0 };
-        crews[crewTag].money += playerMoney;
+        // We sum up the bank contributions instead of player money for the crew leaderboard
+        crews[crewTag].money += playerBank;
         crews[crewTag].members += 1;
       }
     });
@@ -2283,7 +2284,7 @@ function loadSeasonLeaderboards() {
   });
 }
 
-function renderCrewPanel() {
+async function renderCrewPanel() {
   const dashboard = document.getElementById("crewDashboard");
   const finder = document.getElementById("crewFinder");
 
@@ -2301,29 +2302,64 @@ function renderCrewPanel() {
   setText("crewRole", crewData.role || "SOLO");
   setText("crewMotto", crewData.motto || "---");
   setText("crewRecruitment", crewData.recruitmentOpen ? "OPEN" : "CLOSED");
-  setText("crewGoal", `$${Math.round(crewData.goal || 0)}`);
-  setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
+  setText("crewGoal", `${Math.round(crewData.goal || 0)}`);
+  setText("crewBank", `${Math.round(crewData.bank || 0)}`);
   setText("crewWins", Math.round(crewData.wins || 0));
-  setText("crewXp", Math.round(myMoney || 0));
+  setText("crewXp", `$${Math.round(crewData.bank || 0)}`);
 
   const goal = Number(crewData.goal || 5000);
   const bank = Number(crewData.bank || 0);
   const pct = Math.min(100, Math.max(0, (bank / goal) * 100));
-  setText("crewBankLabel", `$${Math.round(bank)} / $${Math.round(goal)}`);
+  setText("crewBankLabel", `${Math.round(bank)} / ${Math.round(goal)}`);
   const fill = document.getElementById("crewBankFill");
   if (fill) fill.style.width = `${pct}%`;
 
   const list = document.getElementById("crewMembersList");
   if (list) {
-    if (!crewData.tag || !crewData.members || crewData.members.length === 0) {
-      list.innerHTML = `<div class="crew-roster-empty">NOT IN A CREW.</div>`;
-    } else {
-      list.innerHTML = crewData.members.map(member =>
-        `<div class="crew-roster-item">
-           <span class="crew-roster-name">${escapeHtml(member)}</span>
-           ${member === myName ? '<span class="crew-roster-you">(YOU)</span>' : ''}
-         </div>`
-      ).join("");
+    list.innerHTML = `<div class="crew-roster-empty">LOADING ROSTER...</div>`;
+    try {
+      const q = query(collection(db, "gooner_users"), where("crewData.tag", "==", crewData.tag));
+      const snap = await getDocs(q);
+      const members = [];
+      let totalBank = 0;
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        if (d && d.name) {
+          members.push({
+            name: d.name,
+            role: d.crewData?.role || "MEMBER",
+            contribution: d.crewData?.bank || 0
+          });
+          totalBank += Number(d.crewData?.bank || 0);
+        }
+      });
+
+      // Update the bank with total bank from db for display
+      setText("crewBank", `${Math.round(totalBank)}`);
+      const totalPct = Math.min(100, Math.max(0, (totalBank / goal) * 100));
+      setText("crewBankLabel", `${Math.round(totalBank)} / ${Math.round(goal)}`);
+      if (fill) fill.style.width = `${totalPct}%`;
+
+      if (members.length === 0) {
+         list.innerHTML = `<div class="crew-roster-empty">NO MEMBERS FOUND.</div>`;
+      } else {
+         members.sort((a, b) => b.contribution - a.contribution);
+         list.innerHTML = members.map(m =>
+           `<div class="crew-roster-item" style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span class="crew-roster-name">${escapeHtml(m.name)}</span>
+                ${m.name === myName ? '<span class="crew-roster-you">(YOU)</span>' : ''}
+              </div>
+              <div style="font-size: 10px; opacity: 0.8; text-align: right;">
+                <div>${m.role}</div>
+                <div>${Math.round(m.contribution)} DONATED</div>
+              </div>
+            </div>`
+         ).join("");
+      }
+    } catch (err) {
+      console.error("Failed to load crew roster:", err);
+      list.innerHTML = `<div class="crew-roster-empty">ERROR LOADING ROSTER.</div>`;
     }
   }
 }
@@ -2382,7 +2418,7 @@ async function loadOpenCrews() {
   }
 }
 
-window.joinCrewFromFinder = (tag) => {
+window.joinCrewFromFinder = async (tag) => {
   const normalizedTag = normalizeCrewTag(tag);
   if (!normalizedTag) return;
 
@@ -2390,6 +2426,7 @@ window.joinCrewFromFinder = (tag) => {
   crewData.role = "MEMBER";
   crewData.members = Array.from(new Set([...(crewData.members || []), myName]));
   saveCrewData();
+  await saveStats();
   renderCrewPanel();
   setText("crewMsg", `LINKED TO CREW ${normalizedTag}`);
   showToast("CREW LINK ESTABLISHED", "🛰️", normalizedTag);
@@ -2408,17 +2445,35 @@ function initCrewUx() {
   const mottoInput = document.getElementById("crewMottoInput");
   const donateInput = document.getElementById("crewDonateAmount");
 
-  const handleCreateJoin = (val) => {
+  const handleCreateJoin = async (val) => {
     const tag = normalizeCrewTag(val);
     if (!/^[A-Z0-9_]{3,8}$/.test(tag)) {
       setText("crewMsg", "USE 3-8 LETTER/NUMBER TAG");
       return;
     }
-    const isNew = !crewData.tag || crewData.tag !== tag;
+
+    setText("crewMsg", "CHECKING DIRECTORY...");
+    let isNew = true;
+    try {
+      const q = query(collection(db, "gooner_users"), where("crewData.tag", "==", tag), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        // If someone else already has this tag, we are joining.
+        // If it's just us, we can keep Captain or become Captain.
+        const firstDoc = snap.docs[0];
+        if (firstDoc.id !== myName) {
+           isNew = false;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check crew tag:", err);
+    }
+
     crewData.tag = tag;
-    crewData.role = isNew ? "CAPTAIN" : (crewData.role || "MEMBER");
+    crewData.role = isNew ? "CAPTAIN" : "MEMBER";
     crewData.members = Array.from(new Set([...(crewData.members || []), myName]));
     saveCrewData();
+    await saveStats();
     renderCrewPanel();
     setText("crewMsg", `LINKED TO CREW ${tag}`);
     showToast("CREW LINK ESTABLISHED", "🛰️", tag);
