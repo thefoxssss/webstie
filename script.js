@@ -1079,7 +1079,6 @@ function initAdminTabs() {
 function initTopBarOverlayControls() {
   const overlays = Array.from(document.querySelectorAll(".overlay"));
   const fsBtn = document.getElementById("topFullscreenBtn");
-  const closeBtn = document.getElementById("topCloseBtn");
   if (!overlays.length || !fsBtn) return;
 
   const OVERLAY_TAB_MAP = {
@@ -1176,9 +1175,6 @@ function initTopBarOverlayControls() {
 
     fsBtn.style.display = canFullscreen ? "inline-flex" : "none";
     fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "FULLSCREEN";
-    if (closeBtn) {
-      closeBtn.style.display = "none";
-    }
   }
 
   const observer = new MutationObserver(updateControls);
