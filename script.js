@@ -1245,11 +1245,11 @@ function initAprilFoolsBibiMode() {
     prankCard.className = "april-fools-home-card";
     prankCard.innerHTML = `
       <div class="april-fools-home-title">🃏 HOME TERMINAL HOTFIX</div>
+      <button type="button" class="term-btn april-fools-trigger">RUN VERY SERIOUS DIAGNOSTIC</button>
       <p>Deploying emergency patch: <strong>+400% more confidence</strong>, <strong>-0% bugs</strong>.</p>
       <div class="april-fools-loading" aria-hidden="true"><span></span></div>
-      <button type="button" class="term-btn april-fools-trigger">RUN VERY SERIOUS DIAGNOSTIC</button>
     `;
-    homeWrap.appendChild(prankCard);
+    homeWrap.prepend(prankCard);
 
     const trigger = prankCard.querySelector(".april-fools-trigger");
     trigger?.addEventListener("click", () => {

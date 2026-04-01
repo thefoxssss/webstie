@@ -332,6 +332,10 @@ body::before {
   line-height: 1.35;
 }
 
+.april-fools-home-card .april-fools-trigger {
+  margin-bottom: 8px;
+}
+
 .april-fools-loading {
   border: 1px solid rgba(255, 215, 0, 0.45);
   height: 8px;
