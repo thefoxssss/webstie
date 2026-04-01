@@ -105,246 +105,306 @@
 
     <!-- God-tier operator controls. Visible only to allowlisted users. -->
     <div class="overlay menu-overlay" id="overlayAdmin">
-      <div class="score-box" style="border-color: #ffd700">
+      <div class="score-box" style="border-color: #ffd700; width: 90vw; max-width: 1000px; padding: 20px; overflow-y: auto;">
         <h2 style="text-align: center; color: #ffd700">ADMIN MENU</h2>
-        <p style="text-align: center; font-size: 10px">
+        <p style="text-align: center; font-size: 10px; margin-bottom: 20px;">
           GOD ACCESS: <span id="adminName">UNKNOWN</span>
         </p>
-        <div class="admin-actions admin-actions-overhaul">
-          <div class="admin-section admin-section-hero">
-            <p class="admin-section-title">ADMIN CONTROL CENTER</p>
-            <p class="admin-section-subtitle">Choose a scope, enter values, and run actions with plain Set / Add / Remove controls.</p>
+
+        <div class="admin-layout" style="display: flex; gap: 20px; flex-direction: column;">
+
+          <div class="admin-target-panel" style="background: rgba(255, 215, 0, 0.05); border: 1px solid #ffd700; padding: 15px; border-radius: 4px;">
+            <p class="admin-section-title" style="color: #ffd700; margin-bottom: 10px; font-size: 12px;">GLOBAL TARGET SELECTION</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <select class="term-input" id="adminTargetScope" style="width: 100%;">
+                <option value="username">SPECIFIC USERNAME</option>
+                <option value="self">SELF</option>
+                <option value="others">OTHERS</option>
+                <option value="all">ALL</option>
+              </select>
+              <input class="term-input" id="adminTargetUser" list="adminTargetUserList" pattern="[A-Za-z0-9_]{3,10}" maxlength="10" placeholder="USERNAME" style="width: 100%;" />
+              <datalist id="adminTargetUserList"></datalist>
+              <button class="term-btn" onclick="window.adminRefreshTargetUsers()" style="border-color: #ffd700; color: #ffd700; width: 100%;">REFRESH USERS</button>
+            </div>
+            <p style="font-size: 9px; color: #aaa; margin-top: 10px; margin-bottom: 0;">Actions in the tabs below will apply to the target(s) selected here.</p>
           </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">APPLY TO</p>
-            <select class="term-input" id="adminTargetScope">
-              <option value="self">SELF</option>
-              <option value="others">OTHERS</option>
-              <option value="all">ALL</option>
-              <option value="username">SPECIFIC USERNAME</option>
-            </select>
-            <input class="term-input" id="adminTargetUser" list="adminTargetUserList" pattern="[A-Za-z0-9_]{3,10}" maxlength="10" placeholder="USERNAME (OPTIONAL)" />
-            <datalist id="adminTargetUserList"></datalist>
-            <button class="term-btn" onclick="window.adminRefreshTargetUsers()">REFRESH USER LIST</button>
-          </div>
+          <div class="admin-tabs-container">
+            <div class="score-tabs" id="adminTabs" style="margin-bottom: 15px; border-bottom: 1px solid var(--accent-dim);">
+              <div class="score-tab active" data-admin-tab="user">USER MANAGEMENT</div>
+              <div class="score-tab" data-admin-tab="economy">ECONOMY</div>
+              <div class="score-tab" data-admin-tab="server">SERVER TOOLS</div>
+              <div class="score-tab" data-admin-tab="automation">AUTOMATION</div>
+            </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">MONEY AND MARKET</p>
-            <input class="term-input" id="adminCashAmount" list="adminCashAmountList" type="number" step="1" placeholder="MONEY VALUE" />
-            <datalist id="adminCashAmountList">
-              <option value="100"></option>
-              <option value="1000"></option>
-              <option value="10000"></option>
-              <option value="50000"></option>
-              <option value="100000"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminGrantCashFromInput()">ADD MONEY</button>
-            <button class="term-btn" onclick="window.adminSetCashFromInput()">SET MONEY</button>
-            <button class="term-btn" onclick="window.adminMultiplyCashFromInput()">MULTIPLY MONEY</button>
-            <button class="term-btn" onclick="window.adminSetDebtFromInput()">SET DEBT</button>
-            <button class="term-btn" onclick="window.adminForgiveInterest()">REMOVE INTEREST</button>
-            <input class="term-input" id="adminPortfolioAmount" list="adminPortfolioAmountList" type="number" step="1" min="0" placeholder="SHARES PER STOCK" />
-            <datalist id="adminPortfolioAmountList">
-              <option value="0"></option>
-              <option value="10"></option>
-              <option value="100"></option>
-              <option value="1000"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminSetPortfolioSharesFromInput()">SET STOCK SHARES</button>
-            <input class="term-input" id="adminMarketAmount" list="adminMarketAmountList" type="number" step="0.01" min="0" placeholder="MARKET PERCENT OR MULTIPLIER" />
-            <datalist id="adminMarketAmountList">
-              <option value="5"></option>
-              <option value="10"></option>
-              <option value="25"></option>
-              <option value="50"></option>
-              <option value="2"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminMarketPumpFromInput()">ADD MARKET PERCENT</button>
-            <button class="term-btn" onclick="window.adminMarketDropFromInput()">REMOVE MARKET PERCENT</button>
-            <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">SET MARKET MULTIPLIER</button>
-            <button class="term-btn" onclick="window.adminMarketCrashToZero()">SET MARKET TO MINIMUM</button>
-          </div>
+            <!-- USER MANAGEMENT TAB -->
+            <div class="admin-tab-content active" id="adminTabUser" style="display: block;">
+              <div class="admin-actions admin-actions-overhaul">
+                <div class="admin-section">
+                  <p class="admin-section-title">ROLE AND ACCESS</p>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <select class="term-input" id="adminRoleInput" style="width: 100%;">
+                      <option value="PLAYER">PLAYER</option>
+                      <option value="MOD">MOD</option>
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="OWNER">OWNER</option>
+                    </select>
+                    <button class="term-btn" onclick="window.adminSetRoleFromInput()">SET ROLE</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+                    <select class="term-input" id="adminStatusInput" style="width: 100%;">
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="MUTED">MUTED</option>
+                      <option value="SUSPENDED">SUSPENDED</option>
+                      <option value="BANNED">BANNED</option>
+                    </select>
+                    <button class="term-btn" onclick="window.adminSetStatusFromInput()">SET STATUS</button>
+                  </div>
+                  <button class="term-btn" onclick="window.adminUnlockAllAchievements()" style="margin-top: 10px;">UNLOCK ALL ACHIEVEMENTS</button>
+                </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">ACCOUNT AND ACCESS</p>
-            <input class="term-input" id="adminRoleInput" list="adminRoleList" type="text" maxlength="16" placeholder="ROLE (PLAYER, MOD, ADMIN, OWNER)" />
-            <datalist id="adminRoleList">
-              <option value="PLAYER"></option>
-              <option value="MOD"></option>
-              <option value="ADMIN"></option>
-              <option value="OWNER"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminSetRoleFromInput()">SET ROLE</button>
-            <input class="term-input" id="adminStatusInput" list="adminStatusList" type="text" maxlength="16" placeholder="STATUS (ACTIVE, MUTED, SUSPENDED, BANNED)" />
-            <datalist id="adminStatusList">
-              <option value="ACTIVE"></option>
-              <option value="MUTED"></option>
-              <option value="SUSPENDED"></option>
-              <option value="BANNED"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminSetStatusFromInput()">SET STATUS</button>
-            <input class="term-input" id="adminPermissionInput" list="adminPermissionList" type="text" maxlength="32" placeholder="PERMISSION KEY" />
-            <datalist id="adminPermissionList">
-              <option value="ADMIN_PANEL"></option>
-              <option value="CHAT_MOD"></option>
-              <option value="ECONOMY_EDIT"></option>
-              <option value="MARKET_EDIT"></option>
-              <option value="USER_MANAGE"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminGrantPermissionFromInput()">ADD PERMISSION</button>
-            <button class="term-btn" onclick="window.adminRevokePermissionFromInput()">REMOVE PERMISSION</button>
-            <input class="term-input" id="adminTagInput" list="adminTagList" type="text" maxlength="24" placeholder="TAG" />
-            <datalist id="adminTagList">
-              <option value="TRUSTED"></option>
-              <option value="VIP"></option>
-              <option value="EVENT"></option>
-              <option value="TESTER"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminAddTagFromInput()">ADD TAG</button>
-            <button class="term-btn" onclick="window.adminRemoveTagFromInput()">REMOVE TAG</button>
-            <input class="term-input" id="adminRestrictionInput" list="adminRestrictionList" type="text" maxlength="24" placeholder="RESTRICTION KEY" />
-            <datalist id="adminRestrictionList">
-              <option value="CHAT_LOCK"></option>
-              <option value="TRADE_LOCK"></option>
-              <option value="MARKET_LOCK"></option>
-              <option value="LOGIN_LOCK"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminRemoveRestrictionFromInput()">REMOVE RESTRICTION</button>
-          </div>
+                <div class="admin-section">
+                  <p class="admin-section-title">PERMISSIONS AND TAGS</p>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <input class="term-input" id="adminPermissionInput" list="adminPermissionList" type="text" maxlength="32" placeholder="PERMISSION KEY" style="width: 100%;" />
+                    <datalist id="adminPermissionList">
+                      <option value="ADMIN_PANEL"></option>
+                      <option value="CHAT_MOD"></option>
+                      <option value="ECONOMY_EDIT"></option>
+                      <option value="MARKET_EDIT"></option>
+                      <option value="USER_MANAGE"></option>
+                    </datalist>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+                    <button class="term-btn" onclick="window.adminGrantPermissionFromInput()">ADD PERM</button>
+                    <button class="term-btn" style="border-color: #f66; color: #f66;" onclick="window.adminRevokePermissionFromInput()">REMOVE PERM</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 15px;">
+                    <input class="term-input" id="adminTagInput" list="adminTagList" type="text" maxlength="24" placeholder="TAG KEY" style="width: 100%;" />
+                    <datalist id="adminTagList">
+                      <option value="TRUSTED"></option>
+                      <option value="VIP"></option>
+                      <option value="EVENT"></option>
+                      <option value="TESTER"></option>
+                    </datalist>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+                    <button class="term-btn" onclick="window.adminAddTagFromInput()">ADD TAG</button>
+                    <button class="term-btn" style="border-color: #f66; color: #f66;" onclick="window.adminRemoveTagFromInput()">REMOVE TAG</button>
+                  </div>
+                </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">PROGRESS AND LIMITS</p>
-            <input class="term-input" id="adminStatAmount" list="adminStatAmountList" type="number" step="1" min="1" placeholder="STATS VALUE" />
-            <datalist id="adminStatAmountList">
-              <option value="1"></option>
-              <option value="10"></option>
-              <option value="50"></option>
-              <option value="100"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminBoostStatsFromInput()">ADD STATS</button>
-            <button class="term-btn" onclick="window.adminSetJobCompletionsFromInput()">SET JOB COMPLETIONS</button>
-            <button class="term-btn" onclick="window.adminUnlockAllAchievements()">SET ACHIEVEMENTS TO UNLOCKED</button>
-            <button class="term-btn" onclick="window.adminGrantAllShopItems()">SET ITEMS TO OWNED</button>
-            <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">SET DEBT AND COOLDOWNS TO CLEAR</button>
-            <input class="term-input" id="adminLimitKeyInput" list="adminLimitKeyList" type="text" maxlength="24" placeholder="LIMIT KEY" />
-            <datalist id="adminLimitKeyList">
-              <option value="daily_chat"></option>
-              <option value="daily_trade"></option>
-              <option value="job_runs"></option>
-              <option value="market_orders"></option>
-            </datalist>
-            <input class="term-input" id="adminLimitValueInput" list="adminLimitValueList" type="number" step="1" min="0" placeholder="LIMIT VALUE" />
-            <datalist id="adminLimitValueList">
-              <option value="0"></option>
-              <option value="10"></option>
-              <option value="50"></option>
-              <option value="100"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminSetLimitFromInput()">SET LIMIT</button>
-          </div>
+                <div class="admin-section">
+                  <p class="admin-section-title">RESTRICTIONS AND LIMITS</p>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <input class="term-input" id="adminRestrictionInput" list="adminRestrictionList" type="text" maxlength="24" placeholder="RESTRICTION KEY" style="width: 100%;" />
+                    <datalist id="adminRestrictionList">
+                      <option value="CHAT_LOCK"></option>
+                      <option value="TRADE_LOCK"></option>
+                      <option value="MARKET_LOCK"></option>
+                      <option value="LOGIN_LOCK"></option>
+                    </datalist>
+                    <button class="term-btn" onclick="window.adminRemoveRestrictionFromInput()">REMOVE RESTRICTION</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 15px;">
+                    <select class="term-input" id="adminLimitKeyInput" style="width: 100%;">
+                      <option value="daily_chat">DAILY CHAT</option>
+                      <option value="daily_trade">DAILY TRADE</option>
+                      <option value="job_runs">JOB RUNS</option>
+                      <option value="market_orders">MARKET ORDERS</option>
+                    </select>
+                    <input class="term-input" id="adminLimitValueInput" type="number" step="1" min="0" placeholder="VALUE" style="width: 100%;" />
+                    <button class="term-btn" onclick="window.adminSetLimitFromInput()">SET LIMIT</button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">CHAT, NOTICES, AND LOGS</p>
-            <select class="term-input" id="adminChatTerminal">
-              <option value="dm">TERMINAL: MESSAGE USERS</option>
-              <option value="global" selected>TERMINAL: GLOBAL</option>
-              <option value="crew">TERMINAL: CREW</option>
-            </select>
-            <input class="term-input" id="adminChatTargetUser" type="text" maxlength="16" placeholder="TARGET USER (MESSAGE USERS ONLY)" />
-            <input class="term-input" id="adminChatMessage" list="adminChatMessageList" type="text" maxlength="80" placeholder="MESSAGE" />
-            <datalist id="adminChatMessageList">
-              <option value="Server maintenance starts in 10 minutes."></option>
-              <option value="Event is now live."></option>
-              <option value="Please follow chat rules."></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminSendChatAnnouncement()">SEND NOTICE AS ADMIN</button>
-            <button class="term-btn" onclick="window.adminSendChatSystemMessage()">SEND NOTICE AS SYSTEM</button>
-            <input class="term-input" id="adminChatClearCount" list="adminChatClearCountList" type="number" min="1" step="1" placeholder="MESSAGES TO REMOVE" />
-            <datalist id="adminChatClearCountList">
-              <option value="1"></option>
-              <option value="5"></option>
-              <option value="10"></option>
-              <option value="25"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">REMOVE RECENT CHAT</button>
-            <input class="term-input" id="adminActionLogInput" type="text" maxlength="100" placeholder="ACTION LOG MESSAGE" />
-            <button class="term-btn" onclick="window.adminLogAdminActionFromInput()">ADD ACTION LOG</button>
-          </div>
+            <!-- ECONOMY TAB -->
+            <div class="admin-tab-content" id="adminTabEconomy" style="display: none;">
+              <div class="admin-actions admin-actions-overhaul">
+                <div class="admin-section">
+                  <p class="admin-section-title">PLAYER MONEY AND DEBT</p>
+                  <input class="term-input" id="adminCashAmount" list="adminCashAmountList" type="number" step="1" placeholder="MONEY VALUE" style="margin-bottom: 10px;" />
+                  <datalist id="adminCashAmountList">
+                    <option value="100"></option>
+                    <option value="1000"></option>
+                    <option value="10000"></option>
+                    <option value="50000"></option>
+                    <option value="100000"></option>
+                  </datalist>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                    <button class="term-btn" onclick="window.adminGrantCashFromInput()">ADD MONEY</button>
+                    <button class="term-btn" onclick="window.adminSetCashFromInput()">SET MONEY</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                    <button class="term-btn" onclick="window.adminMultiplyCashFromInput()">MULTIPLY MONEY</button>
+                    <button class="term-btn" onclick="window.adminSetDebtFromInput()">SET DEBT</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button class="term-btn" onclick="window.adminForgiveInterest()">REMOVE INTEREST</button>
+                    <button class="term-btn" onclick="window.adminClearDebtAndCooldowns()">CLEAR DEBT/COOLDOWNS</button>
+                  </div>
+                </div>
 
-          <div class="admin-section">
-            <p class="admin-section-title">SETTINGS ENGINE (ADD / REMOVE / SET)</p>
-            <input class="term-input" id="adminSettingKey" list="adminSettingKeyList" type="text" maxlength="32" placeholder="SETTING KEY" />
-            <datalist id="adminSettingKeyList">
-              <option value="role"></option>
-              <option value="status"></option>
-              <option value="permissions"></option>
-              <option value="tags"></option>
-              <option value="restrictions"></option>
-            </datalist>
-            <select class="term-input" id="adminSettingType">
-              <option value="string">STRING</option>
-              <option value="integer">INTEGER</option>
-              <option value="boolean">BOOLEAN</option>
-              <option value="list">LIST (COMMA SEPARATED)</option>
-            </select>
-            <input class="term-input" id="adminSettingValue" list="adminSettingValueList" type="text" maxlength="120" placeholder="SETTING VALUE" />
-            <datalist id="adminSettingValueList">
-              <option value="ADMIN"></option>
-              <option value="ACTIVE"></option>
-              <option value="true"></option>
-              <option value="100"></option>
-            </datalist>
-            <select class="term-input" id="adminSettingAction">
-              <option value="set">SET</option>
-              <option value="add">ADD</option>
-              <option value="remove">REMOVE</option>
-            </select>
-            <button class="term-btn" onclick="window.adminApplySettingActionFromInput()">RUN SETTING ACTION</button>
-            <input class="term-input" id="adminPreferenceKeyInput" list="adminPreferenceKeyList" type="text" maxlength="24" placeholder="PREFERENCE KEY" />
-            <datalist id="adminPreferenceKeyList">
-              <option value="theme"></option>
-              <option value="notifications"></option>
-              <option value="privacy"></option>
-              <option value="language"></option>
-            </datalist>
-            <input class="term-input" id="adminPreferenceValueInput" list="adminPreferenceValueList" type="text" maxlength="60" placeholder="PREFERENCE VALUE" />
-            <datalist id="adminPreferenceValueList">
-              <option value="dark"></option>
-              <option value="on"></option>
-              <option value="friends"></option>
-              <option value="en"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
-          </div>
+                <div class="admin-section">
+                  <p class="admin-section-title">MARKET MANIPULATION</p>
+                  <input class="term-input" id="adminMarketAmount" list="adminMarketAmountList" type="number" step="0.01" min="0" placeholder="MARKET PERCENT OR MULTIPLIER" style="margin-bottom: 10px;" />
+                  <datalist id="adminMarketAmountList">
+                    <option value="5"></option>
+                    <option value="10"></option>
+                    <option value="25"></option>
+                    <option value="50"></option>
+                    <option value="2"></option>
+                  </datalist>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                    <button class="term-btn" onclick="window.adminMarketPumpFromInput()">PUMP (+%)</button>
+                    <button class="term-btn" onclick="window.adminMarketDropFromInput()">DUMP (-%)</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button class="term-btn" onclick="window.adminMarketMultiplyFromInput()">SET MULTIPLIER</button>
+                    <button class="term-btn" style="border-color: #f66; color: #f66;" onclick="window.adminMarketCrashToZero()">CRASH TO ZERO</button>
+                  </div>
+                </div>
 
-          <div class="admin-section admin-section-danger">
-            <p class="admin-section-title">AUTOMATION</p>
-            <input class="term-input" id="adminTaskNameInput" list="adminTaskNameList" type="text" maxlength="40" placeholder="TASK NAME" />
-            <datalist id="adminTaskNameList">
-              <option value="cleanup_chat"></option>
-              <option value="rotate_event"></option>
-              <option value="announce_reset"></option>
-            </datalist>
-            <input class="term-input" id="adminTaskTimeInput" list="adminTaskTimeList" type="number" step="1" min="1" placeholder="RUN AFTER MINUTES" />
-            <datalist id="adminTaskTimeList">
-              <option value="5"></option>
-              <option value="15"></option>
-              <option value="30"></option>
-              <option value="60"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminScheduleTaskFromInput()">ADD SCHEDULED TASK</button>
-            <input class="term-input" id="adminTaskClearCount" list="adminTaskClearCountList" type="number" step="1" min="1" placeholder="TASKS TO REMOVE" />
-            <datalist id="adminTaskClearCountList">
-              <option value="1"></option>
-              <option value="3"></option>
-              <option value="5"></option>
-              <option value="10"></option>
-            </datalist>
-            <button class="term-btn" onclick="window.adminClearScheduledTasksFromInput()">REMOVE SCHEDULED TASKS</button>
+                <div class="admin-section">
+                  <p class="admin-section-title">PLAYER ASSETS</p>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+                    <input class="term-input" id="adminPortfolioAmount" list="adminPortfolioAmountList" type="number" step="1" min="0" placeholder="SHARES PER STOCK" style="width: 100%;" />
+                    <datalist id="adminPortfolioAmountList">
+                      <option value="0"></option>
+                      <option value="10"></option>
+                      <option value="100"></option>
+                      <option value="1000"></option>
+                    </datalist>
+                    <button class="term-btn" onclick="window.adminSetPortfolioSharesFromInput()">SET SHARES</button>
+                  </div>
+                  <button class="term-btn" onclick="window.adminGrantAllShopItems()">UNLOCK ALL SHOP ITEMS</button>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 15px;">
+                    <input class="term-input" id="adminStatAmount" type="number" step="1" min="1" placeholder="STATS VALUE" style="width: 100%;" />
+                    <button class="term-btn" onclick="window.adminBoostStatsFromInput()">BOOST STATS</button>
+                    <button class="term-btn" onclick="window.adminSetJobCompletionsFromInput()">SET JOB COMPS</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SERVER TOOLS TAB -->
+            <div class="admin-tab-content" id="adminTabServer" style="display: none;">
+              <div class="admin-actions admin-actions-overhaul">
+                <div class="admin-section">
+                  <p class="admin-section-title">ANNOUNCEMENTS AND CHAT</p>
+                  <select class="term-input" id="adminChatTerminal" style="margin-bottom: 10px;">
+                    <option value="dm">TERMINAL: MESSAGE USERS</option>
+                    <option value="global" selected>TERMINAL: GLOBAL</option>
+                    <option value="crew">TERMINAL: CREW</option>
+                  </select>
+                  <input class="term-input" id="adminChatTargetUser" type="text" maxlength="16" placeholder="TARGET USER (FOR DM ONLY)" style="margin-bottom: 10px;" />
+                  <input class="term-input" id="adminChatMessage" list="adminChatMessageList" type="text" maxlength="80" placeholder="MESSAGE BODY" style="margin-bottom: 10px;" />
+                  <datalist id="adminChatMessageList">
+                    <option value="Server maintenance starts in 10 minutes."></option>
+                    <option value="Event is now live."></option>
+                    <option value="Please follow chat rules."></option>
+                  </datalist>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button class="term-btn" onclick="window.adminSendChatAnnouncement()">SEND AS ADMIN</button>
+                    <button class="term-btn" onclick="window.adminSendChatSystemMessage()">SEND AS SYSTEM</button>
+                  </div>
+                </div>
+
+                <div class="admin-section">
+                  <p class="admin-section-title">LOGS AND CLEARING</p>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+                    <input class="term-input" id="adminChatClearCount" type="number" min="1" step="1" placeholder="MSG COUNT" value="10" style="width: 100px;" />
+                    <button class="term-btn" onclick="window.adminClearRecentChatFromInput()">REMOVE RECENT CHAT</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <input class="term-input" id="adminActionLogInput" type="text" maxlength="100" placeholder="ACTION LOG MESSAGE" style="width: 100%;" />
+                    <button class="term-btn" onclick="window.adminLogAdminActionFromInput()">ADD LOG</button>
+                  </div>
+                </div>
+
+                <div class="admin-section">
+                  <p class="admin-section-title">ADVANCED SETTINGS</p>
+                  <input class="term-input" id="adminSettingKey" list="adminSettingKeyList" type="text" maxlength="32" placeholder="SETTING KEY" style="margin-bottom: 5px;" />
+                  <datalist id="adminSettingKeyList">
+                    <option value="role"></option>
+                    <option value="status"></option>
+                    <option value="permissions"></option>
+                    <option value="tags"></option>
+                    <option value="restrictions"></option>
+                  </datalist>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                    <select class="term-input" id="adminSettingType" style="width: 100%;">
+                      <option value="string">STRING</option>
+                      <option value="integer">INTEGER</option>
+                      <option value="boolean">BOOLEAN</option>
+                      <option value="list">LIST</option>
+                    </select>
+                    <select class="term-input" id="adminSettingAction" style="width: 100%;">
+                      <option value="set">SET</option>
+                      <option value="add">ADD</option>
+                      <option value="remove">REMOVE</option>
+                    </select>
+                  </div>
+                  <input class="term-input" id="adminSettingValue" list="adminSettingValueList" type="text" maxlength="120" placeholder="SETTING VALUE" style="margin-bottom: 10px;" />
+                  <datalist id="adminSettingValueList">
+                    <option value="ADMIN"></option>
+                    <option value="ACTIVE"></option>
+                    <option value="true"></option>
+                    <option value="100"></option>
+                  </datalist>
+                  <button class="term-btn" onclick="window.adminApplySettingActionFromInput()">RUN SETTING ACTION</button>
+
+                  <input class="term-input" id="adminPreferenceKeyInput" list="adminPreferenceKeyList" type="text" maxlength="24" placeholder="PREFERENCE KEY" style="margin-top: 15px; margin-bottom: 5px;" />
+                  <datalist id="adminPreferenceKeyList">
+                    <option value="theme"></option>
+                    <option value="notifications"></option>
+                    <option value="privacy"></option>
+                    <option value="language"></option>
+                  </datalist>
+                  <input class="term-input" id="adminPreferenceValueInput" list="adminPreferenceValueList" type="text" maxlength="60" placeholder="PREFERENCE VALUE" style="margin-bottom: 10px;" />
+                  <datalist id="adminPreferenceValueList">
+                    <option value="dark"></option>
+                    <option value="on"></option>
+                    <option value="friends"></option>
+                    <option value="en"></option>
+                  </datalist>
+                  <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- AUTOMATION TAB -->
+            <div class="admin-tab-content" id="adminTabAutomation" style="display: none;">
+              <div class="admin-actions admin-actions-overhaul">
+                <div class="admin-section admin-section-danger">
+                  <p class="admin-section-title">SCHEDULED TASKS</p>
+                  <input class="term-input" id="adminTaskNameInput" list="adminTaskNameList" type="text" maxlength="40" placeholder="TASK NAME" style="margin-bottom: 10px;" />
+                  <datalist id="adminTaskNameList">
+                    <option value="cleanup_chat"></option>
+                    <option value="rotate_event"></option>
+                    <option value="announce_reset"></option>
+                  </datalist>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+                    <input class="term-input" id="adminTaskTimeInput" type="number" step="1" min="1" placeholder="RUN IN MINS" style="width: 100%;" />
+                    <button class="term-btn" onclick="window.adminScheduleTaskFromInput()">ADD TASK</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <input class="term-input" id="adminTaskClearCount" type="number" step="1" min="1" placeholder="COUNT" value="5" style="width: 80px;" />
+                    <button class="term-btn" onclick="window.adminClearScheduledTasksFromInput()">REMOVE TASKS</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        </div>
+
+        <button class="term-btn" style="margin-top: 20px; width: 100%; border-color: #ffd700; color: #ffd700;" onclick="window.closeOverlays()">
+          CLOSE ADMIN
+        </button>
+      </div>
+    </div>
         <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
           CLOSE
         </button>
