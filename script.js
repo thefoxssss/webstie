@@ -1251,10 +1251,42 @@ function initAprilFoolsBibiMode() {
     `;
     homeWrap.prepend(prankCard);
 
+    const prankOverlay = document.createElement("div");
+    prankOverlay.className = "april-fools-overlay";
+    prankOverlay.setAttribute("aria-hidden", "true");
+    prankOverlay.innerHTML = `
+      <div class="april-fools-overlay-card" role="dialog" aria-modal="true" aria-label="April Fools bonus round">
+        <button type="button" class="april-fools-close" aria-label="Close prank overlay">✕</button>
+        <div class="april-fools-overlay-head">🎰 BONUS ROUND UNLOCKED</div>
+        <p>Welcome to <strong>Totally Legit Mega Jackpot 3000</strong>.</p>
+        <div class="april-fools-slot" aria-hidden="true">
+          <span>🍌</span>
+          <span>🧀</span>
+          <span>🧦</span>
+        </div>
+        <p class="april-fools-overlay-result">Result: <strong>INCREDIBLE!</strong> You won <strong>absolutely nothing</strong> and eternal bragging rights.</p>
+        <button type="button" class="term-btn april-fools-close-btn">LOL OKAY</button>
+      </div>
+    `;
+    document.body.appendChild(prankOverlay);
+
+    const closeOverlay = () => {
+      prankOverlay.classList.remove("show");
+      prankOverlay.setAttribute("aria-hidden", "true");
+    };
+
+    prankOverlay.addEventListener("click", (event) => {
+      if (event.target === prankOverlay) closeOverlay();
+    });
+    prankOverlay.querySelector(".april-fools-close")?.addEventListener("click", closeOverlay);
+    prankOverlay.querySelector(".april-fools-close-btn")?.addEventListener("click", closeOverlay);
+
     const trigger = prankCard.querySelector(".april-fools-trigger");
     trigger?.addEventListener("click", () => {
       document.body.classList.add("april-fools-shake");
       setTimeout(() => document.body.classList.remove("april-fools-shake"), 640);
+      prankOverlay.classList.add("show");
+      prankOverlay.setAttribute("aria-hidden", "false");
       flashSpeech();
     });
   }
