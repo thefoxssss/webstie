@@ -917,11 +917,19 @@
         <div class="crew-dashboard" id="crewDashboard" style="display: none;">
           <div class="crew-dashboard-col">
             <div class="crew-section">
-              <h3 class="crew-section-title">STATUS</h3>
-              <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
-              <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
-              <div class="stat-row"><span>YOUR WEEKLY XP</span><span id="crewXp">0</span></div>
-              <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div style="flex: 1;">
+                  <h3 class="crew-section-title">STATUS</h3>
+                  <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
+                  <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
+                  <div class="stat-row"><span>YOUR WEEKLY XP</span><span id="crewXp">0</span></div>
+                  <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; margin-left: 15px;">
+                  <canvas id="crewLogoCanvas" width="32" height="32" style="width: 64px; height: 64px; border: 1px solid var(--accent); background: #000; image-rendering: pixelated; margin: 0;"></canvas>
+                  <button class="menu-btn" id="crewEditLogoBtn" style="font-size: 8px; padding: 4px 6px;">EDIT LOGO</button>
+                </div>
+              </div>
             </div>
 
             <div class="crew-section">
@@ -984,6 +992,57 @@
 
         <p id="crewMsg" style="font-size: 10px; color: #aaa; margin-top: 10px; text-align: center; min-height: 12px;"></p>
         <button class="term-btn" style="margin-top: 14px" onclick="window.closeOverlays()">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Crew Logo Pixel Editor -->
+    <div class="overlay" id="overlayCrewLogoEditor">
+      <div class="score-box" style="width: auto;">
+        <h2 style="text-align: center">CREW LOGO EDITOR</h2>
+        <div style="font-size: 10px; text-align: center; margin-bottom: 15px; color: #aaa;">32x32 PIXEL ART</div>
+
+        <div style="display: flex; gap: 20px; align-items: flex-start; justify-content: center; flex-wrap: wrap;">
+          <!-- Editor Canvas -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <canvas id="crewLogoEditorCanvas" width="32" height="32" style="width: 320px; height: 320px; background: #000; border: 2px solid var(--accent); image-rendering: pixelated; margin: 0; cursor: crosshair;"></canvas>
+            <div style="display: flex; gap: 10px; width: 100%;">
+              <button class="term-btn" id="crewLogoClearBtn" style="font-size: 10px; padding: 10px; border-color: #f66; color: #f66;">CLEAR</button>
+              <button class="term-btn" id="crewLogoFillBtn" style="font-size: 10px; padding: 10px;">FILL (BUCKET)</button>
+            </div>
+          </div>
+
+          <!-- Tools & Palette -->
+          <div style="display: flex; flex-direction: column; gap: 15px; width: 180px;">
+            <div class="crew-section">
+              <h3 class="crew-section-title">TOOL</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                <button class="menu-btn active" id="crewLogoToolDraw">DRAW</button>
+                <button class="menu-btn" id="crewLogoToolErase">ERASE</button>
+              </div>
+            </div>
+
+            <div class="crew-section">
+              <h3 class="crew-section-title">COLOR</h3>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="color" id="crewLogoColorPicker" value="#00ff00" style="width: 40px; height: 40px; padding: 0; border: 1px solid var(--accent); cursor: pointer; background: transparent;">
+                <div style="font-size: 10px; flex: 1; text-align: center;" id="crewLogoColorHex">#00ff00</div>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px;" id="crewLogoPalette">
+                <div class="color-swatch" data-color="#ffffff" style="background: #ffffff; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#000000" style="background: #000000; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#ff0000" style="background: #ff0000; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#00ff00" style="background: #00ff00; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#0000ff" style="background: #0000ff; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#ffff00" style="background: #ffff00; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#00ffff" style="background: #00ffff; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+                <div class="color-swatch" data-color="#ff00ff" style="background: #ff00ff; height: 20px; border: 1px solid #333; cursor: pointer;"></div>
+              </div>
+            </div>
+
+            <button class="term-btn" id="crewLogoSaveBtn" style="color: #0f0; border-color: #0f0;">SAVE LOGO</button>
+            <button class="menu-btn" id="crewLogoCancelBtn">CANCEL</button>
+          </div>
+        </div>
       </div>
     </div>
 

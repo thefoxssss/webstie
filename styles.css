@@ -1138,9 +1138,14 @@ body::before {
 #overlayScores,
 #overlaySeason,
 #overlayCrew,
+#overlayCrewLogoEditor,
 #overlayAdmin,
 #overlayGamebox {
   z-index: 1250;
+}
+
+#overlayCrewLogoEditor {
+  z-index: 1350;
 }
 
 
@@ -1182,6 +1187,13 @@ body::before {
 }
 
 /* INPUTS */
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+}
+
 .term-input {
   background: transparent;
   border: 2px solid var(--accent);

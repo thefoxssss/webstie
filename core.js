@@ -152,7 +152,44 @@ let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
 let stockData = { holdings: {}, selected: "GOON", buyMultiplier: 1 };
-let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
+export const DEFAULT_CREW_LOGO = {
+  palette: ["transparent", "#00ff00"],
+  pixels: [
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "        11111111111111111       ",
+    "        1                       ",
+    "        1                       ",
+    "        1                       ",
+    "        1                       ",
+    "        1                       ",
+    "        1                       ",
+    "        1                       ",
+    "        1       111111111       ",
+    "        1               1       ",
+    "        1               1       ",
+    "        1               1       ",
+    "        1               1       ",
+    "        1               1       ",
+    "        1               1       ",
+    "        1               1       ",
+    "        11111111111111111       ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                "
+  ]
+};
+let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO };
 let seasonData = { id: "", xp: 0, hall: [] };
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
@@ -1422,7 +1459,7 @@ function loadCrewData() {
   try {
     const parsed = JSON.parse(localStorage.getItem(LOCAL_CREW_STORAGE_KEY) || "{}");
     if (parsed && typeof parsed === "object") {
-      crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], ...parsed };
+      crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO, ...parsed };
     }
   } catch {}
 }
@@ -2120,11 +2157,26 @@ function renderSeasonBoard() {
     const rows = getLiveSeasonBoardRows(activeSeasonSubTab);
     boardList.innerHTML = rows.length
       ? rows
-          .map((row, idx) => activeSeasonSubTab === "gang"
-            ? `<div class="score-item">#${idx + 1} [${escapeHtml(row.tag)}] // $${Math.round(row.money)} // ${row.members} OPS</div>`
-            : `<div class="score-item">#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${escapeHtml(row.crewTag)}</span> // $${Math.round(row.money)}</div>`)
+          .map((row, idx) => {
+            const logoHtml = `<canvas id="seasonBoardLogo_${idx}" width="32" height="32" style="width: 20px; height: 20px; border: 1px solid var(--accent); background: #000; image-rendering: pixelated; margin-right: 6px; vertical-align: middle;"></canvas>`;
+            if (activeSeasonSubTab === "gang") {
+              return `<div class="score-item"><div>#${idx + 1} ${logoHtml}[${escapeHtml(row.tag)}]</div> <div>$${Math.round(row.money)} // ${row.members} OPS</div></div>`;
+            } else {
+              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
+            }
+          })
           .join("")
       : `<div class="score-item">LOADING ${modeLabel}...</div>`;
+
+    if (rows.length) {
+      setTimeout(() => {
+        rows.forEach((row, idx) => {
+          if (row.logo && row.logo.palette && (activeSeasonSubTab === "gang" || row.crewTag !== "SOLO")) {
+            renderCrewLogo(`seasonBoardLogo_${idx}`, row.logo);
+          }
+        });
+      }, 0);
+    }
     return;
   }
 
@@ -2167,6 +2219,7 @@ function getLiveSeasonBoardRows(mode = "solo") {
         tag,
         money: Math.max(0, Number(row.money) || 0),
         members: Math.max(0, Math.floor(Number(row.members) || 0)),
+        logo: row.logo || DEFAULT_CREW_LOGO
       };
     });
 
@@ -2175,8 +2228,9 @@ function getLiveSeasonBoardRows(mode = "solo") {
       if (existing) {
         existing.money = Math.max(existing.money, localMoney);
         existing.members = Math.max(existing.members, 1);
+        if (crewData.logo) existing.logo = crewData.logo;
       } else {
-        gangTotals[normalizedCrewTag] = { tag: normalizedCrewTag, money: localMoney, members: 1 };
+        gangTotals[normalizedCrewTag] = { tag: normalizedCrewTag, money: localMoney, members: 1, logo: crewData.logo || DEFAULT_CREW_LOGO };
       }
     }
 
@@ -2184,7 +2238,7 @@ function getLiveSeasonBoardRows(mode = "solo") {
   }
 
   const soloRows = (cachedSeasonBoards.solo || []).filter((row) => String(row.name || "").toUpperCase() !== normalizedName);
-  soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag });
+  soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag, logo: crewData.logo || DEFAULT_CREW_LOGO });
   return soloRows.sort((a, b) => b.money - a.money);
 }
 
@@ -2269,9 +2323,10 @@ function loadSeasonLeaderboards() {
       const playerMoney = Number(playerSeason.id === getSeasonId() ? data.money : SEASON_STARTING_MONEY) || 0;
       const playerCrew = data.crewData || {};
       const crewTag = String(playerCrew.tag || "").toUpperCase();
-      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO" });
+      const logo = playerCrew.logo || DEFAULT_CREW_LOGO;
+      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", logo });
       if (crewTag) {
-        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0 };
+        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo };
         crews[crewTag].money += playerMoney;
         crews[crewTag].members += 1;
       }
@@ -2351,6 +2406,7 @@ async function loadOpenCrews() {
             wins: data.crewData.wins || 0,
             members: data.crewData.members?.length || 1,
             goal: data.crewData.goal || 5000,
+            logo: data.crewData.logo || DEFAULT_CREW_LOGO,
           };
         }
       }
@@ -2365,16 +2421,25 @@ async function loadOpenCrews() {
     }
 
     meta.textContent = `${crewsArray.length} OPEN CREWS SCANNED.`;
-    list.innerHTML = crewsArray.map(crew => `
+    list.innerHTML = crewsArray.map((crew, idx) => `
       <div class="crew-roster-item" style="display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px;">
-        <div style="display: flex; justify-content: space-between; width: 100%;">
-          <span class="crew-roster-name" style="font-weight: bold; color: var(--accent);">${escapeHtml(crew.tag)}</span>
+        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <canvas id="crewFinderLogo_${idx}" width="32" height="32" style="width: 24px; height: 24px; border: 1px solid var(--accent); image-rendering: pixelated; background: #000;"></canvas>
+            <span class="crew-roster-name" style="font-weight: bold; color: var(--accent);">${escapeHtml(crew.tag)}</span>
+          </div>
           <span style="font-size: 10px;">${crew.members} MEMBERS | ${crew.wins} WINS</span>
         </div>
         <div style="font-size: 10px; color: #aaa;">"${escapeHtml(crew.motto)}"</div>
         <button class="term-btn" style="margin-top: 5px; width: 100%; font-size: 10px; padding: 4px;" onclick="window.joinCrewFromFinder('${escapeHtml(crew.tag)}')">JOIN CREW</button>
       </div>
     `).join("");
+
+    setTimeout(() => {
+      crewsArray.forEach((crew, idx) => {
+        renderCrewLogo(`crewFinderLogo_${idx}`, crew.logo);
+      });
+    }, 0);
 
   } catch (err) {
     console.error("Failed to load open crews", err);
@@ -2395,6 +2460,143 @@ window.joinCrewFromFinder = (tag) => {
   showToast("CREW LINK ESTABLISHED", "🛰️", normalizedTag);
 };
 
+function renderCrewLogo(canvasId, logoData) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, 32, 32);
+
+  if (!logoData || !logoData.palette || !logoData.pixels) return;
+
+  const palette = logoData.palette;
+  const pixels = logoData.pixels;
+
+  for (let y = 0; y < 32; y++) {
+    const row = pixels[y] || "";
+    for (let x = 0; x < 32; x++) {
+      const char = row[x] || " ";
+      if (char !== " ") {
+        // Map char back to index. Let's say "0" is palette[0], "1" is palette[1] ... "9", "A", "B", etc.
+        // But in our default logo, space is transparent, "1" is palette[1].
+        let colorIdx = -1;
+        if (char >= '0' && char <= '9') {
+          colorIdx = parseInt(char, 10);
+        } else if (char >= 'a' && char <= 'z') {
+          colorIdx = char.charCodeAt(0) - 87; // a = 10
+        } else if (char >= 'A' && char <= 'Z') {
+          colorIdx = char.charCodeAt(0) - 29; // A = 36
+        }
+        if (colorIdx >= 0 && colorIdx < palette.length) {
+          ctx.fillStyle = palette[colorIdx];
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }
+}
+
+// Global pixel editor state
+let crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
+let crewLogoEditorPalette = ["transparent"];
+let currentEditorTool = "draw"; // "draw" or "erase"
+let currentEditorColor = "#00ff00";
+
+function charForPaletteIndex(idx) {
+  if (idx < 0) return ' ';
+  if (idx < 10) return String(idx);
+  if (idx < 36) return String.fromCharCode(87 + idx); // a-z
+  if (idx < 62) return String.fromCharCode(29 + idx); // A-Z
+  return ' '; // fallback
+}
+
+function parseLogoToEditor(logoData) {
+  crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
+  crewLogoEditorPalette = ["transparent"];
+
+  if (!logoData || !logoData.palette || !logoData.pixels) return;
+
+  crewLogoEditorPalette = [...logoData.palette];
+
+  for (let y = 0; y < 32; y++) {
+    const row = logoData.pixels[y] || "";
+    for (let x = 0; x < 32; x++) {
+      const char = row[x] || " ";
+      if (char !== " ") {
+        let colorIdx = -1;
+        if (char >= '0' && char <= '9') colorIdx = parseInt(char, 10);
+        else if (char >= 'a' && char <= 'z') colorIdx = char.charCodeAt(0) - 87;
+        else if (char >= 'A' && char <= 'Z') colorIdx = char.charCodeAt(0) - 29;
+
+        if (colorIdx >= 0 && colorIdx < crewLogoEditorPalette.length) {
+          crewLogoEditorPixels[y][x] = colorIdx;
+        }
+      }
+    }
+  }
+}
+
+function serializeEditorToLogo() {
+  const rows = [];
+  for (let y = 0; y < 32; y++) {
+    let rowStr = "";
+    for (let x = 0; x < 32; x++) {
+      rowStr += charForPaletteIndex(crewLogoEditorPixels[y][x]);
+    }
+    rows.push(rowStr);
+  }
+  return { palette: [...crewLogoEditorPalette], pixels: rows };
+}
+
+function getPaletteIndex(color) {
+  if (color === "transparent") return -1;
+  const idx = crewLogoEditorPalette.indexOf(color);
+  if (idx >= 0) return idx;
+  crewLogoEditorPalette.push(color);
+  return crewLogoEditorPalette.length - 1;
+}
+
+function renderCrewLogoEditor() {
+  const canvas = document.getElementById("crewLogoEditorCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, 32, 32);
+
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      const idx = crewLogoEditorPixels[y][x];
+      if (idx >= 0 && idx < crewLogoEditorPalette.length && crewLogoEditorPalette[idx] !== "transparent") {
+        ctx.fillStyle = crewLogoEditorPalette[idx];
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+}
+
+function floodFill(startX, startY, targetColorIndex) {
+  const startColorIndex = crewLogoEditorPixels[startY][startX];
+  if (startColorIndex === targetColorIndex) return;
+
+  const stack = [[startX, startY]];
+  const visited = new Set();
+
+  while (stack.length > 0) {
+    const [x, y] = stack.pop();
+    const key = `${x},${y}`;
+
+    if (x < 0 || x >= 32 || y < 0 || y >= 32) continue;
+    if (visited.has(key)) continue;
+    if (crewLogoEditorPixels[y][x] !== startColorIndex) continue;
+
+    visited.add(key);
+    crewLogoEditorPixels[y][x] = targetColorIndex;
+
+    stack.push([x + 1, y]);
+    stack.push([x - 1, y]);
+    stack.push([x, y + 1]);
+    stack.push([x, y - 1]);
+  }
+}
+
 function initCrewUx() {
   const createBtn = document.getElementById("crewCreateBtn");
   const finderCreateBtn = document.getElementById("crewFinderCreateBtn");
@@ -2407,6 +2609,19 @@ function initCrewUx() {
   const finderInput = document.getElementById("crewFinderInput");
   const mottoInput = document.getElementById("crewMottoInput");
   const donateInput = document.getElementById("crewDonateAmount");
+
+  // Crew Logo Editor UI Setup
+  const editLogoBtn = document.getElementById("crewEditLogoBtn");
+  const saveLogoBtn = document.getElementById("crewLogoSaveBtn");
+  const cancelLogoBtn = document.getElementById("crewLogoCancelBtn");
+  const clearLogoBtn = document.getElementById("crewLogoClearBtn");
+  const fillLogoBtn = document.getElementById("crewLogoFillBtn");
+  const toolDrawBtn = document.getElementById("crewLogoToolDraw");
+  const toolEraseBtn = document.getElementById("crewLogoToolErase");
+  const colorPicker = document.getElementById("crewLogoColorPicker");
+  const colorHexDisplay = document.getElementById("crewLogoColorHex");
+  const editorCanvas = document.getElementById("crewLogoEditorCanvas");
+  const swatches = document.querySelectorAll("#crewLogoPalette .color-swatch");
 
   const handleCreateJoin = (val) => {
     const tag = normalizeCrewTag(val);
@@ -2423,6 +2638,150 @@ function initCrewUx() {
     setText("crewMsg", `LINKED TO CREW ${tag}`);
     showToast("CREW LINK ESTABLISHED", "🛰️", tag);
   };
+
+  if (editLogoBtn) {
+    editLogoBtn.onclick = () => {
+      if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+      parseLogoToEditor(crewData.logo || DEFAULT_CREW_LOGO);
+      document.getElementById("overlayCrewLogoEditor").classList.add("active");
+      renderCrewLogoEditor();
+    };
+  }
+
+  if (cancelLogoBtn) {
+    cancelLogoBtn.onclick = () => {
+      document.getElementById("overlayCrewLogoEditor").classList.remove("active");
+    };
+  }
+
+  if (saveLogoBtn) {
+    saveLogoBtn.onclick = async () => {
+      crewData.logo = serializeEditorToLogo();
+      saveCrewData();
+      await saveStats();
+      renderCrewPanel();
+      setText("crewMsg", "CREW LOGO SAVED");
+      document.getElementById("overlayCrewLogoEditor").classList.remove("active");
+    };
+  }
+
+  if (clearLogoBtn) {
+    clearLogoBtn.onclick = () => {
+      crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
+      renderCrewLogoEditor();
+    };
+  }
+
+  if (toolDrawBtn) {
+    toolDrawBtn.onclick = () => {
+      currentEditorTool = "draw";
+      toolDrawBtn.classList.add("active");
+      if (toolEraseBtn) toolEraseBtn.classList.remove("active");
+      if (fillLogoBtn) fillLogoBtn.classList.remove("active");
+    };
+  }
+
+  if (toolEraseBtn) {
+    toolEraseBtn.onclick = () => {
+      currentEditorTool = "erase";
+      toolEraseBtn.classList.add("active");
+      if (toolDrawBtn) toolDrawBtn.classList.remove("active");
+      if (fillLogoBtn) fillLogoBtn.classList.remove("active");
+    };
+  }
+
+  if (fillLogoBtn) {
+    fillLogoBtn.onclick = () => {
+      currentEditorTool = "fill";
+      fillLogoBtn.classList.add("active");
+      if (toolDrawBtn) toolDrawBtn.classList.remove("active");
+      if (toolEraseBtn) toolEraseBtn.classList.remove("active");
+    };
+  }
+
+  if (colorPicker && colorHexDisplay) {
+    colorPicker.addEventListener("input", (e) => {
+      currentEditorColor = e.target.value;
+      colorHexDisplay.innerText = currentEditorColor;
+      if (currentEditorTool === "erase") {
+        if (toolDrawBtn) toolDrawBtn.click();
+      }
+    });
+  }
+
+  if (swatches) {
+    swatches.forEach(swatch => {
+      swatch.addEventListener("click", () => {
+        currentEditorColor = swatch.dataset.color;
+        if (colorPicker) colorPicker.value = currentEditorColor;
+        if (colorHexDisplay) colorHexDisplay.innerText = currentEditorColor;
+        if (currentEditorTool === "erase") {
+          if (toolDrawBtn) toolDrawBtn.click();
+        }
+      });
+    });
+  }
+
+  if (editorCanvas) {
+    let isDrawing = false;
+
+    const getPos = (e) => {
+      const rect = editorCanvas.getBoundingClientRect();
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      }
+      const x = Math.floor(((clientX - rect.left) / rect.width) * 32);
+      const y = Math.floor(((clientY - rect.top) / rect.height) * 32);
+      return { x, y };
+    };
+
+    const handlePointerDown = (e) => {
+      e.preventDefault();
+      isDrawing = true;
+      const { x, y } = getPos(e);
+      if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
+
+      if (currentEditorTool === "fill") {
+        const targetIdx = getPaletteIndex(currentEditorColor);
+        floodFill(x, y, targetIdx);
+        renderCrewLogoEditor();
+        isDrawing = false; // Fill is a single click action
+      } else {
+        const targetIdx = currentEditorTool === "draw" ? getPaletteIndex(currentEditorColor) : -1;
+        crewLogoEditorPixels[y][x] = targetIdx;
+        renderCrewLogoEditor();
+      }
+    };
+
+    const handlePointerMove = (e) => {
+      if (!isDrawing) return;
+      e.preventDefault();
+      if (currentEditorTool === "fill") return;
+      const { x, y } = getPos(e);
+      if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
+
+      const targetIdx = currentEditorTool === "draw" ? getPaletteIndex(currentEditorColor) : -1;
+      if (crewLogoEditorPixels[y][x] !== targetIdx) {
+        crewLogoEditorPixels[y][x] = targetIdx;
+        renderCrewLogoEditor();
+      }
+    };
+
+    const handlePointerUp = (e) => {
+      isDrawing = false;
+    };
+
+    editorCanvas.addEventListener("mousedown", handlePointerDown);
+    editorCanvas.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", handlePointerUp);
+
+    editorCanvas.addEventListener("touchstart", handlePointerDown, { passive: false });
+    editorCanvas.addEventListener("touchmove", handlePointerMove, { passive: false });
+    window.addEventListener("touchend", handlePointerUp);
+  }
 
   if (createBtn && input) createBtn.onclick = () => handleCreateJoin(input.value);
   if (finderCreateBtn && finderInput) finderCreateBtn.onclick = () => handleCreateJoin(finderInput.value);
@@ -2446,7 +2805,7 @@ function initCrewUx() {
     leaveBtn.classList.remove("confirming");
     leaveBtn.textContent = "LEAVE CREW";
 
-    crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [] };
+    crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO };
     saveCrewData();
     renderCrewPanel();
     setText("crewMsg", "LEFT CREW CHANNEL");
@@ -2823,7 +3182,7 @@ function loadProfile(data) {
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
-  crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], ...(data.crewData || crewData || {}) };
+  crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO, ...(data.crewData || crewData || {}) };
   seasonData = { id: getSeasonId(), xp: 0, hall: [], ...(data.seasonData || seasonData || {}) };
   const currentSeasonId = getSeasonId();
   if (seasonData.id !== currentSeasonId) {
@@ -5745,6 +6104,32 @@ const renderLeaderboardRows = (
       name.prepend(badge);
     }
 
+    if (row.crewTag && row.logo && row.logo.palette) {
+      const crewLabel = document.createElement("span");
+      crewLabel.style.opacity = "0.7";
+      crewLabel.style.fontSize = "0.85em";
+      crewLabel.style.marginLeft = "6px";
+      crewLabel.innerHTML = `[${escapeHtml(row.crewTag)}]`;
+      name.appendChild(crewLabel);
+
+      const canvas = document.createElement("canvas");
+      canvas.id = `leaderboardLogo_${row.name}_${i}`;
+      canvas.width = 32;
+      canvas.height = 32;
+      canvas.style.width = "16px";
+      canvas.style.height = "16px";
+      canvas.style.border = "1px solid var(--accent)";
+      canvas.style.background = "#000";
+      canvas.style.imageRendering = "pixelated";
+      canvas.style.marginRight = "6px";
+      canvas.style.verticalAlign = "middle";
+      name.prepend(canvas);
+
+      setTimeout(() => {
+        renderCrewLogo(canvas.id, row.logo);
+      }, 0);
+    }
+
     const value = document.createElement("span");
     value.innerText = `${valuePrefix}${row.score}`;
 
@@ -5789,11 +6174,14 @@ function loadLeaderboardBoard(board, list) {
         snap.forEach((d) => {
           const data = d.data();
           const playerName = data.name || d.id;
+          const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
           rows.push({
             name: playerName,
             score: data.rank || getRank(Number(data.money) || 0, playerName),
             rankData: getRankData(Number(data.money) || 0, playerName),
             canRemove: playerName !== myName && !isGodUser(playerName),
+            crewTag,
+            logo: crewTag ? (data.crewData.logo || DEFAULT_CREW_LOGO) : null
           });
         });
         renderLeaderboardRows(list, rows, { showAdminRemove: true });
@@ -5809,7 +6197,13 @@ function loadLeaderboardBoard(board, list) {
         const rows = [];
         snap.forEach((d) => {
           const data = d.data();
-          rows.push({ name: data.name || d.id, score: data.money ?? 0 });
+          const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
+          rows.push({
+            name: data.name || d.id,
+            score: data.money ?? 0,
+            crewTag,
+            logo: crewTag ? (data.crewData.logo || DEFAULT_CREW_LOGO) : null
+          });
         });
         renderLeaderboardRows(list, rows, { valuePrefix: "$" });
       })
