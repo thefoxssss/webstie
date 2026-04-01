@@ -5368,15 +5368,13 @@ function activateMatrixHack() {
   playSuccessSound();
 }
 let logoClicks = 0;
-let aprilTopSecretClicks = 0;
-let aprilTopSecretTimer = null;
 
 function isAprilFoolsUtcToday() {
   const now = new Date();
   return now.getUTCMonth() === 3 && now.getUTCDate() === 1;
 }
 
-function grantAprilTopSecretToken() {
+export function claimAprilFoolsSecretItem() {
   if (!isAprilFoolsUtcToday()) return false;
   if (myInventory.includes("item_april_fools_top_secret")) return false;
   myInventory.push("item_april_fools_top_secret");
@@ -5389,22 +5387,6 @@ function grantAprilTopSecretToken() {
 
 // Secret: clicking the logo many times gives a reward.
 document.getElementById("mainBtn").onclick = () => {
-  if (isAprilFoolsUtcToday()) {
-    aprilTopSecretClicks++;
-    if (!aprilTopSecretTimer) {
-      aprilTopSecretTimer = setTimeout(() => {
-        aprilTopSecretClicks = 0;
-        aprilTopSecretTimer = null;
-      }, 5000);
-    }
-    if (aprilTopSecretClicks >= 10 && grantAprilTopSecretToken()) {
-      aprilTopSecretClicks = 0;
-      clearTimeout(aprilTopSecretTimer);
-      aprilTopSecretTimer = null;
-      return;
-    }
-  }
-
   logoClicks++;
   if (logoClicks === 50) {
     unlockAchievement("spammer");

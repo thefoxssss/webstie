@@ -50,6 +50,7 @@ import {
   trackGamePlay,
   updateHighScore,
   getShopItemById,
+  claimAprilFoolsSecretItem,
   openGameLeaderboard,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
@@ -1262,7 +1263,7 @@ function initAprilFoolsBibiMode() {
         <div class="april-fools-slot" aria-hidden="true">
           <span>🍌</span>
           <span>🧀</span>
-          <span>🧦</span>
+          <span class="april-fools-secret-sock" title="Secret">🧦</span>
         </div>
         <p class="april-fools-overlay-result">Result: <strong>INCREDIBLE!</strong> You won <strong>absolutely nothing</strong> and eternal bragging rights.</p>
         <button type="button" class="term-btn april-fools-close-btn">LOL OKAY</button>
@@ -1280,6 +1281,12 @@ function initAprilFoolsBibiMode() {
     });
     prankOverlay.querySelector(".april-fools-close")?.addEventListener("click", closeOverlay);
     prankOverlay.querySelector(".april-fools-close-btn")?.addEventListener("click", closeOverlay);
+    prankOverlay.querySelector(".april-fools-secret-sock")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (claimAprilFoolsSecretItem()) {
+        flashSpeech();
+      }
+    });
 
     const trigger = prankCard.querySelector(".april-fools-trigger");
     trigger?.addEventListener("click", () => {
