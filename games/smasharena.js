@@ -1,8 +1,16 @@
-// Smash-style platform fighter with local bot mode and Firebase online duels.
+// Smash-style platform fighter with local bot mode and Colyseus online duels.
 import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
 
 const { doc, setDoc, onSnapshot, runTransaction, updateDoc } = firebase;
-const ROOM_PREFIX = "sa_";
+// Colyseus client setup
+let colyseusClient = null;
+if (typeof Colyseus !== 'undefined') {
+  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "localhost:2567"
+    : window.location.host;
+  colyseusClient = new Colyseus.Client(`${wsProtocol}://${wsHost}`);
+}
 const GRAVITY = 0.72;
 const FRICTION = 0.86;
 const GROUND_Y = 380;
@@ -17,22 +25,13 @@ const PLATFORM = { x: 390, y: 286, w: 210, h: 14 };
 let roomCode = null;
 let myPlayerId = null;
 let isHost = false;
-let unsub = null;
-let hostLoop = null;
+let colyseusRoom = null; // Used for online play
 let localLoop = null;
 let localState = null;
 let aiMode = false;
 let soloMode = false;
 const keys = { left: false, right: false, up: false, atk: false };
 const keyLatch = { up: false, atk: false };
-
-function roomRef(code) {
-  return doc(firebase.db, "gooner_terminal_rooms", ROOM_PREFIX + code);
-}
-
-function randomCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-}
 
 function makeFighter(uid, name, side) {
   return {
@@ -71,14 +70,21 @@ function resetOverlay() {
 export function initSmashArena() {
   stopSession();
   resetOverlay();
+  if (!colyseusClient && typeof Colyseus !== 'undefined') {
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "localhost:2567"
+      : window.location.host;
+    colyseusClient = new Colyseus.Client(`${wsProtocol}://${wsHost}`);
+  }
 }
 
 function stopSession() {
-  if (unsub) unsub();
-  if (hostLoop) clearInterval(hostLoop);
+  if (colyseusRoom) {
+    colyseusRoom.leave();
+    colyseusRoom = null;
+  }
   if (localLoop) clearInterval(localLoop);
-  unsub = null;
-  hostLoop = null;
   localLoop = null;
   roomCode = null;
   myPlayerId = null;
@@ -254,86 +260,69 @@ function render(stateData) {
   }
 }
 
-function subscribeRoom() {
-  if (unsub) unsub();
-  unsub = onSnapshot(roomRef(roomCode), (snap) => {
-    if (!snap.exists()) {
-      showToast("ROOM CLOSED", "⚠️");
-      initSmashArena();
-      return;
-    }
-    localState = snap.data();
-    render(localState);
-    if (isHost && localState.status === "playing" && !hostLoop) startHostLoop();
-    if (localState.status !== "playing" && hostLoop) {
-      clearInterval(hostLoop);
-      hostLoop = null;
-    }
-    document.getElementById("saStartBtn").style.display = isHost && localState.status === "lobby" ? "inline-flex" : "none";
-    setText("saLobbyStatus", localState.status === "lobby" ? "WAITING FOR PLAYERS" : "MATCH LIVE");
-    const roster = Object.entries(localState.players || {}).map(([id, p]) => `<div>${id.toUpperCase()}: ${p.name}</div>`).join("");
-    document.getElementById("saPlayers").innerHTML = roster;
-  });
-}
-
-function startHostLoop() {
-  hostLoop = setInterval(async () => {
-    if (!localState || localState.status !== "playing") return;
-    const next = structuredClone(localState);
-    simulateTick(next);
-    next.updatedAt = Date.now();
-    localState = next;
-    try {
-      await updateDoc(roomRef(roomCode), next);
-    } catch (_e) {}
-  }, TICK_MS);
+function handleColyseusStateChange(stateData) {
+  localState = stateData.toJSON(); // Convert MapSchema and other Schema types to plain objects
+  render(localState);
+  document.getElementById("saStartBtn").style.display = isHost && localState.status === "lobby" ? "inline-flex" : "none";
+  setText("saLobbyStatus", localState.status === "lobby" ? "WAITING FOR PLAYERS" : "MATCH LIVE");
+  const roster = Object.entries(localState.players || {}).map(([id, p]) => `<div>${id.toUpperCase()}: ${p.name}</div>`).join("");
+  document.getElementById("saPlayers").innerHTML = roster;
 }
 
 async function createRoom() {
   if (!state.myUid) return showToast("CONNECT TO PLAY ONLINE", "⚠️");
-  const code = randomCode();
-  await setDoc(roomRef(code), {
-    code,
-    hostUid: state.myUid,
-    status: "lobby",
-    winner: "",
-    mode: "online",
-    koTarget: 4,
-    score: { p1: 0, p2: 0 },
-    players: { p1: makeFighter(state.myUid, state.myName || "P1", "left") },
-    inputs: { p1: makeInput() },
-    updatedAt: Date.now(),
-  });
-  joinRoom(code, "p1", true);
+  if (!colyseusClient) return showToast("COLYSEUS OFFLINE", "⚠️");
+  try {
+    colyseusRoom = await colyseusClient.create("smash_arena", {
+      uid: state.myUid,
+      name: state.myName || "P1"
+    });
+    isHost = true;
+    joinColyseusRoom(colyseusRoom);
+  } catch (e) {
+    showToast("Failed to create room.", "⚠️");
+  }
 }
 
 async function joinRoomByCode() {
   if (!state.myUid) return showToast("CONNECT TO PLAY ONLINE", "⚠️");
+  if (!colyseusClient) return showToast("COLYSEUS OFFLINE", "⚠️");
   const code = String(document.getElementById("joinSACode").value || "").trim();
   if (!code) return;
-  await runTransaction(firebase.db, async (tx) => {
-    const ref = roomRef(code);
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error("ROOM_NOT_FOUND");
-    const data = snap.data();
-    if (data.status !== "lobby") throw new Error("MATCH_RUNNING");
-    if (data.players?.p2) throw new Error("ROOM_FULL");
-    data.players.p2 = makeFighter(state.myUid, state.myName || "P2", "right");
-    data.inputs.p2 = makeInput();
-    tx.update(ref, { players: data.players, inputs: data.inputs });
-  }).then(() => joinRoom(code, "p2", false)).catch((err) => showToast(err.message, "⚠️"));
+  try {
+    colyseusRoom = await colyseusClient.joinById(code, {
+      uid: state.myUid,
+      name: state.myName || "P2"
+    });
+    isHost = false;
+    joinColyseusRoom(colyseusRoom);
+  } catch (e) {
+    showToast("ROOM NOT FOUND OR FULL", "⚠️");
+  }
 }
 
-function joinRoom(code, pid, host) {
-  roomCode = code;
-  myPlayerId = pid;
-  isHost = host;
+function joinColyseusRoom(room) {
+  roomCode = room.id;
+  myPlayerId = isHost ? "p1" : "p2";
   state.currentGame = "smasharena";
+
   document.getElementById("saMenu").style.display = "none";
   document.getElementById("saLobby").style.display = "flex";
   document.getElementById("saGame").style.display = "flex";
-  setText("saRoomId", code);
-  subscribeRoom();
+  setText("saRoomId", roomCode);
+
+  room.onStateChange((newState) => {
+    handleColyseusStateChange(newState);
+  });
+
+  room.onMessage("hudMessage", (message) => {
+    setText("saHudStatus", message);
+  });
+
+  room.onLeave((code) => {
+    showToast("ROOM CLOSED", "⚠️");
+    initSmashArena();
+  });
 }
 
 function startAIMode() {
@@ -408,9 +397,9 @@ function startSoloMode() {
 }
 
 async function sendInput() {
-  if (aiMode || !roomCode || !myPlayerId || !localState || localState.status !== "playing") return;
+  if (aiMode || !colyseusRoom || !myPlayerId || !localState || localState.status !== "playing") return;
   try {
-    await updateDoc(roomRef(roomCode), { [`inputs.${myPlayerId}`]: { ...keys, upPress: keyLatch.up, atkPress: keyLatch.atk, ts: Date.now() } });
+    colyseusRoom.send("input", { ...keys, upPress: keyLatch.up, atkPress: keyLatch.atk, ts: Date.now() });
     keyLatch.up = false;
     keyLatch.atk = false;
   } catch (_e) {}
@@ -445,8 +434,8 @@ document.getElementById("btnJoinSA")?.addEventListener("click", joinRoomByCode);
 document.getElementById("btnSAAI")?.addEventListener("click", startAIMode);
 document.getElementById("btnSASolo")?.addEventListener("click", startSoloMode);
 document.getElementById("saStartBtn")?.addEventListener("click", async () => {
-  if (!roomCode || !isHost) return;
-  await updateDoc(roomRef(roomCode), { status: "playing", score: { p1: 0, p2: 0 }, winner: "", koTarget: 4, mode: "online" });
+  if (!colyseusRoom || !isHost) return;
+  colyseusRoom.send("start");
 });
 bindControls();
 registerGameStop(stopSession);
