@@ -1,0 +1,13 @@
+{
+  "name": "foxsss-game-server",
+  "version": "1.0.0",
+  "description": "Colyseus backend for live multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "colyseus": "^0.15.0",
+    "firebase-admin": "^12.0.0"
+  }
+}
