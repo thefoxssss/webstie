@@ -3,6 +3,7 @@ const { WebSocketTransport } = require("@colyseus/ws-transport");
 const { Schema, type, MapSchema } = require("@colyseus/schema");
 const http = require("http");
 const express = require("express");
+const cors = require("cors");
 const admin = require("firebase-admin"); // <-- Firebase is here!
 
 // Initialize Firebase (You will eventually need your Firebase Service Account key here)
@@ -11,6 +12,7 @@ const admin = require("firebase-admin"); // <-- Firebase is here!
 // });
 
 const app = express();
+app.use(cors());
 const port = process.env.PORT || 2567;
 
 const gameServer = new colyseus.Server({
