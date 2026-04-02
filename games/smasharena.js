@@ -8,7 +8,7 @@ if (typeof Colyseus !== 'undefined') {
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "localhost:2567"
-    : window.location.host;
+    : "thefoxsss.com";
   colyseusClient = new Colyseus.Client(`${wsProtocol}://${wsHost}`);
 }
 const GRAVITY = 0.72;
@@ -74,7 +74,7 @@ export function initSmashArena() {
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
       ? "localhost:2567"
-      : window.location.host;
+      : "thefoxsss.com";
     colyseusClient = new Colyseus.Client(`${wsProtocol}://${wsHost}`);
   }
 }
