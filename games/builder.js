@@ -1,5 +1,5 @@
 export function initBuilder() {
-    const wsUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const wsUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname)
         ? `ws://localhost:2567`
         : `wss://seahorse-app-mv4sg.ondigitalocean.app`;
 
