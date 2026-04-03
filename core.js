@@ -658,9 +658,10 @@ function applyOwnedVisuals() {
   document.body.classList.toggle("rainbow-mode", rainbowEnabled);
 
   const flappyEnabled = hasActiveItem("item_flappy");
-  document.getElementById("btnFlappy").style.display = flappyEnabled
-    ? "block"
-    : "none";
+  const btnFlappy = document.getElementById("btnFlappy");
+  if (btnFlappy) {
+    btnFlappy.style.display = flappyEnabled ? "block" : "none";
+  }
   syncAprilComplimentLoop();
 }
 

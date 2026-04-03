@@ -1,7 +1,6 @@
 export function initBuilder() {
-    const wsUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname)
-        ? `ws://localhost:2567`
-        : `wss://seahorse-app-mv4sg.ondigitalocean.app`;
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname || window.location.search.includes('local=1');
+    const wsUrl = isLocal ? `ws://localhost:2567` : `wss://seahorse-app-mv4sg.ondigitalocean.app`;
 
     const client = new window.Colyseus.Client(wsUrl);
     let room;
