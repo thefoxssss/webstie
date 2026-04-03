@@ -571,6 +571,12 @@ class VoiceRoom extends colyseus.Room {
     });
   }
 
+  updateMetadata() {
+    const names = [];
+    this.state.players.forEach(p => names.push(p.name));
+    this.setMetadata({ playerNames: names.join(", ") });
+  }
+
   onJoin(client, options) {
     const p = new VoicePlayer();
     p.id = client.sessionId;
@@ -578,11 +584,13 @@ class VoiceRoom extends colyseus.Room {
     p.talking = false;
     this.state.players.set(client.sessionId, p);
     console.log(`VoicePlayer ${client.sessionId} joined room ${this.roomId}`);
+    this.updateMetadata();
   }
 
   onLeave(client, consented) {
     this.state.players.delete(client.sessionId);
     console.log(`VoicePlayer ${client.sessionId} left room ${this.roomId}`);
+    this.updateMetadata();
   }
 }
 
