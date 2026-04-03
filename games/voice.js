@@ -61,7 +61,15 @@ async function refreshVoiceRooms() {
             const clientsSpan = document.createElement("div");
             clientsSpan.style.fontSize = "10px";
             clientsSpan.style.color = "var(--accent)";
-            clientsSpan.textContent = `USERS: ${room.clients} / ${room.maxClients}`;
+
+            let userNames = room.metadata && room.metadata.playerNames ? room.metadata.playerNames : "Empty";
+            if (!room.metadata || !room.metadata.playerNames) {
+                // Fallback for older server instances
+                clientsSpan.textContent = `USERS: ${room.clients} / ${room.maxClients}`;
+            } else {
+                clientsSpan.textContent = `USERS: ${userNames} (${room.clients}/${room.maxClients})`;
+            }
+
             info.appendChild(nameSpan);
             info.appendChild(clientsSpan);
 
@@ -122,7 +130,21 @@ async function createOrJoinVoiceRoom(isCreate, joinRoomId = null) {
                 alert("Room ID is missing.");
                 return;
             }
-            voiceRoom = await client.joinById(joinRoomId, { name: username });
+            try {
+                voiceRoom = await client.joinById(joinRoomId, { name: username });
+            } catch (joinError) {
+                if (joinError.message && joinError.message.includes("not found")) {
+                    alert(`Room "${joinRoomId}" is no longer available. Refreshing room list...`);
+                    refreshVoiceRooms();
+                } else {
+                    alert("Failed to join room: " + joinError.message);
+                }
+                if (localStream) {
+                    localStream.getTracks().forEach(t => t.stop());
+                    localStream = null;
+                }
+                return;
+            }
         }
 
         // UI Updates
