@@ -1330,16 +1330,11 @@
     <div class="overlay" id="overlayVoice">
       <h1>VOICE LOUNGE</h1>
       <div id="voiceMenu" class="menu-box">
-        <button class="term-btn" id="btnCreateVoice">CREATE ROOM</button>
-        <p>- OR -</p>
-        <input
-          type="text"
-          id="joinVoiceCode"
-          class="term-input"
-          placeholder="ROOM CODE"
-          maxlength="20"
-        />
-        <button class="term-btn" id="btnJoinVoice">JOIN ROOM</button>
+        <button class="term-btn" id="btnCreateVoice" style="margin-bottom: 20px;">CREATE NEW ROOM</button>
+        <div style="font-size: 10px; margin-bottom: 10px; text-align: left; border-bottom: 1px solid var(--accent); padding-bottom: 5px;">ACTIVE ROOMS</div>
+        <div id="voiceRoomList" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+            <div style="font-size: 10px; color: #aaa;">SCANNING FOR ROOMS...</div>
+        </div>
       </div>
 
       <div id="voiceLobby" class="menu-box" style="display: none">
