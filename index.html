@@ -1326,6 +1326,35 @@
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
+    <!-- Voice Lounge overlay -->
+    <div class="overlay" id="overlayVoice">
+      <h1>VOICE LOUNGE</h1>
+      <div id="voiceMenu" class="menu-box">
+        <button class="term-btn" id="btnCreateVoice">CREATE ROOM</button>
+        <p>- OR -</p>
+        <input
+          type="text"
+          id="joinVoiceCode"
+          class="term-input"
+          placeholder="ROOM CODE"
+          maxlength="20"
+        />
+        <button class="term-btn" id="btnJoinVoice">JOIN ROOM</button>
+      </div>
+
+      <div id="voiceLobby" class="menu-box" style="display: none">
+        <h2>ROOM: <span id="voiceRoomId">----</span></h2>
+        <div id="voicePList" style="text-align: left; margin: 14px 0"></div>
+        <button class="term-btn" id="btnVoiceMute">MUTE MIC</button>
+        <button class="term-btn" id="btnVoiceLeave" style="margin-top: 10px; border-color: #f66; color: #f66;">LEAVE ROOM</button>
+      </div>
+
+      <!-- Hidden container for peer audio elements -->
+      <div id="voiceAudioContainer" style="display: none;"></div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
+    </div>
+
     <!-- Neon Defender mini-game overlay. -->
     <div class="overlay" id="overlayNeondefender">
       <h1>NEON DEFENDER</h1>
