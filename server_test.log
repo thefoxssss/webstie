@@ -1,14 +1,22 @@
-Colyseus game server is listening on port 2567...
+node:internal/modules/cjs/loader:1386
+  throw err;
+  ^
 
-       ___      _
-      / __\___ | |_   _ ___  ___ _   _ ___
-     / /  / _ \| | | | / __|/ _ \ | | / __|
-    / /__| (_) | | |_| \__ \  __/ |_| \__ \
-    \____/\___/|_|\__, |___/\___|\__,_|___/
-                  |___/
+Error: Cannot find module 'colyseus'
+Require stack:
+- /app/server.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (/app/server.js:1:18)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ '/app/server.js' ]
+}
 
-     · Multiplayer Framework for Node.js ·
-
-💖 Consider becoming a Sponsor on GitHub → https://github.com/sponsors/endel
-🌟 Give us a star on GitHub → https://github.com/colyseus/colyseus
-☁️  Deploy and scale your project on Colyseus Cloud → https://cloud.colyseus.io
+Node.js v22.22.1

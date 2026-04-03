@@ -11,9 +11,11 @@ export function initVoice() {
 
     // Bind buttons
     document.getElementById("btnCreateVoice").onclick = () => createOrJoinVoiceRoom(true);
-    document.getElementById("btnJoinVoice").onclick = () => createOrJoinVoiceRoom(false);
     document.getElementById("btnVoiceLeave").onclick = leaveVoiceRoom;
     document.getElementById("btnVoiceMute").onclick = toggleMute;
+
+    // Fetch active rooms on open
+    refreshVoiceRooms();
 
     // Add cleanup on game stop
     if (!window.gameStops) window.gameStops = [];
@@ -22,7 +24,74 @@ export function initVoice() {
     });
 }
 
-async function createOrJoinVoiceRoom(isCreate) {
+async function refreshVoiceRooms() {
+    try {
+        if (typeof window.Colyseus === 'undefined') return;
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "localhost:2567"
+          : "seahorse-app-mv4sg.ondigitalocean.app";
+        const client = new window.Colyseus.Client(`${wsProtocol}://${wsHost}`);
+
+        const rooms = await client.getAvailableRooms("voice_room");
+
+        const listDiv = document.getElementById("voiceRoomList");
+        if (!listDiv) return;
+
+        listDiv.innerHTML = "";
+
+        if (rooms.length === 0) {
+            listDiv.innerHTML = '<div style="font-size: 10px; color: #aaa;">NO ACTIVE ROOMS FOUND.</div>';
+            return;
+        }
+
+        rooms.forEach(room => {
+            const row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.justifyContent = "space-between";
+            row.style.alignItems = "center";
+            row.style.padding = "10px";
+            row.style.border = "1px solid var(--accent-dim)";
+            row.style.background = "rgba(0, 0, 0, 0.5)";
+
+            const info = document.createElement("div");
+            info.style.textAlign = "left";
+            const nameSpan = document.createElement("div");
+            nameSpan.textContent = `ROOM: ${room.roomId}`;
+            const clientsSpan = document.createElement("div");
+            clientsSpan.style.fontSize = "10px";
+            clientsSpan.style.color = "var(--accent)";
+            clientsSpan.textContent = `USERS: ${room.clients} / ${room.maxClients}`;
+            info.appendChild(nameSpan);
+            info.appendChild(clientsSpan);
+
+            const joinBtn = document.createElement("button");
+            joinBtn.className = "term-btn";
+            joinBtn.style.padding = "5px 10px";
+            joinBtn.style.width = "auto";
+            joinBtn.textContent = "JOIN";
+            joinBtn.onclick = () => createOrJoinVoiceRoom(false, room.roomId);
+
+            if (room.clients >= room.maxClients) {
+                joinBtn.disabled = true;
+                joinBtn.textContent = "FULL";
+                joinBtn.style.borderColor = "#666";
+                joinBtn.style.color = "#666";
+            }
+
+            row.appendChild(info);
+            row.appendChild(joinBtn);
+            listDiv.appendChild(row);
+        });
+
+    } catch(e) {
+        console.error("Error fetching voice rooms:", e);
+        const listDiv = document.getElementById("voiceRoomList");
+        if (listDiv) listDiv.innerHTML = '<div style="font-size: 10px; color: #f66;">ERROR SCANNING ROOMS.</div>';
+    }
+}
+
+async function createOrJoinVoiceRoom(isCreate, joinRoomId = null) {
     try {
         if (typeof window.Colyseus === 'undefined') {
             alert("Colyseus library not loaded.");
@@ -49,19 +118,17 @@ async function createOrJoinVoiceRoom(isCreate) {
         if (isCreate) {
             voiceRoom = await client.create("voice_room", { name: username });
         } else {
-            const code = document.getElementById("joinVoiceCode").value.trim().toUpperCase();
-            if (!code) {
-                alert("Enter a room code");
+            if (!joinRoomId) {
+                alert("Room ID is missing.");
                 return;
             }
-            voiceRoom = await client.joinById(code, { name: username });
+            voiceRoom = await client.joinById(joinRoomId, { name: username });
         }
 
         // UI Updates
         document.getElementById("voiceMenu").style.display = "none";
         document.getElementById("voiceLobby").style.display = "block";
         document.getElementById("voiceRoomId").textContent = voiceRoom.roomId;
-        document.getElementById("joinVoiceCode").value = "";
 
         setupRoomEventHandlers();
 
