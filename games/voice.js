@@ -1,5 +1,3 @@
-import { getColyseusClient } from '../core.js';
-
 let voiceRoom = null;
 let localStream = null;
 let peers = {}; // mapping from sessionId to RTCPeerConnection
@@ -26,11 +24,16 @@ export function initVoice() {
 
 async function createOrJoinVoiceRoom(isCreate) {
     try {
-        const client = getColyseusClient();
-        if (!client) {
-            alert("Waiting for server connection... please try again.");
+        if (typeof window.Colyseus === 'undefined') {
+            alert("Colyseus library not loaded.");
             return;
         }
+
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "localhost:2567"
+          : "seahorse-app-mv4sg.ondigitalocean.app";
+        const client = new window.Colyseus.Client(`${wsProtocol}://${wsHost}`);
 
         // Get microphone access FIRST
         try {
