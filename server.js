@@ -329,8 +329,210 @@ class GameRoom extends colyseus.Room {
   }
 }
 
+// --------------------------------------------------------
+// BUILDER ROOM DEFINITION
+// --------------------------------------------------------
+class BuilderPlayer extends Schema {}
+type("string")(BuilderPlayer.prototype, "id");
+type("string")(BuilderPlayer.prototype, "name");
+type("number")(BuilderPlayer.prototype, "x");
+type("number")(BuilderPlayer.prototype, "y");
+type("number")(BuilderPlayer.prototype, "vx");
+type("number")(BuilderPlayer.prototype, "vy");
+type("string")(BuilderPlayer.prototype, "color");
+
+class Block extends Schema {}
+type("number")(Block.prototype, "x");
+type("number")(Block.prototype, "y");
+type("number")(Block.prototype, "type");
+
+class BuilderState extends Schema {
+    constructor() {
+        super();
+        this.players = new MapSchema();
+        this.blocks = new MapSchema();
+    }
+}
+type({ map: BuilderPlayer })(BuilderState.prototype, "players");
+type({ map: Block })(BuilderState.prototype, "blocks");
+
+const BUILDER_TICK_RATE = 20;
+const TILE_SIZE = 32;
+const MAP_WIDTH = 100;
+const MAP_HEIGHT = 40;
+
+class BuilderRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 50;
+    this.autoDispose = false;
+
+    const state = new BuilderState();
+
+    // Generate initial terrain
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      for (let y = MAP_HEIGHT - 5; y < MAP_HEIGHT; y++) {
+        const b = new Block();
+        b.x = x;
+        b.y = y;
+        b.type = y === MAP_HEIGHT - 5 ? 1 : 2; // 1: grass, 2: dirt
+        state.blocks.set(`${x},${y}`, b);
+      }
+    }
+
+    this.setState(state);
+
+    this.inputs = {};
+
+    this.onMessage("input", (client, message) => {
+      const pId = client.sessionId;
+      if (this.inputs[pId]) {
+        this.inputs[pId].left = message.left;
+        this.inputs[pId].right = message.right;
+        if (message.upPress) this.inputs[pId].upPress = true;
+      }
+    });
+
+    this.onMessage("build", (client, message) => {
+      const x = Math.floor(message.x / TILE_SIZE);
+      const y = Math.floor(message.y / TILE_SIZE);
+
+      if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+        const key = `${x},${y}`;
+        // Check if block already exists
+        if (!this.state.blocks.get(key)) {
+            // Check intersection with players
+            let intersect = false;
+            this.state.players.forEach(p => {
+                if (
+                    p.x < x * TILE_SIZE + TILE_SIZE &&
+                    p.x + TILE_SIZE > x * TILE_SIZE &&
+                    p.y < y * TILE_SIZE + TILE_SIZE &&
+                    p.y + TILE_SIZE > y * TILE_SIZE
+                ) {
+                    intersect = true;
+                }
+            });
+            if (!intersect) {
+                const b = new Block();
+                b.x = x;
+                b.y = y;
+                b.type = message.type || 3;
+                this.state.blocks.set(key, b);
+            }
+        }
+      }
+    });
+
+    this.onMessage("break", (client, message) => {
+      const x = Math.floor(message.x / TILE_SIZE);
+      const y = Math.floor(message.y / TILE_SIZE);
+      const key = `${x},${y}`;
+      if (this.state.blocks.get(key)) {
+          this.state.blocks.delete(key);
+      }
+    });
+
+    this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
+  }
+
+  onJoin(client, options) {
+    const p = new BuilderPlayer();
+    p.id = client.sessionId;
+    p.name = options.name || "Builder";
+    p.x = Math.random() * (MAP_WIDTH * TILE_SIZE - TILE_SIZE);
+    p.y = 100;
+    p.vx = 0;
+    p.vy = 0;
+    p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+    this.state.players.set(client.sessionId, p);
+
+    this.inputs[client.sessionId] = { left: false, right: false, upPress: false };
+  }
+
+  onLeave(client, consented) {
+    this.state.players.delete(client.sessionId);
+    delete this.inputs[client.sessionId];
+  }
+
+  isSolid(x, y) {
+      if (x < 0 || x >= MAP_WIDTH) return true; // keep horizontal bounds solid
+      if (y < 0) return true; // keep ceiling solid
+      // Do not make the bottom solid, so players can fall off and respawn
+      if (y >= MAP_HEIGHT) return false;
+      return this.state.blocks.get(`${x},${y}`) !== undefined;
+  }
+
+  simulateTick() {
+    this.state.players.forEach((p, sessionId) => {
+        const inp = this.inputs[sessionId];
+        if (!inp) return;
+
+        if (inp.left) p.vx -= 1.5;
+        if (inp.right) p.vx += 1.5;
+
+        p.vx *= 0.8;
+        p.vy += 0.8; // gravity
+        p.vy *= 0.98;
+
+        // Apply X velocity
+        p.x += p.vx;
+
+        // Bounds check X
+        if (p.x < 0) { p.x = 0; p.vx = 0; }
+        if (p.x > MAP_WIDTH * TILE_SIZE - TILE_SIZE) { p.x = MAP_WIDTH * TILE_SIZE - TILE_SIZE; p.vx = 0; }
+
+        // Collision check X
+        let px1 = Math.floor(p.x / TILE_SIZE);
+        let px2 = Math.floor((p.x + TILE_SIZE - 1) / TILE_SIZE);
+        let py1 = Math.floor(p.y / TILE_SIZE);
+        let py2 = Math.floor((p.y + TILE_SIZE - 1) / TILE_SIZE);
+
+        if (p.vx > 0 && (this.isSolid(px2, py1) || this.isSolid(px2, py2))) {
+            p.x = px2 * TILE_SIZE - TILE_SIZE;
+            p.vx = 0;
+        } else if (p.vx < 0 && (this.isSolid(px1, py1) || this.isSolid(px1, py2))) {
+            p.x = (px1 + 1) * TILE_SIZE;
+            p.vx = 0;
+        }
+
+        // Apply Y velocity
+        p.y += p.vy;
+
+        // Bounds check Y
+        if (p.y > MAP_HEIGHT * TILE_SIZE) {
+            // Respawn if they fall off
+            p.y = 100;
+            p.vy = 0;
+        }
+
+        // Collision check Y
+        px1 = Math.floor(p.x / TILE_SIZE);
+        px2 = Math.floor((p.x + TILE_SIZE - 1) / TILE_SIZE);
+        py1 = Math.floor(p.y / TILE_SIZE);
+        py2 = Math.floor((p.y + TILE_SIZE - 1) / TILE_SIZE);
+
+        let grounded = false;
+        if (p.vy > 0 && (this.isSolid(px1, py2) || this.isSolid(px2, py2))) {
+            p.y = py2 * TILE_SIZE - TILE_SIZE;
+            p.vy = 0;
+            grounded = true;
+        } else if (p.vy < 0 && (this.isSolid(px1, py1) || this.isSolid(px2, py1))) {
+            p.y = (py1 + 1) * TILE_SIZE;
+            p.vy = 0;
+        }
+
+        if (grounded && inp.upPress) {
+            p.vy = -12;
+        }
+
+        inp.upPress = false;
+    });
+  }
+}
+
 gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
+gameServer.define("builder_room", BuilderRoom);
 
 gameServer.listen(port);
 console.log(`Colyseus game server is listening on port ${port}...`);
