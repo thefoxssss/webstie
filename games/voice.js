@@ -151,10 +151,9 @@ function setupRoomEventHandlers() {
             renderLobby();
         });
 
-        // If a NEW player joins and I am already in the room, I should initiate the WebRTC connection to them
-        // To prevent both sides initiating, we can say the user who is already in the room initiates to the new joiner
-        if (sessionId !== voiceRoom.sessionId) {
-            // Initiate connection
+        // Prevent both peers from initiating a connection simultaneously.
+        // The peer with the alphabetically smaller session ID will send the offer.
+        if (voiceRoom.sessionId < sessionId) {
             initiatePeerConnection(sessionId);
         }
     });
