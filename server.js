@@ -530,9 +530,66 @@ class BuilderRoom extends colyseus.Room {
   }
 }
 
+// --------------------------------------------------------
+// VOICE ROOM DEFINITION (WebRTC Signaling)
+// --------------------------------------------------------
+class VoicePlayer extends Schema {}
+type("string")(VoicePlayer.prototype, "id");
+type("string")(VoicePlayer.prototype, "name");
+type("boolean")(VoicePlayer.prototype, "talking");
+
+class VoiceState extends Schema {
+    constructor() {
+        super();
+        this.players = new MapSchema();
+    }
+}
+type({ map: VoicePlayer })(VoiceState.prototype, "players");
+
+class VoiceRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 4; // limit to 4 for peer-to-peer mesh
+    this.setState(new VoiceState());
+
+    // Relay WebRTC signaling messages
+    this.onMessage("signal", (client, message) => {
+        // message should contain { to: targetSessionId, data: signalData }
+        const targetClient = this.clients.find(c => c.sessionId === message.to);
+        if (targetClient) {
+            targetClient.send("signal", {
+                from: client.sessionId,
+                data: message.data
+            });
+        }
+    });
+
+    this.onMessage("talking", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (p) {
+            p.talking = !!message;
+        }
+    });
+  }
+
+  onJoin(client, options) {
+    const p = new VoicePlayer();
+    p.id = client.sessionId;
+    p.name = options.name || "Anon";
+    p.talking = false;
+    this.state.players.set(client.sessionId, p);
+    console.log(`VoicePlayer ${client.sessionId} joined room ${this.roomId}`);
+  }
+
+  onLeave(client, consented) {
+    this.state.players.delete(client.sessionId);
+    console.log(`VoicePlayer ${client.sessionId} left room ${this.roomId}`);
+  }
+}
+
 gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
 gameServer.define("builder_room", BuilderRoom);
+gameServer.define("voice_room", VoiceRoom);
 
 gameServer.listen(port);
 console.log(`Colyseus game server is listening on port ${port}...`);

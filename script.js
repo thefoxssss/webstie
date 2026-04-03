@@ -72,6 +72,7 @@ import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
 import { initCoreDriller } from "./games/coredriller.js";
 import { initEmulator } from "./games/emulator.js";
+import { initVoice } from "./games/voice.js";
 import { initByteBlitz } from "./games/byteblitz.js";
 import { initCipherCrack } from "./games/ciphercrack.js";
 import { initAstroHop } from "./games/astrohop.js";
@@ -313,6 +314,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "voidminer") initVoidMiner();
   if (game === "coredriller") initCoreDriller();
   if (game === "emulator") initEmulator();
+  if (game === "voice") initVoice();
   if (game === "byteblitz") initByteBlitz();
   if (game === "ciphercrack") initCipherCrack();
   if (game === "astrohop") initAstroHop();

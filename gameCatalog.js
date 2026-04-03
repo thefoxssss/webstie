@@ -25,6 +25,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "smasharena", title: "SMASH ARENA", description: "Neon platform-fighter duels with room-code online play.", icon: "💥", tags: ["pvp", "arcade", "platformer", "skill"] },
   { id: "drift", title: "NEON DRIFT", description: "Slide corners and chain clean laps.", icon: "🏎️", tags: ["pvp", "arcade", "skill"] },
   { id: "emulator", title: "CPU EMULATOR", description: "Program-like puzzle sandbox challenge.", icon: "🖥️", tags: ["skill", "puzzle", "logic"] },
+  { id: "voice", title: "VOICE LOUNGE", description: "Peer-to-peer WebRTC voice comms lobby.", icon: "🎙️", tags: ["social", "pvp"] },
   { id: "byteblitz", title: "BYTE BLITZ", description: "Defend the buffer with ship controls, waves, and powerups.", icon: "💾", tags: ["arcade", "skill"] },
   { id: "ciphercrack", title: "CIPHER CRACK", description: "Decrypt shifting ciphers before time runs out.", icon: "🔐", tags: ["skill", "puzzle", "logic"] },
   { id: "astrohop", title: "ASTRO HOP", description: "Leap castle gaps, dash hazards, and race the clock.", icon: "👟", tags: ["arcade", "platformer", "timing"] },
