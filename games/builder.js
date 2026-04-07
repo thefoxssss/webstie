@@ -63,6 +63,7 @@ export function initBuilder() {
         7: "LOG",
         8: "LEAVES",
     };
+    const getMergedInventoryType = (type) => (type === 7 ? 4 : type);
 
     const normalizeItem = (item) => {
         if (item === undefined || item === null) return undefined;
@@ -430,11 +431,12 @@ export function initBuilder() {
     }
 
     function addInventoryItem(type, count) {
+        const mergedType = getMergedInventoryType(type);
         let remaining = count;
 
         // First try to fill existing stacks
         for (let i = 0; i < hotbarSlots.length; i++) {
-            if (hotbarSlots[i] && hotbarSlots[i].type === type && hotbarSlots[i].count < 99) {
+            if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === mergedType && hotbarSlots[i].count < 99) {
                 const add = Math.min(remaining, 99 - hotbarSlots[i].count);
                 hotbarSlots[i].count += add;
                 remaining -= add;
@@ -442,7 +444,7 @@ export function initBuilder() {
             }
         }
         for (let i = 0; i < inventorySlots.length; i++) {
-            if (inventorySlots[i] && inventorySlots[i].type === type && inventorySlots[i].count < 99) {
+            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === mergedType && inventorySlots[i].count < 99) {
                 const add = Math.min(remaining, 99 - inventorySlots[i].count);
                 inventorySlots[i].count += add;
                 remaining -= add;
@@ -453,7 +455,7 @@ export function initBuilder() {
         // Then try empty slots
         for (let i = 0; i < hotbarSlots.length; i++) {
             if (hotbarSlots[i] === undefined) {
-                hotbarSlots[i] = { type, count: Math.min(remaining, 99) };
+                hotbarSlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= hotbarSlots[i].count;
                 if (remaining <= 0) {
                     selectedBlockType = hotbarSlots[selectedHotbarIndex];
@@ -463,7 +465,7 @@ export function initBuilder() {
         }
         for (let i = 0; i < inventorySlots.length; i++) {
             if (inventorySlots[i] === undefined) {
-                inventorySlots[i] = { type, count: Math.min(remaining, 99) };
+                inventorySlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= inventorySlots[i].count;
                 if (remaining <= 0) return;
             }
@@ -522,7 +524,7 @@ export function initBuilder() {
                 let woodIndex = -1;
                 let foundHotbar = false;
                 for (let i = 0; i < hotbarSlots.length; i++) {
-                    if (hotbarSlots[i] && hotbarSlots[i].type === 4 && hotbarSlots[i].count >= 1) {
+                    if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === 4 && hotbarSlots[i].count >= 1) {
                         woodIndex = i;
                         foundHotbar = true;
                         break;
@@ -530,7 +532,7 @@ export function initBuilder() {
                 }
                 if (woodIndex === -1) {
                     for (let i = 0; i < inventorySlots.length; i++) {
-                        if (inventorySlots[i] && inventorySlots[i].type === 4 && inventorySlots[i].count >= 1) {
+                        if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
                             woodIndex = i;
                             break;
                         }
