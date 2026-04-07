@@ -403,11 +403,22 @@ type("number")(BuilderPlayer.prototype, "y");
 type("number")(BuilderPlayer.prototype, "vx");
 type("number")(BuilderPlayer.prototype, "vy");
 type("string")(BuilderPlayer.prototype, "color");
+type("number")(BuilderPlayer.prototype, "hp");
+type("number")(BuilderPlayer.prototype, "maxHp");
 
 class Block extends Schema {}
 type("number")(Block.prototype, "x");
 type("number")(Block.prototype, "y");
 type("number")(Block.prototype, "type");
+
+class ItemDrop extends Schema {}
+type("string")(ItemDrop.prototype, "id");
+type("number")(ItemDrop.prototype, "x");
+type("number")(ItemDrop.prototype, "y");
+type("number")(ItemDrop.prototype, "vx");
+type("number")(ItemDrop.prototype, "vy");
+type("number")(ItemDrop.prototype, "type");
+type("number")(ItemDrop.prototype, "count");
 
 class Chunk extends Schema {
   constructor() {
@@ -422,10 +433,12 @@ class BuilderState extends Schema {
         super();
         this.players = new MapSchema();
         this.chunks = new MapSchema();
+        this.drops = new MapSchema();
     }
 }
 type({ map: BuilderPlayer })(BuilderState.prototype, "players");
 type({ map: Chunk })(BuilderState.prototype, "chunks");
+type({ map: ItemDrop })(BuilderState.prototype, "drops");
 
 const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
@@ -457,7 +470,7 @@ class BuilderRoom extends colyseus.Room {
 
     this.onMessage("build", (client, message) => {
       const p = this.state.players.get(client.sessionId);
-      if (!p) return;
+      if (!p || p.hp <= 0) return;
 
       const playerCenterX = p.x + TILE_SIZE / 2;
       const playerCenterY = p.y + TILE_SIZE / 2;
@@ -502,7 +515,7 @@ class BuilderRoom extends colyseus.Room {
 
     this.onMessage("break", (client, message) => {
       const p = this.state.players.get(client.sessionId);
-      if (!p) return;
+      if (!p || p.hp <= 0) return;
 
       const playerCenterX = p.x + TILE_SIZE / 2;
       const playerCenterY = p.y + TILE_SIZE / 2;
@@ -522,10 +535,97 @@ class BuilderRoom extends colyseus.Room {
 
       if (chunk) {
           const key = `${x},${y}`;
-          if (chunk.blocks.get(key)) {
+          const b = chunk.blocks.get(key);
+          if (b) {
+              const drop = new ItemDrop();
+              drop.id = `drop-${Date.now()}-${Math.random()}`;
+              drop.x = x * TILE_SIZE + TILE_SIZE / 2;
+              drop.y = y * TILE_SIZE + TILE_SIZE / 2;
+              drop.vx = (Math.random() - 0.5) * 4;
+              drop.vy = -4 - Math.random() * 4;
+              drop.type = b.type;
+              drop.count = 1;
+              this.state.drops.set(drop.id, drop);
+
               chunk.blocks.delete(key);
           }
       }
+    });
+
+    this.onMessage("pickup", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p || p.hp <= 0) return;
+
+      const drop = this.state.drops.get(message.id);
+      if (!drop) return;
+
+      const dx = p.x + TILE_SIZE/2 - drop.x;
+      const dy = p.y + TILE_SIZE/2 - drop.y;
+      if (dx*dx + dy*dy < (TILE_SIZE * 2) ** 2) {
+          this.state.drops.delete(drop.id);
+          client.send("picked_up", { type: drop.type, count: drop.count });
+      }
+    });
+
+    this.onMessage("attack", (client, message) => {
+      const attacker = this.state.players.get(client.sessionId);
+      if (!attacker || attacker.hp <= 0) return;
+
+      const target = this.state.players.get(message.targetId);
+      if (!target || target.hp <= 0) return;
+
+      const dx = attacker.x - target.x;
+      const dy = attacker.y - target.y;
+      const distSq = dx*dx + dy*dy;
+
+      // Melee range
+      if (distSq < (TILE_SIZE * 3) ** 2) {
+          target.hp -= message.damage || 1;
+          target.vy = -6;
+          target.vx = (target.x - attacker.x > 0 ? 1 : -1) * 8;
+
+          if (target.hp <= 0) {
+              target.hp = 0;
+              const targetClient = this.clients.find(c => c.sessionId === message.targetId);
+              if (targetClient) {
+                  targetClient.send("died", { killer: attacker.name });
+              }
+          }
+      }
+    });
+
+    this.onMessage("spawn_drops", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p) return;
+        // Client sends their inventory to drop
+        const items = message.items || [];
+        items.forEach(item => {
+            if (!item.type || !item.count) return;
+            const drop = new ItemDrop();
+            drop.id = `drop-${Date.now()}-${Math.random()}`;
+            drop.x = p.x + TILE_SIZE / 2;
+            drop.y = p.y + TILE_SIZE / 2;
+            drop.vx = (Math.random() - 0.5) * 8;
+            drop.vy = -4 - Math.random() * 8;
+            drop.type = item.type;
+            drop.count = item.count;
+            this.state.drops.set(drop.id, drop);
+        });
+    });
+
+    this.onMessage("respawn", (client) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p) return;
+
+        // Respawn player
+        const spawnX = Math.floor(Math.random() * 200) - 100;
+        const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
+        const spawnY = Math.floor(20 + noise * 15) - 2;
+        p.x = spawnX * TILE_SIZE;
+        p.y = spawnY * TILE_SIZE;
+        p.vx = 0;
+        p.vy = 0;
+        p.hp = p.maxHp;
     });
 
     this.loadWorld();
@@ -548,6 +648,8 @@ class BuilderRoom extends colyseus.Room {
     p.vx = 0;
     p.vy = 0;
     p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+    p.maxHp = 10;
+    p.hp = 10;
     this.state.players.set(client.sessionId, p);
 
     this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
@@ -733,12 +835,12 @@ class BuilderRoom extends colyseus.Room {
         p.y += p.vy;
 
         // Fall into the void respawn
-        if (p.y > 50 * TILE_SIZE) {
-            const spawnX = Math.floor(p.x / TILE_SIZE);
-            const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-            const spawnY = Math.floor(20 + noise * 15) - 2;
-            p.y = spawnY * TILE_SIZE;
-            p.vy = 0;
+        if (p.y > 100 * TILE_SIZE) {
+            if (p.hp > 0) {
+                p.hp = 0;
+                const c = this.clients.find(c => c.sessionId === sessionId);
+                if (c) c.send("died", { killer: "the void" });
+            }
         }
 
         // Collision check Y (swept, avoids slight sinking into tiles)
@@ -776,6 +878,42 @@ class BuilderRoom extends colyseus.Room {
             inp.jumpBuffer--;
         }
     });
+
+    // Simulate item drops physics
+    const dropsToDelete = [];
+    this.state.drops.forEach((drop, id) => {
+        drop.vy += 0.8; // gravity
+        drop.vx *= 0.9;
+        drop.vy *= 0.98;
+
+        drop.x += drop.vx;
+
+        const px1 = Math.floor((drop.x - 4) / TILE_SIZE);
+        const px2 = Math.floor((drop.x + 4) / TILE_SIZE);
+        const py = Math.floor(drop.y / TILE_SIZE);
+
+        if (this.isSolid(px1, py) || this.isSolid(px2, py)) {
+            drop.x -= drop.vx;
+            drop.vx = -drop.vx * 0.5;
+        }
+
+        drop.y += drop.vy;
+
+        const py1 = Math.floor((drop.y - 4) / TILE_SIZE);
+        const py2 = Math.floor((drop.y + 4) / TILE_SIZE);
+        const px = Math.floor(drop.x / TILE_SIZE);
+
+        if (this.isSolid(px, py1) || this.isSolid(px, py2)) {
+            drop.y -= drop.vy;
+            drop.vy = -drop.vy * 0.5;
+        }
+
+        if (drop.y > 100 * TILE_SIZE) {
+            dropsToDelete.push(id);
+        }
+    });
+
+    dropsToDelete.forEach(id => this.state.drops.delete(id));
   }
 }
 
