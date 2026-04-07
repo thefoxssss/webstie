@@ -49,6 +49,8 @@ export function initBuilder() {
         4: "#e1c699", // Wood
         5: "#ffffff", // Glass
         6: "#b22222", // Brick
+        7: "#5d4037", // Log
+        8: "#2e7d32", // Leaves
     };
 
     const blockNames = {
@@ -58,11 +60,13 @@ export function initBuilder() {
         4: "WOOD",
         5: "GLASS",
         6: "BRICK",
+        7: "LOG",
+        8: "LEAVES",
     };
 
     let selectedHotbarIndex = 0;
     // Map initial available blocks, empty for the rest
-    let hotbarSlots = [1, 2, 3, 4, 5, 6, undefined, undefined, undefined];
+    let hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined];
     let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
     let inventoryOpen = false;
