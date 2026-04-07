@@ -67,6 +67,10 @@ export function initBuilder() {
     let localPlayerId = null;
     let inventoryOpen = false;
 
+    // Drag-and-drop state
+    let draggedItemType = null;
+    let dragSourceHotbarIndex = null;
+
     let camera = { x: 0, y: 0 };
 
     // Cached UI values to prevent DOM thrashing
@@ -268,6 +272,16 @@ export function initBuilder() {
         }
         if (e.key === "i" || e.key === "I") {
             inventoryOpen = !inventoryOpen;
+
+            // Cancel drag if we close inventory while dragging
+            if (!inventoryOpen && draggedItemType !== null) {
+                if (dragSourceHotbarIndex !== null) {
+                    hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
+                }
+                draggedItemType = null;
+                dragSourceHotbarIndex = null;
+                selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+            }
             return;
         }
 
@@ -322,21 +336,38 @@ export function initBuilder() {
 
     function handleMouseDown(e) {
         if (!room) return;
+
+        // Handle inventory and dragging mechanics first
+        if (inventoryOpen) {
+            const hotbarPanel = getHotbarBounds();
+            const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
+
+            if (hotbarIndex !== null) {
+                if (hotbarSlots[hotbarIndex] !== undefined) {
+                    // Pick up from hotbar
+                    draggedItemType = hotbarSlots[hotbarIndex];
+                    dragSourceHotbarIndex = hotbarIndex;
+                    hotbarSlots[hotbarIndex] = undefined;
+                }
+                return;
+            }
+
+            const panel = getInventoryBounds();
+            const inventorySelection = getInventorySlotAt(mouse.x, mouse.y, panel);
+            if (inventorySelection) {
+                // Pick up from inventory (copy)
+                draggedItemType = inventorySelection;
+                dragSourceHotbarIndex = null;
+            }
+            return;
+        }
+
+        // Normal gameplay mode: hotbar selection
         const hotbarPanel = getHotbarBounds();
         const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
         if (hotbarIndex !== null) {
             selectedHotbarIndex = hotbarIndex;
             selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
-            return;
-        }
-
-        if (inventoryOpen) {
-            const panel = getInventoryBounds();
-            const inventorySelection = getInventorySlotAt(mouse.x, mouse.y, panel);
-            if (inventorySelection) {
-                hotbarSlots[selectedHotbarIndex] = inventorySelection;
-                selectedBlockType = inventorySelection;
-            }
             return;
         }
 
@@ -361,6 +392,37 @@ export function initBuilder() {
     function handleMouseUp() {
         mouse.isDown = false;
         clearBuildHoldTimers();
+
+        // Handle dropping a dragged item
+        if (inventoryOpen && draggedItemType !== null) {
+            const hotbarPanel = getHotbarBounds();
+            const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
+
+            if (hotbarIndex !== null) {
+                // Dropped on a hotbar slot
+                const existingItem = hotbarSlots[hotbarIndex];
+                hotbarSlots[hotbarIndex] = draggedItemType;
+
+                // Swap logic if we brought it from another hotbar slot
+                if (existingItem !== undefined && dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
+                    hotbarSlots[dragSourceHotbarIndex] = existingItem;
+                }
+            } else {
+                // Dropped outside a hotbar slot. We just clear the dragged item (throw it back in inventory).
+                // If you want it to bounce back to its original hotbar slot instead of disappearing when dropped
+                // on the background, you'd restore it here. The prompt said "put in the inventory" which means clearing it.
+            }
+
+            // Re-sync selectedBlockType in case we modified the currently selected hotbar slot
+            selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+
+            draggedItemType = null;
+            dragSourceHotbarIndex = null;
+        } else if (draggedItemType !== null) {
+            // Failsafe: drop outside inventory mode cancels drag
+            draggedItemType = null;
+            dragSourceHotbarIndex = null;
+        }
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -627,6 +689,14 @@ export function initBuilder() {
                     ctx.fillText(blockNames[blockType], slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize + 10);
                 }
                 */
+            }
+
+            // Draw currently dragged item attached to cursor
+            if (draggedItemType !== null) {
+                const drawSize = inventoryLayout.slotSize - 12; // 12 is inset*2 from earlier
+                ctx.fillStyle = blockColors[draggedItemType] || "#ffffff";
+                // Center the block on the mouse cursor
+                ctx.fillRect(mouse.x - drawSize / 2, mouse.y - drawSize / 2, drawSize, drawSize);
             }
         }
 
