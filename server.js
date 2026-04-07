@@ -448,7 +448,7 @@ const BUILDER_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
 class BuilderRoom extends colyseus.Room {
   onCreate(options) {
     this.maxClients = 50;
-    this.autoDispose = false;
+    this.autoDispose = true;
     this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
       ? options.serverName.trim().slice(0, 24)
       : "Public World";
@@ -659,6 +659,9 @@ class BuilderRoom extends colyseus.Room {
   onLeave(client, consented) {
     this.state.players.delete(client.sessionId);
     delete this.inputs[client.sessionId];
+    if (this.clients.length === 0) {
+      this.saveWorld();
+    }
     this.syncServerDirectory();
   }
 
