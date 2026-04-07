@@ -87,8 +87,18 @@ export function initBuilder() {
         slotSize: 62,
         gap: 12,
         cols: 9,
+        rows: 3,
     };
     const getBlockTypes = () => Object.keys(blockNames).map(Number);
+
+    function getInventoryMetrics(panel) {
+        const rows = inventoryLayout.rows;
+        const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
+        const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
+        const startX = panel.x + Math.floor((panel.width - gridWidth) / 2);
+        const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 10;
+        return { rows, gridWidth, gridHeight, startX, startY };
+    }
 
     function getHotbarBounds() {
         const itemCount = getBlockTypes().length;
@@ -109,11 +119,7 @@ export function initBuilder() {
 
     function getInventorySlotAt(x, y, panel) {
         const itemCount = getBlockTypes().length;
-        const rows = Math.max(1, Math.ceil(itemCount / inventoryLayout.cols));
-        const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
-        const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
-        const startX = panel.x + Math.floor((panel.width - gridWidth) / 2);
-        const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 10;
+        const { rows, startX, startY } = getInventoryMetrics(panel);
 
         const relativeX = x - startX;
         const relativeY = y - startY;
@@ -468,11 +474,7 @@ export function initBuilder() {
         if (inventoryOpen) {
             const panel = getInventoryBounds();
             const blockTypes = getBlockTypes();
-            const rows = Math.max(1, Math.ceil(blockTypes.length / inventoryLayout.cols));
-            const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
-            const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
-            const startX = panel.x + Math.floor((panel.width - gridWidth) / 2);
-            const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 10;
+            const { rows, startX, startY } = getInventoryMetrics(panel);
 
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -491,26 +493,33 @@ export function initBuilder() {
             ctx.fillStyle = "rgba(220,255,220,0.9)";
             ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 20);
 
-            blockTypes.forEach((blockType, index) => {
+            const totalSlots = inventoryLayout.cols * rows;
+            for (let index = 0; index < totalSlots; index += 1) {
+                const blockType = blockTypes[index];
                 const col = index % inventoryLayout.cols;
                 const row = Math.floor(index / inventoryLayout.cols);
                 const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
                 const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const isActive = selectedBlockType === blockType;
+                const isEmpty = typeof blockType === "undefined";
+                const isActive = !isEmpty && selectedBlockType === blockType;
 
                 ctx.fillStyle = "rgba(255,255,255,0.08)";
                 ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
-                ctx.fillStyle = blockColors[blockType];
-                ctx.fillRect(slotX + 6, slotY + 6, inventoryLayout.slotSize - 12, inventoryLayout.slotSize - 12);
+                if (!isEmpty) {
+                    ctx.fillStyle = blockColors[blockType];
+                    ctx.fillRect(slotX + 6, slotY + 6, inventoryLayout.slotSize - 12, inventoryLayout.slotSize - 12);
+                }
                 ctx.strokeStyle = isActive ? "#fff" : "rgba(170,255,170,0.6)";
                 ctx.lineWidth = isActive ? 3 : 1;
                 ctx.strokeRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
 
-                ctx.fillStyle = "#d6ffd6";
-                ctx.font = "7px 'Press Start 2P', monospace";
-                ctx.textAlign = "center";
-                ctx.fillText(blockNames[blockType], slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize + 10);
-            });
+                if (!isEmpty) {
+                    ctx.fillStyle = "#d6ffd6";
+                    ctx.font = "7px 'Press Start 2P', monospace";
+                    ctx.textAlign = "center";
+                    ctx.fillText(blockNames[blockType], slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize + 10);
+                }
+            }
         }
 
         animationFrameId = requestAnimationFrame(render);
