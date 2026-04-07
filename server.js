@@ -1,6 +1,6 @@
 const colyseus = require("colyseus");
 const { WebSocketTransport } = require("@colyseus/ws-transport");
-const { Schema, type, MapSchema, ArraySchema } = require("@colyseus/schema");
+const { Schema, type, MapSchema } = require("@colyseus/schema");
 const http = require("http");
 const express = require("express");
 const cors = require("cors");
@@ -340,8 +340,6 @@ type("number")(BuilderPlayer.prototype, "y");
 type("number")(BuilderPlayer.prototype, "vx");
 type("number")(BuilderPlayer.prototype, "vy");
 type("string")(BuilderPlayer.prototype, "color");
-type({ map: "number" })(BuilderPlayer.prototype, "inventory");
-type(["number"])(BuilderPlayer.prototype, "hotbar");
 
 class Block extends Schema {}
 type("number")(Block.prototype, "x");
@@ -357,147 +355,12 @@ class BuilderState extends Schema {
 }
 type({ map: BuilderPlayer })(BuilderState.prototype, "players");
 type({ map: Block })(BuilderState.prototype, "blocks");
-type("number")(BuilderState.prototype, "worldWidth");
-type("number")(BuilderState.prototype, "worldHeight");
 
 const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
-const MAP_WIDTH = 320;
-const MAP_HEIGHT = 120;
+const MAP_WIDTH = 100;
+const MAP_HEIGHT = 40;
 const BUILDER_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
-
-const BLOCK = {
-  GRASS: 1,
-  DIRT: 2,
-  STONE: 3,
-  WOOD: 4,
-  GLASS: 5,
-  BRICK: 6,
-  SAND: 7,
-  SNOW: 8,
-  LEAVES: 9,
-  COAL: 10,
-  IRON: 11
-};
-
-const CRAFTING_RECIPES = {
-  glass: { needs: { [BLOCK.SAND]: 2 }, gives: { type: BLOCK.GLASS, amount: 1 } },
-  brick: { needs: { [BLOCK.STONE]: 2, [BLOCK.DIRT]: 1 }, gives: { type: BLOCK.BRICK, amount: 1 } },
-  wood: { needs: { [BLOCK.LEAVES]: 2 }, gives: { type: BLOCK.WOOD, amount: 1 } },
-  stone: { needs: { [BLOCK.DIRT]: 2 }, gives: { type: BLOCK.STONE, amount: 1 } }
-};
-
-function addInventory(player, typeId, amount) {
-  const key = String(typeId);
-  const current = player.inventory.get(key) || 0;
-  player.inventory.set(key, current + amount);
-}
-
-function hasInventory(player, typeId, amount) {
-  return (player.inventory.get(String(typeId)) || 0) >= amount;
-}
-
-function removeInventory(player, typeId, amount) {
-  const key = String(typeId);
-  const current = player.inventory.get(key) || 0;
-  const next = Math.max(0, current - amount);
-  player.inventory.set(key, next);
-}
-
-function maybeAddToHotbar(player, typeId) {
-  for (let i = 0; i < player.hotbar.length; i++) {
-    if (player.hotbar[i] === typeId) return;
-    if (player.hotbar[i] === 0) {
-      player.hotbar[i] = typeId;
-      return;
-    }
-  }
-}
-
-function generateBuilderTerrain(state) {
-  const biomeStrip = [];
-  let cursor = 0;
-  while (cursor < MAP_WIDTH) {
-    const len = 24 + Math.floor(Math.random() * 26);
-    const biomeRoll = Math.random();
-    const biome = biomeRoll < 0.25 ? "plains" : biomeRoll < 0.5 ? "forest" : biomeRoll < 0.72 ? "desert" : biomeRoll < 0.88 ? "mountains" : "snow";
-    const end = Math.min(MAP_WIDTH, cursor + len);
-    for (let x = cursor; x < end; x++) biomeStrip[x] = biome;
-    cursor = end;
-  }
-
-  let height = Math.floor(MAP_HEIGHT * 0.4);
-  for (let x = 0; x < MAP_WIDTH; x++) {
-    const biome = biomeStrip[x];
-    const driftScale = biome === "mountains" ? 2 : 1;
-    height += Math.floor((Math.random() * 3 - 1) * driftScale);
-    const minHeight = biome === "mountains" ? Math.floor(MAP_HEIGHT * 0.24) : Math.floor(MAP_HEIGHT * 0.32);
-    const maxHeight = biome === "mountains" ? Math.floor(MAP_HEIGHT * 0.55) : Math.floor(MAP_HEIGHT * 0.48);
-    height = Math.max(minHeight, Math.min(maxHeight, height));
-
-    for (let y = height; y < MAP_HEIGHT; y++) {
-      const b = new Block();
-      b.x = x;
-      b.y = y;
-      if (y === height) {
-        b.type = biome === "desert" ? BLOCK.SAND : biome === "snow" ? BLOCK.SNOW : BLOCK.GRASS;
-      } else if (y < height + 4) {
-        b.type = biome === "desert" ? BLOCK.SAND : BLOCK.DIRT;
-      } else {
-        b.type = BLOCK.STONE;
-      }
-      state.blocks.set(`${x},${y}`, b);
-    }
-
-    const canTree = (biome === "forest" || biome === "plains" || biome === "snow") && Math.random() < (biome === "forest" ? 0.25 : 0.09);
-    if (canTree && height > 6) {
-      const trunk = 3 + Math.floor(Math.random() * 3);
-      for (let t = 1; t <= trunk; t++) {
-        const wood = new Block();
-        wood.x = x;
-        wood.y = height - t;
-        wood.type = BLOCK.WOOD;
-        state.blocks.set(`${wood.x},${wood.y}`, wood);
-      }
-      for (let lx = x - 2; lx <= x + 2; lx++) {
-        for (let ly = height - trunk - 2; ly <= height - trunk; ly++) {
-          if (lx < 1 || lx >= MAP_WIDTH - 1 || ly < 1) continue;
-          if (Math.abs(lx - x) + Math.abs(ly - (height - trunk - 1)) > 3) continue;
-          const leaves = new Block();
-          leaves.x = lx;
-          leaves.y = ly;
-          leaves.type = biome === "snow" ? BLOCK.SNOW : BLOCK.LEAVES;
-          state.blocks.set(`${leaves.x},${leaves.y}`, leaves);
-        }
-      }
-    }
-  }
-
-  const caveCount = Math.floor(MAP_WIDTH / 10);
-  for (let i = 0; i < caveCount; i++) {
-    const centerX = 8 + Math.floor(Math.random() * (MAP_WIDTH - 16));
-    const centerY = Math.floor(MAP_HEIGHT * 0.45) + Math.floor(Math.random() * Math.floor(MAP_HEIGHT * 0.45));
-    const radiusX = 3 + Math.floor(Math.random() * 8);
-    const radiusY = 2 + Math.floor(Math.random() * 5);
-    for (let x = centerX - radiusX; x <= centerX + radiusX; x++) {
-      for (let y = centerY - radiusY; y <= centerY + radiusY; y++) {
-        if (x < 1 || x >= MAP_WIDTH - 1 || y < 2 || y >= MAP_HEIGHT - 1) continue;
-        const nx = (x - centerX) / radiusX;
-        const ny = (y - centerY) / radiusY;
-        if ((nx * nx + ny * ny) <= 1 && Math.random() > 0.15) {
-          state.blocks.delete(`${x},${y}`);
-        }
-      }
-    }
-  }
-
-  state.blocks.forEach(block => {
-    if (block.type !== BLOCK.STONE) return;
-    const roll = Math.random();
-    if (roll < 0.02) block.type = BLOCK.IRON;
-    else if (roll < 0.06) block.type = BLOCK.COAL;
-  });
-}
 
 class BuilderRoom extends colyseus.Room {
   onCreate(options) {
@@ -506,9 +369,16 @@ class BuilderRoom extends colyseus.Room {
 
     const state = new BuilderState();
 
-    state.worldWidth = MAP_WIDTH;
-    state.worldHeight = MAP_HEIGHT;
-    generateBuilderTerrain(state);
+    // Generate initial terrain
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      for (let y = MAP_HEIGHT - 5; y < MAP_HEIGHT; y++) {
+        const b = new Block();
+        b.x = x;
+        b.y = y;
+        b.type = y === MAP_HEIGHT - 5 ? 1 : 2; // 1: grass, 2: dirt
+        state.blocks.set(`${x},${y}`, b);
+      }
+    }
 
     this.setState(state);
 
@@ -524,16 +394,13 @@ class BuilderRoom extends colyseus.Room {
     });
 
     this.onMessage("build", (client, message) => {
-      const p = this.state.players.get(client.sessionId);
-      if (!p) return;
       const x = Math.floor(message.x / TILE_SIZE);
       const y = Math.floor(message.y / TILE_SIZE);
-      const blockType = Number(message.type) || BLOCK.STONE;
 
       if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
         const key = `${x},${y}`;
         // Check if block already exists
-        if (!this.state.blocks.get(key) && hasInventory(p, blockType, 1)) {
+        if (!this.state.blocks.get(key)) {
             // Check intersection with players
             let intersect = false;
             this.state.players.forEach(p => {
@@ -550,42 +417,20 @@ class BuilderRoom extends colyseus.Room {
                 const b = new Block();
                 b.x = x;
                 b.y = y;
-                b.type = blockType;
+                b.type = message.type || 3;
                 this.state.blocks.set(key, b);
-                removeInventory(p, blockType, 1);
             }
         }
       }
     });
 
     this.onMessage("break", (client, message) => {
-      const p = this.state.players.get(client.sessionId);
-      if (!p) return;
       const x = Math.floor(message.x / TILE_SIZE);
       const y = Math.floor(message.y / TILE_SIZE);
       const key = `${x},${y}`;
-      const block = this.state.blocks.get(key);
-      if (block) {
+      if (this.state.blocks.get(key)) {
           this.state.blocks.delete(key);
-          addInventory(p, block.type, 1);
-          maybeAddToHotbar(p, block.type);
       }
-    });
-
-    this.onMessage("craft", (client, message) => {
-      const p = this.state.players.get(client.sessionId);
-      if (!p) return;
-      const recipe = CRAFTING_RECIPES[message.recipeId];
-      if (!recipe) return;
-
-      for (const [typeId, amount] of Object.entries(recipe.needs)) {
-        if (!hasInventory(p, Number(typeId), amount)) return;
-      }
-      for (const [typeId, amount] of Object.entries(recipe.needs)) {
-        removeInventory(p, Number(typeId), amount);
-      }
-      addInventory(p, recipe.gives.type, recipe.gives.amount);
-      maybeAddToHotbar(p, recipe.gives.type);
     });
 
     this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
@@ -600,14 +445,6 @@ class BuilderRoom extends colyseus.Room {
     p.vx = 0;
     p.vy = 0;
     p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
-    p.inventory = new MapSchema();
-    p.hotbar = new ArraySchema(BLOCK.STONE, BLOCK.DIRT, BLOCK.GRASS, BLOCK.WOOD, BLOCK.SAND, BLOCK.SNOW, BLOCK.BRICK, BLOCK.GLASS, BLOCK.LEAVES);
-    addInventory(p, BLOCK.STONE, 64);
-    addInventory(p, BLOCK.DIRT, 64);
-    addInventory(p, BLOCK.GRASS, 32);
-    addInventory(p, BLOCK.WOOD, 16);
-    addInventory(p, BLOCK.SAND, 24);
-    addInventory(p, BLOCK.LEAVES, 16);
     this.state.players.set(client.sessionId, p);
 
     this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
