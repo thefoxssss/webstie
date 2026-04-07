@@ -718,6 +718,11 @@ class BuilderRoom extends colyseus.Room {
     }
   }
 
+  getSurfaceHeight(worldX) {
+    const noise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
+    return Math.floor(20 + noise * 15);
+  }
+
   generateChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (this.state.chunks.has(key)) return;
@@ -728,10 +733,10 @@ class BuilderRoom extends colyseus.Room {
     const minY = cy * CHUNK_SIZE;
     const maxY = (cy + 1) * CHUNK_SIZE;
 
+    // 1. Generate Ground
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = cx * CHUNK_SIZE + x;
-      const noise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
-      const h = Math.floor(20 + noise * 15);
+      const h = this.getSurfaceHeight(worldX);
 
       const startY = Math.max(minY, h);
       const endY = Math.min(maxY, h + 40);
@@ -744,6 +749,55 @@ class BuilderRoom extends colyseus.Room {
         else if (y < h + 4) b.type = 2; // Dirt
         else b.type = 3; // Stone
         chunk.blocks.set(`${worldX},${y}`, b);
+      }
+    }
+
+    // 2. Deterministic Tree Generation
+    // Scan range: current chunk plus horizontal neighbors to allow canopy overlap.
+    for (let tx = cx * CHUNK_SIZE - 2; tx < (cx + 1) * CHUNK_SIZE + 2; tx++) {
+      // Deterministic tree check based on worldX
+      const spawnChance = Math.abs(Math.sin(tx * 1234.56)) * 100;
+      if (spawnChance < 8) { // ~8% chance per block
+        const surfaceY = this.getSurfaceHeight(tx);
+        const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(tx * 789.01)) * 3);
+
+        // Place trunk
+        for (let dy = 1; dy <= trunkHeight; dy++) {
+          const ty = surfaceY - dy;
+          if (ty >= minY && ty < maxY && tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE) {
+            const b = new Block();
+            b.x = tx;
+            b.y = ty;
+            b.type = 7; // LOG
+            chunk.blocks.set(`${tx},${ty}`, b);
+          }
+        }
+
+        // Place leaves canopy
+        for (let lx = -2; lx <= 2; lx++) {
+          for (let ly = -2; ly <= 2; ly++) {
+            // Simple spherical/diamond canopy at top of trunk
+            if (Math.abs(lx) + Math.abs(ly) > 3) continue;
+
+            const finalLx = tx + lx;
+            const finalLy = surfaceY - trunkHeight - 2 + ly;
+
+            // Only place if within current chunk boundaries
+            if (
+              finalLx >= cx * CHUNK_SIZE && finalLx < (cx + 1) * CHUNK_SIZE &&
+              finalLy >= minY && finalLy < maxY
+            ) {
+              const key = `${finalLx},${finalLy}`;
+              if (!chunk.blocks.has(key)) {
+                const b = new Block();
+                b.x = finalLx;
+                b.y = finalLy;
+                b.type = 8; // LEAVES
+                chunk.blocks.set(key, b);
+              }
+            }
+          }
+        }
       }
     }
   }
