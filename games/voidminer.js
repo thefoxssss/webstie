@@ -9,6 +9,7 @@ import {
   state,
   EngineKernel,
   DrawSystem,
+  isInputFocused,
 } from "../core.js";
 
 const WIDTH = 800;
@@ -364,6 +365,7 @@ export function initVoidMiner() {
 }
 
 document.addEventListener("keydown", (e) => {
+  if (isInputFocused(e)) return;
   if (state.currentGame !== "voidminer") return;
   if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") thrustOn = true;
   if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") leftOn = true;

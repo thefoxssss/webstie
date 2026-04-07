@@ -6,22 +6,26 @@ const ICE_SERVERS = [
     { urls: 'stun:stun1.l.google.com:19302' }
 ];
 
+let voiceInitialized = false;
 export function initVoice() {
+    if (voiceInitialized) {
+        refreshVoiceRooms();
+        return;
+    }
     console.log("Voice Lounge initialized");
 
     // Bind buttons
-    document.getElementById("btnCreateVoice").onclick = () => createOrJoinVoiceRoom(true);
-    document.getElementById("btnVoiceLeave").onclick = leaveVoiceRoom;
-    document.getElementById("btnVoiceMute").onclick = toggleMute;
+    const btnCreate = document.getElementById("btnCreateVoice");
+    const btnLeave = document.getElementById("btnVoiceLeave");
+    const btnMute = document.getElementById("btnVoiceMute");
+
+    if (btnCreate) btnCreate.onclick = () => createOrJoinVoiceRoom(true);
+    if (btnLeave) btnLeave.onclick = leaveVoiceRoom;
+    if (btnMute) btnMute.onclick = toggleMute;
 
     // Fetch active rooms on open
     refreshVoiceRooms();
-
-    // Add cleanup on game stop
-    if (!window.gameStops) window.gameStops = [];
-    window.gameStops.push(() => {
-        leaveVoiceRoom();
-    });
+    voiceInitialized = true;
 }
 
 async function refreshVoiceRooms() {
@@ -148,9 +152,12 @@ async function createOrJoinVoiceRoom(isCreate, joinRoomId = null) {
         }
 
         // UI Updates
-        document.getElementById("voiceMenu").style.display = "none";
-        document.getElementById("voiceLobby").style.display = "block";
-        document.getElementById("voiceRoomId").textContent = voiceRoom.roomId;
+        const menu = document.getElementById("voiceMenu");
+        const lobby = document.getElementById("voiceLobby");
+        if (menu) menu.style.display = "none";
+        if (lobby) lobby.style.display = "block";
+        const roomIdEl = document.getElementById("voiceRoomId");
+        if (roomIdEl) roomIdEl.textContent = voiceRoom.roomId;
 
         setupRoomEventHandlers();
 
@@ -333,7 +340,7 @@ function toggleMute() {
     // voiceRoom.send("talking", track.enabled);
 }
 
-function leaveVoiceRoom() {
+export function leaveVoiceRoom() {
     if (localStream) {
         localStream.getTracks().forEach(t => t.stop());
         localStream = null;

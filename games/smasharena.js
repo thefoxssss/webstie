@@ -1,5 +1,5 @@
 // Smash-style platform fighter with local bot mode and Colyseus online duels.
-import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
+import { registerGameStop, setText, showToast, state, firebase, isInputFocused } from "../core.js";
 
 const { doc, setDoc, onSnapshot, runTransaction, updateDoc } = firebase;
 // Colyseus client setup
@@ -407,6 +407,7 @@ async function sendInput() {
 
 function bindControls() {
   window.addEventListener("keydown", (e) => {
+    if (isInputFocused(e)) return;
     if (state.currentGame !== "smasharena") return;
     if (e.key === "a" || e.key === "ArrowLeft") keys.left = true;
     if (e.key === "d" || e.key === "ArrowRight") keys.right = true;

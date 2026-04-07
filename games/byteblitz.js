@@ -1,4 +1,4 @@
-import { registerGameStop, setText, showToast, state, updateHighScore } from "../core.js";
+import { registerGameStop, setText, showToast, state, updateHighScore, isInputFocused } from "../core.js";
 
 const WIDTH = 800;
 const HEIGHT = 420;
@@ -105,6 +105,7 @@ export function initByteBlitz() {
   action.textContent = "RUNNING";
 
   const onKeyDown = (event) => {
+    if (isInputFocused(event)) return;
     started = true;
     const key = event.key.toLowerCase();
     if (key === "arrowleft" || key === "a") game.keys.left = true;

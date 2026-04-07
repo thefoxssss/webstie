@@ -1,4 +1,4 @@
-import { registerGameStop, setText, showToast, state, updateHighScore } from "../core.js";
+import { registerGameStop, setText, showToast, state, updateHighScore, isInputFocused } from "../core.js";
 
 const WIDTH = 800;
 const HEIGHT = 420;
@@ -240,6 +240,7 @@ export function initMetroMaze() {
   action.textContent = "RUNNING";
 
   const onKeyDown = (event) => {
+    if (isInputFocused(event)) return;
     started = true;
     if (!run) return;
     if (event.key === "ArrowUp" || event.key.toLowerCase() === "w") {

@@ -542,7 +542,8 @@ async function publishInput() {
   }
 }
 
-function onKeyChange(down, key) {
+function onKeyChange(down, key, event) {
+  if (down && isInputFocused(event)) return;
   if (state.currentGame !== "drift") return;
   const k = key.toLowerCase();
   let changed = false;
@@ -571,8 +572,8 @@ function onKeyChange(down, key) {
   if (changed) publishInput();
 }
 
-document.addEventListener("keydown", (e) => onKeyChange(true, e.key));
-document.addEventListener("keyup", (e) => onKeyChange(false, e.key));
+document.addEventListener("keydown", (e) => onKeyChange(true, e.key, e));
+document.addEventListener("keyup", (e) => onKeyChange(false, e.key, e));
 
 document.getElementById("btnCreateDrift").onclick = createRoom;
 document.getElementById("btnJoinDrift").onclick = joinRoomByCode;

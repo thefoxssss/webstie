@@ -1,5 +1,5 @@
 // Firebase-backed multiplayer physics arena inspired by bonk-style gameplay.
-import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
+import { registerGameStop, setText, showToast, state, firebase, isInputFocused } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -651,7 +651,8 @@ async function publishInput() {
   }
 }
 
-function onKeyChange(down, key) {
+function onKeyChange(down, key, event) {
+  if (down && isInputFocused(event)) return;
   if (state.currentGame !== "bonk") return;
   const upKey = key.toLowerCase();
   let changed = false;
@@ -674,8 +675,8 @@ function onKeyChange(down, key) {
   if (changed) publishInput();
 }
 
-document.addEventListener("keydown", (e) => onKeyChange(true, e.key));
-document.addEventListener("keyup", (e) => onKeyChange(false, e.key));
+document.addEventListener("keydown", (e) => onKeyChange(true, e.key, e));
+document.addEventListener("keyup", (e) => onKeyChange(false, e.key, e));
 
 document.getElementById("btnCreateBA").onclick = createRoom;
 document.getElementById("btnJoinBA").onclick = joinRoomByCode;

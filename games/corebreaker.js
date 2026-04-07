@@ -9,6 +9,7 @@ import {
   state,
   EngineKernel,
   DrawSystem,
+  isInputFocused,
 } from "../core.js";
 
 const WIDTH = 800;
@@ -344,6 +345,7 @@ export function initCoreBreaker() {
 }
 
 document.addEventListener("keydown", (event) => {
+  if (isInputFocused(event)) return;
   if (state.currentGame !== "corebreaker") return;
   if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") moveDir = -1;
   if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") moveDir = 1;

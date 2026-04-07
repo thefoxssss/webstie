@@ -9,6 +9,7 @@ import {
   state,
   EngineKernel,
   DrawSystem,
+  isInputFocused,
 } from "../core.js";
 
 const WIDTH = 820;
@@ -254,6 +255,7 @@ export function initCoreDriller() {
 }
 
 document.addEventListener("keydown", (e) => {
+  if (isInputFocused(e)) return;
   if (state.currentGame !== "coredriller") return;
   const key = e.key.toLowerCase();
   if (e.key === "ArrowLeft" || key === "a") leftOn = true;
