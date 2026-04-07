@@ -14,6 +14,7 @@ const admin = require("firebase-admin"); // <-- Firebase is here!
 const app = express();
 app.use(cors());
 const port = process.env.PORT || 2567;
+const builderServerDirectory = new Map();
 
 const gameServer = new colyseus.Server({
   transport: new WebSocketTransport({
@@ -366,6 +367,10 @@ class BuilderRoom extends colyseus.Room {
   onCreate(options) {
     this.maxClients = 50;
     this.autoDispose = false;
+    this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
+      ? options.serverName.trim().slice(0, 24)
+      : "Public World";
+    this.setMetadata({ serverName: this.serverName });
 
     const state = new BuilderState();
 
@@ -434,6 +439,7 @@ class BuilderRoom extends colyseus.Room {
     });
 
     this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
+    this.syncServerDirectory();
   }
 
   onJoin(client, options) {
@@ -448,11 +454,27 @@ class BuilderRoom extends colyseus.Room {
     this.state.players.set(client.sessionId, p);
 
     this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
+    this.syncServerDirectory();
   }
 
   onLeave(client, consented) {
     this.state.players.delete(client.sessionId);
     delete this.inputs[client.sessionId];
+    this.syncServerDirectory();
+  }
+
+  syncServerDirectory() {
+    const players = [];
+    this.state.players.forEach((player) => {
+      players.push(player.name || "Builder");
+    });
+    builderServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      serverName: this.serverName || "Public World",
+      clients: this.clients.length,
+      maxClients: this.maxClients,
+      players
+    });
   }
 
   isSolid(x, y) {
@@ -626,6 +648,14 @@ gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
 gameServer.define("builder_room", BuilderRoom);
 gameServer.define("voice_room", VoiceRoom);
+
+app.get("/builder-servers", (req, res) => {
+  const servers = Array.from(builderServerDirectory.values()).sort((a, b) => {
+    if (b.clients !== a.clients) return b.clients - a.clients;
+    return a.serverName.localeCompare(b.serverName);
+  });
+  res.json({ servers });
+});
 
 gameServer.listen(port);
 console.log(`Colyseus game server is listening on port ${port}...`);
