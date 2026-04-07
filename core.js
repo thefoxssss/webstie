@@ -2921,23 +2921,30 @@ function initCrewUx() {
   }
 }
 
-// Track recent money changes for the bank log.
+// Track recent money changes and general event notes in one merged bank log feed.
 export function logTransaction(msg, amount) {
-  transactionLog.unshift({ msg, amount, ts: new Date().toLocaleTimeString() });
+  transactionLog.unshift({ type: "money", msg, amount, ts: new Date().toLocaleTimeString() });
   if (transactionLog.length > 20) transactionLog.pop();
   updateBankLog();
 }
 
-// Render the bank log history into the overlay.
+export function logBankEvent(msg, tag = "SYSTEM") {
+  transactionLog.unshift({ type: "event", msg, tag, ts: new Date().toLocaleTimeString() });
+  if (transactionLog.length > 20) transactionLog.pop();
+  updateBankLog();
+}
+
+// Render the merged bank + event log history into the overlay.
 export function updateBankLog() {
   const div = document.getElementById("bankLog");
   div.innerHTML = transactionLog
-    .map(
-      (t) =>
-        `<div class="bank-entry"><span>${t.ts} ${t.msg}</span><span style="color:${
-          t.amount >= 0 ? "#0f0" : "#f00"
-        }">${t.amount >= 0 ? "+" : ""}$${t.amount}</span></div>`
-    )
+    .map((t) => {
+      if (t.type === "event") {
+        return `<div class="bank-entry"><span>${t.ts} [${escapeHtml(String(t.tag || "SYSTEM"))}] ${escapeHtml(String(t.msg || ""))}</span><span style="color:#9ad">LOG</span></div>`;
+      }
+      const amount = Number(t.amount || 0);
+      return `<div class="bank-entry"><span>${t.ts} ${escapeHtml(String(t.msg || ""))}</span><span style="color:${amount >= 0 ? "#0f0" : "#f00"}">${amount >= 0 ? "+" : ""}$${amount}</span></div>`;
+    })
     .join("");
 }
 
@@ -4082,6 +4089,7 @@ export async function adminLogAdminActionFromInput() {
     "Admin log failed."
   );
   if (!ok) return;
+  logBankEvent(`ADMIN NOTE: ${message.slice(0, 100)}`, "ADMIN");
   clearAdminTextInput("adminActionLogInput");
   showToast("ADMIN ACTION LOGGED", "🧾");
 }
