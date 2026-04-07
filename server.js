@@ -405,6 +405,7 @@ type("number")(BuilderPlayer.prototype, "vy");
 type("string")(BuilderPlayer.prototype, "color");
 type("number")(BuilderPlayer.prototype, "hp");
 type("number")(BuilderPlayer.prototype, "maxHp");
+type("number")(BuilderPlayer.prototype, "selectedItemType");
 
 class Block extends Schema {}
 type("number")(Block.prototype, "x");
@@ -465,6 +466,13 @@ class BuilderRoom extends colyseus.Room {
         this.inputs[pId].left = message.left;
         this.inputs[pId].right = message.right;
         if (message.upPress) this.inputs[pId].jumpBuffer = BUILDER_JUMP_BUFFER_TICKS;
+      }
+    });
+
+    this.onMessage("select_item", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) {
+        p.selectedItemType = message.type;
       }
     });
 
@@ -578,9 +586,18 @@ class BuilderRoom extends colyseus.Room {
       const dy = attacker.y - target.y;
       const distSq = dx*dx + dy*dy;
 
-      // Melee range
-      if (distSq < (TILE_SIZE * 3) ** 2) {
-          target.hp -= message.damage || 1;
+      // Melee range logic
+      let attackRangeSq = (TILE_SIZE * 3) ** 2;
+      let damage = message.damage || 1;
+
+      // If holding sword
+      if (attacker.selectedItemType === 11) {
+          attackRangeSq = (TILE_SIZE * 4) ** 2; // slightly longer range
+          damage = 5; // more damage
+      }
+
+      if (distSq < attackRangeSq) {
+          target.hp -= damage;
           target.vy = -6;
           target.vx = (target.x - attacker.x > 0 ? 1 : -1) * 8;
 
