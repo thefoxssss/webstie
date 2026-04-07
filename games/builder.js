@@ -62,6 +62,7 @@ export function initBuilder() {
 
     let selectedBlockType = 3; // Default to stone
     let localPlayerId = null;
+    let inventoryOpen = false;
 
     let camera = { x: 0, y: 0 };
 
@@ -73,6 +74,20 @@ export function initBuilder() {
     let buildHoldTimeout = null;
     let buildHoldInterval = null;
     const playerName = () => state.myName || "Player";
+    const inventoryLayout = {
+        slotSize: 56,
+        gap: 12,
+        padding: 16,
+        height: 88,
+    };
+
+    function getInventoryBounds() {
+        const itemCount = Object.keys(blockNames).length;
+        const panelWidth = (itemCount * inventoryLayout.slotSize) + ((itemCount - 1) * inventoryLayout.gap) + (inventoryLayout.padding * 2);
+        const x = Math.floor((canvas.width - panelWidth) / 2);
+        const y = canvas.height - inventoryLayout.height - 16;
+        return { x, y, width: panelWidth, height: inventoryLayout.height };
+    }
 
     const renderServerList = (servers) => {
         if (!serverListEl) return;
@@ -183,6 +198,10 @@ export function initBuilder() {
             if (!keys.w) keys.upPress = true;
             keys.w = true;
         }
+        if (e.key === "i" || e.key === "I") {
+            inventoryOpen = !inventoryOpen;
+            return;
+        }
 
         // Block selection (1-6)
         if (e.key >= "1" && e.key <= "6") {
@@ -231,6 +250,21 @@ export function initBuilder() {
 
     function handleMouseDown(e) {
         if (!room) return;
+        if (inventoryOpen) {
+            const panel = getInventoryBounds();
+            const relativeX = mouse.x - (panel.x + inventoryLayout.padding);
+            const relativeY = mouse.y - (panel.y + inventoryLayout.padding);
+            if (relativeY >= 0 && relativeY <= inventoryLayout.slotSize) {
+                const unit = inventoryLayout.slotSize + inventoryLayout.gap;
+                const clickedIndex = Math.floor(relativeX / unit);
+                const maxIndex = Object.keys(blockNames).length - 1;
+                if (clickedIndex >= 0 && clickedIndex <= maxIndex && (relativeX % unit) <= inventoryLayout.slotSize) {
+                    selectedBlockType = clickedIndex + 1;
+                    inventoryOpen = false;
+                    return;
+                }
+            }
+        }
 
         mouse.isDown = true;
         sendBuildOrBreak(e);
@@ -353,6 +387,31 @@ export function initBuilder() {
         ctx.globalAlpha = 1.0;
 
         ctx.restore();
+        if (inventoryOpen) {
+            const panel = getInventoryBounds();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+            ctx.strokeStyle = "#0f0";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
+
+            for (let blockType = 1; blockType <= Object.keys(blockNames).length; blockType++) {
+                const slotX = panel.x + inventoryLayout.padding + ((blockType - 1) * (inventoryLayout.slotSize + inventoryLayout.gap));
+                const slotY = panel.y + inventoryLayout.padding;
+                const isActive = selectedBlockType === blockType;
+
+                ctx.fillStyle = blockColors[blockType];
+                ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+                ctx.strokeStyle = isActive ? "#fff" : "rgba(255,255,255,0.5)";
+                ctx.lineWidth = isActive ? 3 : 1;
+                ctx.strokeRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+
+                ctx.fillStyle = "#000";
+                ctx.font = "10px 'Press Start 2P', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`${blockType}`, slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize - 8);
+            }
+        }
 
         animationFrameId = requestAnimationFrame(render);
     }
