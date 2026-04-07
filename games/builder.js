@@ -2,27 +2,39 @@ import { state } from "../core.js";
 
 export function initBuilder() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
-    const serverSelect = document.getElementById("builderServer");
+    const networkSelect = document.getElementById("builderNetwork");
     const defaultServer = isLocal ? "local" : "prod";
-    if (serverSelect && !serverSelect.value) {
-        serverSelect.value = "auto";
+    if (networkSelect && !networkSelect.value) {
+        networkSelect.value = "auto";
     }
 
     const getServerUrl = () => {
-        const selected = serverSelect?.value || "auto";
+        const selected = networkSelect?.value || "auto";
         if (selected === "local") return "ws://localhost:2567";
         if (selected === "prod") return "wss://seahorse-app-mv4sg.ondigitalocean.app";
         return defaultServer === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
     };
+    const getServerHttpBase = () => {
+        const wsUrl = getServerUrl();
+        if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice(6)}`;
+        if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice(5)}`;
+        return wsUrl;
+    };
 
     let room;
+    let client;
     let animationFrameId;
+    let selectedRoomId = null;
 
     const canvas = document.getElementById("builderCanvas");
     const ctx = canvas.getContext("2d");
     const menu = document.getElementById("builderMenu");
     const gameArea = document.getElementById("builderGame");
     const btnJoin = document.getElementById("btnJoinBuilder");
+    const btnRefreshServers = document.getElementById("btnRefreshBuilderServers");
+    const btnCreateServer = document.getElementById("btnCreateBuilderServer");
+    const serverNameInput = document.getElementById("builderServerName");
+    const serverListEl = document.getElementById("builderServerList");
 
     const uiX = document.getElementById("builderX");
     const uiY = document.getElementById("builderY");
@@ -60,25 +72,108 @@ export function initBuilder() {
     const BUILD_HOLD_REPEAT_MS = 120;
     let buildHoldTimeout = null;
     let buildHoldInterval = null;
+    const playerName = () => state.myName || "Player";
+
+    const renderServerList = (servers) => {
+        if (!serverListEl) return;
+        serverListEl.innerHTML = "";
+        if (!servers.length) {
+            serverListEl.textContent = "NO SERVERS ONLINE YET. CREATE ONE!";
+            return;
+        }
+
+        servers.forEach((server) => {
+            const row = document.createElement("div");
+            row.style.border = "1px solid #0f0";
+            row.style.padding = "8px";
+            row.style.marginBottom = "8px";
+            row.style.cursor = "pointer";
+            row.style.background = selectedRoomId === server.roomId ? "rgba(0, 255, 0, 0.15)" : "transparent";
+
+            const names = (server.players || []).length ? server.players.join(", ") : "No players";
+            row.innerHTML = `
+                <div style="font-size: 11px; color: #0f0;">${server.serverName || "Public World"}</div>
+                <div style="font-size: 9px; opacity: 0.9; margin-top: 4px;">PLAYERS (${server.clients}/${server.maxClients}): ${names}</div>
+            `;
+            row.onclick = async () => {
+                selectedRoomId = server.roomId;
+                renderServerList(servers);
+                await joinRoomById(server.roomId);
+            };
+            serverListEl.appendChild(row);
+        });
+    };
+
+    const refreshServerList = async () => {
+        if (!btnRefreshServers) return;
+        btnRefreshServers.textContent = "LOADING...";
+        try {
+            const response = await fetch(`${getServerHttpBase()}/builder-servers`);
+            const payload = await response.json();
+            renderServerList(payload.servers || []);
+        } catch (error) {
+            console.error("Failed to load server list", error);
+            if (serverListEl) serverListEl.textContent = "FAILED TO LOAD SERVER LIST";
+        } finally {
+            btnRefreshServers.textContent = "REFRESH SERVER LIST";
+        }
+    };
+
+    const joinRoomById = async (roomId) => {
+        try {
+            btnJoin.textContent = "CONNECTING...";
+            client = new window.Colyseus.Client(getServerUrl());
+            room = await client.joinById(roomId, { name: playerName() });
+            localPlayerId = room.sessionId;
+            menu.style.display = "none";
+            gameArea.style.display = "block";
+            startGameLoop();
+        } catch (e) {
+            console.error("Join by id error", e);
+            btnJoin.textContent = "QUICK JOIN ANY SERVER";
+        }
+    };
 
     btnJoin.onclick = async () => {
         try {
             btnJoin.textContent = "CONNECTING...";
-            const client = new window.Colyseus.Client(getServerUrl());
-            room = await client.joinOrCreate("builder_room", {
-                name: state.myName || "Player"
-            });
+            client = new window.Colyseus.Client(getServerUrl());
+            room = await client.joinOrCreate("builder_room", { name: playerName() });
             localPlayerId = room.sessionId;
-
             menu.style.display = "none";
             gameArea.style.display = "block";
-
             startGameLoop();
         } catch (e) {
-            console.error("Join error", e);
-            btnJoin.textContent = "JOIN WORLD";
+            console.error("Quick join error", e);
+            btnJoin.textContent = "QUICK JOIN ANY SERVER";
         }
     };
+
+    if (btnCreateServer) {
+        btnCreateServer.onclick = async () => {
+            try {
+                btnCreateServer.textContent = "CREATING...";
+                const serverName = (serverNameInput?.value || "").trim() || "Public World";
+                client = new window.Colyseus.Client(getServerUrl());
+                room = await client.create("builder_room", { name: playerName(), serverName });
+                localPlayerId = room.sessionId;
+                menu.style.display = "none";
+                gameArea.style.display = "block";
+                startGameLoop();
+            } catch (e) {
+                console.error("Create server error", e);
+                btnCreateServer.textContent = "CREATE SERVER";
+            }
+        };
+    }
+    if (btnRefreshServers) btnRefreshServers.onclick = refreshServerList;
+    if (networkSelect) {
+        networkSelect.onchange = () => {
+            selectedRoomId = null;
+            refreshServerList();
+        };
+    }
+    refreshServerList();
 
     function handleKeyDown(e) {
         if (!room) return;
@@ -283,7 +378,10 @@ export function initBuilder() {
         clearBuildHoldTimers();
         menu.style.display = "block";
         gameArea.style.display = "none";
-        btnJoin.textContent = "JOIN WORLD";
+        btnJoin.textContent = "QUICK JOIN ANY SERVER";
+        if (btnCreateServer) btnCreateServer.textContent = "CREATE SERVER";
+        selectedRoomId = null;
+        refreshServerList();
     };
 
     if (window.gameStops) {

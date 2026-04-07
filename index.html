@@ -2017,12 +2017,16 @@
     <div class="overlay" id="overlayBuilder">
       <h1>BUILDER</h1>
       <div id="builderMenu" class="menu-box">
-        <select id="builderServer" class="term-input">
-          <option value="auto">AUTO SERVER (RECOMMENDED)</option>
-          <option value="prod">PRODUCTION SERVER</option>
-          <option value="local">LOCALHOST SERVER</option>
+        <select id="builderNetwork" class="term-input">
+          <option value="auto">AUTO NETWORK (RECOMMENDED)</option>
+          <option value="prod">PRODUCTION NETWORK</option>
+          <option value="local">LOCALHOST NETWORK</option>
         </select>
-        <button class="term-btn" id="btnJoinBuilder">JOIN WORLD</button>
+        <button class="menu-btn" id="btnRefreshBuilderServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
+        <input type="text" id="builderServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
+        <button class="term-btn" id="btnCreateBuilderServer">CREATE SERVER</button>
+        <div id="builderServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
+        <button class="menu-btn" id="btnJoinBuilder">QUICK JOIN ANY SERVER</button>
       </div>
       <div id="builderGame" class="builder-wrap" style="display: none">
         <div class="builder-hud">
