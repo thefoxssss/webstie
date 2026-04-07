@@ -64,14 +64,31 @@ export function initBuilder() {
         8: "LEAVES",
     };
 
+    const normalizeItem = (item) => {
+        if (item === undefined || item === null) return undefined;
+        if (typeof item === "number") return { type: item, count: 1 };
+        if (typeof item === "object" && typeof item.type === "number") {
+            const count = Number.isFinite(item.count) ? Math.max(0, Math.floor(item.count)) : 1;
+            if (count <= 0) return undefined;
+            return { type: item.type, count };
+        }
+        return undefined;
+    };
+    const cloneItem = (item) => {
+        const normalized = normalizeItem(item);
+        return normalized ? { ...normalized } : undefined;
+    };
+    const itemType = (item) => normalizeItem(item)?.type;
+    const itemCount = (item) => normalizeItem(item)?.count || 0;
+
     let selectedHotbarIndex = 0;
     // Map initial available blocks, empty for the rest
-    let hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined];
+    let hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined].map(cloneItem);
     let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
     let inventoryOpen = false;
 
-    let inventorySlots = new Array(27).fill(undefined);
+    let inventorySlots = new Array(27).fill(undefined).map(cloneItem);
 
     // Drag-and-drop state
     let draggedItemType = null; // now stores { type, count }
@@ -221,15 +238,15 @@ export function initBuilder() {
 
             // Drop all items
             const dropItems = [];
-            hotbarSlots.forEach(s => { if (s) dropItems.push(s); });
-            inventorySlots.forEach(s => { if (s) dropItems.push(s); });
+            hotbarSlots.forEach(s => { const item = normalizeItem(s); if (item) dropItems.push(item); });
+            inventorySlots.forEach(s => { const item = normalizeItem(s); if (item) dropItems.push(item); });
 
             room.send("spawn_drops", { items: dropItems });
             room.send("respawn");
 
             // Clear inventory
-            hotbarSlots = new Array(9).fill(undefined);
-            inventorySlots = new Array(27).fill(undefined);
+            hotbarSlots = new Array(9).fill(undefined).map(cloneItem);
+            inventorySlots = new Array(27).fill(undefined).map(cloneItem);
             selectedBlockType = hotbarSlots[selectedHotbarIndex];
         });
     };
@@ -307,9 +324,9 @@ export function initBuilder() {
             // Cancel drag if we close inventory while dragging
             if (!inventoryOpen && draggedItemType !== null) {
                 if (dragSourceHotbarIndex !== null) {
-                    hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
+                    hotbarSlots[dragSourceHotbarIndex] = cloneItem(draggedItemType);
                 } else if (dragSourceInventoryIndex !== null) {
-                    inventorySlots[dragSourceInventoryIndex] = draggedItemType;
+                    inventorySlots[dragSourceInventoryIndex] = cloneItem(draggedItemType);
                 }
                 draggedItemType = null;
                 dragSourceHotbarIndex = null;
@@ -365,9 +382,9 @@ export function initBuilder() {
         if (e.shiftKey || e.button === 2) {
             // Break
             room.send("break", { x: worldX, y: worldY });
-        } else if (selectedBlockType !== undefined && selectedBlockType.count > 0) {
+        } else if (selectedBlockType !== undefined && itemCount(selectedBlockType) > 0) {
             // Build (only if a valid block is selected)
-            room.send("build", { x: worldX, y: worldY, type: selectedBlockType.type });
+            room.send("build", { x: worldX, y: worldY, type: itemType(selectedBlockType) });
 
             selectedBlockType.count--;
             if (selectedBlockType.count <= 0) {
@@ -440,7 +457,7 @@ export function initBuilder() {
             if (hotbarIndex !== null) {
                 if (hotbarSlots[hotbarIndex] !== undefined) {
                     // Pick up from hotbar
-                    draggedItemType = hotbarSlots[hotbarIndex];
+                    draggedItemType = cloneItem(hotbarSlots[hotbarIndex]);
                     dragSourceHotbarIndex = hotbarIndex;
                     dragSourceInventoryIndex = null;
                     hotbarSlots[hotbarIndex] = undefined;
@@ -453,7 +470,7 @@ export function initBuilder() {
             if (inventoryIndex !== null) {
                 if (inventorySlots[inventoryIndex] !== undefined) {
                     // Pick up from inventory
-                    draggedItemType = inventorySlots[inventoryIndex];
+                    draggedItemType = cloneItem(inventorySlots[inventoryIndex]);
                     dragSourceHotbarIndex = null;
                     dragSourceInventoryIndex = inventoryIndex;
                     inventorySlots[inventoryIndex] = undefined;
@@ -541,36 +558,36 @@ export function initBuilder() {
 
             if (hotbarIndex !== null) {
                 // Dropped on a hotbar slot
-                const existingItem = hotbarSlots[hotbarIndex];
-                hotbarSlots[hotbarIndex] = draggedItemType;
+                const existingItem = cloneItem(hotbarSlots[hotbarIndex]);
+                hotbarSlots[hotbarIndex] = cloneItem(draggedItemType);
 
                 // Swap logic
                 if (existingItem !== undefined) {
                     if (dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
-                        hotbarSlots[dragSourceHotbarIndex] = existingItem;
+                        hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     } else if (dragSourceInventoryIndex !== null) {
-                        inventorySlots[dragSourceInventoryIndex] = existingItem;
+                        inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     }
                 }
             } else if (inventoryIndex !== null) {
                 // Dropped on an inventory slot
-                const existingItem = inventorySlots[inventoryIndex];
-                inventorySlots[inventoryIndex] = draggedItemType;
+                const existingItem = cloneItem(inventorySlots[inventoryIndex]);
+                inventorySlots[inventoryIndex] = cloneItem(draggedItemType);
 
                 // Swap logic
                 if (existingItem !== undefined) {
                     if (dragSourceInventoryIndex !== null && dragSourceInventoryIndex !== inventoryIndex) {
-                        inventorySlots[dragSourceInventoryIndex] = existingItem;
+                        inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     } else if (dragSourceHotbarIndex !== null) {
-                        hotbarSlots[dragSourceHotbarIndex] = existingItem;
+                        hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     }
                 }
             } else {
                 // Dropped outside any slot, return to original slot
                 if (dragSourceHotbarIndex !== null) {
-                    hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
+                    hotbarSlots[dragSourceHotbarIndex] = cloneItem(draggedItemType);
                 } else if (dragSourceInventoryIndex !== null) {
-                    inventorySlots[dragSourceInventoryIndex] = draggedItemType;
+                    inventorySlots[dragSourceInventoryIndex] = cloneItem(draggedItemType);
                 }
             }
 
@@ -582,7 +599,7 @@ export function initBuilder() {
             dragSourceInventoryIndex = null;
         } else if (draggedItemType !== null) {
             // Drop outside inventory logic -> drop items in world
-            room.send("spawn_drops", { items: [draggedItemType] });
+            room.send("spawn_drops", { items: [cloneItem(draggedItemType)] });
             draggedItemType = null;
             dragSourceHotbarIndex = null;
             dragSourceInventoryIndex = null;
@@ -625,7 +642,7 @@ export function initBuilder() {
             // Update UI only if changed
             const currentX = Math.floor(localPlayer.x / TILE_SIZE);
             const currentY = Math.floor(localPlayer.y / TILE_SIZE);
-            const currentBlockName = selectedBlockType !== undefined ? blockNames[selectedBlockType] : "NONE";
+            const currentBlockName = selectedBlockType !== undefined ? blockNames[itemType(selectedBlockType)] : "NONE";
 
             if (lastUiX !== currentX) {
                 uiX.textContent = currentX;
@@ -711,8 +728,8 @@ export function initBuilder() {
         ctx.strokeRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
 
         // Preview block color slightly transparent (only if a valid block is selected)
-        if (selectedBlockType !== undefined && selectedBlockType.count > 0) {
-            ctx.fillStyle = blockColors[selectedBlockType.type];
+        if (selectedBlockType !== undefined && itemCount(selectedBlockType) > 0) {
+            ctx.fillStyle = blockColors[itemType(selectedBlockType)];
             ctx.globalAlpha = 0.5;
             ctx.fillRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
             ctx.globalAlpha = 1.0;
