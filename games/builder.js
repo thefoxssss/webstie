@@ -71,9 +71,21 @@ export function initBuilder() {
     let localPlayerId = null;
     let inventoryOpen = false;
 
+    // Initialize 27 inventory slots (3 rows of 9)
+    // Put remaining blocks or duplicates here if desired, otherwise empty.
+    // For now, we'll put some extra blocks in the inventory to demonstrate moving them.
+    let inventorySlots = new Array(27).fill(undefined);
+    inventorySlots[0] = 1;
+    inventorySlots[1] = 2;
+    inventorySlots[2] = 3;
+    inventorySlots[3] = 4;
+    inventorySlots[4] = 5;
+    inventorySlots[5] = 6;
+
     // Drag-and-drop state
     let draggedItemType = null;
     let dragSourceHotbarIndex = null;
+    let dragSourceInventoryIndex = null;
 
     let camera = { x: 0, y: 0 };
 
@@ -134,8 +146,6 @@ export function initBuilder() {
     }
 
     function getInventorySlotAt(x, y, panel) {
-        const blockTypes = getBlockTypes();
-        const itemCount = blockTypes.length;
         const { rows, startX, startY } = getInventoryMetrics(panel);
 
         const relativeX = x - startX;
@@ -149,8 +159,8 @@ export function initBuilder() {
         if ((relativeX % stride) > inventoryLayout.slotSize || (relativeY % stride) > inventoryLayout.slotSize) return null;
 
         const index = (row * inventoryLayout.cols) + col;
-        if (index >= itemCount) return null;
-        return blockTypes[index];
+        if (index >= 27) return null;
+        return index;
     }
 
     function getHotbarIndexAt(x, y, panel) {
@@ -281,10 +291,13 @@ export function initBuilder() {
             if (!inventoryOpen && draggedItemType !== null) {
                 if (dragSourceHotbarIndex !== null) {
                     hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
+                } else if (dragSourceInventoryIndex !== null) {
+                    inventorySlots[dragSourceInventoryIndex] = draggedItemType;
                 }
                 draggedItemType = null;
                 dragSourceHotbarIndex = null;
-                selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+                dragSourceInventoryIndex = null;
+                selectedBlockType = hotbarSlots[selectedHotbarIndex];
             }
             return;
         }
@@ -294,7 +307,7 @@ export function initBuilder() {
             const keyNum = parseInt(e.key);
             if (keyNum >= 1 && keyNum <= 9) {
                 selectedHotbarIndex = keyNum - 1;
-                selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+                selectedBlockType = hotbarSlots[selectedHotbarIndex];
             }
         }
     }
@@ -321,8 +334,8 @@ export function initBuilder() {
         if (e.shiftKey || e.button === 2) {
             // Break
             room.send("break", { x: worldX, y: worldY });
-        } else {
-            // Build
+        } else if (selectedBlockType !== undefined) {
+            // Build (only if a valid block is selected)
             room.send("build", { x: worldX, y: worldY, type: selectedBlockType });
         }
     }
@@ -351,17 +364,22 @@ export function initBuilder() {
                     // Pick up from hotbar
                     draggedItemType = hotbarSlots[hotbarIndex];
                     dragSourceHotbarIndex = hotbarIndex;
+                    dragSourceInventoryIndex = null;
                     hotbarSlots[hotbarIndex] = undefined;
                 }
                 return;
             }
 
             const panel = getInventoryBounds();
-            const inventorySelection = getInventorySlotAt(mouse.x, mouse.y, panel);
-            if (inventorySelection) {
-                // Pick up from inventory (copy)
-                draggedItemType = inventorySelection;
-                dragSourceHotbarIndex = null;
+            const inventoryIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
+            if (inventoryIndex !== null) {
+                if (inventorySlots[inventoryIndex] !== undefined) {
+                    // Pick up from inventory
+                    draggedItemType = inventorySlots[inventoryIndex];
+                    dragSourceHotbarIndex = null;
+                    dragSourceInventoryIndex = inventoryIndex;
+                    inventorySlots[inventoryIndex] = undefined;
+                }
             }
             return;
         }
@@ -371,7 +389,7 @@ export function initBuilder() {
         const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
         if (hotbarIndex !== null) {
             selectedHotbarIndex = hotbarIndex;
-            selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+            selectedBlockType = hotbarSlots[selectedHotbarIndex];
             return;
         }
 
@@ -402,30 +420,60 @@ export function initBuilder() {
             const hotbarPanel = getHotbarBounds();
             const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
 
+            const inventoryPanel = getInventoryBounds();
+            const inventoryIndex = getInventorySlotAt(mouse.x, mouse.y, inventoryPanel);
+
             if (hotbarIndex !== null) {
                 // Dropped on a hotbar slot
                 const existingItem = hotbarSlots[hotbarIndex];
                 hotbarSlots[hotbarIndex] = draggedItemType;
 
-                // Swap logic if we brought it from another hotbar slot
-                if (existingItem !== undefined && dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
-                    hotbarSlots[dragSourceHotbarIndex] = existingItem;
+                // Swap logic
+                if (existingItem !== undefined) {
+                    if (dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
+                        hotbarSlots[dragSourceHotbarIndex] = existingItem;
+                    } else if (dragSourceInventoryIndex !== null) {
+                        inventorySlots[dragSourceInventoryIndex] = existingItem;
+                    }
+                }
+            } else if (inventoryIndex !== null) {
+                // Dropped on an inventory slot
+                const existingItem = inventorySlots[inventoryIndex];
+                inventorySlots[inventoryIndex] = draggedItemType;
+
+                // Swap logic
+                if (existingItem !== undefined) {
+                    if (dragSourceInventoryIndex !== null && dragSourceInventoryIndex !== inventoryIndex) {
+                        inventorySlots[dragSourceInventoryIndex] = existingItem;
+                    } else if (dragSourceHotbarIndex !== null) {
+                        hotbarSlots[dragSourceHotbarIndex] = existingItem;
+                    }
                 }
             } else {
-                // Dropped outside a hotbar slot. We just clear the dragged item (throw it back in inventory).
-                // If you want it to bounce back to its original hotbar slot instead of disappearing when dropped
-                // on the background, you'd restore it here. The prompt said "put in the inventory" which means clearing it.
+                // Dropped outside any slot, return to original slot
+                if (dragSourceHotbarIndex !== null) {
+                    hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
+                } else if (dragSourceInventoryIndex !== null) {
+                    inventorySlots[dragSourceInventoryIndex] = draggedItemType;
+                }
             }
 
             // Re-sync selectedBlockType in case we modified the currently selected hotbar slot
-            selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+            selectedBlockType = hotbarSlots[selectedHotbarIndex];
 
             draggedItemType = null;
             dragSourceHotbarIndex = null;
+            dragSourceInventoryIndex = null;
         } else if (draggedItemType !== null) {
             // Failsafe: drop outside inventory mode cancels drag
+            if (dragSourceHotbarIndex !== null) {
+                hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
+            } else if (dragSourceInventoryIndex !== null) {
+                inventorySlots[dragSourceInventoryIndex] = draggedItemType;
+            }
             draggedItemType = null;
             dragSourceHotbarIndex = null;
+            dragSourceInventoryIndex = null;
         }
     }
 
@@ -465,7 +513,7 @@ export function initBuilder() {
             // Update UI only if changed
             const currentX = Math.floor(localPlayer.x / TILE_SIZE);
             const currentY = Math.floor(localPlayer.y / TILE_SIZE);
-            const currentBlockName = blockNames[selectedBlockType];
+            const currentBlockName = selectedBlockType !== undefined ? blockNames[selectedBlockType] : "NONE";
 
             if (lastUiX !== currentX) {
                 uiX.textContent = currentX;
@@ -531,11 +579,13 @@ export function initBuilder() {
         ctx.lineWidth = 2;
         ctx.strokeRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
 
-        // Preview block color slightly transparent
-        ctx.fillStyle = blockColors[selectedBlockType];
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
-        ctx.globalAlpha = 1.0;
+        // Preview block color slightly transparent (only if a valid block is selected)
+        if (selectedBlockType !== undefined) {
+            ctx.fillStyle = blockColors[selectedBlockType];
+            ctx.globalAlpha = 0.5;
+            ctx.fillRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
+            ctx.globalAlpha = 1.0;
+        }
 
         ctx.restore();
         const hotbarPanel = getHotbarBounds();
@@ -611,7 +661,6 @@ export function initBuilder() {
 
         if (inventoryOpen) {
             const panel = getInventoryBounds();
-            const blockTypes = getBlockTypes();
             const { rows, startX, startY } = getInventoryMetrics(panel);
 
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
@@ -645,13 +694,13 @@ export function initBuilder() {
 
             const totalSlots = inventoryLayout.cols * rows;
             for (let index = 0; index < totalSlots; index += 1) {
-                const blockType = blockTypes[index];
+                const blockType = inventorySlots[index];
                 const col = index % inventoryLayout.cols;
                 const row = Math.floor(index / inventoryLayout.cols);
                 const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
                 const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
                 const isEmpty = typeof blockType === "undefined";
-                const isActive = !isEmpty && selectedBlockType === blockType;
+                const isActive = false; // We don't need active state in the main inventory anymore, just hotbar
 
                 // Slot background
                 ctx.fillStyle = "#8b8b8b";
