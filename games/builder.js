@@ -60,7 +60,10 @@ export function initBuilder() {
         6: "BRICK",
     };
 
-    let selectedBlockType = 3; // Default to stone
+    let selectedHotbarIndex = 0;
+    // Map initial available blocks, empty for the rest
+    let hotbarSlots = [1, 2, 3, 4, 5, 6, undefined, undefined, undefined];
+    let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
     let inventoryOpen = false;
 
@@ -80,17 +83,17 @@ export function initBuilder() {
     let buildHoldInterval = null;
     const playerName = () => state.myName || "Player";
     const hotbarLayout = {
-        slotSize: 42,
-        gap: 8,
-        padding: 10,
-        bottom: 14,
+        slotSize: 40,
+        gap: 4,
+        padding: 6,
+        bottom: 8,
     };
     const inventoryLayout = {
-        widthRatio: 0.66,
-        heightRatio: 0.66,
-        padding: 24,
-        slotSize: 62,
-        gap: 12,
+        widthRatio: 0.70,
+        heightRatio: 0.60,
+        padding: 16,
+        slotSize: 40,
+        gap: 4,
         cols: 9,
         rows: 3,
     };
@@ -106,7 +109,7 @@ export function initBuilder() {
     }
 
     function getHotbarBounds() {
-        const itemCount = getBlockTypes().length;
+        const itemCount = 9;
         const panelWidth = (itemCount * hotbarLayout.slotSize) + ((itemCount - 1) * hotbarLayout.gap) + (hotbarLayout.padding * 2);
         const panelHeight = hotbarLayout.slotSize + (hotbarLayout.padding * 2);
         const x = Math.floor((canvas.width - panelWidth) / 2);
@@ -123,7 +126,8 @@ export function initBuilder() {
     }
 
     function getInventorySlotAt(x, y, panel) {
-        const itemCount = getBlockTypes().length;
+        const blockTypes = getBlockTypes();
+        const itemCount = blockTypes.length;
         const { rows, startX, startY } = getInventoryMetrics(panel);
 
         const relativeX = x - startX;
@@ -138,20 +142,19 @@ export function initBuilder() {
 
         const index = (row * inventoryLayout.cols) + col;
         if (index >= itemCount) return null;
-        return getBlockTypes()[index];
+        return blockTypes[index];
     }
 
-    function getHotbarSlotAt(x, y, panel) {
+    function getHotbarIndexAt(x, y, panel) {
         const relativeX = x - (panel.x + hotbarLayout.padding);
         const relativeY = y - (panel.y + hotbarLayout.padding);
         if (relativeX < 0 || relativeY < 0 || relativeY > hotbarLayout.slotSize) return null;
 
         const stride = hotbarLayout.slotSize + hotbarLayout.gap;
         const index = Math.floor(relativeX / stride);
-        const maxIndex = getBlockTypes().length - 1;
-        if (index < 0 || index > maxIndex) return null;
+        if (index < 0 || index >= 9) return null; // 9 hotbar slots
         if ((relativeX % stride) > hotbarLayout.slotSize) return null;
-        return getBlockTypes()[index];
+        return index;
     }
 
     const renderServerList = (servers) => {
@@ -268,9 +271,13 @@ export function initBuilder() {
             return;
         }
 
-        // Block selection (1-6)
-        if (e.key >= "1" && e.key <= "6") {
-            selectedBlockType = parseInt(e.key);
+        // Hotbar selection (1-9)
+        if (!isNaN(e.key)) {
+            const keyNum = parseInt(e.key);
+            if (keyNum >= 1 && keyNum <= 9) {
+                selectedHotbarIndex = keyNum - 1;
+                selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
+            }
         }
     }
 
@@ -316,9 +323,10 @@ export function initBuilder() {
     function handleMouseDown(e) {
         if (!room) return;
         const hotbarPanel = getHotbarBounds();
-        const hotbarSelection = getHotbarSlotAt(mouse.x, mouse.y, hotbarPanel);
-        if (hotbarSelection) {
-            selectedBlockType = hotbarSelection;
+        const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
+        if (hotbarIndex !== null) {
+            selectedHotbarIndex = hotbarIndex;
+            selectedBlockType = hotbarSlots[selectedHotbarIndex] || 1;
             return;
         }
 
@@ -326,6 +334,7 @@ export function initBuilder() {
             const panel = getInventoryBounds();
             const inventorySelection = getInventorySlotAt(mouse.x, mouse.y, panel);
             if (inventorySelection) {
+                hotbarSlots[selectedHotbarIndex] = inventorySelection;
                 selectedBlockType = inventorySelection;
             }
             return;
@@ -466,27 +475,74 @@ export function initBuilder() {
 
         ctx.restore();
         const hotbarPanel = getHotbarBounds();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        // Minecraft hotbar style background
+        ctx.fillStyle = "#c6c6c6"; // Light gray
         ctx.fillRect(hotbarPanel.x, hotbarPanel.y, hotbarPanel.width, hotbarPanel.height);
-        ctx.strokeStyle = "#0f0";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(hotbarPanel.x, hotbarPanel.y, hotbarPanel.width, hotbarPanel.height);
 
-        getBlockTypes().forEach((blockType, index) => {
+        // Minecraft panel borders (bevel)
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(hotbarPanel.x, hotbarPanel.y + hotbarPanel.height);
+        ctx.lineTo(hotbarPanel.x, hotbarPanel.y);
+        ctx.lineTo(hotbarPanel.x + hotbarPanel.width, hotbarPanel.y);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#555555";
+        ctx.beginPath();
+        ctx.moveTo(hotbarPanel.x + hotbarPanel.width, hotbarPanel.y);
+        ctx.lineTo(hotbarPanel.x + hotbarPanel.width, hotbarPanel.y + hotbarPanel.height);
+        ctx.lineTo(hotbarPanel.x, hotbarPanel.y + hotbarPanel.height);
+        ctx.stroke();
+
+        hotbarSlots.forEach((blockType, index) => {
             const slotX = hotbarPanel.x + hotbarLayout.padding + (index * (hotbarLayout.slotSize + hotbarLayout.gap));
             const slotY = hotbarPanel.y + hotbarLayout.padding;
-            const isActive = selectedBlockType === blockType;
+            const isActive = selectedHotbarIndex === index;
 
-            ctx.fillStyle = blockColors[blockType];
+            // Slot background
+            ctx.fillStyle = "#8b8b8b";
             ctx.fillRect(slotX, slotY, hotbarLayout.slotSize, hotbarLayout.slotSize);
-            ctx.strokeStyle = isActive ? "#fff" : "rgba(255,255,255,0.45)";
-            ctx.lineWidth = isActive ? 3 : 1;
-            ctx.strokeRect(slotX, slotY, hotbarLayout.slotSize, hotbarLayout.slotSize);
 
-            ctx.fillStyle = "#000";
-            ctx.font = "9px 'Press Start 2P', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(`${index + 1}`, slotX + (hotbarLayout.slotSize / 2), slotY + hotbarLayout.slotSize - 7);
+            // Slot inner shadow/bevel
+            ctx.strokeStyle = "#373737";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(slotX, slotY + hotbarLayout.slotSize);
+            ctx.lineTo(slotX, slotY);
+            ctx.lineTo(slotX + hotbarLayout.slotSize, slotY);
+            ctx.stroke();
+
+            ctx.strokeStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.moveTo(slotX + hotbarLayout.slotSize, slotY);
+            ctx.lineTo(slotX + hotbarLayout.slotSize, slotY + hotbarLayout.slotSize);
+            ctx.lineTo(slotX, slotY + hotbarLayout.slotSize);
+            ctx.stroke();
+
+            // Block drawing
+            if (blockType) {
+                ctx.fillStyle = blockColors[blockType];
+                const inset = 6;
+                ctx.fillRect(slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2), hotbarLayout.slotSize - (inset * 2));
+            }
+
+            // Selection indicator
+            if (isActive) {
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(slotX - 1, slotY - 1, hotbarLayout.slotSize + 2, hotbarLayout.slotSize + 2);
+            }
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "8px 'Press Start 2P', monospace";
+            ctx.textAlign = "left";
+            // Shadow text
+            ctx.fillStyle = "#3f3f3f";
+            ctx.fillText(`${index + 1}`, slotX + 4, slotY + 12);
+            // Normal text
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(`${index + 1}`, slotX + 3, slotY + 11);
         });
 
         if (inventoryOpen) {
@@ -497,19 +553,31 @@ export function initBuilder() {
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = "rgba(15, 15, 15, 0.92)";
+            // Minecraft inventory panel style
+            ctx.fillStyle = "#c6c6c6"; // Light gray
             ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
-            ctx.strokeStyle = "#0f0";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
 
-            ctx.fillStyle = "#8cff8c";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(panel.x, panel.y + panel.height);
+            ctx.lineTo(panel.x, panel.y);
+            ctx.lineTo(panel.x + panel.width, panel.y);
+            ctx.stroke();
+
+            ctx.strokeStyle = "#555555";
+            ctx.beginPath();
+            ctx.moveTo(panel.x + panel.width, panel.y);
+            ctx.lineTo(panel.x + panel.width, panel.y + panel.height);
+            ctx.lineTo(panel.x, panel.y + panel.height);
+            ctx.stroke();
+
+            ctx.fillStyle = "#3f3f3f";
             ctx.font = "12px 'Press Start 2P', monospace";
             ctx.textAlign = "left";
-            ctx.fillText("INVENTORY", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding);
+            ctx.fillText("Inventory", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding);
             ctx.font = "8px 'Press Start 2P', monospace";
-            ctx.fillStyle = "rgba(220,255,220,0.9)";
-            ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 20);
+            ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 16);
 
             const totalSlots = inventoryLayout.cols * rows;
             for (let index = 0; index < totalSlots; index += 1) {
@@ -521,22 +589,46 @@ export function initBuilder() {
                 const isEmpty = typeof blockType === "undefined";
                 const isActive = !isEmpty && selectedBlockType === blockType;
 
-                ctx.fillStyle = "rgba(255,255,255,0.08)";
+                // Slot background
+                ctx.fillStyle = "#8b8b8b";
                 ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
-                if (!isEmpty) {
-                    ctx.fillStyle = blockColors[blockType];
-                    ctx.fillRect(slotX + 6, slotY + 6, inventoryLayout.slotSize - 12, inventoryLayout.slotSize - 12);
-                }
-                ctx.strokeStyle = isActive ? "#fff" : "rgba(170,255,170,0.6)";
-                ctx.lineWidth = isActive ? 3 : 1;
-                ctx.strokeRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+
+                // Slot inner shadow/bevel
+                ctx.strokeStyle = "#373737";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
+                ctx.lineTo(slotX, slotY);
+                ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
+                ctx.stroke();
+
+                ctx.strokeStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
+                ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
+                ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
+                ctx.stroke();
 
                 if (!isEmpty) {
-                    ctx.fillStyle = "#d6ffd6";
+                    ctx.fillStyle = blockColors[blockType];
+                    const inset = 6;
+                    ctx.fillRect(slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
+                }
+
+                if (isActive) {
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
+                }
+
+                /* Block name is usually shown in tooltip in MC, let's keep it clean
+                if (!isEmpty) {
+                    ctx.fillStyle = "#3f3f3f";
                     ctx.font = "7px 'Press Start 2P', monospace";
                     ctx.textAlign = "center";
                     ctx.fillText(blockNames[blockType], slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize + 10);
                 }
+                */
             }
         }
 
