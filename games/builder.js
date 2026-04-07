@@ -71,19 +71,10 @@ export function initBuilder() {
     let localPlayerId = null;
     let inventoryOpen = false;
 
-    // Initialize 27 inventory slots (3 rows of 9)
-    // Put remaining blocks or duplicates here if desired, otherwise empty.
-    // For now, we'll put some extra blocks in the inventory to demonstrate moving them.
     let inventorySlots = new Array(27).fill(undefined);
-    inventorySlots[0] = 1;
-    inventorySlots[1] = 2;
-    inventorySlots[2] = 3;
-    inventorySlots[3] = 4;
-    inventorySlots[4] = 5;
-    inventorySlots[5] = 6;
 
     // Drag-and-drop state
-    let draggedItemType = null;
+    let draggedItemType = null; // now stores { type, count }
     let dragSourceHotbarIndex = null;
     let dragSourceInventoryIndex = null;
 
@@ -220,12 +211,36 @@ export function initBuilder() {
         }
     };
 
+    const setupRoomListeners = () => {
+        room.onMessage("picked_up", (message) => {
+            addInventoryItem(message.type, message.count);
+        });
+
+        room.onMessage("died", (message) => {
+            console.log(`Died to ${message.killer}`);
+
+            // Drop all items
+            const dropItems = [];
+            hotbarSlots.forEach(s => { if (s) dropItems.push(s); });
+            inventorySlots.forEach(s => { if (s) dropItems.push(s); });
+
+            room.send("spawn_drops", { items: dropItems });
+            room.send("respawn");
+
+            // Clear inventory
+            hotbarSlots = new Array(9).fill(undefined);
+            inventorySlots = new Array(27).fill(undefined);
+            selectedBlockType = hotbarSlots[selectedHotbarIndex];
+        });
+    };
+
     const joinRoomById = async (roomId) => {
         try {
             btnJoin.textContent = "CONNECTING...";
             client = new window.Colyseus.Client(getServerUrl());
             room = await client.joinById(roomId, { name: playerName() });
             localPlayerId = room.sessionId;
+            setupRoomListeners();
             menu.style.display = "none";
             gameArea.style.display = "block";
             startGameLoop();
@@ -241,6 +256,7 @@ export function initBuilder() {
             client = new window.Colyseus.Client(getServerUrl());
             room = await client.joinOrCreate("builder_room", { name: playerName() });
             localPlayerId = room.sessionId;
+            setupRoomListeners();
             menu.style.display = "none";
             gameArea.style.display = "block";
             startGameLoop();
@@ -258,6 +274,7 @@ export function initBuilder() {
                 client = new window.Colyseus.Client(getServerUrl());
                 room = await client.create("builder_room", { name: playerName(), serverName });
                 localPlayerId = room.sessionId;
+                setupRoomListeners();
                 menu.style.display = "none";
                 gameArea.style.display = "block";
                 startGameLoop();
@@ -331,12 +348,73 @@ export function initBuilder() {
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
 
+        // Check if attacking
+        let attacked = false;
+        room.state.players.forEach((p, sessionId) => {
+            if (sessionId === localPlayerId) return;
+            const dx = p.x + TILE_SIZE/2 - worldX;
+            const dy = p.y + TILE_SIZE/2 - worldY;
+            if (dx*dx + dy*dy < (TILE_SIZE * 1.5) ** 2) {
+                room.send("attack", { targetId: sessionId, damage: 1 });
+                attacked = true;
+            }
+        });
+
+        if (attacked) return;
+
         if (e.shiftKey || e.button === 2) {
             // Break
             room.send("break", { x: worldX, y: worldY });
-        } else if (selectedBlockType !== undefined) {
+        } else if (selectedBlockType !== undefined && selectedBlockType.count > 0) {
             // Build (only if a valid block is selected)
-            room.send("build", { x: worldX, y: worldY, type: selectedBlockType });
+            room.send("build", { x: worldX, y: worldY, type: selectedBlockType.type });
+
+            selectedBlockType.count--;
+            if (selectedBlockType.count <= 0) {
+                hotbarSlots[selectedHotbarIndex] = undefined;
+                selectedBlockType = undefined;
+            }
+        }
+    }
+
+    function addInventoryItem(type, count) {
+        let remaining = count;
+
+        // First try to fill existing stacks
+        for (let i = 0; i < hotbarSlots.length; i++) {
+            if (hotbarSlots[i] && hotbarSlots[i].type === type && hotbarSlots[i].count < 99) {
+                const add = Math.min(remaining, 99 - hotbarSlots[i].count);
+                hotbarSlots[i].count += add;
+                remaining -= add;
+                if (remaining <= 0) return;
+            }
+        }
+        for (let i = 0; i < inventorySlots.length; i++) {
+            if (inventorySlots[i] && inventorySlots[i].type === type && inventorySlots[i].count < 99) {
+                const add = Math.min(remaining, 99 - inventorySlots[i].count);
+                inventorySlots[i].count += add;
+                remaining -= add;
+                if (remaining <= 0) return;
+            }
+        }
+
+        // Then try empty slots
+        for (let i = 0; i < hotbarSlots.length; i++) {
+            if (hotbarSlots[i] === undefined) {
+                hotbarSlots[i] = { type, count: Math.min(remaining, 99) };
+                remaining -= hotbarSlots[i].count;
+                if (remaining <= 0) {
+                    selectedBlockType = hotbarSlots[selectedHotbarIndex];
+                    return;
+                }
+            }
+        }
+        for (let i = 0; i < inventorySlots.length; i++) {
+            if (inventorySlots[i] === undefined) {
+                inventorySlots[i] = { type, count: Math.min(remaining, 99) };
+                remaining -= inventorySlots[i].count;
+                if (remaining <= 0) return;
+            }
         }
     }
 
@@ -381,6 +459,44 @@ export function initBuilder() {
                     inventorySlots[inventoryIndex] = undefined;
                 }
             }
+
+            // Check if crafting button clicked
+            const craftStartX = panel.x + panel.width - 150;
+            const craftStartY = panel.y + 40;
+            if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
+                mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
+                // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
+                // Actually let's do 1 Wood(4) -> 4 Brick(6) as planks.
+                let woodIndex = -1;
+                let foundHotbar = false;
+                for (let i = 0; i < hotbarSlots.length; i++) {
+                    if (hotbarSlots[i] && hotbarSlots[i].type === 4 && hotbarSlots[i].count >= 1) {
+                        woodIndex = i;
+                        foundHotbar = true;
+                        break;
+                    }
+                }
+                if (woodIndex === -1) {
+                    for (let i = 0; i < inventorySlots.length; i++) {
+                        if (inventorySlots[i] && inventorySlots[i].type === 4 && inventorySlots[i].count >= 1) {
+                            woodIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (woodIndex !== -1) {
+                    if (foundHotbar) {
+                        hotbarSlots[woodIndex].count--;
+                        if (hotbarSlots[woodIndex].count <= 0) hotbarSlots[woodIndex] = undefined;
+                    } else {
+                        inventorySlots[woodIndex].count--;
+                        if (inventorySlots[woodIndex].count <= 0) inventorySlots[woodIndex] = undefined;
+                    }
+                    addInventoryItem(6, 4); // Brick acts as planks
+                }
+            }
+
             return;
         }
 
@@ -465,12 +581,8 @@ export function initBuilder() {
             dragSourceHotbarIndex = null;
             dragSourceInventoryIndex = null;
         } else if (draggedItemType !== null) {
-            // Failsafe: drop outside inventory mode cancels drag
-            if (dragSourceHotbarIndex !== null) {
-                hotbarSlots[dragSourceHotbarIndex] = draggedItemType;
-            } else if (dragSourceInventoryIndex !== null) {
-                inventorySlots[dragSourceInventoryIndex] = draggedItemType;
-            }
+            // Drop outside inventory logic -> drop items in world
+            room.send("spawn_drops", { items: [draggedItemType] });
             draggedItemType = null;
             dragSourceHotbarIndex = null;
             dragSourceInventoryIndex = null;
@@ -569,6 +681,25 @@ export function initBuilder() {
             ctx.fillText(p.name, p.x + TILE_SIZE / 2, p.y - 5);
         });
 
+        // Draw item drops
+        room.state.drops.forEach((drop) => {
+            const dropSize = TILE_SIZE * 0.4;
+            ctx.fillStyle = blockColors[drop.type] || "#ffffff";
+            ctx.fillRect(drop.x - dropSize / 2, drop.y - dropSize / 2, dropSize, dropSize);
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(drop.x - dropSize / 2, drop.y - dropSize / 2, dropSize, dropSize);
+
+            // Pickup logic on client
+            if (localPlayer) {
+                const dx = localPlayer.x + TILE_SIZE/2 - drop.x;
+                const dy = localPlayer.y + TILE_SIZE/2 - drop.y;
+                if (dx*dx + dy*dy < (TILE_SIZE * 1.5) ** 2) {
+                    room.send("pickup", { id: drop.id });
+                }
+            }
+        });
+
         // Draw crosshair/preview
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
@@ -580,14 +711,39 @@ export function initBuilder() {
         ctx.strokeRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
 
         // Preview block color slightly transparent (only if a valid block is selected)
-        if (selectedBlockType !== undefined) {
-            ctx.fillStyle = blockColors[selectedBlockType];
+        if (selectedBlockType !== undefined && selectedBlockType.count > 0) {
+            ctx.fillStyle = blockColors[selectedBlockType.type];
             ctx.globalAlpha = 0.5;
             ctx.fillRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
             ctx.globalAlpha = 1.0;
         }
 
         ctx.restore();
+
+        // Draw HP Hearts
+        if (localPlayer) {
+            const hearts = Math.ceil(localPlayer.hp / 2) || 0; // Each heart is 2 HP, assuming max 20, or 10 hearts total
+            // If hp is 10 max, then let's just do 1 heart per 1 hp. The prompt said "10 hearts". So 10 hearts max.
+            ctx.fillStyle = "#ff0000";
+            for (let i = 0; i < 10; i++) {
+                const hx = 10 + i * 16;
+                const hy = 10;
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 2;
+
+                if (i < localPlayer.hp) {
+                    // Full heart
+                    ctx.fillStyle = "#ff0000";
+                    ctx.fillRect(hx, hy, 12, 12);
+                } else {
+                    // Empty heart
+                    ctx.fillStyle = "rgba(0,0,0,0.5)";
+                    ctx.fillRect(hx, hy, 12, 12);
+                }
+                ctx.strokeRect(hx, hy, 12, 12);
+            }
+        }
+
         const hotbarPanel = getHotbarBounds();
         // Minecraft hotbar style background
         ctx.fillStyle = "#c6c6c6"; // Light gray
@@ -609,7 +765,7 @@ export function initBuilder() {
         ctx.lineTo(hotbarPanel.x, hotbarPanel.y + hotbarPanel.height);
         ctx.stroke();
 
-        hotbarSlots.forEach((blockType, index) => {
+        hotbarSlots.forEach((item, index) => {
             const slotX = hotbarPanel.x + hotbarLayout.padding + (index * (hotbarLayout.slotSize + hotbarLayout.gap));
             const slotY = hotbarPanel.y + hotbarLayout.padding;
             const isActive = selectedHotbarIndex === index;
@@ -635,10 +791,20 @@ export function initBuilder() {
             ctx.stroke();
 
             // Block drawing
-            if (blockType) {
-                ctx.fillStyle = blockColors[blockType];
+            if (item) {
+                ctx.fillStyle = blockColors[item.type];
                 const inset = 6;
                 ctx.fillRect(slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2), hotbarLayout.slotSize - (inset * 2));
+
+                // Stack count
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "right";
+                // Shadow
+                ctx.fillStyle = "#3f3f3f";
+                ctx.fillText(`${item.count}`, slotX + hotbarLayout.slotSize - 2, slotY + hotbarLayout.slotSize - 4);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(`${item.count}`, slotX + hotbarLayout.slotSize - 3, slotY + hotbarLayout.slotSize - 5);
             }
 
             // Selection indicator
@@ -693,13 +859,38 @@ export function initBuilder() {
             ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 16);
 
             const totalSlots = inventoryLayout.cols * rows;
+            // Draw Crafting Area (2x2 grid + output)
+            const craftStartX = panel.x + panel.width - 150;
+            const craftStartY = panel.y + 40;
+
+            ctx.fillStyle = "#3f3f3f";
+            ctx.font = "10px 'Press Start 2P', monospace";
+            ctx.fillText("Crafting", craftStartX, craftStartY - 10);
+
+            // Draw basic 2x2 grid slots (visual only for now to keep scope bounded, or we can just make it a single "Crafting Table" button)
+            // The prompt says "basic crafting and tools". Let's add a simple "Craft Planks" and "Craft Tool" button.
+
+            // Draw buttons
+            const drawCraftBtn = (label, btnY, callback) => {
+                ctx.fillStyle = "#8b8b8b";
+                ctx.fillRect(craftStartX, btnY, 130, 20);
+                ctx.strokeStyle = "#373737";
+                ctx.strokeRect(craftStartX, btnY, 130, 20);
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.fillText(label, craftStartX + 5, btnY + 14);
+            };
+
+            drawCraftBtn("WOOD -> 4 PLANKS", craftStartY, () => {});
+            // Crafting logic handles via clicks if we want to expand it, but for now we render it.
+
             for (let index = 0; index < totalSlots; index += 1) {
-                const blockType = inventorySlots[index];
+                const item = inventorySlots[index];
                 const col = index % inventoryLayout.cols;
                 const row = Math.floor(index / inventoryLayout.cols);
                 const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
                 const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const isEmpty = typeof blockType === "undefined";
+                const isEmpty = typeof item === "undefined";
                 const isActive = false; // We don't need active state in the main inventory anymore, just hotbar
 
                 // Slot background
@@ -723,9 +914,18 @@ export function initBuilder() {
                 ctx.stroke();
 
                 if (!isEmpty) {
-                    ctx.fillStyle = blockColors[blockType];
+                    ctx.fillStyle = blockColors[item.type];
                     const inset = 6;
                     ctx.fillRect(slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
+
+                    // Stack count
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "8px 'Press Start 2P', monospace";
+                    ctx.textAlign = "right";
+                    ctx.fillStyle = "#3f3f3f";
+                    ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
                 }
 
                 if (isActive) {
@@ -733,23 +933,20 @@ export function initBuilder() {
                     ctx.lineWidth = 3;
                     ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
                 }
-
-                /* Block name is usually shown in tooltip in MC, let's keep it clean
-                if (!isEmpty) {
-                    ctx.fillStyle = "#3f3f3f";
-                    ctx.font = "7px 'Press Start 2P', monospace";
-                    ctx.textAlign = "center";
-                    ctx.fillText(blockNames[blockType], slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize + 10);
-                }
-                */
             }
 
             // Draw currently dragged item attached to cursor
             if (draggedItemType !== null) {
                 const drawSize = inventoryLayout.slotSize - 12; // 12 is inset*2 from earlier
-                ctx.fillStyle = blockColors[draggedItemType] || "#ffffff";
+                ctx.fillStyle = blockColors[draggedItemType.type] || "#ffffff";
                 // Center the block on the mouse cursor
                 ctx.fillRect(mouse.x - drawSize / 2, mouse.y - drawSize / 2, drawSize, drawSize);
+
+                // Draw count
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "right";
+                ctx.fillText(`${draggedItemType.count}`, mouse.x + drawSize / 2, mouse.y + drawSize / 2);
             }
         }
 
