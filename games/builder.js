@@ -1,3 +1,5 @@
+import { state } from "../core.js";
+
 export function initBuilder() {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname || window.location.search.includes('local=1');
     const wsUrl = isLocal ? `ws://localhost:2567` : `wss://seahorse-app-mv4sg.ondigitalocean.app`;
@@ -49,7 +51,7 @@ export function initBuilder() {
         try {
             btnJoin.textContent = "CONNECTING...";
             room = await client.joinOrCreate("builder_room", {
-                name: window.state?.myName || "Player"
+                name: state.myName || "Player"
             });
             localPlayerId = room.sessionId;
 
