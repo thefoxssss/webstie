@@ -364,6 +364,8 @@ export function initBuilder() {
     function sendBuildOrBreak(e) {
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
+        const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
+        selectedBlockType = selectedSlotItem;
 
         // Check if attacking
         let attacked = false;
@@ -382,13 +384,13 @@ export function initBuilder() {
         if (e.shiftKey || e.button === 2) {
             // Break
             room.send("break", { x: worldX, y: worldY });
-        } else if (selectedBlockType !== undefined && itemCount(selectedBlockType) > 0) {
+        } else if (selectedSlotItem !== undefined && itemCount(selectedSlotItem) > 0) {
             if (!canPlaceBlockAt(worldX, worldY)) return;
             // Build (only if a valid block is selected)
-            room.send("build", { x: worldX, y: worldY, type: itemType(selectedBlockType) });
+            room.send("build", { x: worldX, y: worldY, type: itemType(selectedSlotItem) });
 
-            selectedBlockType.count--;
-            if (selectedBlockType.count <= 0) {
+            selectedSlotItem.count--;
+            if (selectedSlotItem.count <= 0) {
                 hotbarSlots[selectedHotbarIndex] = undefined;
                 selectedBlockType = undefined;
             }
