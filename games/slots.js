@@ -24,9 +24,9 @@ const TRIPLE_MULTIPLIERS = Object.freeze({
   diamond: 25,
   green: 12,
   red: 8,
-  black: 8,
+  black: 80,
   cherry: 6,
-  coin: 5,
+  coin: 52,
 });
 
 let gridEls = [];
