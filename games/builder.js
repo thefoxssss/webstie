@@ -41,6 +41,7 @@ export function initBuilder() {
     const uiBlockType = document.getElementById("builderBlockType");
 
     const TILE_SIZE = 32;
+    const CHUNK_SIZE = 16;
 
     const blockColors = {
         1: "#3c9e3c", // Grass
@@ -69,6 +70,7 @@ export function initBuilder() {
         10: "CRAFTING TABLE",
         11: "SWORD",
     };
+    const getMergedInventoryType = (type) => (type === 7 ? 4 : type);
 
     const normalizeItem = (item) => {
         if (item === undefined || item === null) return undefined;
@@ -523,6 +525,8 @@ export function initBuilder() {
     function sendBuildOrBreak(e) {
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
+        const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
+        selectedBlockType = selectedSlotItem;
 
         // Check if attacking
         let attacked = false;
@@ -541,13 +545,13 @@ export function initBuilder() {
         if (e.shiftKey || e.button === 2) {
             // Break
             room.send("break", { x: worldX, y: worldY });
-        } else if (selectedBlockType !== undefined && itemCount(selectedBlockType) > 0) {
+        } else if (selectedSlotItem !== undefined && itemCount(selectedSlotItem) > 0) {
             if (!canPlaceBlockAt(worldX, worldY)) return;
             // Build (only if a valid block is selected)
-            room.send("build", { x: worldX, y: worldY, type: itemType(selectedBlockType) });
+            room.send("build", { x: worldX, y: worldY, type: itemType(selectedSlotItem) });
 
-            selectedBlockType.count--;
-            if (selectedBlockType.count <= 0) {
+            selectedSlotItem.count--;
+            if (selectedSlotItem.count <= 0) {
                 hotbarSlots[selectedHotbarIndex] = undefined;
                 selectedBlockType = undefined;
             }
@@ -592,11 +596,12 @@ export function initBuilder() {
     }
 
     function addInventoryItem(type, count) {
+        const mergedType = getMergedInventoryType(type);
         let remaining = count;
 
         // First try to fill existing stacks
         for (let i = 0; i < hotbarSlots.length; i++) {
-            if (hotbarSlots[i] && hotbarSlots[i].type === type && hotbarSlots[i].count < 99) {
+            if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === mergedType && hotbarSlots[i].count < 99) {
                 const add = Math.min(remaining, 99 - hotbarSlots[i].count);
                 hotbarSlots[i].count += add;
                 remaining -= add;
@@ -604,7 +609,7 @@ export function initBuilder() {
             }
         }
         for (let i = 0; i < inventorySlots.length; i++) {
-            if (inventorySlots[i] && inventorySlots[i].type === type && inventorySlots[i].count < 99) {
+            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === mergedType && inventorySlots[i].count < 99) {
                 const add = Math.min(remaining, 99 - inventorySlots[i].count);
                 inventorySlots[i].count += add;
                 remaining -= add;
@@ -615,7 +620,7 @@ export function initBuilder() {
         // Then try empty slots
         for (let i = 0; i < hotbarSlots.length; i++) {
             if (hotbarSlots[i] === undefined) {
-                hotbarSlots[i] = { type, count: Math.min(remaining, 99) };
+                hotbarSlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= hotbarSlots[i].count;
                 if (remaining <= 0) {
                     selectedBlockType = hotbarSlots[selectedHotbarIndex];
@@ -625,7 +630,7 @@ export function initBuilder() {
         }
         for (let i = 0; i < inventorySlots.length; i++) {
             if (inventorySlots[i] === undefined) {
-                inventorySlots[i] = { type, count: Math.min(remaining, 99) };
+                inventorySlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= inventorySlots[i].count;
                 if (remaining <= 0) return;
             }
@@ -682,27 +687,24 @@ export function initBuilder() {
             // Check if crafting grids or output slot clicked
             const craftStartX = panel.x + panel.width - 190;
             const craftStartY = panel.y + 40;
-            const size = isCraftingTableOpen ? 3 : 2;
-            const stride = inventoryLayout.slotSize + inventoryLayout.gap;
-
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    const slotX = craftStartX + c * stride;
-                    const slotY = craftStartY + r * stride;
-                    if (mouse.x >= slotX && mouse.x <= slotX + inventoryLayout.slotSize &&
-                        mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
-
-                        const idx = r * size + c;
-                        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
-
-                        if (grid[idx] !== undefined) {
-                            draggedItemType = cloneItem(grid[idx]);
-                            dragSourceHotbarIndex = null;
-                            dragSourceInventoryIndex = null;
-                            dragSourceCraftingIndex = idx;
-                            dragSourceOutputSlot = false;
-                            grid[idx] = undefined;
-                            checkRecipes();
+            if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
+                mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
+                // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
+                // Actually let's do 1 Wood(4) -> 4 Brick(6) as planks.
+                let woodIndex = -1;
+                let foundHotbar = false;
+                for (let i = 0; i < hotbarSlots.length; i++) {
+                    if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === 4 && hotbarSlots[i].count >= 1) {
+                        woodIndex = i;
+                        foundHotbar = true;
+                        break;
+                    }
+                }
+                if (woodIndex === -1) {
+                    for (let i = 0; i < inventorySlots.length; i++) {
+                        if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
+                            woodIndex = i;
+                            break;
                         }
                         return;
                     }
