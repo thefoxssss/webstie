@@ -1,10 +1,20 @@
 import { state } from "../core.js";
 
 export function initBuilder() {
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname || window.location.search.includes('local=1');
-    const wsUrl = isLocal ? `ws://localhost:2567` : `wss://seahorse-app-mv4sg.ondigitalocean.app`;
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
+    const serverSelect = document.getElementById("builderServer");
+    const defaultServer = isLocal ? "local" : "prod";
+    if (serverSelect && !serverSelect.value) {
+        serverSelect.value = "auto";
+    }
 
-    const client = new window.Colyseus.Client(wsUrl);
+    const getServerUrl = () => {
+        const selected = serverSelect?.value || "auto";
+        if (selected === "local") return "ws://localhost:2567";
+        if (selected === "prod") return "wss://seahorse-app-mv4sg.ondigitalocean.app";
+        return defaultServer === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
+    };
+
     let room;
     let animationFrameId;
 
@@ -50,6 +60,7 @@ export function initBuilder() {
     btnJoin.onclick = async () => {
         try {
             btnJoin.textContent = "CONNECTING...";
+            const client = new window.Colyseus.Client(getServerUrl());
             room = await client.joinOrCreate("builder_room", {
                 name: state.myName || "Player"
             });
