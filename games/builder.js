@@ -41,6 +41,7 @@ export function initBuilder() {
     const uiBlockType = document.getElementById("builderBlockType");
 
     const TILE_SIZE = 32;
+    const CHUNK_SIZE = 16;
 
     const blockColors = {
         1: "#3c9e3c", // Grass
