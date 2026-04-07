@@ -160,8 +160,17 @@ export function initBuilder() {
             ctx.strokeRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         });
 
-        // Draw players
+        // Draw players (sorted by Y so lower players render in front)
+        const sortedPlayers = [];
         room.state.players.forEach((p, sessionId) => {
+            sortedPlayers.push({ p, sessionId });
+        });
+        sortedPlayers.sort((a, b) => {
+            if (a.p.y === b.p.y) return a.sessionId.localeCompare(b.sessionId);
+            return a.p.y - b.p.y;
+        });
+
+        sortedPlayers.forEach(({ p }) => {
             // Draw player body
             ctx.fillStyle = p.color;
             ctx.fillRect(p.x, p.y, TILE_SIZE, TILE_SIZE);

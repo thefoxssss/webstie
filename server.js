@@ -467,6 +467,8 @@ class BuilderRoom extends colyseus.Room {
     this.state.players.forEach((p, sessionId) => {
         const inp = this.inputs[sessionId];
         if (!inp) return;
+        const prevX = p.x;
+        const prevY = p.y;
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
@@ -482,18 +484,30 @@ class BuilderRoom extends colyseus.Room {
         if (p.x < 0) { p.x = 0; p.vx = 0; }
         if (p.x > MAP_WIDTH * TILE_SIZE - TILE_SIZE) { p.x = MAP_WIDTH * TILE_SIZE - TILE_SIZE; p.vx = 0; }
 
-        // Collision check X
+        // Collision check X (swept, avoids slight clipping into tiles)
         let px1 = Math.floor(p.x / TILE_SIZE);
         let px2 = Math.floor((p.x + TILE_SIZE - 1) / TILE_SIZE);
         let py1 = Math.floor(p.y / TILE_SIZE);
         let py2 = Math.floor((p.y + TILE_SIZE - 1) / TILE_SIZE);
 
-        if (p.vx > 0 && (this.isSolid(px2, py1) || this.isSolid(px2, py2))) {
-            p.x = px2 * TILE_SIZE - TILE_SIZE;
-            p.vx = 0;
-        } else if (p.vx < 0 && (this.isSolid(px1, py1) || this.isSolid(px1, py2))) {
-            p.x = (px1 + 1) * TILE_SIZE;
-            p.vx = 0;
+        if (p.vx > 0) {
+            const prevPx2 = Math.floor((prevX + TILE_SIZE - 1) / TILE_SIZE);
+            for (let tx = prevPx2 + 1; tx <= px2; tx++) {
+                if (this.isSolid(tx, py1) || this.isSolid(tx, py2)) {
+                    p.x = tx * TILE_SIZE - TILE_SIZE;
+                    p.vx = 0;
+                    break;
+                }
+            }
+        } else if (p.vx < 0) {
+            const prevPx1 = Math.floor(prevX / TILE_SIZE);
+            for (let tx = prevPx1 - 1; tx >= px1; tx--) {
+                if (this.isSolid(tx, py1) || this.isSolid(tx, py2)) {
+                    p.x = (tx + 1) * TILE_SIZE;
+                    p.vx = 0;
+                    break;
+                }
+            }
         }
 
         // Apply Y velocity
@@ -506,20 +520,32 @@ class BuilderRoom extends colyseus.Room {
             p.vy = 0;
         }
 
-        // Collision check Y
+        // Collision check Y (swept, avoids slight sinking into tiles)
         px1 = Math.floor(p.x / TILE_SIZE);
         px2 = Math.floor((p.x + TILE_SIZE - 1) / TILE_SIZE);
         py1 = Math.floor(p.y / TILE_SIZE);
         py2 = Math.floor((p.y + TILE_SIZE - 1) / TILE_SIZE);
 
         let grounded = false;
-        if (p.vy > 0 && (this.isSolid(px1, py2) || this.isSolid(px2, py2))) {
-            p.y = py2 * TILE_SIZE - TILE_SIZE;
-            p.vy = 0;
-            grounded = true;
-        } else if (p.vy < 0 && (this.isSolid(px1, py1) || this.isSolid(px2, py1))) {
-            p.y = (py1 + 1) * TILE_SIZE;
-            p.vy = 0;
+        if (p.vy > 0) {
+            const prevPy2 = Math.floor((prevY + TILE_SIZE - 1) / TILE_SIZE);
+            for (let ty = prevPy2 + 1; ty <= py2; ty++) {
+                if (this.isSolid(px1, ty) || this.isSolid(px2, ty)) {
+                    p.y = ty * TILE_SIZE - TILE_SIZE;
+                    p.vy = 0;
+                    grounded = true;
+                    break;
+                }
+            }
+        } else if (p.vy < 0) {
+            const prevPy1 = Math.floor(prevY / TILE_SIZE);
+            for (let ty = prevPy1 - 1; ty >= py1; ty--) {
+                if (this.isSolid(px1, ty) || this.isSolid(px2, ty)) {
+                    p.y = (ty + 1) * TILE_SIZE;
+                    p.vy = 0;
+                    break;
+                }
+            }
         }
 
         if (grounded && inp.jumpBuffer > 0) {
