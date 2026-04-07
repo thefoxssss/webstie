@@ -541,12 +541,12 @@ class BuilderRoom extends colyseus.Room {
 
         // Collision check X (swept, avoids slight clipping into tiles)
         let px1 = Math.floor(p.x / TILE_SIZE);
-        let px2 = Math.floor((p.x + TILE_SIZE - 1) / TILE_SIZE);
+        let px2 = Math.floor((p.x + TILE_SIZE - 0.01) / TILE_SIZE);
         let py1 = Math.floor(p.y / TILE_SIZE);
-        let py2 = Math.floor((p.y + TILE_SIZE - 1) / TILE_SIZE);
+        let py2 = Math.floor((p.y + TILE_SIZE - 0.01) / TILE_SIZE);
 
         if (p.vx > 0) {
-            const prevPx2 = Math.floor((prevX + TILE_SIZE - 1) / TILE_SIZE);
+            const prevPx2 = Math.floor((prevX + TILE_SIZE - 0.01) / TILE_SIZE);
             for (let tx = prevPx2 + 1; tx <= px2; tx++) {
                 if (this.isSolid(tx, py1) || this.isSolid(tx, py2)) {
                     p.x = tx * TILE_SIZE - TILE_SIZE;
@@ -577,13 +577,13 @@ class BuilderRoom extends colyseus.Room {
 
         // Collision check Y (swept, avoids slight sinking into tiles)
         px1 = Math.floor(p.x / TILE_SIZE);
-        px2 = Math.floor((p.x + TILE_SIZE - 1) / TILE_SIZE);
+        px2 = Math.floor((p.x + TILE_SIZE - 0.01) / TILE_SIZE);
         py1 = Math.floor(p.y / TILE_SIZE);
-        py2 = Math.floor((p.y + TILE_SIZE - 1) / TILE_SIZE);
+        py2 = Math.floor((p.y + TILE_SIZE - 0.01) / TILE_SIZE);
 
         let grounded = false;
         if (p.vy > 0) {
-            const prevPy2 = Math.floor((prevY + TILE_SIZE - 1) / TILE_SIZE);
+            const prevPy2 = Math.floor((prevY + TILE_SIZE - 0.01) / TILE_SIZE);
             for (let ty = prevPy2 + 1; ty <= py2; ty++) {
                 if (this.isSolid(px1, ty) || this.isSolid(px2, ty)) {
                     p.y = ty * TILE_SIZE - TILE_SIZE;
