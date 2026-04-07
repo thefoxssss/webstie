@@ -383,6 +383,7 @@ export function initBuilder() {
             // Break
             room.send("break", { x: worldX, y: worldY });
         } else if (selectedBlockType !== undefined && itemCount(selectedBlockType) > 0) {
+            if (!canPlaceBlockAt(worldX, worldY)) return;
             // Build (only if a valid block is selected)
             room.send("build", { x: worldX, y: worldY, type: itemType(selectedBlockType) });
 
@@ -392,6 +393,40 @@ export function initBuilder() {
                 selectedBlockType = undefined;
             }
         }
+    }
+
+    function canPlaceBlockAt(worldX, worldY) {
+        if (!room || !room.state) return false;
+
+        const localPlayer = room.state.players.get(localPlayerId);
+        if (!localPlayer || localPlayer.hp <= 0) return false;
+
+        const playerCenterX = localPlayer.x + TILE_SIZE / 2;
+        const playerCenterY = localPlayer.y + TILE_SIZE / 2;
+        const distSq = (playerCenterX - worldX) ** 2 + (playerCenterY - worldY) ** 2;
+        const maxBuildDistance = TILE_SIZE * 6;
+        if (distSq > maxBuildDistance ** 2) return false;
+
+        const tileX = Math.floor(worldX / TILE_SIZE);
+        const tileY = Math.floor(worldY / TILE_SIZE);
+        const chunkX = Math.floor(tileX / CHUNK_SIZE);
+        const chunkY = Math.floor(tileY / CHUNK_SIZE);
+        const chunk = room.state.chunks.get(`${chunkX},${chunkY}`);
+        const key = `${tileX},${tileY}`;
+        if (chunk && chunk.blocks.get(key)) return false;
+
+        let intersectsPlayer = false;
+        room.state.players.forEach((player) => {
+            if (
+                player.x < tileX * TILE_SIZE + TILE_SIZE &&
+                player.x + TILE_SIZE > tileX * TILE_SIZE &&
+                player.y < tileY * TILE_SIZE + TILE_SIZE &&
+                player.y + TILE_SIZE > tileY * TILE_SIZE
+            ) {
+                intersectsPlayer = true;
+            }
+        });
+        return !intersectsPlayer;
     }
 
     function addInventoryItem(type, count) {
