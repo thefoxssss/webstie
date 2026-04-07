@@ -387,10 +387,6 @@ export function initBuilder() {
             camera.x = localPlayer.x - canvas.width / 2 + TILE_SIZE / 2;
             camera.y = localPlayer.y - canvas.height / 2 + TILE_SIZE / 2;
 
-            // Constrain camera (optional, based on world size)
-            camera.x = Math.max(0, camera.x);
-            camera.y = Math.max(0, camera.y);
-
             // Update UI only if changed
             const currentX = Math.floor(localPlayer.x / TILE_SIZE);
             const currentY = Math.floor(localPlayer.y / TILE_SIZE);
@@ -413,12 +409,14 @@ export function initBuilder() {
         ctx.save();
         ctx.translate(-camera.x, -camera.y);
 
-        // Draw blocks
-        room.state.blocks.forEach((block, key) => {
+        // Draw blocks (chunked)
+        room.state.chunks.forEach((chunk) => {
+          chunk.blocks.forEach((block) => {
             ctx.fillStyle = blockColors[block.type] || "#ffffff";
             ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             ctx.strokeStyle = "rgba(0,0,0,0.1)";
             ctx.strokeRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          });
         });
 
         // Draw players (sorted by Y so lower players render in front)

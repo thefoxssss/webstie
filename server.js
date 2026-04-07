@@ -5,6 +5,68 @@ const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin"); // <-- Firebase is here!
+const fs = require("fs");
+const path = require("path");
+
+// Simple Perlin-like noise
+const permutation = new Uint8Array(512);
+const p = new Uint8Array([151,160,137,91,90,15,
+  131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+  190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+  88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
+  77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+  102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
+  135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
+  5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+  223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
+  129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
+  251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
+  49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
+  138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180]);
+for (let i=0; i<256; i++) permutation[i] = permutation[i+256] = p[i];
+
+function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function lerp(t, a, b) { return a + t * (b - a); }
+function grad(hash, x, y, z) {
+  const h = hash & 15;
+  const u = h < 8 ? x : y;
+  const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+  return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+}
+function perlin(x, y, z) {
+  const X = Math.floor(x) & 255;
+  const Y = Math.floor(y) & 255;
+  const Z = Math.floor(z) & 255;
+  x -= Math.floor(x);
+  y -= Math.floor(y);
+  z -= Math.floor(z);
+  const u = fade(x);
+  const v = fade(y);
+  const w = fade(z);
+  const A = permutation[X] + Y, AA = permutation[A] + Z, AB = permutation[A + 1] + Z;
+  const B = permutation[X + 1] + Y, BA = permutation[B] + Z, BB = permutation[B + 1] + Z;
+  return lerp(w, lerp(v, lerp(u, grad(permutation[AA], x, y, z),
+                                 grad(permutation[BA], x - 1, y, z)),
+                         lerp(u, grad(permutation[AB], x, y - 1, z),
+                                 grad(permutation[BB], x - 1, y - 1, z))),
+                 lerp(v, lerp(u, grad(permutation[AA + 1], x, y, z - 1),
+                                 grad(permutation[BA + 1], x - 1, y, z - 1)),
+                         lerp(u, grad(permutation[AB + 1], x, y - 1, z - 1),
+                                 grad(permutation[BB + 1], x - 1, y - 1, z - 1))));
+}
+function layeredNoise(x, y, octaves, persistence, scale) {
+  let total = 0;
+  let frequency = scale;
+  let amplitude = 1;
+  let maxValue = 0;
+  for (let i = 0; i < octaves; i++) {
+    total += perlin(x * frequency, y * frequency, 0) * amplitude;
+    maxValue += amplitude;
+    amplitude *= persistence;
+    frequency *= 2;
+  }
+  return total / maxValue;
+}
 
 // Initialize Firebase (You will eventually need your Firebase Service Account key here)
 // admin.initializeApp({
@@ -347,20 +409,27 @@ type("number")(Block.prototype, "x");
 type("number")(Block.prototype, "y");
 type("number")(Block.prototype, "type");
 
+class Chunk extends Schema {
+  constructor() {
+    super();
+    this.blocks = new MapSchema();
+  }
+}
+type({ map: Block })(Chunk.prototype, "blocks");
+
 class BuilderState extends Schema {
     constructor() {
         super();
         this.players = new MapSchema();
-        this.blocks = new MapSchema();
+        this.chunks = new MapSchema();
     }
 }
 type({ map: BuilderPlayer })(BuilderState.prototype, "players");
-type({ map: Block })(BuilderState.prototype, "blocks");
+type({ map: Chunk })(BuilderState.prototype, "chunks");
 
 const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
-const MAP_WIDTH = 100;
-const MAP_HEIGHT = 40;
+const CHUNK_SIZE = 16;
 const BUILDER_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
 
 class BuilderRoom extends colyseus.Room {
@@ -373,18 +442,6 @@ class BuilderRoom extends colyseus.Room {
     this.setMetadata({ serverName: this.serverName });
 
     const state = new BuilderState();
-
-    // Generate initial terrain
-    for (let x = 0; x < MAP_WIDTH; x++) {
-      for (let y = MAP_HEIGHT - 5; y < MAP_HEIGHT; y++) {
-        const b = new Block();
-        b.x = x;
-        b.y = y;
-        b.type = y === MAP_HEIGHT - 5 ? 1 : 2; // 1: grass, 2: dirt
-        state.blocks.set(`${x},${y}`, b);
-      }
-    }
-
     this.setState(state);
 
     this.inputs = {};
@@ -414,31 +471,32 @@ class BuilderRoom extends colyseus.Room {
 
       const x = Math.floor(message.x / TILE_SIZE);
       const y = Math.floor(message.y / TILE_SIZE);
+      const cx = Math.floor(x / CHUNK_SIZE);
+      const cy = Math.floor(y / CHUNK_SIZE);
+      const chunk = this.getOrCreateChunk(cx, cy);
 
-      if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
-        const key = `${x},${y}`;
-        // Check if block already exists
-        if (!this.state.blocks.get(key)) {
-            // Check intersection with players
-            let intersect = false;
-            this.state.players.forEach(p => {
-                if (
-                    p.x < x * TILE_SIZE + TILE_SIZE &&
-                    p.x + TILE_SIZE > x * TILE_SIZE &&
-                    p.y < y * TILE_SIZE + TILE_SIZE &&
-                    p.y + TILE_SIZE > y * TILE_SIZE
-                ) {
-                    intersect = true;
-                }
-            });
-            if (!intersect) {
-                const b = new Block();
-                b.x = x;
-                b.y = y;
-                b.type = message.type || 3;
-                this.state.blocks.set(key, b);
-            }
-        }
+      const key = `${x},${y}`;
+      // Check if block already exists
+      if (!chunk.blocks.get(key)) {
+          // Check intersection with players
+          let intersect = false;
+          this.state.players.forEach(p => {
+              if (
+                  p.x < x * TILE_SIZE + TILE_SIZE &&
+                  p.x + TILE_SIZE > x * TILE_SIZE &&
+                  p.y < y * TILE_SIZE + TILE_SIZE &&
+                  p.y + TILE_SIZE > y * TILE_SIZE
+              ) {
+                  intersect = true;
+              }
+          });
+          if (!intersect) {
+              const b = new Block();
+              b.x = x;
+              b.y = y;
+              b.type = message.type || 3;
+              chunk.blocks.set(key, b);
+          }
       }
     });
 
@@ -458,16 +516,21 @@ class BuilderRoom extends colyseus.Room {
 
       const x = Math.floor(message.x / TILE_SIZE);
       const y = Math.floor(message.y / TILE_SIZE);
+      const cx = Math.floor(x / CHUNK_SIZE);
+      const cy = Math.floor(y / CHUNK_SIZE);
+      const chunk = this.state.chunks.get(`${cx},${cy}`);
 
-      if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+      if (chunk) {
           const key = `${x},${y}`;
-          if (this.state.blocks.get(key)) {
-              this.state.blocks.delete(key);
+          if (chunk.blocks.get(key)) {
+              chunk.blocks.delete(key);
           }
       }
     });
 
+    this.loadWorld();
     this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
+    this.saveInterval = setInterval(() => this.saveWorld(), 30000); // Save every 30s
     this.syncServerDirectory();
   }
 
@@ -475,8 +538,13 @@ class BuilderRoom extends colyseus.Room {
     const p = new BuilderPlayer();
     p.id = client.sessionId;
     p.name = options.name || "Builder";
-    p.x = Math.random() * (MAP_WIDTH * TILE_SIZE - TILE_SIZE);
-    p.y = 100;
+
+    const spawnX = Math.floor(Math.random() * 200) - 100;
+    const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
+    const spawnY = Math.floor(20 + noise * 15) - 2;
+
+    p.x = spawnX * TILE_SIZE;
+    p.y = spawnY * TILE_SIZE;
     p.vx = 0;
     p.vy = 0;
     p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
@@ -493,7 +561,99 @@ class BuilderRoom extends colyseus.Room {
   }
 
   onDispose() {
+    if (this.saveInterval) clearInterval(this.saveInterval);
+    this.saveWorld();
     builderServerDirectory.delete(this.roomId);
+  }
+
+  saveWorld() {
+    try {
+      const worldsDir = path.join(__dirname, "worlds");
+      if (!fs.existsSync(worldsDir)) fs.mkdirSync(worldsDir);
+
+      const sanitizedName = this.serverName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      const filePath = path.join(worldsDir, `${sanitizedName}.json`);
+
+      const data = {};
+      this.state.chunks.forEach((chunk, key) => {
+        data[key] = [];
+        chunk.blocks.forEach((block) => {
+          data[key].push({ x: block.x, y: block.y, type: block.type });
+        });
+      });
+
+      fs.writeFileSync(filePath, JSON.stringify(data));
+      console.log(`World saved: ${filePath}`);
+    } catch (e) {
+      console.error("Failed to save world", e);
+    }
+  }
+
+  loadWorld() {
+    try {
+      const sanitizedName = this.serverName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      const filePath = path.join(__dirname, "worlds", `${sanitizedName}.json`);
+
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath);
+        const data = JSON.parse(raw);
+
+        for (const chunkKey in data) {
+          const chunk = new Chunk();
+          data[chunkKey].forEach(bData => {
+            const b = new Block();
+            b.x = bData.x;
+            b.y = bData.y;
+            b.type = bData.type;
+            chunk.blocks.set(`${b.x},${b.y}`, b);
+          });
+          this.state.chunks.set(chunkKey, chunk);
+        }
+        console.log(`World loaded: ${filePath}`);
+      }
+    } catch (e) {
+      console.error("Failed to load world", e);
+    }
+  }
+
+  generateChunk(cx, cy) {
+    const key = `${cx},${cy}`;
+    if (this.state.chunks.has(key)) return;
+
+    const chunk = new Chunk();
+    this.state.chunks.set(key, chunk); // Set early to avoid re-generation
+
+    const minY = cy * CHUNK_SIZE;
+    const maxY = (cy + 1) * CHUNK_SIZE;
+
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      const worldX = cx * CHUNK_SIZE + x;
+      const noise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
+      const h = Math.floor(20 + noise * 15);
+
+      const startY = Math.max(minY, h);
+      const endY = Math.min(maxY, h + 40);
+
+      for (let y = startY; y < endY; y++) {
+        const b = new Block();
+        b.x = worldX;
+        b.y = y;
+        if (y === h) b.type = 1; // Grass
+        else if (y < h + 4) b.type = 2; // Dirt
+        else b.type = 3; // Stone
+        chunk.blocks.set(`${worldX},${y}`, b);
+      }
+    }
+  }
+
+  getOrCreateChunk(cx, cy) {
+    const key = `${cx},${cy}`;
+    let chunk = this.state.chunks.get(key);
+    if (!chunk) {
+      this.generateChunk(cx, cy);
+      chunk = this.state.chunks.get(key);
+    }
+    return chunk;
   }
 
   syncServerDirectory() {
@@ -511,11 +671,11 @@ class BuilderRoom extends colyseus.Room {
   }
 
   isSolid(x, y) {
-      if (x < 0 || x >= MAP_WIDTH) return true; // keep horizontal bounds solid
-      if (y < 0) return true; // keep ceiling solid
-      // Do not make the bottom solid, so players can fall off and respawn
-      if (y >= MAP_HEIGHT) return false;
-      return this.state.blocks.get(`${x},${y}`) !== undefined;
+      const cx = Math.floor(x / CHUNK_SIZE);
+      const cy = Math.floor(y / CHUNK_SIZE);
+      const chunk = this.state.chunks.get(`${cx},${cy}`);
+      if (!chunk) return false;
+      return chunk.blocks.get(`${x},${y}`) !== undefined;
   }
 
   simulateTick() {
@@ -524,6 +684,14 @@ class BuilderRoom extends colyseus.Room {
         if (!inp) return;
         const prevX = p.x;
         const prevY = p.y;
+
+        const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
+        const pCy = Math.floor(p.y / (TILE_SIZE * CHUNK_SIZE));
+        for (let cx = pCx - 2; cx <= pCx + 2; cx++) {
+          for (let cy = pCy - 2; cy <= pCy + 2; cy++) {
+            this.getOrCreateChunk(cx, cy);
+          }
+        }
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
@@ -534,10 +702,6 @@ class BuilderRoom extends colyseus.Room {
 
         // Apply X velocity
         p.x += p.vx;
-
-        // Bounds check X
-        if (p.x < 0) { p.x = 0; p.vx = 0; }
-        if (p.x > MAP_WIDTH * TILE_SIZE - TILE_SIZE) { p.x = MAP_WIDTH * TILE_SIZE - TILE_SIZE; p.vx = 0; }
 
         // Collision check X (swept, avoids slight clipping into tiles)
         let px1 = Math.floor(p.x / TILE_SIZE);
@@ -568,10 +732,12 @@ class BuilderRoom extends colyseus.Room {
         // Apply Y velocity
         p.y += p.vy;
 
-        // Bounds check Y
-        if (p.y > MAP_HEIGHT * TILE_SIZE) {
-            // Respawn if they fall off
-            p.y = 100;
+        // Fall into the void respawn
+        if (p.y > 50 * TILE_SIZE) {
+            const spawnX = Math.floor(p.x / TILE_SIZE);
+            const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
+            const spawnY = Math.floor(20 + noise * 15) - 2;
+            p.y = spawnY * TILE_SIZE;
             p.vy = 0;
         }
 
