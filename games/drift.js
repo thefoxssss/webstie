@@ -71,6 +71,7 @@ function makeCar(uid, name, index) {
     crossedTop: false,
     driftCharge: 0,
     boost: 0,
+    brakeHold: 0,
     finishedAt: 0,
   };
 }
@@ -377,6 +378,7 @@ async function startRace() {
         crossedTop: false,
         driftCharge: 0,
         boost: 0,
+        brakeHold: 0,
         finishedAt: 0,
       };
     });
@@ -439,10 +441,19 @@ function stepCar(car, input) {
   if (input.up) {
     car.vx += forwardX * CAR.accel;
     car.vy += forwardY * CAR.accel;
+    car.brakeHold = 0;
   }
   if (input.down) {
-    car.vx -= forwardX * CAR.brake;
-    car.vy -= forwardY * CAR.brake;
+    car.brakeHold = Math.min(20, (car.brakeHold || 0) + 1);
+    const holdBoost = 1 + car.brakeHold * 0.03;
+    car.vx -= forwardX * CAR.brake * holdBoost;
+    car.vy -= forwardY * CAR.brake * holdBoost;
+    if (speedForward > 0.35) {
+      car.vx *= 0.95;
+      car.vy *= 0.95;
+    }
+  } else {
+    car.brakeHold = 0;
   }
 
   const speed = Math.hypot(car.vx, car.vy);
