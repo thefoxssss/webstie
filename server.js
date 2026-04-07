@@ -399,6 +399,19 @@ class BuilderRoom extends colyseus.Room {
     });
 
     this.onMessage("build", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+
+      const playerCenterX = p.x + TILE_SIZE / 2;
+      const playerCenterY = p.y + TILE_SIZE / 2;
+      const targetCenterX = message.x;
+      const targetCenterY = message.y;
+
+      const distSq = (playerCenterX - targetCenterX) ** 2 + (playerCenterY - targetCenterY) ** 2;
+      const maxBuildDistance = TILE_SIZE * 6; // 6 blocks reach
+
+      if (distSq > maxBuildDistance ** 2) return;
+
       const x = Math.floor(message.x / TILE_SIZE);
       const y = Math.floor(message.y / TILE_SIZE);
 
@@ -430,11 +443,27 @@ class BuilderRoom extends colyseus.Room {
     });
 
     this.onMessage("break", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+
+      const playerCenterX = p.x + TILE_SIZE / 2;
+      const playerCenterY = p.y + TILE_SIZE / 2;
+      const targetCenterX = message.x;
+      const targetCenterY = message.y;
+
+      const distSq = (playerCenterX - targetCenterX) ** 2 + (playerCenterY - targetCenterY) ** 2;
+      const maxBuildDistance = TILE_SIZE * 6;
+
+      if (distSq > maxBuildDistance ** 2) return;
+
       const x = Math.floor(message.x / TILE_SIZE);
       const y = Math.floor(message.y / TILE_SIZE);
-      const key = `${x},${y}`;
-      if (this.state.blocks.get(key)) {
-          this.state.blocks.delete(key);
+
+      if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+          const key = `${x},${y}`;
+          if (this.state.blocks.get(key)) {
+              this.state.blocks.delete(key);
+          }
       }
     });
 
@@ -461,6 +490,10 @@ class BuilderRoom extends colyseus.Room {
     this.state.players.delete(client.sessionId);
     delete this.inputs[client.sessionId];
     this.syncServerDirectory();
+  }
+
+  onDispose() {
+    builderServerDirectory.delete(this.roomId);
   }
 
   syncServerDirectory() {
