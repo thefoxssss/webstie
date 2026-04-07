@@ -55,7 +55,11 @@ export function initBuilder() {
 
     // Inputs
     const keys = { w: false, a: false, d: false, upPress: false };
-    const mouse = { x: 0, y: 0 };
+    const mouse = { x: 0, y: 0, isDown: false };
+    const BUILD_HOLD_DELAY_MS = 180;
+    const BUILD_HOLD_REPEAT_MS = 120;
+    let buildHoldTimeout = null;
+    let buildHoldInterval = null;
 
     btnJoin.onclick = async () => {
         try {
@@ -106,9 +110,7 @@ export function initBuilder() {
         mouse.y = (e.clientY - rect.top) * scaleY;
     }
 
-    function handleMouseClick(e) {
-        if (!room) return;
-
+    function sendBuildOrBreak(e) {
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
 
@@ -121,10 +123,49 @@ export function initBuilder() {
         }
     }
 
+    function clearBuildHoldTimers() {
+        if (buildHoldTimeout) {
+            clearTimeout(buildHoldTimeout);
+            buildHoldTimeout = null;
+        }
+        if (buildHoldInterval) {
+            clearInterval(buildHoldInterval);
+            buildHoldInterval = null;
+        }
+    }
+
+    function handleMouseDown(e) {
+        if (!room) return;
+
+        mouse.isDown = true;
+        sendBuildOrBreak(e);
+
+        // Hold left click to repeatedly place blocks after a short delay.
+        if (!e.shiftKey && e.button === 0) {
+            clearBuildHoldTimers();
+            buildHoldTimeout = setTimeout(() => {
+                buildHoldInterval = setInterval(() => {
+                    if (!mouse.isDown || !room) {
+                        clearBuildHoldTimers();
+                        return;
+                    }
+                    sendBuildOrBreak(e);
+                }, BUILD_HOLD_REPEAT_MS);
+            }, BUILD_HOLD_DELAY_MS);
+        }
+    }
+
+    function handleMouseUp() {
+        mouse.isDown = false;
+        clearBuildHoldTimers();
+    }
+
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
     canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mousedown", handleMouseClick);
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("mouseup", handleMouseUp);
+    canvas.addEventListener("mouseleave", handleMouseUp);
 
     // Prevent context menu on canvas for right click breaking
     canvas.addEventListener("contextmenu", e => e.preventDefault());
@@ -236,7 +277,10 @@ export function initBuilder() {
         document.removeEventListener("keydown", handleKeyDown);
         document.removeEventListener("keyup", handleKeyUp);
         canvas.removeEventListener("mousemove", handleMouseMove);
-        canvas.removeEventListener("mousedown", handleMouseClick);
+        canvas.removeEventListener("mousedown", handleMouseDown);
+        canvas.removeEventListener("mouseup", handleMouseUp);
+        canvas.removeEventListener("mouseleave", handleMouseUp);
+        clearBuildHoldTimers();
         menu.style.display = "block";
         gameArea.style.display = "none";
         btnJoin.textContent = "JOIN WORLD";
