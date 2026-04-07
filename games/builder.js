@@ -66,6 +66,11 @@ export function initBuilder() {
 
     let camera = { x: 0, y: 0 };
 
+    // Cached UI values to prevent DOM thrashing
+    let lastUiX = null;
+    let lastUiY = null;
+    let lastUiBlockType = null;
+
     // Inputs
     const keys = { w: false, a: false, d: false, upPress: false };
     const mouse = { x: 0, y: 0, isDown: false };
@@ -386,10 +391,23 @@ export function initBuilder() {
             camera.x = Math.max(0, camera.x);
             camera.y = Math.max(0, camera.y);
 
-            // Update UI
-            uiX.textContent = Math.floor(localPlayer.x / TILE_SIZE);
-            uiY.textContent = Math.floor(localPlayer.y / TILE_SIZE);
-            uiBlockType.textContent = blockNames[selectedBlockType];
+            // Update UI only if changed
+            const currentX = Math.floor(localPlayer.x / TILE_SIZE);
+            const currentY = Math.floor(localPlayer.y / TILE_SIZE);
+            const currentBlockName = blockNames[selectedBlockType];
+
+            if (lastUiX !== currentX) {
+                uiX.textContent = currentX;
+                lastUiX = currentX;
+            }
+            if (lastUiY !== currentY) {
+                uiY.textContent = currentY;
+                lastUiY = currentY;
+            }
+            if (lastUiBlockType !== currentBlockName) {
+                uiBlockType.textContent = currentBlockName;
+                lastUiBlockType = currentBlockName;
+            }
         }
 
         ctx.save();
