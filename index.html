@@ -34,6 +34,9 @@
         <button id="tabMainMenu" class="menu-btn" onclick="window.closeOverlays()">
           HOME
         </button>
+        <button id="tabChat" class="menu-btn" onclick="window.toggleTopPanelOverlay('globalChat')">
+          CHAT
+        </button>
         <button id="tabConfig" class="menu-btn" onclick="window.toggleConfigOverlay()">
           CONFIG
         </button>
@@ -402,35 +405,69 @@
         </button>
       </div>
     </div>
-    <!-- Global text chat dock (always visible on home). -->
-    <div id="globalChat" class="home-chat minimized">
-      <div class="chat-header">
-        <span>CHAT TERMINAL</span>
-        <div class="chat-header-actions">
-          <button
-            id="chatModerationToggleBtn"
-            class="chat-minimize-btn chat-moderation-btn"
-            type="button"
-            aria-pressed="true"
-            aria-label="Disable moderation mode"
-            title="Moderation mode on"
-          >🔨</button>
-          <button id="chatMinimizeBtn" class="chat-minimize-btn" type="button" aria-expanded="false" aria-controls="chatTabs chatMeta chatHistory chatInput">+</button>
+    <!-- Global text chat dock + Voice Lounge integration. -->
+    <div id="globalChat" class="overlay menu-overlay">
+      <div class="score-box chat-box">
+        <div class="chat-header">
+          <span>CHAT TERMINAL</span>
+          <div class="chat-header-actions">
+            <button
+              id="chatModerationToggleBtn"
+              class="chat-minimize-btn chat-moderation-btn"
+              type="button"
+              aria-pressed="true"
+              aria-label="Disable moderation mode"
+              title="Moderation mode on"
+            >🔨</button>
+          </div>
         </div>
+        <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="Chat channels">
+          <button class="chat-tab" data-chat-tab="dm" type="button">MESSAGES</button>
+          <button class="chat-tab active" data-chat-tab="global" type="button">GLOBAL</button>
+          <button class="chat-tab" data-chat-tab="crew" type="button">CREW</button>
+          <button class="chat-tab" data-chat-tab="voice" type="button">VOICE</button>
+        </div>
+
+        <!-- Text Chat View -->
+        <div id="chatTextView">
+          <div id="chatMeta" class="chat-meta">GLOBAL CHANNEL // TYPE MESSAGE...</div>
+          <div id="chatHistory"></div>
+          <input
+            type="text"
+            id="chatInput"
+            class="term-input"
+            placeholder="TYPE MESSAGE..."
+            maxlength="60"
+            style="margin-bottom: 0; font-size: 14px; text-align: left;"
+          />
+        </div>
+
+        <!-- Voice Lounge View -->
+        <div id="chatVoiceView" style="display: none; padding: 10px;">
+          <div id="voiceMenu">
+            <button class="term-btn" id="btnCreateVoice" style="margin-bottom: 15px; padding: 10px; font-size: 10px;">CREATE NEW ROOM</button>
+            <div style="font-size: 9px; margin-bottom: 8px; text-align: left; border-bottom: 1px solid var(--accent-dim); padding-bottom: 4px;">ACTIVE ROOMS</div>
+            <div id="voiceRoomList" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+                <div style="font-size: 9px; color: #aaa;">SCANNING FOR ROOMS...</div>
+            </div>
+          </div>
+
+          <div id="voiceLobby" style="display: none">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div style="font-size: 10px;">ROOM: <span id="voiceRoomId" style="color: var(--accent);">----</span></div>
+              <button class="menu-btn" id="btnVoiceLeave" style="border-color: #f66; color: #f66; padding: 4px 8px;">LEAVE</button>
+            </div>
+            <div id="voicePList" style="text-align: left; margin: 10px 0; font-size: 10px; border: 1px dashed var(--accent-dim); padding: 8px; min-height: 60px;"></div>
+            <button class="term-btn" id="btnVoiceMute" style="padding: 10px; font-size: 10px;">MUTE MIC</button>
+          </div>
+          <!-- Hidden container for peer audio elements -->
+          <div id="voiceAudioContainer" style="display: none;"></div>
+        </div>
+
+        <button class="term-btn" style="margin-top: 15px; padding: 10px; font-size: 10px;" onclick="window.closeOverlays()">
+          CLOSE TERMINAL
+        </button>
       </div>
-      <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="Chat channels">
-        <button class="chat-tab" data-chat-tab="dm" type="button">MESSAGE USERS</button>
-        <button class="chat-tab active" data-chat-tab="global" type="button">GLOBAL</button>
-        <button class="chat-tab" data-chat-tab="crew" type="button">CREW</button>
-      </div>
-      <div id="chatMeta" class="chat-meta">GLOBAL CHANNEL // TYPE MESSAGE...</div>
-      <div id="chatHistory"></div>
-      <input
-        type="text"
-        id="chatInput"
-        placeholder="TYPE MESSAGE..."
-        maxlength="60"
-      />
     </div>
 
     <!-- Landing splash section + operator info. -->
@@ -1326,29 +1363,6 @@
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
-    <!-- Voice Lounge overlay -->
-    <div class="overlay" id="overlayVoice">
-      <h1>VOICE LOUNGE</h1>
-      <div id="voiceMenu" class="menu-box">
-        <button class="term-btn" id="btnCreateVoice" style="margin-bottom: 20px;">CREATE NEW ROOM</button>
-        <div style="font-size: 10px; margin-bottom: 10px; text-align: left; border-bottom: 1px solid var(--accent); padding-bottom: 5px;">ACTIVE ROOMS</div>
-        <div id="voiceRoomList" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
-            <div style="font-size: 10px; color: #aaa;">SCANNING FOR ROOMS...</div>
-        </div>
-      </div>
-
-      <div id="voiceLobby" class="menu-box" style="display: none">
-        <h2>ROOM: <span id="voiceRoomId">----</span></h2>
-        <div id="voicePList" style="text-align: left; margin: 14px 0"></div>
-        <button class="term-btn" id="btnVoiceMute">MUTE MIC</button>
-        <button class="term-btn" id="btnVoiceLeave" style="margin-top: 10px; border-color: #f66; color: #f66;">LEAVE ROOM</button>
-      </div>
-
-      <!-- Hidden container for peer audio elements -->
-      <div id="voiceAudioContainer" style="display: none;"></div>
-
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
-    </div>
 
     <!-- Neon Defender mini-game overlay. -->
     <div class="overlay" id="overlayNeondefender">

@@ -72,7 +72,7 @@ import { initNeonDefender } from "./games/neondefender.js";
 import { initVoidMiner } from "./games/voidminer.js";
 import { initCoreDriller } from "./games/coredriller.js";
 import { initEmulator } from "./games/emulator.js";
-import { initVoice } from "./games/voice.js";
+import { initVoice, leaveVoiceRoom } from "./games/voice.js";
 import { initByteBlitz } from "./games/byteblitz.js";
 import { initCipherCrack } from "./games/ciphercrack.js";
 import { initAstroHop } from "./games/astrohop.js";
@@ -139,6 +139,8 @@ window.adminScheduleTaskFromInput = adminScheduleTaskFromInput;
 window.adminClearScheduledTasksFromInput = adminClearScheduledTasksFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
+window.initVoice = initVoice;
+window.leaveVoiceRoom = leaveVoiceRoom;
 
 
 
@@ -1095,13 +1097,14 @@ function initTopBarOverlayControls() {
     overlayProfile: "tabProfile",
     overlaySeason: "tabSeason",
     overlayCrew: "tabCrew",
+    globalChat: "tabChat",
     overlayAdmin: "tabAdmin",
     overlayGamebox: "menuToggle",
     overlayTrending: "menuToggle",
     overlayUpdates: "menuToggle",
   };
 
-  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabAdmin", "menuToggle"]
+  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabChat", "tabAdmin", "menuToggle"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 

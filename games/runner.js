@@ -15,6 +15,7 @@ import {
   EngineKernel,
   DrawSystem,
   InputBuffer,
+  isInputFocused,
 } from "../core.js";
 
 const WIDTH = 800;
@@ -211,6 +212,7 @@ document.getElementById("runnerCanvas").onclick = () => {
 };
 
 document.addEventListener("keydown", (event) => {
+  if (isInputFocused(event)) return;
   if (state.currentGame !== "runner") return;
   if (event.key === " " || event.key === "ArrowUp") queueJump();
 });

@@ -1443,6 +1443,7 @@ export function registerGameStop(stopFn) {
 // Stop all running games and reset transient input state.
 export function stopAllGames() {
   gameStops.forEach((stopFn) => stopFn());
+  if (typeof window.leaveVoiceRoom === "function") window.leaveVoiceRoom();
   currentGame = null;
   syncGameLeaderboardButton();
   keysPressed = {};
@@ -3016,6 +3017,9 @@ function runOverlayOpenHooks(id) {
   if (id === "overlayInventory") renderInventory();
   if (id === "overlaySeason") renderSeasonPanel();
   if (id === "overlayCrew") renderCrewPanel();
+  if (id === "globalChat") {
+    renderChatTab();
+  }
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
     updateBankLog();
@@ -3102,6 +3106,17 @@ export function openGame(id) {
 }
 
 // Close overlays and clear dropdown state.
+export function isInputFocused(event) {
+  if (event && event.target) {
+    const tag = event.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || event.target.isContentEditable) return true;
+  }
+  const active = document.activeElement;
+  if (!active) return false;
+  const tag = active.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable;
+}
+
 export function closeOverlays() {
   stopAllGames();
   document
@@ -5660,11 +5675,23 @@ function renderChatTab() {
   const input = document.getElementById("chatInput");
   const list = document.getElementById("chatHistory");
   const meta = document.getElementById("chatMeta");
+  const textView = document.getElementById("chatTextView");
+  const voiceView = document.getElementById("chatVoiceView");
   const currentTab = activeChatTab;
-  const tabConfig = getChatTabConfig(currentTab);
+
+  if (textView) textView.style.display = currentTab === "voice" ? "none" : "block";
+  if (voiceView) voiceView.style.display = currentTab === "voice" ? "block" : "none";
+
   document.querySelectorAll(".chat-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.chatTab === currentTab);
   });
+
+  if (currentTab === "voice") {
+    if (typeof window.initVoice === "function") window.initVoice();
+    return;
+  }
+
+  const tabConfig = getChatTabConfig(currentTab);
   const moderationBtn = document.getElementById("chatModerationToggleBtn");
   if (moderationBtn) {
     const adminView = isGodUser();
@@ -5845,13 +5872,6 @@ function initChat() {
     minimizeBtn.setAttribute("aria-label", isMinimized ? "Expand chat" : "Minimize chat");
   };
 
-  if (minimizeBtn && chatRoot) {
-    minimizeBtn.addEventListener("click", () => {
-      chatRoot.classList.toggle("minimized");
-      syncChatMinimizeUi();
-      renderChatTab();
-    });
-  }
   if (moderationBtn) {
     moderationBtn.addEventListener("click", () => {
       if (!isGodUser()) return;
@@ -5860,7 +5880,6 @@ function initChat() {
       renderChatTab();
     });
   }
-  syncChatMinimizeUi();
   syncChatModerationUi();
 
   document.querySelectorAll(".chat-tab").forEach((btn) => {
@@ -6578,8 +6597,10 @@ export function showGameOver(game, score) {
 
 // Track active keys for games that rely on continuous input.
 document.addEventListener("keydown", (e) => {
+  if (isInputFocused(e)) return;
   keysPressed[e.key] = true;
 });
 document.addEventListener("keyup", (e) => {
+  // Always allow keyup to prevent stuck keys when focus shifts
   keysPressed[e.key] = false;
 });

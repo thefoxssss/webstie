@@ -10,6 +10,7 @@ import {
   getShieldStatusLabel,
   state,
   hasActiveItem,
+  isInputFocused,
 } from "../core.js";
 
 // Helper to build a long sequence. 'b' = block, 's' = spike, 'g' = gap, 'd' = double spike, 't' = triple block, '_' = long gap
@@ -239,6 +240,7 @@ function bindGeoControls() {
     jumpGeo();
   };
   gKeyHandler = (e) => {
+    if (isInputFocused(e)) return;
     if (e.key === " " || e.key === "ArrowUp") {
       e.preventDefault();
       jumpGeo();

@@ -1,4 +1,4 @@
-import { state } from "../core.js";
+import { state, isInputFocused } from "../core.js";
 
 export function initBuilder() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
@@ -257,6 +257,7 @@ export function initBuilder() {
 
     function handleKeyDown(e) {
         if (!room) return;
+        if (isInputFocused(e)) return;
         if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.a = true;
         if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.d = true;
         if (e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " ") {

@@ -5,6 +5,7 @@ import {
   state,
   updateHighScore,
   unlockAchievement,
+  isInputFocused,
 } from "../core.js";
 
 const WIDTH = 800;
@@ -563,6 +564,7 @@ function initTrial(id) {
   };
 
   const onKeyDown = (event) => {
+    if (isInputFocused(event)) return;
     beginRound();
     if (!isPlatformer) return;
     if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = true;

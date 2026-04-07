@@ -676,7 +676,7 @@ export function initEmulator() {
     renderState();
   };
 
-  terminalSendBtn.onclick = () => {
+  terminalSendBtn.onclick = (e) => {
     const message = terminalInput.value.replace(/\r/g, "").trim();
     emulator.enqueueTerminalInput(message);
     terminalInput.value = "";
@@ -685,6 +685,8 @@ export function initEmulator() {
   };
 
   terminalInput.addEventListener("keydown", (event) => {
+    // Note: Emulator terminal itself needs these keys, so we don't return early here
+    // but the global listener in core.js will already handle focus exclusion.
     if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     terminalSendBtn.click();

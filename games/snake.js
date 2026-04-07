@@ -17,6 +17,7 @@ import {
   dispatch,
   subscribeToGameLoop,
   unsubscribeFromGameLoop,
+  isInputFocused,
 } from "../core.js";
 
 const GRID_W = 30;
@@ -138,6 +139,7 @@ function draw() {
 }
 
 document.addEventListener("keydown", (e) => {
+  if (isInputFocused(e)) return;
   if (state.currentGame !== "snake") return;
   const key = e.key;
   if (key === "ArrowUp" || key === "w") queueDirection("U");
