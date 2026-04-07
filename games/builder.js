@@ -74,19 +74,73 @@ export function initBuilder() {
     let buildHoldTimeout = null;
     let buildHoldInterval = null;
     const playerName = () => state.myName || "Player";
-    const inventoryLayout = {
-        slotSize: 56,
-        gap: 12,
-        padding: 16,
-        height: 88,
+    const hotbarLayout = {
+        slotSize: 42,
+        gap: 8,
+        padding: 10,
+        bottom: 14,
     };
+    const inventoryLayout = {
+        widthRatio: 0.66,
+        heightRatio: 0.66,
+        padding: 24,
+        slotSize: 62,
+        gap: 12,
+        cols: 9,
+    };
+    const getBlockTypes = () => Object.keys(blockNames).map(Number);
+
+    function getHotbarBounds() {
+        const itemCount = getBlockTypes().length;
+        const panelWidth = (itemCount * hotbarLayout.slotSize) + ((itemCount - 1) * hotbarLayout.gap) + (hotbarLayout.padding * 2);
+        const panelHeight = hotbarLayout.slotSize + (hotbarLayout.padding * 2);
+        const x = Math.floor((canvas.width - panelWidth) / 2);
+        const y = canvas.height - panelHeight - hotbarLayout.bottom;
+        return { x, y, width: panelWidth, height: panelHeight };
+    }
 
     function getInventoryBounds() {
-        const itemCount = Object.keys(blockNames).length;
-        const panelWidth = (itemCount * inventoryLayout.slotSize) + ((itemCount - 1) * inventoryLayout.gap) + (inventoryLayout.padding * 2);
-        const x = Math.floor((canvas.width - panelWidth) / 2);
-        const y = canvas.height - inventoryLayout.height - 16;
-        return { x, y, width: panelWidth, height: inventoryLayout.height };
+        const width = Math.floor(canvas.width * inventoryLayout.widthRatio);
+        const height = Math.floor(canvas.height * inventoryLayout.heightRatio);
+        const x = Math.floor((canvas.width - width) / 2);
+        const y = Math.floor((canvas.height - height) / 2);
+        return { x, y, width, height };
+    }
+
+    function getInventorySlotAt(x, y, panel) {
+        const itemCount = getBlockTypes().length;
+        const rows = Math.max(1, Math.ceil(itemCount / inventoryLayout.cols));
+        const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
+        const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
+        const startX = panel.x + Math.floor((panel.width - gridWidth) / 2);
+        const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 10;
+
+        const relativeX = x - startX;
+        const relativeY = y - startY;
+        if (relativeX < 0 || relativeY < 0) return null;
+
+        const stride = inventoryLayout.slotSize + inventoryLayout.gap;
+        const col = Math.floor(relativeX / stride);
+        const row = Math.floor(relativeY / stride);
+        if (col < 0 || col >= inventoryLayout.cols || row < 0 || row >= rows) return null;
+        if ((relativeX % stride) > inventoryLayout.slotSize || (relativeY % stride) > inventoryLayout.slotSize) return null;
+
+        const index = (row * inventoryLayout.cols) + col;
+        if (index >= itemCount) return null;
+        return getBlockTypes()[index];
+    }
+
+    function getHotbarSlotAt(x, y, panel) {
+        const relativeX = x - (panel.x + hotbarLayout.padding);
+        const relativeY = y - (panel.y + hotbarLayout.padding);
+        if (relativeX < 0 || relativeY < 0 || relativeY > hotbarLayout.slotSize) return null;
+
+        const stride = hotbarLayout.slotSize + hotbarLayout.gap;
+        const index = Math.floor(relativeX / stride);
+        const maxIndex = getBlockTypes().length - 1;
+        if (index < 0 || index > maxIndex) return null;
+        if ((relativeX % stride) > hotbarLayout.slotSize) return null;
+        return getBlockTypes()[index];
     }
 
     const renderServerList = (servers) => {
@@ -250,20 +304,20 @@ export function initBuilder() {
 
     function handleMouseDown(e) {
         if (!room) return;
+        const hotbarPanel = getHotbarBounds();
+        const hotbarSelection = getHotbarSlotAt(mouse.x, mouse.y, hotbarPanel);
+        if (hotbarSelection) {
+            selectedBlockType = hotbarSelection;
+            return;
+        }
+
         if (inventoryOpen) {
             const panel = getInventoryBounds();
-            const relativeX = mouse.x - (panel.x + inventoryLayout.padding);
-            const relativeY = mouse.y - (panel.y + inventoryLayout.padding);
-            if (relativeY >= 0 && relativeY <= inventoryLayout.slotSize) {
-                const unit = inventoryLayout.slotSize + inventoryLayout.gap;
-                const clickedIndex = Math.floor(relativeX / unit);
-                const maxIndex = Object.keys(blockNames).length - 1;
-                if (clickedIndex >= 0 && clickedIndex <= maxIndex && (relativeX % unit) <= inventoryLayout.slotSize) {
-                    selectedBlockType = clickedIndex + 1;
-                    inventoryOpen = false;
-                    return;
-                }
+            const inventorySelection = getInventorySlotAt(mouse.x, mouse.y, panel);
+            if (inventorySelection) {
+                selectedBlockType = inventorySelection;
             }
+            return;
         }
 
         mouse.isDown = true;
@@ -387,30 +441,76 @@ export function initBuilder() {
         ctx.globalAlpha = 1.0;
 
         ctx.restore();
+        const hotbarPanel = getHotbarBounds();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(hotbarPanel.x, hotbarPanel.y, hotbarPanel.width, hotbarPanel.height);
+        ctx.strokeStyle = "#0f0";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(hotbarPanel.x, hotbarPanel.y, hotbarPanel.width, hotbarPanel.height);
+
+        getBlockTypes().forEach((blockType, index) => {
+            const slotX = hotbarPanel.x + hotbarLayout.padding + (index * (hotbarLayout.slotSize + hotbarLayout.gap));
+            const slotY = hotbarPanel.y + hotbarLayout.padding;
+            const isActive = selectedBlockType === blockType;
+
+            ctx.fillStyle = blockColors[blockType];
+            ctx.fillRect(slotX, slotY, hotbarLayout.slotSize, hotbarLayout.slotSize);
+            ctx.strokeStyle = isActive ? "#fff" : "rgba(255,255,255,0.45)";
+            ctx.lineWidth = isActive ? 3 : 1;
+            ctx.strokeRect(slotX, slotY, hotbarLayout.slotSize, hotbarLayout.slotSize);
+
+            ctx.fillStyle = "#000";
+            ctx.font = "9px 'Press Start 2P', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(`${index + 1}`, slotX + (hotbarLayout.slotSize / 2), slotY + hotbarLayout.slotSize - 7);
+        });
+
         if (inventoryOpen) {
             const panel = getInventoryBounds();
-            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            const blockTypes = getBlockTypes();
+            const rows = Math.max(1, Math.ceil(blockTypes.length / inventoryLayout.cols));
+            const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
+            const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
+            const startX = panel.x + Math.floor((panel.width - gridWidth) / 2);
+            const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 10;
+
+            ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "rgba(15, 15, 15, 0.92)";
             ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
             ctx.strokeStyle = "#0f0";
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.strokeRect(panel.x, panel.y, panel.width, panel.height);
 
-            for (let blockType = 1; blockType <= Object.keys(blockNames).length; blockType++) {
-                const slotX = panel.x + inventoryLayout.padding + ((blockType - 1) * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const slotY = panel.y + inventoryLayout.padding;
+            ctx.fillStyle = "#8cff8c";
+            ctx.font = "12px 'Press Start 2P', monospace";
+            ctx.textAlign = "left";
+            ctx.fillText("INVENTORY", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding);
+            ctx.font = "8px 'Press Start 2P', monospace";
+            ctx.fillStyle = "rgba(220,255,220,0.9)";
+            ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 20);
+
+            blockTypes.forEach((blockType, index) => {
+                const col = index % inventoryLayout.cols;
+                const row = Math.floor(index / inventoryLayout.cols);
+                const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
+                const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
                 const isActive = selectedBlockType === blockType;
 
-                ctx.fillStyle = blockColors[blockType];
+                ctx.fillStyle = "rgba(255,255,255,0.08)";
                 ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
-                ctx.strokeStyle = isActive ? "#fff" : "rgba(255,255,255,0.5)";
+                ctx.fillStyle = blockColors[blockType];
+                ctx.fillRect(slotX + 6, slotY + 6, inventoryLayout.slotSize - 12, inventoryLayout.slotSize - 12);
+                ctx.strokeStyle = isActive ? "#fff" : "rgba(170,255,170,0.6)";
                 ctx.lineWidth = isActive ? 3 : 1;
                 ctx.strokeRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
 
-                ctx.fillStyle = "#000";
-                ctx.font = "10px 'Press Start 2P', monospace";
+                ctx.fillStyle = "#d6ffd6";
+                ctx.font = "7px 'Press Start 2P', monospace";
                 ctx.textAlign = "center";
-                ctx.fillText(`${blockType}`, slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize - 8);
-            }
+                ctx.fillText(blockNames[blockType], slotX + (inventoryLayout.slotSize / 2), slotY + inventoryLayout.slotSize + 10);
+            });
         }
 
         animationFrameId = requestAnimationFrame(render);
