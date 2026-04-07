@@ -245,12 +245,8 @@ function loopDodge(now) {
   spawnTimer += dtFrames;
   sideTimer += dtFrames;
   wallTimer += dtFrames;
-  dCtx.fillStyle = "#000";
-  dCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  drawGridArt(now);
 
   updatePlayer(dtFrames);
-  drawHud();
   updateScoreFromTime();
 
   while (spawnTimer >= spawnRate) {
@@ -272,10 +268,6 @@ function loopDodge(now) {
     spawnWallAttack();
     if (wallRate > 400) wallRate -= 20;
   }
-
-  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
-  dCtx.fillStyle = accent;
-  dCtx.fillRect(player.x, player.y, player.w, player.h);
 
   const shardSlowdown = hasActiveItem("item_dodge_stabilizer") ? 0.75 : 1;
 
@@ -299,10 +291,6 @@ function loopDodge(now) {
       s.x += dir * s.speed * shardSlowdown * dtFrames;
     }
 
-    const isWall = s.type.startsWith("wall-");
-    dCtx.fillStyle = isWall ? "#ffd166" : s.type === "diag" ? "#9bf6ff" : "#fff";
-    dCtx.fillRect(s.x, s.y, s.w, s.h);
-
     if (
       player.x < s.x + s.w &&
       player.x + player.w > s.x &&
@@ -323,6 +311,22 @@ function loopDodge(now) {
     if (s.y > CANVAS_H + 40 || s.y < -80 || s.x < -CANVAS_W || s.x > CANVAS_W * 2) {
       shards.splice(i, 1);
     }
+  }
+
+  dCtx.fillStyle = "#000";
+  dCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  drawGridArt(now);
+  drawHud();
+
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
+  dCtx.fillStyle = accent;
+  dCtx.fillRect(player.x, player.y, player.w, player.h);
+
+  for (let i = 0; i < shards.length; i++) {
+    const s = shards[i];
+    const isWall = s.type.startsWith("wall-");
+    dCtx.fillStyle = isWall ? "#ffd166" : s.type === "diag" ? "#9bf6ff" : "#fff";
+    dCtx.fillRect(s.x, s.y, s.w, s.h);
   }
 
   dAnim = requestAnimationFrame(loopDodge);
