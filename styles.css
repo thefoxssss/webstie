@@ -4397,6 +4397,33 @@ body.reduce-motion *::after {
   background: #152115;
 }
 
+.builder-hotbar {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.builder-slot {
+  min-width: 82px;
+  border: 1px solid #39ff14;
+  background: rgba(0, 0, 0, 0.65);
+  color: #d9ffd0;
+  font-size: 9px;
+  padding: 6px 4px;
+  text-align: center;
+}
+.builder-slot.active {
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.8);
+  border-color: #fff;
+}
+.builder-crafting {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
 
 @media (max-width: 560px) {
   .game-content-shell {

@@ -2027,11 +2027,18 @@
       <div id="builderGame" class="builder-wrap" style="display: none">
         <div class="builder-hud">
           <span>X: <span id="builderX">0</span> Y: <span id="builderY">0</span></span>
-          <span style="margin-left: 20px;">BLOCK: <span id="builderBlockType">GRASS</span></span>
+          <span style="margin-left: 20px;">SLOT: <span id="builderBlockType">STONE</span></span>
         </div>
         <canvas id="builderCanvas" width="800" height="450" style="background: #87CEEB;"></canvas>
+        <div class="builder-hotbar" id="builderHotbar"></div>
+        <div class="builder-crafting">
+          <button class="menu-btn" id="builderCraftGlass">CRAFT GLASS (2 SAND)</button>
+          <button class="menu-btn" id="builderCraftBrick">CRAFT BRICK (2 STONE + 1 DIRT)</button>
+          <button class="menu-btn" id="builderCraftWood">CRAFT WOOD (2 LEAVES)</button>
+          <button class="menu-btn" id="builderCraftStone">CRAFT STONE (2 DIRT)</button>
+        </div>
         <div class="mobile-hint active" style="margin-top: 10px">
-          WASD TO MOVE. CLICK TO BUILD. SHIFT-CLICK TO BREAK. NUMBER KEYS TO SELECT BLOCK.
+          WASD TO MOVE. CLICK TO BUILD. SHIFT/RIGHT-CLICK TO MINE. 1-9 TO SELECT HOTBAR.
         </div>
       </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>

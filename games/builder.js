@@ -27,6 +27,11 @@ export function initBuilder() {
     const uiX = document.getElementById("builderX");
     const uiY = document.getElementById("builderY");
     const uiBlockType = document.getElementById("builderBlockType");
+    const hotbarEl = document.getElementById("builderHotbar");
+    const craftGlassBtn = document.getElementById("builderCraftGlass");
+    const craftBrickBtn = document.getElementById("builderCraftBrick");
+    const craftWoodBtn = document.getElementById("builderCraftWood");
+    const craftStoneBtn = document.getElementById("builderCraftStone");
 
     const TILE_SIZE = 32;
 
@@ -37,6 +42,11 @@ export function initBuilder() {
         4: "#e1c699", // Wood
         5: "#ffffff", // Glass
         6: "#b22222", // Brick
+        7: "#d9c37a", // Sand
+        8: "#f0f8ff", // Snow
+        9: "#2f7f2f", // Leaves
+        10: "#2f2f2f", // Coal
+        11: "#8f7b6e", // Iron
     };
 
     const blockNames = {
@@ -46,10 +56,17 @@ export function initBuilder() {
         4: "WOOD",
         5: "GLASS",
         6: "BRICK",
+        7: "SAND",
+        8: "SNOW",
+        9: "LEAVES",
+        10: "COAL",
+        11: "IRON",
     };
 
-    let selectedBlockType = 3; // Default to stone
+    let selectedHotbarSlot = 0;
     let localPlayerId = null;
+    let worldWidth = 100;
+    let worldHeight = 40;
 
     let camera = { x: 0, y: 0 };
 
@@ -72,6 +89,8 @@ export function initBuilder() {
 
             menu.style.display = "none";
             gameArea.style.display = "block";
+            worldWidth = room.state.worldWidth || worldWidth;
+            worldHeight = room.state.worldHeight || worldHeight;
 
             startGameLoop();
         } catch (e) {
@@ -89,9 +108,9 @@ export function initBuilder() {
             keys.w = true;
         }
 
-        // Block selection (1-6)
-        if (e.key >= "1" && e.key <= "6") {
-            selectedBlockType = parseInt(e.key);
+        // Hotbar selection (1-9)
+        if (e.key >= "1" && e.key <= "9") {
+            selectedHotbarSlot = parseInt(e.key, 10) - 1;
         }
     }
 
@@ -111,13 +130,16 @@ export function initBuilder() {
     }
 
     function sendBuildOrBreak(e) {
+        const localPlayer = room?.state?.players?.get(localPlayerId);
+        if (!localPlayer) return;
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
+        const selectedBlockType = localPlayer.hotbar?.[selectedHotbarSlot] || 0;
 
         if (e.shiftKey || e.button === 2) {
             // Break
             room.send("break", { x: worldX, y: worldY });
-        } else {
+        } else if (selectedBlockType) {
             // Build
             room.send("build", { x: worldX, y: worldY, type: selectedBlockType });
         }
@@ -196,11 +218,24 @@ export function initBuilder() {
             // Constrain camera (optional, based on world size)
             camera.x = Math.max(0, camera.x);
             camera.y = Math.max(0, camera.y);
+            camera.x = Math.min(camera.x, worldWidth * TILE_SIZE - canvas.width);
+            camera.y = Math.min(camera.y, worldHeight * TILE_SIZE - canvas.height);
 
             // Update UI
             uiX.textContent = Math.floor(localPlayer.x / TILE_SIZE);
             uiY.textContent = Math.floor(localPlayer.y / TILE_SIZE);
-            uiBlockType.textContent = blockNames[selectedBlockType];
+            const selectedType = localPlayer.hotbar?.[selectedHotbarSlot] || 0;
+            uiBlockType.textContent = blockNames[selectedType] || "EMPTY";
+
+            hotbarEl.innerHTML = "";
+            for (let i = 0; i < 9; i++) {
+                const typeId = localPlayer.hotbar?.[i] || 0;
+                const count = Number(localPlayer.inventory?.get(String(typeId)) || 0);
+                const slot = document.createElement("div");
+                slot.className = `builder-slot ${i === selectedHotbarSlot ? "active" : ""}`;
+                slot.textContent = `${i + 1}: ${blockNames[typeId] || "EMPTY"} (${count})`;
+                hotbarEl.appendChild(slot);
+            }
         }
 
         ctx.save();
@@ -252,10 +287,13 @@ export function initBuilder() {
         ctx.strokeRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
 
         // Preview block color slightly transparent
-        ctx.fillStyle = blockColors[selectedBlockType];
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
-        ctx.globalAlpha = 1.0;
+        const selectedType = localPlayer?.hotbar?.[selectedHotbarSlot] || 0;
+        if (selectedType) {
+            ctx.fillStyle = blockColors[selectedType] || "#ffffff";
+            ctx.globalAlpha = 0.5;
+            ctx.fillRect(gridX, gridY, TILE_SIZE, TILE_SIZE);
+            ctx.globalAlpha = 1.0;
+        }
 
         ctx.restore();
 
@@ -266,6 +304,19 @@ export function initBuilder() {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         render();
     }
+
+    const sendCraft = (recipeId) => {
+        if (!room) return;
+        room.send("craft", { recipeId });
+    };
+    const onCraftGlass = () => sendCraft("glass");
+    const onCraftBrick = () => sendCraft("brick");
+    const onCraftWood = () => sendCraft("wood");
+    const onCraftStone = () => sendCraft("stone");
+    craftGlassBtn?.addEventListener("click", onCraftGlass);
+    craftBrickBtn?.addEventListener("click", onCraftBrick);
+    craftWoodBtn?.addEventListener("click", onCraftWood);
+    craftStoneBtn?.addEventListener("click", onCraftStone);
 
     // Cleanup hook
     const stopBuilder = () => {
@@ -280,6 +331,10 @@ export function initBuilder() {
         canvas.removeEventListener("mousedown", handleMouseDown);
         canvas.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("mouseleave", handleMouseUp);
+        craftGlassBtn?.removeEventListener("click", onCraftGlass);
+        craftBrickBtn?.removeEventListener("click", onCraftBrick);
+        craftWoodBtn?.removeEventListener("click", onCraftWood);
+        craftStoneBtn?.removeEventListener("click", onCraftStone);
         clearBuildHoldTimers();
         menu.style.display = "block";
         gameArea.style.display = "none";
