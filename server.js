@@ -360,6 +360,7 @@ const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
 const MAP_WIDTH = 100;
 const MAP_HEIGHT = 40;
+const BUILDER_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
 
 class BuilderRoom extends colyseus.Room {
   onCreate(options) {
@@ -388,7 +389,7 @@ class BuilderRoom extends colyseus.Room {
       if (this.inputs[pId]) {
         this.inputs[pId].left = message.left;
         this.inputs[pId].right = message.right;
-        if (message.upPress) this.inputs[pId].upPress = true;
+        if (message.upPress) this.inputs[pId].jumpBuffer = BUILDER_JUMP_BUFFER_TICKS;
       }
     });
 
@@ -446,7 +447,7 @@ class BuilderRoom extends colyseus.Room {
     p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
     this.state.players.set(client.sessionId, p);
 
-    this.inputs[client.sessionId] = { left: false, right: false, upPress: false };
+    this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
   }
 
   onLeave(client, consented) {
@@ -521,11 +522,12 @@ class BuilderRoom extends colyseus.Room {
             p.vy = 0;
         }
 
-        if (grounded && inp.upPress) {
+        if (grounded && inp.jumpBuffer > 0) {
             p.vy = -12;
+            inp.jumpBuffer = 0;
+        } else if (inp.jumpBuffer > 0) {
+            inp.jumpBuffer--;
         }
-
-        inp.upPress = false;
     });
   }
 }
