@@ -644,6 +644,7 @@ class BuilderRoom extends colyseus.Room {
         p.vx = 0;
         p.vy = 0;
         p.hp = p.maxHp;
+        p.selectedItemType = 0;
     });
 
     this.loadWorld();
@@ -668,6 +669,7 @@ class BuilderRoom extends colyseus.Room {
     p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
     p.maxHp = 10;
     p.hp = 10;
+    p.selectedItemType = 0;
     this.state.players.set(client.sessionId, p);
 
     this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
