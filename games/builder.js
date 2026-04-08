@@ -439,6 +439,7 @@ export function initBuilder() {
             hotbarSlots = new Array(9).fill(undefined).map(cloneItem);
             inventorySlots = new Array(27).fill(undefined).map(cloneItem);
             selectedBlockType = hotbarSlots[selectedHotbarIndex];
+            room.send("select_item", { type: 0 });
         });
     };
 
