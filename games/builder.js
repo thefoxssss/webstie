@@ -753,6 +753,8 @@ export function initBuilder() {
             // Check if crafting grids or output slot clicked
             const craftStartX = panel.x + panel.width - 190;
             const craftStartY = panel.y + 40;
+            const size = isCraftingTableOpen ? 3 : 2;
+            const stride = inventoryLayout.slotSize + inventoryLayout.gap;
             if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
                 mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
                 // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
@@ -771,6 +773,29 @@ export function initBuilder() {
                         if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
                             woodIndex = i;
                             break;
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // Pick up from crafting grid
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const slotX = craftStartX + c * stride;
+                    const slotY = craftStartY + r * stride;
+                    if (mouse.x >= slotX && mouse.x <= slotX + inventoryLayout.slotSize &&
+                        mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
+                        const craftingIndex = r * size + c;
+                        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+                        if (grid[craftingIndex] !== undefined) {
+                            draggedItemType = cloneItem(grid[craftingIndex]);
+                            dragSourceHotbarIndex = null;
+                            dragSourceInventoryIndex = null;
+                            dragSourceCraftingIndex = craftingIndex;
+                            dragSourceOutputSlot = false;
+                            grid[craftingIndex] = undefined;
+                            checkRecipes();
                         }
                         return;
                     }
