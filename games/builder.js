@@ -55,6 +55,12 @@ export function initBuilder() {
         9: "#d2b48c", // Planks
         10: "#8b5a2b", // Crafting Table
         11: "#808080", // Sword (rendered differently later, color for item drop/slot)
+        12: "#1C1C1C", // Coal
+        13: "#B87333", // Copper
+        14: "#D0D0D0", // Iron
+        15: "#FFD700", // Gold
+        16: "#00FFFF", // Diamond
+        17: "#39FF14", // Uranium
     };
 
     const blockNames = {
@@ -69,6 +75,12 @@ export function initBuilder() {
         9: "PLANKS",
         10: "CRAFTING TABLE",
         11: "SWORD",
+        12: "COAL",
+        13: "COPPER",
+        14: "IRON",
+        15: "GOLD",
+        16: "DIAMOND",
+        17: "URANIUM",
     };
     const getMergedInventoryType = (type) => type;
     const getMaxStack = (type) => type === 11 ? 1 : 99;
