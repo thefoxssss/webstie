@@ -72,7 +72,6 @@ export function initBuilder() {
         26: "#00FFFF", // Diamond Rifle
         27: "#39FF14", // Uranium Laser
         28: "#B87333", // Copper Ammo
-        29: "#111111", // Bedrock
     };
 
     const blockNames = {
@@ -104,7 +103,6 @@ export function initBuilder() {
         26: "DIAMOND RIFLE",
         27: "URANIUM LASER",
         28: "COPPER AMMO",
-        29: "BEDROCK",
     };
     const getMergedInventoryType = (type) => type;
     const getMaxStack = (type) => [11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].includes(type) ? 1 : 99;
@@ -136,8 +134,6 @@ export function initBuilder() {
     let inventorySlots = new Array(27).fill(undefined).map(cloneItem);
     let armorSlot = undefined;
 
-    loadInventoryState();
-
     // Crafting state
     let craftingGrid2x2 = new Array(4).fill(undefined).map(cloneItem);
     let craftingGrid3x3 = new Array(9).fill(undefined).map(cloneItem);
@@ -167,49 +163,6 @@ export function initBuilder() {
     let buildHoldTimeout = null;
     let buildHoldInterval = null;
     const playerName = () => state.myName || "Player";
-    const getInventoryStorageKey = () => `builder_inventory_v1_${playerName().trim().toLowerCase() || "player"}`;
-    const serializeInventoryState = () => ({
-        hotbarSlots: hotbarSlots.map(cloneItem),
-        inventorySlots: inventorySlots.map(cloneItem),
-        armorSlot: cloneItem(armorSlot),
-        selectedHotbarIndex,
-    });
-    const applyInventoryState = (saved) => {
-        if (!saved || typeof saved !== "object") return;
-        if (Array.isArray(saved.hotbarSlots)) {
-            const nextHotbar = new Array(9).fill(undefined).map((_, idx) => cloneItem(saved.hotbarSlots[idx]));
-            hotbarSlots = nextHotbar;
-        }
-        if (Array.isArray(saved.inventorySlots)) {
-            const nextInventory = new Array(27).fill(undefined).map((_, idx) => cloneItem(saved.inventorySlots[idx]));
-            inventorySlots = nextInventory;
-        }
-        armorSlot = cloneItem(saved.armorSlot);
-        if (Number.isInteger(saved.selectedHotbarIndex)) {
-            selectedHotbarIndex = Math.max(0, Math.min(8, saved.selectedHotbarIndex));
-        }
-        selectedBlockType = hotbarSlots[selectedHotbarIndex] || hotbarSlots[0] || 1;
-    };
-    const loadInventoryState = () => {
-        try {
-            const raw = window.localStorage.getItem(getInventoryStorageKey());
-            if (!raw) return;
-            applyInventoryState(JSON.parse(raw));
-        } catch (err) {
-            console.warn("Failed to load Builder inventory", err);
-        }
-    };
-    let lastSavedInventorySnapshot = "";
-    const saveInventoryState = () => {
-        try {
-            const snapshot = JSON.stringify(serializeInventoryState());
-            if (snapshot === lastSavedInventorySnapshot) return;
-            window.localStorage.setItem(getInventoryStorageKey(), snapshot);
-            lastSavedInventorySnapshot = snapshot;
-        } catch (err) {
-            console.warn("Failed to save Builder inventory", err);
-        }
-    };
     const hotbarLayout = {
         slotSize: 40,
         gap: 4,
@@ -1340,7 +1293,6 @@ export function initBuilder() {
 
     // Prevent context menu on canvas for right click breaking
     canvas.addEventListener("contextmenu", e => e.preventDefault());
-    window.addEventListener("beforeunload", saveInventoryState);
 
     // Send input loop
     setInterval(() => {
@@ -1912,7 +1864,6 @@ export function initBuilder() {
             }
         }
 
-        saveInventoryState();
         animationFrameId = requestAnimationFrame(render);
     }
 
@@ -2007,7 +1958,6 @@ export function initBuilder() {
         canvas.removeEventListener("mousedown", handleMouseDown);
         canvas.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("mouseleave", handleMouseUp);
-        window.removeEventListener("beforeunload", saveInventoryState);
         clearBuildHoldTimers();
         menu.style.display = "block";
         gameArea.style.display = "none";
