@@ -750,6 +750,8 @@ class BuilderRoom extends colyseus.Room {
     p.maxArmorHp = 0;
     p.armorType = 0;
     p.selectedItemType = 0;
+    p.lastCx = -999;
+    p.lastCy = -999;
     this.state.players.set(client.sessionId, p);
 
     this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
@@ -1054,10 +1056,16 @@ class BuilderRoom extends colyseus.Room {
 
         const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
         const pCy = Math.floor(p.y / (TILE_SIZE * CHUNK_SIZE));
-        for (let cx = pCx - 2; cx <= pCx + 2; cx++) {
-          for (let cy = pCy - 2; cy <= pCy + 2; cy++) {
-            this.getOrCreateChunk(cx, cy);
+
+        // Only request new chunks if the player moved to a new chunk
+        if (p.lastCx !== pCx || p.lastCy !== pCy) {
+          for (let cx = pCx - 2; cx <= pCx + 2; cx++) {
+            for (let cy = pCy - 2; cy <= pCy + 2; cy++) {
+              this.getOrCreateChunk(cx, cy);
+            }
           }
+          p.lastCx = pCx;
+          p.lastCy = pCy;
         }
 
         if (inp.left) p.vx -= 1.5;
