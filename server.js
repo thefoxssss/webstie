@@ -762,7 +762,7 @@ class BuilderRoom extends colyseus.Room {
       const h = this.getSurfaceHeight(worldX);
 
       const startY = Math.max(minY, h);
-      const endY = Math.min(maxY, h + 40);
+      const endY = Math.min(maxY, h + 200);
 
       for (let y = startY; y < endY; y++) {
         // Cave generation using 2D noise
@@ -774,7 +774,7 @@ class BuilderRoom extends colyseus.Room {
         // Or if layeredNoise returns 0 to 1, say if it's > 0.4 it's a cave.
         // layeredNoise internally uses perlin noise which is typically -1 to 1 but here total is accumulated.
         // Let's use absolute value or sin mapping to get tunnels
-        const isCave = Math.abs(caveNoise) < 0.08 && y >= h;
+        const isCave = Math.abs(caveNoise) < 0.08 && y >= h + 25;
 
         if (!isCave) {
             const b = new Block();
@@ -925,7 +925,7 @@ class BuilderRoom extends colyseus.Room {
         p.y += p.vy;
 
         // Fall into the void respawn
-        if (p.y > 100 * TILE_SIZE) {
+        if (p.y > 300 * TILE_SIZE) {
             if (p.hp > 0) {
                 p.hp = 0;
                 const c = this.clients.find(c => c.sessionId === sessionId);
@@ -998,7 +998,7 @@ class BuilderRoom extends colyseus.Room {
             drop.vy = -drop.vy * 0.5;
         }
 
-        if (drop.y > 100 * TILE_SIZE) {
+        if (drop.y > 300 * TILE_SIZE) {
             dropsToDelete.push(id);
         }
     });
