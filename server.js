@@ -405,7 +405,20 @@ type("number")(BuilderPlayer.prototype, "vy");
 type("string")(BuilderPlayer.prototype, "color");
 type("number")(BuilderPlayer.prototype, "hp");
 type("number")(BuilderPlayer.prototype, "maxHp");
+type("number")(BuilderPlayer.prototype, "armorHp");
+type("number")(BuilderPlayer.prototype, "maxArmorHp");
+type("number")(BuilderPlayer.prototype, "armorType");
 type("number")(BuilderPlayer.prototype, "selectedItemType");
+
+class BuilderBullet extends Schema {}
+type("string")(BuilderBullet.prototype, "id");
+type("string")(BuilderBullet.prototype, "ownerId");
+type("number")(BuilderBullet.prototype, "x");
+type("number")(BuilderBullet.prototype, "y");
+type("number")(BuilderBullet.prototype, "vx");
+type("number")(BuilderBullet.prototype, "vy");
+type("number")(BuilderBullet.prototype, "damage");
+type("number")(BuilderBullet.prototype, "life");
 
 class Block extends Schema {}
 type("number")(Block.prototype, "x");
@@ -435,11 +448,13 @@ class BuilderState extends Schema {
         this.players = new MapSchema();
         this.chunks = new MapSchema();
         this.drops = new MapSchema();
+        this.bullets = new MapSchema();
     }
 }
 type({ map: BuilderPlayer })(BuilderState.prototype, "players");
 type({ map: Chunk })(BuilderState.prototype, "chunks");
 type({ map: ItemDrop })(BuilderState.prototype, "drops");
+type({ map: BuilderBullet })(BuilderState.prototype, "bullets");
 
 const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
@@ -598,18 +613,80 @@ class BuilderRoom extends colyseus.Room {
       }
 
       if (distSq < attackRangeSq) {
-          target.hp -= damage;
+          this.damagePlayer(target, damage, attacker.name);
           target.vy = -6;
           target.vx = (target.x - attacker.x > 0 ? 1 : -1) * 8;
-
-          if (target.hp <= 0) {
-              target.hp = 0;
-              const targetClient = this.clients.find(c => c.sessionId === message.targetId);
-              if (targetClient) {
-                  targetClient.send("died", { killer: attacker.name });
-              }
-          }
       }
+    });
+
+    this.onMessage("equip_armor", (client, message) => {
+        const player = this.state.players.get(client.sessionId);
+        if (!player || player.hp <= 0) return;
+
+        player.armorType = message.type || 0;
+
+        // Setup armor stats based on type
+        // 18: Copper, 19: Iron, 20: Gold, 21: Diamond, 22: Uranium
+        let maxArmor = 0;
+        if (player.armorType === 18) maxArmor = 5;
+        else if (player.armorType === 19) maxArmor = 10;
+        else if (player.armorType === 20) maxArmor = 15;
+        else if (player.armorType === 21) maxArmor = 20;
+        else if (player.armorType === 22) maxArmor = 30;
+
+        player.maxArmorHp = maxArmor;
+        if (player.armorHp > maxArmor) {
+            player.armorHp = maxArmor;
+        }
+    });
+
+    this.onMessage("shoot", (client, message) => {
+        const player = this.state.players.get(client.sessionId);
+        if (!player || player.hp <= 0) return;
+
+        // Ensure they have a gun selected
+        const gunType = player.selectedItemType;
+        if (![23, 24, 25, 26, 27].includes(gunType)) return;
+
+        const targetX = message.x;
+        const targetY = message.y;
+
+        const dx = targetX - (player.x + TILE_SIZE / 2);
+        const dy = targetY - (player.y + TILE_SIZE / 2);
+        const angle = Math.atan2(dy, dx);
+
+        // Stats based on gun
+        let speed = 15;
+        let damage = 2;
+        let spread = 0;
+        let projectiles = 1;
+
+        if (gunType === 23) { speed = 15; damage = 2; }
+        else if (gunType === 24) { speed = 20; damage = 3; }
+        else if (gunType === 25) { speed = 20; damage = 4; projectiles = 3; spread = 0.2; } // Shotgun
+        else if (gunType === 26) { speed = 30; damage = 5; } // Rifle
+        else if (gunType === 27) { speed = 40; damage = 8; } // Laser
+
+        for (let i = 0; i < projectiles; i++) {
+            const bulletId = Math.random().toString(36).substring(2, 9);
+            const b = new BuilderBullet();
+            b.id = bulletId;
+            b.ownerId = client.sessionId;
+            b.x = player.x + TILE_SIZE / 2;
+            b.y = player.y + TILE_SIZE / 2;
+
+            let finalAngle = angle;
+            if (projectiles > 1) {
+                finalAngle += (Math.random() - 0.5) * spread;
+            }
+
+            b.vx = Math.cos(finalAngle) * speed;
+            b.vy = Math.sin(finalAngle) * speed;
+            b.damage = damage;
+            b.life = 40; // ticks
+
+            this.state.bullets.set(bulletId, b);
+        }
     });
 
     this.onMessage("spawn_drops", (client, message) => {
@@ -669,6 +746,9 @@ class BuilderRoom extends colyseus.Room {
     p.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
     p.maxHp = 10;
     p.hp = 10;
+    p.armorHp = 0;
+    p.maxArmorHp = 0;
+    p.armorType = 0;
     p.selectedItemType = 0;
     this.state.players.set(client.sessionId, p);
 
@@ -683,6 +763,31 @@ class BuilderRoom extends colyseus.Room {
       this.saveWorld();
     }
     this.syncServerDirectory();
+  }
+
+  damagePlayer(target, amount, killerName) {
+      if (target.hp <= 0) return;
+
+      if (target.armorHp > 0) {
+          if (amount >= target.armorHp) {
+              amount -= target.armorHp;
+              target.armorHp = 0;
+          } else {
+              target.armorHp -= amount;
+              amount = 0;
+          }
+      }
+
+      if (amount > 0) {
+          target.hp -= amount;
+      }
+
+      if (target.hp <= 0) {
+          const targetClient = this.clients.find(c => c.sessionId === target.id);
+          if (targetClient) {
+              targetClient.send("died", { killer: killerName });
+          }
+      }
   }
 
   onDispose() {
@@ -897,11 +1002,55 @@ class BuilderRoom extends colyseus.Room {
   }
 
   simulateTick() {
+    // Bullet simulation
+    this.state.bullets.forEach((b, id) => {
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life--;
+
+        let hit = false;
+
+        // Block collision
+        const bx = Math.floor(b.x / TILE_SIZE);
+        const by = Math.floor(b.y / TILE_SIZE);
+        if (this.isSolid(bx, by)) {
+            hit = true;
+        }
+
+        // Player collision
+        if (!hit) {
+            this.state.players.forEach((p, sessionId) => {
+                if (hit || sessionId === b.ownerId || p.hp <= 0) return;
+
+                if (b.x >= p.x && b.x <= p.x + TILE_SIZE &&
+                    b.y >= p.y && b.y <= p.y + TILE_SIZE) {
+
+                    const owner = this.state.players.get(b.ownerId);
+                    this.damagePlayer(p, b.damage, owner ? owner.name : "Unknown");
+
+                    // Knockback
+                    p.vx += b.vx * 0.5;
+                    p.vy += b.vy * 0.5 - 2;
+                    hit = true;
+                }
+            });
+        }
+
+        if (hit || b.life <= 0) {
+            this.state.bullets.delete(id);
+        }
+    });
+
     this.state.players.forEach((p, sessionId) => {
         const inp = this.inputs[sessionId];
         if (!inp) return;
         const prevX = p.x;
         const prevY = p.y;
+
+        // Armor Regen (1 hp per second roughly, since tick rate is 20)
+        if (p.hp > 0 && p.armorHp < p.maxArmorHp && Math.random() < (1 / BUILDER_TICK_RATE)) {
+            p.armorHp++;
+        }
 
         const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
         const pCy = Math.floor(p.y / (TILE_SIZE * CHUNK_SIZE));
