@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-let content = fs.readFileSync('games/builder.js', 'utf8');
+let content = fs.readFileSync('games/Survival/survival.js', 'utf8');
 
 const drawIconCode = `
     function drawItemIcon(ctx, type, x, y, size) {
@@ -112,4 +112,4 @@ content = content.replace(/99 - inventorySlots\[i\]\.count/g, "getMaxStack(merge
 // Also check any other direct 99 references
 content = content.replace(/count < 99/g, "count < getMaxStack(mergedType)");
 
-fs.writeFileSync('games/builder.js', content);
+fs.writeFileSync('games/Survival/survival.js', content);

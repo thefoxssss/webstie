@@ -76,7 +76,7 @@ function layeredNoise(x, y, octaves, persistence, scale) {
 const app = express();
 app.use(cors());
 const port = process.env.PORT || 2567;
-const builderServerDirectory = new Map();
+const survivalServerDirectory = new Map();
 
 const gameServer = new colyseus.Server({
   transport: new WebSocketTransport({
@@ -393,32 +393,32 @@ class GameRoom extends colyseus.Room {
 }
 
 // --------------------------------------------------------
-// BUILDER ROOM DEFINITION
+// SURVIVAL ROOM DEFINITION
 // --------------------------------------------------------
-class BuilderPlayer extends Schema {}
-type("string")(BuilderPlayer.prototype, "id");
-type("string")(BuilderPlayer.prototype, "name");
-type("number")(BuilderPlayer.prototype, "x");
-type("number")(BuilderPlayer.prototype, "y");
-type("number")(BuilderPlayer.prototype, "vx");
-type("number")(BuilderPlayer.prototype, "vy");
-type("string")(BuilderPlayer.prototype, "color");
-type("number")(BuilderPlayer.prototype, "hp");
-type("number")(BuilderPlayer.prototype, "maxHp");
-type("number")(BuilderPlayer.prototype, "armorHp");
-type("number")(BuilderPlayer.prototype, "maxArmorHp");
-type("number")(BuilderPlayer.prototype, "armorType");
-type("number")(BuilderPlayer.prototype, "selectedItemType");
+class SurvivalPlayer extends Schema {}
+type("string")(SurvivalPlayer.prototype, "id");
+type("string")(SurvivalPlayer.prototype, "name");
+type("number")(SurvivalPlayer.prototype, "x");
+type("number")(SurvivalPlayer.prototype, "y");
+type("number")(SurvivalPlayer.prototype, "vx");
+type("number")(SurvivalPlayer.prototype, "vy");
+type("string")(SurvivalPlayer.prototype, "color");
+type("number")(SurvivalPlayer.prototype, "hp");
+type("number")(SurvivalPlayer.prototype, "maxHp");
+type("number")(SurvivalPlayer.prototype, "armorHp");
+type("number")(SurvivalPlayer.prototype, "maxArmorHp");
+type("number")(SurvivalPlayer.prototype, "armorType");
+type("number")(SurvivalPlayer.prototype, "selectedItemType");
 
-class BuilderBullet extends Schema {}
-type("string")(BuilderBullet.prototype, "id");
-type("string")(BuilderBullet.prototype, "ownerId");
-type("number")(BuilderBullet.prototype, "x");
-type("number")(BuilderBullet.prototype, "y");
-type("number")(BuilderBullet.prototype, "vx");
-type("number")(BuilderBullet.prototype, "vy");
-type("number")(BuilderBullet.prototype, "damage");
-type("number")(BuilderBullet.prototype, "life");
+class SurvivalBullet extends Schema {}
+type("string")(SurvivalBullet.prototype, "id");
+type("string")(SurvivalBullet.prototype, "ownerId");
+type("number")(SurvivalBullet.prototype, "x");
+type("number")(SurvivalBullet.prototype, "y");
+type("number")(SurvivalBullet.prototype, "vx");
+type("number")(SurvivalBullet.prototype, "vy");
+type("number")(SurvivalBullet.prototype, "damage");
+type("number")(SurvivalBullet.prototype, "life");
 
 class Block extends Schema {}
 type("number")(Block.prototype, "x");
@@ -442,7 +442,7 @@ class Chunk extends Schema {
 }
 type({ map: Block })(Chunk.prototype, "blocks");
 
-class BuilderState extends Schema {
+class SurvivalState extends Schema {
     constructor() {
         super();
         this.players = new MapSchema();
@@ -451,17 +451,17 @@ class BuilderState extends Schema {
         this.bullets = new MapSchema();
     }
 }
-type({ map: BuilderPlayer })(BuilderState.prototype, "players");
-type({ map: Chunk })(BuilderState.prototype, "chunks");
-type({ map: ItemDrop })(BuilderState.prototype, "drops");
-type({ map: BuilderBullet })(BuilderState.prototype, "bullets");
+type({ map: SurvivalPlayer })(SurvivalState.prototype, "players");
+type({ map: Chunk })(SurvivalState.prototype, "chunks");
+type({ map: ItemDrop })(SurvivalState.prototype, "drops");
+type({ map: SurvivalBullet })(SurvivalState.prototype, "bullets");
 
-const BUILDER_TICK_RATE = 20;
+const SURVIVAL_TICK_RATE = 20;
 const TILE_SIZE = 32;
 const CHUNK_SIZE = 16;
-const BUILDER_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
+const SURVIVAL_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
 
-class BuilderRoom extends colyseus.Room {
+class SurvivalRoom extends colyseus.Room {
   onCreate(options) {
     this.maxClients = 50;
     this.autoDispose = true;
@@ -470,7 +470,7 @@ class BuilderRoom extends colyseus.Room {
       : "Public World";
     this.setMetadata({ serverName: this.serverName });
 
-    const state = new BuilderState();
+    const state = new SurvivalState();
     this.setState(state);
 
     this.inputs = {};
@@ -480,7 +480,7 @@ class BuilderRoom extends colyseus.Room {
       if (this.inputs[pId]) {
         this.inputs[pId].left = message.left;
         this.inputs[pId].right = message.right;
-        if (message.upPress) this.inputs[pId].jumpBuffer = BUILDER_JUMP_BUFFER_TICKS;
+        if (message.upPress) this.inputs[pId].jumpBuffer = SURVIVAL_JUMP_BUFFER_TICKS;
       }
     });
 
@@ -560,6 +560,7 @@ class BuilderRoom extends colyseus.Room {
           const key = `${x},${y}`;
           const b = chunk.blocks.get(key);
           if (b) {
+              if (b.type === 29) return; // Bedrock is unbreakable
               const drop = new ItemDrop();
               drop.id = `drop-${Date.now()}-${Math.random()}`;
               drop.x = x * TILE_SIZE + TILE_SIZE / 2;
@@ -669,7 +670,7 @@ class BuilderRoom extends colyseus.Room {
 
         for (let i = 0; i < projectiles; i++) {
             const bulletId = Math.random().toString(36).substring(2, 9);
-            const b = new BuilderBullet();
+            const b = new SurvivalBullet();
             b.id = bulletId;
             b.ownerId = client.sessionId;
             b.x = player.x + TILE_SIZE / 2;
@@ -725,15 +726,15 @@ class BuilderRoom extends colyseus.Room {
     });
 
     this.loadWorld();
-    this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
+    this.setSimulationInterval(() => this.simulateTick(), SURVIVAL_TICK_RATE);
     this.saveInterval = setInterval(() => this.saveWorld(), 30000); // Save every 30s
     this.syncServerDirectory();
   }
 
   onJoin(client, options) {
-    const p = new BuilderPlayer();
+    const p = new SurvivalPlayer();
     p.id = client.sessionId;
-    p.name = options.name || "Builder";
+    p.name = options.name || "Survival";
 
     const spawnX = Math.floor(Math.random() * 200) - 100;
     const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
@@ -793,7 +794,7 @@ class BuilderRoom extends colyseus.Room {
   onDispose() {
     if (this.saveInterval) clearInterval(this.saveInterval);
     this.saveWorld();
-    builderServerDirectory.delete(this.roomId);
+    survivalServerDirectory.delete(this.roomId);
   }
 
   saveWorld() {
@@ -917,6 +918,16 @@ class BuilderRoom extends colyseus.Room {
             chunk.blocks.set(`${worldX},${y}`, b);
         }
       }
+
+      // Always cap the generated depth with bedrock (unbreakable).
+      const bedrockY = endY - 1;
+      if (bedrockY >= minY && bedrockY < maxY) {
+        const bedrock = new Block();
+        bedrock.x = worldX;
+        bedrock.y = bedrockY;
+        bedrock.type = 29;
+        chunk.blocks.set(`${worldX},${bedrockY}`, bedrock);
+      }
     }
 
     // 2. Deterministic Tree Generation
@@ -982,9 +993,9 @@ class BuilderRoom extends colyseus.Room {
   syncServerDirectory() {
     const players = [];
     this.state.players.forEach((player) => {
-      players.push(player.name || "Builder");
+      players.push(player.name || "Survival");
     });
-    builderServerDirectory.set(this.roomId, {
+    survivalServerDirectory.set(this.roomId, {
       roomId: this.roomId,
       serverName: this.serverName || "Public World",
       clients: this.clients.length,
@@ -1048,7 +1059,7 @@ class BuilderRoom extends colyseus.Room {
         const prevY = p.y;
 
         // Armor Regen (1 hp per second roughly, since tick rate is 20)
-        if (p.hp > 0 && p.armorHp < p.maxArmorHp && Math.random() < (1 / BUILDER_TICK_RATE)) {
+        if (p.hp > 0 && p.armorHp < p.maxArmorHp && Math.random() < (1 / SURVIVAL_TICK_RATE)) {
             p.armorHp++;
         }
 
@@ -1248,11 +1259,11 @@ class VoiceRoom extends colyseus.Room {
 
 gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
-gameServer.define("builder_room", BuilderRoom);
+gameServer.define("survival_room", SurvivalRoom);
 gameServer.define("voice_room", VoiceRoom);
 
-app.get("/builder-servers", (req, res) => {
-  const servers = Array.from(builderServerDirectory.values()).sort((a, b) => {
+app.get("/survival-servers", (req, res) => {
+  const servers = Array.from(survivalServerDirectory.values()).sort((a, b) => {
     if (b.clients !== a.clients) return b.clients - a.clients;
     return a.serverName.localeCompare(b.serverName);
   });

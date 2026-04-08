@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-let content = fs.readFileSync('games/builder.js', 'utf8');
+let content = fs.readFileSync('games/Survival/survival.js', 'utf8');
 
 const drawIconCode = `
     function drawItemIcon(ctx, type, x, y, size) {
@@ -85,4 +85,4 @@ const fillRectRegex = /ctx\.fillStyle = blockColors\[item\.type\];\s*const inset
 content = content.replace(fillRectRegex, "const inset = 6;\n                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2));");
 
 // Now we need to fix the specific occurrences.
-fs.writeFileSync('games/builder_tmp.js', content);
+fs.writeFileSync('games/survival_tmp.js', content);
