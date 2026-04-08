@@ -1314,8 +1314,9 @@ export function initBuilder() {
         // Get local player for camera centering
         const localPlayer = room.state.players.get(localPlayerId);
         if (localPlayer) {
-            camera.x = localPlayer.x - canvas.width / 2 + TILE_SIZE / 2;
-            camera.y = localPlayer.y - canvas.height / 2 + TILE_SIZE / 2;
+            // Snap camera to whole pixels so tile edges don't anti-alias into a faint moving grid.
+            camera.x = Math.round(localPlayer.x - canvas.width / 2 + TILE_SIZE / 2);
+            camera.y = Math.round(localPlayer.y - canvas.height / 2 + TILE_SIZE / 2);
 
             // Update UI only if changed
             const currentX = Math.floor(localPlayer.x / TILE_SIZE);
