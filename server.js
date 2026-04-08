@@ -780,9 +780,35 @@ class BuilderRoom extends colyseus.Room {
             const b = new Block();
             b.x = worldX;
             b.y = y;
-            if (y === h) b.type = 1; // Grass
-            else if (y < h + 4) b.type = 2; // Dirt
-            else b.type = 3; // Stone
+            if (y === h) {
+              b.type = 1; // Grass
+            } else if (y < h + 4) {
+              b.type = 2; // Dirt
+            } else {
+              // Below dirt, base block is stone.
+              b.type = 3; // Stone
+
+              // Ore generation based on depth relative to surface
+              const depth = y - h;
+
+              // Only spawn ores within stone. Let's use a deterministic random value.
+              // We'll use Math.sin based on coordinates for stable pseudo-randomness
+              const rand = Math.abs(Math.sin(worldX * 12.345 + y * 67.890)) * 100;
+
+              if (depth > 150 && rand < 0.5) {
+                b.type = 17; // Uranium (0.5% chance)
+              } else if (depth > 100 && rand < 1.5) {
+                b.type = 16; // Diamond (1.5% chance)
+              } else if (depth > 60 && rand < 3) {
+                b.type = 15; // Gold (3% chance)
+              } else if (depth > 40 && rand < 5) {
+                b.type = 14; // Iron (5% chance)
+              } else if (depth > 20 && rand < 7) {
+                b.type = 13; // Copper (7% chance)
+              } else if (depth > 5 && rand < 10) {
+                b.type = 12; // Coal (10% chance)
+              }
+            }
             chunk.blocks.set(`${worldX},${y}`, b);
         }
       }
