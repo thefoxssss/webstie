@@ -36,7 +36,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "metromaze", title: "METRO MAZE", description: "Procedural mazes with relics, sentinels, and level exits.", icon: "🚇", tags: ["skill", "maze", "puzzle", "strategy"] },
   { id: "stacksmash", title: "STACK SMASH", description: "Break layered stacks for big spike payouts.", icon: "🪨", tags: ["arcade", "timing", "reflex"] },
   { id: "quantumflip", title: "QUANTUM FLIP", description: "Pilot a phase core: chain matching orbs and survive hunter waves.", icon: "⚛️", tags: ["skill", "strategy", "survival"] },
-  { id: "survival", title: "SURVIVAL", description: "Multiplayer sandbox. Place and break blocks together.", icon: "⛏️", tags: ["sandbox", "multiplayer", "pvp"] },
+  { id: "builder", title: "BUILDER", description: "Multiplayer sandbox. Place and break blocks together.", icon: "⛏️", tags: ["sandbox", "multiplayer", "pvp"] },
   { id: "flappy", title: "FLAPPY GOON", description: "Secret bonus mode: tap to survive.", icon: "🐤", tags: ["arcade", "skill"], hidden: true, shopItems: ["item_flappy", "item_shield"] },
 ]);
 

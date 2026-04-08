@@ -85,7 +85,7 @@ import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
 import { initSmashArena } from "./games/smasharena.js";
-import { initSurvival } from "./games/Survival/survival.js";
+import { initBuilder } from "./games/builder.js";
 import { initWar } from "./games/war.js";
 import { initVideoPoker } from "./games/videopoker.js";
 import { initCraps } from "./games/craps.js";
@@ -329,7 +329,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "quantumflip") initQuantumFlip();
   if (game === "ultimatettt") initUltimateTTT();
   if (game === "smasharena") initSmashArena();
-  if (game === "survival") initSurvival();
+  if (game === "builder") initBuilder();
   if (game === "war") initWar();
   if (game === "videopoker") initVideoPoker();
   if (game === "craps") initCraps();
@@ -377,7 +377,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayQuantumflip",
   "overlayUltimatettt",
   "overlaySmasharena",
-  "overlaySurvival",
+  "overlayBuilder",
   "overlayVideopoker",
   "overlayCraps",
   "overlayBaccarat",
@@ -1354,7 +1354,7 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "stacksmash") initStackSmash();
   if (state.currentGame === "quantumflip") initQuantumFlip();
   if (state.currentGame === "smasharena") initSmashArena();
-  if (state.currentGame === "survival") initSurvival();
+  if (state.currentGame === "builder") initBuilder();
   if (state.currentGame === "mines") {
     initMines();
     document.getElementById("overlayMines").classList.add("active");
