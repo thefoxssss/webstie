@@ -169,6 +169,12 @@ export function initBuilder() {
         return { x, y, width, height };
     }
 
+    function getItemName(item) {
+        const type = itemType(item);
+        if (!type) return "";
+        return blockNames[type] || `ITEM ${type}`;
+    }
+
     function checkRecipes() {
         craftingOutputSlot = undefined;
         const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
@@ -1232,6 +1238,7 @@ export function initBuilder() {
         ctx.lineTo(hotbarPanel.x, hotbarPanel.y + hotbarPanel.height);
         ctx.stroke();
 
+        let hoverItemName = "";
         hotbarSlots.forEach((item, index) => {
             const slotX = hotbarPanel.x + hotbarLayout.padding + (index * (hotbarLayout.slotSize + hotbarLayout.gap));
             const slotY = hotbarPanel.y + hotbarLayout.padding;
@@ -1290,6 +1297,15 @@ export function initBuilder() {
             // Normal text
             ctx.fillStyle = "#ffffff";
             ctx.fillText(`${index + 1}`, slotX + 3, slotY + 11);
+
+            if (inventoryOpen && !hoverItemName && item) {
+                const isHoveringSlot =
+                    mouse.x >= slotX &&
+                    mouse.x <= slotX + hotbarLayout.slotSize &&
+                    mouse.y >= slotY &&
+                    mouse.y <= slotY + hotbarLayout.slotSize;
+                if (isHoveringSlot) hoverItemName = getItemName(item);
+            }
         });
 
         if (inventoryOpen) {
@@ -1466,11 +1482,35 @@ export function initBuilder() {
                     ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
                 }
 
+                if (!hoverItemName && !isEmpty) {
+                    const isHoveringSlot =
+                        mouse.x >= slotX &&
+                        mouse.x <= slotX + inventoryLayout.slotSize &&
+                        mouse.y >= slotY &&
+                        mouse.y <= slotY + inventoryLayout.slotSize;
+                    if (isHoveringSlot) hoverItemName = getItemName(item);
+                }
+
                 if (isActive) {
                     ctx.strokeStyle = "#ffffff";
                     ctx.lineWidth = 3;
                     ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
                 }
+            }
+
+            if (hoverItemName) {
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "left";
+                const textWidth = ctx.measureText(hoverItemName).width;
+                const tipX = Math.min(canvas.width - textWidth - 14, mouse.x + 12);
+                const tipY = Math.max(14, mouse.y - 10);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+                ctx.fillRect(tipX - 4, tipY - 10, textWidth + 8, 14);
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(tipX - 4, tipY - 10, textWidth + 8, 14);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(hoverItemName, tipX, tipY);
             }
 
             // Draw currently dragged item attached to cursor

@@ -5069,7 +5069,7 @@ export function renderInventory() {
 
     const header = document.createElement("div");
     header.className = "inventory-item-header";
-    header.innerHTML = `<span>${item.icon || "🛒"}</span> <strong>${item.name}${countLabel}</strong>`;
+    header.innerHTML = `<span title="${item.name}">${item.icon || "🛒"}</span> <strong>${item.name}${countLabel}</strong>`;
 
     const desc = document.createElement("div");
     desc.className = "inventory-item-desc";
@@ -5126,7 +5126,7 @@ function renderShop() {
           isEnabled ? "ON" : "OFF"
         }</button>`
       : "";
-    div.innerHTML = `<div><span class="shop-item-icon" aria-hidden="true">${item.icon || "🛒"}</span>${item.name}<div style="font-size:8px;opacity:0.7">${
+    div.innerHTML = `<div><span class="shop-item-icon" aria-hidden="true" title="${item.name}">${item.icon || "🛒"}</span>${item.name}<div style="font-size:8px;opacity:0.7">${
       item.desc
     }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><div class="shop-item-actions"><button class="shop-buy-btn" onclick="window.buyItem('${
       item.id
