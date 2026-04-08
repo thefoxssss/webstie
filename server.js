@@ -551,7 +551,8 @@ class BuilderRoom extends colyseus.Room {
               drop.y = y * TILE_SIZE + TILE_SIZE / 2;
               drop.vx = (Math.random() - 0.5) * 4;
               drop.vy = -4 - Math.random() * 4;
-              drop.type = b.type;
+              // Tree blocks (logs/leaves) should both yield logs.
+              drop.type = (b.type === 7 || b.type === 8) ? 7 : b.type;
               drop.count = 1;
               this.state.drops.set(drop.id, drop);
 
