@@ -1344,8 +1344,6 @@ export function initBuilder() {
           chunk.blocks.forEach((block) => {
             ctx.fillStyle = blockColors[block.type] || "#ffffff";
             ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = "rgba(0,0,0,0.1)";
-            ctx.strokeRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           });
         });
 
