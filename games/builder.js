@@ -225,8 +225,8 @@ export function initBuilder() {
 
         // Recipes
 
-        // 1 Wood -> 4 Planks
-        if (matchPattern([[4]])) {
+        // 1 Log -> 4 Planks
+        if (matchPattern([[7]])) {
             craftingOutputSlot = { type: 9, count: 4 };
             return;
         }
@@ -252,13 +252,78 @@ export function initBuilder() {
     }
 
     function consumeCraftingMaterials() {
+        // Find what recipe matches so we know how to consume
+        // The previous implementation blindly consumed 1 from EVERYTHING in the grid!
         const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
-        for (let i = 0; i < grid.length; i++) {
-            if (grid[i]) {
-                grid[i].count--;
-                if (grid[i].count <= 0) grid[i] = undefined;
+        const size = isCraftingTableOpen ? 3 : 2;
+
+        let pattern = [];
+        for (let r = 0; r < size; r++) {
+            let row = [];
+            for (let c = 0; c < size; c++) {
+                const item = grid[r * size + c];
+                row.push(item ? item.type : 0);
+            }
+            pattern.push(row);
+        }
+
+        const matchPattern = (targetPattern) => {
+            const targetH = targetPattern.length;
+            const targetW = targetPattern[0].length;
+            for (let r = 0; r <= size - targetH; r++) {
+                for (let c = 0; c <= size - targetW; c++) {
+                    let match = true;
+                    let matchIndices = [];
+                    for (let tr = 0; tr < targetH; tr++) {
+                        for (let tc = 0; tc < targetW; tc++) {
+                            if (pattern[r + tr][c + tc] !== targetPattern[tr][tc]) {
+                                match = false;
+                                break;
+                            }
+                            if (targetPattern[tr][tc] !== 0) {
+                                matchIndices.push((r + tr) * size + (c + tc));
+                            }
+                        }
+                        if (!match) break;
+                    }
+                    if (match) {
+                        let restEmpty = true;
+                        for (let gr = 0; gr < size; gr++) {
+                            for (let gc = 0; gc < size; gc++) {
+                                if (r <= gr && gr < r + targetH && c <= gc && gc < c + targetW) continue;
+                                if (pattern[gr][gc] !== 0) {
+                                    restEmpty = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if (restEmpty) return matchIndices;
+                    }
+                }
+            }
+            return null;
+        };
+
+        let indicesToConsume = null;
+        if ((indicesToConsume = matchPattern([[7]])) !== null) {} // 1 Log -> 4 Planks
+        else if ((indicesToConsume = matchPattern([[9, 9], [9, 9]])) !== null) {} // 4 Planks -> 1 Crafting Table
+        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[3], [3], [9]])) !== null) {} // Sword
+        else {
+             // Fallback if no recipe matched (shouldn't happen)
+             for (let i = 0; i < grid.length; i++) {
+                 if (grid[i]) indicesToConsume = (indicesToConsume || []).concat([i]);
+             }
+        }
+
+        if (indicesToConsume) {
+            for (let i of indicesToConsume) {
+                if (grid[i]) {
+                    grid[i].count--;
+                    if (grid[i].count <= 0) grid[i] = undefined;
+                }
             }
         }
+
         checkRecipes();
     }
 
