@@ -71,7 +71,6 @@ export function initBuilder() {
         11: "SWORD",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => type === 11 ? 1 : 99;
 
     const normalizeItem = (item) => {
         if (item === undefined || item === null) return undefined;
@@ -168,12 +167,6 @@ export function initBuilder() {
         const x = Math.floor((canvas.width - width) / 2);
         const y = Math.floor((canvas.height - height) / 2);
         return { x, y, width, height };
-    }
-
-    function getItemName(item) {
-        const type = itemType(item);
-        if (!type) return "";
-        return blockNames[type] || `ITEM ${type}`;
     }
 
     function checkRecipes() {
@@ -440,7 +433,6 @@ export function initBuilder() {
             hotbarSlots = new Array(9).fill(undefined).map(cloneItem);
             inventorySlots = new Array(27).fill(undefined).map(cloneItem);
             selectedBlockType = hotbarSlots[selectedHotbarIndex];
-            room.send("select_item", { type: 0 });
         });
     };
 
@@ -675,16 +667,16 @@ export function initBuilder() {
 
         // First try to fill existing stacks
         for (let i = 0; i < hotbarSlots.length; i++) {
-            if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === mergedType && hotbarSlots[i].count < getMaxStack(mergedType)) {
-                const add = Math.min(remaining, getMaxStack(mergedType) - hotbarSlots[i].count);
+            if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === mergedType && hotbarSlots[i].count < 99) {
+                const add = Math.min(remaining, 99 - hotbarSlots[i].count);
                 hotbarSlots[i].count += add;
                 remaining -= add;
                 if (remaining <= 0) return;
             }
         }
         for (let i = 0; i < inventorySlots.length; i++) {
-            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === mergedType && inventorySlots[i].count < getMaxStack(mergedType)) {
-                const add = Math.min(remaining, getMaxStack(mergedType) - inventorySlots[i].count);
+            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === mergedType && inventorySlots[i].count < 99) {
+                const add = Math.min(remaining, 99 - inventorySlots[i].count);
                 inventorySlots[i].count += add;
                 remaining -= add;
                 if (remaining <= 0) return;
@@ -694,7 +686,7 @@ export function initBuilder() {
         // Then try empty slots
         for (let i = 0; i < hotbarSlots.length; i++) {
             if (hotbarSlots[i] === undefined) {
-                hotbarSlots[i] = { type: mergedType, count: Math.min(remaining, getMaxStack(mergedType)) };
+                hotbarSlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= hotbarSlots[i].count;
                 if (remaining <= 0) {
                     selectedBlockType = hotbarSlots[selectedHotbarIndex];
@@ -704,7 +696,7 @@ export function initBuilder() {
         }
         for (let i = 0; i < inventorySlots.length; i++) {
             if (inventorySlots[i] === undefined) {
-                inventorySlots[i] = { type: mergedType, count: Math.min(remaining, getMaxStack(mergedType)) };
+                inventorySlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= inventorySlots[i].count;
                 if (remaining <= 0) return;
             }
@@ -1240,7 +1232,6 @@ export function initBuilder() {
         ctx.lineTo(hotbarPanel.x, hotbarPanel.y + hotbarPanel.height);
         ctx.stroke();
 
-        let hoverItemName = "";
         hotbarSlots.forEach((item, index) => {
             const slotX = hotbarPanel.x + hotbarLayout.padding + (index * (hotbarLayout.slotSize + hotbarLayout.gap));
             const slotY = hotbarPanel.y + hotbarLayout.padding;
@@ -1268,8 +1259,9 @@ export function initBuilder() {
 
             // Block drawing
             if (item) {
+                ctx.fillStyle = blockColors[item.type];
                 const inset = 6;
-                drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2));
+                ctx.fillRect(slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2), hotbarLayout.slotSize - (inset * 2));
 
                 // Stack count
                 ctx.fillStyle = "#ffffff";
@@ -1298,15 +1290,6 @@ export function initBuilder() {
             // Normal text
             ctx.fillStyle = "#ffffff";
             ctx.fillText(`${index + 1}`, slotX + 3, slotY + 11);
-
-            if (inventoryOpen && !hoverItemName && item) {
-                const isHoveringSlot =
-                    mouse.x >= slotX &&
-                    mouse.x <= slotX + hotbarLayout.slotSize &&
-                    mouse.y >= slotY &&
-                    mouse.y <= slotY + hotbarLayout.slotSize;
-                if (isHoveringSlot) hoverItemName = getItemName(item);
-            }
         });
 
         if (inventoryOpen) {
@@ -1381,8 +1364,9 @@ export function initBuilder() {
                     const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
                     const item = grid[r * size + c];
                     if (item) {
+                        ctx.fillStyle = blockColors[item.type];
                         const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+                        ctx.fillRect(slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
 
                         ctx.fillStyle = "#ffffff";
                         ctx.font = "8px 'Press Start 2P', monospace";
@@ -1424,8 +1408,9 @@ export function initBuilder() {
             ctx.stroke();
 
             if (craftingOutputSlot) {
+                ctx.fillStyle = blockColors[craftingOutputSlot.type];
                 const inset = 6;
-                drawItemIcon(ctx, craftingOutputSlot.type, outX + inset, outY + inset, inventoryLayout.slotSize - (inset * 2));
+                ctx.fillRect(outX + inset, outY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
 
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "8px 'Press Start 2P', monospace";
@@ -1467,8 +1452,9 @@ export function initBuilder() {
                 ctx.stroke();
 
                 if (!isEmpty) {
+                    ctx.fillStyle = blockColors[item.type];
                     const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+                    ctx.fillRect(slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
 
                     // Stack count
                     ctx.fillStyle = "#ffffff";
@@ -1480,15 +1466,6 @@ export function initBuilder() {
                     ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
                 }
 
-                if (!hoverItemName && !isEmpty) {
-                    const isHoveringSlot =
-                        mouse.x >= slotX &&
-                        mouse.x <= slotX + inventoryLayout.slotSize &&
-                        mouse.y >= slotY &&
-                        mouse.y <= slotY + inventoryLayout.slotSize;
-                    if (isHoveringSlot) hoverItemName = getItemName(item);
-                }
-
                 if (isActive) {
                     ctx.strokeStyle = "#ffffff";
                     ctx.lineWidth = 3;
@@ -1496,26 +1473,12 @@ export function initBuilder() {
                 }
             }
 
-            if (hoverItemName) {
-                ctx.font = "8px 'Press Start 2P', monospace";
-                ctx.textAlign = "left";
-                const textWidth = ctx.measureText(hoverItemName).width;
-                const tipX = Math.min(canvas.width - textWidth - 14, mouse.x + 12);
-                const tipY = Math.max(14, mouse.y - 10);
-                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                ctx.fillRect(tipX - 4, tipY - 10, textWidth + 8, 14);
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(tipX - 4, tipY - 10, textWidth + 8, 14);
-                ctx.fillStyle = "#ffffff";
-                ctx.fillText(hoverItemName, tipX, tipY);
-            }
-
             // Draw currently dragged item attached to cursor
             if (draggedItemType !== null) {
                 const drawSize = inventoryLayout.slotSize - 12; // 12 is inset*2 from earlier
+                ctx.fillStyle = blockColors[draggedItemType.type] || "#ffffff";
                 // Center the block on the mouse cursor
-                drawItemIcon(ctx, draggedItemType.type, mouse.x - drawSize / 2, mouse.y - drawSize / 2, drawSize);
+                ctx.fillRect(mouse.x - drawSize / 2, mouse.y - drawSize / 2, drawSize, drawSize);
 
                 // Draw count
                 ctx.fillStyle = "#ffffff";
@@ -1583,7 +1546,7 @@ export function initBuilder() {
                 ctx.fillRect(size * 0.2, size * 0.2, 2, 2);
                 ctx.fillRect(size * 0.7, size * 0.3, 2, 2);
                 ctx.fillRect(size * 0.4, size * 0.6, 2, 2);
-                ctx.fillRect(size * 0.8, size * 0.8, 2, 2);
+                ctx.fillRect(size * 0.8, 0.8, 2, 2);
             } else if (type === 10) { // Crafting table
                 ctx.fillStyle = "#5c3a21";
                 ctx.fillRect(0, 0, size, size * 0.2); // Top rim
