@@ -1314,8 +1314,9 @@ export function initBuilder() {
         // Get local player for camera centering
         const localPlayer = room.state.players.get(localPlayerId);
         if (localPlayer) {
-            camera.x = localPlayer.x - canvas.width / 2 + TILE_SIZE / 2;
-            camera.y = localPlayer.y - canvas.height / 2 + TILE_SIZE / 2;
+            // Snap camera to whole pixels so tile edges don't anti-alias into a faint moving grid.
+            camera.x = Math.round(localPlayer.x - canvas.width / 2 + TILE_SIZE / 2);
+            camera.y = Math.round(localPlayer.y - canvas.height / 2 + TILE_SIZE / 2);
 
             // Update UI only if changed
             const currentX = Math.floor(localPlayer.x / TILE_SIZE);
@@ -1344,8 +1345,6 @@ export function initBuilder() {
           chunk.blocks.forEach((block) => {
             ctx.fillStyle = blockColors[block.type] || "#ffffff";
             ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = "rgba(0,0,0,0.1)";
-            ctx.strokeRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           });
         });
 
