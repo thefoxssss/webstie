@@ -1,8 +1,8 @@
 import { state, isInputFocused } from "../core.js";
 
-export function initSurvival() {
+export function initBuilder() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
-    const networkSelect = document.getElementById("survivalNetwork");
+    const networkSelect = document.getElementById("builderNetwork");
     const defaultServer = isLocal ? "local" : "prod";
     if (networkSelect && !networkSelect.value) {
         networkSelect.value = "auto";
@@ -26,19 +26,19 @@ export function initSurvival() {
     let animationFrameId;
     let selectedRoomId = null;
 
-    const canvas = document.getElementById("survivalCanvas");
+    const canvas = document.getElementById("builderCanvas");
     const ctx = canvas.getContext("2d");
-    const menu = document.getElementById("survivalMenu");
-    const gameArea = document.getElementById("survivalGame");
-    const btnJoin = document.getElementById("btnJoinSurvival");
-    const btnRefreshServers = document.getElementById("btnRefreshSurvivalServers");
-    const btnCreateServer = document.getElementById("btnCreateSurvivalServer");
-    const serverNameInput = document.getElementById("survivalServerName");
-    const serverListEl = document.getElementById("survivalServerList");
+    const menu = document.getElementById("builderMenu");
+    const gameArea = document.getElementById("builderGame");
+    const btnJoin = document.getElementById("btnJoinBuilder");
+    const btnRefreshServers = document.getElementById("btnRefreshBuilderServers");
+    const btnCreateServer = document.getElementById("btnCreateBuilderServer");
+    const serverNameInput = document.getElementById("builderServerName");
+    const serverListEl = document.getElementById("builderServerList");
 
-    const uiX = document.getElementById("survivalX");
-    const uiY = document.getElementById("survivalY");
-    const uiBlockType = document.getElementById("survivalBlockType");
+    const uiX = document.getElementById("builderX");
+    const uiY = document.getElementById("builderY");
+    const uiBlockType = document.getElementById("builderBlockType");
 
     const TILE_SIZE = 32;
     const CHUNK_SIZE = 16;
@@ -402,7 +402,7 @@ export function initSurvival() {
         if (!btnRefreshServers) return;
         btnRefreshServers.textContent = "LOADING...";
         try {
-            const response = await fetch(`${getServerHttpBase()}/survival-servers`);
+            const response = await fetch(`${getServerHttpBase()}/builder-servers`);
             const payload = await response.json();
             renderServerList(payload.servers || []);
         } catch (error) {
@@ -456,7 +456,7 @@ export function initSurvival() {
         try {
             btnJoin.textContent = "CONNECTING...";
             client = new window.Colyseus.Client(getServerUrl());
-            room = await client.joinOrCreate("survival_room", { name: playerName() });
+            room = await client.joinOrCreate("builder_room", { name: playerName() });
             localPlayerId = room.sessionId;
             setupRoomListeners();
             menu.style.display = "none";
@@ -474,7 +474,7 @@ export function initSurvival() {
                 btnCreateServer.textContent = "CREATING...";
                 const serverName = (serverNameInput?.value || "").trim() || "Public World";
                 client = new window.Colyseus.Client(getServerUrl());
-                room = await client.create("survival_room", { name: playerName(), serverName });
+                room = await client.create("builder_room", { name: playerName(), serverName });
                 localPlayerId = room.sessionId;
                 setupRoomListeners();
                 menu.style.display = "none";
@@ -1570,7 +1570,7 @@ export function initSurvival() {
     }
 
     // Cleanup hook
-    const stopSurvival = () => {
+    const stopBuilder = () => {
         if (room) {
             room.leave();
             room = null;
@@ -1592,8 +1592,8 @@ export function initSurvival() {
     };
 
     if (window.gameStops) {
-        window.gameStops.push(stopSurvival);
+        window.gameStops.push(stopBuilder);
     } else {
-        window.gameStops = [stopSurvival];
+        window.gameStops = [stopBuilder];
     }
 }

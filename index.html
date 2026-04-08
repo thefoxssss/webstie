@@ -2027,27 +2027,27 @@
     </div>
 
     <!-- Solo + multiplayer War overlay. -->
-    <!-- Survival Room overlay. -->
-    <div class="overlay" id="overlaySurvival">
-      <h1>SURVIVAL</h1>
-      <div id="survivalMenu" class="menu-box">
-        <select id="survivalNetwork" class="term-input">
+    <!-- Builder Room overlay. -->
+    <div class="overlay" id="overlayBuilder">
+      <h1>BUILDER</h1>
+      <div id="builderMenu" class="menu-box">
+        <select id="builderNetwork" class="term-input">
           <option value="auto">AUTO NETWORK (RECOMMENDED)</option>
           <option value="prod">PRODUCTION NETWORK</option>
           <option value="local">LOCALHOST NETWORK</option>
         </select>
-        <button class="menu-btn" id="btnRefreshSurvivalServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
-        <input type="text" id="survivalServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
-        <button class="term-btn" id="btnCreateSurvivalServer">CREATE SERVER</button>
-        <div id="survivalServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
-        <button class="menu-btn" id="btnJoinSurvival">QUICK JOIN ANY SERVER</button>
+        <button class="menu-btn" id="btnRefreshBuilderServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
+        <input type="text" id="builderServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
+        <button class="term-btn" id="btnCreateBuilderServer">CREATE SERVER</button>
+        <div id="builderServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
+        <button class="menu-btn" id="btnJoinBuilder">QUICK JOIN ANY SERVER</button>
       </div>
-      <div id="survivalGame" class="survival-wrap" style="display: none">
-        <div class="survival-hud">
-          <span>X: <span id="survivalX">0</span> Y: <span id="survivalY">0</span></span>
-          <span style="margin-left: 20px;">BLOCK: <span id="survivalBlockType">GRASS</span></span>
+      <div id="builderGame" class="builder-wrap" style="display: none">
+        <div class="builder-hud">
+          <span>X: <span id="builderX">0</span> Y: <span id="builderY">0</span></span>
+          <span style="margin-left: 20px;">BLOCK: <span id="builderBlockType">GRASS</span></span>
         </div>
-        <canvas id="survivalCanvas" width="800" height="450" style="background: #87CEEB;"></canvas>
+        <canvas id="builderCanvas" width="800" height="450" style="background: #87CEEB;"></canvas>
         <div class="mobile-hint active" style="margin-top: 10px">
           WASD TO MOVE. CLICK TO BUILD. SHIFT-CLICK TO BREAK. PRESS I FOR IN-GAME INVENTORY.
         </div>
