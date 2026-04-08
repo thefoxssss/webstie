@@ -71,7 +71,6 @@ export function initBuilder() {
         11: "SWORD",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => type === 11 ? 1 : 99;
 
     const normalizeItem = (item) => {
         if (item === undefined || item === null) return undefined;
@@ -668,16 +667,16 @@ export function initBuilder() {
 
         // First try to fill existing stacks
         for (let i = 0; i < hotbarSlots.length; i++) {
-            if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === mergedType && hotbarSlots[i].count < getMaxStack(mergedType)) {
-                const add = Math.min(remaining, getMaxStack(mergedType) - hotbarSlots[i].count);
+            if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === mergedType && hotbarSlots[i].count < 99) {
+                const add = Math.min(remaining, 99 - hotbarSlots[i].count);
                 hotbarSlots[i].count += add;
                 remaining -= add;
                 if (remaining <= 0) return;
             }
         }
         for (let i = 0; i < inventorySlots.length; i++) {
-            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === mergedType && inventorySlots[i].count < getMaxStack(mergedType)) {
-                const add = Math.min(remaining, getMaxStack(mergedType) - inventorySlots[i].count);
+            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === mergedType && inventorySlots[i].count < 99) {
+                const add = Math.min(remaining, 99 - inventorySlots[i].count);
                 inventorySlots[i].count += add;
                 remaining -= add;
                 if (remaining <= 0) return;
@@ -687,7 +686,7 @@ export function initBuilder() {
         // Then try empty slots
         for (let i = 0; i < hotbarSlots.length; i++) {
             if (hotbarSlots[i] === undefined) {
-                hotbarSlots[i] = { type: mergedType, count: Math.min(remaining, getMaxStack(mergedType)) };
+                hotbarSlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= hotbarSlots[i].count;
                 if (remaining <= 0) {
                     selectedBlockType = hotbarSlots[selectedHotbarIndex];
@@ -697,7 +696,7 @@ export function initBuilder() {
         }
         for (let i = 0; i < inventorySlots.length; i++) {
             if (inventorySlots[i] === undefined) {
-                inventorySlots[i] = { type: mergedType, count: Math.min(remaining, getMaxStack(mergedType)) };
+                inventorySlots[i] = { type: mergedType, count: Math.min(remaining, 99) };
                 remaining -= inventorySlots[i].count;
                 if (remaining <= 0) return;
             }
@@ -1260,8 +1259,9 @@ export function initBuilder() {
 
             // Block drawing
             if (item) {
+                ctx.fillStyle = blockColors[item.type];
                 const inset = 6;
-                drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2));
+                ctx.fillRect(slotX + inset, slotY + inset, hotbarLayout.slotSize - (inset * 2), hotbarLayout.slotSize - (inset * 2));
 
                 // Stack count
                 ctx.fillStyle = "#ffffff";
@@ -1364,8 +1364,9 @@ export function initBuilder() {
                     const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
                     const item = grid[r * size + c];
                     if (item) {
+                        ctx.fillStyle = blockColors[item.type];
                         const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+                        ctx.fillRect(slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
 
                         ctx.fillStyle = "#ffffff";
                         ctx.font = "8px 'Press Start 2P', monospace";
@@ -1407,8 +1408,9 @@ export function initBuilder() {
             ctx.stroke();
 
             if (craftingOutputSlot) {
+                ctx.fillStyle = blockColors[craftingOutputSlot.type];
                 const inset = 6;
-                drawItemIcon(ctx, craftingOutputSlot.type, outX + inset, outY + inset, inventoryLayout.slotSize - (inset * 2));
+                ctx.fillRect(outX + inset, outY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
 
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "8px 'Press Start 2P', monospace";
@@ -1450,8 +1452,9 @@ export function initBuilder() {
                 ctx.stroke();
 
                 if (!isEmpty) {
+                    ctx.fillStyle = blockColors[item.type];
                     const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+                    ctx.fillRect(slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2), inventoryLayout.slotSize - (inset * 2));
 
                     // Stack count
                     ctx.fillStyle = "#ffffff";
@@ -1473,8 +1476,9 @@ export function initBuilder() {
             // Draw currently dragged item attached to cursor
             if (draggedItemType !== null) {
                 const drawSize = inventoryLayout.slotSize - 12; // 12 is inset*2 from earlier
+                ctx.fillStyle = blockColors[draggedItemType.type] || "#ffffff";
                 // Center the block on the mouse cursor
-                drawItemIcon(ctx, draggedItemType.type, mouse.x - drawSize / 2, mouse.y - drawSize / 2, drawSize);
+                ctx.fillRect(mouse.x - drawSize / 2, mouse.y - drawSize / 2, drawSize, drawSize);
 
                 // Draw count
                 ctx.fillStyle = "#ffffff";
@@ -1542,7 +1546,7 @@ export function initBuilder() {
                 ctx.fillRect(size * 0.2, size * 0.2, 2, 2);
                 ctx.fillRect(size * 0.7, size * 0.3, 2, 2);
                 ctx.fillRect(size * 0.4, size * 0.6, 2, 2);
-                ctx.fillRect(size * 0.8, size * 0.8, 2, 2);
+                ctx.fillRect(size * 0.8, 0.8, 2, 2);
             } else if (type === 10) { // Crafting table
                 ctx.fillStyle = "#5c3a21";
                 ctx.fillRect(0, 0, size, size * 0.2); // Top rim
