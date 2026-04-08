@@ -460,8 +460,6 @@ const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
 const CHUNK_SIZE = 16;
 const BUILDER_JUMP_BUFFER_TICKS = 6; // ~120ms at 50Hz
-const BEDROCK_BLOCK_TYPE = 29;
-const BEDROCK_GRADIENT_LAYERS = 4;
 
 class BuilderRoom extends colyseus.Room {
   onCreate(options) {
@@ -562,7 +560,6 @@ class BuilderRoom extends colyseus.Room {
           const key = `${x},${y}`;
           const b = chunk.blocks.get(key);
           if (b) {
-              if (b.type === BEDROCK_BLOCK_TYPE) return;
               const drop = new ItemDrop();
               drop.id = `drop-${Date.now()}-${Math.random()}`;
               drop.x = x * TILE_SIZE + TILE_SIZE / 2;
@@ -882,25 +879,13 @@ class BuilderRoom extends colyseus.Room {
         // Or if layeredNoise returns 0 to 1, say if it's > 0.4 it's a cave.
         // layeredNoise internally uses perlin noise which is typically -1 to 1 but here total is accumulated.
         // Let's use absolute value or sin mapping to get tunnels
-        const columnBottomY = h + 200 - 1;
-        const depthFromBottom = columnBottomY - y;
-        const isInBedrockGradient = depthFromBottom >= 0 && depthFromBottom < BEDROCK_GRADIENT_LAYERS;
-        const bedrockChance = depthFromBottom === 0 ? 1
-          : depthFromBottom === 1 ? 0.75
-          : depthFromBottom === 2 ? 0.45
-          : 0.2;
-        const bedrockNoise = Math.abs(Math.sin(worldX * 91.173 + y * 17.913));
-        const shouldPlaceBedrock = isInBedrockGradient && bedrockNoise < bedrockChance;
-
-        const isCave = !shouldPlaceBedrock && Math.abs(caveNoise) < 0.08 && y >= h + 25;
+        const isCave = Math.abs(caveNoise) < 0.08 && y >= h + 25;
 
         if (!isCave) {
             const b = new Block();
             b.x = worldX;
             b.y = y;
-            if (shouldPlaceBedrock) {
-              b.type = BEDROCK_BLOCK_TYPE;
-            } else if (y === h) {
+            if (y === h) {
               b.type = 1; // Grass
             } else if (y < h + 4) {
               b.type = 2; // Dirt
