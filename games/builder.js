@@ -70,7 +70,7 @@ export function initBuilder() {
         10: "CRAFTING TABLE",
         11: "SWORD",
     };
-    const getMergedInventoryType = (type) => (type === 7 ? 4 : type);
+    const getMergedInventoryType = (type) => type;
 
     const normalizeItem = (item) => {
         if (item === undefined || item === null) return undefined;
