@@ -24,7 +24,13 @@ export function initBuilder() {
     let room;
     let client;
     let animationFrameId;
-    let selectedRoomId = null;
+let selectedRoomId = null;
+    let inventoryOpen = false;
+    let isCraftingTableOpen = false;
+    let isChestOpen = false;
+    let currentChestId = null;
+    let isFurnaceOpen = false;
+    let currentFurnaceId = null;
 
     const canvas = document.getElementById("builderCanvas");
     const ctx = canvas.getContext("2d");
@@ -43,7 +49,7 @@ export function initBuilder() {
     const TILE_SIZE = 32;
     const CHUNK_SIZE = 16;
 
-    const blockColors = {
+const blockColors = {
         1: "#3c9e3c", // Grass
         2: "#6b4226", // Dirt
         3: "#808080", // Stone
@@ -54,7 +60,7 @@ export function initBuilder() {
         8: "#2e7d32", // Leaves
         9: "#d2b48c", // Planks
         10: "#8b5a2b", // Crafting Table
-        11: "#808080", // Sword (rendered differently later, color for item drop/slot)
+        11: "#808080", // Sword
         12: "#1C1C1C", // Coal
         13: "#B87333", // Copper
         14: "#D0D0D0", // Iron
@@ -72,6 +78,25 @@ export function initBuilder() {
         26: "#00FFFF", // Diamond Rifle
         27: "#39FF14", // Uranium Laser
         28: "#B87333", // Copper Ammo
+        29: "#4ca64c", // Sapling
+        30: "#ff3333", // Apple
+        31: "#654321", // Chest
+        32: "#555555", // Furnace
+        33: "#ff0000", // TNT
+        34: "#ff00ff", // Nuke
+        35: "#c4a484", // Ladder
+        36: "#444444", // Hammer
+        37: "#009900", // Cactus
+        38: "#eedd82", // Sand
+        39: "#ffffff", // Snow
+        40: "#d2b48c", // Sandstone
+        41: "#3d2314", // Pine Log
+        42: "#1f4d25", // Pine Leaves
+        43: "#B87333", // Copper Ingot
+        44: "#D0D0D0", // Iron Ingot
+        45: "#FFD700", // Gold Ingot
+        46: "#00FFFF", // Diamond (Refined)
+        47: "#39FF14", // Uranium (Refined)
     };
 
     const blockNames = {
@@ -748,11 +773,19 @@ export function initBuilder() {
         mouse.y = (e.clientY - rect.top) * scaleY;
     }
 
-    function sendBuildOrBreak(e) {
+function sendBuildOrBreak(e) {
+        if (!room || !localPlayer) return;
+
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
         const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
         selectedBlockType = selectedSlotItem;
+
+        // If holding hammer, send hammer command on left click instead of break
+        if (selectedBlockType && itemType(selectedBlockType) === 36 && e.button === 0) {
+            room.send("hammer", { x: worldX, y: worldY });
+            return;
+        }
 
         // Handle shooting guns
         const type = itemType(selectedSlotItem);
@@ -1134,7 +1167,7 @@ export function initBuilder() {
         }
 
         // Interact with crafting table
-        if (e.button === 2 && !e.shiftKey) {
+if (e.button === 2 && !e.shiftKey) {
             const worldX = mouse.x + camera.x;
             const worldY = mouse.y + camera.y;
             const tileX = Math.floor(worldX / TILE_SIZE);
@@ -1147,6 +1180,21 @@ export function initBuilder() {
                 if (block && block.type === 10) { // Crafting Table
                     inventoryOpen = true;
                     isCraftingTableOpen = true;
+                    return;
+} else if (block && block.type === 31) { // Chest
+                    room.send("interact", { x: worldX, y: worldY }); // register it
+                    inventoryOpen = true;
+                    isChestOpen = true;
+                    currentChestId = `${tileX},${tileY}`;
+                    return;
+                } else if (block && block.type === 32) { // Furnace
+                    room.send("interact", { x: worldX, y: worldY });
+                    inventoryOpen = true;
+                    isFurnaceOpen = true;
+                    currentFurnaceId = `${tileX},${tileY}`;
+                    return;
+                } else if (block && (block.type === 33 || block.type === 34)) { // TNT/Nuke
+                    room.send("interact", { x: worldX, y: worldY });
                     return;
                 }
             }
@@ -1299,7 +1347,17 @@ export function initBuilder() {
                         grid[dragSourceCraftingIndex] = cloneItem(existingItem);
                     }
                 }
-            } else if (hotbarIndex !== null && dragSourceOutputSlot) {
+
+        } else if (hotbarIndex !== null && e.button === 2) {
+            const item = hotbarSlots[hotbarIndex];
+            if (item && item.type === 30) { // Apple
+                room.send("consume", { type: 30 });
+                item.count--;
+                if (item.count <= 0) hotbarSlots[hotbarIndex] = undefined;
+                return;
+            }
+
+        } else if (hotbarIndex !== null && dragSourceOutputSlot) {
                 // Dropped crafted item on hotbar
                 const existingItem = cloneItem(hotbarSlots[hotbarIndex]);
                 if (existingItem === undefined || existingItem.type === draggedItemType.type) {
@@ -1311,7 +1369,18 @@ export function initBuilder() {
                 } else {
                     addInventoryItem(draggedItemType.type, draggedItemType.count); // just put in inventory
                 }
-            } else if (inventoryIndex !== null && !dragSourceOutputSlot) {
+
+        } else if (inventoryIndex !== null && e.button === 2) {
+            // Check for right-click consume in inventory
+            const item = inventorySlots[inventoryIndex];
+            if (item && item.type === 30) { // Apple
+                room.send("consume", { type: 30 });
+                item.count--;
+                if (item.count <= 0) inventorySlots[inventoryIndex] = undefined;
+                return;
+            }
+
+        } else if (inventoryIndex !== null && !dragSourceOutputSlot) {
                 // Dropped on an inventory slot
                 const existingItem = cloneItem(inventorySlots[inventoryIndex]);
                 inventorySlots[inventoryIndex] = cloneItem(draggedItemType);
@@ -1510,10 +1579,56 @@ export function initBuilder() {
                 ctx.drawImage(blockImages[block.type], block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             } else {
                 ctx.fillStyle = blockColors[block.type] || "#ffffff";
+// Block rendering based on meta
+            if (block.meta === 1) { // Bottom slab
+                ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE, TILE_SIZE/2);
+            } else if (block.meta === 2) { // Top slab
+                ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE/2);
+            } else if (block.meta === 3) { // Left slope
+                ctx.beginPath();
+                ctx.moveTo(block.x * TILE_SIZE, block.y * TILE_SIZE + TILE_SIZE);
+                ctx.lineTo(block.x * TILE_SIZE + TILE_SIZE, block.y * TILE_SIZE + TILE_SIZE);
+                ctx.lineTo(block.x * TILE_SIZE + TILE_SIZE, block.y * TILE_SIZE);
+                ctx.fill();
+            } else if (block.meta === 4) { // Right slope
+                ctx.beginPath();
+                ctx.moveTo(block.x * TILE_SIZE, block.y * TILE_SIZE + TILE_SIZE);
+                ctx.lineTo(block.x * TILE_SIZE + TILE_SIZE, block.y * TILE_SIZE);
+                ctx.lineTo(block.x * TILE_SIZE, block.y * TILE_SIZE);
+                ctx.fill();
+            } else { // Full block
                 ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
             }
           });
         });
+
+// Draw explosives
+        room.state.explosives.forEach((exp) => {
+            ctx.save();
+            ctx.translate(exp.x, exp.y);
+            // Flicker white/red based on timer
+            if (exp.timer % 10 < 5) {
+                ctx.fillStyle = "#ffffff";
+            } else {
+                ctx.fillStyle = exp.type === 34 ? "#ff00ff" : "#ff0000"; // Nuke is purple, TNT is red
+            }
+
+            // Pulse size
+            const scale = 1 + Math.sin(exp.timer * 0.5) * 0.1;
+            ctx.scale(scale, scale);
+
+            ctx.fillRect(-TILE_SIZE/2, -TILE_SIZE/2, TILE_SIZE, TILE_SIZE);
+
+            ctx.fillStyle = "#000";
+            ctx.font = "10px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(exp.type === 34 ? "NUKE" : "TNT", 0, 4);
+
+            ctx.restore();
+        });
+
+        // Draw players
 
         // Draw players (sorted by Y so lower players render in front)
         const sortedPlayers = [];
@@ -1783,12 +1898,89 @@ export function initBuilder() {
             }
         });
 
-        if (inventoryOpen) {
+if (inventoryOpen) {
             const panel = getInventoryBounds();
             const { rows, startX, startY } = getInventoryMetrics(panel);
 
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Chest or Furnace rendering logic
+            if (isChestOpen && currentChestId && room.state.chests && room.state.chests.has(currentChestId)) {
+                // Render Chest UI
+                const chest = room.state.chests.get(currentChestId);
+                const chestY = startY - 140;
+
+                ctx.fillStyle = "#c6c6c6"; // Panel color
+                ctx.fillRect(panel.x, chestY - 10, panel.width, 130);
+
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "left";
+                ctx.fillText("Chest", panel.x + 10, chestY + 5);
+
+                for (let i = 0; i < 27; i++) {
+                    const col = i % 9;
+                    const row = Math.floor(i / 9);
+                    const slotX = startX + col * (32 + 4);
+                    const slotY = chestY + 15 + row * (32 + 4);
+
+                    ctx.fillStyle = "#8b8b8b";
+                    ctx.fillRect(slotX, slotY, 32, 32);
+                    ctx.strokeStyle = "#373737"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(slotX, slotY + 32); ctx.lineTo(slotX, slotY); ctx.lineTo(slotX + 32, slotY); ctx.stroke();
+                    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(slotX, slotY + 32); ctx.lineTo(slotX + 32, slotY + 32); ctx.lineTo(slotX + 32, slotY); ctx.stroke();
+
+                    const item = chest.items.get(i.toString());
+                    if (item) {
+                        drawItemIcon(ctx, item.type, slotX + 6, slotY + 6, 20);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "8px 'Press Start 2P', monospace";
+                        ctx.textAlign = "right";
+                        ctx.fillText(`${item.count}`, slotX + 30, slotY + 28);
+                    }
+                }
+            } else if (isFurnaceOpen && currentFurnaceId && room.state.furnaces && room.state.furnaces.has(currentFurnaceId)) {
+                // Render Furnace UI
+                const furnace = room.state.furnaces.get(currentFurnaceId);
+                const furY = startY - 120;
+                const furX = canvas.width / 2;
+
+                ctx.fillStyle = "#c6c6c6"; // Panel color
+                ctx.fillRect(furX - 100, furY - 10, 200, 100);
+
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("Furnace", furX, furY + 5);
+
+                const drawSlot = (x, y, itemType, itemCount) => {
+                    ctx.fillStyle = "#8b8b8b";
+                    ctx.fillRect(x, y, 32, 32);
+                    ctx.strokeStyle = "#373737"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(x, y + 32); ctx.lineTo(x, y); ctx.lineTo(x + 32, y); ctx.stroke();
+                    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(x, y + 32); ctx.lineTo(x + 32, y + 32); ctx.lineTo(x + 32, y); ctx.stroke();
+                    if (itemCount > 0) {
+                        drawItemIcon(ctx, itemType, x + 6, y + 6, 20);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "8px 'Press Start 2P', monospace";
+                        ctx.textAlign = "right";
+                        ctx.fillText(`${itemCount}`, x + 30, y + 28);
+                    }
+                };
+
+                drawSlot(furX - 60, furY + 15, furnace.inputItem, furnace.inputCount);
+                drawSlot(furX - 60, furY + 55, furnace.fuelItem, furnace.fuelCount);
+                drawSlot(furX + 30, furY + 35, furnace.outputItem, furnace.outputCount);
+
+                // Progress
+                ctx.fillStyle = "#333";
+                ctx.fillRect(furX - 15, furY + 42, 30, 10);
+                ctx.fillStyle = "#ff6600";
+                ctx.fillRect(furX - 15, furY + 42, (furnace.progress / 100) * 30, 10);
+            }
 
             // Minecraft inventory panel style
             ctx.fillStyle = "#c6c6c6"; // Light gray
@@ -1875,14 +2067,37 @@ export function initBuilder() {
                 ctx.font = "10px 'Press Start 2P', monospace";
                 ctx.fillText("Recipe Book", panel.x + 20, panel.y + 30);
 
-                const recipes = [
-                    { out: 9, in: [4] }, // Planks from Wood
-                    { out: 10, in: [9, 9, 9, 9] }, // Crafting Table
-                    { out: 11, in: [3, 3, 9] }, // Stone Sword
-                    { out: 28, in: [13] }, // Copper Ammo
-                    { out: 18, in: [13, 13, 13, 13, 13, 13] }, // Copper Armor
-                    { out: 23, in: [13, 13, 13, 13, 13] } // Copper Gun
-                ];
+            const recipes = [
+        { pattern: [[7]], output: { type: 9, count: 4 } }, // 1 Log -> 4 Planks
+        { pattern: [[9, 9], [9, 9]], output: { type: 10, count: 1 } }, // 4 Planks -> Crafting Table
+        { pattern: [[9], [9]], output: { type: 50, count: 4 } }, // 2 Planks -> 4 Sticks (Let's use 50 for stick, wait stick isn't defined... actually stick isn't in original either, let's just use planks for tools for now)
+        // Ladder
+        { pattern: [[9, 0, 9], [9, 9, 9], [9, 0, 9]], output: { type: 35, count: 3 } }, // 7 Planks -> 3 Ladders
+        // Hammer
+        { pattern: [[14, 14, 14], [0, 9, 0], [0, 9, 0]], output: { type: 36, count: 1 } }, // Iron Hammer
+        // Chest
+        { pattern: [[9, 9, 9], [9, 0, 9], [9, 9, 9]], output: { type: 31, count: 1 } }, // Chest
+        // Furnace
+        { pattern: [[3, 3, 3], [3, 0, 3], [3, 3, 3]], output: { type: 32, count: 1 } }, // Furnace
+        // TNT
+        { pattern: [[38, 12, 38], [12, 38, 12], [38, 12, 38]], output: { type: 33, count: 1 } }, // Sand & Coal -> TNT
+        // Nuke
+        { pattern: [[47, 47, 47], [47, 33, 47], [47, 47, 47]], output: { type: 34, count: 1 } }, // Uranium Ingots & TNT -> Nuke
+
+        // Original recipes
+        { pattern: [[9, 0, 0], [9, 0, 0], [9, 0, 0]], output: { type: 11, count: 1 } }, // Planks -> Sword (Original)
+        { pattern: [[13, 13, 13], [13, 0, 13], [0, 0, 0]], output: { type: 18, count: 1 } }, // Copper Armor
+        { pattern: [[14, 14, 14], [14, 0, 14], [0, 0, 0]], output: { type: 19, count: 1 } }, // Iron Armor
+        { pattern: [[15, 15, 15], [15, 0, 15], [0, 0, 0]], output: { type: 20, count: 1 } }, // Gold Armor
+        { pattern: [[16, 16, 16], [16, 0, 16], [0, 0, 0]], output: { type: 21, count: 1 } }, // Diamond Armor
+        { pattern: [[17, 17, 17], [17, 0, 17], [0, 0, 0]], output: { type: 22, count: 1 } }, // Uranium Armor
+        { pattern: [[13, 13, 13], [0, 13, 0], [0, 13, 0]], output: { type: 23, count: 1 } }, // Copper Gun
+        { pattern: [[14, 14, 14], [0, 14, 0], [0, 14, 0]], output: { type: 24, count: 1 } }, // Iron Gun
+        { pattern: [[15, 15, 15], [0, 15, 0], [0, 15, 0]], output: { type: 25, count: 1 } }, // Gold Gun
+        { pattern: [[16, 16, 16], [0, 16, 0], [0, 16, 0]], output: { type: 26, count: 1 } }, // Diamond Rifle
+        { pattern: [[17, 17, 17], [0, 17, 0], [0, 17, 0]], output: { type: 27, count: 1 } }, // Uranium Laser
+        { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
+    ];
 
                 for (let i = 0; i < recipes.length; i++) {
                     const rx = panel.x + 20 + Math.floor(i / 3) * 160;

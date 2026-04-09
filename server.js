@@ -424,6 +424,34 @@ class Block extends Schema {}
 type("number")(Block.prototype, "x");
 type("number")(Block.prototype, "y");
 type("number")(Block.prototype, "type");
+type("number")(Block.prototype, "meta"); // Added for shapes/states
+
+class ChestItem extends Schema {}
+type("number")(ChestItem.prototype, "type");
+type("number")(ChestItem.prototype, "count");
+
+class ChestData extends Schema {
+  constructor() {
+    super();
+    this.items = new MapSchema();
+  }
+}
+type({ map: ChestItem })(ChestData.prototype, "items");
+
+class FurnaceData extends Schema {}
+type("number")(FurnaceData.prototype, "inputItem");
+type("number")(FurnaceData.prototype, "inputCount");
+type("number")(FurnaceData.prototype, "fuelItem");
+type("number")(FurnaceData.prototype, "fuelCount");
+type("number")(FurnaceData.prototype, "outputItem");
+type("number")(FurnaceData.prototype, "outputCount");
+type("number")(FurnaceData.prototype, "progress");
+
+class Explosive extends Schema {}
+type("number")(Explosive.prototype, "x");
+type("number")(Explosive.prototype, "y");
+type("number")(Explosive.prototype, "type");
+type("number")(Explosive.prototype, "timer");
 
 class ItemDrop extends Schema {}
 type("string")(ItemDrop.prototype, "id");
@@ -449,12 +477,18 @@ class BuilderState extends Schema {
         this.chunks = new MapSchema();
         this.drops = new MapSchema();
         this.bullets = new MapSchema();
+        this.chests = new MapSchema();
+        this.furnaces = new MapSchema();
+        this.explosives = new MapSchema();
     }
 }
 type({ map: BuilderPlayer })(BuilderState.prototype, "players");
 type({ map: Chunk })(BuilderState.prototype, "chunks");
 type({ map: ItemDrop })(BuilderState.prototype, "drops");
 type({ map: BuilderBullet })(BuilderState.prototype, "bullets");
+type({ map: ChestData })(BuilderState.prototype, "chests");
+type({ map: FurnaceData })(BuilderState.prototype, "furnaces");
+type({ map: Explosive })(BuilderState.prototype, "explosives");
 
 const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
@@ -536,6 +570,111 @@ class BuilderRoom extends colyseus.Room {
       }
     });
 
+this.onMessage("interact", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+
+        const x = Math.floor(message.x / TILE_SIZE);
+        const y = Math.floor(message.y / TILE_SIZE);
+        const cx = Math.floor(x / CHUNK_SIZE);
+        const cy = Math.floor(y / CHUNK_SIZE);
+
+        const distSq = (p.x+TILE_SIZE/2 - message.x)**2 + (p.y+TILE_SIZE/2 - message.y)**2;
+        if (distSq > (TILE_SIZE * 6)**2) return;
+
+        const chunk = this.state.chunks.get(`${cx},${cy}`);
+        if (chunk) {
+            const b = chunk.blocks.get(`${x},${y}`);
+            if (b && (b.type === 33 || b.type === 34)) {
+                // Ignite TNT (33) or Nuke (34)
+                const explosive = new Explosive();
+                explosive.x = x * TILE_SIZE + TILE_SIZE/2;
+                explosive.y = y * TILE_SIZE + TILE_SIZE/2;
+                explosive.type = b.type;
+                explosive.timer = b.type === 34 ? 100 : 60; // Nuke takes longer
+                this.state.explosives.set(`exp-${Date.now()}-${Math.random()}`, explosive);
+
+                chunk.blocks.delete(`${x},${y}`);
+            } else if (b && (b.type === 31 || b.type === 32)) {
+                // Chest or Furnace
+                const containerId = `${x},${y}`;
+                if (b.type === 31 && !this.state.chests.has(containerId)) {
+                    this.state.chests.set(containerId, new ChestData());
+                } else if (b.type === 32 && !this.state.furnaces.has(containerId)) {
+                    this.state.furnaces.set(containerId, new FurnaceData());
+                }
+            }
+        }
+    });
+
+    this.onMessage("container_move", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+
+        const containerId = message.containerId; // "x,y"
+        const chest = this.state.chests.get(containerId);
+        if (!chest) return;
+
+        if (message.action === "put") {
+            const currentItem = chest.items.get(message.slot.toString());
+            if (currentItem && currentItem.type === message.item.type) {
+                currentItem.count += message.item.count;
+            } else if (!currentItem) {
+                const newItem = new ChestItem();
+                newItem.type = message.item.type;
+                newItem.count = message.item.count;
+                chest.items.set(message.slot.toString(), newItem);
+            }
+        } else if (message.action === "take") {
+            const currentItem = chest.items.get(message.slot.toString());
+            if (currentItem && currentItem.type === message.item.type) {
+                currentItem.count -= message.item.count;
+                if (currentItem.count <= 0) {
+                    chest.items.delete(message.slot.toString());
+                }
+            }
+        }
+    });
+
+    this.onMessage("furnace_sync", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+
+        const containerId = message.containerId;
+        const furnace = this.state.furnaces.get(containerId);
+        if (!furnace) return;
+
+        furnace.inputItem = message.inputItem || 0;
+        furnace.inputCount = message.inputCount || 0;
+        furnace.fuelItem = message.fuelItem || 0;
+        furnace.fuelCount = message.fuelCount || 0;
+        furnace.outputItem = message.outputItem || 0;
+        furnace.outputCount = message.outputCount || 0;
+    });
+
+this.onMessage("hammer", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+        if (p.selectedItemType !== 36) return; // Must be holding hammer
+
+        const x = Math.floor(message.x / TILE_SIZE);
+        const y = Math.floor(message.y / TILE_SIZE);
+        const cx = Math.floor(x / CHUNK_SIZE);
+        const cy = Math.floor(y / CHUNK_SIZE);
+
+        const distSq = (p.x+TILE_SIZE/2 - message.x)**2 + (p.y+TILE_SIZE/2 - message.y)**2;
+        if (distSq > (TILE_SIZE * 6)**2) return;
+
+        const chunk = this.state.chunks.get(`${cx},${cy}`);
+        if (chunk) {
+            const b = chunk.blocks.get(`${x},${y}`);
+            if (b) {
+                // Cycle meta: 0 (full) -> 1 (bottom slab) -> 2 (top slab) -> 3 (left slope) -> 4 (right slope)
+                b.meta = ((b.meta || 0) + 1) % 5;
+            }
+        }
+    });
+
     this.onMessage("break", (client, message) => {
       const p = this.state.players.get(client.sessionId);
       if (!p || p.hp <= 0) return;
@@ -566,8 +705,17 @@ class BuilderRoom extends colyseus.Room {
               drop.y = y * TILE_SIZE + TILE_SIZE / 2;
               drop.vx = (Math.random() - 0.5) * 4;
               drop.vy = -4 - Math.random() * 4;
-              // Tree blocks (logs/leaves) should both yield logs.
-              drop.type = (b.type === 7 || b.type === 8) ? 7 : b.type;
+
+              drop.type = b.type;
+              if (b.type === 7 || b.type === 41) drop.type = b.type; // Logs
+              else if (b.type === 8 || b.type === 42) {
+                  // Leaves have a chance to drop Sapling (29) or Apple (30)
+                  const r = Math.random();
+                  if (r < 0.05) drop.type = 30; // 5% apple
+                  else if (r < 0.15) drop.type = 29; // 10% sapling
+                  else drop.type = b.type; // 85% leaf
+              }
+
               drop.count = 1;
               this.state.drops.set(drop.id, drop);
 
@@ -575,6 +723,18 @@ class BuilderRoom extends colyseus.Room {
           }
       }
     });
+
+
+    this.onMessage("consume", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+
+        if (message.type === 30) { // Apple
+            p.hp += 4;
+            if (p.hp > p.maxHp) p.hp = p.maxHp;
+        }
+    });
+
 
     this.onMessage("pickup", (client, message) => {
       const p = this.state.players.get(client.sessionId);
@@ -806,12 +966,27 @@ class BuilderRoom extends colyseus.Room {
       const sanitizedName = this.serverName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       const filePath = path.join(worldsDir, `${sanitizedName}.json`);
 
-      const data = {};
+      const data = { chunks: {}, chests: {}, furnaces: {} };
       this.state.chunks.forEach((chunk, key) => {
-        data[key] = [];
+        data.chunks[key] = [];
         chunk.blocks.forEach((block) => {
-          data[key].push({ x: block.x, y: block.y, type: block.type });
+          data.chunks[key].push({ x: block.x, y: block.y, type: block.type, meta: block.meta || 0 });
         });
+      });
+      this.state.chests.forEach((chest, key) => {
+        const items = {};
+        chest.items.forEach((item, slot) => {
+          items[slot] = { type: item.type, count: item.count };
+        });
+        data.chests[key] = items;
+      });
+      this.state.furnaces.forEach((furnace, key) => {
+        data.furnaces[key] = {
+            inputItem: furnace.inputItem, inputCount: furnace.inputCount,
+            fuelItem: furnace.fuelItem, fuelCount: furnace.fuelCount,
+            outputItem: furnace.outputItem, outputCount: furnace.outputCount,
+            progress: furnace.progress
+        };
       });
 
       fs.writeFileSync(filePath, JSON.stringify(data));
@@ -828,18 +1003,43 @@ class BuilderRoom extends colyseus.Room {
 
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath);
-        const data = JSON.parse(raw);
+        const rawData = JSON.parse(raw);
+        const data = rawData.chunks ? rawData : { chunks: rawData, chests: {}, furnaces: {} }; // backcompat
 
-        for (const chunkKey in data) {
+        for (const chunkKey in data.chunks) {
           const chunk = new Chunk();
-          data[chunkKey].forEach(bData => {
+          data.chunks[chunkKey].forEach(bData => {
             const b = new Block();
             b.x = bData.x;
             b.y = bData.y;
             b.type = bData.type;
+            b.meta = bData.meta || 0;
             chunk.blocks.set(`${b.x},${b.y}`, b);
           });
           this.state.chunks.set(chunkKey, chunk);
+        }
+        for (const chestKey in data.chests) {
+            const chest = new ChestData();
+            for (const slot in data.chests[chestKey]) {
+                const itemData = data.chests[chestKey][slot];
+                const item = new ChestItem();
+                item.type = itemData.type;
+                item.count = itemData.count;
+                chest.items.set(slot, item);
+            }
+            this.state.chests.set(chestKey, chest);
+        }
+        for (const furnaceKey in data.furnaces) {
+            const furnaceData = data.furnaces[furnaceKey];
+            const furnace = new FurnaceData();
+            furnace.inputItem = furnaceData.inputItem || 0;
+            furnace.inputCount = furnaceData.inputCount || 0;
+            furnace.fuelItem = furnaceData.fuelItem || 0;
+            furnace.fuelCount = furnaceData.fuelCount || 0;
+            furnace.outputItem = furnaceData.outputItem || 0;
+            furnace.outputCount = furnaceData.outputCount || 0;
+            furnace.progress = furnaceData.progress || 0;
+            this.state.furnaces.set(furnaceKey, furnace);
         }
         console.log(`World loaded: ${filePath}`);
       }
@@ -849,8 +1049,23 @@ class BuilderRoom extends colyseus.Room {
   }
 
   getSurfaceHeight(worldX) {
-    const noise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
-    return Math.floor(20 + noise * 15);
+    // Add biome variation to surface height
+    const baseNoise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
+    const macroNoise = layeredNoise(worldX, 1000, 2, 0.5, 0.01); // Hills vs flats
+    return Math.floor(20 + baseNoise * 15 + macroNoise * 20);
+  }
+
+  getBiome(worldX) {
+    const tempNoise = layeredNoise(worldX, 5000, 2, 0.5, 0.005);
+    const moistureNoise = layeredNoise(worldX, 8000, 2, 0.5, 0.005);
+
+    // tempNoise and moistureNoise roughly center around 0 (since they accumulate perlin which can be negative or positive, actually the custom layeredNoise returns 0 to 1 average... wait, let's just use simple thresholds on the return value)
+
+    // Our layeredNoise implementation averages around 0 if it has negative values, or 0.5 if mapped.
+    // Let's assume layeredNoise returns values roughly between -1 and 1
+    if (tempNoise > 0.2) return "desert";
+    if (tempNoise < -0.2) return "snow";
+    return "forest";
   }
 
   generateChunk(cx, cy) {
@@ -867,105 +1082,108 @@ class BuilderRoom extends colyseus.Room {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = cx * CHUNK_SIZE + x;
       const h = this.getSurfaceHeight(worldX);
+      const biome = this.getBiome(worldX);
 
       const startY = Math.max(minY, h);
       const endY = Math.min(maxY, h + 200);
 
       for (let y = startY; y < endY; y++) {
-        // Cave generation using 2D noise
-        // Using a combination of x and y to create organic tunnels
-        // Scale needs to be relatively large for good tunnel sizes
         const caveNoise = layeredNoise(worldX, y, 3, 0.5, 0.1);
-
-        // Let's create a threshold for caves. e.g. if the noise is between -0.2 and 0.2, it's a cave
-        // Or if layeredNoise returns 0 to 1, say if it's > 0.4 it's a cave.
-        // layeredNoise internally uses perlin noise which is typically -1 to 1 but here total is accumulated.
-        // Let's use absolute value or sin mapping to get tunnels
         const isCave = Math.abs(caveNoise) < 0.08 && y >= h + 25;
 
         if (!isCave) {
             const b = new Block();
             b.x = worldX;
             b.y = y;
+            b.meta = 0;
+
             if (y === h) {
-              b.type = 1; // Grass
+              if (biome === "desert") b.type = 38; // Sand
+              else if (biome === "snow") b.type = 39; // Snow
+              else b.type = 1; // Grass
             } else if (y < h + 4) {
-              b.type = 2; // Dirt
+              if (biome === "desert") b.type = 38; // Sand
+              else if (biome === "snow") b.type = 2; // Dirt under snow
+              else b.type = 2; // Dirt
             } else {
-              // Below dirt, base block is stone.
               b.type = 3; // Stone
+              if (biome === "desert" && y < h + 10) b.type = 40; // Sandstone
 
-              // Ore generation based on depth relative to surface
               const depth = y - h;
-
-              // Only spawn ores within stone. Let's use a deterministic random value.
-              // We'll use Math.sin based on coordinates for stable pseudo-randomness
               const rand = Math.abs(Math.sin(worldX * 12.345 + y * 67.890)) * 100;
 
-              if (depth > 150 && rand < 0.5) {
-                b.type = 17; // Uranium (0.5% chance)
-              } else if (depth > 100 && rand < 1.5) {
-                b.type = 16; // Diamond (1.5% chance)
-              } else if (depth > 60 && rand < 3) {
-                b.type = 15; // Gold (3% chance)
-              } else if (depth > 40 && rand < 5) {
-                b.type = 14; // Iron (5% chance)
-              } else if (depth > 20 && rand < 7) {
-                b.type = 13; // Copper (7% chance)
-              } else if (depth > 5 && rand < 10) {
-                b.type = 12; // Coal (10% chance)
-              }
+              if (depth > 150 && rand < 0.5) b.type = 17; // Uranium
+              else if (depth > 100 && rand < 1.5) b.type = 16; // Diamond
+              else if (depth > 60 && rand < 3) b.type = 15; // Gold
+              else if (depth > 40 && rand < 5) b.type = 14; // Iron
+              else if (depth > 20 && rand < 7) b.type = 13; // Copper
+              else if (depth > 5 && rand < 10) b.type = 12; // Coal
             }
             chunk.blocks.set(`${worldX},${y}`, b);
         }
       }
     }
 
-    // 2. Deterministic Tree Generation
-    // Scan range: current chunk plus horizontal neighbors to allow canopy overlap.
+    // 2. Deterministic Tree/Cactus Generation
     for (let tx = cx * CHUNK_SIZE - 2; tx < (cx + 1) * CHUNK_SIZE + 2; tx++) {
-      // Deterministic tree check based on worldX
+      const biome = this.getBiome(tx);
       const spawnChance = Math.abs(Math.sin(tx * 1234.56)) * 100;
-      if (spawnChance < 8) { // ~8% chance per block
+
+      let threshold = 8;
+      if (biome === "desert") threshold = 3; // fewer cacti
+
+      if (spawnChance < threshold) {
         const surfaceY = this.getSurfaceHeight(tx);
-        const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(tx * 789.01)) * 3);
 
-        // Place trunk
-        for (let dy = 1; dy <= trunkHeight; dy++) {
-          const ty = surfaceY - dy;
-          if (ty >= minY && ty < maxY && tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE) {
-            const b = new Block();
-            b.x = tx;
-            b.y = ty;
-            b.type = 7; // LOG
-            chunk.blocks.set(`${tx},${ty}`, b);
-          }
-        }
-
-        // Place leaves canopy
-        for (let lx = -2; lx <= 2; lx++) {
-          for (let ly = -2; ly <= 2; ly++) {
-            // Simple spherical/diamond canopy at top of trunk
-            if (Math.abs(lx) + Math.abs(ly) > 3) continue;
-
-            const finalLx = tx + lx;
-            const finalLy = surfaceY - trunkHeight - 2 + ly;
-
-            // Only place if within current chunk boundaries
-            if (
-              finalLx >= cx * CHUNK_SIZE && finalLx < (cx + 1) * CHUNK_SIZE &&
-              finalLy >= minY && finalLy < maxY
-            ) {
-              const key = `${finalLx},${finalLy}`;
-              if (!chunk.blocks.has(key)) {
+        if (biome === "desert") {
+            // Cactus
+            const height = 2 + Math.floor(Math.abs(Math.cos(tx * 789.01)) * 3);
+            for (let dy = 1; dy <= height; dy++) {
+                const ty = surfaceY - dy;
+                if (ty >= minY && ty < maxY && tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE) {
+                    const b = new Block();
+                    b.x = tx;
+                    b.y = ty;
+                    b.type = 37; // Cactus
+                    b.meta = 0;
+                    chunk.blocks.set(`${tx},${ty}`, b);
+                }
+            }
+        } else {
+            // Trees
+            const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(tx * 789.01)) * 3);
+            for (let dy = 1; dy <= trunkHeight; dy++) {
+              const ty = surfaceY - dy;
+              if (ty >= minY && ty < maxY && tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE) {
                 const b = new Block();
-                b.x = finalLx;
-                b.y = finalLy;
-                b.type = 8; // LEAVES
-                chunk.blocks.set(key, b);
+                b.x = tx;
+                b.y = ty;
+                b.type = (biome === "snow") ? 41 : 7; // Pine log or regular log
+                b.meta = 0;
+                chunk.blocks.set(`${tx},${ty}`, b);
               }
             }
-          }
+            for (let lx = -2; lx <= 2; lx++) {
+              for (let ly = -2; ly <= 2; ly++) {
+                if (Math.abs(lx) + Math.abs(ly) > 3) continue;
+                const finalLx = tx + lx;
+                const finalLy = surfaceY - trunkHeight - 2 + ly;
+                if (
+                  finalLx >= cx * CHUNK_SIZE && finalLx < (cx + 1) * CHUNK_SIZE &&
+                  finalLy >= minY && finalLy < maxY
+                ) {
+                  const key = `${finalLx},${finalLy}`;
+                  if (!chunk.blocks.has(key)) {
+                    const b = new Block();
+                    b.x = finalLx;
+                    b.y = finalLy;
+                    b.type = (biome === "snow") ? 42 : 8; // Pine Leaves or Regular Leaves
+                    b.meta = 0;
+                    chunk.blocks.set(key, b);
+                  }
+                }
+              }
+            }
         }
       }
     }
@@ -995,16 +1213,63 @@ class BuilderRoom extends colyseus.Room {
     });
   }
 
-  isSolid(x, y) {
+isSolid(x, y) {
       const cx = Math.floor(x / CHUNK_SIZE);
       const cy = Math.floor(y / CHUNK_SIZE);
       const chunk = this.state.chunks.get(`${cx},${cy}`);
       if (!chunk) return false;
-      return chunk.blocks.get(`${x},${y}`) !== undefined;
+      const b = chunk.blocks.get(`${x},${y}`);
+      if (!b) return false;
+      if (b.type === 35) return false; // Ladder is pass-through
+      return true;
   }
 
   simulateTick() {
     // Bullet simulation
+    // Tree growth (saplings)
+    if (Math.random() < 0.05) { // Occasional check
+        this.state.chunks.forEach((chunk, chunkKey) => {
+            const [cxStr, cyStr] = chunkKey.split(',');
+            const cx = parseInt(cxStr);
+            const cy = parseInt(cyStr);
+            chunk.blocks.forEach((block, blockKey) => {
+                if (block.type === 29 && Math.random() < 0.01) { // Sapling
+                    // Grow tree!
+                    const tx = block.x;
+                    const ty = block.y;
+                    const trunkHeight = 4 + Math.floor(Math.random() * 3);
+
+                    // Remove sapling
+                    chunk.blocks.delete(blockKey);
+
+                    // Place trunk
+                    for (let dy = 0; dy < trunkHeight; dy++) {
+                        const newY = ty - dy;
+                        const key = `${tx},${newY}`;
+                        const b = new Block();
+                        b.x = tx; b.y = newY; b.type = 7; b.meta = 0;
+                        chunk.blocks.set(key, b);
+                    }
+
+                    // Place leaves
+                    for (let lx = -2; lx <= 2; lx++) {
+                        for (let ly = -2; ly <= 2; ly++) {
+                            if (Math.abs(lx) + Math.abs(ly) > 3) continue;
+                            const finalLx = tx + lx;
+                            const finalLy = ty - trunkHeight + 1 + ly;
+                            const key = `${finalLx},${finalLy}`;
+                            if (!chunk.blocks.has(key)) {
+                                const b = new Block();
+                                b.x = finalLx; b.y = finalLy; b.type = 8; b.meta = 0;
+                                chunk.blocks.set(key, b);
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    }
+
     this.state.bullets.forEach((b, id) => {
         b.x += b.vx;
         b.y += b.vy;
@@ -1021,7 +1286,56 @@ class BuilderRoom extends colyseus.Room {
 
         // Player collision
         if (!hit) {
-            this.state.players.forEach((p, sessionId) => {
+        // Furnace Smelting Logic
+    this.state.furnaces.forEach(furnace => {
+        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 12 && furnace.inputItem <= 17) {
+            // Check if fuel is log/coal
+            if (furnace.fuelItem === 12 || furnace.fuelItem === 7 || furnace.fuelItem === 9) {
+                furnace.progress += 1;
+                if (furnace.progress >= 100) {
+                    furnace.progress = 0;
+
+                    // Consume input & fuel
+                    furnace.inputCount--;
+                    if (furnace.inputCount <= 0) furnace.inputItem = 0;
+
+                    // Fuel consumption logic: 1 coal smelts 8 items? Let's just do 1:1 for simplicity right now
+                    furnace.fuelCount--;
+                    if (furnace.fuelCount <= 0) furnace.fuelItem = 0;
+
+                    // Convert Ore -> Ingot/Gem (Using same IDs for simplicity, or we can use armor IDs as ingots. Let's just give them the ingot form of armor, but armor is 18-22... Wait, we need actual ingots or just let them smelt ore -> ingot item. Let's use 18-22 for Ingots, and we'll change the armor recipes to use 18-22 instead of raw ore, and we'll add armor items later, actually armor is 18-22. So let's use 43+ for ingots.)
+                    // 13: Copper Ore -> 43: Copper Ingot
+                    // 14: Iron Ore -> 44: Iron Ingot
+                    // 15: Gold Ore -> 45: Gold Ingot
+                    // 16: Diamond Ore -> 46: Diamond (refined)
+                    // 17: Uranium Ore -> 47: Uranium (refined)
+
+                    let outputType = 0;
+                    if (furnace.inputItem === 13) outputType = 43;
+                    if (furnace.inputItem === 14) outputType = 44;
+                    if (furnace.inputItem === 15) outputType = 45;
+                    if (furnace.inputItem === 16) outputType = 46;
+                    if (furnace.inputItem === 17) outputType = 47;
+                    if (furnace.inputItem === 12) outputType = 12; // Coal just cooks coal? Skip.
+
+                    if (outputType !== 0) {
+                        if (furnace.outputItem === 0 || furnace.outputItem === outputType) {
+                            furnace.outputItem = outputType;
+                            furnace.outputCount++;
+                        } else {
+                            // Output full of something else, refund
+                            furnace.inputCount++;
+                            furnace.fuelCount++;
+                        }
+                    }
+                }
+            }
+        } else {
+            furnace.progress = 0;
+        }
+    });
+
+    this.state.players.forEach((p, sessionId) => {
                 if (hit || sessionId === b.ownerId || p.hp <= 0) return;
 
                 if (b.x >= p.x && b.x <= p.x + TILE_SIZE &&
@@ -1054,7 +1368,7 @@ class BuilderRoom extends colyseus.Room {
             p.armorHp++;
         }
 
-        const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
+const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
         const pCy = Math.floor(p.y / (TILE_SIZE * CHUNK_SIZE));
 
         // Only request new chunks if the player moved to a new chunk
@@ -1068,11 +1382,33 @@ class BuilderRoom extends colyseus.Room {
           p.lastCy = pCy;
         }
 
+        // Check for ladder
+        const centerTx = Math.floor((p.x + TILE_SIZE/2) / TILE_SIZE);
+        const centerTy = Math.floor((p.y + TILE_SIZE/2) / TILE_SIZE);
+        let onLadder = false;
+        const pChunk = this.state.chunks.get(`${Math.floor(centerTx/CHUNK_SIZE)},${Math.floor(centerTy/CHUNK_SIZE)}`);
+        if (pChunk) {
+            const b = pChunk.blocks.get(`${centerTx},${centerTy}`);
+            if (b && b.type === 35) { // 35 = Ladder
+                onLadder = true;
+            }
+        }
+
+if (onLadder) {
+            p.vx *= 0.7; // slower horizontal on ladder
+            p.vy = 0; // nullify gravity
+            if (inp.jumpBuffer > 0) { // moving up
+                p.vy = -3;
+            }
+        }
+
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
 
         p.vx *= 0.8;
-        p.vy += 0.8; // gravity
+        if (!onLadder) {
+            p.vy += 0.8; // gravity only if not on ladder
+        }
         p.vy *= 0.98;
 
         // Apply X velocity
@@ -1151,6 +1487,70 @@ class BuilderRoom extends colyseus.Room {
             inp.jumpBuffer--;
         }
     });
+
+// Explosives logic
+    const explosivesToDelete = [];
+    this.state.explosives.forEach((exp, id) => {
+        exp.timer--;
+        if (exp.timer <= 0) {
+            // EXPLODE!
+            const isNuke = exp.type === 34;
+            const radius = isNuke ? (TILE_SIZE * 15) : (TILE_SIZE * 5);
+            const damage = isNuke ? 100 : 20;
+
+            // Damage players
+            this.state.players.forEach(p => {
+                if (p.hp <= 0) return;
+                const dx = p.x + TILE_SIZE/2 - exp.x;
+                const dy = p.y + TILE_SIZE/2 - exp.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < radius) {
+                    this.damagePlayer(p, damage, isNuke ? "Nuke" : "TNT");
+                    const knockback = (radius - dist) / radius * (isNuke ? 30 : 15);
+                    p.vx += (dx / dist) * knockback;
+                    p.vy += (dy / dist) * knockback - 5;
+                }
+            });
+
+            // Destroy blocks
+            const blockRadius = Math.ceil(radius / TILE_SIZE);
+            const expTx = Math.floor(exp.x / TILE_SIZE);
+            const expTy = Math.floor(exp.y / TILE_SIZE);
+
+            for (let dx = -blockRadius; dx <= blockRadius; dx++) {
+                for (let dy = -blockRadius; dy <= blockRadius; dy++) {
+                    if (dx*dx + dy*dy <= blockRadius*blockRadius) {
+                        const tx = expTx + dx;
+                        const ty = expTy + dy;
+                        const cx = Math.floor(tx / CHUNK_SIZE);
+                        const cy = Math.floor(ty / CHUNK_SIZE);
+                        const chunk = this.state.chunks.get(`${cx},${cy}`);
+                        if (chunk) {
+                            const b = chunk.blocks.get(`${tx},${ty}`);
+                            if (b) {
+                                // Destroy and maybe drop item
+                                if (Math.random() < (isNuke ? 0.2 : 0.5)) {
+                                    const drop = new ItemDrop();
+                                    drop.id = `drop-${Date.now()}-${Math.random()}`;
+                                    drop.x = tx * TILE_SIZE + TILE_SIZE / 2;
+                                    drop.y = ty * TILE_SIZE + TILE_SIZE / 2;
+                                    drop.vx = (Math.random() - 0.5) * 8;
+                                    drop.vy = -4 - Math.random() * 8;
+                                    drop.type = b.type;
+                                    drop.count = 1;
+                                    this.state.drops.set(drop.id, drop);
+                                }
+                                chunk.blocks.delete(`${tx},${ty}`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            explosivesToDelete.push(id);
+        }
+    });
+    explosivesToDelete.forEach(id => this.state.explosives.delete(id));
 
     // Simulate item drops physics
     const dropsToDelete = [];
