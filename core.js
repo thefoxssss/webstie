@@ -6636,3 +6636,5 @@ export function updateBuilderInventoryState(hotbar, inventory, armor) {
     builderInventory = inventory;
     builderArmor = armor;
 }
+
+export { builderHotbar, builderInventory, builderArmor };
