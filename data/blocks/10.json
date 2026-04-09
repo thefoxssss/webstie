@@ -1,0 +1,6 @@
+{
+  "id": 10,
+  "name": "CRAFTING TABLE",
+  "maxStack": 99,
+  "sprite": "assets/sprites/blocks/10.png"
+}

@@ -1,0 +1,6 @@
+{
+  "id": 5,
+  "name": "GLASS",
+  "maxStack": 99,
+  "sprite": "assets/sprites/blocks/5.png"
+}

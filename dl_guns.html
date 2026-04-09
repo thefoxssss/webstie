@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c" width="32" height="32"></canvas>
+<script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+
+    function makeGun(mainColor, trimColor, isRifle) {
+        ctx.clearRect(0, 0, 32, 32);
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#000";
+
+        if (isRifle) {
+            // Rifle shape
+            ctx.fillStyle = mainColor;
+            ctx.fillRect(4, 14, 24, 4); // Barrel
+            ctx.strokeRect(4, 14, 24, 4);
+
+            ctx.fillStyle = trimColor;
+            ctx.fillRect(4, 18, 8, 4); // Grip
+            ctx.strokeRect(4, 18, 8, 4);
+
+            ctx.fillStyle = "#333";
+            ctx.fillRect(24, 18, 4, 6); // Stock
+            ctx.strokeRect(24, 18, 4, 6);
+
+            ctx.fillStyle = trimColor;
+            ctx.fillRect(14, 12, 4, 2); // Scope
+            ctx.strokeRect(14, 12, 4, 2);
+        } else {
+            // Handgun shape
+            ctx.fillStyle = mainColor;
+            ctx.fillRect(8, 12, 16, 4); // Barrel
+            ctx.strokeRect(8, 12, 16, 4);
+
+            ctx.fillStyle = trimColor;
+            ctx.fillRect(8, 16, 6, 8); // Grip
+            ctx.strokeRect(8, 16, 6, 8);
+
+            ctx.fillStyle = "#333";
+            ctx.fillRect(18, 16, 2, 2); // Trigger guard
+        }
+        return canvas.toDataURL("image/png");
+    }
+
+    window.generateGun23 = () => makeGun("#B87333", "#643C1E", false);
+    window.generateGun24 = () => makeGun("#D0D0D0", "#646464", false);
+    window.generateGun25 = () => makeGun("#FFD700", "#967800", false);
+    window.generateGun26 = () => makeGun("#00FFFF", "#009696", true);
+    window.generateGun27 = () => makeGun("#39FF14", "#14960A", true);
+</script>
+</body>
+</html>

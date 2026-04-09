@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c" width="32" height="32"></canvas>
+<script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+
+    const blockColors = {
+        1: "#55dd55", 2: "#8b5a2b", 3: "#888888", 4: "#e1c699", 5: "#ffffff", 6: "#b22222", 7: "#5d4037", 8: "#2e7d32", 9: "#d2b48c", 10: "#8b5a2b",
+        11: "#808080", 12: "#1C1C1C", 13: "#B87333", 14: "#D0D0D0", 15: "#FFD700", 16: "#00FFFF", 17: "#39FF14", 18: "#A86533", 19: "#C0C0C0", 20: "#E6C200",
+        21: "#00E6E6", 22: "#32E612", 23: "#B87333", 24: "#D0D0D0", 25: "#FFD700", 26: "#00FFFF", 27: "#39FF14", 28: "#B87333",
+    };
+
+    function drawItemIcon(ctx, type, x, y, size) {
+        ctx.save();
+        ctx.translate(x, y);
+
+        if (type === 11) { // Sword
+            // Draw sword diagonally
+            ctx.translate(size/2, size/2);
+            ctx.rotate(-Math.PI / 4);
+
+            // Blade
+            ctx.fillStyle = "#808080";
+            ctx.fillRect(-2, -size/2 + 2, 4, size * 0.6);
+
+            // Handle
+            ctx.fillStyle = "#8b5a2b";
+            ctx.fillRect(-2, size/2 - size * 0.4 + 2, 4, size * 0.3);
+
+            // Crossguard
+            ctx.fillStyle = "#000";
+            ctx.fillRect(-6, size/2 - size * 0.4 + 2, 12, 3);
+
+        } else if ([18, 19, 20, 21, 22].includes(type)) { // Armor
+            // Draw a basic chestplate shape
+            ctx.fillStyle = blockColors[type] || "#ffffff";
+            ctx.beginPath();
+            ctx.moveTo(size * 0.2, size * 0.1);
+            ctx.lineTo(size * 0.8, size * 0.1);
+            ctx.lineTo(size * 0.9, size * 0.4);
+            ctx.lineTo(size * 0.75, size * 0.9);
+            ctx.lineTo(size * 0.25, size * 0.9);
+            ctx.lineTo(size * 0.1, size * 0.4);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = "rgba(0,0,0,0.3)";
+            ctx.stroke();
+
+        } else if ([23, 24, 25, 26, 27].includes(type)) { // Guns
+            // Basic gun shape
+            ctx.fillStyle = blockColors[type] || "#ffffff";
+            ctx.fillRect(size * 0.1, size * 0.4, size * 0.8, size * 0.2); // Barrel
+            ctx.fillStyle = "#333";
+            ctx.fillRect(size * 0.1, size * 0.6, size * 0.2, size * 0.3); // Grip
+            // Optional accents
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillRect(size * 0.2, size * 0.4, size * 0.6, size * 0.1);
+
+        } else if (type === 28) { // Ammo
+            ctx.fillStyle = "#d4af37"; // brass color
+            ctx.fillRect(size * 0.4, size * 0.3, size * 0.2, size * 0.4);
+            ctx.fillStyle = "#333"; // lead tip
+            ctx.beginPath();
+            ctx.arc(size * 0.5, size * 0.3, size * 0.1, Math.PI, 0);
+            ctx.fill();
+        } else {
+            // Default block drawing
+            ctx.fillStyle = blockColors[type] || "#ffffff";
+            ctx.fillRect(0, 0, size, size);
+
+            // Add block-specific detailing
+            ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+            if (type === 1) { // Grass
+                ctx.fillRect(0, size * 0.3, size, size * 0.7);
+                ctx.fillStyle = "#2e7d32"; // Darker green specks
+                ctx.fillRect(size * 0.2, size * 0.2, size * 0.2, size * 0.2);
+                ctx.fillRect(size * 0.6, size * 0.5, size * 0.2, size * 0.2);
+                ctx.fillRect(size * 0.3, size * 0.7, size * 0.2, size * 0.2);
+            } else if (type === 4 || type === 9) { // Wood/Planks
+                ctx.fillRect(size * 0.2, 0, 2, size);
+                ctx.fillRect(size * 0.6, 0, 2, size);
+            } else if (type === 5) { // Glass
+                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.beginPath();
+                ctx.moveTo(size * 0.2, size * 0.8);
+                ctx.lineTo(size * 0.8, size * 0.2);
+                ctx.stroke();
+            } else if (type === 6) { // Brick
+                ctx.fillRect(0, size * 0.4, size, 2);
+                ctx.fillRect(size * 0.5, 0, 2, size * 0.4);
+                ctx.fillRect(size * 0.2, size * 0.4, 2, size * 0.6);
+            } else if (type === 3 || type === 12 || type === 13 || type === 14 || type === 15 || type === 16 || type === 17) { // Ores/Stone
+                ctx.fillRect(size * 0.2, size * 0.2, 2, 2);
+                ctx.fillRect(size * 0.7, size * 0.3, 2, 2);
+                ctx.fillRect(size * 0.4, size * 0.6, 2, 2);
+                ctx.fillRect(size * 0.8, size * 0.8, 2, 2);
+            } else if (type === 10) { // Crafting Table
+                ctx.fillStyle = "#5d4037"; // Darker wood border
+                ctx.fillRect(0, 0, size, size * 0.2); // Top rim
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.fillRect(size * 0.2, 0, 2, size * 0.2); // Grid lines on top
+                ctx.fillRect(size * 0.6, 0, 2, size * 0.2);
+            }
+
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, size, size);
+        }
+
+        ctx.restore();
+    }
+
+    window.generateSprite = function(type) {
+        ctx.clearRect(0, 0, 32, 32);
+        drawItemIcon(ctx, type, 0, 0, 32);
+        return canvas.toDataURL("image/png");
+    };
+</script>
+</body>
+</html>

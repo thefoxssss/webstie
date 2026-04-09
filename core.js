@@ -138,6 +138,9 @@ let myAchievements = [];
 let myInventory = [];
 let myJoined = 0;
 let myItemToggles = {};
+let builderInventory = null;
+let builderHotbar = null;
+let builderArmor = null;
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
@@ -273,6 +276,12 @@ export const state = {
   set myInventory(value) {
     myInventory = value;
   },
+  get builderInventory() { return builderInventory; },
+  set builderInventory(v) { builderInventory = v; },
+  get builderHotbar() { return builderHotbar; },
+  set builderHotbar(v) { builderHotbar = v; },
+  get builderArmor() { return builderArmor; },
+  set builderArmor(v) { builderArmor = v; },
   get myItemToggles() {
     return myItemToggles;
   },
@@ -3262,6 +3271,9 @@ function loadProfile(data) {
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
   myJoined = data.joined || 0;
+  builderInventory = data.builderInventory || null;
+  builderHotbar = data.builderHotbar || null;
+  builderArmor = data.builderArmor || null;
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
@@ -4241,6 +4253,9 @@ export async function saveStats() {
     achievements: myAchievements,
     inventory: myInventory,
     itemToggles: myItemToggles,
+    builderInventory,
+    builderHotbar,
+    builderArmor,
     jobs: jobData,
     loanData,
     stockData,
@@ -4258,6 +4273,9 @@ export async function saveStats() {
         achievements: myAchievements,
         inventory: myInventory,
         itemToggles: myItemToggles,
+        builderInventory: builderInventory,
+        builderHotbar: builderHotbar,
+        builderArmor: builderArmor,
         jobs: jobData,
         loanData,
         stockData,
@@ -6612,3 +6630,9 @@ document.addEventListener("keyup", (e) => {
   // Always allow keyup to prevent stuck keys when focus shifts
   keysPressed[e.key] = false;
 });
+
+export function updateBuilderInventoryState(hotbar, inventory, armor) {
+    builderHotbar = hotbar;
+    builderInventory = inventory;
+    builderArmor = armor;
+}
