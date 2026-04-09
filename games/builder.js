@@ -1,4 +1,4 @@
-import { state, isInputFocused } from "../core.js";
+import { state, isInputFocused, saveStats, builderHotbar, builderInventory, builderArmor, updateBuilderInventoryState } from "../core.js";
 
 export function initBuilder() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
@@ -105,7 +105,34 @@ export function initBuilder() {
         28: "COPPER AMMO",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => [11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].includes(type) ? 1 : 99;
+    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].includes(type) ? 1 : 99);
+
+    const blockDataUrls = [
+        "data/blocks/1.json", "data/blocks/2.json", "data/blocks/3.json", "data/blocks/4.json",
+        "data/blocks/5.json", "data/blocks/6.json", "data/blocks/7.json", "data/blocks/8.json",
+        "data/blocks/9.json", "data/blocks/10.json", "data/items/11.json", "data/blocks/12.json",
+        "data/blocks/13.json", "data/blocks/14.json", "data/blocks/15.json", "data/blocks/16.json",
+        "data/blocks/17.json", "data/items/18.json", "data/items/19.json", "data/items/20.json",
+        "data/items/21.json", "data/items/22.json", "data/items/23.json", "data/items/24.json",
+        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json"
+    ];
+    let loadedBlockData = {};
+    let blockImages = {};
+    let assetsLoaded = false;
+
+    Promise.all(blockDataUrls.map(url => fetch(url).then(res => res.json()))).then(results => {
+        let loadedImgs = 0;
+        results.forEach(data => {
+            loadedBlockData[data.id] = data;
+            const img = new Image();
+            img.onload = () => {
+                loadedImgs++;
+                if (loadedImgs === results.length) assetsLoaded = true;
+            };
+            img.src = data.sprite;
+            blockImages[data.id] = img;
+        });
+    });
 
     const normalizeItem = (item) => {
         if (item === undefined || item === null) return undefined;
@@ -125,14 +152,32 @@ export function initBuilder() {
     const itemCount = (item) => normalizeItem(item)?.count || 0;
 
     let selectedHotbarIndex = 0;
+
     // Map initial available blocks, empty for the rest
-    let hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined].map(cloneItem);
+    let hotbarSlots;
+    if (builderHotbar) {
+        hotbarSlots = builderHotbar.map(cloneItem);
+    } else {
+        hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined].map(cloneItem);
+    }
+
     let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
     let inventoryOpen = false;
 
-    let inventorySlots = new Array(27).fill(undefined).map(cloneItem);
-    let armorSlot = undefined;
+    let inventorySlots;
+    if (builderInventory) {
+        inventorySlots = builderInventory.map(cloneItem);
+    } else {
+        inventorySlots = new Array(27).fill(undefined).map(cloneItem);
+    }
+
+    let armorSlot = builderArmor ? cloneItem(builderArmor) : undefined;
+
+    const saveInventoryState = () => {
+        updateBuilderInventoryState(hotbarSlots, inventorySlots, armorSlot);
+        saveStats();
+    };
 
     // Crafting state
     let craftingGrid2x2 = new Array(4).fill(undefined).map(cloneItem);
@@ -147,6 +192,7 @@ export function initBuilder() {
     let dragSourceCraftingIndex = null;
     let dragSourceOutputSlot = false;
     let dragSourceArmorSlot = false;
+    let showRecipes = false;
 
     let camera = { x: 0, y: 0 };
 
@@ -599,6 +645,17 @@ export function initBuilder() {
             if (!keys.w) keys.upPress = true;
             keys.w = true;
         }
+        if (e.key === "q" || e.key === "Q") {
+            const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
+            if (selectedSlotItem) {
+                room.send("spawn_drops", { items: [{ type: selectedSlotItem.type, count: 1 }] });
+                selectedSlotItem.count -= 1;
+                if (selectedSlotItem.count <= 0) {
+                    hotbarSlots[selectedHotbarIndex] = undefined;
+                }
+                saveInventoryState();
+            }
+        }
         if (e.key === "i" || e.key === "I") {
             inventoryOpen = !inventoryOpen;
 
@@ -722,10 +779,10 @@ export function initBuilder() {
                 // Consume ammo
                 if (ammoIsHotbar) {
                     hotbarSlots[ammoSlotIndex].count--;
-                    if (hotbarSlots[ammoSlotIndex].count <= 0) hotbarSlots[ammoSlotIndex] = undefined;
+                    if (hotbarSlots[ammoSlotIndex].count <= 0) { hotbarSlots[ammoSlotIndex] = undefined; saveInventoryState(); }
                 } else {
                     inventorySlots[ammoSlotIndex].count--;
-                    if (inventorySlots[ammoSlotIndex].count <= 0) inventorySlots[ammoSlotIndex] = undefined;
+                    if (inventorySlots[ammoSlotIndex].count <= 0) { inventorySlots[ammoSlotIndex] = undefined; saveInventoryState(); }
                 }
                 room.send("shoot", { x: worldX, y: worldY });
             }
@@ -756,7 +813,7 @@ export function initBuilder() {
 
             selectedSlotItem.count--;
             if (selectedSlotItem.count <= 0) {
-                hotbarSlots[selectedHotbarIndex] = undefined;
+                hotbarSlots[selectedHotbarIndex] = undefined; saveInventoryState();
                 selectedBlockType = undefined;
             }
         }
@@ -857,37 +914,119 @@ export function initBuilder() {
 
         // Handle inventory and dragging mechanics first
         if (inventoryOpen) {
+            const panel = getInventoryBounds();
+
+            if (showRecipes) {
+                // Check close button
+                if (mouse.x >= panel.x + panel.width - 80 && mouse.x <= panel.x + panel.width - 20 &&
+                    mouse.y >= panel.y + 10 && mouse.y <= panel.y + 30) {
+                    showRecipes = false;
+                }
+                return; // Prevent other interactions while recipes are open
+            }
+
+            // Check Recipe Button toggle
+            const craftStartX = panel.x + panel.width - 190;
+            const craftStartY = panel.y + 40;
+            const recipeBtnX = craftStartX + 120;
+            const recipeBtnY = craftStartY - 20;
+            if (mouse.x >= recipeBtnX && mouse.x <= recipeBtnX + 60 &&
+                mouse.y >= recipeBtnY && mouse.y <= recipeBtnY + 16) {
+                showRecipes = true;
+                return;
+            }
+
+            const isRightClick = e.button === 2;
+
+            // Helper function to handle pickup/drop logic for slots
+            const handleSlotInteraction = (slotArray, index, isArmor = false) => {
+                if (draggedItemType === null) {
+                    if (slotArray[index] !== undefined) {
+                        if (isRightClick) {
+                            // Split stack
+                            const currentItem = slotArray[index];
+                            if (currentItem.count > 1) {
+                                const splitCount = Math.floor(currentItem.count / 2);
+                                draggedItemType = { type: currentItem.type, count: splitCount };
+                                currentItem.count -= splitCount;
+                                dragSourceHotbarIndex = null;
+                                dragSourceInventoryIndex = null;
+                                dragSourceCraftingIndex = null;
+                                dragSourceOutputSlot = false;
+                                dragSourceArmorSlot = false;
+                                saveInventoryState();
+                            } else {
+                                // Just pick it up if it's 1
+                                draggedItemType = cloneItem(slotArray[index]);
+                                dragSourceHotbarIndex = slotArray === hotbarSlots ? index : null;
+                                dragSourceInventoryIndex = slotArray === inventorySlots ? index : null;
+                                dragSourceArmorSlot = isArmor;
+                                slotArray[index] = undefined;
+                                saveInventoryState();
+                            }
+                        } else {
+                            // Left click pickup
+                            draggedItemType = cloneItem(slotArray[index]);
+                            dragSourceHotbarIndex = slotArray === hotbarSlots ? index : null;
+                            dragSourceInventoryIndex = slotArray === inventorySlots ? index : null;
+                            dragSourceArmorSlot = isArmor;
+                            slotArray[index] = undefined;
+                            saveInventoryState();
+                        }
+                    }
+                } else {
+                    // We are holding an item
+                    if (isRightClick) {
+                        // Place 1 item
+                        if (slotArray[index] === undefined) {
+                            slotArray[index] = { type: draggedItemType.type, count: 1 };
+                            draggedItemType.count -= 1;
+                            if (draggedItemType.count <= 0) draggedItemType = null;
+                            saveInventoryState();
+                        } else if (slotArray[index].type === draggedItemType.type && slotArray[index].count < getMaxStack(slotArray[index].type)) {
+                            slotArray[index].count += 1;
+                            draggedItemType.count -= 1;
+                            if (draggedItemType.count <= 0) draggedItemType = null;
+                            saveInventoryState();
+                        }
+                    } else {
+                        // Left click place
+                        if (slotArray[index] === undefined) {
+                            slotArray[index] = cloneItem(draggedItemType);
+                            draggedItemType = null;
+                            saveInventoryState();
+                        } else if (slotArray[index].type === draggedItemType.type) {
+                            // Merge
+                            const space = getMaxStack(slotArray[index].type) - slotArray[index].count;
+                            if (space > 0) {
+                                const addCount = Math.min(space, draggedItemType.count);
+                                slotArray[index].count += addCount;
+                                draggedItemType.count -= addCount;
+                                if (draggedItemType.count <= 0) draggedItemType = null;
+                                saveInventoryState();
+                            }
+                        } else {
+                            // Swap
+                            const temp = cloneItem(slotArray[index]);
+                            slotArray[index] = cloneItem(draggedItemType);
+                            draggedItemType = temp;
+                            saveInventoryState();
+                        }
+                    }
+                }
+                return true;
+            };
             const hotbarPanel = getHotbarBounds();
             const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
 
             if (hotbarIndex !== null) {
-                if (hotbarSlots[hotbarIndex] !== undefined) {
-                    // Pick up from hotbar
-                    draggedItemType = cloneItem(hotbarSlots[hotbarIndex]);
-                    dragSourceHotbarIndex = hotbarIndex;
-                    dragSourceInventoryIndex = null;
-                    dragSourceCraftingIndex = null;
-                    dragSourceOutputSlot = false;
-                    dragSourceArmorSlot = false;
-                    hotbarSlots[hotbarIndex] = undefined;
-                }
-                return;
+                if (handleSlotInteraction(hotbarSlots, hotbarIndex)) return;
             }
 
             const panel = getInventoryBounds();
             const inventoryIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
             if (inventoryIndex !== null) {
-                if (inventorySlots[inventoryIndex] !== undefined) {
-                    // Pick up from inventory
-                    draggedItemType = cloneItem(inventorySlots[inventoryIndex]);
-                    dragSourceHotbarIndex = null;
-                    dragSourceInventoryIndex = inventoryIndex;
-                    dragSourceCraftingIndex = null;
-                    dragSourceOutputSlot = false;
-                    dragSourceArmorSlot = false;
-                    inventorySlots[inventoryIndex] = undefined;
-                }
-                return;
+                if (handleSlotInteraction(inventorySlots, inventoryIndex)) return;
             }
 
             // Armor Slot Check
@@ -895,17 +1034,16 @@ export function initBuilder() {
             const armorSlotY = panel.y + 40;
             if (mouse.x >= armorSlotX && mouse.x <= armorSlotX + inventoryLayout.slotSize &&
                 mouse.y >= armorSlotY && mouse.y <= armorSlotY + inventoryLayout.slotSize) {
-                if (armorSlot !== undefined) {
-                    draggedItemType = cloneItem(armorSlot);
-                    dragSourceHotbarIndex = null;
-                    dragSourceInventoryIndex = null;
-                    dragSourceCraftingIndex = null;
-                    dragSourceOutputSlot = false;
-                    dragSourceArmorSlot = true;
-                    armorSlot = undefined;
-                    room.send("equip_armor", { type: 0 }); // unequip
+
+                // Hacky way to use handleSlotInteraction for armor (since it expects an array)
+                let tempArr = [armorSlot];
+                if (handleSlotInteraction(tempArr, 0, true)) {
+                    armorSlot = tempArr[0];
+                    if (armorSlot === undefined) {
+                        room.send("equip_armor", { type: 0 });
+                    }
+                    return;
                 }
-                return;
             }
 
             // Check if crafting grids or output slot clicked
@@ -1017,8 +1155,19 @@ export function initBuilder() {
         mouse.isDown = true;
         sendBuildOrBreak(e);
 
-        // Hold left click to repeatedly place blocks after a short delay.
-        if (!e.shiftKey && e.button === 0) {
+        // Hold left/right click to repeatedly place/break blocks after a short delay.
+        if (e.shiftKey || e.button === 2) {
+            clearBuildHoldTimers();
+            buildHoldTimeout = setTimeout(() => {
+                buildHoldInterval = setInterval(() => {
+                    if (!mouse.isDown || !room) {
+                        clearBuildHoldTimers();
+                        return;
+                    }
+                    sendBuildOrBreak({ button: 2, shiftKey: true, type: "interval" });
+                }, BUILD_HOLD_REPEAT_MS);
+            }, BUILD_HOLD_DELAY_MS);
+        } else if (!e.shiftKey && e.button === 0) {
             clearBuildHoldTimers();
             const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
             const type = itemType(selectedSlotItem);
@@ -1054,14 +1203,28 @@ export function initBuilder() {
     function handleMouseUp() {
         mouse.isDown = false;
         clearBuildHoldTimers();
-
-        // Handle dropping a dragged item
         if (inventoryOpen && draggedItemType !== null) {
+            setTimeout(() => saveInventoryState(), 10);
             const hotbarPanel = getHotbarBounds();
             const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
 
             const inventoryPanel = getInventoryBounds();
             const inventoryIndex = getInventorySlotAt(mouse.x, mouse.y, inventoryPanel);
+
+            // If we are dropping the item outside all panels
+            if (hotbarIndex === null && inventoryIndex === null &&
+                !(mouse.x >= inventoryPanel.x && mouse.x <= inventoryPanel.x + inventoryPanel.width &&
+                  mouse.y >= inventoryPanel.y && mouse.y <= inventoryPanel.y + inventoryPanel.height) &&
+                !(mouse.x >= hotbarPanel.x && mouse.x <= hotbarPanel.x + hotbarPanel.width &&
+                  mouse.y >= hotbarPanel.y && mouse.y <= hotbarPanel.y + hotbarPanel.height)) {
+
+                // Drop on ground
+                room.send("spawn_drops", { items: [{ type: draggedItemType.type, count: draggedItemType.count }] });
+                draggedItemType = null;
+                saveInventoryState();
+                return;
+            }
+
 
             // Crafting grid drop target
             const craftStartX = inventoryPanel.x + inventoryPanel.width - 190;
@@ -1234,8 +1397,8 @@ export function initBuilder() {
                         else if (dragSourceCraftingIndex !== null) grid[dragSourceCraftingIndex] = remainder;
                     } else {
                         // All gone
-                        if (dragSourceHotbarIndex !== null) hotbarSlots[dragSourceHotbarIndex] = undefined;
-                        else if (dragSourceInventoryIndex !== null) inventorySlots[dragSourceInventoryIndex] = undefined;
+                        if (dragSourceHotbarIndex !== null) hotbarSlots[dragSourceHotbarIndex] = undefined; saveInventoryState();
+                        else if (dragSourceInventoryIndex !== null) inventorySlots[dragSourceInventoryIndex] = undefined; saveInventoryState();
                         else if (dragSourceArmorSlot) { armorSlot = undefined; room.send("equip_armor", { type: 0 }); }
                         else if (dragSourceCraftingIndex !== null && dragSourceCraftingIndex !== targetCraftingIndex) grid[dragSourceCraftingIndex] = undefined;
                     }
@@ -1343,8 +1506,12 @@ export function initBuilder() {
         // Draw blocks (chunked)
         room.state.chunks.forEach((chunk) => {
           chunk.blocks.forEach((block) => {
-            ctx.fillStyle = blockColors[block.type] || "#ffffff";
-            ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            if (assetsLoaded && blockImages[block.type]) {
+                ctx.drawImage(blockImages[block.type], block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else {
+                ctx.fillStyle = blockColors[block.type] || "#ffffff";
+                ctx.fillRect(block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
           });
         });
 
@@ -1689,6 +1856,57 @@ export function initBuilder() {
             ctx.font = "10px 'Press Start 2P', monospace";
             ctx.fillText(isCraftingTableOpen ? "Crafting Table" : "Crafting", craftStartX, craftStartY - 10);
 
+            // Draw Recipe Book Toggle Button
+            const recipeBtnX = craftStartX + 120;
+            const recipeBtnY = craftStartY - 20;
+            ctx.fillStyle = showRecipes ? "#4CAF50" : "#8b8b8b";
+            ctx.fillRect(recipeBtnX, recipeBtnY, 60, 16);
+            ctx.fillStyle = "#fff";
+            ctx.font = "8px 'Press Start 2P', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("RECIPES", recipeBtnX + 30, recipeBtnY + 12);
+            ctx.textAlign = "left";
+
+            if (showRecipes) {
+                // Draw Recipe Book Overlay
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+                ctx.fillStyle = "#fff";
+                ctx.font = "10px 'Press Start 2P', monospace";
+                ctx.fillText("Recipe Book", panel.x + 20, panel.y + 30);
+
+                const recipes = [
+                    { out: 9, in: [4] }, // Planks from Wood
+                    { out: 10, in: [9, 9, 9, 9] }, // Crafting Table
+                    { out: 11, in: [3, 3, 9] }, // Stone Sword
+                    { out: 28, in: [13] }, // Copper Ammo
+                    { out: 18, in: [13, 13, 13, 13, 13, 13] }, // Copper Armor
+                    { out: 23, in: [13, 13, 13, 13, 13] } // Copper Gun
+                ];
+
+                for (let i = 0; i < recipes.length; i++) {
+                    const rx = panel.x + 20 + Math.floor(i / 3) * 160;
+                    const ry = panel.y + 60 + (i % 3) * 50;
+
+                    // Out
+                    drawItemIcon(ctx, recipes[i].out, rx, ry, 24);
+                    ctx.fillText("=", rx + 30, ry + 16);
+
+                    // In
+                    for (let j = 0; j < recipes[i].in.length; j++) {
+                        drawItemIcon(ctx, recipes[i].in[j], rx + 50 + (j * 14), ry + 4, 16);
+                    }
+                }
+
+                // Draw close button
+                ctx.fillStyle = "#f44336";
+                ctx.fillRect(panel.x + panel.width - 80, panel.y + 10, 60, 20);
+                ctx.fillStyle = "#fff";
+                ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 24);
+
+                return; // Skip drawing rest of inventory if recipes open
+            }
+
             const size = isCraftingTableOpen ? 3 : 2;
             const stride = inventoryLayout.slotSize + inventoryLayout.gap;
 
@@ -1868,75 +2086,13 @@ export function initBuilder() {
 
 
     function drawItemIcon(ctx, type, x, y, size) {
-        ctx.save();
-        ctx.translate(x, y);
-
-        if (type === 11) { // Sword
-            // Draw sword diagonally
-            ctx.translate(size/2, size/2);
-            ctx.rotate(-Math.PI / 4);
-
-            // Blade
-            ctx.fillStyle = "#808080";
-            ctx.fillRect(-2, -size/2 + 2, 4, size * 0.6);
-
-            // Handle
-            ctx.fillStyle = "#8b5a2b";
-            ctx.fillRect(-2, size/2 - size * 0.4 + 2, 4, size * 0.3);
-
-            // Crossguard
-            ctx.fillStyle = "#000";
-            ctx.fillRect(-6, size/2 - size * 0.4 + 2, 12, 3);
-
+        if (assetsLoaded && blockImages[type]) {
+            ctx.drawImage(blockImages[type], x, y, size, size);
         } else {
-            // Standard block base
-            ctx.fillStyle = blockColors[type] || "#ffffff";
-            ctx.fillRect(0, 0, size, size);
-
-            // Texture details based on type
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
-            if (type === 1) { // Grass: green top, dirt bottom
-                ctx.fillStyle = blockColors[2]; // Dirt color
-                ctx.fillRect(0, size * 0.3, size, size * 0.7);
-            } else if (type === 3) { // Stone: speckles
-                ctx.fillRect(size * 0.2, size * 0.2, size * 0.2, size * 0.2);
-                ctx.fillRect(size * 0.6, size * 0.5, size * 0.2, size * 0.2);
-                ctx.fillRect(size * 0.3, size * 0.7, size * 0.2, size * 0.2);
-            } else if (type === 4 || type === 7 || type === 9) { // Wood variants: lines
-                ctx.fillRect(size * 0.2, 0, 2, size);
-                ctx.fillRect(size * 0.6, 0, 2, size);
-            } else if (type === 5) { // Glass: shine
-                ctx.fillStyle = "rgba(255,255,255,0.5)";
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(size * 0.5, 0);
-                ctx.lineTo(0, size * 0.5);
-                ctx.fill();
-            } else if (type === 6) { // Brick: mortar lines
-                ctx.fillStyle = "rgba(200,200,200,0.5)";
-                ctx.fillRect(0, size * 0.4, size, 2);
-                ctx.fillRect(size * 0.5, 0, 2, size * 0.4);
-                ctx.fillRect(size * 0.2, size * 0.4, 2, size * 0.6);
-            } else if (type === 8) { // Leaves: dots
-                ctx.fillRect(size * 0.2, size * 0.2, 2, 2);
-                ctx.fillRect(size * 0.7, size * 0.3, 2, 2);
-                ctx.fillRect(size * 0.4, size * 0.6, 2, 2);
-                ctx.fillRect(size * 0.8, size * 0.8, 2, 2);
-            } else if (type === 10) { // Crafting table
-                ctx.fillStyle = "#5c3a21";
-                ctx.fillRect(0, 0, size, size * 0.2); // Top rim
-                ctx.fillStyle = "#000";
-                ctx.fillRect(size * 0.2, 0, 2, size * 0.2); // Grid lines on top
-                ctx.fillRect(size * 0.6, 0, 2, size * 0.2);
-            }
-
-            // Outline
-            ctx.strokeStyle = "rgba(0,0,0,0.5)";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(0, 0, size, size);
+            // Fallback to simple colored square if image isn't loaded
+            ctx.fillStyle = blockColors[type] || "#fff";
+            ctx.fillRect(x, y, size, size);
         }
-
-        ctx.restore();
     }
 
     function startGameLoop() {

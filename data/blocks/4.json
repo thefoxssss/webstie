@@ -1,0 +1,6 @@
+{
+  "id": 4,
+  "name": "WOOD",
+  "maxStack": 99,
+  "sprite": "assets/sprites/blocks/4.png"
+}
