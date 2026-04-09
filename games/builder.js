@@ -188,7 +188,6 @@ const blockColors = {
 
     let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
-    let inventoryOpen = false;
 
     let inventorySlots;
     if (builderInventory) {
@@ -208,7 +207,6 @@ const blockColors = {
     let craftingGrid2x2 = new Array(4).fill(undefined).map(cloneItem);
     let craftingGrid3x3 = new Array(9).fill(undefined).map(cloneItem);
     let craftingOutputSlot = undefined;
-    let isCraftingTableOpen = false;
 
     // Drag-and-drop state
     let draggedItemType = null; // now stores { type, count }
@@ -1056,7 +1054,6 @@ function sendBuildOrBreak(e) {
                 if (handleSlotInteraction(hotbarSlots, hotbarIndex)) return;
             }
 
-            const panel = getInventoryBounds();
             const inventoryIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
             if (inventoryIndex !== null) {
                 if (handleSlotInteraction(inventorySlots, inventoryIndex)) return;
@@ -1080,8 +1077,6 @@ function sendBuildOrBreak(e) {
             }
 
             // Check if crafting grids or output slot clicked
-            const craftStartX = panel.x + panel.width - 190;
-            const craftStartY = panel.y + 40;
             const size = isCraftingTableOpen ? 3 : 2;
             const stride = inventoryLayout.slotSize + inventoryLayout.gap;
             if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
@@ -1466,8 +1461,8 @@ if (e.button === 2 && !e.shiftKey) {
                         else if (dragSourceCraftingIndex !== null) grid[dragSourceCraftingIndex] = remainder;
                     } else {
                         // All gone
-                        if (dragSourceHotbarIndex !== null) hotbarSlots[dragSourceHotbarIndex] = undefined; saveInventoryState();
-                        else if (dragSourceInventoryIndex !== null) inventorySlots[dragSourceInventoryIndex] = undefined; saveInventoryState();
+                        if (dragSourceHotbarIndex !== null) { hotbarSlots[dragSourceHotbarIndex] = undefined; saveInventoryState(); }
+                        else if (dragSourceInventoryIndex !== null) { inventorySlots[dragSourceInventoryIndex] = undefined; saveInventoryState(); }
                         else if (dragSourceArmorSlot) { armorSlot = undefined; room.send("equip_armor", { type: 0 }); }
                         else if (dragSourceCraftingIndex !== null && dragSourceCraftingIndex !== targetCraftingIndex) grid[dragSourceCraftingIndex] = undefined;
                     }
