@@ -1023,7 +1023,6 @@ export function initBuilder() {
                 if (handleSlotInteraction(hotbarSlots, hotbarIndex)) return;
             }
 
-            const panel = getInventoryBounds();
             const inventoryIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
             if (inventoryIndex !== null) {
                 if (handleSlotInteraction(inventorySlots, inventoryIndex)) return;
