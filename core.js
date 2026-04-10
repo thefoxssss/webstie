@@ -5875,8 +5875,6 @@ async function removeChatMessage(tab, messageId) {
 
 // Initialize realtime chat streaming and input handling.
 function initChat() {
-  const chatRoot = document.getElementById("globalChat");
-  const minimizeBtn = document.getElementById("chatMinimizeBtn");
   const moderationBtn = document.getElementById("chatModerationToggleBtn");
 
   const syncChatModerationUi = () => {
@@ -5888,14 +5886,6 @@ function initChat() {
     moderationBtn.setAttribute("aria-pressed", isChatModerationModeEnabled ? "true" : "false");
     moderationBtn.setAttribute("aria-label", isChatModerationModeEnabled ? "Disable moderation mode" : "Enable moderation mode");
     moderationBtn.title = isChatModerationModeEnabled ? "Moderation mode on" : "Moderation mode off";
-  };
-
-  const syncChatMinimizeUi = () => {
-    const isMinimized = chatRoot?.classList.contains("minimized");
-    if (!minimizeBtn) return;
-    minimizeBtn.textContent = isMinimized ? "+" : "−";
-    minimizeBtn.setAttribute("aria-expanded", isMinimized ? "false" : "true");
-    minimizeBtn.setAttribute("aria-label", isMinimized ? "Expand chat" : "Minimize chat");
   };
 
   if (moderationBtn) {
