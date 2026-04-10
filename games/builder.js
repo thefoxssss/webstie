@@ -190,7 +190,12 @@ const blockColors = {
         "data/blocks/13.json", "data/blocks/14.json", "data/blocks/15.json", "data/blocks/16.json",
         "data/blocks/17.json", "data/items/18.json", "data/items/19.json", "data/items/20.json",
         "data/items/21.json", "data/items/22.json", "data/items/23.json", "data/items/24.json",
-        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json"
+        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json",
+        "data/blocks/29.json", "data/items/30.json", "data/blocks/31.json", "data/blocks/32.json",
+        "data/blocks/33.json", "data/blocks/34.json", "data/blocks/35.json", "data/items/36.json",
+        "data/blocks/37.json", "data/blocks/38.json", "data/blocks/39.json", "data/blocks/40.json",
+        "data/blocks/41.json", "data/blocks/42.json", "data/items/43.json", "data/items/44.json",
+        "data/items/45.json", "data/items/46.json", "data/items/47.json"
     ];
     let loadedBlockData = {};
     let blockImages = {};
