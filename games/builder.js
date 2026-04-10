@@ -345,7 +345,7 @@ const blockColors = {
             let row = [];
             for (let c = 0; c < size; c++) {
                 const item = grid[r * size + c];
-                row.push(item ? item.type : 0);
+                row.push(item ? itemType(item) : 0);
             }
             pattern.push(row);
         }
@@ -416,7 +416,7 @@ const blockColors = {
             let row = [];
             for (let c = 0; c < size; c++) {
                 const item = grid[r * size + c];
-                row.push(item ? item.type : 0);
+                row.push(item ? itemType(item) : 0);
             }
             pattern.push(row);
         }
@@ -444,7 +444,7 @@ const blockColors = {
                         let restEmpty = true;
                         for (let gr = 0; gr < size; gr++) {
                             for (let gc = 0; gc < size; gc++) {
-                                if (r <= gr && gr < r + targetH && c <= gc && gc < c + targetW) continue;
+                                if (gr >= r && gr < r + targetH && gc >= c && gc < c + targetW) continue;
                                 if (pattern[gr][gc] !== 0) {
                                     restEmpty = false;
                                     break;
