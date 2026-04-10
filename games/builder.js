@@ -128,6 +128,25 @@ const blockColors = {
         26: "DIAMOND RIFLE",
         27: "URANIUM LASER",
         28: "COPPER AMMO",
+        29: "SAPLING",
+        30: "APPLE",
+        31: "CHEST",
+        32: "FURNACE",
+        33: "TNT",
+        34: "NUKE",
+        35: "LADDER",
+        36: "HAMMER",
+        37: "CACTUS",
+        38: "SAND",
+        39: "SNOW",
+        40: "SANDSTONE",
+        41: "PINE LOG",
+        42: "PINE LEAVES",
+        43: "COPPER INGOT",
+        44: "IRON INGOT",
+        45: "GOLD INGOT",
+        46: "DIAMOND (REFINED)",
+        47: "URANIUM (REFINED)",
     };
     const getMergedInventoryType = (type) => type;
     const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].includes(type) ? 1 : 99);
@@ -788,8 +807,23 @@ function sendBuildOrBreak(e) {
             return;
         }
 
-        // Handle shooting guns
         const type = itemType(selectedSlotItem);
+
+        // Handle eating apple
+        if (type === 30 && e.button === 0 && e.type !== "interval") {
+            room.send("consume", { type: 30 });
+            selectedSlotItem.count--;
+            if (selectedSlotItem.count <= 0) {
+                hotbarSlots[selectedHotbarIndex] = undefined;
+                saveInventoryState();
+                selectedBlockType = undefined;
+            } else {
+                saveInventoryState();
+            }
+            return;
+        }
+
+        // Handle shooting guns
         if ([23, 24, 25, 26, 27].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
             // Check for ammo
             let hasAmmo = false;
