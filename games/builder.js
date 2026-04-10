@@ -238,9 +238,6 @@ const blockColors = {
         hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined].map(cloneItem);
     }
 
-    // Give everyone 99 nukes in the last hotbar slot
-    hotbarSlots[8] = { type: 34, count: 99 };
-
     let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
 
