@@ -170,6 +170,7 @@ const blockColors = {
         return undefined;
     };
     const cloneItem = (item) => {
+        if (item === null) return undefined;
         const normalized = normalizeItem(item);
         return normalized ? { ...normalized } : undefined;
     };
