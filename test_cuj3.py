@@ -17,7 +17,7 @@ def run_cuj(page):
     page.wait_for_timeout(2000)
 
     # Click create server manually or evaluate it since it might not be bound to text
-    page.evaluate("document.getElementById('builderBtnCreate').click()")
+    page.evaluate("document.getElementById('btnCreateBuilderServer').click()")
     page.wait_for_timeout(2000)
 
     page.keyboard.press("e")
