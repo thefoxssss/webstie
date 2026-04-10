@@ -99,6 +99,38 @@ const blockColors = {
         47: "#39FF14", // Uranium (Refined)
     };
 
+    const CRAFTING_RECIPES = [
+        { pattern: [[7]], output: { type: 9, count: 4 } }, // 1 Log -> 4 Planks
+        { pattern: [[9, 9], [9, 9]], output: { type: 10, count: 1 } }, // 4 Planks -> Crafting Table
+        { pattern: [[9], [9]], output: { type: 50, count: 4 } }, // 2 Planks -> 4 Sticks (Let's use 50 for stick, wait stick isn't defined... actually stick isn't in original either, let's just use planks for tools for now)
+        // Ladder
+        { pattern: [[9, 0, 9], [9, 9, 9], [9, 0, 9]], output: { type: 35, count: 3 } }, // 7 Planks -> 3 Ladders
+        // Hammer
+        { pattern: [[14, 14, 14], [0, 9, 0], [0, 9, 0]], output: { type: 36, count: 1 } }, // Iron Hammer
+        // Chest
+        { pattern: [[9, 9, 9], [9, 0, 9], [9, 9, 9]], output: { type: 31, count: 1 } }, // Chest
+        // Furnace
+        { pattern: [[3, 3, 3], [3, 0, 3], [3, 3, 3]], output: { type: 32, count: 1 } }, // Furnace
+        // TNT
+        { pattern: [[38, 12, 38], [12, 38, 12], [38, 12, 38]], output: { type: 33, count: 1 } }, // Sand & Coal -> TNT
+        // Nuke
+        { pattern: [[47, 47, 47], [47, 33, 47], [47, 47, 47]], output: { type: 34, count: 1 } }, // Uranium Ingots & TNT -> Nuke
+
+        // Original recipes
+        { pattern: [[9, 0, 0], [9, 0, 0], [9, 0, 0]], output: { type: 11, count: 1 } }, // Planks -> Sword (Original)
+        { pattern: [[13, 13, 13], [13, 0, 13], [0, 0, 0]], output: { type: 18, count: 1 } }, // Copper Armor
+        { pattern: [[14, 14, 14], [14, 0, 14], [0, 0, 0]], output: { type: 19, count: 1 } }, // Iron Armor
+        { pattern: [[15, 15, 15], [15, 0, 15], [0, 0, 0]], output: { type: 20, count: 1 } }, // Gold Armor
+        { pattern: [[16, 16, 16], [16, 0, 16], [0, 0, 0]], output: { type: 21, count: 1 } }, // Diamond Armor
+        { pattern: [[17, 17, 17], [17, 0, 17], [0, 0, 0]], output: { type: 22, count: 1 } }, // Uranium Armor
+        { pattern: [[13, 13, 13], [0, 13, 0], [0, 13, 0]], output: { type: 23, count: 1 } }, // Copper Gun
+        { pattern: [[14, 14, 14], [0, 14, 0], [0, 14, 0]], output: { type: 24, count: 1 } }, // Iron Gun
+        { pattern: [[15, 15, 15], [0, 15, 0], [0, 15, 0]], output: { type: 25, count: 1 } }, // Gold Gun
+        { pattern: [[16, 16, 16], [0, 16, 0], [0, 16, 0]], output: { type: 26, count: 1 } }, // Diamond Rifle
+        { pattern: [[17, 17, 17], [0, 17, 0], [0, 17, 0]], output: { type: 27, count: 1 } }, // Uranium Laser
+        { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
+    ];
+
     const blockNames = {
         1: "GRASS",
         2: "DIRT",
@@ -357,70 +389,19 @@ const blockColors = {
         };
 
         // Recipes
+        for (const recipe of CRAFTING_RECIPES) {
+            const reqW = recipe.pattern[0].length;
+            const reqH = recipe.pattern.length;
 
-        // 1 Log -> 4 Planks
-        if (matchPattern([[7]])) {
-            craftingOutputSlot = { type: 9, count: 4 };
-            return;
-        }
-
-        // 4 Planks -> 1 Crafting Table
-        if (matchPattern([
-            [9, 9],
-            [9, 9]
-        ])) {
-            craftingOutputSlot = { type: 10, count: 1 };
-            return;
-        }
-
-        // 2 Stone + 1 Plank -> 1 Sword (requires 3x3 grid)
-        if (isCraftingTableOpen && matchPattern([
-            [3],
-            [3],
-            [9]
-        ])) {
-            craftingOutputSlot = { type: 11, count: 1 };
-            return;
-        }
-
-        // Armors (U-shape)
-        if (isCraftingTableOpen) {
-            const armorMap = {
-                13: 18, // Copper -> Copper Armor
-                14: 19, // Iron -> Iron Armor
-                15: 20, // Gold -> Gold Armor
-                16: 21, // Diamond -> Diamond Armor
-                17: 22  // Uranium -> Uranium Armor
-            };
-            for (const [mat, out] of Object.entries(armorMap)) {
-                if (matchPattern([[Number(mat), 0, Number(mat)], [Number(mat), Number(mat), Number(mat)]])) {
-                    craftingOutputSlot = { type: out, count: 1 };
-                    return;
-                }
+            // If recipe needs 3x3 but we are not in crafting table, skip
+            if ((reqW > 2 || reqH > 2) && !isCraftingTableOpen) {
+                continue;
             }
-        }
 
-        // Guns (T-shape)
-        if (isCraftingTableOpen) {
-            const gunMap = {
-                13: 23, // Copper -> Copper Gun
-                14: 24, // Iron -> Iron Gun
-                15: 25, // Gold -> Gold Gun
-                16: 26, // Diamond -> Diamond Rifle
-                17: 27  // Uranium -> Uranium Laser
-            };
-            for (const [mat, out] of Object.entries(gunMap)) {
-                if (matchPattern([[Number(mat), Number(mat), Number(mat)], [0, Number(mat), 0], [0, Number(mat), 0]])) {
-                    craftingOutputSlot = { type: out, count: 1 };
-                    return;
-                }
+            if (matchPattern(recipe.pattern)) {
+                craftingOutputSlot = { type: recipe.output.type, count: recipe.output.count };
+                return;
             }
-        }
-
-        // Ammo
-        if (isCraftingTableOpen && matchPattern([[0, 0, 0], [0, 13, 0], [0, 0, 0]])) {
-            craftingOutputSlot = { type: 28, count: 16 };
-            return;
         }
     }
 
@@ -478,21 +459,23 @@ const blockColors = {
         };
 
         let indicesToConsume = null;
-        if ((indicesToConsume = matchPattern([[7]])) !== null) {} // 1 Log -> 4 Planks
-        else if ((indicesToConsume = matchPattern([[9, 9], [9, 9]])) !== null) {} // 4 Planks -> 1 Crafting Table
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[3], [3], [9]])) !== null) {} // Sword
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[13, 0, 13], [13, 13, 13]])) !== null) {} // Copper Armor
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[14, 0, 14], [14, 14, 14]])) !== null) {} // Iron Armor
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[15, 0, 15], [15, 15, 15]])) !== null) {} // Gold Armor
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[16, 0, 16], [16, 16, 16]])) !== null) {} // Diamond Armor
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[17, 0, 17], [17, 17, 17]])) !== null) {} // Uranium Armor
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[13, 13, 13], [0, 13, 0], [0, 13, 0]])) !== null) {} // Copper Gun
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[14, 14, 14], [0, 14, 0], [0, 14, 0]])) !== null) {} // Iron Gun
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[15, 15, 15], [0, 15, 0], [0, 15, 0]])) !== null) {} // Gold Gun
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[16, 16, 16], [0, 16, 0], [0, 16, 0]])) !== null) {} // Diamond Rifle
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[17, 17, 17], [0, 17, 0], [0, 17, 0]])) !== null) {} // Uranium Laser
-        else if (isCraftingTableOpen && (indicesToConsume = matchPattern([[0, 0, 0], [0, 13, 0], [0, 0, 0]])) !== null) {} // Copper Ammo
-        else {
+        for (const recipe of CRAFTING_RECIPES) {
+            const reqW = recipe.pattern[0].length;
+            const reqH = recipe.pattern.length;
+
+            // If recipe needs 3x3 but we are not in crafting table, skip
+            if ((reqW > 2 || reqH > 2) && !isCraftingTableOpen) {
+                continue;
+            }
+
+            const matchIndices = matchPattern(recipe.pattern);
+            if (matchIndices !== null) {
+                indicesToConsume = matchIndices;
+                break;
+            }
+        }
+
+        if (!indicesToConsume) {
              // Fallback if no recipe matched (shouldn't happen)
              for (let i = 0; i < grid.length; i++) {
                  if (grid[i]) indicesToConsume = (indicesToConsume || []).concat([i]);
@@ -2136,47 +2119,15 @@ if (inventoryOpen) {
                 // Or let's make the recipes smaller
 
 
-            const recipes = [
-        { pattern: [[7]], output: { type: 9, count: 4 } }, // 1 Log -> 4 Planks
-        { pattern: [[9, 9], [9, 9]], output: { type: 10, count: 1 } }, // 4 Planks -> Crafting Table
-        { pattern: [[9], [9]], output: { type: 50, count: 4 } }, // 2 Planks -> 4 Sticks (Let's use 50 for stick, wait stick isn't defined... actually stick isn't in original either, let's just use planks for tools for now)
-        // Ladder
-        { pattern: [[9, 0, 9], [9, 9, 9], [9, 0, 9]], output: { type: 35, count: 3 } }, // 7 Planks -> 3 Ladders
-        // Hammer
-        { pattern: [[14, 14, 14], [0, 9, 0], [0, 9, 0]], output: { type: 36, count: 1 } }, // Iron Hammer
-        // Chest
-        { pattern: [[9, 9, 9], [9, 0, 9], [9, 9, 9]], output: { type: 31, count: 1 } }, // Chest
-        // Furnace
-        { pattern: [[3, 3, 3], [3, 0, 3], [3, 3, 3]], output: { type: 32, count: 1 } }, // Furnace
-        // TNT
-        { pattern: [[38, 12, 38], [12, 38, 12], [38, 12, 38]], output: { type: 33, count: 1 } }, // Sand & Coal -> TNT
-        // Nuke
-        { pattern: [[47, 47, 47], [47, 33, 47], [47, 47, 47]], output: { type: 34, count: 1 } }, // Uranium Ingots & TNT -> Nuke
-
-        // Original recipes
-        { pattern: [[9, 0, 0], [9, 0, 0], [9, 0, 0]], output: { type: 11, count: 1 } }, // Planks -> Sword (Original)
-        { pattern: [[13, 13, 13], [13, 0, 13], [0, 0, 0]], output: { type: 18, count: 1 } }, // Copper Armor
-        { pattern: [[14, 14, 14], [14, 0, 14], [0, 0, 0]], output: { type: 19, count: 1 } }, // Iron Armor
-        { pattern: [[15, 15, 15], [15, 0, 15], [0, 0, 0]], output: { type: 20, count: 1 } }, // Gold Armor
-        { pattern: [[16, 16, 16], [16, 0, 16], [0, 0, 0]], output: { type: 21, count: 1 } }, // Diamond Armor
-        { pattern: [[17, 17, 17], [17, 0, 17], [0, 0, 0]], output: { type: 22, count: 1 } }, // Uranium Armor
-        { pattern: [[13, 13, 13], [0, 13, 0], [0, 13, 0]], output: { type: 23, count: 1 } }, // Copper Gun
-        { pattern: [[14, 14, 14], [0, 14, 0], [0, 14, 0]], output: { type: 24, count: 1 } }, // Iron Gun
-        { pattern: [[15, 15, 15], [0, 15, 0], [0, 15, 0]], output: { type: 25, count: 1 } }, // Gold Gun
-        { pattern: [[16, 16, 16], [0, 16, 0], [0, 16, 0]], output: { type: 26, count: 1 } }, // Diamond Rifle
-        { pattern: [[17, 17, 17], [0, 17, 0], [0, 17, 0]], output: { type: 27, count: 1 } }, // Uranium Laser
-        { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
-    ];
-
                 // 12 recipes per page
                 const itemsPerRow = 2;
                 const rowsPerPage = 6;
                 const recipesPerPage = itemsPerRow * rowsPerPage;
-                const maxScroll = Math.max(0, Math.ceil(recipes.length / itemsPerRow) - rowsPerPage);
+                const maxScroll = Math.max(0, Math.ceil(CRAFTING_RECIPES.length / itemsPerRow) - rowsPerPage);
                 if (recipeScroll > maxScroll) recipeScroll = maxScroll;
 
                 const startIdx = recipeScroll * itemsPerRow;
-                const endIdx = Math.min(recipes.length, startIdx + recipesPerPage);
+                const endIdx = Math.min(CRAFTING_RECIPES.length, startIdx + recipesPerPage);
 
                 for (let i = startIdx; i < endIdx; i++) {
                     const displayIdx = i - startIdx;
@@ -2190,7 +2141,7 @@ if (inventoryOpen) {
                     const ry = panel.y + 50 + row * cellHeight;
 
                     // Draw the pattern grid (miniature)
-                    const pat = recipes[i].pattern;
+                    const pat = CRAFTING_RECIPES[i].pattern;
                     const patRows = pat.length;
                     const patCols = pat[0].length;
                     const iconSize = 12;
@@ -2222,10 +2173,10 @@ if (inventoryOpen) {
                     ctx.fillText("->", rx + 50, ry + 20);
 
                     // Output
-                    drawItemIcon(ctx, recipes[i].output.type, rx + 75, ry + 8, 24);
-                    if (recipes[i].output.count > 1) {
+                    drawItemIcon(ctx, CRAFTING_RECIPES[i].output.type, rx + 75, ry + 8, 24);
+                    if (CRAFTING_RECIPES[i].output.count > 1) {
                         ctx.font = "8px 'Press Start 2P', monospace";
-                        ctx.fillText("x" + recipes[i].output.count, rx + 105, ry + 24);
+                        ctx.fillText("x" + CRAFTING_RECIPES[i].output.count, rx + 105, ry + 24);
                     }
                 }
 
