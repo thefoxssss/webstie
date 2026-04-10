@@ -688,6 +688,14 @@ const blockColors = {
         }
         if (e.key === "i" || e.key === "I") {
             inventoryOpen = !inventoryOpen;
+            if (!inventoryOpen) {
+                isChestOpen = false;
+                isFurnaceOpen = false;
+            }
+            if (!inventoryOpen) {
+                isChestOpen = false;
+                isFurnaceOpen = false;
+            }
 
             // If opening inventory, make sure we show 2x2 grid not 3x3 table
             if (inventoryOpen) {
@@ -727,6 +735,10 @@ const blockColors = {
 
         if (e.key === "Escape" && inventoryOpen) {
             inventoryOpen = false;
+            isChestOpen = false;
+            isFurnaceOpen = false;
+            isChestOpen = false;
+            isFurnaceOpen = false;
             showRecipes = false;
             returnCraftingItems();
             if (draggedItemType !== null) {
@@ -995,6 +1007,159 @@ function sendBuildOrBreak(e) {
             }
 
             const isRightClick = e.button === 2;
+
+            // Handle Chest/Furnace clicks FIRST so they take priority
+            if (isChestOpen && currentChestId && room.state.chests && room.state.chests.has(currentChestId)) {
+                const chest = room.state.chests.get(currentChestId);
+                const { startX, startY } = getInventoryMetrics(panel);
+                const chestY = startY - 140;
+                let clickedChest = false;
+                for (let i = 0; i < 27; i++) {
+                    const col = i % 9;
+                    const row = Math.floor(i / 9);
+                    const slotX = startX + col * (32 + 4);
+                    const slotY = chestY + 15 + row * (32 + 4);
+                    if (mouse.x >= slotX && mouse.x <= slotX + 32 &&
+                        mouse.y >= slotY && mouse.y <= slotY + 32) {
+
+                        const indexStr = i.toString();
+                        const currentItemData = chest.items.get(indexStr);
+                        const currentItem = currentItemData ? { type: currentItemData.type, count: currentItemData.count } : undefined;
+
+                        if (draggedItemType === null) {
+                            if (currentItem !== undefined) {
+                                if (isRightClick) {
+                                    if (currentItem.count > 1) {
+                                        const splitCount = Math.floor(currentItem.count / 2);
+                                        draggedItemType = { type: currentItem.type, count: splitCount };
+                                        room.send("container_move", { action: "take", containerId: currentChestId, slot: indexStr, item: { type: currentItem.type, count: splitCount } });
+                                    } else {
+                                        draggedItemType = cloneItem(currentItem);
+                                        room.send("container_move", { action: "take", containerId: currentChestId, slot: indexStr, item: cloneItem(currentItem) });
+                                    }
+                                } else {
+                                    draggedItemType = cloneItem(currentItem);
+                                    room.send("container_move", { action: "take", containerId: currentChestId, slot: indexStr, item: cloneItem(currentItem) });
+                                }
+                            }
+                        } else {
+                            if (isRightClick) {
+                                if (currentItem === undefined) {
+                                    room.send("container_move", { action: "put", containerId: currentChestId, slot: indexStr, item: { type: draggedItemType.type, count: 1 } });
+                                    draggedItemType.count -= 1;
+                                    if (draggedItemType.count <= 0) draggedItemType = null;
+                                } else if (currentItem.type === draggedItemType.type && currentItem.count < getMaxStack(currentItem.type)) {
+                                    room.send("container_move", { action: "put", containerId: currentChestId, slot: indexStr, item: { type: draggedItemType.type, count: 1 } });
+                                    draggedItemType.count -= 1;
+                                    if (draggedItemType.count <= 0) draggedItemType = null;
+                                }
+                            } else {
+                                if (currentItem === undefined) {
+                                    room.send("container_move", { action: "put", containerId: currentChestId, slot: indexStr, item: cloneItem(draggedItemType) });
+                                    draggedItemType = null;
+                                } else if (currentItem.type === draggedItemType.type) {
+                                    const space = getMaxStack(currentItem.type) - currentItem.count;
+                                    if (space > 0) {
+                                        const addCount = Math.min(space, draggedItemType.count);
+                                        room.send("container_move", { action: "put", containerId: currentChestId, slot: indexStr, item: { type: draggedItemType.type, count: addCount } });
+                                        draggedItemType.count -= addCount;
+                                        if (draggedItemType.count <= 0) draggedItemType = null;
+                                    }
+                                } else {
+                                    room.send("container_move", { action: "take", containerId: currentChestId, slot: indexStr, item: cloneItem(currentItem) });
+                                    room.send("container_move", { action: "put", containerId: currentChestId, slot: indexStr, item: cloneItem(draggedItemType) });
+                                    draggedItemType = cloneItem(currentItem);
+                                }
+                            }
+                        }
+                        clickedChest = true;
+                        break;
+                    }
+                }
+                if (clickedChest) return;
+
+            } else if (isFurnaceOpen && currentFurnaceId && room.state.furnaces && room.state.furnaces.has(currentFurnaceId)) {
+                const furnace = room.state.furnaces.get(currentFurnaceId);
+                const { startX, startY } = getInventoryMetrics(panel);
+                const furY = startY - 120;
+                const furX = canvas.width / 2;
+
+                const handleFurnaceSlotInteraction = (slotName) => {
+                    const typeKey = slotName + "Item";
+                    const countKey = slotName + "Count";
+                    const currentItem = furnace[countKey] > 0 ? { type: furnace[typeKey], count: furnace[countKey] } : undefined;
+
+                    const setSlot = (val) => {
+                        furnace[typeKey] = val ? val.type : 0;
+                        furnace[countKey] = val ? val.count : 0;
+                        room.send("furnace_sync", {
+                            containerId: currentFurnaceId,
+                            inputItem: furnace.inputItem, inputCount: furnace.inputCount,
+                            fuelItem: furnace.fuelItem, fuelCount: furnace.fuelCount,
+                            outputItem: furnace.outputItem, outputCount: furnace.outputCount
+                        });
+                    };
+
+                    if (draggedItemType === null) {
+                        if (currentItem !== undefined) {
+                            if (isRightClick) {
+                                if (currentItem.count > 1) {
+                                    const splitCount = Math.floor(currentItem.count / 2);
+                                    draggedItemType = { type: currentItem.type, count: splitCount };
+                                    setSlot({ type: currentItem.type, count: currentItem.count - splitCount });
+                                } else {
+                                    draggedItemType = cloneItem(currentItem);
+                                    setSlot(undefined);
+                                }
+                            } else {
+                                draggedItemType = cloneItem(currentItem);
+                                setSlot(undefined);
+                            }
+                        }
+                    } else {
+                        if (isRightClick) {
+                            if (currentItem === undefined) {
+                                setSlot({ type: draggedItemType.type, count: 1 });
+                                draggedItemType.count -= 1;
+                                if (draggedItemType.count <= 0) draggedItemType = null;
+                            } else if (currentItem.type === draggedItemType.type && currentItem.count < getMaxStack(currentItem.type)) {
+                                setSlot({ type: currentItem.type, count: currentItem.count + 1 });
+                                draggedItemType.count -= 1;
+                                if (draggedItemType.count <= 0) draggedItemType = null;
+                            }
+                        } else {
+                            if (currentItem === undefined) {
+                                setSlot(cloneItem(draggedItemType));
+                                draggedItemType = null;
+                            } else if (currentItem.type === draggedItemType.type) {
+                                const space = getMaxStack(currentItem.type) - currentItem.count;
+                                if (space > 0) {
+                                    const addCount = Math.min(space, draggedItemType.count);
+                                    setSlot({ type: currentItem.type, count: currentItem.count + addCount });
+                                    draggedItemType.count -= addCount;
+                                    if (draggedItemType.count <= 0) draggedItemType = null;
+                                }
+                            } else {
+                                const temp = cloneItem(currentItem);
+                                setSlot(cloneItem(draggedItemType));
+                                draggedItemType = temp;
+                            }
+                        }
+                    }
+                };
+
+                const checkFurnaceSlot = (sx, sy, slotName) => {
+                    if (mouse.x >= sx && mouse.x <= sx + 32 && mouse.y >= sy && mouse.y <= sy + 32) {
+                        handleFurnaceSlotInteraction(slotName);
+                        return true;
+                    }
+                    return false;
+                };
+
+                if (checkFurnaceSlot(furX - 60, furY + 15, "input")) return;
+                if (checkFurnaceSlot(furX - 60, furY + 55, "fuel")) return;
+                if (checkFurnaceSlot(furX + 30, furY + 35, "output")) return;
+            }
 
             // Helper function to handle pickup/drop logic for slots
             const handleSlotInteraction = (slotArray, index, isArmor = false) => {
@@ -1954,6 +2119,32 @@ if (inventoryOpen) {
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Minecraft inventory panel style
+            ctx.fillStyle = "#c6c6c6"; // Light gray
+            ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(panel.x, panel.y + panel.height);
+            ctx.lineTo(panel.x, panel.y);
+            ctx.lineTo(panel.x + panel.width, panel.y);
+            ctx.stroke();
+
+            ctx.strokeStyle = "#555555";
+            ctx.beginPath();
+            ctx.moveTo(panel.x + panel.width, panel.y);
+            ctx.lineTo(panel.x + panel.width, panel.y + panel.height);
+            ctx.lineTo(panel.x, panel.y + panel.height);
+            ctx.stroke();
+
+            ctx.fillStyle = "#3f3f3f";
+            ctx.font = "12px 'Press Start 2P', monospace";
+            ctx.textAlign = "left";
+            ctx.fillText("Inventory", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding);
+            ctx.font = "8px 'Press Start 2P', monospace";
+            ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 16);
+
             // Chest or Furnace rendering logic
             if (isChestOpen && currentChestId && room.state.chests && room.state.chests.has(currentChestId)) {
                 // Render Chest UI
@@ -2030,32 +2221,6 @@ if (inventoryOpen) {
                 ctx.fillStyle = "#ff6600";
                 ctx.fillRect(furX - 15, furY + 42, (furnace.progress / 100) * 30, 10);
             }
-
-            // Minecraft inventory panel style
-            ctx.fillStyle = "#c6c6c6"; // Light gray
-            ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
-
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(panel.x, panel.y + panel.height);
-            ctx.lineTo(panel.x, panel.y);
-            ctx.lineTo(panel.x + panel.width, panel.y);
-            ctx.stroke();
-
-            ctx.strokeStyle = "#555555";
-            ctx.beginPath();
-            ctx.moveTo(panel.x + panel.width, panel.y);
-            ctx.lineTo(panel.x + panel.width, panel.y + panel.height);
-            ctx.lineTo(panel.x, panel.y + panel.height);
-            ctx.stroke();
-
-            ctx.fillStyle = "#3f3f3f";
-            ctx.font = "12px 'Press Start 2P', monospace";
-            ctx.textAlign = "left";
-            ctx.fillText("Inventory", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding);
-            ctx.font = "8px 'Press Start 2P', monospace";
-            ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 16);
 
             // Draw Armor Slot
             const armorSlotX = panel.x + inventoryLayout.padding;
