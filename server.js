@@ -1552,7 +1552,7 @@ if (onLadder) {
         if (exp.timer <= 0) {
             // EXPLODE!
             const isNuke = exp.type === 34;
-            const radius = isNuke ? (TILE_SIZE * 15) : (TILE_SIZE * 5);
+            const radius = isNuke ? (TILE_SIZE * 1000) : (TILE_SIZE * 5);
             const damage = isNuke ? 100 : 20;
 
             // Damage players
