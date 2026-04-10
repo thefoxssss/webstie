@@ -772,7 +772,9 @@ const blockColors = {
     }
 
 function sendBuildOrBreak(e) {
-        if (!room || !localPlayer) return;
+        if (!room || !localPlayerId) return;
+        const localPlayer = room.state.players.get(localPlayerId);
+        if (!localPlayer) return;
 
         const worldX = mouse.x + camera.x;
         const worldY = mouse.y + camera.y;
