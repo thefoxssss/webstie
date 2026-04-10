@@ -876,8 +876,7 @@ this.onMessage("hammer", (client, message) => {
 
         // Respawn player
         const spawnX = Math.floor(Math.random() * 200) - 100;
-        const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-        const spawnY = Math.floor(20 + noise * 15) - 2;
+        const spawnY = this.getSurfaceHeight(spawnX) - 2;
         p.x = spawnX * TILE_SIZE;
         p.y = spawnY * TILE_SIZE;
         p.vx = 0;
@@ -892,8 +891,7 @@ this.onMessage("hammer", (client, message) => {
 
         // Recall player to spawn (0, 0 area)
         const spawnX = Math.floor(Math.random() * 20) - 10;
-        const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-        const spawnY = Math.floor(20 + noise * 15) - 2;
+        const spawnY = this.getSurfaceHeight(spawnX) - 2;
         p.x = spawnX * TILE_SIZE;
         p.y = spawnY * TILE_SIZE;
         p.vx = 0;
@@ -912,8 +910,7 @@ this.onMessage("hammer", (client, message) => {
     p.name = options.name || "Builder";
 
     const spawnX = Math.floor(Math.random() * 200) - 100;
-    const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-    const spawnY = Math.floor(20 + noise * 15) - 2;
+    const spawnY = this.getSurfaceHeight(spawnX) - 2;
 
     p.x = spawnX * TILE_SIZE;
     p.y = spawnY * TILE_SIZE;
@@ -1062,7 +1059,18 @@ this.onMessage("hammer", (client, message) => {
     // Add biome variation to surface height
     const baseNoise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
     const macroNoise = layeredNoise(worldX, 1000, 2, 0.5, 0.01); // Hills vs flats
-    return Math.floor(20 + baseNoise * 15 + macroNoise * 20);
+
+    let h = Math.floor(20 + baseNoise * 15 + macroNoise * 20);
+    const biome = this.getBiome(worldX);
+    const tempNoise = layeredNoise(worldX, 5000, 2, 0.5, 0.005);
+
+    if (biome === "desert") {
+      h = Math.floor(20 + baseNoise * 10);
+    } else if (biome === "snow" && tempNoise < -0.3) {
+      h += Math.floor(layeredNoise(worldX, 2000, 2, 0.5, 0.02) * 10);
+    }
+
+    return h;
   }
 
   getBiome(worldX) {
