@@ -700,6 +700,9 @@ const blockColors = {
                 saveInventoryState();
             }
         }
+        if (e.key === "r" || e.key === "R") {
+            room.send("recall");
+        }
         if (e.key === "i" || e.key === "I") {
             inventoryOpen = !inventoryOpen;
 
