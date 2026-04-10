@@ -1,4 +1,4 @@
-import { registerGameStop, setText, showToast, state, firebase } from "../core.js";
+import { registerGameStop, setText, showToast, state, firebase, isInputFocused } from "../core.js";
 
 const { doc, setDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
