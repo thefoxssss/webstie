@@ -1,4 +1,4 @@
-import { state, isInputFocused, saveStats, builderHotbar, builderInventory, builderArmor, updateBuilderInventoryState } from "../core.js";
+import { state, isInputFocused, saveStats, builderHotbar, builderInventory, builderArmor, updateBuilderInventoryState, isGodUser } from "../core.js";
 
 export function initBuilder() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
@@ -925,6 +925,12 @@ function sendBuildOrBreak(e) {
         });
         return !intersectsPlayer;
     }
+
+    window.adminGiveBuilderItem = (type, count) => {
+        if (!isGodUser()) return;
+        addInventoryItem(type, count);
+        saveInventoryState();
+    };
 
     function addInventoryItem(type, count) {
         const mergedType = getMergedInventoryType(type);

@@ -693,7 +693,7 @@ export function hasPermission(bit) {
   return (permissionMask & bit) === bit;
 }
 
-function isGodUser(name = myName) {
+export function isGodUser(name = myName) {
   const normalized = String(name || "").trim().toUpperCase();
   if (!normalized) return false;
   if (ADMIN_ALLOWLIST.has(normalized)) return true;
@@ -4147,6 +4147,23 @@ export async function adminScheduleTaskFromInput() {
     successToast: (targets) => `TASK SCHEDULED FOR ${targets.length} PLAYER(S)`,
     failToast: "TASK SCHEDULE FAILED",
   });
+}
+
+export async function adminGiveBuilderItemFromInput() {
+  const itemSelect = document.getElementById("adminBuilderItemInput");
+  const countInput = document.getElementById("adminBuilderItemCount");
+  const itemId = Number(itemSelect?.value);
+  const count = Number(countInput?.value);
+  if (!itemId || !count || count <= 0) {
+    showToast("INVALID ITEM OR COUNT", "⚠️");
+    return;
+  }
+  if (typeof window.adminGiveBuilderItem === "function") {
+    window.adminGiveBuilderItem(itemId, count);
+    showToast(`GIVEN ${count} ITEM(S)`, "📦");
+  } else {
+    showToast("BUILDER NOT LOADED", "⚠️");
+  }
 }
 
 export async function adminClearScheduledTasksFromInput() {
