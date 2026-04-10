@@ -973,15 +973,27 @@ function sendBuildOrBreak(e) {
 
             // Helper function to handle pickup/drop logic for slots
             const handleSlotInteraction = (slotArray, index, isArmor = false) => {
+                const getSlot = () => isArmor ? armorSlot : slotArray[index];
+                const setSlot = (val) => {
+                    if (isArmor) {
+                        armorSlot = val;
+                        room.send("equip_armor", { type: armorSlot ? armorSlot.type : 0 });
+                    } else {
+                        slotArray[index] = val;
+                    }
+                };
+
+                const currentItem = getSlot();
+
                 if (draggedItemType === null) {
-                    if (slotArray[index] !== undefined) {
+                    if (currentItem !== undefined) {
                         if (isRightClick) {
                             // Split stack
-                            const currentItem = slotArray[index];
                             if (currentItem.count > 1) {
                                 const splitCount = Math.floor(currentItem.count / 2);
                                 draggedItemType = { type: currentItem.type, count: splitCount };
                                 currentItem.count -= splitCount;
+                                if (isArmor) room.send("equip_armor", { type: currentItem.type });
                                 dragSourceHotbarIndex = null;
                                 dragSourceInventoryIndex = null;
                                 dragSourceCraftingIndex = null;
@@ -990,58 +1002,66 @@ function sendBuildOrBreak(e) {
                                 saveInventoryState();
                             } else {
                                 // Just pick it up if it's 1
-                                draggedItemType = cloneItem(slotArray[index]);
+                                draggedItemType = cloneItem(currentItem);
                                 dragSourceHotbarIndex = slotArray === hotbarSlots ? index : null;
                                 dragSourceInventoryIndex = slotArray === inventorySlots ? index : null;
                                 dragSourceArmorSlot = isArmor;
-                                slotArray[index] = undefined;
+                                setSlot(undefined);
                                 saveInventoryState();
                             }
                         } else {
                             // Left click pickup
-                            draggedItemType = cloneItem(slotArray[index]);
+                            draggedItemType = cloneItem(currentItem);
                             dragSourceHotbarIndex = slotArray === hotbarSlots ? index : null;
                             dragSourceInventoryIndex = slotArray === inventorySlots ? index : null;
                             dragSourceArmorSlot = isArmor;
-                            slotArray[index] = undefined;
+                            setSlot(undefined);
                             saveInventoryState();
                         }
                     }
                 } else {
                     // We are holding an item
+
+                    // Armor slot restriction: only armor (18-22)
+                    if (isArmor && ![18, 19, 20, 21, 22].includes(draggedItemType.type)) {
+                        return true;
+                    }
+
                     if (isRightClick) {
                         // Place 1 item
-                        if (slotArray[index] === undefined) {
-                            slotArray[index] = { type: draggedItemType.type, count: 1 };
+                        if (currentItem === undefined) {
+                            setSlot({ type: draggedItemType.type, count: 1 });
                             draggedItemType.count -= 1;
                             if (draggedItemType.count <= 0) draggedItemType = null;
                             saveInventoryState();
-                        } else if (slotArray[index].type === draggedItemType.type && slotArray[index].count < getMaxStack(slotArray[index].type)) {
-                            slotArray[index].count += 1;
+                        } else if (currentItem.type === draggedItemType.type && currentItem.count < getMaxStack(currentItem.type)) {
+                            currentItem.count += 1;
+                            if (isArmor) room.send("equip_armor", { type: currentItem.type });
                             draggedItemType.count -= 1;
                             if (draggedItemType.count <= 0) draggedItemType = null;
                             saveInventoryState();
                         }
                     } else {
                         // Left click place
-                        if (slotArray[index] === undefined) {
-                            slotArray[index] = cloneItem(draggedItemType);
+                        if (currentItem === undefined) {
+                            setSlot(cloneItem(draggedItemType));
                             draggedItemType = null;
                             saveInventoryState();
-                        } else if (slotArray[index].type === draggedItemType.type) {
+                        } else if (currentItem.type === draggedItemType.type) {
                             // Merge
-                            const space = getMaxStack(slotArray[index].type) - slotArray[index].count;
+                            const space = getMaxStack(currentItem.type) - currentItem.count;
                             if (space > 0) {
                                 const addCount = Math.min(space, draggedItemType.count);
-                                slotArray[index].count += addCount;
+                                currentItem.count += addCount;
+                                if (isArmor) room.send("equip_armor", { type: currentItem.type });
                                 draggedItemType.count -= addCount;
                                 if (draggedItemType.count <= 0) draggedItemType = null;
                                 saveInventoryState();
                             }
                         } else {
                             // Swap
-                            const temp = cloneItem(slotArray[index]);
-                            slotArray[index] = cloneItem(draggedItemType);
+                            const temp = cloneItem(currentItem);
+                            setSlot(cloneItem(draggedItemType));
                             draggedItemType = temp;
                             saveInventoryState();
                         }
@@ -1066,16 +1086,7 @@ function sendBuildOrBreak(e) {
             const armorSlotY = panel.y + 40;
             if (mouse.x >= armorSlotX && mouse.x <= armorSlotX + inventoryLayout.slotSize &&
                 mouse.y >= armorSlotY && mouse.y <= armorSlotY + inventoryLayout.slotSize) {
-
-                // Hacky way to use handleSlotInteraction for armor (since it expects an array)
-                let tempArr = [armorSlot];
-                if (handleSlotInteraction(tempArr, 0, true)) {
-                    armorSlot = tempArr[0];
-                    if (armorSlot === undefined) {
-                        room.send("equip_armor", { type: 0 });
-                    }
-                    return;
-                }
+                if (handleSlotInteraction(null, null, true)) return;
             }
 
             // Check if crafting grids or output slot clicked
