@@ -1313,6 +1313,11 @@ if (e.button === 2 && !e.shiftKey) {
                 // Drop on ground
                 room.send("spawn_drops", { items: [{ type: draggedItemType.type, count: draggedItemType.count }] });
                 draggedItemType = null;
+                dragSourceHotbarIndex = null;
+                dragSourceInventoryIndex = null;
+                dragSourceCraftingIndex = null;
+                dragSourceOutputSlot = false;
+                dragSourceArmorSlot = false;
                 saveInventoryState();
                 return;
             }
