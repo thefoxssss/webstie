@@ -216,6 +216,7 @@ const blockColors = {
     let dragSourceOutputSlot = false;
     let dragSourceArmorSlot = false;
     let showRecipes = false;
+    let recipeScroll = 0;
 
     let camera = { x: 0, y: 0 };
 
@@ -952,7 +953,7 @@ function sendBuildOrBreak(e) {
             if (showRecipes) {
                 // Check close button
                 if (mouse.x >= panel.x + panel.width - 80 && mouse.x <= panel.x + panel.width - 20 &&
-                    mouse.y >= panel.y + 10 && mouse.y <= panel.y + 30) {
+                    mouse.y >= panel.y - 10 && mouse.y <= panel.y + 10) {
                     showRecipes = false;
                 }
                 return; // Prevent other interactions while recipes are open
@@ -1515,6 +1516,15 @@ if (e.button === 2 && !e.shiftKey) {
 
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
+    canvas.addEventListener("wheel", (e) => {
+        if (!room) return;
+        if (inventoryOpen && showRecipes) {
+            recipeScroll += Math.sign(e.deltaY);
+            if (recipeScroll < 0) recipeScroll = 0;
+            return;
+        }
+    });
+
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mouseup", handleMouseUp);
@@ -2058,11 +2068,17 @@ if (inventoryOpen) {
 
             if (showRecipes) {
                 // Draw Recipe Book Overlay
-                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-                ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.95)";
+                ctx.fillRect(panel.x - 20, panel.y - 20, panel.width + 40, panel.height + 40);
+
+                // Need a scroll offset or just a large panel
                 ctx.fillStyle = "#fff";
                 ctx.font = "10px 'Press Start 2P', monospace";
-                ctx.fillText("Recipe Book", panel.x + 20, panel.y + 30);
+                ctx.fillText("Recipe Book (Scroll to view all)", panel.x, panel.y + 10);
+
+                // Add scrolling logic later if needed. For now we just draw them.
+                // Or let's make the recipes smaller
+
 
             const recipes = [
         { pattern: [[7]], output: { type: 9, count: 4 } }, // 1 Log -> 4 Planks
@@ -2096,31 +2112,72 @@ if (inventoryOpen) {
         { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
     ];
 
-                for (let i = 0; i < recipes.length; i++) {
-                    const rx = panel.x + 20 + Math.floor(i / 3) * 160;
-                    const ry = panel.y + 60 + (i % 3) * 50;
+                // 12 recipes per page
+                const itemsPerRow = 2;
+                const rowsPerPage = 6;
+                const recipesPerPage = itemsPerRow * rowsPerPage;
+                const maxScroll = Math.max(0, Math.ceil(recipes.length / itemsPerRow) - rowsPerPage);
+                if (recipeScroll > maxScroll) recipeScroll = maxScroll;
 
-                    // Out
-                    drawItemIcon(ctx, recipes[i].output.type, rx, ry, 24);
-                    ctx.fillText("=", rx + 30, ry + 16);
+                const startIdx = recipeScroll * itemsPerRow;
+                const endIdx = Math.min(recipes.length, startIdx + recipesPerPage);
 
-                    // In
-                    let inputs = [];
-                    for (const row of recipes[i].pattern) {
-                        for (const item of row) {
-                            if (item !== 0) inputs.push(item);
+                for (let i = startIdx; i < endIdx; i++) {
+                    const displayIdx = i - startIdx;
+                    const col = displayIdx % itemsPerRow;
+                    const row = Math.floor(displayIdx / itemsPerRow);
+
+                    const cellWidth = 240;
+                    const cellHeight = 70;
+
+                    const rx = panel.x + 20 + col * cellWidth;
+                    const ry = panel.y + 50 + row * cellHeight;
+
+                    // Draw the pattern grid (miniature)
+                    const pat = recipes[i].pattern;
+                    const patRows = pat.length;
+                    const patCols = pat[0].length;
+                    const iconSize = 12;
+                    const gap = 2;
+
+                    // Draw grid background
+                    ctx.fillStyle = "#555";
+                    ctx.fillRect(rx - 2, ry - 2, (iconSize + gap) * 3 + 2, (iconSize + gap) * 3 + 2);
+
+                    // Center the pattern in the 3x3 box
+                    const startR = patRows === 1 ? 1 : 0;
+                    const startC = patCols === 1 ? 1 : 0;
+
+                    for (let r = 0; r < patRows; r++) {
+                        for (let c = 0; c < patCols; c++) {
+                            const item = pat[r][c];
+                            const cx = rx + (c + startC) * (iconSize + gap);
+                            const cy = ry + (r + startR) * (iconSize + gap);
+                            ctx.fillStyle = "#8b8b8b";
+                            ctx.fillRect(cx, cy, iconSize, iconSize);
+                            if (item !== 0) {
+                                drawItemIcon(ctx, item, cx, cy, iconSize);
+                            }
                         }
                     }
-                    for (let j = 0; j < inputs.length; j++) {
-                        drawItemIcon(ctx, inputs[j], rx + 50 + (j * 14), ry + 4, 16);
+
+                    // Arrow
+                    ctx.fillStyle = "#fff";
+                    ctx.fillText("->", rx + 50, ry + 20);
+
+                    // Output
+                    drawItemIcon(ctx, recipes[i].output.type, rx + 75, ry + 8, 24);
+                    if (recipes[i].output.count > 1) {
+                        ctx.font = "8px 'Press Start 2P', monospace";
+                        ctx.fillText("x" + recipes[i].output.count, rx + 105, ry + 24);
                     }
                 }
 
                 // Draw close button
                 ctx.fillStyle = "#f44336";
-                ctx.fillRect(panel.x + panel.width - 80, panel.y + 10, 60, 20);
+                ctx.fillRect(panel.x + panel.width - 80, panel.y - 10, 60, 20);
                 ctx.fillStyle = "#fff";
-                ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 24);
+                ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 4);
 
                 return; // Skip drawing rest of inventory if recipes open
             }
