@@ -886,6 +886,20 @@ this.onMessage("hammer", (client, message) => {
         p.selectedItemType = 0;
     });
 
+    this.onMessage("recall", (client) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+
+        // Recall player to spawn (0, 0 area)
+        const spawnX = Math.floor(Math.random() * 20) - 10;
+        const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
+        const spawnY = Math.floor(20 + noise * 15) - 2;
+        p.x = spawnX * TILE_SIZE;
+        p.y = spawnY * TILE_SIZE;
+        p.vx = 0;
+        p.vy = 0;
+    });
+
     this.loadWorld();
     this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
     this.saveInterval = setInterval(() => this.saveWorld(), 30000); // Save every 30s
