@@ -692,8 +692,10 @@ const blockColors = {
             // If opening inventory, make sure we show 2x2 grid not 3x3 table
             if (inventoryOpen) {
                 isCraftingTableOpen = false;
+                showRecipes = false;
             } else {
                 returnCraftingItems();
+                showRecipes = false;
             }
 
             // Cancel drag if we close inventory while dragging
@@ -725,6 +727,7 @@ const blockColors = {
 
         if (e.key === "Escape" && inventoryOpen) {
             inventoryOpen = false;
+            showRecipes = false;
             returnCraftingItems();
             if (draggedItemType !== null) {
                 if (dragSourceHotbarIndex !== null) {
@@ -2185,9 +2188,7 @@ if (inventoryOpen) {
                 ctx.fillRect(panel.x + panel.width - 80, panel.y - 10, 60, 20);
                 ctx.fillStyle = "#fff";
                 ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 4);
-
-                return; // Skip drawing rest of inventory if recipes open
-            }
+            } else {
 
             const size = isCraftingTableOpen ? 3 : 2;
             const stride = inventoryLayout.slotSize + inventoryLayout.gap;
@@ -2332,6 +2333,7 @@ if (inventoryOpen) {
                     ctx.lineWidth = 3;
                     ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
                 }
+            }
             }
 
             if (hoverItemName) {
