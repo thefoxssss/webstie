@@ -2101,12 +2101,18 @@ if (inventoryOpen) {
                     const ry = panel.y + 60 + (i % 3) * 50;
 
                     // Out
-                    drawItemIcon(ctx, recipes[i].out, rx, ry, 24);
+                    drawItemIcon(ctx, recipes[i].output.type, rx, ry, 24);
                     ctx.fillText("=", rx + 30, ry + 16);
 
                     // In
-                    for (let j = 0; j < recipes[i].in.length; j++) {
-                        drawItemIcon(ctx, recipes[i].in[j], rx + 50 + (j * 14), ry + 4, 16);
+                    let inputs = [];
+                    for (const row of recipes[i].pattern) {
+                        for (const item of row) {
+                            if (item !== 0) inputs.push(item);
+                        }
+                    }
+                    for (let j = 0; j < inputs.length; j++) {
+                        drawItemIcon(ctx, inputs[j], rx + 50 + (j * 14), ry + 4, 16);
                     }
                 }
 
