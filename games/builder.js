@@ -1657,22 +1657,11 @@ if (e.button === 2 && !e.shiftKey) {
             ctx.strokeRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
 
             // Draw held item (Sword or Gun)
-            if (p.selectedItemType === 11) {
-                ctx.save();
-                ctx.translate(p.x + TILE_SIZE + 5, p.y + TILE_SIZE / 2);
-                ctx.rotate(Math.PI / 4); // point it outwards
-                ctx.fillStyle = "#808080"; // Sword color
-                ctx.fillRect(-2, -15, 4, 20); // Blade
-                ctx.fillStyle = "#8b5a2b"; // Handle
-                ctx.fillRect(-2, 5, 4, 10);
-                ctx.fillStyle = "#000"; // Crossguard
-                ctx.fillRect(-6, 5, 12, 4);
-                ctx.restore();
-            } else if ([23, 24, 25, 26, 27].includes(p.selectedItemType)) {
+            if (p.selectedItemType === 11 || [23, 24, 25, 26, 27].includes(p.selectedItemType)) {
                 ctx.save();
                 ctx.translate(p.x + TILE_SIZE / 2, p.y + TILE_SIZE / 2);
 
-                // Calculate angle. For local player, use mouse position. For others, assume aiming forward (or could sync mouse angle in future)
+                // Calculate angle. For local player, use mouse position. For others, assume aiming forward
                 let angle = 0;
                 if (p === localPlayer) {
                     const worldX = mouse.x + camera.x;
@@ -1684,15 +1673,33 @@ if (e.button === 2 && !e.shiftKey) {
 
                 ctx.rotate(angle);
 
-                // Offset gun outward
-                ctx.translate(15, 0);
+                if (assetsLoaded && blockImages[p.selectedItemType]) {
+                    // Draw sprite at offset
+                    ctx.translate(15, 0);
+                    ctx.rotate(Math.PI / 4); // The sprites are likely diagonal, so we rotate them to point right
+                    ctx.drawImage(blockImages[p.selectedItemType], -10, -10, 20, 20);
+                } else {
+                    if (p.selectedItemType === 11) {
+                        ctx.translate(15, 0);
+                        ctx.rotate(Math.PI / 4); // point it outwards
+                        ctx.fillStyle = "#808080"; // Sword color
+                        ctx.fillRect(-2, -15, 4, 20); // Blade
+                        ctx.fillStyle = "#8b5a2b"; // Handle
+                        ctx.fillRect(-2, 5, 4, 10);
+                        ctx.fillStyle = "#000"; // Crossguard
+                        ctx.fillRect(-6, 5, 12, 4);
+                    } else {
+                        // Offset gun outward
+                        ctx.translate(15, 0);
 
-                // Draw a simple gun shape
-                ctx.fillStyle = blockColors[p.selectedItemType] || "#444";
-                // Gun barrel
-                ctx.fillRect(0, -2, 12, 4);
-                // Gun handle
-                ctx.fillRect(0, 0, 4, 8);
+                        // Draw a simple gun shape
+                        ctx.fillStyle = blockColors[p.selectedItemType] || "#444";
+                        // Gun barrel
+                        ctx.fillRect(0, -2, 12, 4);
+                        // Gun handle
+                        ctx.fillRect(0, 0, 4, 8);
+                    }
+                }
 
                 ctx.restore();
             }
