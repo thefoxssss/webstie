@@ -2480,94 +2480,91 @@ if (inventoryOpen) {
                 ctx.fillStyle = "#fff";
                 ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 4);
                 } else {
+                    const size = isCraftingTableOpen ? 3 : 2;
+                    const stride = inventoryLayout.slotSize + inventoryLayout.gap;
 
-            const size = isCraftingTableOpen ? 3 : 2;
-            const stride = inventoryLayout.slotSize + inventoryLayout.gap;
+                    // Draw Crafting Grid
+                    for (let r = 0; r < size; r++) {
+                        for (let c = 0; c < size; c++) {
+                            const slotX = craftStartX + c * stride;
+                            const slotY = craftStartY + r * stride;
 
-            // Draw Crafting Grid
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    const slotX = craftStartX + c * stride;
-                    const slotY = craftStartY + r * stride;
+                            ctx.fillStyle = "#8b8b8b";
+                            ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+
+                            ctx.strokeStyle = "#373737";
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
+                            ctx.lineTo(slotX, slotY);
+                            ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
+                            ctx.stroke();
+
+                            ctx.strokeStyle = "#ffffff";
+                            ctx.beginPath();
+                            ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
+                            ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
+                            ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
+                            ctx.stroke();
+
+                            const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+                            const item = grid[r * size + c];
+                            if (item) {
+                                const inset = 6;
+                                drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+
+                                ctx.fillStyle = "#ffffff";
+                                ctx.font = "8px 'Press Start 2P', monospace";
+                                ctx.textAlign = "right";
+                                ctx.fillStyle = "#3f3f3f";
+                                ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
+                                ctx.fillStyle = "#ffffff";
+                                ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
+                            }
+                        }
+                    }
+
+                    // Draw arrow
+                    ctx.fillStyle = "#3f3f3f";
+                    ctx.font = "12px 'Press Start 2P', monospace";
+                    ctx.textAlign = "center";
+                    ctx.fillText("->", craftStartX + size * stride + 8, craftStartY + Math.floor((size * stride) / 2) + 4);
+
+                    // Draw output slot
+                    const outX = craftStartX + size * stride + 20;
+                    const outY = craftStartY + Math.floor((size * stride) / 2) - inventoryLayout.slotSize / 2;
 
                     ctx.fillStyle = "#8b8b8b";
-                    ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+                    ctx.fillRect(outX, outY, inventoryLayout.slotSize, inventoryLayout.slotSize);
 
                     ctx.strokeStyle = "#373737";
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
-                    ctx.lineTo(slotX, slotY);
-                    ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
+                    ctx.moveTo(outX, outY + inventoryLayout.slotSize);
+                    ctx.lineTo(outX, outY);
+                    ctx.lineTo(outX + inventoryLayout.slotSize, outY);
                     ctx.stroke();
 
                     ctx.strokeStyle = "#ffffff";
                     ctx.beginPath();
-                    ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
-                    ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
-                    ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
+                    ctx.moveTo(outX + inventoryLayout.slotSize, outY);
+                    ctx.lineTo(outX + inventoryLayout.slotSize, outY + inventoryLayout.slotSize);
+                    ctx.lineTo(outX, outY + inventoryLayout.slotSize);
                     ctx.stroke();
 
-                    const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
-                    const item = grid[r * size + c];
-                    if (item) {
+                    if (craftingOutputSlot) {
                         const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+                        drawItemIcon(ctx, craftingOutputSlot.type, outX + inset, outY + inset, inventoryLayout.slotSize - (inset * 2));
 
                         ctx.fillStyle = "#ffffff";
                         ctx.font = "8px 'Press Start 2P', monospace";
                         ctx.textAlign = "right";
                         ctx.fillStyle = "#3f3f3f";
-                        ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
+                        ctx.fillText(`${craftingOutputSlot.count}`, outX + inventoryLayout.slotSize - 2, outY + inventoryLayout.slotSize - 4);
                         ctx.fillStyle = "#ffffff";
-                        ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
+                        ctx.fillText(`${craftingOutputSlot.count}`, outX + inventoryLayout.slotSize - 3, outY + inventoryLayout.slotSize - 5);
                     }
                 }
-                }
-            }
-
-            // Draw arrow
-            ctx.fillStyle = "#3f3f3f";
-            ctx.font = "12px 'Press Start 2P', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("->", craftStartX + size * stride + 8, craftStartY + Math.floor((size * stride) / 2) + 4);
-
-            // Draw output slot
-            const outX = craftStartX + size * stride + 20;
-            const outY = craftStartY + Math.floor((size * stride) / 2) - inventoryLayout.slotSize / 2;
-
-            ctx.fillStyle = "#8b8b8b";
-            ctx.fillRect(outX, outY, inventoryLayout.slotSize, inventoryLayout.slotSize);
-
-            ctx.strokeStyle = "#373737";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(outX, outY + inventoryLayout.slotSize);
-            ctx.lineTo(outX, outY);
-            ctx.lineTo(outX + inventoryLayout.slotSize, outY);
-            ctx.stroke();
-
-            ctx.strokeStyle = "#ffffff";
-            ctx.beginPath();
-            ctx.moveTo(outX + inventoryLayout.slotSize, outY);
-            ctx.lineTo(outX + inventoryLayout.slotSize, outY + inventoryLayout.slotSize);
-            ctx.lineTo(outX, outY + inventoryLayout.slotSize);
-            ctx.stroke();
-
-            if (craftingOutputSlot) {
-                const inset = 6;
-                drawItemIcon(ctx, craftingOutputSlot.type, outX + inset, outY + inset, inventoryLayout.slotSize - (inset * 2));
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "8px 'Press Start 2P', monospace";
-                ctx.textAlign = "right";
-                ctx.fillStyle = "#3f3f3f";
-                ctx.fillText(`${craftingOutputSlot.count}`, outX + inventoryLayout.slotSize - 2, outY + inventoryLayout.slotSize - 4);
-                ctx.fillStyle = "#ffffff";
-                ctx.fillText(`${craftingOutputSlot.count}`, outX + inventoryLayout.slotSize - 3, outY + inventoryLayout.slotSize - 5);
-            }
-
-
             for (let index = 0; index < totalSlots; index += 1) {
                 const item = inventorySlots[index];
                 const col = index % inventoryLayout.cols;
