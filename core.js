@@ -5164,8 +5164,11 @@ function renderShop() {
           isEnabled ? "ON" : "OFF"
         }</button>`
       : "";
-    div.innerHTML = `<div><span class="shop-item-icon" aria-hidden="true" title="${item.name}">${item.icon || "🛒"}</span>${item.name}<div style="font-size:8px;opacity:0.7">${
-      item.desc
+    const safeName = escapeHtml(item.name || "");
+    const safeIcon = escapeHtml(item.icon || "🛒");
+    const safeDesc = escapeHtml(item.desc || "");
+    div.innerHTML = `<div><span class="shop-item-icon" aria-hidden="true" title="${safeName}">${safeIcon}</span>${safeName}<div style="font-size:8px;opacity:0.7">${
+      safeDesc
     }</div></div><div style="text-align:right"><span style="color:var(--accent)">${label}</span><div class="shop-item-actions"><button class="shop-buy-btn" onclick="window.buyItem('${
       item.id
     }')" ${disabled ? "disabled" : ""}>${btnText}</button>${toggleBtn}</div></div>`;
