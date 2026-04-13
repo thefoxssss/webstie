@@ -53,6 +53,7 @@ import {
   getShopItemById,
   claimAprilFoolsSecretItem,
   openGameLeaderboard,
+  escapeHtml,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -951,7 +952,7 @@ function initMainSiteSearch() {
     }
 
     dropdown.innerHTML = activeSuggestions
-      .map((suggestion, index) => `<button class="site-search-option" type="button" data-suggest-index="${index}"><strong>${suggestion.value}</strong><small>${suggestion.subtitle}</small></button>`)
+      .map((suggestion, index) => `<button class="site-search-option" type="button" data-suggest-index="${index}"><strong>${escapeHtml(suggestion.value)}</strong><small>${escapeHtml(suggestion.subtitle)}</small></button>`)
       .join("");
     dropdown.classList.add("active");
   }

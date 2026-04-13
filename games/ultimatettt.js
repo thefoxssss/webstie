@@ -1,4 +1,4 @@
-import { registerGameStop, setText, showToast, state, updateHighScore, firebase } from "../core.js";
+import { registerGameStop, setText, showToast, state, updateHighScore, firebase, escapeHtml } from "../core.js";
 
 const { doc, setDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
@@ -159,7 +159,7 @@ function joinRoom(code, mySide) {
     if (!snap.exists()) return;
     const d = snap.data();
     if (d.status === "lobby") {
-      document.getElementById("utttPList").innerHTML = `<div>X: ${d.names.X}</div><div>O: ${d.names.O}</div>`;
+      document.getElementById("utttPList").innerHTML = `<div>X: ${escapeHtml(d.names.X)}</div><div>O: ${escapeHtml(d.names.O)}</div>`;
       const canStart = side === "X" && d.players.O;
       document.getElementById("utttStartBtn").style.display = canStart ? "inline-block" : "none";
       setText("utttWait", canStart ? "READY" : "WAITING...");

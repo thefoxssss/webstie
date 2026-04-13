@@ -1,5 +1,5 @@
 // Firebase-backed multiplayer physics arena inspired by bonk-style gameplay.
-import { registerGameStop, setText, showToast, state, firebase, isInputFocused } from "../core.js";
+import { registerGameStop, setText, showToast, state, firebase, isInputFocused, escapeHtml } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -254,7 +254,7 @@ function subscribeRoom() {
 function renderState(data) {
   const players = data.players || {};
   const list = Object.entries(players)
-    .map(([id, p]) => `<div>${id.toUpperCase()}: ${p.name}${p.alive ? "" : " ☠"}</div>`)
+    .map(([id, p]) => `<div>${id.toUpperCase()}: ${escapeHtml(p.name)}${p.alive ? "" : " ☠"}</div>`)
     .join("");
   document.getElementById("baPList").innerHTML = list || "<div>NO PLAYERS</div>";
 

@@ -245,7 +245,7 @@ function render(data) {
   const players = data.players || {};
   const rows = Object.entries(players)
     .sort((a, b) => rankCar(b[1]) - rankCar(a[1]))
-    .map(([id, p]) => `<div>${id.toUpperCase()}: ${p.name} • LAP ${Math.min(TRACK_LAPS, p.lap || 0)}/${TRACK_LAPS}</div>`)
+    .map(([id, p]) => `<div>${id.toUpperCase()}: ${escapeHtml(p.name)} • LAP ${Math.min(TRACK_LAPS, p.lap || 0)}/${TRACK_LAPS}</div>`)
     .join("");
   document.getElementById("driftPlayers").innerHTML = rows || "<div>NO PLAYERS</div>";
 

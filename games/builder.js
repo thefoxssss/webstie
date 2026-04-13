@@ -551,9 +551,9 @@ const blockColors = {
             row.style.cursor = "pointer";
             row.style.background = selectedRoomId === server.roomId ? "rgba(0, 255, 0, 0.15)" : "transparent";
 
-            const names = (server.players || []).length ? server.players.join(", ") : "No players";
+            const names = (server.players || []).length ? server.players.map(n => escapeHtml(n)).join(", ") : "No players";
             row.innerHTML = `
-                <div style="font-size: 11px; color: #0f0;">${server.serverName || "Public World"}</div>
+                <div style="font-size: 11px; color: #0f0;">${escapeHtml(server.serverName || "Public World")}</div>
                 <div style="font-size: 9px; opacity: 0.9; margin-top: 4px;">PLAYERS (${server.clients}/${server.maxClients}): ${names}</div>
             `;
             row.onclick = async () => {
