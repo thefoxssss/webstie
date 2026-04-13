@@ -1,5 +1,28 @@
-1. **Move Furnace UI rendering**: Modify `games/builder.js` so that when `isFurnaceOpen` is true, we don't render the floating Furnace panel. Instead, we render the Furnace slots exactly where the Crafting UI normally appears inside the main inventory panel.
-2. **Update Furnace UI click coordinates**: Update `handleFurnaceSlotInteraction` check coordinates to match the new slot positions so the user can interact with them.
-3. **Hide Crafting UI when Furnace is Open**: Wrap the Crafting grid rendering and drop-target logic in `games/builder.js` with `if (!isFurnaceOpen)` so that it disappears when the Furnace UI is active, preventing visual and functional overlap.
-4. **Pre-commit checks**: Run `pre_commit_instructions` and check the tests (e.g. `test_cuj.py`).
-5. **Submit**: Submit the change with an appropriate commit message.
+1. **Update `server.js` with Agar.io logic:**
+   - Define `AgarPlayer`, `AgarFood`, and `AgarState` schemas using Colyseus `@colyseus/schema`.
+   - Implement `AgarRoom` class, mimicking `BuilderRoom` for server discovery (`agarServerDirectory`).
+   - Add tick loop inside `AgarRoom` to handle player movement, food collision, and player-to-player collision (eating).
+   - Register the `agar_room` game room and add the `/agar-servers` Express endpoint.
+
+2. **Update `index.html`:**
+   - Add a new overlay `<div id="overlayAgar">` containing the menu for server joining/creation, and the game area with a canvas, a leaderboard overlay, and a death screen.
+
+3. **Update `gameCatalog.js`:**
+   - Add the Agar game entry to `GAME_DIRECTORY_ENTRIES` with `id: "agar"`.
+
+4. **Update `script.js`:**
+   - Import `initAgar` from `./games/agar.js`.
+   - Call `initAgar()` in the game launch dispatch.
+
+5. **Create `games/agar.js`:**
+   - Implement the game loop with `requestAnimationFrame`.
+   - Setup Colyseus client connection (handling local vs prod via the UI like Builder).
+   - Draw players, foods, and a grid background.
+   - Handle mouse movement (`mousemove`) to send target coordinates to the server.
+   - Add logic for respawning and updating the leaderboard.
+
+6. **Complete pre commit steps:**
+   - Run pre commit scripts.
+   - Verify server loads correctly, and syntax is clean.
+
+7. **Submit the change.**

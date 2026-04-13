@@ -84,6 +84,30 @@ const gameServer = new colyseus.Server({
   })
 });
 
+
+// --------------------------------------------------------
+// AGAR GAME LOGIC
+// --------------------------------------------------------
+class AgarFood extends Schema {}
+type("string")(AgarFood.prototype, "id");
+type("number")(AgarFood.prototype, "x");
+type("number")(AgarFood.prototype, "y");
+type("string")(AgarFood.prototype, "color");
+
+class AgarPlayer extends Schema {}
+type("string")(AgarPlayer.prototype, "id");
+type("string")(AgarPlayer.prototype, "name");
+type("number")(AgarPlayer.prototype, "x");
+type("number")(AgarPlayer.prototype, "y");
+type("number")(AgarPlayer.prototype, "radius");
+type("string")(AgarPlayer.prototype, "color");
+type("number")(AgarPlayer.prototype, "score");
+type("boolean")(AgarPlayer.prototype, "isAlive");
+
+class AgarState extends Schema {}
+type({ map: AgarPlayer })(AgarState.prototype, "players");
+type({ map: AgarFood })(AgarState.prototype, "foods");
+
 // --------------------------------------------------------
 // SMASH ARENA GAME LOGIC (Moved from client)
 // --------------------------------------------------------
@@ -1714,7 +1738,198 @@ class VoiceRoom extends colyseus.Room {
 gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
 gameServer.define("builder_room", BuilderRoom);
+
+const AGAR_MAP_WIDTH = 4000;
+const AGAR_MAP_HEIGHT = 4000;
+const AGAR_MAX_FOOD = 500;
+const AGAR_BASE_RADIUS = 20;
+const AGAR_TICK_RATE = 20; // ms per tick
+
+const agarServerDirectory = new Map();
+
+class AgarRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 50;
+    this.autoDispose = true;
+    this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
+      ? options.serverName.trim().slice(0, 24)
+      : "Public Agar World";
+    this.setMetadata({ serverName: this.serverName });
+
+    const state = new AgarState();
+    state.players = new MapSchema();
+    state.foods = new MapSchema();
+    this.setState(state);
+
+    this.inputs = {};
+    this.foodCounter = 0;
+
+    // Initial food spawn
+    for (let i = 0; i < AGAR_MAX_FOOD / 2; i++) {
+      this.spawnFood();
+    }
+
+    this.onMessage("input", (client, message) => {
+      const pId = client.sessionId;
+      if (this.inputs[pId] && typeof message.targetX === "number" && typeof message.targetY === "number" && Number.isFinite(message.targetX) && Number.isFinite(message.targetY)) {
+        this.inputs[pId].targetX = message.targetX;
+        this.inputs[pId].targetY = message.targetY;
+      }
+    });
+
+    this.onMessage("respawn", (client) => {
+      const pId = client.sessionId;
+      const player = this.state.players.get(pId);
+      if (player && !player.isAlive) {
+        player.x = Math.random() * AGAR_MAP_WIDTH;
+        player.y = Math.random() * AGAR_MAP_HEIGHT;
+        player.radius = AGAR_BASE_RADIUS;
+        player.score = 0;
+        player.isAlive = true;
+      }
+    });
+
+    this.setSimulationInterval(() => this.simulateTick(), AGAR_TICK_RATE);
+
+    agarServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      serverName: this.serverName,
+      clients: this.clients.length,
+      maxClients: this.maxClients
+    });
+  }
+
+  spawnFood() {
+    if (this.state.foods.size >= AGAR_MAX_FOOD) return;
+    const food = new AgarFood();
+    food.id = "food_" + this.foodCounter++;
+    food.x = Math.random() * AGAR_MAP_WIDTH;
+    food.y = Math.random() * AGAR_MAP_HEIGHT;
+    const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
+    food.color = colors[Math.floor(Math.random() * colors.length)];
+    this.state.foods.set(food.id, food);
+  }
+
+  simulateTick() {
+    // 1. Move players
+    this.state.players.forEach((player, id) => {
+      if (!player.isAlive) return;
+
+      const input = this.inputs[id];
+      if (input && (input.targetX !== undefined && input.targetY !== undefined)) {
+        const dx = input.targetX - player.x;
+        const dy = input.targetY - player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 5) { // Deadzone
+          const speed = Math.max(1, 10 - Math.log(player.radius));
+          player.x += (dx / dist) * speed;
+          player.y += (dy / dist) * speed;
+        }
+      }
+
+      // Bounds
+      if (player.x < 0) player.x = 0;
+      if (player.y < 0) player.y = 0;
+      if (player.x > AGAR_MAP_WIDTH) player.x = AGAR_MAP_WIDTH;
+      if (player.y > AGAR_MAP_HEIGHT) player.y = AGAR_MAP_HEIGHT;
+    });
+
+    // 2. Check collisions
+    this.state.players.forEach((player, id) => {
+      if (!player.isAlive) return;
+
+      // Player vs Food
+      const foodsToRemove = [];
+      this.state.foods.forEach((food, foodId) => {
+        const dx = player.x - food.x;
+        const dy = player.y - food.y;
+        const distSq = dx * dx + dy * dy;
+        const rSq = player.radius * player.radius;
+        if (distSq < rSq) {
+          foodsToRemove.push(foodId);
+          player.radius += 0.5;
+          player.score += 10;
+        }
+      });
+      foodsToRemove.forEach(id => this.state.foods.delete(id));
+
+      // Player vs Player
+      this.state.players.forEach((other, otherId) => {
+        if (id === otherId || !other.isAlive || !player.isAlive) return;
+
+        const dx = player.x - other.x;
+        const dy = player.y - other.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // One must be 1.2x bigger to eat
+        if (dist < player.radius && player.radius > other.radius * 1.2) {
+          // Player eats Other
+          player.radius += other.radius * 0.5;
+          player.score += other.score + 50;
+          other.isAlive = false;
+          const otherClient = this.clients.find(c => c.sessionId === otherId);
+          if (otherClient) {
+             otherClient.send("died", { killer: player.name });
+          }
+        }
+      });
+    });
+
+    // 3. Replenish food occasionally
+    if (Math.random() < 0.2) {
+      this.spawnFood();
+    }
+  }
+
+  onJoin(client, options) {
+    const p = new AgarPlayer();
+    p.id = client.sessionId;
+    p.name = (options.name || "Anon").slice(0, 16);
+    p.x = Math.random() * AGAR_MAP_WIDTH;
+    p.y = Math.random() * AGAR_MAP_HEIGHT;
+    p.radius = AGAR_BASE_RADIUS;
+    p.color = "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    p.score = 0;
+    p.isAlive = true;
+
+    this.state.players.set(client.sessionId, p);
+    this.inputs[client.sessionId] = { targetX: p.x, targetY: p.y };
+
+    this.updateMetadata();
+  }
+
+  onLeave(client, consented) {
+    this.state.players.delete(client.sessionId);
+    delete this.inputs[client.sessionId];
+    this.updateMetadata();
+  }
+
+  updateMetadata() {
+    const d = agarServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      agarServerDirectory.set(this.roomId, d);
+    }
+  }
+
+  onDispose() {
+    agarServerDirectory.delete(this.roomId);
+  }
+}
+
 gameServer.define("voice_room", VoiceRoom);
+
+gameServer.define("agar_room", AgarRoom);
+
+app.get("/agar-servers", (req, res) => {
+  const servers = Array.from(agarServerDirectory.values()).sort((a, b) => {
+    if (b.clients !== a.clients) return b.clients - a.clients;
+    return a.serverName.localeCompare(b.serverName);
+  });
+  res.json({ servers });
+});
+
 
 app.get("/builder-servers", (req, res) => {
   const servers = Array.from(builderServerDirectory.values()).sort((a, b) => {
