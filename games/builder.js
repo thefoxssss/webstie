@@ -1096,14 +1096,15 @@ function sendBuildOrBreak(e) {
                     const currentItem = furnace[countKey] > 0 ? { type: furnace[typeKey], count: furnace[countKey] } : undefined;
 
                     const setSlot = (val) => {
-                        furnace[typeKey] = val ? val.type : 0;
-                        furnace[countKey] = val ? val.count : 0;
-                        room.send("furnace_sync", {
+                        const payload = {
                             containerId: currentFurnaceId,
                             inputItem: furnace.inputItem, inputCount: furnace.inputCount,
                             fuelItem: furnace.fuelItem, fuelCount: furnace.fuelCount,
                             outputItem: furnace.outputItem, outputCount: furnace.outputCount
-                        });
+                        };
+                        payload[typeKey] = val ? val.type : 0;
+                        payload[countKey] = val ? val.count : 0;
+                        room.send("furnace_sync", payload);
                     };
 
                     if (draggedItemType === null) {
@@ -1165,6 +1166,7 @@ function sendBuildOrBreak(e) {
                 if (checkFurnaceSlot(furX - 60, furY + 15, "input")) return;
                 if (checkFurnaceSlot(furX - 60, furY + 55, "fuel")) return;
                 if (checkFurnaceSlot(furX + 30, furY + 35, "output")) return;
+                if (mouse.x >= furX - 100 && mouse.x <= furX + 100 && mouse.y >= furY - 10 && mouse.y <= furY + 90) return;
             }
 
             // Helper function to handle pickup/drop logic for slots
