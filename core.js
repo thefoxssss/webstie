@@ -1342,7 +1342,7 @@ function renderStockMarket() {
     const shares = Number(stockData.holdings?.[stock.symbol] || 0);
     const prev = stock.history.length > 1 ? stock.history[stock.history.length - 2] : stock.price;
     const dayMove = ((stock.price - prev) / (prev || 1)) * 100;
-    row.innerHTML = `<span>${stock.symbol} (${shares})</span><span style="color:${dayMove >= 0 ? "#0f0" : "#f55"}">${formatStockMoney(stock.price)}</span>`;
+    row.innerHTML = `<span>${escapeHtml(stock.symbol)} (${shares})</span><span style="color:${dayMove >= 0 ? "#0f0" : "#f55"}">${formatStockMoney(stock.price)}</span>`;
     row.addEventListener("click", () => {
       stockData.selected = stock.symbol;
       renderStockMarket();
