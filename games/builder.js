@@ -334,6 +334,30 @@ const blockColors = {
         return blockNames[type] || `ITEM ${type}`;
     }
 
+    const SMELTABLE_INPUT_TYPES = new Set([13, 14, 15, 16, 17]);
+    const FURNACE_FUEL_TYPES = new Set([7, 9, 12]);
+    const FURNACE_OUTPUT_BY_INPUT = { 13: 43, 14: 44, 15: 45, 16: 46, 17: 47 };
+
+    function canPlaceInFurnaceSlot(slotName, type) {
+        if (!type) return false;
+        if (slotName === "input") return SMELTABLE_INPUT_TYPES.has(type);
+        if (slotName === "fuel") return FURNACE_FUEL_TYPES.has(type);
+        return false;
+    }
+
+    function getFurnaceStatus(furnace) {
+        const hasInput = furnace.inputCount > 0;
+        const hasFuel = furnace.fuelCount > 0;
+        const expectedOutput = FURNACE_OUTPUT_BY_INPUT[furnace.inputItem] || 0;
+        const outputBlocked = hasInput && expectedOutput > 0 && furnace.outputCount > 0 && furnace.outputItem !== expectedOutput;
+        if (!hasInput) return "Insert ore";
+        if (!SMELTABLE_INPUT_TYPES.has(furnace.inputItem)) return "Input must be ore";
+        if (!hasFuel) return "Add fuel";
+        if (!FURNACE_FUEL_TYPES.has(furnace.fuelItem)) return "Fuel: coal/log/planks";
+        if (outputBlocked) return "Output blocked";
+        return furnace.progress > 0 ? "Smelting..." : "Ready";
+    }
+
     function checkRecipes() {
         craftingOutputSlot = undefined;
         const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
@@ -992,6 +1016,8 @@ function sendBuildOrBreak(e) {
         // Handle inventory and dragging mechanics first
         if (inventoryOpen) {
             const panel = getInventoryBounds();
+            const craftingUiEnabled = !isChestOpen && !isFurnaceOpen;
+            if (!craftingUiEnabled) showRecipes = false;
 
             if (showRecipes) {
                 // Check close button
@@ -1002,15 +1028,17 @@ function sendBuildOrBreak(e) {
                 return; // Prevent other interactions while recipes are open
             }
 
-            // Check Recipe Button toggle
             const craftStartX = panel.x + panel.width - 190;
             const craftStartY = panel.y + 40;
-            const recipeBtnX = craftStartX + 120;
-            const recipeBtnY = craftStartY - 20;
-            if (mouse.x >= recipeBtnX && mouse.x <= recipeBtnX + 60 &&
-                mouse.y >= recipeBtnY && mouse.y <= recipeBtnY + 16) {
-                showRecipes = true;
-                return;
+            if (craftingUiEnabled) {
+                // Check Recipe Button toggle
+                const recipeBtnX = craftStartX + 120;
+                const recipeBtnY = craftStartY - 20;
+                if (mouse.x >= recipeBtnX && mouse.x <= recipeBtnX + 60 &&
+                    mouse.y >= recipeBtnY && mouse.y <= recipeBtnY + 16) {
+                    showRecipes = true;
+                    return;
+                }
             }
 
             const isRightClick = e.button === 2;
@@ -1091,6 +1119,13 @@ function sendBuildOrBreak(e) {
                 const craftStartY = panel.y + 45;
                 const furX = craftStartX + 55;
                 const furY = craftStartY + 45;
+                const slotSize = 38;
+                const inputSlotX = furX - 72;
+                const inputSlotY = furY + 8;
+                const fuelSlotX = furX - 72;
+                const fuelSlotY = furY + 62;
+                const outputSlotX = furX + 34;
+                const outputSlotY = furY + 35;
 
                 const handleFurnaceSlotInteraction = (slotName) => {
                     const typeKey = slotName + "Item";
@@ -1109,6 +1144,20 @@ function sendBuildOrBreak(e) {
                         room.send("furnace_sync", payload);
                     };
 
+                    if (slotName === "output") {
+                        if (draggedItemType === null && currentItem) {
+                            if (isRightClick && currentItem.count > 1) {
+                                const takeCount = Math.ceil(currentItem.count / 2);
+                                draggedItemType = { type: currentItem.type, count: takeCount };
+                                setSlot({ type: currentItem.type, count: currentItem.count - takeCount });
+                            } else {
+                                draggedItemType = cloneItem(currentItem);
+                                setSlot(undefined);
+                            }
+                        }
+                        return;
+                    }
+
                     if (draggedItemType === null) {
                         if (currentItem !== undefined) {
                             if (isRightClick) {
@@ -1126,6 +1175,7 @@ function sendBuildOrBreak(e) {
                             }
                         }
                     } else {
+                        if (!canPlaceInFurnaceSlot(slotName, draggedItemType.type)) return;
                         if (isRightClick) {
                             if (currentItem === undefined) {
                                 setSlot({ type: draggedItemType.type, count: 1 });
@@ -1149,6 +1199,7 @@ function sendBuildOrBreak(e) {
                                     if (draggedItemType.count <= 0) draggedItemType = null;
                                 }
                             } else {
+                                if (!canPlaceInFurnaceSlot(slotName, currentItem.type)) return;
                                 const temp = cloneItem(currentItem);
                                 setSlot(cloneItem(draggedItemType));
                                 draggedItemType = temp;
@@ -1158,17 +1209,17 @@ function sendBuildOrBreak(e) {
                 };
 
                 const checkFurnaceSlot = (sx, sy, slotName) => {
-                    if (mouse.x >= sx && mouse.x <= sx + 32 && mouse.y >= sy && mouse.y <= sy + 32) {
+                    if (mouse.x >= sx && mouse.x <= sx + slotSize && mouse.y >= sy && mouse.y <= sy + slotSize) {
                         handleFurnaceSlotInteraction(slotName);
                         return true;
                     }
                     return false;
                 };
 
-                if (checkFurnaceSlot(furX - 60, furY + 15, "input")) return;
-                if (checkFurnaceSlot(furX - 60, furY + 55, "fuel")) return;
-                if (checkFurnaceSlot(furX + 30, furY + 35, "output")) return;
-                if (mouse.x >= furX - 100 && mouse.x <= furX + 100 && mouse.y >= furY - 10 && mouse.y <= furY + 90) return;
+                if (checkFurnaceSlot(inputSlotX, inputSlotY, "input")) return;
+                if (checkFurnaceSlot(fuelSlotX, fuelSlotY, "fuel")) return;
+                if (checkFurnaceSlot(outputSlotX, outputSlotY, "output")) return;
+                if (mouse.x >= furX - 112 && mouse.x <= furX + 128 && mouse.y >= furY - 18 && mouse.y <= furY + 106) return;
             }
 
             // Helper function to handle pickup/drop logic for slots
@@ -1289,74 +1340,76 @@ function sendBuildOrBreak(e) {
                 if (handleSlotInteraction(null, null, true)) return;
             }
 
-            // Check if crafting grids or output slot clicked
-            const size = isCraftingTableOpen ? 3 : 2;
-            const stride = inventoryLayout.slotSize + inventoryLayout.gap;
-            if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
-                mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
-                // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
-                // Actually let's do 1 Wood(4) -> 4 Brick(6) as planks.
-                let woodIndex = -1;
-                let foundHotbar = false;
-                for (let i = 0; i < hotbarSlots.length; i++) {
-                    if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === 4 && hotbarSlots[i].count >= 1) {
-                        woodIndex = i;
-                        foundHotbar = true;
-                        break;
-                    }
-                }
-                if (woodIndex === -1) {
-                    for (let i = 0; i < inventorySlots.length; i++) {
-                        if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
+            if (craftingUiEnabled) {
+                // Check if crafting grids or output slot clicked
+                const size = isCraftingTableOpen ? 3 : 2;
+                const stride = inventoryLayout.slotSize + inventoryLayout.gap;
+                if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
+                    mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
+                    // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
+                    // Actually let's do 1 Wood(4) -> 4 Brick(6) as planks.
+                    let woodIndex = -1;
+                    let foundHotbar = false;
+                    for (let i = 0; i < hotbarSlots.length; i++) {
+                        if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === 4 && hotbarSlots[i].count >= 1) {
                             woodIndex = i;
+                            foundHotbar = true;
                             break;
                         }
-                        return;
                     }
-                }
-            }
-
-            // Pick up from crafting grid
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    const slotX = craftStartX + c * stride;
-                    const slotY = craftStartY + r * stride;
-                    if (mouse.x >= slotX && mouse.x <= slotX + inventoryLayout.slotSize &&
-                        mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
-                        const craftingIndex = r * size + c;
-                        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
-                        if (grid[craftingIndex] !== undefined) {
-                            draggedItemType = cloneItem(grid[craftingIndex]);
-                            dragSourceHotbarIndex = null;
-                            dragSourceInventoryIndex = null;
-                            dragSourceCraftingIndex = craftingIndex;
-                            dragSourceOutputSlot = false;
-                            dragSourceArmorSlot = false;
-                            grid[craftingIndex] = undefined;
-                            checkRecipes();
+                    if (woodIndex === -1) {
+                        for (let i = 0; i < inventorySlots.length; i++) {
+                            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
+                                woodIndex = i;
+                                break;
+                            }
+                            return;
                         }
-                        return;
                     }
                 }
-            }
 
-            // Output slot check
-            const outX = craftStartX + size * stride + 20;
-            const outY = craftStartY + Math.floor((size * stride) / 2) - inventoryLayout.slotSize / 2;
-            if (mouse.x >= outX && mouse.x <= outX + inventoryLayout.slotSize &&
-                mouse.y >= outY && mouse.y <= outY + inventoryLayout.slotSize) {
-                if (craftingOutputSlot !== undefined) {
-                    draggedItemType = cloneItem(craftingOutputSlot);
-                    dragSourceHotbarIndex = null;
-                    dragSourceInventoryIndex = null;
-                    dragSourceCraftingIndex = null;
-                    dragSourceOutputSlot = true;
-                    dragSourceArmorSlot = false;
-                    // Dont consume materials until mouse up (if placed successfully)
-                    // Or we could consume right here. Let's consume right here, it's easier.
-                    consumeCraftingMaterials();
+                // Pick up from crafting grid
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        const slotX = craftStartX + c * stride;
+                        const slotY = craftStartY + r * stride;
+                        if (mouse.x >= slotX && mouse.x <= slotX + inventoryLayout.slotSize &&
+                            mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
+                            const craftingIndex = r * size + c;
+                            const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+                            if (grid[craftingIndex] !== undefined) {
+                                draggedItemType = cloneItem(grid[craftingIndex]);
+                                dragSourceHotbarIndex = null;
+                                dragSourceInventoryIndex = null;
+                                dragSourceCraftingIndex = craftingIndex;
+                                dragSourceOutputSlot = false;
+                                dragSourceArmorSlot = false;
+                                grid[craftingIndex] = undefined;
+                                checkRecipes();
+                            }
+                            return;
+                        }
+                    }
                 }
-                return;
+
+                // Output slot check
+                const outX = craftStartX + size * stride + 20;
+                const outY = craftStartY + Math.floor((size * stride) / 2) - inventoryLayout.slotSize / 2;
+                if (mouse.x >= outX && mouse.x <= outX + inventoryLayout.slotSize &&
+                    mouse.y >= outY && mouse.y <= outY + inventoryLayout.slotSize) {
+                    if (craftingOutputSlot !== undefined) {
+                        draggedItemType = cloneItem(craftingOutputSlot);
+                        dragSourceHotbarIndex = null;
+                        dragSourceInventoryIndex = null;
+                        dragSourceCraftingIndex = null;
+                        dragSourceOutputSlot = true;
+                        dragSourceArmorSlot = false;
+                        // Dont consume materials until mouse up (if placed successfully)
+                        // Or we could consume right here. Let's consume right here, it's easier.
+                        consumeCraftingMaterials();
+                    }
+                    return;
+                }
             }
 
             return;
@@ -2208,37 +2261,72 @@ if (inventoryOpen) {
                 const craftStartY = panel.y + 45;
                 const furX = craftStartX + 55;
                 const furY = craftStartY + 45;
+                const slotSize = 38;
+                const inputSlotX = furX - 72;
+                const inputSlotY = furY + 8;
+                const fuelSlotX = furX - 72;
+                const fuelSlotY = furY + 62;
+                const outputSlotX = furX + 34;
+                const outputSlotY = furY + 35;
 
                 ctx.fillStyle = "#3f3f3f";
-                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.font = "9px 'Press Start 2P', monospace";
                 ctx.textAlign = "center";
-                ctx.fillText("Furnace", furX, craftStartY - 10);
+                ctx.fillText("Furnace", furX, craftStartY - 14);
 
                 const drawSlot = (x, y, itemType, itemCount) => {
                     ctx.fillStyle = "#8b8b8b";
-                    ctx.fillRect(x, y, 32, 32);
+                    ctx.fillRect(x, y, slotSize, slotSize);
                     ctx.strokeStyle = "#373737"; ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.moveTo(x, y + 32); ctx.lineTo(x, y); ctx.lineTo(x + 32, y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, y + slotSize); ctx.lineTo(x, y); ctx.lineTo(x + slotSize, y); ctx.stroke();
                     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.moveTo(x, y + 32); ctx.lineTo(x + 32, y + 32); ctx.lineTo(x + 32, y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, y + slotSize); ctx.lineTo(x + slotSize, y + slotSize); ctx.lineTo(x + slotSize, y); ctx.stroke();
                     if (itemCount > 0) {
-                        drawItemIcon(ctx, itemType, x + 6, y + 6, 20);
+                        drawItemIcon(ctx, itemType, x + 7, y + 7, slotSize - 14);
                         ctx.fillStyle = "#ffffff";
                         ctx.font = "8px 'Press Start 2P', monospace";
                         ctx.textAlign = "right";
-                        ctx.fillText(`${itemCount}`, x + 30, y + 28);
+                        ctx.fillText(`${itemCount}`, x + slotSize - 2, y + slotSize - 4);
                     }
                 };
 
-                drawSlot(furX - 60, furY + 15, furnace.inputItem, furnace.inputCount);
-                drawSlot(furX - 60, furY + 55, furnace.fuelItem, furnace.fuelCount);
-                drawSlot(furX + 30, furY + 35, furnace.outputItem, furnace.outputCount);
+                drawSlot(inputSlotX, inputSlotY, furnace.inputItem, furnace.inputCount);
+                drawSlot(fuelSlotX, fuelSlotY, furnace.fuelItem, furnace.fuelCount);
+                drawSlot(outputSlotX, outputSlotY, furnace.outputItem, furnace.outputCount);
+
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "7px 'Press Start 2P', monospace";
+                ctx.textAlign = "left";
+                ctx.fillText("INPUT", inputSlotX, inputSlotY - 4);
+                ctx.fillText("FUEL", fuelSlotX, fuelSlotY - 4);
+                ctx.fillText("OUT", outputSlotX, outputSlotY - 4);
+
+                ctx.strokeStyle = "#4a4a4a";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(furX - 4, furY + 52);
+                ctx.lineTo(furX + 24, furY + 52);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(furX + 24, furY + 52);
+                ctx.lineTo(furX + 16, furY + 46);
+                ctx.lineTo(furX + 16, furY + 58);
+                ctx.closePath();
+                ctx.fillStyle = "#4a4a4a";
+                ctx.fill();
 
                 // Progress
                 ctx.fillStyle = "#333";
-                ctx.fillRect(furX - 15, furY + 42, 30, 10);
+                ctx.fillRect(furX - 10, furY + 68, 50, 12);
                 ctx.fillStyle = "#ff6600";
-                ctx.fillRect(furX - 15, furY + 42, (furnace.progress / 100) * 30, 10);
+                ctx.fillRect(furX - 10, furY + 68, (furnace.progress / 100) * 50, 12);
+                ctx.strokeStyle = "#202020";
+                ctx.strokeRect(furX - 10, furY + 68, 50, 12);
+
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "7px 'Press Start 2P', monospace";
+                ctx.textAlign = "left";
+                ctx.fillText(getFurnaceStatus(furnace), inputSlotX, furY + 92);
             }
 
             // Draw Armor Slot
@@ -2273,26 +2361,27 @@ if (inventoryOpen) {
             }
 
             const totalSlots = inventoryLayout.cols * rows;
-            // Draw Crafting Area (2x2 grid + output)
-            const craftStartX = panel.x + panel.width - 190;
-            const craftStartY = panel.y + 40;
+            if (!isChestOpen && !isFurnaceOpen) {
+                // Draw Crafting Area (2x2 grid + output)
+                const craftStartX = panel.x + panel.width - 190;
+                const craftStartY = panel.y + 40;
 
-            ctx.fillStyle = "#3f3f3f";
-            ctx.font = "10px 'Press Start 2P', monospace";
-            ctx.fillText(isCraftingTableOpen ? "Crafting Table" : "Crafting", craftStartX, craftStartY - 10);
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "10px 'Press Start 2P', monospace";
+                ctx.fillText(isCraftingTableOpen ? "Crafting Table" : "Crafting", craftStartX, craftStartY - 10);
 
-            // Draw Recipe Book Toggle Button
-            const recipeBtnX = craftStartX + 120;
-            const recipeBtnY = craftStartY - 20;
-            ctx.fillStyle = showRecipes ? "#4CAF50" : "#8b8b8b";
-            ctx.fillRect(recipeBtnX, recipeBtnY, 60, 16);
-            ctx.fillStyle = "#fff";
-            ctx.font = "8px 'Press Start 2P', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("RECIPES", recipeBtnX + 30, recipeBtnY + 12);
-            ctx.textAlign = "left";
+                // Draw Recipe Book Toggle Button
+                const recipeBtnX = craftStartX + 120;
+                const recipeBtnY = craftStartY - 20;
+                ctx.fillStyle = showRecipes ? "#4CAF50" : "#8b8b8b";
+                ctx.fillRect(recipeBtnX, recipeBtnY, 60, 16);
+                ctx.fillStyle = "#fff";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("RECIPES", recipeBtnX + 30, recipeBtnY + 12);
+                ctx.textAlign = "left";
 
-            if (showRecipes) {
+                if (showRecipes) {
                 // Draw Recipe Book Overlay
                 ctx.fillStyle = "rgba(0, 0, 0, 0.95)";
                 ctx.fillRect(panel.x - 20, panel.y - 20, panel.width + 40, panel.height + 40);
@@ -2372,7 +2461,7 @@ if (inventoryOpen) {
                 ctx.fillRect(panel.x + panel.width - 80, panel.y - 10, 60, 20);
                 ctx.fillStyle = "#fff";
                 ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 4);
-            } else {
+                } else {
 
             const size = isCraftingTableOpen ? 3 : 2;
             const stride = inventoryLayout.slotSize + inventoryLayout.gap;
@@ -2415,6 +2504,7 @@ if (inventoryOpen) {
                         ctx.fillStyle = "#ffffff";
                         ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
                     }
+                }
                 }
             }
 
