@@ -231,21 +231,36 @@ const blockColors = {
     let selectedHotbarIndex = 0;
 
     // Map initial available blocks, empty for the rest
+    const normalizeSlots = (sourceSlots, targetLength, fallbackSlots = []) => {
+        const normalized = new Array(targetLength).fill(undefined);
+        for (let i = 0; i < targetLength; i++) {
+            const sourceItem = sourceSlots?.[i];
+            if (sourceItem !== undefined) {
+                normalized[i] = cloneItem(sourceItem);
+                continue;
+            }
+            if (i < fallbackSlots.length) {
+                normalized[i] = cloneItem(fallbackSlots[i]);
+            }
+        }
+        return normalized;
+    };
+
     let hotbarSlots;
-    if (builderHotbar) {
-        hotbarSlots = builderHotbar.map(cloneItem);
+    if (Array.isArray(builderHotbar)) {
+        hotbarSlots = normalizeSlots(builderHotbar, 9, [1, 2, 3, 4, 7, 8, 5, 6, undefined]);
     } else {
-        hotbarSlots = [1, 2, 3, 4, 7, 8, 5, 6, undefined].map(cloneItem);
+        hotbarSlots = normalizeSlots([], 9, [1, 2, 3, 4, 7, 8, 5, 6, undefined]);
     }
 
     let selectedBlockType = hotbarSlots[0] || 1;
     let localPlayerId = null;
 
     let inventorySlots;
-    if (builderInventory) {
-        inventorySlots = builderInventory.map(cloneItem);
+    if (Array.isArray(builderInventory)) {
+        inventorySlots = normalizeSlots(builderInventory, 27);
     } else {
-        inventorySlots = new Array(27).fill(undefined).map(cloneItem);
+        inventorySlots = normalizeSlots([], 27);
     }
 
     let armorSlot = builderArmor ? cloneItem(builderArmor) : undefined;
