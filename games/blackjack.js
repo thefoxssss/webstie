@@ -11,6 +11,7 @@ import {
   hasActiveItem,
   firebase,
   handleFirebaseError,
+  escapeHtml,
 } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
@@ -311,7 +312,7 @@ function handleBJUpdate(d) {
     document.getElementById("bjLobby").style.display = "flex";
     document.getElementById("bjTable").style.display = "none";
     document.getElementById("bjPList").innerHTML = d.seats
-      .map((s, i) => (s ? `<div>${s.name} ${i === 0 ? "(HOST)" : ""}</div>` : ""))
+      .map((s, i) => (s ? `<div>${escapeHtml(s.name)} ${i === 0 ? "(HOST)" : ""}</div>` : ""))
       .join("");
     if (bjMySeatIdx === 0) {
       document.getElementById("bjStartBtn").style.display = "block";
@@ -343,7 +344,7 @@ function handleBJUpdate(d) {
     const div = document.createElement("div");
     div.className = "bj-small-seat";
     if (d.activeSeat === i && d.phase === "playing") div.classList.add("active-seat");
-    div.innerHTML = `<div style="font-size:8px">${s.name}</div><div class="bj-small-hand"></div>`;
+    div.innerHTML = `<div style="font-size:8px">${escapeHtml(s.name)}</div><div class="bj-small-hand"></div>`;
     const hd = div.querySelector(".bj-small-hand");
     s.hand.forEach((c, cIdx) => {
       const cd = document.createElement("div");

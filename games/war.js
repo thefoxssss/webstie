@@ -8,6 +8,7 @@ import {
   state,
   firebase,
   handleFirebaseError,
+  escapeHtml,
 } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
@@ -141,7 +142,7 @@ function handleWarUpdate(data) {
     document.getElementById("warLobby").style.display = "flex";
     document.getElementById("warTable").style.display = "none";
     document.getElementById("warPList").innerHTML = data.seats
-      .map((seat, index) => (seat ? `<div>${seat.name}${index === 0 ? " (HOST)" : ""}</div>` : ""))
+      .map((seat, index) => (seat ? `<div>${escapeHtml(seat.name)}${index === 0 ? " (HOST)" : ""}</div>` : ""))
       .join("");
     document.getElementById("warStartBtn").style.display = warMySeatIdx === 0 ? "block" : "none";
     setText("warWait", warMySeatIdx === 0 ? "START WHEN READY" : "WAITING FOR HOST");

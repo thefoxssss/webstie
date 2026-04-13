@@ -1,5 +1,5 @@
 // Multiplayer hangman mode with lobby, turn order, and chat.
-import { registerGameStop, setText, showToast, handleFirebaseError, state, firebase } from "../core.js";
+import { registerGameStop, setText, showToast, handleFirebaseError, state, firebase, escapeHtml } from "../core.js";
 
 const { doc, setDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -160,7 +160,7 @@ function handleHMUpdate(data) {
     document.getElementById("hmLobby").style.display = "flex";
     document.getElementById("hmGame").style.display = "none";
     document.getElementById("hmPList").innerHTML = players
-      .map((p) => `<div>${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`)
+      .map((p) => `<div>${escapeHtml(p.name)}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`)
       .join("");
     if (hmIsHost) {
       document.getElementById("hmStartBtn").style.display = "block";
@@ -176,7 +176,7 @@ function handleHMUpdate(data) {
   document.getElementById("hmPListLive").innerHTML = players
     .map((p, idx) => {
       const isTurn = idx === (data.turnIndex ?? 0);
-      return `<div>${isTurn ? "▶ " : ""}${p.name}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`;
+      return `<div>${isTurn ? "▶ " : ""}${escapeHtml(p.name)}${p.uid === data.hostUid ? " (HOST)" : ""}</div>`;
     })
     .join("");
   const currentPlayer = players[data.turnIndex ?? 0];
@@ -199,7 +199,7 @@ function handleHMUpdate(data) {
   (data.chat || []).forEach((entry) => {
     const line = document.createElement("div");
     line.className = "hangman-chat-line";
-    line.innerHTML = `<div class="hangman-chat-name">${entry.name}</div><div class="hangman-chat-text ${entry.type || ""}">${entry.msg}</div>`;
+    line.innerHTML = `<div class="hangman-chat-name">${escapeHtml(entry.name)}</div><div class="hangman-chat-text ${entry.type || ""}">${escapeHtml(entry.msg)}</div>`;
     chatLog.appendChild(line);
   });
   chatLog.scrollTop = chatLog.scrollHeight;

@@ -1,5 +1,5 @@
 // Multiplayer Tic-Tac-Toe using Firestore for shared state + local AI mode.
-import { registerGameStop, setText, state, firebase, showToast } from "../core.js";
+import { registerGameStop, setText, state, firebase, showToast, escapeHtml } from "../core.js";
 
 const { doc, setDoc, getDoc, updateDoc, onSnapshot, runTransaction } = firebase;
 
@@ -90,7 +90,7 @@ function joinTTT(code, side) {
     if (!d.exists()) return;
     const data = d.data();
     if (data.status === "lobby") {
-      document.getElementById("tttPList").innerHTML = `<div>X: ${data.names.X}</div><div>O: ${data.names.O}</div>`;
+      document.getElementById("tttPList").innerHTML = `<div>X: ${escapeHtml(data.names.X)}</div><div>O: ${escapeHtml(data.names.O)}</div>`;
       if (side === "X" && data.players.O) { document.getElementById("tttStartBtn").style.display = "block"; setText("tttWait", "READY"); }
       else { document.getElementById("tttStartBtn").style.display = "none"; setText("tttWait", "WAITING..."); }
     } else {

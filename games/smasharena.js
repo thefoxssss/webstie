@@ -1,5 +1,5 @@
 // Smash-style platform fighter with local bot mode and Colyseus online duels.
-import { registerGameStop, setText, showToast, state, firebase, isInputFocused } from "../core.js";
+import { registerGameStop, setText, showToast, state, firebase, isInputFocused, escapeHtml } from "../core.js";
 
 const { doc, setDoc, onSnapshot, runTransaction, updateDoc } = firebase;
 // Colyseus client setup
@@ -265,7 +265,7 @@ function handleColyseusStateChange(stateData) {
   render(localState);
   document.getElementById("saStartBtn").style.display = isHost && localState.status === "lobby" ? "inline-flex" : "none";
   setText("saLobbyStatus", localState.status === "lobby" ? "WAITING FOR PLAYERS" : "MATCH LIVE");
-  const roster = Object.entries(localState.players || {}).map(([id, p]) => `<div>${id.toUpperCase()}: ${p.name}</div>`).join("");
+  const roster = Object.entries(localState.players || {}).map(([id, p]) => `<div>${id.toUpperCase()}: ${escapeHtml(p.name)}</div>`).join("");
   document.getElementById("saPlayers").innerHTML = roster;
 }
 

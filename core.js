@@ -1504,7 +1504,7 @@ export function setText(id, txt) {
   if (el) el.innerText = txt;
 }
 
-function escapeHtml(value) {
+export function escapeHtml(value) {
   return String(value || "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
