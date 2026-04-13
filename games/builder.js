@@ -1016,6 +1016,8 @@ function sendBuildOrBreak(e) {
         // Handle inventory and dragging mechanics first
         if (inventoryOpen) {
             const panel = getInventoryBounds();
+            const craftingUiEnabled = !isChestOpen && !isFurnaceOpen;
+            if (!craftingUiEnabled) showRecipes = false;
 
             if (showRecipes) {
                 // Check close button
@@ -1026,15 +1028,17 @@ function sendBuildOrBreak(e) {
                 return; // Prevent other interactions while recipes are open
             }
 
-            // Check Recipe Button toggle
             const craftStartX = panel.x + panel.width - 190;
             const craftStartY = panel.y + 40;
-            const recipeBtnX = craftStartX + 120;
-            const recipeBtnY = craftStartY - 20;
-            if (mouse.x >= recipeBtnX && mouse.x <= recipeBtnX + 60 &&
-                mouse.y >= recipeBtnY && mouse.y <= recipeBtnY + 16) {
-                showRecipes = true;
-                return;
+            if (craftingUiEnabled) {
+                // Check Recipe Button toggle
+                const recipeBtnX = craftStartX + 120;
+                const recipeBtnY = craftStartY - 20;
+                if (mouse.x >= recipeBtnX && mouse.x <= recipeBtnX + 60 &&
+                    mouse.y >= recipeBtnY && mouse.y <= recipeBtnY + 16) {
+                    showRecipes = true;
+                    return;
+                }
             }
 
             const isRightClick = e.button === 2;
@@ -1336,74 +1340,76 @@ function sendBuildOrBreak(e) {
                 if (handleSlotInteraction(null, null, true)) return;
             }
 
-            // Check if crafting grids or output slot clicked
-            const size = isCraftingTableOpen ? 3 : 2;
-            const stride = inventoryLayout.slotSize + inventoryLayout.gap;
-            if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
-                mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
-                // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
-                // Actually let's do 1 Wood(4) -> 4 Brick(6) as planks.
-                let woodIndex = -1;
-                let foundHotbar = false;
-                for (let i = 0; i < hotbarSlots.length; i++) {
-                    if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === 4 && hotbarSlots[i].count >= 1) {
-                        woodIndex = i;
-                        foundHotbar = true;
-                        break;
-                    }
-                }
-                if (woodIndex === -1) {
-                    for (let i = 0; i < inventorySlots.length; i++) {
-                        if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
+            if (craftingUiEnabled) {
+                // Check if crafting grids or output slot clicked
+                const size = isCraftingTableOpen ? 3 : 2;
+                const stride = inventoryLayout.slotSize + inventoryLayout.gap;
+                if (mouse.x >= craftStartX && mouse.x <= craftStartX + 130 &&
+                    mouse.y >= craftStartY && mouse.y <= craftStartY + 20) {
+                    // Attempt to craft 4 Planks (Wood=4) -> 1 Plank = Brick(6) for now, or Wood=4 -> 4 Brick(6)? Let's just do Wood(4) -> 4 Wood Planks(which we can use Wood block for).
+                    // Actually let's do 1 Wood(4) -> 4 Brick(6) as planks.
+                    let woodIndex = -1;
+                    let foundHotbar = false;
+                    for (let i = 0; i < hotbarSlots.length; i++) {
+                        if (hotbarSlots[i] && getMergedInventoryType(hotbarSlots[i].type) === 4 && hotbarSlots[i].count >= 1) {
                             woodIndex = i;
+                            foundHotbar = true;
                             break;
                         }
-                        return;
                     }
-                }
-            }
-
-            // Pick up from crafting grid
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    const slotX = craftStartX + c * stride;
-                    const slotY = craftStartY + r * stride;
-                    if (mouse.x >= slotX && mouse.x <= slotX + inventoryLayout.slotSize &&
-                        mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
-                        const craftingIndex = r * size + c;
-                        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
-                        if (grid[craftingIndex] !== undefined) {
-                            draggedItemType = cloneItem(grid[craftingIndex]);
-                            dragSourceHotbarIndex = null;
-                            dragSourceInventoryIndex = null;
-                            dragSourceCraftingIndex = craftingIndex;
-                            dragSourceOutputSlot = false;
-                            dragSourceArmorSlot = false;
-                            grid[craftingIndex] = undefined;
-                            checkRecipes();
+                    if (woodIndex === -1) {
+                        for (let i = 0; i < inventorySlots.length; i++) {
+                            if (inventorySlots[i] && getMergedInventoryType(inventorySlots[i].type) === 4 && inventorySlots[i].count >= 1) {
+                                woodIndex = i;
+                                break;
+                            }
+                            return;
                         }
-                        return;
                     }
                 }
-            }
 
-            // Output slot check
-            const outX = craftStartX + size * stride + 20;
-            const outY = craftStartY + Math.floor((size * stride) / 2) - inventoryLayout.slotSize / 2;
-            if (mouse.x >= outX && mouse.x <= outX + inventoryLayout.slotSize &&
-                mouse.y >= outY && mouse.y <= outY + inventoryLayout.slotSize) {
-                if (craftingOutputSlot !== undefined) {
-                    draggedItemType = cloneItem(craftingOutputSlot);
-                    dragSourceHotbarIndex = null;
-                    dragSourceInventoryIndex = null;
-                    dragSourceCraftingIndex = null;
-                    dragSourceOutputSlot = true;
-                    dragSourceArmorSlot = false;
-                    // Dont consume materials until mouse up (if placed successfully)
-                    // Or we could consume right here. Let's consume right here, it's easier.
-                    consumeCraftingMaterials();
+                // Pick up from crafting grid
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        const slotX = craftStartX + c * stride;
+                        const slotY = craftStartY + r * stride;
+                        if (mouse.x >= slotX && mouse.x <= slotX + inventoryLayout.slotSize &&
+                            mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
+                            const craftingIndex = r * size + c;
+                            const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+                            if (grid[craftingIndex] !== undefined) {
+                                draggedItemType = cloneItem(grid[craftingIndex]);
+                                dragSourceHotbarIndex = null;
+                                dragSourceInventoryIndex = null;
+                                dragSourceCraftingIndex = craftingIndex;
+                                dragSourceOutputSlot = false;
+                                dragSourceArmorSlot = false;
+                                grid[craftingIndex] = undefined;
+                                checkRecipes();
+                            }
+                            return;
+                        }
+                    }
                 }
-                return;
+
+                // Output slot check
+                const outX = craftStartX + size * stride + 20;
+                const outY = craftStartY + Math.floor((size * stride) / 2) - inventoryLayout.slotSize / 2;
+                if (mouse.x >= outX && mouse.x <= outX + inventoryLayout.slotSize &&
+                    mouse.y >= outY && mouse.y <= outY + inventoryLayout.slotSize) {
+                    if (craftingOutputSlot !== undefined) {
+                        draggedItemType = cloneItem(craftingOutputSlot);
+                        dragSourceHotbarIndex = null;
+                        dragSourceInventoryIndex = null;
+                        dragSourceCraftingIndex = null;
+                        dragSourceOutputSlot = true;
+                        dragSourceArmorSlot = false;
+                        // Dont consume materials until mouse up (if placed successfully)
+                        // Or we could consume right here. Let's consume right here, it's easier.
+                        consumeCraftingMaterials();
+                    }
+                    return;
+                }
             }
 
             return;
@@ -2355,26 +2361,27 @@ if (inventoryOpen) {
             }
 
             const totalSlots = inventoryLayout.cols * rows;
-            // Draw Crafting Area (2x2 grid + output)
-            const craftStartX = panel.x + panel.width - 190;
-            const craftStartY = panel.y + 40;
+            if (!isChestOpen && !isFurnaceOpen) {
+                // Draw Crafting Area (2x2 grid + output)
+                const craftStartX = panel.x + panel.width - 190;
+                const craftStartY = panel.y + 40;
 
-            ctx.fillStyle = "#3f3f3f";
-            ctx.font = "10px 'Press Start 2P', monospace";
-            ctx.fillText(isCraftingTableOpen ? "Crafting Table" : "Crafting", craftStartX, craftStartY - 10);
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "10px 'Press Start 2P', monospace";
+                ctx.fillText(isCraftingTableOpen ? "Crafting Table" : "Crafting", craftStartX, craftStartY - 10);
 
-            // Draw Recipe Book Toggle Button
-            const recipeBtnX = craftStartX + 120;
-            const recipeBtnY = craftStartY - 20;
-            ctx.fillStyle = showRecipes ? "#4CAF50" : "#8b8b8b";
-            ctx.fillRect(recipeBtnX, recipeBtnY, 60, 16);
-            ctx.fillStyle = "#fff";
-            ctx.font = "8px 'Press Start 2P', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("RECIPES", recipeBtnX + 30, recipeBtnY + 12);
-            ctx.textAlign = "left";
+                // Draw Recipe Book Toggle Button
+                const recipeBtnX = craftStartX + 120;
+                const recipeBtnY = craftStartY - 20;
+                ctx.fillStyle = showRecipes ? "#4CAF50" : "#8b8b8b";
+                ctx.fillRect(recipeBtnX, recipeBtnY, 60, 16);
+                ctx.fillStyle = "#fff";
+                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("RECIPES", recipeBtnX + 30, recipeBtnY + 12);
+                ctx.textAlign = "left";
 
-            if (showRecipes) {
+                if (showRecipes) {
                 // Draw Recipe Book Overlay
                 ctx.fillStyle = "rgba(0, 0, 0, 0.95)";
                 ctx.fillRect(panel.x - 20, panel.y - 20, panel.width + 40, panel.height + 40);
@@ -2454,7 +2461,7 @@ if (inventoryOpen) {
                 ctx.fillRect(panel.x + panel.width - 80, panel.y - 10, 60, 20);
                 ctx.fillStyle = "#fff";
                 ctx.fillText("CLOSE", panel.x + panel.width - 70, panel.y + 4);
-            } else {
+                } else {
 
             const size = isCraftingTableOpen ? 3 : 2;
             const stride = inventoryLayout.slotSize + inventoryLayout.gap;
@@ -2497,6 +2504,7 @@ if (inventoryOpen) {
                         ctx.fillStyle = "#ffffff";
                         ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
                     }
+                }
                 }
             }
 
