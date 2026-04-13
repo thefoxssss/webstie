@@ -17,7 +17,7 @@ def run_cuj(page):
     page.wait_for_timeout(2000)
 
     page.evaluate('''
-        document.querySelector("#builderMenu button[onclick*='builderJoinRoom']").click();
+        document.getElementById('btnJoinBuilder').click();
     ''')
     page.wait_for_timeout(4000)
 

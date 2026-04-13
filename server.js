@@ -508,6 +508,8 @@ class BuilderRoom extends colyseus.Room {
     this.setState(state);
 
     this.inputs = {};
+    this.offlineChunks = new Map();
+    this.tickCount = 0;
 
     this.onMessage("input", (client, message) => {
       const pId = client.sessionId;
@@ -884,6 +886,20 @@ this.onMessage("hammer", (client, message) => {
         p.selectedItemType = 0;
     });
 
+    this.onMessage("recall", (client) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+
+        // Recall player to spawn (0, 0 area)
+        const spawnX = Math.floor(Math.random() * 20) - 10;
+        const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
+        const spawnY = Math.floor(20 + noise * 15) - 2;
+        p.x = spawnX * TILE_SIZE;
+        p.y = spawnY * TILE_SIZE;
+        p.vx = 0;
+        p.vy = 0;
+    });
+
     this.loadWorld();
     this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
     this.saveInterval = setInterval(() => this.saveWorld(), 30000); // Save every 30s
@@ -973,6 +989,9 @@ this.onMessage("hammer", (client, message) => {
           data.chunks[key].push({ x: block.x, y: block.y, type: block.type, meta: block.meta || 0 });
         });
       });
+      this.offlineChunks.forEach((chunkData, key) => {
+        data.chunks[key] = chunkData;
+      });
       this.state.chests.forEach((chest, key) => {
         const items = {};
         chest.items.forEach((item, slot) => {
@@ -1007,16 +1026,7 @@ this.onMessage("hammer", (client, message) => {
         const data = rawData.chunks ? rawData : { chunks: rawData, chests: {}, furnaces: {} }; // backcompat
 
         for (const chunkKey in data.chunks) {
-          const chunk = new Chunk();
-          data.chunks[chunkKey].forEach(bData => {
-            const b = new Block();
-            b.x = bData.x;
-            b.y = bData.y;
-            b.type = bData.type;
-            b.meta = bData.meta || 0;
-            chunk.blocks.set(`${b.x},${b.y}`, b);
-          });
-          this.state.chunks.set(chunkKey, chunk);
+          this.offlineChunks.set(chunkKey, data.chunks[chunkKey]);
         }
         for (const chestKey in data.chests) {
             const chest = new ChestData();
@@ -1088,8 +1098,11 @@ this.onMessage("hammer", (client, message) => {
       const endY = Math.min(maxY, h + 200);
 
       for (let y = startY; y < endY; y++) {
-        const caveNoise = layeredNoise(worldX, y, 3, 0.5, 0.1);
-        const isCave = Math.abs(caveNoise) < 0.08 && y >= h + 25;
+        let isCave = false;
+        if (y >= h + 25) {
+            const caveNoise = layeredNoise(worldX, y, 3, 0.5, 0.1);
+            isCave = Math.abs(caveNoise) < 0.08;
+        }
 
         if (!isCave) {
             const b = new Block();
@@ -1193,8 +1206,25 @@ this.onMessage("hammer", (client, message) => {
     const key = `${cx},${cy}`;
     let chunk = this.state.chunks.get(key);
     if (!chunk) {
-      this.generateChunk(cx, cy);
-      chunk = this.state.chunks.get(key);
+      if (this.offlineChunks.has(key)) {
+        // Load from offline
+        const chunkData = this.offlineChunks.get(key);
+        chunk = new Chunk();
+        chunkData.forEach(bData => {
+          const b = new Block();
+          b.x = bData.x;
+          b.y = bData.y;
+          b.type = bData.type;
+          b.meta = bData.meta || 0;
+          chunk.blocks.set(`${b.x},${b.y}`, b);
+        });
+        this.state.chunks.set(key, chunk);
+        this.offlineChunks.delete(key);
+      } else {
+        // Generate new
+        this.generateChunk(cx, cy);
+        chunk = this.state.chunks.get(key);
+      }
     }
     return chunk;
   }
@@ -1225,6 +1255,33 @@ isSolid(x, y) {
   }
 
   simulateTick() {
+    this.tickCount++;
+    if (this.tickCount % 100 === 0) {
+      // Unload distant chunks
+      const activeChunkKeys = new Set();
+      this.state.players.forEach((p) => {
+        const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
+        const pCy = Math.floor(p.y / (TILE_SIZE * CHUNK_SIZE));
+        for (let cx = pCx - 3; cx <= pCx + 3; cx++) {
+          for (let cy = pCy - 3; cy <= pCy + 3; cy++) {
+            activeChunkKeys.add(`${cx},${cy}`);
+          }
+        }
+      });
+
+      this.state.chunks.forEach((chunk, key) => {
+        if (!activeChunkKeys.has(key)) {
+          // Serialize and unload
+          const chunkData = [];
+          chunk.blocks.forEach((block) => {
+            chunkData.push({ x: block.x, y: block.y, type: block.type, meta: block.meta || 0 });
+          });
+          this.offlineChunks.set(key, chunkData);
+          this.state.chunks.delete(key);
+        }
+      });
+    }
+
     // Bullet simulation
     // Tree growth (saplings)
     if (Math.random() < 0.05) { // Occasional check
@@ -1495,7 +1552,7 @@ if (onLadder) {
         if (exp.timer <= 0) {
             // EXPLODE!
             const isNuke = exp.type === 34;
-            const radius = isNuke ? (TILE_SIZE * 15) : (TILE_SIZE * 5);
+            const radius = isNuke ? (TILE_SIZE * 1000) : (TILE_SIZE * 5);
             const damage = isNuke ? 100 : 20;
 
             // Damage players

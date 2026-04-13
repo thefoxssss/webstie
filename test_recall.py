@@ -1,4 +1,5 @@
 from playwright.sync_api import sync_playwright
+import time
 
 def run_cuj(page):
     page.goto("http://localhost:8001/index.html?local=1")
@@ -16,45 +17,48 @@ def run_cuj(page):
     page.evaluate("window.launchGame('builder')")
     page.wait_for_timeout(2000)
 
-    # Click create server manually or evaluate it since it might not be bound to text
-    page.evaluate("document.getElementById('btnCreateBuilderServer').click()")
-    page.wait_for_timeout(4000)
+    # Click the quick join button using the element ID
+    page.evaluate('''
+        document.getElementById("btnJoinBuilder").click();
+    ''')
+    page.wait_for_timeout(3000)
 
-    page.keyboard.press("e")
-    page.wait_for_timeout(1000)
-    page.screenshot(path="/home/jules/verification/screenshots/inventory_icons5.png")
-    page.wait_for_timeout(1000)
+    page.keyboard.down("d")
+    page.wait_for_timeout(3000)
+    page.keyboard.up("d")
 
-    page.keyboard.press("e")
-    page.wait_for_timeout(1000)
+    # Store old position
+    old_x = page.evaluate("localPlayer.x")
+    old_y = page.evaluate("localPlayer.y")
 
-    page.keyboard.press("1")
-    page.wait_for_timeout(500)
+    print(f"Old pos: {old_x}, {old_y}")
 
-    # Walk around a bit
-    page.keyboard.press("d")
-    page.wait_for_timeout(500)
-    page.keyboard.press("d")
-    page.wait_for_timeout(500)
-
-    # Try breaking a block to spawn a drop to see the icon drop
-    # (Just an interaction)
-    page.mouse.click(640, 360, button="left")
+    # Trigger recall
+    page.keyboard.press("r")
     page.wait_for_timeout(1000)
 
-    page.screenshot(path="/home/jules/verification/screenshots/world_caves5.png")
-    page.wait_for_timeout(1000)
+    # Store new position
+    new_x = page.evaluate("localPlayer.x")
+    new_y = page.evaluate("localPlayer.y")
+
+    print(f"New pos: {new_x}, {new_y}")
+
+    assert old_x != new_x or old_y != new_y
+    assert abs(new_x) < 500
 
 if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
-            record_video_dir="/home/jules/verification/videos",
             viewport={'width': 1280, 'height': 720}
         )
         page = context.new_page()
         try:
             run_cuj(page)
+            print("TEST PASSED")
+        except Exception as e:
+            print("TEST FAILED")
+            print(e)
         finally:
             context.close()
             browser.close()

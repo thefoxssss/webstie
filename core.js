@@ -693,7 +693,7 @@ export function hasPermission(bit) {
   return (permissionMask & bit) === bit;
 }
 
-function isGodUser(name = myName) {
+export function isGodUser(name = myName) {
   const normalized = String(name || "").trim().toUpperCase();
   if (!normalized) return false;
   if (ADMIN_ALLOWLIST.has(normalized)) return true;
@@ -3396,6 +3396,9 @@ async function register(username, pin) {
     stats: { games: 0, wpm: 0, wins: 0 },
     jobs: { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } },
     stockData: { holdings: {}, selected: "GOON", buyMultiplier: 1 },
+    builderInventory: null,
+    builderHotbar: null,
+    builderArmor: null,
   };
 
   const localProfile = getLocalProfile(normalized);
@@ -4146,6 +4149,23 @@ export async function adminScheduleTaskFromInput() {
   });
 }
 
+export async function adminGiveBuilderItemFromInput() {
+  const itemSelect = document.getElementById("adminBuilderItemInput");
+  const countInput = document.getElementById("adminBuilderItemCount");
+  const itemId = Number(itemSelect?.value);
+  const count = Number(countInput?.value);
+  if (!itemId || !count || count <= 0) {
+    showToast("INVALID ITEM OR COUNT", "⚠️");
+    return;
+  }
+  if (typeof window.adminGiveBuilderItem === "function") {
+    window.adminGiveBuilderItem(itemId, count);
+    showToast(`GIVEN ${count} ITEM(S)`, "📦");
+  } else {
+    showToast("BUILDER NOT LOADED", "⚠️");
+  }
+}
+
 export async function adminClearScheduledTasksFromInput() {
   const removeCount = Math.max(1, Math.floor(readAdminNumberInput("adminTaskClearCount", 1)));
   await applyAdminActionToTargets({
@@ -4253,9 +4273,9 @@ export async function saveStats() {
     achievements: myAchievements,
     inventory: myInventory,
     itemToggles: myItemToggles,
-    builderInventory,
-    builderHotbar,
-    builderArmor,
+    builderInventory: Array.isArray(builderInventory) ? builderInventory.map(item => item === undefined ? null : item) : null,
+    builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
+    builderArmor: builderArmor === undefined ? null : builderArmor,
     jobs: jobData,
     loanData,
     stockData,
@@ -4273,9 +4293,9 @@ export async function saveStats() {
         achievements: myAchievements,
         inventory: myInventory,
         itemToggles: myItemToggles,
-        builderInventory: builderInventory,
-        builderHotbar: builderHotbar,
-        builderArmor: builderArmor,
+        builderInventory: Array.isArray(builderInventory) ? builderInventory.map(item => item === undefined ? null : item) : null,
+        builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
+        builderArmor: builderArmor === undefined ? null : builderArmor,
         jobs: jobData,
         loanData,
         stockData,
@@ -5875,8 +5895,6 @@ async function removeChatMessage(tab, messageId) {
 
 // Initialize realtime chat streaming and input handling.
 function initChat() {
-  const chatRoot = document.getElementById("globalChat");
-  const minimizeBtn = document.getElementById("chatMinimizeBtn");
   const moderationBtn = document.getElementById("chatModerationToggleBtn");
 
   const syncChatModerationUi = () => {
@@ -5888,14 +5906,6 @@ function initChat() {
     moderationBtn.setAttribute("aria-pressed", isChatModerationModeEnabled ? "true" : "false");
     moderationBtn.setAttribute("aria-label", isChatModerationModeEnabled ? "Disable moderation mode" : "Enable moderation mode");
     moderationBtn.title = isChatModerationModeEnabled ? "Moderation mode on" : "Moderation mode off";
-  };
-
-  const syncChatMinimizeUi = () => {
-    const isMinimized = chatRoot?.classList.contains("minimized");
-    if (!minimizeBtn) return;
-    minimizeBtn.textContent = isMinimized ? "+" : "−";
-    minimizeBtn.setAttribute("aria-expanded", isMinimized ? "false" : "true");
-    minimizeBtn.setAttribute("aria-label", isMinimized ? "Expand chat" : "Minimize chat");
   };
 
   if (moderationBtn) {
@@ -6636,3 +6646,5 @@ export function updateBuilderInventoryState(hotbar, inventory, armor) {
     builderInventory = inventory;
     builderArmor = armor;
 }
+
+export { builderHotbar, builderInventory, builderArmor };
