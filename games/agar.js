@@ -1,4 +1,4 @@
-import { escapeHtml, playerName } from "../core.js";
+import { escapeHtml, state } from "../core.js";
 
 export function initAgar() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
@@ -16,8 +16,8 @@ export function initAgar() {
     };
     const getServerHttpBase = () => {
         const wsUrl = getServerUrl();
-        if (wsUrl.startsWith("wss://")) return \`https://\${wsUrl.slice(6)}\`;
-        if (wsUrl.startsWith("ws://")) return \`http://\${wsUrl.slice(5)}\`;
+        if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice(6)}`;
+        if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice(5)}`;
         return wsUrl;
     };
 
@@ -67,11 +67,11 @@ export function initAgar() {
         }
         servers.forEach(server => {
             const row = document.createElement("div");
-            row.style.cssText = \`padding: 8px; margin-bottom: 4px; background: \${selectedRoomId === server.roomId ? '#333' : '#111'}; border: 1px solid var(--accent-dim); cursor: pointer;\`;
-            row.innerHTML = \`
-                <div style="font-size: 11px; color: #0f0;">\${escapeHtml(server.serverName || "Public World")}</div>
-                <div style="font-size: 9px; opacity: 0.9; margin-top: 4px;">PLAYERS (\${server.clients}/\${server.maxClients})</div>
-            \`;
+            row.style.cssText = `padding: 8px; margin-bottom: 4px; background: ${selectedRoomId === server.roomId ? '#333' : '#111'}; border: 1px solid var(--accent-dim); cursor: pointer;`;
+            row.innerHTML = `
+                <div style="font-size: 11px; color: #0f0;">${escapeHtml(server.serverName || "Public World")}</div>
+                <div style="font-size: 9px; opacity: 0.9; margin-top: 4px;">PLAYERS (${server.clients}/${server.maxClients})</div>
+            `;
             row.onclick = async () => {
                 selectedRoomId = server.roomId;
                 renderServerList(servers);
@@ -85,7 +85,7 @@ export function initAgar() {
         if (!btnRefreshServers) return;
         btnRefreshServers.textContent = "LOADING...";
         try {
-            const response = await fetch(\`\${getServerHttpBase()}/agar-servers\`);
+            const response = await fetch(`${getServerHttpBase()}/agar-servers`);
             const payload = await response.json();
             renderServerList(payload.servers || []);
         } catch (error) {
@@ -121,7 +121,7 @@ export function initAgar() {
         });
 
         room.onMessage("died", (message) => {
-            if (deathMessage) deathMessage.textContent = \`Eaten by \${escapeHtml(message.killer)}\`;
+            if (deathMessage) deathMessage.textContent = `Eaten by ${escapeHtml(message.killer)}`;
         });
     };
 
@@ -129,7 +129,7 @@ export function initAgar() {
         try {
             btnJoin.textContent = "CONNECTING...";
             client = new window.Colyseus.Client(getServerUrl());
-            room = await client.joinById(roomId, { name: playerName() });
+            room = await client.joinById(roomId, { name: state.myName });
             localPlayerId = room.sessionId;
             setupRoomListeners();
             menu.style.display = "none";
@@ -145,7 +145,7 @@ export function initAgar() {
         try {
             btnJoin.textContent = "CONNECTING...";
             client = new window.Colyseus.Client(getServerUrl());
-            room = await client.joinOrCreate("agar_room", { name: playerName() });
+            room = await client.joinOrCreate("agar_room", { name: state.myName });
             localPlayerId = room.sessionId;
             setupRoomListeners();
             menu.style.display = "none";
@@ -163,7 +163,7 @@ export function initAgar() {
                 btnCreateServer.textContent = "CREATING...";
                 const serverName = (serverNameInput?.value || "").trim() || "Public Agar World";
                 client = new window.Colyseus.Client(getServerUrl());
-                room = await client.create("agar_room", { name: playerName(), serverName });
+                room = await client.create("agar_room", { name: state.myName, serverName });
                 localPlayerId = room.sessionId;
                 setupRoomListeners();
                 menu.style.display = "none";
@@ -209,7 +209,7 @@ export function initAgar() {
             const p = pArray[i];
             const li = document.createElement("li");
             li.style.marginBottom = "3px";
-            li.textContent = \`\${i+1}. \${p.name} - \${Math.floor(p.score)}\`;
+            li.textContent = `${i+1}. ${p.name} - ${Math.floor(p.score)}`;
             leaderboardList.appendChild(li);
         }
     }
@@ -268,12 +268,12 @@ export function initAgar() {
             ctx.stroke();
 
             ctx.fillStyle = "white";
-            ctx.font = \`\${Math.max(10, p.radius / 2)}px 'Space Mono', monospace\`;
+            ctx.font = `${Math.max(10, p.radius / 2)}px 'Space Mono', monospace`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(p.name, p.x, p.y);
 
-            ctx.font = \`\${Math.max(8, p.radius / 3)}px 'Space Mono', monospace\`;
+            ctx.font = `${Math.max(8, p.radius / 3)}px 'Space Mono', monospace`;
             ctx.fillText(Math.floor(p.score), p.x, p.y + p.radius / 2);
         });
 
