@@ -1086,9 +1086,10 @@ function sendBuildOrBreak(e) {
 
             } else if (isFurnaceOpen && currentFurnaceId && room.state.furnaces && room.state.furnaces.has(currentFurnaceId)) {
                 const furnace = room.state.furnaces.get(currentFurnaceId);
-                const { startX, startY } = getInventoryMetrics(panel);
-                const furY = startY - 120;
-                const furX = canvas.width / 2;
+                const craftStartX = panel.x + panel.width - inventoryLayout.padding - 110;
+                const craftStartY = panel.y + 45;
+                const furX = craftStartX + 55;
+                const furY = craftStartY + 45;
 
                 const handleFurnaceSlotInteraction = (slotName) => {
                     const typeKey = slotName + "Item";
@@ -2192,16 +2193,15 @@ if (inventoryOpen) {
             } else if (isFurnaceOpen && currentFurnaceId && room.state.furnaces && room.state.furnaces.has(currentFurnaceId)) {
                 // Render Furnace UI
                 const furnace = room.state.furnaces.get(currentFurnaceId);
-                const furY = startY - 120;
-                const furX = canvas.width / 2;
-
-                ctx.fillStyle = "#c6c6c6"; // Panel color
-                ctx.fillRect(furX - 100, furY - 10, 200, 100);
+                const craftStartX = panel.x + panel.width - inventoryLayout.padding - 110;
+                const craftStartY = panel.y + 45;
+                const furX = craftStartX + 55;
+                const furY = craftStartY + 45;
 
                 ctx.fillStyle = "#3f3f3f";
                 ctx.font = "8px 'Press Start 2P', monospace";
                 ctx.textAlign = "center";
-                ctx.fillText("Furnace", furX, furY + 5);
+                ctx.fillText("Furnace", furX, craftStartY - 10);
 
                 const drawSlot = (x, y, itemType, itemCount) => {
                     ctx.fillStyle = "#8b8b8b";
