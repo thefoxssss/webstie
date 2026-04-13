@@ -735,6 +735,7 @@ const blockColors = {
 
         if (e.key === "Escape" && inventoryOpen) {
             inventoryOpen = false;
+            isCraftingTableOpen = false;
             isChestOpen = false;
             isFurnaceOpen = false;
             isChestOpen = false;
@@ -1387,18 +1388,28 @@ if (e.button === 2 && !e.shiftKey) {
                 if (block && block.type === 10) { // Crafting Table
                     inventoryOpen = true;
                     isCraftingTableOpen = true;
+                    isChestOpen = false;
+                    isFurnaceOpen = false;
+                    currentChestId = null;
+                    currentFurnaceId = null;
                     return;
 } else if (block && block.type === 31) { // Chest
                     room.send("interact", { x: worldX, y: worldY }); // register it
                     inventoryOpen = true;
+                    isCraftingTableOpen = false;
                     isChestOpen = true;
+                    isFurnaceOpen = false;
                     currentChestId = `${tileX},${tileY}`;
+                    currentFurnaceId = null;
                     return;
                 } else if (block && block.type === 32) { // Furnace
                     room.send("interact", { x: worldX, y: worldY });
                     inventoryOpen = true;
+                    isCraftingTableOpen = false;
+                    isChestOpen = false;
                     isFurnaceOpen = true;
                     currentFurnaceId = `${tileX},${tileY}`;
+                    currentChestId = null;
                     return;
                 } else if (block && (block.type === 33 || block.type === 34)) { // TNT/Nuke
                     room.send("interact", { x: worldX, y: worldY });
