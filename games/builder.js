@@ -334,6 +334,30 @@ const blockColors = {
         return blockNames[type] || `ITEM ${type}`;
     }
 
+    const SMELTABLE_INPUT_TYPES = new Set([13, 14, 15, 16, 17]);
+    const FURNACE_FUEL_TYPES = new Set([7, 9, 12]);
+    const FURNACE_OUTPUT_BY_INPUT = { 13: 43, 14: 44, 15: 45, 16: 46, 17: 47 };
+
+    function canPlaceInFurnaceSlot(slotName, type) {
+        if (!type) return false;
+        if (slotName === "input") return SMELTABLE_INPUT_TYPES.has(type);
+        if (slotName === "fuel") return FURNACE_FUEL_TYPES.has(type);
+        return false;
+    }
+
+    function getFurnaceStatus(furnace) {
+        const hasInput = furnace.inputCount > 0;
+        const hasFuel = furnace.fuelCount > 0;
+        const expectedOutput = FURNACE_OUTPUT_BY_INPUT[furnace.inputItem] || 0;
+        const outputBlocked = hasInput && expectedOutput > 0 && furnace.outputCount > 0 && furnace.outputItem !== expectedOutput;
+        if (!hasInput) return "Insert ore";
+        if (!SMELTABLE_INPUT_TYPES.has(furnace.inputItem)) return "Input must be ore";
+        if (!hasFuel) return "Add fuel";
+        if (!FURNACE_FUEL_TYPES.has(furnace.fuelItem)) return "Fuel: coal/log/planks";
+        if (outputBlocked) return "Output blocked";
+        return furnace.progress > 0 ? "Smelting..." : "Ready";
+    }
+
     function checkRecipes() {
         craftingOutputSlot = undefined;
         const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
@@ -1091,6 +1115,13 @@ function sendBuildOrBreak(e) {
                 const craftStartY = panel.y + 45;
                 const furX = craftStartX + 55;
                 const furY = craftStartY + 45;
+                const slotSize = 38;
+                const inputSlotX = furX - 72;
+                const inputSlotY = furY + 8;
+                const fuelSlotX = furX - 72;
+                const fuelSlotY = furY + 62;
+                const outputSlotX = furX + 34;
+                const outputSlotY = furY + 35;
 
                 const handleFurnaceSlotInteraction = (slotName) => {
                     const typeKey = slotName + "Item";
@@ -1109,6 +1140,20 @@ function sendBuildOrBreak(e) {
                         room.send("furnace_sync", payload);
                     };
 
+                    if (slotName === "output") {
+                        if (draggedItemType === null && currentItem) {
+                            if (isRightClick && currentItem.count > 1) {
+                                const takeCount = Math.ceil(currentItem.count / 2);
+                                draggedItemType = { type: currentItem.type, count: takeCount };
+                                setSlot({ type: currentItem.type, count: currentItem.count - takeCount });
+                            } else {
+                                draggedItemType = cloneItem(currentItem);
+                                setSlot(undefined);
+                            }
+                        }
+                        return;
+                    }
+
                     if (draggedItemType === null) {
                         if (currentItem !== undefined) {
                             if (isRightClick) {
@@ -1126,6 +1171,7 @@ function sendBuildOrBreak(e) {
                             }
                         }
                     } else {
+                        if (!canPlaceInFurnaceSlot(slotName, draggedItemType.type)) return;
                         if (isRightClick) {
                             if (currentItem === undefined) {
                                 setSlot({ type: draggedItemType.type, count: 1 });
@@ -1149,6 +1195,7 @@ function sendBuildOrBreak(e) {
                                     if (draggedItemType.count <= 0) draggedItemType = null;
                                 }
                             } else {
+                                if (!canPlaceInFurnaceSlot(slotName, currentItem.type)) return;
                                 const temp = cloneItem(currentItem);
                                 setSlot(cloneItem(draggedItemType));
                                 draggedItemType = temp;
@@ -1158,17 +1205,17 @@ function sendBuildOrBreak(e) {
                 };
 
                 const checkFurnaceSlot = (sx, sy, slotName) => {
-                    if (mouse.x >= sx && mouse.x <= sx + 32 && mouse.y >= sy && mouse.y <= sy + 32) {
+                    if (mouse.x >= sx && mouse.x <= sx + slotSize && mouse.y >= sy && mouse.y <= sy + slotSize) {
                         handleFurnaceSlotInteraction(slotName);
                         return true;
                     }
                     return false;
                 };
 
-                if (checkFurnaceSlot(furX - 60, furY + 15, "input")) return;
-                if (checkFurnaceSlot(furX - 60, furY + 55, "fuel")) return;
-                if (checkFurnaceSlot(furX + 30, furY + 35, "output")) return;
-                if (mouse.x >= furX - 100 && mouse.x <= furX + 100 && mouse.y >= furY - 10 && mouse.y <= furY + 90) return;
+                if (checkFurnaceSlot(inputSlotX, inputSlotY, "input")) return;
+                if (checkFurnaceSlot(fuelSlotX, fuelSlotY, "fuel")) return;
+                if (checkFurnaceSlot(outputSlotX, outputSlotY, "output")) return;
+                if (mouse.x >= furX - 112 && mouse.x <= furX + 128 && mouse.y >= furY - 18 && mouse.y <= furY + 106) return;
             }
 
             // Helper function to handle pickup/drop logic for slots
@@ -2208,37 +2255,72 @@ if (inventoryOpen) {
                 const craftStartY = panel.y + 45;
                 const furX = craftStartX + 55;
                 const furY = craftStartY + 45;
+                const slotSize = 38;
+                const inputSlotX = furX - 72;
+                const inputSlotY = furY + 8;
+                const fuelSlotX = furX - 72;
+                const fuelSlotY = furY + 62;
+                const outputSlotX = furX + 34;
+                const outputSlotY = furY + 35;
 
                 ctx.fillStyle = "#3f3f3f";
-                ctx.font = "8px 'Press Start 2P', monospace";
+                ctx.font = "9px 'Press Start 2P', monospace";
                 ctx.textAlign = "center";
-                ctx.fillText("Furnace", furX, craftStartY - 10);
+                ctx.fillText("Furnace", furX, craftStartY - 14);
 
                 const drawSlot = (x, y, itemType, itemCount) => {
                     ctx.fillStyle = "#8b8b8b";
-                    ctx.fillRect(x, y, 32, 32);
+                    ctx.fillRect(x, y, slotSize, slotSize);
                     ctx.strokeStyle = "#373737"; ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.moveTo(x, y + 32); ctx.lineTo(x, y); ctx.lineTo(x + 32, y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, y + slotSize); ctx.lineTo(x, y); ctx.lineTo(x + slotSize, y); ctx.stroke();
                     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.moveTo(x, y + 32); ctx.lineTo(x + 32, y + 32); ctx.lineTo(x + 32, y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, y + slotSize); ctx.lineTo(x + slotSize, y + slotSize); ctx.lineTo(x + slotSize, y); ctx.stroke();
                     if (itemCount > 0) {
-                        drawItemIcon(ctx, itemType, x + 6, y + 6, 20);
+                        drawItemIcon(ctx, itemType, x + 7, y + 7, slotSize - 14);
                         ctx.fillStyle = "#ffffff";
                         ctx.font = "8px 'Press Start 2P', monospace";
                         ctx.textAlign = "right";
-                        ctx.fillText(`${itemCount}`, x + 30, y + 28);
+                        ctx.fillText(`${itemCount}`, x + slotSize - 2, y + slotSize - 4);
                     }
                 };
 
-                drawSlot(furX - 60, furY + 15, furnace.inputItem, furnace.inputCount);
-                drawSlot(furX - 60, furY + 55, furnace.fuelItem, furnace.fuelCount);
-                drawSlot(furX + 30, furY + 35, furnace.outputItem, furnace.outputCount);
+                drawSlot(inputSlotX, inputSlotY, furnace.inputItem, furnace.inputCount);
+                drawSlot(fuelSlotX, fuelSlotY, furnace.fuelItem, furnace.fuelCount);
+                drawSlot(outputSlotX, outputSlotY, furnace.outputItem, furnace.outputCount);
+
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "7px 'Press Start 2P', monospace";
+                ctx.textAlign = "left";
+                ctx.fillText("INPUT", inputSlotX, inputSlotY - 4);
+                ctx.fillText("FUEL", fuelSlotX, fuelSlotY - 4);
+                ctx.fillText("OUT", outputSlotX, outputSlotY - 4);
+
+                ctx.strokeStyle = "#4a4a4a";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(furX - 4, furY + 52);
+                ctx.lineTo(furX + 24, furY + 52);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(furX + 24, furY + 52);
+                ctx.lineTo(furX + 16, furY + 46);
+                ctx.lineTo(furX + 16, furY + 58);
+                ctx.closePath();
+                ctx.fillStyle = "#4a4a4a";
+                ctx.fill();
 
                 // Progress
                 ctx.fillStyle = "#333";
-                ctx.fillRect(furX - 15, furY + 42, 30, 10);
+                ctx.fillRect(furX - 10, furY + 68, 50, 12);
                 ctx.fillStyle = "#ff6600";
-                ctx.fillRect(furX - 15, furY + 42, (furnace.progress / 100) * 30, 10);
+                ctx.fillRect(furX - 10, furY + 68, (furnace.progress / 100) * 50, 12);
+                ctx.strokeStyle = "#202020";
+                ctx.strokeRect(furX - 10, furY + 68, 50, 12);
+
+                ctx.fillStyle = "#3f3f3f";
+                ctx.font = "7px 'Press Start 2P', monospace";
+                ctx.textAlign = "left";
+                ctx.fillText(getFurnaceStatus(furnace), inputSlotX, furY + 92);
             }
 
             // Draw Armor Slot
