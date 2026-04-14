@@ -54,6 +54,19 @@ export function initAgar() {
     let targetX = 0;
     let targetY = 0;
     let zoom = 1;
+    let keyboardTargetActive = false;
+    const pressedKeys = new Set();
+    const KEYBOARD_TARGET_SPEED = 18;
+    const MOVEMENT_KEYS = {
+        up: ["KeyW", "ArrowUp"],
+        down: ["KeyS", "ArrowDown"],
+        left: ["KeyA", "ArrowLeft"],
+        right: ["KeyD", "ArrowRight"],
+    };
+    const ACTION_KEYS = {
+        split: ["Space", "KeyE"],
+        recombine: ["KeyR"],
+    };
 
     let players = new Map();
     let foods = new Map();
@@ -214,16 +227,80 @@ export function initAgar() {
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
 
+        keyboardTargetActive = false;
         targetX = cameraX + (mx - CANVAS_WIDTH / 2) / zoom;
         targetY = cameraY + (my - CANVAS_HEIGHT / 2) / zoom;
     });
+    const isTypingTarget = (el) => {
+        if (!el) return false;
+        const tag = (el.tagName || "").toLowerCase();
+        return el.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
+    };
+    const isMovementActive = () =>
+        menu.style.display === "none" &&
+        gameArea.style.display !== "none" &&
+        players.get(localPlayerId)?.isAlive;
+    const isPressed = (codes) => codes.some((code) => pressedKeys.has(code));
+    const updateKeyboardTargetFromInput = () => {
+        if (!isMovementActive()) return;
+        const horizontal = (isPressed(MOVEMENT_KEYS.right) ? 1 : 0) - (isPressed(MOVEMENT_KEYS.left) ? 1 : 0);
+        const vertical = (isPressed(MOVEMENT_KEYS.down) ? 1 : 0) - (isPressed(MOVEMENT_KEYS.up) ? 1 : 0);
+        if (!horizontal && !vertical) return;
+        keyboardTargetActive = true;
+        const normalizer = Math.hypot(horizontal, vertical) || 1;
+        const moveSpeed = KEYBOARD_TARGET_SPEED / Math.max(0.45, zoom);
+        targetX = Math.min(AGAR_MAP_WIDTH, Math.max(0, targetX + (horizontal / normalizer) * moveSpeed));
+        targetY = Math.min(AGAR_MAP_HEIGHT, Math.max(0, targetY + (vertical / normalizer) * moveSpeed));
+    };
+    const moveTargetToPlayerCenter = () => {
+        if (!isMovementActive()) return;
+        const ownedCells = [];
+        cells.forEach((cell) => {
+            if (cell.ownerId === localPlayerId) ownedCells.push(cell);
+        });
+        if (ownedCells.length === 0) {
+            const p = players.get(localPlayerId);
+            if (!p) return;
+            targetX = p.x;
+            targetY = p.y;
+            keyboardTargetActive = true;
+            return;
+        }
+        let weightedX = 0;
+        let weightedY = 0;
+        let totalArea = 0;
+        ownedCells.forEach((cell) => {
+            const area = cell.radius * cell.radius;
+            weightedX += cell.x * area;
+            weightedY += cell.y * area;
+            totalArea += area;
+        });
+        if (!totalArea) return;
+        targetX = weightedX / totalArea;
+        targetY = weightedY / totalArea;
+        keyboardTargetActive = true;
+    };
     const onKeyDown = (e) => {
-        if (e.code === "Space" && room && players.get(localPlayerId)?.isAlive) {
+        if (isTypingTarget(document.activeElement)) return;
+        pressedKeys.add(e.code);
+        if (ACTION_KEYS.split.includes(e.code) && room && players.get(localPlayerId)?.isAlive) {
             e.preventDefault();
             room.send("split");
         }
+        if (ACTION_KEYS.recombine.includes(e.code)) {
+            e.preventDefault();
+            moveTargetToPlayerCenter();
+        }
+    };
+    const onKeyUp = (e) => {
+        pressedKeys.delete(e.code);
+    };
+    const onBlur = () => {
+        pressedKeys.clear();
     };
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
 
     function calculateZoom(playerRadius) {
         const MIN_ZOOM = 0.4;
@@ -252,6 +329,15 @@ export function initAgar() {
 
         const localPlayer = players.get(localPlayerId);
         if (localPlayer && localPlayer.isAlive) {
+            if (!keyboardTargetActive && targetX === 0 && targetY === 0) {
+                targetX = localPlayer.x;
+                targetY = localPlayer.y;
+            }
+            if (isPressed(ACTION_KEYS.recombine)) {
+                moveTargetToPlayerCenter();
+            } else {
+                updateKeyboardTargetFromInput();
+            }
             // Smooth camera follow
             cameraX += (localPlayer.x - cameraX) * 0.1;
             cameraY += (localPlayer.y - cameraY) * 0.1;
@@ -365,6 +451,9 @@ export function initAgar() {
             room = null;
         }
         window.removeEventListener("keydown", onKeyDown);
+        window.removeEventListener("keyup", onKeyUp);
+        window.removeEventListener("blur", onBlur);
+        pressedKeys.clear();
         menu.style.display = "block";
         gameArea.style.display = "none";
         deathScreen.style.display = "none";
