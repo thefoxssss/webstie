@@ -1380,47 +1380,35 @@ isSolid(x, y) {
         if (!hit) {
         // Furnace Smelting Logic
     this.state.furnaces.forEach(furnace => {
-        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 12 && furnace.inputItem <= 17) {
-            // Check if fuel is log/coal
-            if (furnace.fuelItem === 12 || furnace.fuelItem === 7 || furnace.fuelItem === 9) {
-                furnace.progress += 1;
-                if (furnace.progress >= 100) {
-                    furnace.progress = 0;
+        const smeltOutputByInput = {
+            13: 43, // Copper Ore -> Copper Ingot
+            14: 44, // Iron Ore -> Iron Ingot
+            15: 45, // Gold Ore -> Gold Ingot
+            16: 46, // Diamond Ore -> Refined Diamond
+            17: 47  // Uranium Ore -> Refined Uranium
+        };
+        const isValidFuel = furnace.fuelItem === 12 || furnace.fuelItem === 7 || furnace.fuelItem === 9;
+        const outputType = smeltOutputByInput[furnace.inputItem] || 0;
 
-                    // Consume input & fuel
-                    furnace.inputCount--;
-                    if (furnace.inputCount <= 0) furnace.inputItem = 0;
+        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && outputType !== 0 && isValidFuel) {
+            const outputCompatible = furnace.outputItem === 0 || furnace.outputItem === outputType;
+            if (!outputCompatible) {
+                furnace.progress = 0;
+                return;
+            }
 
-                    // Fuel consumption logic: 1 coal smelts 8 items? Let's just do 1:1 for simplicity right now
-                    furnace.fuelCount--;
-                    if (furnace.fuelCount <= 0) furnace.fuelItem = 0;
+            furnace.progress += 1;
+            if (furnace.progress >= 100) {
+                furnace.progress = 0;
 
-                    // Convert Ore -> Ingot/Gem (Using same IDs for simplicity, or we can use armor IDs as ingots. Let's just give them the ingot form of armor, but armor is 18-22... Wait, we need actual ingots or just let them smelt ore -> ingot item. Let's use 18-22 for Ingots, and we'll change the armor recipes to use 18-22 instead of raw ore, and we'll add armor items later, actually armor is 18-22. So let's use 43+ for ingots.)
-                    // 13: Copper Ore -> 43: Copper Ingot
-                    // 14: Iron Ore -> 44: Iron Ingot
-                    // 15: Gold Ore -> 45: Gold Ingot
-                    // 16: Diamond Ore -> 46: Diamond (refined)
-                    // 17: Uranium Ore -> 47: Uranium (refined)
+                furnace.inputCount--;
+                if (furnace.inputCount <= 0) furnace.inputItem = 0;
 
-                    let outputType = 0;
-                    if (furnace.inputItem === 13) outputType = 43;
-                    if (furnace.inputItem === 14) outputType = 44;
-                    if (furnace.inputItem === 15) outputType = 45;
-                    if (furnace.inputItem === 16) outputType = 46;
-                    if (furnace.inputItem === 17) outputType = 47;
-                    if (furnace.inputItem === 12) outputType = 12; // Coal just cooks coal? Skip.
+                furnace.fuelCount--;
+                if (furnace.fuelCount <= 0) furnace.fuelItem = 0;
 
-                    if (outputType !== 0) {
-                        if (furnace.outputItem === 0 || furnace.outputItem === outputType) {
-                            furnace.outputItem = outputType;
-                            furnace.outputCount++;
-                        } else {
-                            // Output full of something else, refund
-                            furnace.inputCount++;
-                            furnace.fuelCount++;
-                        }
-                    }
-                }
+                furnace.outputItem = outputType;
+                furnace.outputCount++;
             }
         } else {
             furnace.progress = 0;
