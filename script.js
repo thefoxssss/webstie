@@ -383,6 +383,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayUltimatettt",
   "overlaySmasharena",
   "overlayBuilder",
+  "overlayAgar",
   "overlayVideopoker",
   "overlayCraps",
   "overlayBaccarat",
