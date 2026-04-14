@@ -104,9 +104,20 @@ type("string")(AgarPlayer.prototype, "color");
 type("number")(AgarPlayer.prototype, "score");
 type("boolean")(AgarPlayer.prototype, "isAlive");
 
+class AgarCell extends Schema {}
+type("string")(AgarCell.prototype, "id");
+type("string")(AgarCell.prototype, "ownerId");
+type("number")(AgarCell.prototype, "x");
+type("number")(AgarCell.prototype, "y");
+type("number")(AgarCell.prototype, "radius");
+type("number")(AgarCell.prototype, "vx");
+type("number")(AgarCell.prototype, "vy");
+type("number")(AgarCell.prototype, "mergeAt");
+
 class AgarState extends Schema {}
 type({ map: AgarPlayer })(AgarState.prototype, "players");
 type({ map: AgarFood })(AgarState.prototype, "foods");
+type({ map: AgarCell })(AgarState.prototype, "cells");
 
 // --------------------------------------------------------
 // SMASH ARENA GAME LOGIC (Moved from client)
@@ -1744,6 +1755,10 @@ const AGAR_MAP_HEIGHT = 4000;
 const AGAR_MAX_FOOD = 500;
 const AGAR_BASE_RADIUS = 20;
 const AGAR_TICK_RATE = 20; // ms per tick
+const AGAR_MAX_CELLS = 8;
+const AGAR_SPLIT_MIN_RADIUS = 24;
+const AGAR_SPLIT_LAUNCH_SPEED = 24;
+const AGAR_MERGE_COOLDOWN_MS = 9000;
 
 const agarServerDirectory = new Map();
 
@@ -1759,10 +1774,12 @@ class AgarRoom extends colyseus.Room {
     const state = new AgarState();
     state.players = new MapSchema();
     state.foods = new MapSchema();
+    state.cells = new MapSchema();
     this.setState(state);
 
     this.inputs = {};
     this.foodCounter = 0;
+    this.cellCounter = 0;
 
     // Initial food spawn
     for (let i = 0; i < AGAR_MAX_FOOD / 2; i++) {
@@ -1777,15 +1794,16 @@ class AgarRoom extends colyseus.Room {
       }
     });
 
+    this.onMessage("split", (client) => {
+      const pId = client.sessionId;
+      if (this.inputs[pId]) this.inputs[pId].splitRequested = true;
+    });
+
     this.onMessage("respawn", (client) => {
       const pId = client.sessionId;
       const player = this.state.players.get(pId);
       if (player && !player.isAlive) {
-        player.x = Math.random() * AGAR_MAP_WIDTH;
-        player.y = Math.random() * AGAR_MAP_HEIGHT;
-        player.radius = AGAR_BASE_RADIUS;
-        player.score = 0;
-        player.isAlive = true;
+        this.spawnPlayerCells(pId, player);
       }
     });
 
@@ -1810,70 +1828,192 @@ class AgarRoom extends colyseus.Room {
     this.state.foods.set(food.id, food);
   }
 
+  createCell(ownerId, x, y, radius, vx = 0, vy = 0, mergeAt = Date.now() + AGAR_MERGE_COOLDOWN_MS) {
+    const c = new AgarCell();
+    c.id = `cell_${this.cellCounter++}`;
+    c.ownerId = ownerId;
+    c.x = x;
+    c.y = y;
+    c.radius = radius;
+    c.vx = vx;
+    c.vy = vy;
+    c.mergeAt = mergeAt;
+    this.state.cells.set(c.id, c);
+    return c;
+  }
+
+  getPlayerCells(playerId) {
+    const cells = [];
+    this.state.cells.forEach((c) => {
+      if (c.ownerId === playerId) cells.push(c);
+    });
+    return cells;
+  }
+
+  updatePlayerAggregate(playerId) {
+    const player = this.state.players.get(playerId);
+    if (!player) return;
+    const cells = this.getPlayerCells(playerId);
+    if (cells.length === 0) {
+      player.isAlive = false;
+      return;
+    }
+    let largest = cells[0];
+    let area = 0;
+    let weightedX = 0;
+    let weightedY = 0;
+    cells.forEach((c) => {
+      const a = c.radius * c.radius;
+      area += a;
+      weightedX += c.x * a;
+      weightedY += c.y * a;
+      if (c.radius > largest.radius) largest = c;
+    });
+    player.x = weightedX / area;
+    player.y = weightedY / area;
+    player.radius = largest.radius;
+    player.score = Math.floor(area);
+    player.isAlive = true;
+  }
+
+  spawnPlayerCells(playerId, player) {
+    const now = Date.now();
+    const x = Math.random() * AGAR_MAP_WIDTH;
+    const y = Math.random() * AGAR_MAP_HEIGHT;
+    this.state.cells.forEach((cell, cellId) => {
+      if (cell.ownerId === playerId) this.state.cells.delete(cellId);
+    });
+    this.createCell(playerId, x, y, AGAR_BASE_RADIUS, 0, 0, now + AGAR_MERGE_COOLDOWN_MS);
+    player.x = x;
+    player.y = y;
+    player.radius = AGAR_BASE_RADIUS;
+    player.score = AGAR_BASE_RADIUS * AGAR_BASE_RADIUS;
+    player.isAlive = true;
+    if (this.inputs[playerId]) {
+      this.inputs[playerId].targetX = x;
+      this.inputs[playerId].targetY = y;
+      this.inputs[playerId].splitRequested = false;
+    }
+  }
+
+  consumeFood(cell) {
+    const foodsToRemove = [];
+    this.state.foods.forEach((food, foodId) => {
+      const dx = cell.x - food.x;
+      const dy = cell.y - food.y;
+      if ((dx * dx + dy * dy) < (cell.radius * cell.radius)) {
+        foodsToRemove.push(foodId);
+        cell.radius += 0.45;
+      }
+    });
+    foodsToRemove.forEach((id) => this.state.foods.delete(id));
+  }
+
+  trySplitPlayer(playerId, input, now) {
+    const owned = this.getPlayerCells(playerId);
+    if (owned.length === 0 || owned.length >= AGAR_MAX_CELLS) return;
+    const nextCells = [...owned].sort((a, b) => b.radius - a.radius);
+    for (const cell of nextCells) {
+      if (this.getPlayerCells(playerId).length >= AGAR_MAX_CELLS) break;
+      if (cell.radius < AGAR_SPLIT_MIN_RADIUS) continue;
+      const dx = (input.targetX ?? cell.x) - cell.x;
+      const dy = (input.targetY ?? cell.y) - cell.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const dirX = dx / dist;
+      const dirY = dy / dist;
+      const newRadius = cell.radius / Math.sqrt(2);
+      cell.radius = newRadius;
+      const launchDist = newRadius * 2.2;
+      this.createCell(
+        playerId,
+        Math.min(AGAR_MAP_WIDTH, Math.max(0, cell.x + dirX * launchDist)),
+        Math.min(AGAR_MAP_HEIGHT, Math.max(0, cell.y + dirY * launchDist)),
+        newRadius,
+        dirX * AGAR_SPLIT_LAUNCH_SPEED,
+        dirY * AGAR_SPLIT_LAUNCH_SPEED,
+        now + AGAR_MERGE_COOLDOWN_MS
+      );
+      cell.mergeAt = now + AGAR_MERGE_COOLDOWN_MS;
+    }
+  }
+
   simulateTick() {
-    // 1. Move players
+    const now = Date.now();
+    // 1) split requests and movement
     this.state.players.forEach((player, id) => {
       if (!player.isAlive) return;
-
-      const input = this.inputs[id];
-      if (input && (input.targetX !== undefined && input.targetY !== undefined)) {
-        const dx = input.targetX - player.x;
-        const dy = input.targetY - player.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 5) { // Deadzone
-          const speed = Math.max(1, 10 - Math.log(player.radius));
-          player.x += (dx / dist) * speed;
-          player.y += (dy / dist) * speed;
-        }
+      const input = this.inputs[id] || {};
+      if (input.splitRequested) {
+        this.trySplitPlayer(id, input, now);
+        input.splitRequested = false;
       }
-
-      // Bounds
-      if (player.x < 0) player.x = 0;
-      if (player.y < 0) player.y = 0;
-      if (player.x > AGAR_MAP_WIDTH) player.x = AGAR_MAP_WIDTH;
-      if (player.y > AGAR_MAP_HEIGHT) player.y = AGAR_MAP_HEIGHT;
+      const owned = this.getPlayerCells(id);
+      owned.forEach((cell) => {
+        const targetX = input.targetX ?? cell.x;
+        const targetY = input.targetY ?? cell.y;
+        const dx = targetX - cell.x;
+        const dy = targetY - cell.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        if (dist > 1) {
+          const baseSpeed = Math.max(1.2, 12 - Math.log(Math.max(8, cell.radius)) * 2.5);
+          cell.x += (dx / dist) * baseSpeed;
+          cell.y += (dy / dist) * baseSpeed;
+        }
+        if (Math.abs(cell.vx) > 0.01 || Math.abs(cell.vy) > 0.01) {
+          cell.x += cell.vx;
+          cell.y += cell.vy;
+          cell.vx *= 0.83;
+          cell.vy *= 0.83;
+        }
+        if (cell.x < 0) { cell.x = 0; cell.vx = 0; }
+        if (cell.y < 0) { cell.y = 0; cell.vy = 0; }
+        if (cell.x > AGAR_MAP_WIDTH) { cell.x = AGAR_MAP_WIDTH; cell.vx = 0; }
+        if (cell.y > AGAR_MAP_HEIGHT) { cell.y = AGAR_MAP_HEIGHT; cell.vy = 0; }
+      });
     });
 
-    // 2. Check collisions
-    this.state.players.forEach((player, id) => {
-      if (!player.isAlive) return;
+    // 2) food and cell-vs-cell collisions
+    this.state.cells.forEach((cell) => this.consumeFood(cell));
 
-      // Player vs Food
-      const foodsToRemove = [];
-      this.state.foods.forEach((food, foodId) => {
-        const dx = player.x - food.x;
-        const dy = player.y - food.y;
-        const distSq = dx * dx + dy * dy;
-        const rSq = player.radius * player.radius;
-        if (distSq < rSq) {
-          foodsToRemove.push(foodId);
-          player.radius += 0.5;
-          player.score += 10;
-        }
-      });
-      foodsToRemove.forEach(id => this.state.foods.delete(id));
-
-      // Player vs Player
-      this.state.players.forEach((other, otherId) => {
-        if (id === otherId || !other.isAlive || !player.isAlive) return;
-
-        const dx = player.x - other.x;
-        const dy = player.y - other.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        // One must be 1.2x bigger to eat
-        if (dist < player.radius && player.radius > other.radius * 1.2) {
-          // Player eats Other
-          player.radius += other.radius * 0.5;
-          player.score += other.score + 50;
-          other.isAlive = false;
-          const otherClient = this.clients.find(c => c.sessionId === otherId);
-          if (otherClient) {
-             otherClient.send("died", { killer: player.name });
+    const deathBy = new Map();
+    const cellEntries = Array.from(this.state.cells.entries());
+    for (let i = 0; i < cellEntries.length; i++) {
+      const [idA, a] = cellEntries[i];
+      if (!this.state.cells.has(idA)) continue;
+      for (let j = i + 1; j < cellEntries.length; j++) {
+        const [idB, b] = cellEntries[j];
+        if (!this.state.cells.has(idA) || !this.state.cells.has(idB)) continue;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.hypot(dx, dy);
+        if (a.ownerId === b.ownerId) {
+          if (now >= a.mergeAt && now >= b.mergeAt && dist < Math.max(a.radius, b.radius)) {
+            const larger = a.radius >= b.radius ? a : b;
+            const smaller = larger === a ? b : a;
+            larger.radius = Math.sqrt(larger.radius * larger.radius + smaller.radius * smaller.radius);
+            this.state.cells.delete(smaller.id);
           }
+          continue;
         }
-      });
+        const bigger = a.radius >= b.radius ? a : b;
+        const smaller = bigger === a ? b : a;
+        if (bigger.radius > smaller.radius * 1.15 && dist < (bigger.radius - smaller.radius * 0.3)) {
+          const killerName = this.state.players.get(bigger.ownerId)?.name || "another player";
+          deathBy.set(smaller.ownerId, killerName);
+          bigger.radius = Math.sqrt(bigger.radius * bigger.radius + smaller.radius * smaller.radius);
+          this.state.cells.delete(smaller.id);
+        }
+      }
+    }
+
+    // 3) refresh player aggregates + death notices
+    this.state.players.forEach((player, id) => {
+      const wasAlive = player.isAlive;
+      this.updatePlayerAggregate(id);
+      if (wasAlive && !player.isAlive) {
+        const loserClient = this.clients.find((c) => c.sessionId === id);
+        if (loserClient) loserClient.send("died", { killer: deathBy.get(id) || "another player" });
+      }
     });
 
     // 3. Replenish food occasionally
@@ -1890,16 +2030,20 @@ class AgarRoom extends colyseus.Room {
     p.y = Math.random() * AGAR_MAP_HEIGHT;
     p.radius = AGAR_BASE_RADIUS;
     p.color = "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    p.score = 0;
+    p.score = AGAR_BASE_RADIUS * AGAR_BASE_RADIUS;
     p.isAlive = true;
 
     this.state.players.set(client.sessionId, p);
-    this.inputs[client.sessionId] = { targetX: p.x, targetY: p.y };
+    this.inputs[client.sessionId] = { targetX: p.x, targetY: p.y, splitRequested: false };
+    this.spawnPlayerCells(client.sessionId, p);
 
     this.updateMetadata();
   }
 
   onLeave(client, consented) {
+    this.state.cells.forEach((cell, cellId) => {
+      if (cell.ownerId === client.sessionId) this.state.cells.delete(cellId);
+    });
     this.state.players.delete(client.sessionId);
     delete this.inputs[client.sessionId];
     this.updateMetadata();

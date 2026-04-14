@@ -57,6 +57,8 @@ export function initAgar() {
 
     let players = new Map();
     let foods = new Map();
+    let cells = new Map();
+    let renderCells = new Map();
     let localPlayerId = null;
 
     const renderServerList = (servers) => {
@@ -98,6 +100,10 @@ export function initAgar() {
     };
 
     const setupRoomListeners = () => {
+        players = new Map();
+        foods = new Map();
+        cells = new Map();
+        renderCells = new Map();
         room.state.players.onAdd((player, sessionId) => {
             players.set(sessionId, player);
             player.onChange(() => {
@@ -120,6 +126,16 @@ export function initAgar() {
         room.state.foods.onRemove((food, id) => {
             foods.delete(id);
         });
+        if (room.state.cells) {
+            room.state.cells.onAdd((cell, id) => {
+                cells.set(id, cell);
+                renderCells.set(id, { x: cell.x, y: cell.y, radius: cell.radius, ownerId: cell.ownerId });
+            });
+            room.state.cells.onRemove((cell, id) => {
+                cells.delete(id);
+                renderCells.delete(id);
+            });
+        }
 
         room.onMessage("died", (message) => {
             if (deathMessage) deathMessage.textContent = `Eaten by ${escapeHtml(message.killer)}`;
@@ -201,6 +217,13 @@ export function initAgar() {
         targetX = cameraX + (mx - CANVAS_WIDTH / 2) / zoom;
         targetY = cameraY + (my - CANVAS_HEIGHT / 2) / zoom;
     });
+    const onKeyDown = (e) => {
+        if (e.code === "Space" && room && players.get(localPlayerId)?.isAlive) {
+            e.preventDefault();
+            room.send("split");
+        }
+    };
+    window.addEventListener("keydown", onKeyDown);
 
     function calculateZoom(playerRadius) {
         const MIN_ZOOM = 0.4;
@@ -269,27 +292,43 @@ export function initAgar() {
             ctx.fill();
         });
 
-        // Draw players
-        const pList = Array.from(players.values()).sort((a, b) => a.radius - b.radius);
-        pList.forEach(p => {
-            if (!p.isAlive) return;
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fill();
+        // Draw cells with interpolation to reduce network jitter
+        const drawCells = [];
+        if (cells.size > 0) {
+            cells.forEach((cell, id) => {
+                const current = renderCells.get(id) || { x: cell.x, y: cell.y, radius: cell.radius, ownerId: cell.ownerId };
+                current.x += (cell.x - current.x) * 0.35;
+                current.y += (cell.y - current.y) * 0.35;
+                current.radius += (cell.radius - current.radius) * 0.3;
+                current.ownerId = cell.ownerId;
+                renderCells.set(id, current);
+                drawCells.push({ id, ...current });
+            });
+        } else {
+            Array.from(players.entries()).forEach(([id, p]) => {
+                if (!p.isAlive) return;
+                drawCells.push({ id: `legacy_${id}`, x: p.x, y: p.y, radius: p.radius, ownerId: id });
+            });
+        }
 
+        drawCells.sort((a, b) => a.radius - b.radius).forEach(c => {
+            const owner = players.get(c.ownerId);
+            if (!owner || !owner.isAlive) return;
+            ctx.fillStyle = owner.color;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+            ctx.fill();
             ctx.lineWidth = 3;
             ctx.strokeStyle = "rgba(0,0,0,0.2)";
             ctx.stroke();
 
-            ctx.fillStyle = "white";
-            ctx.font = `${Math.max(10, p.radius / 2)}px 'Space Mono', monospace`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(p.name, p.x, p.y);
-
-            ctx.font = `${Math.max(8, p.radius / 3)}px 'Space Mono', monospace`;
-            ctx.fillText(Math.floor(p.score), p.x, p.y + p.radius / 2);
+            if (c.radius > 18) {
+                ctx.fillStyle = "white";
+                ctx.font = `${Math.max(10, c.radius / 2.6)}px 'Space Mono', monospace`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(owner.name, c.x, c.y);
+            }
         });
 
         ctx.restore();
@@ -304,7 +343,7 @@ export function initAgar() {
         function loop(timestamp) {
             if (!room) return;
 
-            if (timestamp - lastSend > 50) {
+            if (timestamp - lastSend > 33) {
                 if (localPlayerId && players.get(localPlayerId)?.isAlive) {
                     room.send("input", { targetX, targetY });
                 }
@@ -325,12 +364,17 @@ export function initAgar() {
             room.leave();
             room = null;
         }
+        window.removeEventListener("keydown", onKeyDown);
         menu.style.display = "block";
         gameArea.style.display = "none";
         deathScreen.style.display = "none";
         btnJoin.textContent = "QUICK JOIN ANY SERVER";
         if (btnCreateServer) btnCreateServer.textContent = "CREATE SERVER";
         selectedRoomId = null;
+        players.clear();
+        foods.clear();
+        cells.clear();
+        renderCells.clear();
         refreshServerList();
     };
 
