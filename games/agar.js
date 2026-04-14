@@ -53,6 +53,7 @@ export function initAgar() {
     let cameraY = 0;
     let targetX = 0;
     let targetY = 0;
+    let zoom = 1;
 
     let players = new Map();
     let foods = new Map();
@@ -213,8 +214,8 @@ export function initAgar() {
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
 
-        targetX = mx + cameraX - CANVAS_WIDTH / 2;
-        targetY = my + cameraY - CANVAS_HEIGHT / 2;
+        targetX = cameraX + (mx - CANVAS_WIDTH / 2) / zoom;
+        targetY = cameraY + (my - CANVAS_HEIGHT / 2) / zoom;
     });
     const onKeyDown = (e) => {
         if (e.code === "Space" && room && players.get(localPlayerId)?.isAlive) {
@@ -223,6 +224,15 @@ export function initAgar() {
         }
     };
     window.addEventListener("keydown", onKeyDown);
+
+    function calculateZoom(playerRadius) {
+        const MIN_ZOOM = 0.4;
+        const MAX_ZOOM = 1;
+        const baseRadius = 30;
+        const radiusRatio = Math.max(1, playerRadius / baseRadius);
+        const targetZoom = MAX_ZOOM - Math.log2(radiusRatio) * 0.15;
+        return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom));
+    }
 
     function updateLeaderboard() {
         if (!leaderboardList) return;
@@ -243,16 +253,21 @@ export function initAgar() {
         const localPlayer = players.get(localPlayerId);
         if (localPlayer && localPlayer.isAlive) {
             // Smooth camera follow
-            cameraX += (localPlayer.x - cameraX) * 0.18;
-            cameraY += (localPlayer.y - cameraY) * 0.18;
+            cameraX += (localPlayer.x - cameraX) * 0.1;
+            cameraY += (localPlayer.y - cameraY) * 0.1;
+            zoom += (calculateZoom(localPlayer.radius) - zoom) * 0.08;
+        } else {
+            zoom += (1 - zoom) * 0.08;
         }
 
         ctx.save();
-        ctx.translate(-cameraX + CANVAS_WIDTH / 2, -cameraY + CANVAS_HEIGHT / 2);
+        ctx.translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-cameraX, -cameraY);
 
         // Draw grid
         ctx.strokeStyle = "#ccc";
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / zoom;
         ctx.beginPath();
         for (let x = 0; x <= AGAR_MAP_WIDTH; x += 50) {
             ctx.moveTo(x, 0);
@@ -266,7 +281,7 @@ export function initAgar() {
 
         // Map borders
         ctx.strokeStyle = "red";
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 5 / zoom;
         ctx.strokeRect(0, 0, AGAR_MAP_WIDTH, AGAR_MAP_HEIGHT);
 
         // Draw food
