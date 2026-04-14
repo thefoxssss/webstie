@@ -1380,12 +1380,13 @@ isSolid(x, y) {
         if (!hit) {
         // Furnace Smelting Logic
     this.state.furnaces.forEach(furnace => {
-        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 12 && furnace.inputItem <= 17) {
+        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 13 && furnace.inputItem <= 17) {
             // Check if fuel is log/coal
             if (furnace.fuelItem === 12 || furnace.fuelItem === 7 || furnace.fuelItem === 9) {
                 furnace.progress += 1;
                 if (furnace.progress >= 100) {
                     furnace.progress = 0;
+                    const smeltedInputType = furnace.inputItem;
 
                     // Consume input & fuel
                     furnace.inputCount--;
@@ -1403,12 +1404,11 @@ isSolid(x, y) {
                     // 17: Uranium Ore -> 47: Uranium (refined)
 
                     let outputType = 0;
-                    if (furnace.inputItem === 13) outputType = 43;
-                    if (furnace.inputItem === 14) outputType = 44;
-                    if (furnace.inputItem === 15) outputType = 45;
-                    if (furnace.inputItem === 16) outputType = 46;
-                    if (furnace.inputItem === 17) outputType = 47;
-                    if (furnace.inputItem === 12) outputType = 12; // Coal just cooks coal? Skip.
+                    if (smeltedInputType === 13) outputType = 43;
+                    if (smeltedInputType === 14) outputType = 44;
+                    if (smeltedInputType === 15) outputType = 45;
+                    if (smeltedInputType === 16) outputType = 46;
+                    if (smeltedInputType === 17) outputType = 47;
 
                     if (outputType !== 0) {
                         if (furnace.outputItem === 0 || furnace.outputItem === outputType) {
