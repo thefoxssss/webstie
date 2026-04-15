@@ -16,7 +16,7 @@ def run_cuj(page):
     page.evaluate("window.launchGame('builder')")
     page.wait_for_timeout(2000)
 
-    page.get_by_text("QUICK JOIN ANY SERVER").click()
+    page.locator("#btnJoinBuilder").click()
     page.wait_for_timeout(2000)
 
     # Wait for game to initialize completely

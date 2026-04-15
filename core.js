@@ -2410,7 +2410,53 @@ function loadSeasonLeaderboards() {
   });
 }
 
-function renderCrewPanel() {
+async function syncCrewData() {
+  if (!crewData.tag) return;
+  try {
+    const q = query(collection(db, "gooner_users"), where("crewData.tag", "==", crewData.tag));
+    const snap = await getDocs(q);
+
+    const matchingMembers = [];
+    let authUser = null;
+    let maxWins = -1;
+    let totalBank = 0;
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.crewData) {
+        matchingMembers.push({ name: data.name, money: data.money || 0, role: data.crewData.role || "MEMBER" });
+        totalBank += Number(data.crewData.bank || 0);
+
+        if (data.crewData.wins >= maxWins) {
+          maxWins = data.crewData.wins;
+          authUser = data.crewData;
+        }
+      }
+    });
+
+    if (authUser) {
+      crewData.logo = authUser.logo || DEFAULT_CREW_LOGO;
+      crewData.motto = authUser.motto || "---";
+      crewData.goal = authUser.goal || 5000;
+      crewData.recruitmentOpen = authUser.recruitmentOpen ?? true;
+    }
+    crewData.displayBank = totalBank;
+
+    matchingMembers.sort((a, b) => {
+      if (a.role === "CAPTAIN" && b.role !== "CAPTAIN") return -1;
+      if (b.role === "CAPTAIN" && a.role !== "CAPTAIN") return 1;
+      return b.money - a.money;
+    });
+
+    crewData.members = matchingMembers.map(m => m.name);
+    saveCrewData();
+
+  } catch (err) {
+    console.error("Failed to sync crew data:", err);
+  }
+}
+
+async function renderCrewPanel() {
   const dashboard = document.getElementById("crewDashboard");
   const finder = document.getElementById("crewFinder");
 
@@ -2421,20 +2467,22 @@ function renderCrewPanel() {
     return;
   }
 
-  if (dashboard) dashboard.style.display = "grid";
+  if (dashboard) dashboard.style.display = "flex";
   if (finder) finder.style.display = "none";
+
+  await syncCrewData();
 
   setText("crewName", crewData.tag || "NONE");
   setText("crewRole", crewData.role || "SOLO");
   setText("crewMotto", crewData.motto || "---");
   setText("crewRecruitment", crewData.recruitmentOpen ? "OPEN" : "CLOSED");
   setText("crewGoal", `$${Math.round(crewData.goal || 0)}`);
-  setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
+  setText("crewBank", `$${Math.round(crewData.displayBank || crewData.bank || 0)}`);
   setText("crewWins", Math.round(crewData.wins || 0));
   setText("crewXp", Math.round(myMoney || 0));
 
   const goal = Number(crewData.goal || 5000);
-  const bank = Number(crewData.bank || 0);
+  const bank = Number(crewData.displayBank || crewData.bank || 0);
   const pct = Math.min(100, Math.max(0, (bank / goal) * 100));
   setText("crewBankLabel", `$${Math.round(bank)} / $${Math.round(goal)}`);
   const fill = document.getElementById("crewBankFill");
@@ -2453,6 +2501,8 @@ function renderCrewPanel() {
       ).join("");
     }
   }
+
+  renderCrewLogo("crewLogoCanvas", crewData.logo || DEFAULT_CREW_LOGO);
 }
 
 let crewLeaveConfirmTimer = null;
