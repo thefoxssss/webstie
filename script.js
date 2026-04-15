@@ -94,6 +94,7 @@ import { initVideoPoker } from "./games/videopoker.js";
 import { initCraps } from "./games/craps.js";
 import { initBaccarat } from "./games/baccarat.js";
 import { initMines } from "./games/mines.js";
+import "./games/fnaf.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -340,7 +341,12 @@ window.launchGame = (game, source = "direct") => {
   if (game === "craps") initCraps();
   if (game === "baccarat") initBaccarat();
   if (game === "mines") initMines();
+  if (game === "fnaf") window.initFnaf();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
+
+  if (game === "fnaf" && typeof window.registerGameStop === "function") {
+      window.registerGameStop(window.stopFnaf);
+  }
   resizeAllGameCanvases();
   trackGamePlay(game);
   updateRecentGames(game);
@@ -381,6 +387,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayStacksmash",
   "overlayQuantumflip",
   "overlayUltimatettt",
+  "overlayFnaf",
   "overlaySmasharena",
   "overlayBuilder",
   "overlayAgar",

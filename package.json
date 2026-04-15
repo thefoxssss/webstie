@@ -13,6 +13,7 @@
     "colyseus.js": "^0.15.0",
     "cors": "^2.8.6",
     "express": "^4.22.1",
-    "firebase-admin": "^12.7.0"
+    "firebase-admin": "^12.7.0",
+    "playwright": "^1.59.1"
   }
 }

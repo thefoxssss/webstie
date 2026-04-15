@@ -388,6 +388,50 @@ class SmashArenaRoom extends colyseus.Room {
 }
 
 // --------------------------------------------------------
+// FNAF ROOM
+// --------------------------------------------------------
+class FnafPlayer extends Schema {}
+type("number")(FnafPlayer.prototype, "x");
+type("number")(FnafPlayer.prototype, "y");
+type("number")(FnafPlayer.prototype, "rot");
+
+class FnafState extends Schema {
+  constructor() {
+    super();
+    this.players = new MapSchema();
+  }
+}
+type({ map: FnafPlayer })(FnafState.prototype, "players");
+
+class FnafRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 8;
+    this.setState(new FnafState());
+
+    this.onMessage("move", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) {
+        p.x = message.x;
+        p.y = message.y;
+        p.rot = message.rot;
+      }
+    });
+  }
+
+  onJoin(client, options) {
+    const p = new FnafPlayer();
+    p.x = 2; // Default spawn
+    p.y = 2;
+    p.rot = 0;
+    this.state.players.set(client.sessionId, p);
+  }
+
+  onLeave(client) {
+    this.state.players.delete(client.sessionId);
+  }
+}
+
+// --------------------------------------------------------
 // BASE TEST ROOM
 // --------------------------------------------------------
 class GameRoom extends colyseus.Room {
@@ -1758,6 +1802,7 @@ class VoiceRoom extends colyseus.Room {
   }
 }
 
+gameServer.define("fnaf_room", FnafRoom);
 gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
 gameServer.define("builder_room", BuilderRoom);
