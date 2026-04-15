@@ -30,27 +30,115 @@ const keys = {};
 let fnafRoom = null;
 let networkPlayers = {};
 
-window.initFnaf = async () => {
+window.initFnaf = () => {
   canvas = document.getElementById("fnafCanvas");
   if (!canvas) return;
   ctx = canvas.getContext("2d", { alpha: false }); // alpha false for perf
 
   isFnafRunning = true;
 
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
+  // Show Menu, hide game initially
+  document.getElementById("fnafMenu").style.display = "block";
+  document.getElementById("fnafGame").style.display = "none";
+
+  setupFnafMenu();
+};
+
+function setupFnafMenu() {
+  const btnRefresh = document.getElementById("btnRefreshFnafServers");
+  const btnCreate = document.getElementById("btnCreateFnafServer");
+  const btnJoin = document.getElementById("btnJoinFnaf");
+
+  btnRefresh.onclick = refreshFnafServers;
+  btnCreate.onclick = () => {
+    const name = document.getElementById("fnafServerName").value.trim() || "New FNAF World";
+    startFnafGame({ create: true, serverName: name });
+  };
+  btnJoin.onclick = () => {
+    startFnafGame({});
+  };
+
+  refreshFnafServers();
+}
+
+async function refreshFnafServers() {
+  const listEl = document.getElementById("fnafServerList");
+  listEl.innerHTML = "LOADING SERVERS...";
+
+  let endpoint = "https://" + window.location.hostname;
+  const isLocal = window.location.search.includes("local=1") || document.getElementById("fnafNetwork").value === "local";
+  if (isLocal) {
+    endpoint = "http://localhost:2567";
+  }
+
+  try {
+    const res = await fetch(`${endpoint}/fnaf_servers`);
+    if (!res.ok) throw new Error("Failed to fetch fnaf servers");
+    const servers = await res.json();
+
+    listEl.innerHTML = "";
+    if (servers.length === 0) {
+      listEl.innerHTML = "<div style='color:#ccc;'>NO ACTIVE SERVERS. BE THE FIRST!</div>";
+      return;
+    }
+
+    servers.forEach(srv => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.padding = "4px 0";
+      row.style.borderBottom = "1px solid #444";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = srv.serverName;
+
+      const countSpan = document.createElement("span");
+      countSpan.textContent = `${srv.clients} / ${srv.maxClients}`;
+
+      const joinBtn = document.createElement("button");
+      joinBtn.className = "term-btn";
+      joinBtn.style.padding = "2px 6px";
+      joinBtn.textContent = "JOIN";
+      joinBtn.onclick = () => startFnafGame({ roomId: srv.roomId });
+
+      row.appendChild(nameSpan);
+      row.appendChild(countSpan);
+      row.appendChild(joinBtn);
+      listEl.appendChild(row);
+    });
+  } catch (err) {
+    console.error(err);
+    listEl.innerHTML = "<div style='color:red;'>ERROR LOADING SERVERS</div>";
+  }
+}
+
+async function startFnafGame(options) {
+  document.getElementById("fnafMenu").style.display = "none";
+  document.getElementById("fnafGame").style.display = "block";
 
   // Stop previous loop if any
   if (animationId) cancelAnimationFrame(animationId);
 
+  // Reset player pos
+  pX = 2.5; pY = 2.5;
+  pDirX = -1; pDirY = 0;
+  planeX = 0; planeY = 0.66;
+
   // Colyseus Connect
   try {
-      const isLocal = window.location.search.includes("local=1");
+      const isLocal = window.location.search.includes("local=1") || document.getElementById("fnafNetwork").value === "local";
       const endpoint = isLocal
         ? "ws://localhost:2567"
         : "wss://" + window.location.hostname;
       const client = new Colyseus.Client(endpoint);
-      fnafRoom = await client.joinOrCreate("fnaf_room");
+
+      if (options.create) {
+         fnafRoom = await client.create("fnaf_room", { serverName: options.serverName });
+      } else if (options.roomId) {
+         fnafRoom = await client.joinById(options.roomId);
+      } else {
+         fnafRoom = await client.joinOrCreate("fnaf_room");
+      }
 
       fnafRoom.state.players.onAdd((player, sessionId) => {
           if (sessionId === fnafRoom.sessionId) return; // Skip self
@@ -66,17 +154,53 @@ window.initFnaf = async () => {
 
   } catch (e) {
       console.error("FNAF MP Error:", e);
+      document.getElementById("fnafMenu").style.display = "block";
+      document.getElementById("fnafGame").style.display = "none";
+      return;
   }
+
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
+  canvas.addEventListener("click", onCanvasClick);
+  document.addEventListener("pointerlockchange", onPointerLockChange);
 
   lastTime = performance.now();
   fnafLoop();
-};
+}
+
+function onCanvasClick() {
+    canvas.requestPointerLock();
+}
+
+function onPointerLockChange() {
+    if (document.pointerLockElement === canvas) {
+        document.addEventListener("mousemove", onMouseMove);
+    } else {
+        document.removeEventListener("mousemove", onMouseMove);
+    }
+}
+
+function onMouseMove(e) {
+    const rotSpeed = -e.movementX * 0.003; // Rotate based on mouse
+    let oldDirX = pDirX;
+    pDirX = pDirX * Math.cos(rotSpeed) - pDirY * Math.sin(rotSpeed);
+    pDirY = oldDirX * Math.sin(rotSpeed) + pDirY * Math.cos(rotSpeed);
+    let oldPlaneX = planeX;
+    planeX = planeX * Math.cos(rotSpeed) - planeY * Math.sin(rotSpeed);
+    planeY = oldPlaneX * Math.sin(rotSpeed) + planeY * Math.cos(rotSpeed);
+}
 
 window.stopFnaf = () => {
   isFnafRunning = false;
   if (animationId) cancelAnimationFrame(animationId);
   window.removeEventListener("keydown", onKeyDown);
   window.removeEventListener("keyup", onKeyUp);
+  canvas.removeEventListener("click", onCanvasClick);
+  document.removeEventListener("pointerlockchange", onPointerLockChange);
+  document.removeEventListener("mousemove", onMouseMove);
+  if (document.pointerLockElement === canvas) {
+      document.exitPointerLock();
+  }
   if (fnafRoom) {
       fnafRoom.leave();
       fnafRoom = null;
@@ -104,7 +228,6 @@ function fnafLoop() {
 
 function update(dt) {
   const moveSpeed = 3.0 * dt;
-  const rotSpeed = 2.0 * dt;
 
   if (keys['w']) {
     if (map[Math.floor(pX + pDirX * moveSpeed)][Math.floor(pY)] == 0) pX += pDirX * moveSpeed;
@@ -114,22 +237,15 @@ function update(dt) {
     if (map[Math.floor(pX - pDirX * moveSpeed)][Math.floor(pY)] == 0) pX -= pDirX * moveSpeed;
     if (map[Math.floor(pX)][Math.floor(pY - pDirY * moveSpeed)] == 0) pY -= pDirY * moveSpeed;
   }
-  if (keys['d']) {
-    // Both camera direction and camera plane must be rotated
-    let oldDirX = pDirX;
-    pDirX = pDirX * Math.cos(-rotSpeed) - pDirY * Math.sin(-rotSpeed);
-    pDirY = oldDirX * Math.sin(-rotSpeed) + pDirY * Math.cos(-rotSpeed);
-    let oldPlaneX = planeX;
-    planeX = planeX * Math.cos(-rotSpeed) - planeY * Math.sin(-rotSpeed);
-    planeY = oldPlaneX * Math.sin(-rotSpeed) + planeY * Math.cos(-rotSpeed);
-  }
   if (keys['a']) {
-    let oldDirX = pDirX;
-    pDirX = pDirX * Math.cos(rotSpeed) - pDirY * Math.sin(rotSpeed);
-    pDirY = oldDirX * Math.sin(rotSpeed) + pDirY * Math.cos(rotSpeed);
-    let oldPlaneX = planeX;
-    planeX = planeX * Math.cos(rotSpeed) - planeY * Math.sin(rotSpeed);
-    planeY = oldPlaneX * Math.sin(rotSpeed) + planeY * Math.cos(rotSpeed);
+    // Strafe left (-plane vector)
+    if (map[Math.floor(pX - planeX * moveSpeed)][Math.floor(pY)] == 0) pX -= planeX * moveSpeed;
+    if (map[Math.floor(pX)][Math.floor(pY - planeY * moveSpeed)] == 0) pY -= planeY * moveSpeed;
+  }
+  if (keys['d']) {
+    // Strafe right (+plane vector)
+    if (map[Math.floor(pX + planeX * moveSpeed)][Math.floor(pY)] == 0) pX += planeX * moveSpeed;
+    if (map[Math.floor(pX)][Math.floor(pY + planeY * moveSpeed)] == 0) pY += planeY * moveSpeed;
   }
 
   // Network Sync

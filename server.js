@@ -390,6 +390,8 @@ class SmashArenaRoom extends colyseus.Room {
 // --------------------------------------------------------
 // FNAF ROOM
 // --------------------------------------------------------
+const fnafServerDirectory = new Map();
+
 class FnafPlayer extends Schema {}
 type("number")(FnafPlayer.prototype, "x");
 type("number")(FnafPlayer.prototype, "y");
@@ -406,7 +408,21 @@ type({ map: FnafPlayer })(FnafState.prototype, "players");
 class FnafRoom extends colyseus.Room {
   onCreate(options) {
     this.maxClients = 8;
+    this.autoDispose = true;
+    this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
+      ? options.serverName.trim().slice(0, 24)
+      : "Public FNAF World";
+    this.setMetadata({ serverName: this.serverName });
+
     this.setState(new FnafState());
+
+    fnafServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      serverName: this.serverName,
+      clients: 0,
+      maxClients: this.maxClients,
+      createdAt: Date.now()
+    });
 
     this.onMessage("move", (client, message) => {
       const p = this.state.players.get(client.sessionId);
@@ -424,12 +440,35 @@ class FnafRoom extends colyseus.Room {
     p.y = 2;
     p.rot = 0;
     this.state.players.set(client.sessionId, p);
+
+    const d = fnafServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      fnafServerDirectory.set(this.roomId, d);
+    }
   }
 
   onLeave(client) {
     this.state.players.delete(client.sessionId);
+
+    const d = fnafServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      fnafServerDirectory.set(this.roomId, d);
+    }
+  }
+
+  onDispose() {
+    fnafServerDirectory.delete(this.roomId);
   }
 }
+
+app.get("/fnaf_servers", (req, res) => {
+  const active = Array.from(fnafServerDirectory.values())
+    .sort((a, b) => b.clients - a.clients)
+    .slice(0, 50);
+  res.json(active);
+});
 
 // --------------------------------------------------------
 // BASE TEST ROOM
