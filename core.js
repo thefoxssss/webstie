@@ -2447,11 +2447,22 @@ function loadSeasonLeaderboards() {
       const playerCrew = data.crewData || {};
       const crewTag = String(playerCrew.tag || "").toUpperCase();
       const logo = playerCrew.logo || DEFAULT_CREW_LOGO;
+      const wins = Number(playerCrew.wins || 0);
       players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", logo });
       if (crewTag) {
-        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo };
+        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo, maxWins: -1 };
         crews[crewTag].money += playerMoney;
         crews[crewTag].members += 1;
+        if (wins >= crews[crewTag].maxWins) {
+          crews[crewTag].maxWins = wins;
+          crews[crewTag].logo = logo;
+        }
+      }
+    });
+
+    players.forEach(p => {
+      if (p.crewTag !== "SOLO" && crews[p.crewTag]) {
+        p.logo = crews[p.crewTag].logo;
       }
     });
 
@@ -6410,19 +6421,38 @@ function loadLeaderboardBoard(board, list) {
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
         const rows = [];
+        const crewLogos = {};
         snap.forEach((d) => {
           const data = d.data();
           const playerName = data.name || d.id;
           const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
+          const wins = Number(data.crewData?.wins || 0);
+          const logo = data.crewData?.logo || DEFAULT_CREW_LOGO;
+
+          if (crewTag) {
+            if (!crewLogos[crewTag]) crewLogos[crewTag] = { logo, maxWins: -1 };
+            if (wins >= crewLogos[crewTag].maxWins) {
+              crewLogos[crewTag].maxWins = wins;
+              crewLogos[crewTag].logo = logo;
+            }
+          }
+
           rows.push({
             name: playerName,
             score: data.rank || getRank(Number(data.money) || 0, playerName),
             rankData: getRankData(Number(data.money) || 0, playerName),
             canRemove: playerName !== myName && !isGodUser(playerName),
             crewTag,
-            logo: crewTag ? (data.crewData.logo || DEFAULT_CREW_LOGO) : null
+            logo: crewTag ? logo : null
           });
         });
+
+        rows.forEach(r => {
+          if (r.crewTag && crewLogos[r.crewTag]) {
+            r.logo = crewLogos[r.crewTag].logo;
+          }
+        });
+
         renderLeaderboardRows(list, rows, { showAdminRemove: true });
       })
     );
@@ -6434,16 +6464,35 @@ function loadLeaderboardBoard(board, list) {
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
         const rows = [];
+        const crewLogos = {};
         snap.forEach((d) => {
           const data = d.data();
           const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
+          const wins = Number(data.crewData?.wins || 0);
+          const logo = data.crewData?.logo || DEFAULT_CREW_LOGO;
+
+          if (crewTag) {
+            if (!crewLogos[crewTag]) crewLogos[crewTag] = { logo, maxWins: -1 };
+            if (wins >= crewLogos[crewTag].maxWins) {
+              crewLogos[crewTag].maxWins = wins;
+              crewLogos[crewTag].logo = logo;
+            }
+          }
+
           rows.push({
             name: data.name || d.id,
             score: data.money ?? 0,
             crewTag,
-            logo: crewTag ? (data.crewData.logo || DEFAULT_CREW_LOGO) : null
+            logo: crewTag ? logo : null
           });
         });
+
+        rows.forEach(r => {
+          if (r.crewTag && crewLogos[r.crewTag]) {
+            r.logo = crewLogos[r.crewTag].logo;
+          }
+        });
+
         renderLeaderboardRows(list, rows, { valuePrefix: "$" });
       })
     );
