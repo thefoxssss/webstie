@@ -128,6 +128,7 @@ const blockColors = {
         { pattern: [[15, 15, 15], [0, 15, 0], [0, 15, 0]], output: { type: 25, count: 1 } }, // Gold Gun
         { pattern: [[16, 16, 16], [0, 16, 0], [0, 16, 0]], output: { type: 26, count: 1 } }, // Diamond Rifle
         { pattern: [[17, 17, 17], [0, 17, 0], [0, 17, 0]], output: { type: 27, count: 1 } }, // Uranium Laser
+        { pattern: [[13, 0], [12, 0]], output: { type: 28, count: 16 } }, // Ammo (2x2 inventory)
         { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
     ];
 
