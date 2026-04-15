@@ -1132,8 +1132,13 @@ function sendBuildOrBreak(e) {
                 }
                 if (clickedChest) return;
 
-            } else if (isFurnaceOpen && currentFurnaceId && room.state.furnaces && room.state.furnaces.has(currentFurnaceId)) {
-                const furnace = room.state.furnaces.get(currentFurnaceId);
+            } else if (isFurnaceOpen && currentFurnaceId) {
+                const furnace = (room.state.furnaces && room.state.furnaces.get(currentFurnaceId)) || {
+                    inputItem: 0, inputCount: 0,
+                    fuelItem: 0, fuelCount: 0,
+                    outputItem: 0, outputCount: 0,
+                    progress: 0
+                };
                 const craftStartX = panel.x + panel.width - inventoryLayout.padding - 110;
                 const craftStartY = panel.y + 45;
                 const furX = craftStartX + 55;
@@ -2273,9 +2278,14 @@ if (inventoryOpen) {
                         ctx.fillText(`${item.count}`, slotX + 30, slotY + 28);
                     }
                 }
-            } else if (isFurnaceOpen && currentFurnaceId && room.state.furnaces && room.state.furnaces.has(currentFurnaceId)) {
+            } else if (isFurnaceOpen && currentFurnaceId) {
                 // Render Furnace UI
-                const furnace = room.state.furnaces.get(currentFurnaceId);
+                const furnace = (room.state.furnaces && room.state.furnaces.get(currentFurnaceId)) || {
+                    inputItem: 0, inputCount: 0,
+                    fuelItem: 0, fuelCount: 0,
+                    outputItem: 0, outputCount: 0,
+                    progress: 0
+                };
                 const craftStartX = panel.x + panel.width - inventoryLayout.padding - 110;
                 const craftStartY = panel.y + 45;
                 const furX = craftStartX + 55;

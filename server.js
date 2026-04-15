@@ -678,8 +678,20 @@ this.onMessage("interact", (client, message) => {
         if (!p || p.hp <= 0) return;
 
         const containerId = message.containerId;
-        const furnace = this.state.furnaces.get(containerId);
-        if (!furnace) return;
+        let furnace = this.state.furnaces.get(containerId);
+        if (!furnace) {
+            const [xStr, yStr] = (containerId || "").split(",");
+            const x = Number.parseInt(xStr, 10);
+            const y = Number.parseInt(yStr, 10);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            const cx = Math.floor(x / CHUNK_SIZE);
+            const cy = Math.floor(y / CHUNK_SIZE);
+            const chunk = this.state.chunks.get(`${cx},${cy}`);
+            const block = chunk?.blocks.get(`${x},${y}`);
+            if (!block || block.type !== 32) return;
+            furnace = new FurnaceData();
+            this.state.furnaces.set(containerId, furnace);
+        }
 
         furnace.inputItem = message.inputItem || 0;
         furnace.inputCount = message.inputCount || 0;
@@ -1380,7 +1392,7 @@ isSolid(x, y) {
         if (!hit) {
         // Furnace Smelting Logic
     this.state.furnaces.forEach(furnace => {
-        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 12 && furnace.inputItem <= 17) {
+        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 13 && furnace.inputItem <= 17) {
             // Check if fuel is log/coal
             if (furnace.fuelItem === 12 || furnace.fuelItem === 7 || furnace.fuelItem === 9) {
                 furnace.progress += 1;
