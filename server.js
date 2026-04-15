@@ -1374,23 +1374,8 @@ isSolid(x, y) {
         });
     }
 
-    this.state.bullets.forEach((b, id) => {
-        b.x += b.vx;
-        b.y += b.vy;
-        b.life--;
 
-        let hit = false;
-
-        // Block collision
-        const bx = Math.floor(b.x / TILE_SIZE);
-        const by = Math.floor(b.y / TILE_SIZE);
-        if (this.isSolid(bx, by)) {
-            hit = true;
-        }
-
-        // Player collision
-        if (!hit) {
-        // Furnace Smelting Logic
+    // Furnace Smelting Logic
     this.state.furnaces.forEach(furnace => {
         if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 13 && furnace.inputItem <= 17) {
             // Check if fuel is log/coal
@@ -1406,13 +1391,6 @@ isSolid(x, y) {
                     // Fuel consumption logic: 1 coal smelts 8 items? Let's just do 1:1 for simplicity right now
                     furnace.fuelCount--;
                     if (furnace.fuelCount <= 0) furnace.fuelItem = 0;
-
-                    // Convert Ore -> Ingot/Gem (Using same IDs for simplicity, or we can use armor IDs as ingots. Let's just give them the ingot form of armor, but armor is 18-22... Wait, we need actual ingots or just let them smelt ore -> ingot item. Let's use 18-22 for Ingots, and we'll change the armor recipes to use 18-22 instead of raw ore, and we'll add armor items later, actually armor is 18-22. So let's use 43+ for ingots.)
-                    // 13: Copper Ore -> 43: Copper Ingot
-                    // 14: Iron Ore -> 44: Iron Ingot
-                    // 15: Gold Ore -> 45: Gold Ingot
-                    // 16: Diamond Ore -> 46: Diamond (refined)
-                    // 17: Uranium Ore -> 47: Uranium (refined)
 
                     let outputType = 0;
                     if (furnace.inputItem === 13) outputType = 43;
@@ -1439,7 +1417,23 @@ isSolid(x, y) {
         }
     });
 
-    this.state.players.forEach((p, sessionId) => {
+    this.state.bullets.forEach((b, id) => {
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life--;
+
+        let hit = false;
+
+        // Block collision
+        const bx = Math.floor(b.x / TILE_SIZE);
+        const by = Math.floor(b.y / TILE_SIZE);
+        if (this.isSolid(bx, by)) {
+            hit = true;
+        }
+
+        // Player collision
+        if (!hit) {
+            this.state.players.forEach((p, sessionId) => {
                 if (hit || sessionId === b.ownerId || p.hp <= 0) return;
 
                 if (b.x >= p.x && b.x <= p.x + TILE_SIZE &&
