@@ -39,6 +39,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "agar", title: "AGAR", description: "Eat cells to grow bigger.", icon: "🔴", tags: ["pvp", "arcade"] },
   { id: "builder", title: "BUILDER", description: "Multiplayer sandbox. Place and break blocks together.", icon: "⛏️", tags: ["sandbox", "multiplayer", "pvp"] },
   { id: "flappy", title: "FLAPPY GOON", description: "Secret bonus mode: tap to survive.", icon: "🐤", tags: ["arcade", "skill"], hidden: true, shopItems: ["item_flappy", "item_shield"] },
+  { id: "fnaf", title: "FNAF 3D", description: "Multiplayer horror survival.", icon: "🐻", tags: ["arcade", "multiplayer", "survival"] },
 ]);
 
 export const LEADERBOARD_GAME_COLUMNS = Object.freeze(

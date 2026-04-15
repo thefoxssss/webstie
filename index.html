@@ -1361,6 +1361,35 @@
       </button>
     </div>
 
+    <!-- Fnaf mini-game. -->
+    <div class="overlay" id="overlayFnaf">
+      <h1>FNAF 3D</h1>
+
+      <div id="fnafMenu" class="menu-box">
+        <select id="fnafNetwork" class="term-input">
+          <option value="auto">AUTO NETWORK (RECOMMENDED)</option>
+          <option value="prod">PRODUCTION NETWORK</option>
+          <option value="local">LOCALHOST NETWORK</option>
+        </select>
+        <button class="menu-btn" id="btnRefreshFnafServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
+        <input type="text" id="fnafServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
+        <button class="term-btn" id="btnCreateFnafServer">CREATE SERVER</button>
+        <div id="fnafServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
+        <button class="menu-btn" id="btnJoinFnaf">QUICK JOIN ANY SERVER</button>
+      </div>
+
+      <div id="fnafGame" style="display: none">
+        <div style="margin-bottom: 10px">
+          SURVIVE (CLICK TO LOCK MOUSE, WASD TO MOVE)
+        </div>
+        <canvas id="fnafCanvas" width="800" height="450" style="background: #000; cursor: crosshair;"></canvas>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
     <!-- Pong mini-game. -->
     <div class="overlay" id="overlayPong">
       <h1>PONG</h1>
