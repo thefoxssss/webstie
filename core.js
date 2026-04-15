@@ -1303,8 +1303,10 @@ function drawStockGraph(stock) {
   const max = Math.max(...stock.history);
   const span = Math.max(0.01, max - min);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  // Draw background grid
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
   for (let y = 1; y < 4; y += 1) {
     const yPos = (height / 4) * y;
     ctx.beginPath();
@@ -1312,18 +1314,67 @@ function drawStockGraph(stock) {
     ctx.lineTo(width, yPos);
     ctx.stroke();
   }
+  ctx.setLineDash([]);
 
-  const up = stock.history[stock.history.length - 1] >= stock.history[0];
-  ctx.strokeStyle = up ? "#00ff66" : "#ff3d3d";
-  ctx.lineWidth = 2;
+  const startValue = stock.history[0];
+  const endValue = stock.history[stock.history.length - 1];
+  const up = endValue >= startValue;
+  const baseColor = up ? "#00ff66" : "#ff3d3d";
+  const startY = height - ((startValue - min) / span) * (height - 12) - 6;
+
+  // Draw baseline
+  ctx.strokeStyle = "rgba(255,255,255,0.2)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
   ctx.beginPath();
+  ctx.moveTo(0, startY);
+  ctx.lineTo(width, startY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw path
+  ctx.beginPath();
+  const pts = [];
   stock.history.forEach((value, i) => {
     const x = (i / (stock.history.length - 1 || 1)) * width;
-    const y = height - ((value - min) / span) * (height - 8) - 4;
+    const y = height - ((value - min) / span) * (height - 12) - 6;
+    pts.push({ x, y });
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
+
+  // Create glow for stroke
+  ctx.shadowColor = baseColor;
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = baseColor;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
   ctx.stroke();
+
+  // Reset shadow for fill
+  ctx.shadowBlur = 0;
+
+  // Fill area under the curve
+  const fillGradient = ctx.createLinearGradient(0, 0, 0, height);
+  fillGradient.addColorStop(0, up ? "rgba(0, 255, 102, 0.25)" : "rgba(255, 61, 61, 0.25)");
+  fillGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = fillGradient;
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.fill();
+
+  // Draw end point indicator
+  if (pts.length > 0) {
+    const lastPt = pts[pts.length - 1];
+    ctx.beginPath();
+    ctx.arc(lastPt.x, lastPt.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = baseColor;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#fff";
+    ctx.stroke();
+  }
 }
 
 function renderStockMarket() {
