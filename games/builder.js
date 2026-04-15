@@ -78,6 +78,10 @@ const blockColors = {
         26: "#00FFFF", // Diamond Rifle
         27: "#39FF14", // Uranium Laser
         28: "#B87333", // Copper Ammo
+        48: "#D0D0D0", // Iron Ammo
+        49: "#FFD700", // Gold Ammo
+        50: "#00FFFF", // Diamond Ammo
+        51: "#39FF14", // Uranium Ammo
         29: "#4ca64c", // Sapling
         30: "#ff3333", // Apple
         31: "#654321", // Chest
@@ -102,7 +106,6 @@ const blockColors = {
     const CRAFTING_RECIPES = [
         { pattern: [[7]], output: { type: 9, count: 4 } }, // 1 Log -> 4 Planks
         { pattern: [[9, 9], [9, 9]], output: { type: 10, count: 1 } }, // 4 Planks -> Crafting Table
-        { pattern: [[9], [9]], output: { type: 50, count: 4 } }, // 2 Planks -> 4 Sticks (Let's use 50 for stick, wait stick isn't defined... actually stick isn't in original either, let's just use planks for tools for now)
         // Ladder
         { pattern: [[9, 0, 9], [9, 9, 9], [9, 0, 9]], output: { type: 35, count: 3 } }, // 7 Planks -> 3 Ladders
         // Hammer
@@ -128,8 +131,11 @@ const blockColors = {
         { pattern: [[15, 15, 15], [0, 15, 0], [0, 15, 0]], output: { type: 25, count: 1 } }, // Gold Gun
         { pattern: [[16, 16, 16], [0, 16, 0], [0, 16, 0]], output: { type: 26, count: 1 } }, // Diamond Rifle
         { pattern: [[17, 17, 17], [0, 17, 0], [0, 17, 0]], output: { type: 27, count: 1 } }, // Uranium Laser
-        { pattern: [[13, 0], [12, 0]], output: { type: 28, count: 16 } }, // Ammo (2x2 inventory)
-        { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
+        { pattern: [[0, 0, 0], [0, 13, 0], [0, 0, 0]], output: { type: 28, count: 8 } }, // Copper Bullet (center slot)
+        { pattern: [[0, 0, 0], [0, 14, 0], [0, 0, 0]], output: { type: 48, count: 8 } }, // Iron Bullet (center slot)
+        { pattern: [[0, 0, 0], [0, 15, 0], [0, 0, 0]], output: { type: 49, count: 8 } }, // Gold Bullet (center slot)
+        { pattern: [[0, 0, 0], [0, 16, 0], [0, 0, 0]], output: { type: 50, count: 8 } }, // Diamond Bullet (center slot)
+        { pattern: [[0, 0, 0], [0, 17, 0], [0, 0, 0]], output: { type: 51, count: 8 } }, // Uranium Bullet (explosive, center slot)
     ];
 
     const blockNames = {
@@ -161,6 +167,10 @@ const blockColors = {
         26: "DIAMOND RIFLE",
         27: "URANIUM LASER",
         28: "COPPER AMMO",
+        48: "IRON AMMO",
+        49: "GOLD AMMO",
+        50: "DIAMOND AMMO",
+        51: "URANIUM AMMO",
         29: "SAPLING",
         30: "APPLE",
         31: "CHEST",
@@ -191,7 +201,8 @@ const blockColors = {
         "data/blocks/13.json", "data/blocks/14.json", "data/blocks/15.json", "data/blocks/16.json",
         "data/blocks/17.json", "data/items/18.json", "data/items/19.json", "data/items/20.json",
         "data/items/21.json", "data/items/22.json", "data/items/23.json", "data/items/24.json",
-        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json"
+        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json",
+        "data/items/48.json", "data/items/49.json", "data/items/50.json", "data/items/51.json"
     ];
     let loadedBlockData = {};
     let blockImages = {};
@@ -871,19 +882,22 @@ function sendBuildOrBreak(e) {
 
         // Handle shooting guns
         if ([23, 24, 25, 26, 27].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
+            const ammoTypeByGun = { 23: 28, 24: 48, 25: 49, 26: 50, 27: 51 };
+            const requiredAmmoType = ammoTypeByGun[type] || 28;
+
             // Check for ammo
             let hasAmmo = false;
             let ammoSlotIndex = -1;
             let ammoIsHotbar = false;
 
             for (let i = 0; i < hotbarSlots.length; i++) {
-                if (hotbarSlots[i] && hotbarSlots[i].type === 28) {
+                if (hotbarSlots[i] && hotbarSlots[i].type === requiredAmmoType) {
                     hasAmmo = true; ammoSlotIndex = i; ammoIsHotbar = true; break;
                 }
             }
             if (!hasAmmo) {
                 for (let i = 0; i < inventorySlots.length; i++) {
-                    if (inventorySlots[i] && inventorySlots[i].type === 28) {
+                    if (inventorySlots[i] && inventorySlots[i].type === requiredAmmoType) {
                         hasAmmo = true; ammoSlotIndex = i; break;
                     }
                 }
@@ -898,7 +912,7 @@ function sendBuildOrBreak(e) {
                     inventorySlots[ammoSlotIndex].count--;
                     if (inventorySlots[ammoSlotIndex].count <= 0) { inventorySlots[ammoSlotIndex] = undefined; saveInventoryState(); }
                 }
-                room.send("shoot", { x: worldX, y: worldY });
+                room.send("shoot", { x: worldX, y: worldY, ammoType: requiredAmmoType });
             }
             return;
         }
