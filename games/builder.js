@@ -1212,6 +1212,7 @@ function sendBuildOrBreak(e) {
                             }
                         } else {
                             if (currentItem === undefined) {
+                                if (!canPlaceInFurnaceSlot(slotName, draggedItemType.type)) return;
                                 setSlot(cloneItem(draggedItemType));
                                 draggedItemType = null;
                             } else if (currentItem.type === draggedItemType.type) {
@@ -1223,7 +1224,7 @@ function sendBuildOrBreak(e) {
                                     if (draggedItemType.count <= 0) draggedItemType = null;
                                 }
                             } else {
-                                if (!canPlaceInFurnaceSlot(slotName, currentItem.type)) return;
+                                if (!canPlaceInFurnaceSlot(slotName, draggedItemType.type)) return;
                                 const temp = cloneItem(currentItem);
                                 setSlot(cloneItem(draggedItemType));
                                 draggedItemType = temp;
