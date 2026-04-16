@@ -726,7 +726,7 @@ const blockColors = {
         if (!room) return;
         if (isInputFocused(e)) return;
         const isUpKey = e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " " || e.code === "Space";
-        const isDownKey = e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight";
+        const isDownKey = e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight" || e.key === "s" || e.key === "S";
         if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.a = true;
         if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.d = true;
         if (isUpKey) {
