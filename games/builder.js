@@ -2726,62 +2726,64 @@ if (inventoryOpen) {
                         ctx.fillText(`${craftingOutputSlot.count}`, outX + inventoryLayout.slotSize - 3, outY + inventoryLayout.slotSize - 5);
                     }
                 }
-            for (let index = 0; index < totalSlots; index += 1) {
-                const item = inventorySlots[index];
-                const col = index % inventoryLayout.cols;
-                const row = Math.floor(index / inventoryLayout.cols);
-                const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const isEmpty = typeof item === "undefined";
-                const isActive = false; // We don't need active state in the main inventory anymore, just hotbar
+            if (!showRecipes) {
+                for (let index = 0; index < totalSlots; index += 1) {
+                    const item = inventorySlots[index];
+                    const col = index % inventoryLayout.cols;
+                    const row = Math.floor(index / inventoryLayout.cols);
+                    const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
+                    const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
+                    const isEmpty = typeof item === "undefined";
+                    const isActive = false; // We don't need active state in the main inventory anymore, just hotbar
 
-                // Slot background
-                ctx.fillStyle = "#8b8b8b";
-                ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+                    // Slot background
+                    ctx.fillStyle = "#8b8b8b";
+                    ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
 
-                // Slot inner shadow/bevel
-                ctx.strokeStyle = "#373737";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
-                ctx.lineTo(slotX, slotY);
-                ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
-                ctx.stroke();
+                    // Slot inner shadow/bevel
+                    ctx.strokeStyle = "#373737";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
+                    ctx.lineTo(slotX, slotY);
+                    ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
+                    ctx.stroke();
 
-                ctx.strokeStyle = "#ffffff";
-                ctx.beginPath();
-                ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
-                ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
-                ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
-                ctx.stroke();
-
-                if (!isEmpty) {
-                    const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
-
-                    // Stack count
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "8px 'Press Start 2P', monospace";
-                    ctx.textAlign = "right";
-                    ctx.fillStyle = "#3f3f3f";
-                    ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
-                }
-
-                if (!hoverItemName && !isEmpty) {
-                    const isHoveringSlot =
-                        mouse.x >= slotX &&
-                        mouse.x <= slotX + inventoryLayout.slotSize &&
-                        mouse.y >= slotY &&
-                        mouse.y <= slotY + inventoryLayout.slotSize;
-                    if (isHoveringSlot) hoverItemName = getItemName(item);
-                }
-
-                if (isActive) {
                     ctx.strokeStyle = "#ffffff";
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
+                    ctx.beginPath();
+                    ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
+                    ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
+                    ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
+                    ctx.stroke();
+
+                    if (!isEmpty) {
+                        const inset = 6;
+                            drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+
+                        // Stack count
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "8px 'Press Start 2P', monospace";
+                        ctx.textAlign = "right";
+                        ctx.fillStyle = "#3f3f3f";
+                        ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
+                    }
+
+                    if (!hoverItemName && !isEmpty) {
+                        const isHoveringSlot =
+                            mouse.x >= slotX &&
+                            mouse.x <= slotX + inventoryLayout.slotSize &&
+                            mouse.y >= slotY &&
+                            mouse.y <= slotY + inventoryLayout.slotSize;
+                        if (isHoveringSlot) hoverItemName = getItemName(item);
+                    }
+
+                    if (isActive) {
+                        ctx.strokeStyle = "#ffffff";
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
+                    }
                 }
             }
             }
