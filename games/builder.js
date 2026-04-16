@@ -1629,6 +1629,21 @@ if (e.button === 2 && !e.shiftKey) {
                     return;
                 }
             }
+
+            // No block here, but we may be clicking a live explosive.
+            let clickedLiveBomb = false;
+            room.state.explosives.forEach((exp) => {
+                if (clickedLiveBomb) return;
+                const expTileX = Math.floor(exp.x / TILE_SIZE);
+                const expTileY = Math.floor(exp.y / TILE_SIZE);
+                if (expTileX === tileX && expTileY === tileY) {
+                    clickedLiveBomb = true;
+                }
+            });
+            if (clickedLiveBomb) {
+                room.send("interact", { x: worldX, y: worldY });
+                return;
+            }
         }
 
         mouse.isDown = true;
@@ -2234,6 +2249,48 @@ if (e.button === 2 && !e.shiftKey) {
         }
 
         ctx.restore();
+
+        // Draw blast warning if the local player is in range of any live explosive.
+        if (localPlayer) {
+            const playerCenterX = localPlayer.x + TILE_SIZE / 2;
+            const playerCenterY = localPlayer.y + TILE_SIZE / 2;
+            let nearestThreat = null;
+
+            room.state.explosives.forEach((exp) => {
+                const isNuke = exp.type === 34;
+                const blastRadius = isNuke ? (TILE_SIZE * 1000) : (TILE_SIZE * 5);
+                const dx = playerCenterX - exp.x;
+                const dy = playerCenterY - exp.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= blastRadius) {
+                    if (!nearestThreat || exp.timer < nearestThreat.timer) {
+                        nearestThreat = { isNuke, timer: exp.timer };
+                    }
+                }
+            });
+
+            if (nearestThreat) {
+                const secondsLeft = Math.max(0, nearestThreat.timer / 50).toFixed(1);
+                const warningText = nearestThreat.isNuke
+                    ? `⚠ NUKE BLAST RANGE (${secondsLeft}s)`
+                    : `⚠ TNT BLAST RANGE (${secondsLeft}s)`;
+                const warningWidth = Math.max(300, ctx.measureText(warningText).width + 24);
+                const warningX = (canvas.width - warningWidth) / 2;
+                const warningY = 46;
+
+                ctx.save();
+                ctx.fillStyle = "rgba(120, 0, 0, 0.85)";
+                ctx.fillRect(warningX, warningY, warningWidth, 26);
+                ctx.strokeStyle = "#ff6b6b";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(warningX, warningY, warningWidth, 26);
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "12px 'Press Start 2P', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(warningText, canvas.width / 2, warningY + 17);
+                ctx.restore();
+            }
+        }
 
         // Draw HP Hearts
         if (localPlayer) {
