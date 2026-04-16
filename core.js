@@ -198,6 +198,7 @@ let adminSettings = {};
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
 const SEASON_STARTING_MONEY = 1000;
+const ONLINE_STATUS_WINDOW_MS = 120000;
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
@@ -239,6 +240,18 @@ let seasonBoardUnsub = null;
 let activeSeasonTab = "";
 let activeSeasonSubTab = "solo";
 let cachedSeasonBoards = { solo: [], gang: [] };
+
+function isUserMarkedOnline(lastLogin) {
+  const ts = Number(lastLogin || 0);
+  if (!Number.isFinite(ts) || ts <= 0) return false;
+  return Date.now() - ts <= ONLINE_STATUS_WINDOW_MS;
+}
+
+function renderOnlineStatusBadge(isOnline) {
+  const cls = isOnline ? "online" : "offline";
+  const label = isOnline ? "ONLINE" : "OFFLINE";
+  return `<span class="online-status ${cls}">${label}</span>`;
+}
 
 // Centralized mutable state wrapper (keeps consumers consistent).
 export const state = {
@@ -2307,7 +2320,7 @@ function renderSeasonBoard() {
             if (activeSeasonSubTab === "gang") {
               return `<div class="score-item"><div>#${idx + 1} ${logoHtml}[${escapeHtml(row.tag)}]</div> <div>$${Math.round(row.money)} // ${row.members} OPS</div></div>`;
             } else {
-              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
+              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} ${renderOnlineStatusBadge(Boolean(row.online))} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
             }
           })
           .join("")
@@ -2383,7 +2396,13 @@ function getLiveSeasonBoardRows(mode = "solo") {
   }
 
   const soloRows = (cachedSeasonBoards.solo || []).filter((row) => String(row.name || "").toUpperCase() !== normalizedName);
-  soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag, logo: crewData.logo || DEFAULT_CREW_LOGO });
+  soloRows.push({
+    name: normalizedName,
+    money: localMoney,
+    crewTag: normalizedCrewTag,
+    logo: crewData.logo || DEFAULT_CREW_LOGO,
+    online: true,
+  });
   return soloRows.sort((a, b) => b.money - a.money);
 }
 
@@ -2471,7 +2490,13 @@ function loadSeasonLeaderboards() {
       const validLogo = (playerCrew.logo && playerCrew.logo.palette) ? playerCrew.logo : null;
       const wins = Number(playerCrew.wins || 0);
       const currentMembers = playerCrew.members?.length || 1;
-      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", _logoRaw: validLogo });
+      players.push({
+        name: playerName,
+        money: playerMoney,
+        crewTag: crewTag || "SOLO",
+        online: isUserMarkedOnline(data.lastLogin),
+        _logoRaw: validLogo,
+      });
       if (crewTag) {
         if (!crews[crewTag]) {
           crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo: validLogo, maxWins: -1, repMembers: -1 };
@@ -2513,6 +2538,7 @@ async function syncCrewData() {
     const snap = await getDocs(q);
 
     const matchingMembers = [];
+    const memberPresence = {};
     let authUser = null;
     let maxWins = -1;
     let totalBank = 0;
@@ -2520,7 +2546,13 @@ async function syncCrewData() {
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       if (data.crewData) {
-        matchingMembers.push({ name: data.name, money: data.money || 0, role: data.crewData.role || "MEMBER" });
+        const memberName = String(data.name || docSnap.id || "ANON");
+        matchingMembers.push({
+          name: memberName,
+          money: data.money || 0,
+          role: data.crewData.role || "MEMBER",
+        });
+        memberPresence[memberName.toUpperCase()] = isUserMarkedOnline(data.lastLogin);
         totalBank += Number(data.crewData.bank || 0);
 
         if (data.crewData.wins >= maxWins) {
@@ -2545,6 +2577,7 @@ async function syncCrewData() {
     });
 
     crewData.members = matchingMembers.map(m => m.name);
+    crewData.memberPresence = memberPresence;
     saveCrewData();
 
   } catch (err) {
@@ -2592,7 +2625,8 @@ async function renderCrewPanel() {
       list.innerHTML = crewData.members.map(member =>
         `<div class="crew-roster-item">
            <span class="crew-roster-name">${escapeHtml(member)}</span>
-           ${member === myName ? '<span class="crew-roster-you">(YOU)</span>' : ''}
+           ${renderOnlineStatusBadge(Boolean(crewData.memberPresence?.[String(member || "").toUpperCase()]))}
+           ${String(member || "").toUpperCase() === String(myName || "").toUpperCase() ? '<span class="crew-roster-you">(YOU)</span>' : ''}
          </div>`
       ).join("");
     }

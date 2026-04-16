@@ -1287,6 +1287,30 @@ body::before {
   color: #fff;
 }
 
+.online-status {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  border: 1px solid;
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+}
+
+.online-status.online {
+  color: #7dff7d;
+  border-color: rgba(125, 255, 125, 0.65);
+  background: rgba(40, 120, 40, 0.2);
+}
+
+.online-status.offline {
+  color: #ffa3a3;
+  border-color: rgba(255, 120, 120, 0.55);
+  background: rgba(140, 40, 40, 0.2);
+}
+
 .crew-roster-you {
   color: var(--accent);
 }
