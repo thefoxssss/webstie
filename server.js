@@ -397,13 +397,32 @@ type("number")(FnafPlayer.prototype, "x");
 type("number")(FnafPlayer.prototype, "y");
 type("number")(FnafPlayer.prototype, "rot");
 
+class FnafAnimatronic extends Schema {}
+type("number")(FnafAnimatronic.prototype, "x");
+type("number")(FnafAnimatronic.prototype, "y");
+type("string")(FnafAnimatronic.prototype, "type");
+
 class FnafState extends Schema {
   constructor() {
     super();
     this.players = new MapSchema();
+    this.animatronics = new MapSchema();
+    this.power = 100;
+    this.time = 0; // 0 = 12AM, 1 = 1AM, ..., 6 = 6AM
+    this.doorLeft = false;
+    this.doorRight = false;
+    this.lightLeft = false;
+    this.lightRight = false;
   }
 }
 type({ map: FnafPlayer })(FnafState.prototype, "players");
+type({ map: FnafAnimatronic })(FnafState.prototype, "animatronics");
+type("number")(FnafState.prototype, "power");
+type("number")(FnafState.prototype, "time");
+type("boolean")(FnafState.prototype, "doorLeft");
+type("boolean")(FnafState.prototype, "doorRight");
+type("boolean")(FnafState.prototype, "lightLeft");
+type("boolean")(FnafState.prototype, "lightRight");
 
 class FnafRoom extends colyseus.Room {
   onCreate(options) {
@@ -415,6 +434,15 @@ class FnafRoom extends colyseus.Room {
     this.setMetadata({ serverName: this.serverName });
 
     this.setState(new FnafState());
+
+    // Initialize Animatronics
+    const freddy = new FnafAnimatronic();
+    freddy.x = 1.5; freddy.y = 1.5; freddy.type = "freddy";
+    this.state.animatronics.set("freddy", freddy);
+
+    const bonnie = new FnafAnimatronic();
+    bonnie.x = 8.5; bonnie.y = 1.5; bonnie.type = "bonnie";
+    this.state.animatronics.set("bonnie", bonnie);
 
     fnafServerDirectory.set(this.roomId, {
       roomId: this.roomId,
@@ -432,8 +460,73 @@ class FnafRoom extends colyseus.Room {
         p.rot = message.rot;
       }
     });
+
+    this.onMessage("toggleAction", (client, message) => {
+      if (message.action === "doorLeft") {
+        this.state.doorLeft = !this.state.doorLeft;
+      } else if (message.action === "doorRight") {
+        this.state.doorRight = !this.state.doorRight;
+      } else if (message.action === "lightLeft") {
+        this.state.lightLeft = !this.state.lightLeft;
+      } else if (message.action === "lightRight") {
+        this.state.lightRight = !this.state.lightRight;
+      }
+    });
+
+    this.tickCounter = 0;
+    this.setSimulationInterval((deltaTime) => this.simulateTick(deltaTime), 1000); // run every 1s
   }
 
+  simulateTick(deltaTime) {
+    this.tickCounter++;
+
+    // Time progression: 1 in-game hour every 60 real seconds (60 ticks)
+    if (this.tickCounter % 60 === 0) {
+      if (this.state.time < 6) {
+        this.state.time++;
+      }
+    }
+
+    // Power drain
+    let drainRate = 0.1; // Base drain
+    if (this.state.doorLeft) drainRate += 0.2;
+    if (this.state.doorRight) drainRate += 0.2;
+    if (this.state.lightLeft) drainRate += 0.1;
+    if (this.state.lightRight) drainRate += 0.1;
+
+    this.state.power = Math.max(0, this.state.power - drainRate);
+    if (this.state.power === 0) {
+       this.state.doorLeft = false;
+       this.state.doorRight = false;
+       this.state.lightLeft = false;
+       this.state.lightRight = false;
+    }
+
+    // AI Movement (Very basic: slowly drift towards the office at ~5.5, 5.5)
+    if (this.state.time > 0 && this.tickCounter % 5 === 0) { // Move every 5 seconds
+      const officeX = 5.5;
+      const officeY = 5.5;
+
+      this.state.animatronics.forEach((anim) => {
+         // Simple movement towards office
+         let moveX = Math.sign(officeX - anim.x) * 0.5;
+         let moveY = Math.sign(officeY - anim.y) * 0.5;
+
+         // Basic boundary check to not go out of bounds (0-10)
+         let nextX = Math.max(1, Math.min(9, anim.x + moveX));
+         let nextY = Math.max(1, Math.min(9, anim.y + moveY));
+
+         // Extremely simple door check: if they get near office doors (x=2 or x=7, y=5)
+         if ((Math.abs(nextX - 2.5) < 1 && this.state.doorLeft) ||
+             (Math.abs(nextX - 7.5) < 1 && this.state.doorRight)) {
+            // Blocked by door
+         } else {
+            anim.x = nextX;
+            anim.y = nextY;
+         }
+      });
+    }
+  }
   onJoin(client, options) {
     const p = new FnafPlayer();
     p.x = 2; // Default spawn
