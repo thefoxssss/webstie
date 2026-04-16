@@ -98,6 +98,11 @@ const blockColors = {
         46: "#00FFFF", // Diamond (Refined)
         47: "#39FF14", // Uranium (Refined)
         48: "#1b1b1b", // Bedrock
+        60: "#7bf3ff", // TariqCore
+        61: "#5cd7e6", // TariqCore Blade
+        62: "#9afaff", // TariqCore Armor
+        63: "#46bfd1", // TariqCore Beam
+        64: "#eefbff", // Cloud Platform
     };
 
     const WOOD_TYPES_FOR_PLANKS = [4, 7, 41];
@@ -132,6 +137,9 @@ const blockColors = {
         { pattern: [[17, 17, 17], [0, 17, 0], [0, 17, 0]], output: { type: 27, count: 1 } }, // Uranium Laser
         { pattern: [[13, 0], [12, 0]], output: { type: 28, count: 16 } }, // Ammo (2x2 inventory)
         { pattern: [[13, 0, 0], [12, 0, 0], [0, 0, 0]], output: { type: 28, count: 16 } }, // Ammo
+        { pattern: [[60, 60, 60], [0, 60, 0], [0, 9, 0]], output: { type: 61, count: 1 } }, // TariqCore Blade
+        { pattern: [[60, 60, 60], [60, 0, 60], [0, 0, 0]], output: { type: 62, count: 1 } }, // TariqCore Armor
+        { pattern: [[60, 60, 60], [0, 9, 0], [0, 60, 0]], output: { type: 63, count: 1 } }, // TariqCore Beam
     ];
 
     const blockNames = {
@@ -183,9 +191,14 @@ const blockColors = {
         46: "DIAMOND (REFINED)",
         47: "URANIUM (REFINED)",
         48: "BEDROCK",
+        60: "TARIQCORE",
+        61: "TARIQCORE BLADE",
+        62: "TARIQCORE ARMOR",
+        63: "TARIQCORE BEAM",
+        64: "CLOUD PLATFORM",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].includes(type) ? 1 : 99);
+    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 61, 62, 63].includes(type) ? 1 : 99);
 
     const blockDataUrls = [
         "data/blocks/1.json", "data/blocks/2.json", "data/blocks/3.json", "data/blocks/4.json",
@@ -297,7 +310,7 @@ const blockColors = {
     let lastUiBlockType = null;
 
     // Inputs
-    const keys = { w: false, a: false, d: false, upPress: false };
+    const keys = { w: false, a: false, d: false, shift: false, flight: false, upPress: false };
     const mouse = { x: 0, y: 0, isDown: false };
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
@@ -718,6 +731,7 @@ const blockColors = {
             if (!keys.w) keys.upPress = true;
             keys.w = true;
         }
+        if (e.key === "Shift") keys.shift = true;
         if (e.key === "q" || e.key === "Q") {
             const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
             if (selectedSlotItem) {
@@ -823,6 +837,11 @@ const blockColors = {
                 room.send("select_item", { type: selectedBlockType ? itemType(selectedBlockType) : 0 });
             }
         }
+
+        if ((e.key === "f" || e.key === "F") && isGodUser()) {
+            keys.flight = !keys.flight;
+            window.__builderFlightEnabled = keys.flight;
+        }
     }
 
     function handleKeyUp(e) {
@@ -830,6 +849,7 @@ const blockColors = {
         if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.a = false;
         if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.d = false;
         if (e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " ") keys.w = false;
+        if (e.key === "Shift") keys.shift = false;
     }
 
     function handleMouseMove(e) {
@@ -873,31 +893,33 @@ function sendBuildOrBreak(e) {
         }
 
         // Handle shooting guns
-        if ([23, 24, 25, 26, 27].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
+        if ([23, 24, 25, 26, 27, 63].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
             // Check for ammo
-            let hasAmmo = false;
+            let hasAmmo = type === 63;
             let ammoSlotIndex = -1;
             let ammoIsHotbar = false;
 
-            for (let i = 0; i < hotbarSlots.length; i++) {
-                if (hotbarSlots[i] && hotbarSlots[i].type === 28) {
-                    hasAmmo = true; ammoSlotIndex = i; ammoIsHotbar = true; break;
+            if (type !== 63) {
+                for (let i = 0; i < hotbarSlots.length; i++) {
+                    if (hotbarSlots[i] && hotbarSlots[i].type === 28) {
+                        hasAmmo = true; ammoSlotIndex = i; ammoIsHotbar = true; break;
+                    }
                 }
-            }
-            if (!hasAmmo) {
-                for (let i = 0; i < inventorySlots.length; i++) {
-                    if (inventorySlots[i] && inventorySlots[i].type === 28) {
-                        hasAmmo = true; ammoSlotIndex = i; break;
+                if (!hasAmmo) {
+                    for (let i = 0; i < inventorySlots.length; i++) {
+                        if (inventorySlots[i] && inventorySlots[i].type === 28) {
+                            hasAmmo = true; ammoSlotIndex = i; break;
+                        }
                     }
                 }
             }
 
             if (hasAmmo) {
                 // Consume ammo
-                if (ammoIsHotbar) {
+                if (type !== 63 && ammoIsHotbar) {
                     hotbarSlots[ammoSlotIndex].count--;
                     if (hotbarSlots[ammoSlotIndex].count <= 0) { hotbarSlots[ammoSlotIndex] = undefined; saveInventoryState(); }
-                } else {
+                } else if (type !== 63) {
                     inventorySlots[ammoSlotIndex].count--;
                     if (inventorySlots[ammoSlotIndex].count <= 0) { inventorySlots[ammoSlotIndex] = undefined; saveInventoryState(); }
                 }
@@ -940,7 +962,7 @@ function sendBuildOrBreak(e) {
         if (!room || !room.state) return false;
 
         // Cannot place tools/weapons as blocks
-        if (selectedBlockType !== undefined && itemType(selectedBlockType) === 11) return false;
+        if (selectedBlockType !== undefined && [11, 23, 24, 25, 26, 27, 61, 63].includes(itemType(selectedBlockType))) return false;
 
         const localPlayer = room.state.players.get(localPlayerId);
         if (!localPlayer || localPlayer.hp <= 0) return false;
@@ -977,6 +999,11 @@ function sendBuildOrBreak(e) {
         if (!isGodUser()) return;
         addInventoryItem(type, count);
         saveInventoryState();
+    };
+    window.adminToggleBuilderFlight = () => {
+        if (!isGodUser()) return;
+        keys.flight = !keys.flight;
+        window.__builderFlightEnabled = keys.flight;
     };
 
     function addInventoryItem(type, count) {
@@ -1302,7 +1329,7 @@ function sendBuildOrBreak(e) {
                     // We are holding an item
 
                     // Armor slot restriction: only armor (18-22)
-                    if (isArmor && ![18, 19, 20, 21, 22].includes(draggedItemType.type)) {
+                    if (isArmor && ![18, 19, 20, 21, 22, 62].includes(draggedItemType.type)) {
                         return true;
                     }
 
@@ -1600,7 +1627,7 @@ if (e.button === 2 && !e.shiftKey) {
 
             if (isArmorSlotDrop && !dragSourceOutputSlot) {
                 // Check if dragging an armor item (18-22)
-                if ([18, 19, 20, 21, 22].includes(draggedItemType.type)) {
+                if ([18, 19, 20, 21, 22, 62].includes(draggedItemType.type)) {
                     const existingItem = cloneItem(armorSlot);
                     armorSlot = cloneItem(draggedItemType);
                     room.send("equip_armor", { type: armorSlot.type });
@@ -1633,7 +1660,7 @@ if (e.button === 2 && !e.shiftKey) {
                     } else if (dragSourceInventoryIndex !== null) {
                         inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     } else if (dragSourceArmorSlot) {
-                        if ([18, 19, 20, 21, 22].includes(existingItem.type)) {
+                        if ([18, 19, 20, 21, 22, 62].includes(existingItem.type)) {
                             armorSlot = cloneItem(existingItem);
                             room.send("equip_armor", { type: armorSlot.type });
                         } else {
@@ -1691,7 +1718,7 @@ if (e.button === 2 && !e.shiftKey) {
                     } else if (dragSourceHotbarIndex !== null) {
                         hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     } else if (dragSourceArmorSlot) {
-                        if ([18, 19, 20, 21, 22].includes(existingItem.type)) {
+                        if ([18, 19, 20, 21, 22, 62].includes(existingItem.type)) {
                             armorSlot = cloneItem(existingItem);
                             room.send("equip_armor", { type: armorSlot.type });
                         } else {
@@ -1737,7 +1764,7 @@ if (e.button === 2 && !e.shiftKey) {
                     if (dragSourceHotbarIndex !== null) hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     else if (dragSourceInventoryIndex !== null) inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     else if (dragSourceArmorSlot) {
-                        if ([18, 19, 20, 21, 22].includes(existingItem.type)) {
+                        if ([18, 19, 20, 21, 22, 62].includes(existingItem.type)) {
                             armorSlot = cloneItem(existingItem);
                             room.send("equip_armor", { type: armorSlot.type });
                         } else {
@@ -1840,7 +1867,10 @@ if (e.button === 2 && !e.shiftKey) {
             room.send("input", {
                 left: keys.a,
                 right: keys.d,
-                upPress: keys.upPress
+                upPress: keys.upPress,
+                up: keys.w,
+                down: keys.shift,
+                flight: keys.flight && isGodUser()
             });
             keys.upPress = false;
         }
@@ -1954,7 +1984,7 @@ if (e.button === 2 && !e.shiftKey) {
             ctx.fillRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
 
             // Draw armor if equipped
-            if (p.armorType && p.armorType >= 18 && p.armorType <= 22) {
+            if ([18, 19, 20, 21, 22, 62].includes(p.armorType)) {
                 ctx.fillStyle = blockColors[p.armorType];
                 // Helmet
                 ctx.fillRect(p.x - 2, p.y - 2, TILE_SIZE + 4, 10);

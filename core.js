@@ -4384,6 +4384,16 @@ export async function adminGiveBuilderItemFromInput() {
   }
 }
 
+export async function adminToggleBuilderFlightFromInput() {
+  if (typeof window.adminToggleBuilderFlight === "function") {
+    window.adminToggleBuilderFlight();
+    const enabled = Boolean(window.__builderFlightEnabled);
+    showToast(`FLIGHT ${enabled ? "ENABLED" : "DISABLED"}`, enabled ? "🪽" : "🧱");
+  } else {
+    showToast("BUILDER NOT LOADED", "⚠️");
+  }
+}
+
 export async function adminClearScheduledTasksFromInput() {
   const removeCount = Math.max(1, Math.floor(readAdminNumberInput("adminTaskClearCount", 1)));
   await applyAdminActionToTargets({
