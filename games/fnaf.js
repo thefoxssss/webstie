@@ -9,40 +9,20 @@ let isFnafRunning = false;
 let mapWidth = 10, mapHeight = 10;
 let map = [
   [1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,1,1,0,0,0,1],
-  [1,0,1,0,1,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,0,1,1,0,1],
   [1,0,1,0,0,0,0,1,0,1],
   [1,0,0,0,0,0,0,0,0,1],
-  [1,1,2,1,0,0,1,3,1,1],
-  [1,1,0,1,1,1,1,0,1,1],
-  [1,1,0,1,1,1,1,0,1,1],
-  [1,1,0,0,0,0,0,0,1,1],
+  [1,0,0,0,1,1,0,0,0,1],
+  [1,0,1,0,0,0,0,1,0,1],
+  [1,0,1,1,0,0,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1]
 ];
 
-let pX = 5.5, pY = 5.5; // Player position (Office)
-let pDirX = 0, pDirY = -1; // Player direction vector
-let planeX = 0.66, planeY = 0; // 2D raycaster camera plane
-
-let cameraMode = false;
-let currentCameraIndex = 0;
-let cameraLocations = [
-    { x: 1.5, y: 1.5, dirX: 1, dirY: 0, pX: 0, pY: 0.66 }, // Show stage
-    { x: 8.5, y: 1.5, dirX: -1, dirY: 0, pX: 0, pY: -0.66 }, // Dining area
-    { x: 2.5, y: 4.5, dirX: 0, dirY: -1, pX: 0.66, pY: 0 }, // West Hall
-    { x: 7.5, y: 4.5, dirX: 0, dirY: -1, pX: 0.66, pY: 0 }, // East Hall
-];
-
-// Global Fnaf state synced from server
-let fnafGameState = {
-    power: 100,
-    time: 0,
-    doorLeft: false,
-    doorRight: false,
-    lightLeft: false,
-    lightRight: false,
-    animatronics: {}
-}; // 2D raycaster camera plane
+let pX = 1.5, pY = 1.5; // Player position
+let pDirX = -1, pDirY = 0; // Player direction vector
+let planeX = 0, planeY = 0.66; // 2D raycaster camera plane
 
 // Multiplayer state
 let fnafRoom = null;
@@ -180,30 +160,6 @@ async function startFnafGame(options) {
           delete networkPlayers[sessionId];
       });
 
-      fnafRoom.state.animatronics.onAdd((anim, id) => {
-          fnafGameState.animatronics[id] = anim;
-          anim.onChange(() => {
-              fnafGameState.animatronics[id] = anim;
-          });
-      });
-      fnafRoom.state.animatronics.onRemove((anim, id) => {
-          delete fnafGameState.animatronics[id];
-      });
-
-      fnafRoom.state.onChange(() => {
-          fnafGameState.power = fnafRoom.state.power;
-          fnafGameState.time = fnafRoom.state.time;
-          fnafGameState.doorLeft = fnafRoom.state.doorLeft;
-          fnafGameState.doorRight = fnafRoom.state.doorRight;
-          fnafGameState.lightLeft = fnafRoom.state.lightLeft;
-          fnafGameState.lightRight = fnafRoom.state.lightRight;
-
-          let powerEl = document.getElementById("fnafPower");
-          if(powerEl) powerEl.innerText = Math.floor(fnafGameState.power) + "%";
-          let timeEl = document.getElementById("fnafTime");
-          if(timeEl) timeEl.innerText = (fnafGameState.time === 0 ? "12" : fnafGameState.time) + " AM";
-      });
-
   } catch (e) {
       console.error("FNAF MP Error:", e);
       document.getElementById("fnafMenu").style.display = "block";
@@ -271,51 +227,8 @@ function fnafLoop() {
   animationId = requestAnimationFrame(fnafLoop);
 }
 
-let lastKeyQ = false;
-let lastKeyE = false;
-let lastKeySpace = false;
-let lastKey1 = false;
-let lastKey2 = false;
-
 function update(dt) {
   const moveSpeed = 3.0 * dt;
-
-  let currentQ = state.keysPressed['q'] || state.keysPressed['Q'];
-  if (currentQ && !lastKeyQ && fnafRoom) {
-      fnafRoom.send("toggleAction", { action: "doorLeft" });
-  }
-  lastKeyQ = currentQ;
-
-  let currentE = state.keysPressed['e'] || state.keysPressed['E'];
-  if (currentE && !lastKeyE && fnafRoom) {
-      fnafRoom.send("toggleAction", { action: "doorRight" });
-  }
-  lastKeyE = currentE;
-
-  let current1 = state.keysPressed['1'];
-  if (current1 && !lastKey1 && fnafRoom) {
-      fnafRoom.send("toggleAction", { action: "lightLeft" });
-  }
-  lastKey1 = current1;
-
-  let current2 = state.keysPressed['2'];
-  if (current2 && !lastKey2 && fnafRoom) {
-      fnafRoom.send("toggleAction", { action: "lightRight" });
-  }
-  lastKey2 = current2;
-
-  let currentSpace = state.keysPressed[' '];
-  if (currentSpace && !lastKeySpace) {
-      cameraMode = !cameraMode;
-      let camsEl = document.getElementById("fnafCams");
-      if(camsEl) camsEl.style.display = cameraMode ? "block" : "none";
-  }
-  lastKeySpace = currentSpace;
-
-  if (cameraMode) {
-      // In camera mode, we don't move the player
-      return;
-  }
 
   if (state.keysPressed['w'] || state.keysPressed['W']) {
     if (map[Math.floor(pX + pDirX * moveSpeed)][Math.floor(pY)] == 0) pX += pDirX * moveSpeed;
@@ -347,32 +260,22 @@ function render() {
   const width = canvas.width;
   const height = canvas.height;
 
-  // Render variables
-  let rPX = cameraMode ? cameraLocations[currentCameraIndex].x : pX;
-  let rPY = cameraMode ? cameraLocations[currentCameraIndex].y : pY;
-  let rDirX = cameraMode ? cameraLocations[currentCameraIndex].dirX : pDirX;
-  let rDirY = cameraMode ? cameraLocations[currentCameraIndex].dirY : pDirY;
-  let rPlaneX = cameraMode ? cameraLocations[currentCameraIndex].pX : planeX;
-  let rPlaneY = cameraMode ? cameraLocations[currentCameraIndex].pY : planeY;
-
   // Draw floor and ceiling
   ctx.fillStyle = "#111"; // ceiling
   ctx.fillRect(0, 0, width, height / 2);
   ctx.fillStyle = "#222"; // floor
   ctx.fillRect(0, height / 2, width, height / 2);
 
-  let zBuffer = new Array(width).fill(0);
-
   // Raycasting loop
   for (let x = 0; x < width; x++) {
     // calculate ray position and direction
     let cameraX = 2 * x / width - 1; // x-coordinate in camera space
-    let rayDirX = rDirX + rPlaneX * cameraX;
-    let rayDirY = rDirY + rPlaneY * cameraX;
+    let rayDirX = pDirX + planeX * cameraX;
+    let rayDirY = pDirY + planeY * cameraX;
 
     // which box of the map we're in
-    let mapX = Math.floor(rPX);
-    let mapY = Math.floor(rPY);
+    let mapX = Math.floor(pX);
+    let mapY = Math.floor(pY);
 
     // length of ray from current position to next x or y-side
     let sideDistX, sideDistY;
@@ -390,20 +293,19 @@ function render() {
     // calculate step and initial sideDist
     if (rayDirX < 0) {
       stepX = -1;
-      sideDistX = (rPX - mapX) * deltaDistX;
+      sideDistX = (pX - mapX) * deltaDistX;
     } else {
       stepX = 1;
-      sideDistX = (mapX + 1.0 - rPX) * deltaDistX;
+      sideDistX = (mapX + 1.0 - pX) * deltaDistX;
     }
     if (rayDirY < 0) {
       stepY = -1;
-      sideDistY = (rPY - mapY) * deltaDistY;
+      sideDistY = (pY - mapY) * deltaDistY;
     } else {
       stepY = 1;
-      sideDistY = (mapY + 1.0 - rPY) * deltaDistY;
+      sideDistY = (mapY + 1.0 - pY) * deltaDistY;
     }
 
-    let mapVal = 0;
     // perform DDA
     while (hit === 0) {
       // jump to next map square, either in x-direction, or in y-direction
@@ -425,23 +327,12 @@ function render() {
       }
 
       // Check if ray has hit a wall
-      mapVal = map[mapX][mapY];
-      if (mapVal === 2 && !fnafGameState.doorLeft) {
-          // Open left door
-          hit = 0;
-      } else if (mapVal === 3 && !fnafGameState.doorRight) {
-          // Open right door
-          hit = 0;
-      } else if (mapVal > 0) {
-          hit = 1;
-      }
+      if (map[mapX][mapY] > 0) hit = 1;
     }
 
     // Calculate distance projected on camera direction
     if (side === 0) perpWallDist = (sideDistX - deltaDistX);
     else          perpWallDist = (sideDistY - deltaDistY);
-
-    zBuffer[x] = perpWallDist;
 
     // Calculate height of line to draw on screen
     let lineHeight = Math.floor(height / perpWallDist);
@@ -452,36 +343,26 @@ function render() {
     let drawEnd = lineHeight / 2 + height / 2;
     if (drawEnd >= height) drawEnd = height - 1;
 
-    // choose wall color
-    let r = 150, g = 150, b = 150; // default wall
-    if (mapVal === 2) { r = 100; g = 50; b = 50; } // Left door (reddish)
-    if (mapVal === 3) { r = 50; g = 50; b = 100; } // Right door (blueish)
+    // choose wall color based on distance
+    let colorIntensity = Math.max(0, 255 - perpWallDist * 20); // Darker further away
+    if (side === 1) colorIntensity = colorIntensity / 2; // give x and y sides different brightness
 
-    // Flashlight logic: brightness depends on distance
-    let colorIntensity = Math.max(0, 1.0 - (perpWallDist / 10)); // max range ~10
-
-    // Add light logic
-    if (fnafGameState.lightLeft && mapX < 5) colorIntensity = Math.max(colorIntensity, 0.8);
-    if (fnafGameState.lightRight && mapX > 5) colorIntensity = Math.max(colorIntensity, 0.8);
-
-    if (side === 1) colorIntensity = colorIntensity * 0.7; // give x and y sides different brightness
-
-    ctx.fillStyle = `rgb(${Math.floor(r * colorIntensity)}, ${Math.floor(g * colorIntensity)}, ${Math.floor(b * colorIntensity)})`;
+    ctx.fillStyle = `rgb(${colorIntensity}, ${0}, ${0})`; // Reddish horror walls
     ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
   }
 
-  // Draw Animatronics (Sprites)
-  for (let animId in fnafGameState.animatronics) {
-      const p = fnafGameState.animatronics[animId];
+  // Draw Other Players (Sprites)
+  for (let sessionId in networkPlayers) {
+      const p = networkPlayers[sessionId];
 
-      let spriteX = p.x - rPX;
-      let spriteY = p.y - rPY;
+      let spriteX = p.x - pX;
+      let spriteY = p.y - pY;
 
       // Transform sprite with the inverse camera matrix
-      let invDet = 1.0 / (rPlaneX * rDirY - rDirX * rPlaneY);
+      let invDet = 1.0 / (planeX * pDirY - pDirX * planeY);
 
-      let transformX = invDet * (rDirY * spriteX - rDirX * spriteY);
-      let transformY = invDet * (-rPlaneY * spriteX + rPlaneX * spriteY); // Z depth
+      let transformX = invDet * (pDirY * spriteX - pDirX * spriteY);
+      let transformY = invDet * (-planeY * spriteX + planeX * spriteY); // Z depth
 
       if (transformY > 0) { // Only draw if in front of player
           let spriteScreenX = Math.floor((width / 2) * (1 + transformX / transformY));
@@ -495,9 +376,7 @@ function render() {
           let drawEndX = spriteWidth / 2 + spriteScreenX;
 
           // Simple white square as placeholder for horror player sprite
-          let animColor = p.type === "freddy" ? "rgba(139, 69, 19, 0.8)" : "rgba(128, 0, 128, 0.8)";
-
-          ctx.fillStyle = animColor;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
           ctx.fillRect(drawStartX, drawStartY, spriteWidth, spriteHeight);
 
           // Draw little red eyes
@@ -507,51 +386,21 @@ function render() {
       }
   }
 
-  // Draw Other Players
-  for (let sessionId in networkPlayers) {
-      const p = networkPlayers[sessionId];
-
-      let spriteX = p.x - rPX;
-      let spriteY = p.y - rPY;
-
-      let invDet = 1.0 / (rPlaneX * rDirY - rDirX * rPlaneY);
-      let transformX = invDet * (rDirY * spriteX - rDirX * spriteY);
-      let transformY = invDet * (-rPlaneY * spriteX + rPlaneX * spriteY);
-
-      if (transformY > 0) {
-          let spriteScreenX = Math.floor((width / 2) * (1 + transformX / transformY));
-          let spriteHeight = Math.abs(Math.floor(height / (transformY)));
-          let drawStartY = -spriteHeight / 2 + height / 2;
-          let spriteWidth = Math.abs(Math.floor(height / (transformY)));
-          let drawStartX = -spriteWidth / 2 + spriteScreenX;
-
-          ctx.fillStyle = "rgba(100, 255, 100, 0.8)";
-          ctx.fillRect(drawStartX, drawStartY, spriteWidth, spriteHeight);
-      }
-  }
-
   // Horror overlay (flickering vignette)
-  if (!cameraMode) {
-      const isFlicker = Math.random() < 0.05;
-      const alpha = isFlicker ? 0.6 : 0.8;
-      const gradient = ctx.createRadialGradient(width/2, height/2, height/4, width/2, height/2, width/2);
-      gradient.addColorStop(0, "rgba(0,0,0,0)");
-      gradient.addColorStop(1, `rgba(0,0,0,${alpha})`);
+  const isFlicker = Math.random() < 0.05;
+  const alpha = isFlicker ? 0.6 : 0.8;
+  const gradient = ctx.createRadialGradient(width/2, height/2, height/4, width/2, height/2, width/2);
+  gradient.addColorStop(0, "rgba(0,0,0,0)");
+  gradient.addColorStop(1, `rgba(0,0,0,${alpha})`);
 
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-  } else {
-      // Static overlay for camera
-      ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-      for(let i=0; i<300; i++) {
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  // Static overlay
+  if (Math.random() < 0.2) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      for(let i=0; i<100; i++) {
           ctx.fillRect(Math.random() * width, Math.random() * height, 2, 2);
       }
-      ctx.fillStyle = "white";
-      ctx.font = "20px monospace";
-      ctx.fillText("CAM " + (currentCameraIndex+1), 20, 30);
   }
 }
-
-window.setFnafCam = (idx) => {
-    currentCameraIndex = idx;
-};

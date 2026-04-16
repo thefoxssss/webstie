@@ -13,6 +13,7 @@ import {
   startJob,
   submitJob,
   state,
+  saveStats,
   adminGrantCash,
   adminGrantCashFromInput,
   adminSetCashFromInput,
@@ -1117,9 +1118,10 @@ function initTopBarOverlayControls() {
     overlayGamebox: "menuToggle",
     overlayTrending: "menuToggle",
     overlayUpdates: "menuToggle",
+    overlaySocial: "tabSocial",
   };
 
-  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabChat", "tabAdmin", "menuToggle"]
+  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabSocial", "tabChat", "tabAdmin", "menuToggle"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 
@@ -1155,6 +1157,7 @@ function initTopBarOverlayControls() {
     "overlayCrew",
     "overlayAdmin",
     "overlayGamebox",
+    "overlaySocial",
   ];
 
   const getActiveOverlay = () => {
