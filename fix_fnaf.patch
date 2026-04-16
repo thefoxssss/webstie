@@ -1,0 +1,9 @@
+--- games/fnaf.js
++++ games/fnaf.js
+@@ -1,5 +1,5 @@
+ // fnaf.js - 3D Multiplayer Horror Survival Game (Raycaster)
+-import { isInputFocused, state } from "../core.js";
++import { state } from "../core.js";
+
+ let canvas, ctx;
+ let animationId;
