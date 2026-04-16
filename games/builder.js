@@ -103,6 +103,7 @@ const blockColors = {
         62: "#9afaff", // TariqCore Armor
         63: "#46bfd1", // TariqCore Beam
         64: "#eefbff", // Cloud Platform
+        65: "#d8f6ff", // Tariq Wings
     };
 
     const WOOD_TYPES_FOR_PLANKS = [4, 7, 41];
@@ -140,6 +141,7 @@ const blockColors = {
         { pattern: [[60, 60, 60], [0, 60, 0], [0, 9, 0]], output: { type: 61, count: 1 } }, // TariqCore Blade
         { pattern: [[60, 60, 60], [60, 0, 60], [0, 0, 0]], output: { type: 62, count: 1 } }, // TariqCore Armor
         { pattern: [[60, 60, 60], [0, 9, 0], [0, 60, 0]], output: { type: 63, count: 1 } }, // TariqCore Beam
+        { pattern: [[35, 64, 35], [64, 60, 64], [0, 0, 0]], output: { type: 65, count: 1 } }, // Tariq Wings (Ladders + Clouds + TariqCore)
     ];
 
     const blockNames = {
@@ -196,9 +198,11 @@ const blockColors = {
         62: "TARIQCORE ARMOR",
         63: "TARIQCORE BEAM",
         64: "CLOUD PLATFORM",
+        65: "TARIQ WINGS",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 61, 62, 63].includes(type) ? 1 : 99);
+    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 61, 62, 63, 65].includes(type) ? 1 : 99);
+    const canUseFlight = () => itemType(armorSlot) === 65;
 
     const blockDataUrls = [
         "data/blocks/1.json", "data/blocks/2.json", "data/blocks/3.json", "data/blocks/4.json",
@@ -310,7 +314,7 @@ const blockColors = {
     let lastUiBlockType = null;
 
     // Inputs
-    const keys = { w: false, a: false, d: false, shift: false, flight: false, upPress: false };
+    const keys = { w: false, a: false, d: false, shift: false, upPress: false };
     const mouse = { x: 0, y: 0, isDown: false };
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
@@ -844,10 +848,6 @@ const blockColors = {
             }
         }
 
-        if ((e.key === "f" || e.key === "F") && isGodUser()) {
-            keys.flight = !keys.flight;
-            window.__builderFlightEnabled = keys.flight;
-        }
     }
 
     function handleKeyUp(e) {
@@ -1008,12 +1008,6 @@ function sendBuildOrBreak(e) {
         addInventoryItem(type, count);
         saveInventoryState();
     };
-    window.adminToggleBuilderFlight = () => {
-        if (!isGodUser()) return;
-        keys.flight = !keys.flight;
-        window.__builderFlightEnabled = keys.flight;
-    };
-
     function addInventoryItem(type, count) {
         const mergedType = getMergedInventoryType(type);
         let remaining = count;
@@ -1337,7 +1331,7 @@ function sendBuildOrBreak(e) {
                     // We are holding an item
 
                     // Armor slot restriction: only armor (18-22)
-                    if (isArmor && ![18, 19, 20, 21, 22, 62].includes(draggedItemType.type)) {
+                    if (isArmor && ![18, 19, 20, 21, 22, 62, 65].includes(draggedItemType.type)) {
                         return true;
                     }
 
@@ -1635,7 +1629,7 @@ if (e.button === 2 && !e.shiftKey) {
 
             if (isArmorSlotDrop && !dragSourceOutputSlot) {
                 // Check if dragging an armor item (18-22)
-                if ([18, 19, 20, 21, 22, 62].includes(draggedItemType.type)) {
+                if ([18, 19, 20, 21, 22, 62, 65].includes(draggedItemType.type)) {
                     const existingItem = cloneItem(armorSlot);
                     armorSlot = cloneItem(draggedItemType);
                     room.send("equip_armor", { type: armorSlot.type });
@@ -1668,7 +1662,7 @@ if (e.button === 2 && !e.shiftKey) {
                     } else if (dragSourceInventoryIndex !== null) {
                         inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     } else if (dragSourceArmorSlot) {
-                        if ([18, 19, 20, 21, 22, 62].includes(existingItem.type)) {
+                        if ([18, 19, 20, 21, 22, 62, 65].includes(existingItem.type)) {
                             armorSlot = cloneItem(existingItem);
                             room.send("equip_armor", { type: armorSlot.type });
                         } else {
@@ -1726,7 +1720,7 @@ if (e.button === 2 && !e.shiftKey) {
                     } else if (dragSourceHotbarIndex !== null) {
                         hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     } else if (dragSourceArmorSlot) {
-                        if ([18, 19, 20, 21, 22, 62].includes(existingItem.type)) {
+                        if ([18, 19, 20, 21, 22, 62, 65].includes(existingItem.type)) {
                             armorSlot = cloneItem(existingItem);
                             room.send("equip_armor", { type: armorSlot.type });
                         } else {
@@ -1772,7 +1766,7 @@ if (e.button === 2 && !e.shiftKey) {
                     if (dragSourceHotbarIndex !== null) hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     else if (dragSourceInventoryIndex !== null) inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     else if (dragSourceArmorSlot) {
-                        if ([18, 19, 20, 21, 22, 62].includes(existingItem.type)) {
+                        if ([18, 19, 20, 21, 22, 62, 65].includes(existingItem.type)) {
                             armorSlot = cloneItem(existingItem);
                             room.send("equip_armor", { type: armorSlot.type });
                         } else {
@@ -1878,7 +1872,7 @@ if (e.button === 2 && !e.shiftKey) {
                 upPress: keys.upPress,
                 up: keys.w,
                 down: keys.shift,
-                flight: keys.flight && isGodUser()
+                flight: canUseFlight()
             });
             keys.upPress = false;
         }
@@ -1992,7 +1986,7 @@ if (e.button === 2 && !e.shiftKey) {
             ctx.fillRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
 
             // Draw armor if equipped
-            if ([18, 19, 20, 21, 22, 62].includes(p.armorType)) {
+            if ([18, 19, 20, 21, 22, 62, 65].includes(p.armorType)) {
                 ctx.fillStyle = blockColors[p.armorType];
                 // Helmet
                 ctx.fillRect(p.x - 2, p.y - 2, TILE_SIZE + 4, 10);
