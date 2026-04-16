@@ -1,65 +1,146 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <style>
+        body { background: #333; color: white; font-family: sans-serif; }
+        canvas { border: 1px solid white; image-rendering: pixelated; }
+    </style>
+</head>
 <body>
-<canvas id="c" width="32" height="32"></canvas>
-<script>
-    const canvas = document.getElementById("c");
-    const ctx = canvas.getContext("2d");
+    <canvas id="c" width="32" height="32"></canvas>
+    <div id="status"></div>
+    <script>
+        const canvas = document.getElementById("c");
+        const ctx = canvas.getContext("2d");
 
-    const blockColors = {
-        1: "#55dd55", 2: "#8b5a2b", 3: "#888888", 4: "#e1c699", 5: "#ffffff", 6: "#b22222", 7: "#5d4037", 8: "#2e7d32", 9: "#d2b48c", 10: "#8b5a2b",
-        11: "#808080", 12: "#1C1C1C", 13: "#B87333", 14: "#D0D0D0", 15: "#FFD700", 16: "#00FFFF", 17: "#39FF14", 18: "#A86533", 19: "#C0C0C0", 20: "#E6C200",
-        21: "#00E6E6", 22: "#32E612", 23: "#B87333", 24: "#D0D0D0", 25: "#FFD700", 26: "#00FFFF", 27: "#39FF14", 28: "#B87333",
-    };
+        const blockColors = {
+            1: "#3c9e3c", 2: "#6b4226", 3: "#808080", 4: "#e1c699", 5: "#ffffff", 6: "#b22222", 7: "#5d4037", 8: "#2e7d32", 9: "#d2b48c", 10: "#8b5a2b",
+            11: "#808080", 12: "#1C1C1C", 13: "#B87333", 14: "#D0D0D0", 15: "#FFD700", 16: "#00FFFF", 17: "#39FF14", 18: "#A86533", 19: "#C0C0C0", 20: "#E6C200",
+            21: "#00E6E6", 22: "#32E612", 23: "#B87333", 24: "#D0D0D0", 25: "#FFD700", 26: "#00FFFF", 27: "#39FF14", 28: "#B87333", 29: "#4ca64c", 30: "#ff3333",
+            31: "#654321", 32: "#555555", 33: "#ff0000", 34: "#ff00ff", 35: "#c4a484", 36: "#444444", 37: "#009900", 38: "#eedd82", 39: "#ffffff", 40: "#d2b48c",
+            41: "#3d2314", 42: "#1f4d25", 43: "#B87333", 44: "#D0D0D0", 45: "#FFD700", 46: "#00FFFF", 47: "#39FF14", 48: "#1b1b1b", 60: "#7bf3ff", 61: "#5cd7e6",
+            62: "#9afaff", 63: "#46bfd1", 64: "#eefbff", 65: "#d8f6ff",
+        };
 
-    function drawItemIcon(ctx, type, x, y, size) {
-        ctx.save();
-        ctx.translate(x, y);
+        function drawItemIcon(ctx, type, size) {
+            const color = blockColors[type] || "#fff";
+            ctx.clearRect(0, 0, size, size);
 
-        if (type === 11) { // Sword
-            ctx.translate(size/2, size/2);
-            ctx.rotate(-Math.PI / 4);
-            ctx.fillStyle = "#808080"; ctx.fillRect(-2, -size/2 + 2, 4, size * 0.6); // Blade
-            ctx.fillStyle = "#8b5a2b"; ctx.fillRect(-2, size/2 - size * 0.4 + 2, 4, size * 0.3); // Handle
-            ctx.fillStyle = "#000"; ctx.fillRect(-6, size/2 - size * 0.4 + 2, 12, 3); // Crossguard
-        } else if ([18, 19, 20, 21, 22].includes(type)) { // Armor
-            ctx.fillStyle = blockColors[type] || "#fff";
-            ctx.beginPath();
-            ctx.moveTo(size * 0.2, size * 0.1);
-            ctx.lineTo(size * 0.8, size * 0.1);
-            ctx.lineTo(size * 0.9, size * 0.4);
-            ctx.lineTo(size * 0.75, size * 0.9);
-            ctx.lineTo(size * 0.25, size * 0.9);
-            ctx.lineTo(size * 0.1, size * 0.4);
-            ctx.closePath();
-            ctx.fill();
-        } else if ([23, 24, 25, 26, 27].includes(type)) { // Guns
-            ctx.fillStyle = blockColors[type] || "#fff";
-            ctx.fillRect(size * 0.1, size * 0.4, size * 0.8, size * 0.2); // Barrel
-            ctx.fillStyle = "#333";
-            ctx.fillRect(size * 0.1, size * 0.6, size * 0.2, size * 0.3); // Grip
-        } else if (type === 28) { // Ammo
-            ctx.fillStyle = "#d4af37"; // brass
-            ctx.fillRect(size * 0.4, size * 0.3, size * 0.2, size * 0.4);
-            ctx.fillStyle = "#333";
-            ctx.beginPath();
-            ctx.arc(size * 0.5, size * 0.3, size * 0.1, Math.PI, 0);
-            ctx.fill();
-        } else { // Block
-            ctx.fillStyle = blockColors[type] || "#fff";
-            ctx.fillRect(0, 0, size, size);
-            ctx.strokeStyle = "rgba(0,0,0,0.2)";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(0, 0, size, size);
+            if (type === 1) { // Grass
+                ctx.fillStyle = "#6b4226"; ctx.fillRect(0, size * 0.2, size, size * 0.8);
+                ctx.fillStyle = "#3c9e3c"; ctx.fillRect(0, 0, size, size * 0.4);
+                ctx.fillStyle = "rgba(0,0,0,0.1)"; ctx.fillRect(0, size*0.35, size, size*0.05);
+            } else if (type === 5) { // Glass
+                ctx.fillStyle = "rgba(200, 240, 255, 0.5)"; ctx.fillRect(2, 2, size - 4, size - 4);
+                ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(2, 2, size - 4, size - 4);
+                ctx.beginPath(); ctx.moveTo(8, 8); ctx.lineTo(16, 16); ctx.stroke();
+            } else if (type === 6) { // Brick
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "rgba(255,255,255,0.2)";
+                ctx.fillRect(0, size/2 - 1, size, 2); ctx.fillRect(size/2 - 1, 0, 2, size/2); ctx.fillRect(size/4 - 1, size/2, 2, size/2);
+            } else if (type === 7 || type === 41) { // Log
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(0, 0, size, 4); ctx.fillRect(0, size - 4, size, 4);
+            } else if (type === 8 || type === 42) { // Leaves
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "rgba(0,0,0,0.1)";
+                for (let i = 0; i < 8; i++) ctx.fillRect((i*7)%size, (i*13)%size, 4, 4);
+            } else if (type === 9) { // Planks
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "rgba(0,0,0,0.1)";
+                ctx.fillRect(0, size/2 - 1, size, 2); ctx.fillRect(0, size - 2, size, 2);
+            } else if (type === 10) { // Crafting Table
+                ctx.fillStyle = "#8b5a2b"; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "#5d4037"; ctx.fillRect(2, 2, size - 4, 4);
+                ctx.fillRect(size / 2 - 2, 6, 4, size - 8);
+            } else if (type === 11 || type === 61) { // Sword / Blade
+                ctx.save(); ctx.translate(size / 2, size / 2); ctx.rotate(-Math.PI / 4);
+                ctx.fillStyle = color; ctx.fillRect(-2, -size / 2 + 2, 4, size * 0.6);
+                ctx.fillStyle = (type === 61) ? "#46bfd1" : "#5d4037"; ctx.fillRect(-2, size / 2 - size * 0.4 + 2, 4, size * 0.3);
+                ctx.fillStyle = "#000"; ctx.fillRect(-6, size / 2 - size * 0.4 + 2, 12, 3);
+                ctx.restore();
+            } else if (type === 12 || type === 13 || type === 14 || type === 15 || type === 16 || type === 17) { // Ores
+                ctx.fillStyle = "#808080"; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = color;
+                for (let i = 0; i < 5; i++) ctx.fillRect(2 + (i*7) % (size - 8), 2 + (i*13) % (size - 8), 6, 6);
+            } else if ([18, 19, 20, 21, 22, 62].includes(type)) { // Armor
+                ctx.fillStyle = color; ctx.beginPath();
+                ctx.moveTo(size * 0.2, size * 0.1); ctx.lineTo(size * 0.8, size * 0.1);
+                ctx.lineTo(size * 0.9, size * 0.4); ctx.lineTo(size * 0.75, size * 0.9);
+                ctx.lineTo(size * 0.25, size * 0.9); ctx.lineTo(size * 0.1, size * 0.4);
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.lineWidth = 1; ctx.stroke();
+            } else if ([23, 24, 25, 26, 27, 63].includes(type)) { // Guns / Beam
+                ctx.fillStyle = color; ctx.fillRect(size * 0.1, size * 0.4, size * 0.8, size * 0.2);
+                ctx.fillStyle = "#333"; ctx.fillRect(size * 0.1, size * 0.6, size * 0.2, size * 0.3);
+                if (type === 27 || type === 63) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(size * 0.4, size * 0.45, size * 0.4, size * 0.1); }
+            } else if (type === 28) { // Ammo
+                ctx.fillStyle = "#d4af37"; ctx.fillRect(size * 0.4, size * 0.3, size * 0.2, size * 0.4);
+                ctx.fillStyle = "#333"; ctx.beginPath(); ctx.arc(size * 0.5, size * 0.3, size * 0.1, Math.PI, 0); ctx.fill();
+            } else if (type === 29) { // Sapling
+                ctx.fillStyle = "#8b5a2b"; ctx.fillRect(size * 0.45, size * 0.6, size * 0.1, size * 0.3);
+                ctx.fillStyle = "#3c9e3c"; ctx.beginPath(); ctx.arc(size * 0.5, size * 0.4, size * 0.25, 0, Math.PI * 2); ctx.fill();
+            } else if (type === 30) { // Apple
+                ctx.fillStyle = "#ff3333"; ctx.beginPath(); ctx.arc(size * 0.5, size * 0.55, size * 0.35, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#4ca64c"; ctx.fillRect(size * 0.45, size * 0.1, size * 0.1, size * 0.2);
+            } else if (type === 31) { // Chest
+                ctx.fillStyle = "#654321"; ctx.fillRect(2, 4, size - 4, size - 6);
+                ctx.fillStyle = "#333"; ctx.fillRect(2, size / 2 - 1, size - 4, 2);
+                ctx.fillStyle = "#ffd700"; ctx.fillRect(size / 2 - 3, size / 2 - 3, 6, 6);
+            } else if (type === 32) { // Furnace
+                ctx.fillStyle = "#555555"; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "#222"; ctx.fillRect(4, 4, size - 8, size - 14);
+                ctx.fillStyle = "#ff6600"; ctx.fillRect(8, size - 8, size - 16, 4);
+            } else if (type === 33 || type === 34) { // TNT / Nuke
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "#fff"; ctx.font = "bold 8px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(type === 34 ? "NUKE" : "TNT", size / 2, size / 2 + 3);
+            } else if (type === 35) { // Ladder
+                ctx.fillStyle = "#c4a484";
+                ctx.fillRect(4, 0, 4, size); ctx.fillRect(size - 8, 0, 4, size);
+                for (let i = 4; i < size; i += 8) ctx.fillRect(4, i, size - 8, 2);
+            } else if (type === 36) { // Hammer
+                ctx.save(); ctx.translate(size / 2, size / 2); ctx.rotate(-Math.PI / 4);
+                ctx.fillStyle = "#444"; ctx.fillRect(-8, -10, 16, 10);
+                ctx.fillStyle = "#8b5a2b"; ctx.fillRect(-2, 0, 4, 14);
+                ctx.restore();
+            } else if (type === 37) { // Cactus
+                ctx.fillStyle = "#009900"; ctx.fillRect(size * 0.2, 0, size * 0.6, size);
+                ctx.fillRect(0, size * 0.3, size * 0.3, size * 0.1); ctx.fillRect(size * 0.7, size * 0.5, size * 0.3, size * 0.1);
+            } else if (type === 40) { // Sandstone
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = "rgba(0,0,0,0.1)";
+                ctx.fillRect(0, size/4, size, 1); ctx.fillRect(0, size/2, size, 1); ctx.fillRect(0, 3*size/4, size, 1);
+            } else if (type >= 43 && type <= 47) { // Ingots / Refined
+                ctx.fillStyle = color; ctx.beginPath();
+                ctx.moveTo(size * 0.1, size * 0.8); ctx.lineTo(size * 0.9, size * 0.8);
+                ctx.lineTo(size * 0.8, size * 0.3); ctx.lineTo(size * 0.2, size * 0.3);
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.stroke();
+            } else if (type === 60) { // TariqCore
+                ctx.fillStyle = "#7bf3ff"; ctx.beginPath();
+                ctx.moveTo(size / 2, 2); ctx.lineTo(size - 2, size / 2);
+                ctx.lineTo(size / 2, size - 2); ctx.lineTo(2, size / 2);
+                ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.fillRect(size / 2 - 2, size / 2 - 2, 4, 4);
+            } else if (type === 64) { // Cloud Platform
+                ctx.fillStyle = "#eefbff"; ctx.beginPath();
+                ctx.arc(8, 20, 8, 0, Math.PI * 2); ctx.arc(16, 16, 10, 0, Math.PI * 2); ctx.arc(24, 20, 8, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (type === 65) { // Tariq Wings
+                ctx.fillStyle = "#d8f6ff";
+                ctx.beginPath(); ctx.moveTo(size*0.1, size*0.3); ctx.quadraticCurveTo(size*0.4, 0, size*0.5, size*0.5); ctx.lineTo(size*0.1, size*0.5); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(size*0.9, size*0.3); ctx.quadraticCurveTo(size*0.6, 0, size*0.5, size*0.5); ctx.lineTo(size*0.9, size*0.5); ctx.fill();
+            } else { // Standard Block
+                ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+                ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 1; ctx.strokeRect(0, 0, size, size);
+            }
         }
-        ctx.restore();
-    }
 
-    window.generateSprite = function(type) {
-        ctx.clearRect(0, 0, 32, 32);
-        drawItemIcon(ctx, type, 0, 0, 32);
-        return canvas.toDataURL("image/png");
-    };
-</script>
+        window.generateSprite = function(type) {
+            drawItemIcon(ctx, type, 32);
+            return canvas.toDataURL("image/png");
+        };
+    </script>
 </body>
 </html>

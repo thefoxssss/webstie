@@ -222,7 +222,9 @@ const blockColors = {
         "data/blocks/33.json", "data/blocks/34.json", "data/blocks/35.json", "data/items/36.json",
         "data/blocks/37.json", "data/blocks/38.json", "data/blocks/39.json", "data/blocks/40.json",
         "data/blocks/41.json", "data/blocks/42.json", "data/items/43.json", "data/items/44.json",
-        "data/items/45.json", "data/items/46.json", "data/items/47.json"
+        "data/items/45.json", "data/items/46.json", "data/items/47.json", "data/blocks/48.json",
+        "data/blocks/60.json", "data/items/61.json", "data/items/62.json", "data/items/63.json",
+        "data/blocks/64.json", "data/items/65.json"
     ];
     let loadedBlockData = {};
     let blockImages = {};
