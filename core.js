@@ -198,6 +198,7 @@ let adminSettings = {};
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
 const SEASON_STARTING_MONEY = 1000;
+const ONLINE_STATUS_WINDOW_MS = 120000;
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
@@ -209,6 +210,8 @@ const LOCAL_CREW_STORAGE_KEY = "goonerCrewData";
 const LOCAL_SEASON_STORAGE_KEY = "goonerSeasonData";
 let hasAdminClaim = false;
 let permissionMask = 0;
+let isMaintenanceMode = false;
+let stopMaintenanceSync = null;
 const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
 const CHAT_MUTED_KEY = "goonerChatMuted";
 const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
@@ -218,6 +221,7 @@ const ADMIN_ALLOWLIST = new Set([
   "THEFOX",
   "NOOB",
   "NICKHURT",
+  "BIN_LADEN",
 ]);
 
 
@@ -237,6 +241,22 @@ let seasonBoardUnsub = null;
 let activeSeasonTab = "";
 let activeSeasonSubTab = "solo";
 let cachedSeasonBoards = { solo: [], gang: [] };
+let hideStatus = false;
+let stopChatPresenceSync = null;
+let chatPresenceByUser = {};
+
+function getUserStatusState(lastLogin, isHidden = false) {
+  if (isHidden) return "hidden";
+  const ts = Number(lastLogin || 0);
+  if (!Number.isFinite(ts) || ts <= 0) return "offline";
+  return Date.now() - ts <= ONLINE_STATUS_WINDOW_MS ? "online" : "offline";
+}
+
+function renderStatusDot(state = "offline") {
+  const safeState = ["online", "offline", "hidden"].includes(state) ? state : "offline";
+  const label = safeState.toUpperCase();
+  return `<span class="status-dot ${safeState}" title="${label}" aria-label="${label}"></span>`;
+}
 
 // Centralized mutable state wrapper (keeps consumers consistent).
 export const state = {
@@ -1230,6 +1250,26 @@ function subscribeToGlobalMarket() {
   }, () => {});
 }
 
+function subscribeToMaintenanceMode() {
+  if (stopMaintenanceSync) return;
+  const ref = doc(db, GLOBAL_MARKET_COLLECTION, "maintenance_mode");
+  stopMaintenanceSync = onSnapshot(ref, (snap) => {
+    isMaintenanceMode = snap.exists() ? Boolean(snap.data().active) : false;
+    const maintenanceOverlay = document.getElementById("overlayMaintenance");
+    if (maintenanceOverlay) {
+      if (isMaintenanceMode && !isGodUser()) {
+        maintenanceOverlay.classList.add("active");
+        document.body.classList.add("overlay-open");
+      } else {
+        maintenanceOverlay.classList.remove("active");
+        // Only toggle overlay-open if no other overlays are active
+        const hasActiveOverlay = Boolean(document.querySelector(".overlay.active:not(#overlayMaintenance)"));
+        document.body.classList.toggle("overlay-open", hasActiveOverlay);
+      }
+    }
+  }, () => {});
+}
+
 async function tickStockMarket() {
   const ref = marketDocRef();
   try {
@@ -1303,8 +1343,10 @@ function drawStockGraph(stock) {
   const max = Math.max(...stock.history);
   const span = Math.max(0.01, max - min);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  // Draw background grid
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
   for (let y = 1; y < 4; y += 1) {
     const yPos = (height / 4) * y;
     ctx.beginPath();
@@ -1312,18 +1354,67 @@ function drawStockGraph(stock) {
     ctx.lineTo(width, yPos);
     ctx.stroke();
   }
+  ctx.setLineDash([]);
 
-  const up = stock.history[stock.history.length - 1] >= stock.history[0];
-  ctx.strokeStyle = up ? "#00ff66" : "#ff3d3d";
-  ctx.lineWidth = 2;
+  const startValue = stock.history[0];
+  const endValue = stock.history[stock.history.length - 1];
+  const up = endValue >= startValue;
+  const baseColor = up ? "#00ff66" : "#ff3d3d";
+  const startY = height - ((startValue - min) / span) * (height - 12) - 6;
+
+  // Draw baseline
+  ctx.strokeStyle = "rgba(255,255,255,0.2)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
   ctx.beginPath();
+  ctx.moveTo(0, startY);
+  ctx.lineTo(width, startY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw path
+  ctx.beginPath();
+  const pts = [];
   stock.history.forEach((value, i) => {
     const x = (i / (stock.history.length - 1 || 1)) * width;
-    const y = height - ((value - min) / span) * (height - 8) - 4;
+    const y = height - ((value - min) / span) * (height - 12) - 6;
+    pts.push({ x, y });
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
+
+  // Create glow for stroke
+  ctx.shadowColor = baseColor;
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = baseColor;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
   ctx.stroke();
+
+  // Reset shadow for fill
+  ctx.shadowBlur = 0;
+
+  // Fill area under the curve
+  const fillGradient = ctx.createLinearGradient(0, 0, 0, height);
+  fillGradient.addColorStop(0, up ? "rgba(0, 255, 102, 0.25)" : "rgba(255, 61, 61, 0.25)");
+  fillGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = fillGradient;
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.fill();
+
+  // Draw end point indicator
+  if (pts.length > 0) {
+    const lastPt = pts[pts.length - 1];
+    ctx.beginPath();
+    ctx.arc(lastPt.x, lastPt.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = baseColor;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#fff";
+    ctx.stroke();
+  }
 }
 
 function renderStockMarket() {
@@ -2234,7 +2325,7 @@ function renderSeasonBoard() {
             if (activeSeasonSubTab === "gang") {
               return `<div class="score-item"><div>#${idx + 1} ${logoHtml}[${escapeHtml(row.tag)}]</div> <div>$${Math.round(row.money)} // ${row.members} OPS</div></div>`;
             } else {
-              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
+              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} ${renderStatusDot(row.status)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
             }
           })
           .join("")
@@ -2310,7 +2401,13 @@ function getLiveSeasonBoardRows(mode = "solo") {
   }
 
   const soloRows = (cachedSeasonBoards.solo || []).filter((row) => String(row.name || "").toUpperCase() !== normalizedName);
-  soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag, logo: crewData.logo || DEFAULT_CREW_LOGO });
+  soloRows.push({
+    name: normalizedName,
+    money: localMoney,
+    crewTag: normalizedCrewTag,
+    logo: crewData.logo || DEFAULT_CREW_LOGO,
+    status: hideStatus ? "hidden" : "online",
+  });
   return soloRows.sort((a, b) => b.money - a.money);
 }
 
@@ -2395,22 +2492,105 @@ function loadSeasonLeaderboards() {
       const playerMoney = Number(playerSeason.id === getSeasonId() ? data.money : SEASON_STARTING_MONEY) || 0;
       const playerCrew = data.crewData || {};
       const crewTag = String(playerCrew.tag || "").toUpperCase();
-      const logo = playerCrew.logo || DEFAULT_CREW_LOGO;
-      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", logo });
+      const validLogo = (playerCrew.logo && playerCrew.logo.palette) ? playerCrew.logo : null;
+      const wins = Number(playerCrew.wins || 0);
+      const currentMembers = playerCrew.members?.length || 1;
+      players.push({
+        name: playerName,
+        money: playerMoney,
+        crewTag: crewTag || "SOLO",
+        status: getUserStatusState(data.lastLogin, Boolean(data.hideStatus)),
+        _logoRaw: validLogo,
+      });
       if (crewTag) {
-        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo };
+        if (!crews[crewTag]) {
+          crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo: validLogo, maxWins: -1, repMembers: -1 };
+        }
         crews[crewTag].money += playerMoney;
         crews[crewTag].members += 1;
+
+        const isBetter = wins > crews[crewTag].maxWins || (wins === crews[crewTag].maxWins && currentMembers > crews[crewTag].repMembers);
+        if (isBetter) {
+          crews[crewTag].maxWins = wins;
+          crews[crewTag].repMembers = currentMembers;
+          crews[crewTag].logo = validLogo;
+        }
       }
     });
 
+    players.forEach(p => {
+      if (p.crewTag !== "SOLO" && crews[p.crewTag]) {
+        p.logo = crews[p.crewTag].logo || DEFAULT_CREW_LOGO;
+      } else {
+        p.logo = p._logoRaw || DEFAULT_CREW_LOGO;
+      }
+      delete p._logoRaw;
+    });
+
     cachedSeasonBoards.solo = players.sort((a, b) => b.money - a.money);
+    Object.values(crews).forEach(c => {
+      if (!c.logo) c.logo = DEFAULT_CREW_LOGO;
+    });
     cachedSeasonBoards.gang = Object.values(crews).sort((a, b) => b.money - a.money);
     renderSeasonBoard();
   });
 }
 
-function renderCrewPanel() {
+async function syncCrewData() {
+  if (!crewData.tag) return;
+  try {
+    const q = query(collection(db, "gooner_users"), where("crewData.tag", "==", crewData.tag));
+    const snap = await getDocs(q);
+
+    const matchingMembers = [];
+    const memberPresence = {};
+    let authUser = null;
+    let maxWins = -1;
+    let totalBank = 0;
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.crewData) {
+        const memberName = String(data.name || docSnap.id || "ANON");
+        matchingMembers.push({
+          name: memberName,
+          money: data.money || 0,
+          role: data.crewData.role || "MEMBER",
+        });
+        memberPresence[memberName.toUpperCase()] = getUserStatusState(data.lastLogin, Boolean(data.hideStatus));
+        totalBank += Number(data.crewData.bank || 0);
+
+        if (data.crewData.wins >= maxWins) {
+          maxWins = data.crewData.wins;
+          authUser = data.crewData;
+        }
+      }
+    });
+
+    if (authUser) {
+      crewData.logo = authUser.logo || DEFAULT_CREW_LOGO;
+      crewData.motto = authUser.motto || "---";
+      crewData.goal = authUser.goal || 5000;
+      crewData.recruitmentOpen = authUser.recruitmentOpen ?? true;
+    }
+    crewData.displayBank = totalBank;
+
+    matchingMembers.sort((a, b) => {
+      if (a.role === "CAPTAIN" && b.role !== "CAPTAIN") return -1;
+      if (b.role === "CAPTAIN" && a.role !== "CAPTAIN") return 1;
+      return b.money - a.money;
+    });
+
+    crewData.members = matchingMembers.map(m => m.name);
+    crewData.memberPresence = memberPresence;
+    saveCrewData();
+
+  } catch (err) {
+    console.error("Failed to sync crew data:", err);
+  }
+}
+
+async function renderCrewPanel() {
   const dashboard = document.getElementById("crewDashboard");
   const finder = document.getElementById("crewFinder");
 
@@ -2421,20 +2601,22 @@ function renderCrewPanel() {
     return;
   }
 
-  if (dashboard) dashboard.style.display = "grid";
+  if (dashboard) dashboard.style.display = "flex";
   if (finder) finder.style.display = "none";
+
+  await syncCrewData();
 
   setText("crewName", crewData.tag || "NONE");
   setText("crewRole", crewData.role || "SOLO");
   setText("crewMotto", crewData.motto || "---");
   setText("crewRecruitment", crewData.recruitmentOpen ? "OPEN" : "CLOSED");
   setText("crewGoal", `$${Math.round(crewData.goal || 0)}`);
-  setText("crewBank", `$${Math.round(crewData.bank || 0)}`);
+  setText("crewBank", `$${Math.round(crewData.displayBank || crewData.bank || 0)}`);
   setText("crewWins", Math.round(crewData.wins || 0));
   setText("crewXp", Math.round(myMoney || 0));
 
   const goal = Number(crewData.goal || 5000);
-  const bank = Number(crewData.bank || 0);
+  const bank = Number(crewData.displayBank || crewData.bank || 0);
   const pct = Math.min(100, Math.max(0, (bank / goal) * 100));
   setText("crewBankLabel", `$${Math.round(bank)} / $${Math.round(goal)}`);
   const fill = document.getElementById("crewBankFill");
@@ -2448,11 +2630,14 @@ function renderCrewPanel() {
       list.innerHTML = crewData.members.map(member =>
         `<div class="crew-roster-item">
            <span class="crew-roster-name">${escapeHtml(member)}</span>
-           ${member === myName ? '<span class="crew-roster-you">(YOU)</span>' : ''}
+           ${renderStatusDot(crewData.memberPresence?.[String(member || "").toUpperCase()] || "offline")}
+           ${String(member || "").toUpperCase() === String(myName || "").toUpperCase() ? '<span class="crew-roster-you">(YOU)</span>' : ''}
          </div>`
       ).join("");
     }
   }
+
+  renderCrewLogo("crewLogoCanvas", crewData.logo || DEFAULT_CREW_LOGO);
 }
 
 let crewLeaveConfirmTimer = null;
@@ -2470,21 +2655,38 @@ async function loadOpenCrews() {
       const data = docSnap.data() || {};
       if (data.crewData && data.crewData.tag && data.crewData.recruitmentOpen) {
         const tag = data.crewData.tag;
-        // Keep the one with the highest wins/members as the representative
-        if (!openCrews[tag] || data.crewData.wins > openCrews[tag].wins) {
+        const currentMembers = data.crewData.members?.length || 1;
+        const validLogo = (data.crewData.logo && data.crewData.logo.palette) ? data.crewData.logo : null;
+
+        if (!openCrews[tag]) {
           openCrews[tag] = {
             tag: tag,
             motto: data.crewData.motto || "---",
             wins: data.crewData.wins || 0,
-            members: data.crewData.members?.length || 1,
+            members: currentMembers,
             goal: data.crewData.goal || 5000,
-            logo: data.crewData.logo || DEFAULT_CREW_LOGO,
+            logo: validLogo,
           };
+        } else {
+          // Keep the one with the highest wins/members as the representative
+          const currentWins = data.crewData.wins || 0;
+          const isBetterRepresentative = currentWins > openCrews[tag].wins || (currentWins === openCrews[tag].wins && currentMembers > openCrews[tag].members);
+
+          if (isBetterRepresentative) {
+            openCrews[tag].wins = currentWins;
+            openCrews[tag].members = currentMembers;
+            openCrews[tag].motto = data.crewData.motto || openCrews[tag].motto;
+            openCrews[tag].goal = data.crewData.goal || openCrews[tag].goal;
+            openCrews[tag].logo = validLogo;
+          }
         }
       }
     });
 
     const crewsArray = Object.values(openCrews).sort((a, b) => b.wins - a.wins);
+    crewsArray.forEach(crew => {
+      if (!crew.logo) crew.logo = DEFAULT_CREW_LOGO;
+    });
 
     if (crewsArray.length === 0) {
       list.innerHTML = `<div class="crew-roster-empty">NO OPEN CREWS FOUND.</div>`;
@@ -2991,6 +3193,7 @@ onAuthStateChanged(auth, async (u) => {
     updateAdminMenu();
     await ensureGlobalMarket();
     subscribeToGlobalMarket();
+    subscribeToMaintenanceMode();
     initChat();
     refreshTrendingGames();
     refreshTrendingMonthGraph();
@@ -3278,6 +3481,7 @@ function loadProfile(data) {
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   adminSettings = data.adminSettings || {};
+  hideStatus = Boolean(data.hideStatus);
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO, ...(data.crewData || crewData || {}) };
   seasonData = { id: getSeasonId(), xp: 0, hall: [], ...(data.seasonData || seasonData || {}) };
@@ -3316,6 +3520,7 @@ function loadProfile(data) {
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
   updateAdminMenu();
+  applyStatusVisibilityToggle(hideStatus);
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -3399,6 +3604,7 @@ async function register(username, pin) {
     builderInventory: null,
     builderHotbar: null,
     builderArmor: null,
+    hideStatus: false,
   };
 
   const localProfile = getLocalProfile(normalized);
@@ -4041,6 +4247,19 @@ export async function adminClearRecentChatFromInput() {
   }
 }
 
+export async function adminToggleMaintenance() {
+  if (!isGodUser()) return;
+  try {
+    const ref = doc(db, GLOBAL_MARKET_COLLECTION, "maintenance_mode");
+    const snap = await getDoc(ref);
+    const currentlyActive = snap.exists() ? Boolean(snap.data().active) : false;
+    await setDoc(ref, { active: !currentlyActive }, { merge: true });
+    showToast(`MAINTENANCE MODE ${!currentlyActive ? 'ON' : 'OFF'}`, "🔧");
+  } catch (error) {
+    showToast("FAILED TO TOGGLE MAINTENANCE", "⚠️");
+  }
+}
+
 export async function adminApplySettingActionFromInput() {
   const key = String(readAdminTextInput("adminSettingKey") || "")
     .trim()
@@ -4282,6 +4501,7 @@ export async function saveStats() {
     crewData,
     seasonData,
     adminSettings,
+    hideStatus,
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
@@ -4302,6 +4522,7 @@ export async function saveStats() {
         crewData,
         seasonData,
     adminSettings,
+        hideStatus,
       }),
     "SAVE PROFILE",
     "Progress saved locally; cloud sync retry pending."
@@ -5323,6 +5544,12 @@ function applyReducedMotion(enabled) {
   const motionToggle = document.getElementById("motionToggle");
   if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
 }
+
+function applyStatusVisibilityToggle(hidden) {
+  hideStatus = Boolean(hidden);
+  const statusToggle = document.getElementById("statusVisibilityToggle");
+  if (statusToggle) statusToggle.textContent = hideStatus ? "HIDDEN" : "VISIBLE";
+}
 // Open the shared games panel from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
 const menuDropdownEl = document.getElementById("menuDropdown");
@@ -5431,6 +5658,17 @@ document.getElementById("motionToggle").onclick = () => {
   writeUiConfig({ reducedMotion: enabled });
 };
 
+document.getElementById("statusVisibilityToggle").onclick = async () => {
+  applyStatusVisibilityToggle(!hideStatus);
+  writeUiConfig({ hideStatus });
+  if (myName !== "ANON") {
+    await saveStats();
+    if (isChatInitialized) renderChatTab();
+    renderSeasonPanel();
+    renderCrewPanel();
+  }
+};
+
 (function hydrateUiConfig() {
   const config = readUiConfig();
   const uiScale = Number(config.uiScale || 1);
@@ -5439,6 +5677,7 @@ document.getElementById("motionToggle").onclick = () => {
   applyUiTextSize(uiTextSize);
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
+  applyStatusVisibilityToggle(Boolean(config.hideStatus));
   const uiScaleSlider = document.getElementById("uiScaleSlider");
   const uiTextSlider = document.getElementById("uiTextSlider");
   if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
@@ -5635,6 +5874,35 @@ let globallyMutedUsers = new Set();
 let isChatInitialized = false;
 let isChatModerationModeEnabled = true;
 
+function getStatusStateForUser(username) {
+  const normalized = normalizeUsername(username || "");
+  if (!normalized) return "offline";
+  if (normalized === normalizeUsername(myName)) {
+    return hideStatus ? "hidden" : "online";
+  }
+  return chatPresenceByUser[normalized] || "offline";
+}
+
+function renderChatUserLabel(username, label = username) {
+  return `${renderStatusDot(getStatusStateForUser(username))}<span class="chat-user">${escapeHtml(String(label || "ANON"))}:</span>`;
+}
+
+function startChatPresenceSync() {
+  if (stopChatPresenceSync) return;
+  const q = query(collection(db, "gooner_users"), orderBy("name"), limit(200));
+  stopChatPresenceSync = onSnapshot(q, (snap) => {
+    const nextPresence = {};
+    snap.forEach((row) => {
+      const data = row.data() || {};
+      const user = normalizeUsername(data.name || row.id || "");
+      if (!user) return;
+      nextPresence[user] = getUserStatusState(data.lastLogin, Boolean(data.hideStatus));
+    });
+    chatPresenceByUser = nextPresence;
+    if (isChatInitialized) renderChatTab();
+  });
+}
+
 function canUseChatModeration() {
   return isGodUser() && isChatModerationModeEnabled;
 }
@@ -5681,7 +5949,7 @@ function getChatTabConfig(tab) {
         const mine = sender === normalizeUsername(myName);
         const partner = mine ? to || "UNKNOWN" : sender;
         const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
-        return `<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
     global: {
@@ -5692,7 +5960,7 @@ function getChatTabConfig(tab) {
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
     crew: {
@@ -5710,7 +5978,7 @@ function getChatTabConfig(tab) {
       },
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     }
   };
@@ -5775,7 +6043,7 @@ function renderChatTab() {
       text.className = "chat-msg-text";
       if (isLocallyMuted || isGloballyMuted) {
         const muteScope = isGloballyMuted ? "GLOBAL" : "LOCAL";
-        text.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+        text.innerHTML = `${renderChatUserLabel(user, user)} <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
       } else {
         text.innerHTML = tabConfig.renderMessage(m);
       }
@@ -5925,6 +6193,7 @@ function initChat() {
     });
   });
   initGlobalChatMutes();
+  startChatPresenceSync();
   renderChatTab();
   isChatInitialized = true;
   document.getElementById("chatInput").addEventListener("keydown", async (e) => {
@@ -6309,19 +6578,46 @@ function loadLeaderboardBoard(board, list) {
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
         const rows = [];
+        const crewLogos = {};
         snap.forEach((d) => {
           const data = d.data();
           const playerName = data.name || d.id;
           const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
+          const wins = Number(data.crewData?.wins || 0);
+          const currentMembers = data.crewData?.members?.length || 1;
+          const validLogo = (data.crewData?.logo && data.crewData?.logo.palette) ? data.crewData.logo : null;
+
+          if (crewTag) {
+            if (!crewLogos[crewTag]) {
+              crewLogos[crewTag] = { logo: validLogo, maxWins: -1, repMembers: -1 };
+            }
+            const isBetter = wins > crewLogos[crewTag].maxWins || (wins === crewLogos[crewTag].maxWins && currentMembers > crewLogos[crewTag].repMembers);
+            if (isBetter) {
+              crewLogos[crewTag].maxWins = wins;
+              crewLogos[crewTag].repMembers = currentMembers;
+              crewLogos[crewTag].logo = validLogo;
+            }
+          }
+
           rows.push({
             name: playerName,
             score: data.rank || getRank(Number(data.money) || 0, playerName),
             rankData: getRankData(Number(data.money) || 0, playerName),
             canRemove: playerName !== myName && !isGodUser(playerName),
             crewTag,
-            logo: crewTag ? (data.crewData.logo || DEFAULT_CREW_LOGO) : null
+            _logoRaw: crewTag ? validLogo : null
           });
         });
+
+        rows.forEach(r => {
+          if (r.crewTag && crewLogos[r.crewTag]) {
+            r.logo = crewLogos[r.crewTag].logo || DEFAULT_CREW_LOGO;
+          } else {
+            r.logo = r._logoRaw || DEFAULT_CREW_LOGO;
+          }
+          delete r._logoRaw;
+        });
+
         renderLeaderboardRows(list, rows, { showAdminRemove: true });
       })
     );
@@ -6333,16 +6629,35 @@ function loadLeaderboardBoard(board, list) {
     leaderboardUnsubs.push(
       onSnapshot(q, (snap) => {
         const rows = [];
+        const crewLogos = {};
         snap.forEach((d) => {
           const data = d.data();
           const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
+          const wins = Number(data.crewData?.wins || 0);
+          const logo = data.crewData?.logo || DEFAULT_CREW_LOGO;
+
+          if (crewTag) {
+            if (!crewLogos[crewTag]) crewLogos[crewTag] = { logo, maxWins: -1 };
+            if (wins >= crewLogos[crewTag].maxWins) {
+              crewLogos[crewTag].maxWins = wins;
+              crewLogos[crewTag].logo = logo;
+            }
+          }
+
           rows.push({
             name: data.name || d.id,
             score: data.money ?? 0,
             crewTag,
-            logo: crewTag ? (data.crewData.logo || DEFAULT_CREW_LOGO) : null
+            logo: crewTag ? logo : null
           });
         });
+
+        rows.forEach(r => {
+          if (r.crewTag && crewLogos[r.crewTag]) {
+            r.logo = crewLogos[r.crewTag].logo;
+          }
+        });
+
         renderLeaderboardRows(list, rows, { valuePrefix: "$" });
       })
     );

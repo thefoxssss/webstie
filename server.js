@@ -388,6 +388,182 @@ class SmashArenaRoom extends colyseus.Room {
 }
 
 // --------------------------------------------------------
+// FNAF ROOM
+// --------------------------------------------------------
+const fnafServerDirectory = new Map();
+
+class FnafPlayer extends Schema {}
+type("number")(FnafPlayer.prototype, "x");
+type("number")(FnafPlayer.prototype, "y");
+type("number")(FnafPlayer.prototype, "rot");
+
+class FnafAnimatronic extends Schema {}
+type("number")(FnafAnimatronic.prototype, "x");
+type("number")(FnafAnimatronic.prototype, "y");
+type("string")(FnafAnimatronic.prototype, "type");
+
+class FnafState extends Schema {
+  constructor() {
+    super();
+    this.players = new MapSchema();
+    this.animatronics = new MapSchema();
+    this.power = 100;
+    this.time = 0; // 0 = 12AM, 1 = 1AM, ..., 6 = 6AM
+    this.doorLeft = false;
+    this.doorRight = false;
+    this.lightLeft = false;
+    this.lightRight = false;
+  }
+}
+type({ map: FnafPlayer })(FnafState.prototype, "players");
+type({ map: FnafAnimatronic })(FnafState.prototype, "animatronics");
+type("number")(FnafState.prototype, "power");
+type("number")(FnafState.prototype, "time");
+type("boolean")(FnafState.prototype, "doorLeft");
+type("boolean")(FnafState.prototype, "doorRight");
+type("boolean")(FnafState.prototype, "lightLeft");
+type("boolean")(FnafState.prototype, "lightRight");
+
+class FnafRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 8;
+    this.autoDispose = true;
+    this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
+      ? options.serverName.trim().slice(0, 24)
+      : "Public FNAF World";
+    this.setMetadata({ serverName: this.serverName });
+
+    this.setState(new FnafState());
+
+    // Initialize Animatronics
+    const freddy = new FnafAnimatronic();
+    freddy.x = 1.5; freddy.y = 1.5; freddy.type = "freddy";
+    this.state.animatronics.set("freddy", freddy);
+
+    const bonnie = new FnafAnimatronic();
+    bonnie.x = 8.5; bonnie.y = 1.5; bonnie.type = "bonnie";
+    this.state.animatronics.set("bonnie", bonnie);
+
+    fnafServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      serverName: this.serverName,
+      clients: 0,
+      maxClients: this.maxClients,
+      createdAt: Date.now()
+    });
+
+    this.onMessage("move", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) {
+        p.x = message.x;
+        p.y = message.y;
+        p.rot = message.rot;
+      }
+    });
+
+    this.onMessage("toggleAction", (client, message) => {
+      if (message.action === "doorLeft") {
+        this.state.doorLeft = !this.state.doorLeft;
+      } else if (message.action === "doorRight") {
+        this.state.doorRight = !this.state.doorRight;
+      } else if (message.action === "lightLeft") {
+        this.state.lightLeft = !this.state.lightLeft;
+      } else if (message.action === "lightRight") {
+        this.state.lightRight = !this.state.lightRight;
+      }
+    });
+
+    this.tickCounter = 0;
+    this.setSimulationInterval((deltaTime) => this.simulateTick(deltaTime), 1000); // run every 1s
+  }
+
+  simulateTick(deltaTime) {
+    this.tickCounter++;
+
+    // Time progression: 1 in-game hour every 60 real seconds (60 ticks)
+    if (this.tickCounter % 60 === 0) {
+      if (this.state.time < 6) {
+        this.state.time++;
+      }
+    }
+
+    // Power drain
+    let drainRate = 0.1; // Base drain
+    if (this.state.doorLeft) drainRate += 0.2;
+    if (this.state.doorRight) drainRate += 0.2;
+    if (this.state.lightLeft) drainRate += 0.1;
+    if (this.state.lightRight) drainRate += 0.1;
+
+    this.state.power = Math.max(0, this.state.power - drainRate);
+    if (this.state.power === 0) {
+       this.state.doorLeft = false;
+       this.state.doorRight = false;
+       this.state.lightLeft = false;
+       this.state.lightRight = false;
+    }
+
+    // AI Movement (Very basic: slowly drift towards the office at ~5.5, 5.5)
+    if (this.state.time > 0 && this.tickCounter % 5 === 0) { // Move every 5 seconds
+      const officeX = 5.5;
+      const officeY = 5.5;
+
+      this.state.animatronics.forEach((anim) => {
+         // Simple movement towards office
+         let moveX = Math.sign(officeX - anim.x) * 0.5;
+         let moveY = Math.sign(officeY - anim.y) * 0.5;
+
+         // Basic boundary check to not go out of bounds (0-10)
+         let nextX = Math.max(1, Math.min(9, anim.x + moveX));
+         let nextY = Math.max(1, Math.min(9, anim.y + moveY));
+
+         // Extremely simple door check: if they get near office doors (x=2 or x=7, y=5)
+         if ((Math.abs(nextX - 2.5) < 1 && this.state.doorLeft) ||
+             (Math.abs(nextX - 7.5) < 1 && this.state.doorRight)) {
+            // Blocked by door
+         } else {
+            anim.x = nextX;
+            anim.y = nextY;
+         }
+      });
+    }
+  }
+  onJoin(client, options) {
+    const p = new FnafPlayer();
+    p.x = 2; // Default spawn
+    p.y = 2;
+    p.rot = 0;
+    this.state.players.set(client.sessionId, p);
+
+    const d = fnafServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      fnafServerDirectory.set(this.roomId, d);
+    }
+  }
+
+  onLeave(client) {
+    this.state.players.delete(client.sessionId);
+
+    const d = fnafServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      fnafServerDirectory.set(this.roomId, d);
+    }
+  }
+
+  onDispose() {
+    fnafServerDirectory.delete(this.roomId);
+  }
+}
+
+app.get("/fnaf_servers", (req, res) => {
+  const active = Array.from(fnafServerDirectory.values())
+    .sort((a, b) => b.clients - a.clients)
+    .slice(0, 50);
+  res.json(active);
+});
+
+// --------------------------------------------------------
 // BASE TEST ROOM
 // --------------------------------------------------------
 class GameRoom extends colyseus.Room {
@@ -444,6 +620,7 @@ type("number")(BuilderPlayer.prototype, "armorHp");
 type("number")(BuilderPlayer.prototype, "maxArmorHp");
 type("number")(BuilderPlayer.prototype, "armorType");
 type("number")(BuilderPlayer.prototype, "selectedItemType");
+type("boolean")(BuilderPlayer.prototype, "flightEnabled");
 
 class BuilderBullet extends Schema {}
 type("string")(BuilderBullet.prototype, "id");
@@ -453,6 +630,7 @@ type("number")(BuilderBullet.prototype, "y");
 type("number")(BuilderBullet.prototype, "vx");
 type("number")(BuilderBullet.prototype, "vy");
 type("number")(BuilderBullet.prototype, "damage");
+type("number")(BuilderBullet.prototype, "healing");
 type("number")(BuilderBullet.prototype, "life");
 type("number")(BuilderBullet.prototype, "ammoType");
 type("number")(BuilderBullet.prototype, "explosionRadius");
@@ -498,6 +676,8 @@ type("number")(ItemDrop.prototype, "vx");
 type("number")(ItemDrop.prototype, "vy");
 type("number")(ItemDrop.prototype, "type");
 type("number")(ItemDrop.prototype, "count");
+type("string")(ItemDrop.prototype, "ownerId");
+type("number")(ItemDrop.prototype, "noPickupBefore");
 
 class Chunk extends Schema {
   constructor() {
@@ -540,6 +720,11 @@ class BuilderRoom extends colyseus.Room {
       ? options.serverName.trim().slice(0, 24)
       : "Public World";
     this.setMetadata({ serverName: this.serverName });
+    this.worldSeed = Number.isFinite(options?.worldSeed)
+      ? Math.trunc(options.worldSeed)
+      : Math.floor(Math.random() * 2147483647);
+    this.seedOffsetX = (this.worldSeed % 100000) * 0.001;
+    this.seedOffsetY = (Math.floor(this.worldSeed / 100000) % 100000) * 0.001;
 
     const state = new BuilderState();
     this.setState(state);
@@ -553,6 +738,9 @@ class BuilderRoom extends colyseus.Room {
       if (this.inputs[pId]) {
         this.inputs[pId].left = message.left;
         this.inputs[pId].right = message.right;
+        this.inputs[pId].up = !!message.up;
+        this.inputs[pId].down = !!message.down;
+        this.inputs[pId].flight = !!message.flight;
         if (message.upPress) this.inputs[pId].jumpBuffer = BUILDER_JUMP_BUFFER_TICKS;
       }
     });
@@ -621,6 +809,32 @@ this.onMessage("interact", (client, message) => {
         const distSq = (p.x+TILE_SIZE/2 - message.x)**2 + (p.y+TILE_SIZE/2 - message.y)**2;
         if (distSq > (TILE_SIZE * 6)**2) return;
 
+        // Right-clicking a live bomb (TNT / Nuke) defuses it and places the block back.
+        let explosiveIdToDefuse = null;
+        let explosiveToDefuse = null;
+        this.state.explosives.forEach((exp, expId) => {
+            if (explosiveIdToDefuse) return;
+            const expTileX = Math.floor(exp.x / TILE_SIZE);
+            const expTileY = Math.floor(exp.y / TILE_SIZE);
+            if (expTileX === x && expTileY === y) {
+                explosiveIdToDefuse = expId;
+                explosiveToDefuse = exp;
+            }
+        });
+        if (explosiveIdToDefuse && explosiveToDefuse) {
+            const chunk = this.getOrCreateChunk(cx, cy);
+            const blockKey = `${x},${y}`;
+            if (!chunk.blocks.get(blockKey)) {
+                const b = new Block();
+                b.x = x;
+                b.y = y;
+                b.type = explosiveToDefuse.type;
+                chunk.blocks.set(blockKey, b);
+            }
+            this.state.explosives.delete(explosiveIdToDefuse);
+            return;
+        }
+
         const chunk = this.state.chunks.get(`${cx},${cy}`);
         if (chunk) {
             const b = chunk.blocks.get(`${x},${y}`);
@@ -630,7 +844,7 @@ this.onMessage("interact", (client, message) => {
                 explosive.x = x * TILE_SIZE + TILE_SIZE/2;
                 explosive.y = y * TILE_SIZE + TILE_SIZE/2;
                 explosive.type = b.type;
-                explosive.timer = b.type === 34 ? 100 : 60; // Nuke takes longer
+                explosive.timer = b.type === 34 ? 200 : 60; // Nuke takes longer
                 this.state.explosives.set(`exp-${Date.now()}-${Math.random()}`, explosive);
 
                 chunk.blocks.delete(`${x},${y}`);
@@ -720,6 +934,7 @@ this.onMessage("hammer", (client, message) => {
         if (chunk) {
             const b = chunk.blocks.get(`${x},${y}`);
             if (b) {
+                if (b.type === 48) return; // Bedrock cannot be reshaped
                 // Cycle meta: 0 (full) -> 1 (bottom slab) -> 2 (top slab) -> 3 (left slope) -> 4 (right slope)
                 b.meta = ((b.meta || 0) + 1) % 5;
             }
@@ -750,6 +965,7 @@ this.onMessage("hammer", (client, message) => {
           const key = `${x},${y}`;
           const b = chunk.blocks.get(key);
           if (b) {
+              if (b.type === 48) return; // Bedrock is unbreakable
               const drop = new ItemDrop();
               drop.id = `drop-${Date.now()}-${Math.random()}`;
               drop.x = x * TILE_SIZE + TILE_SIZE / 2;
@@ -768,6 +984,8 @@ this.onMessage("hammer", (client, message) => {
               }
 
               drop.count = 1;
+              drop.ownerId = "";
+              drop.noPickupBefore = Date.now() + 250;
               this.state.drops.set(drop.id, drop);
 
               chunk.blocks.delete(key);
@@ -793,6 +1011,7 @@ this.onMessage("hammer", (client, message) => {
 
       const drop = this.state.drops.get(message.id);
       if (!drop) return;
+      if (Date.now() < (drop.noPickupBefore || 0)) return;
 
       const dx = p.x + TILE_SIZE/2 - drop.x;
       const dy = p.y + TILE_SIZE/2 - drop.y;
@@ -816,15 +1035,24 @@ this.onMessage("hammer", (client, message) => {
       // Melee range logic
       let attackRangeSq = (TILE_SIZE * 3) ** 2;
       let damage = message.damage || 1;
+      let healing = 0;
 
       // If holding sword
       if (attacker.selectedItemType === 11) {
           attackRangeSq = (TILE_SIZE * 4) ** 2; // slightly longer range
           damage = 5; // more damage
+      } else if (attacker.selectedItemType === 61) {
+          attackRangeSq = (TILE_SIZE * 4) ** 2;
+          damage = 0;
+          healing = 3;
       }
 
       if (distSq < attackRangeSq) {
-          this.damagePlayer(target, damage, attacker.name);
+          if (healing > 0) {
+              target.hp = Math.min(target.maxHp, target.hp + healing);
+          } else {
+              this.damagePlayer(target, damage, attacker.name);
+          }
           target.vy = -6;
           target.vx = (target.x - attacker.x > 0 ? 1 : -1) * 8;
       }
@@ -844,6 +1072,7 @@ this.onMessage("hammer", (client, message) => {
         else if (player.armorType === 20) maxArmor = 15;
         else if (player.armorType === 21) maxArmor = 20;
         else if (player.armorType === 22) maxArmor = 30;
+        else if (player.armorType === 62) maxArmor = 0;
 
         player.maxArmorHp = maxArmor;
         if (player.armorHp > maxArmor) {
@@ -857,7 +1086,7 @@ this.onMessage("hammer", (client, message) => {
 
         // Ensure they have a gun selected
         const gunType = player.selectedItemType;
-        if (![23, 24, 25, 26, 27].includes(gunType)) return;
+        if (![23, 24, 25, 26, 27, 63].includes(gunType)) return;
 
         const targetX = message.x;
         const targetY = message.y;
@@ -869,6 +1098,7 @@ this.onMessage("hammer", (client, message) => {
         // Stats based on gun
         let speed = 15;
         let damage = 2;
+        let healing = 0;
         let spread = 0;
         let projectiles = 1;
         let ammoType = 28;
@@ -879,6 +1109,12 @@ this.onMessage("hammer", (client, message) => {
         else if (gunType === 25) { speed = 20; damage = 4; projectiles = 3; spread = 0.2; ammoType = 49; } // Shotgun
         else if (gunType === 26) { speed = 30; damage = 5; ammoType = 50; } // Rifle
         else if (gunType === 27) { speed = 40; damage = 8; ammoType = 51; explosionRadius = TILE_SIZE * 3; } // Uranium rounds explode
+        if (gunType === 23) { speed = 15; damage = 2; }
+        else if (gunType === 24) { speed = 20; damage = 3; }
+        else if (gunType === 25) { speed = 20; damage = 4; projectiles = 3; spread = 0.2; } // Shotgun
+        else if (gunType === 26) { speed = 30; damage = 5; } // Rifle
+        else if (gunType === 27) { speed = 40; damage = 8; } // Laser
+        else if (gunType === 63) { speed = 28; damage = 0; healing = 2; } // TariqCore Beam
 
         for (let i = 0; i < projectiles; i++) {
             const bulletId = Math.random().toString(36).substring(2, 9);
@@ -896,6 +1132,7 @@ this.onMessage("hammer", (client, message) => {
             b.vx = Math.cos(finalAngle) * speed;
             b.vy = Math.sin(finalAngle) * speed;
             b.damage = damage;
+            b.healing = healing;
             b.life = 40; // ticks
             b.ammoType = ammoType;
             b.explosionRadius = explosionRadius;
@@ -919,6 +1156,8 @@ this.onMessage("hammer", (client, message) => {
             drop.vy = -4 - Math.random() * 8;
             drop.type = item.type;
             drop.count = item.count;
+            drop.ownerId = client.sessionId;
+            drop.noPickupBefore = Date.now() + 700;
             this.state.drops.set(drop.id, drop);
         });
     });
@@ -979,11 +1218,12 @@ this.onMessage("hammer", (client, message) => {
     p.maxArmorHp = 0;
     p.armorType = 0;
     p.selectedItemType = 0;
+    p.flightEnabled = false;
     p.lastCx = -999;
     p.lastCy = -999;
     this.state.players.set(client.sessionId, p);
 
-    this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
+    this.inputs[client.sessionId] = { left: false, right: false, up: false, down: false, flight: false, jumpBuffer: 0 };
     this.syncServerDirectory();
   }
 
@@ -1035,7 +1275,7 @@ this.onMessage("hammer", (client, message) => {
       const sanitizedName = this.serverName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       const filePath = path.join(worldsDir, `${sanitizedName}.json`);
 
-      const data = { chunks: {}, chests: {}, furnaces: {} };
+      const data = { worldSeed: this.worldSeed, chunks: {}, chests: {}, furnaces: {} };
       this.state.chunks.forEach((chunk, key) => {
         data.chunks[key] = [];
         chunk.blocks.forEach((block) => {
@@ -1077,6 +1317,11 @@ this.onMessage("hammer", (client, message) => {
         const raw = fs.readFileSync(filePath);
         const rawData = JSON.parse(raw);
         const data = rawData.chunks ? rawData : { chunks: rawData, chests: {}, furnaces: {} }; // backcompat
+        if (Number.isFinite(data.worldSeed)) {
+          this.worldSeed = Math.trunc(data.worldSeed);
+          this.seedOffsetX = (this.worldSeed % 100000) * 0.001;
+          this.seedOffsetY = (Math.floor(this.worldSeed / 100000) % 100000) * 0.001;
+        }
 
         for (const chunkKey in data.chunks) {
           this.offlineChunks.set(chunkKey, data.chunks[chunkKey]);
@@ -1111,16 +1356,26 @@ this.onMessage("hammer", (client, message) => {
     }
   }
 
+  seededNoise(x, y, octaves, persistence, scale) {
+    return layeredNoise(
+      x + this.seedOffsetX,
+      y + this.seedOffsetY,
+      octaves,
+      persistence,
+      scale
+    );
+  }
+
   getSurfaceHeight(worldX) {
     // Add biome variation to surface height
-    const baseNoise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
-    const macroNoise = layeredNoise(worldX, 1000, 2, 0.5, 0.01); // Hills vs flats
+    const baseNoise = this.seededNoise(worldX, 0, 4, 0.5, 0.05);
+    const macroNoise = this.seededNoise(worldX, 1000, 2, 0.5, 0.01); // Hills vs flats
     return Math.floor(20 + baseNoise * 15 + macroNoise * 20);
   }
 
   getBiome(worldX) {
-    const tempNoise = layeredNoise(worldX, 5000, 2, 0.5, 0.005);
-    const moistureNoise = layeredNoise(worldX, 8000, 2, 0.5, 0.005);
+    const tempNoise = this.seededNoise(worldX, 5000, 2, 0.5, 0.005);
+    const moistureNoise = this.seededNoise(worldX, 8000, 2, 0.5, 0.005);
 
     // tempNoise and moistureNoise roughly center around 0 (since they accumulate perlin which can be negative or positive, actually the custom layeredNoise returns 0 to 1 average... wait, let's just use simple thresholds on the return value)
 
@@ -1153,7 +1408,7 @@ this.onMessage("hammer", (client, message) => {
       for (let y = startY; y < endY; y++) {
         let isCave = false;
         if (y >= h + 25) {
-            const caveNoise = layeredNoise(worldX, y, 3, 0.5, 0.1);
+            const caveNoise = this.seededNoise(worldX, y, 3, 0.5, 0.1);
             isCave = Math.abs(caveNoise) < 0.08;
         }
 
@@ -1253,6 +1508,197 @@ this.onMessage("hammer", (client, message) => {
         }
       }
     }
+
+    // 3. Tariq Heaven biome strip at top of the world (~500 blocks up)
+    this.generateTariqHeavenBiome(chunk, cx, minY, maxY);
+
+    // 4. Landmark near x=6900
+    this.generateTwinToursMonument(chunk, cx, minY, maxY);
+  }
+
+  generateTariqHeavenBiome(chunk, cx, minY, maxY) {
+    const skyBandCenter = -500;
+    if (maxY < skyBandCenter - 44 || minY > skyBandCenter + 44) return;
+
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      const worldX = cx * CHUNK_SIZE + x;
+      const islandBaseY = skyBandCenter + Math.floor(this.seededNoise(worldX, 2200, 2, 0.5, 0.03) * 8);
+      const islandChance = Math.abs(Math.sin(worldX * 0.095)) < 0.2;
+      if (!islandChance) continue;
+
+      const halfWidth = 5 + Math.floor(Math.abs(Math.sin(worldX * 0.31)) * 6);
+      const coreDepth = 3 + Math.floor(Math.abs(Math.cos(worldX * 0.57)) * 4);
+
+      for (let ix = -halfWidth; ix <= halfWidth; ix++) {
+        const iX = worldX + ix;
+        const distanceNorm = Math.abs(ix) / Math.max(1, halfWidth);
+        const roundness = 1 - (distanceNorm * distanceNorm);
+        const topY = islandBaseY + Math.floor((1 - roundness) * 2);
+        const localDepth = Math.max(2, Math.floor(coreDepth * (0.55 + roundness * 0.6)));
+        for (let dy = 0; dy < coreDepth; dy++) {
+          if (dy >= localDepth) continue;
+          const y = topY + dy;
+          if (y < minY || y >= maxY || iX < cx * CHUNK_SIZE || iX >= (cx + 1) * CHUNK_SIZE) continue;
+          const b = new Block();
+          b.x = iX;
+          b.y = y;
+          b.meta = 0;
+          b.type = 64; // cloud platform ground
+          if (dy > 1 && Math.abs(Math.sin(iX * 19.13 + y * 7.71)) < 0.05) b.type = 60; // TariqCore
+          chunk.blocks.set(`${iX},${y}`, b);
+        }
+      }
+
+      // tree: ladder logs + plank leaves
+      if (Math.abs(Math.sin(worldX * 0.41)) < 0.06) {
+        const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(worldX * 0.73)) * 3);
+        for (let dy = 1; dy <= trunkHeight; dy++) {
+          const ty = islandBaseY - dy;
+          if (ty >= minY && ty < maxY) {
+            const b = new Block();
+            b.x = worldX;
+            b.y = ty;
+            b.type = 35;
+            b.meta = 0;
+            chunk.blocks.set(`${worldX},${ty}`, b);
+          }
+        }
+        for (let lx = -2; lx <= 2; lx++) {
+          for (let ly = -2; ly <= 2; ly++) {
+            if (Math.abs(lx) + Math.abs(ly) > 3) continue;
+            const tx = worldX + lx;
+            const ty = islandBaseY - trunkHeight - 1 + ly;
+            if (tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE && ty >= minY && ty < maxY) {
+              const key = `${tx},${ty}`;
+              if (!chunk.blocks.has(key)) {
+                const b = new Block();
+                b.x = tx;
+                b.y = ty;
+                b.type = 9;
+                b.meta = 0;
+                chunk.blocks.set(key, b);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  generateTwinToursMonument(chunk, cx, minY, maxY) {
+    const monumentX = 6900;
+    const surfaceY = this.getSurfaceHeight(monumentX);
+    const plazaY = surfaceY - 1;
+    const towerHeight = 400;
+    const towerWidth = 14;
+    const towerGap = 18;
+
+    const leftTowerStart = monumentX - towerGap / 2 - towerWidth;
+    const rightTowerStart = monumentX + towerGap / 2;
+    const minX = leftTowerStart - 16;
+    const maxX = rightTowerStart + towerWidth + 16;
+    const topY = plazaY - towerHeight - 26;
+    const bottomY = plazaY + 24;
+
+    const chunkMinX = cx * CHUNK_SIZE;
+    const chunkMaxX = (cx + 1) * CHUNK_SIZE - 1;
+    if (chunkMaxX < minX || chunkMinX > maxX || maxY < topY || minY > bottomY) return;
+
+    const setBlock = (x, y, type) => {
+      if (x < chunkMinX || x > chunkMaxX || y < minY || y >= maxY) return;
+      const b = new Block();
+      b.x = x;
+      b.y = y;
+      b.type = type;
+      b.meta = 0;
+      chunk.blocks.set(`${x},${y}`, b);
+    };
+
+    const clearBlock = (x, y) => {
+      if (x < chunkMinX || x > chunkMaxX || y < minY || y >= maxY) return;
+      chunk.blocks.delete(`${x},${y}`);
+    };
+
+    // Stone plaza.
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = plazaY; y <= plazaY + 2; y++) setBlock(x, y, 3);
+    }
+
+    const buildFoundation = (startX) => {
+      const endX = startX + towerWidth - 1;
+      for (let x = startX - 2; x <= endX + 2; x++) {
+        for (let y = plazaY + 3; y <= plazaY + 14; y++) setBlock(x, y, 3);
+      }
+      for (let x = startX; x <= endX; x++) {
+        for (let y = plazaY + 15; y <= plazaY + 22; y++) setBlock(x, y, 3);
+      }
+    };
+
+    const buildSkyBridge = (fromX, toX, y) => {
+      for (let x = fromX; x <= toX; x++) {
+        setBlock(x, y, 3);
+        setBlock(x, y - 1, 3);
+        if (x === fromX || x === toX) {
+          setBlock(x, y - 2, 3);
+          setBlock(x, y - 3, 3);
+        }
+      }
+    };
+
+    const buildTower = (startX) => {
+      const endX = startX + towerWidth - 1;
+      const topMainY = plazaY - towerHeight;
+      for (let x = startX; x <= endX; x++) {
+        for (let y = topMainY; y <= plazaY; y++) {
+          const edge = x === startX || x === endX || y === topMainY || y === plazaY;
+          if (edge) {
+            const floorBand = y % 24 === 0;
+            const corner = (x === startX || x === endX) && (y % 8 < 2);
+            setBlock(x, y, (floorBand || corner) ? 14 : 3);
+          } else {
+            clearBlock(x, y);
+          }
+        }
+      }
+
+      // vertical ribs
+      for (let ribX = startX + 2; ribX <= endX - 2; ribX += 3) {
+        for (let y = topMainY + 4; y <= plazaY - 2; y++) {
+          if (y % 6 < 2) setBlock(ribX, y, 7);
+        }
+      }
+
+      // window cutouts every 18 blocks
+      for (let y = plazaY - 12; y >= topMainY + 20; y -= 18) {
+        for (let wx = startX + 3; wx <= endX - 3; wx++) {
+          clearBlock(wx, y);
+          clearBlock(wx, y - 1);
+        }
+        clearBlock(startX, y);
+        clearBlock(endX, y);
+      }
+
+      // stepped spire
+      let layerInset = 0;
+      for (let y = topMainY - 1; y >= topMainY - 24; y--) {
+        if ((topMainY - y) % 6 === 0 && layerInset < Math.floor(towerWidth / 2) - 1) layerInset++;
+        for (let x = startX + layerInset; x <= endX - layerInset; x++) {
+          setBlock(x, y, (x === startX + layerInset || x === endX - layerInset || y === topMainY - 24) ? 14 : 3);
+        }
+      }
+    };
+
+    buildFoundation(leftTowerStart);
+    buildFoundation(rightTowerStart);
+    buildTower(leftTowerStart);
+    buildTower(rightTowerStart);
+
+    // dual skybridges linking towers.
+    for (let x = leftTowerStart + towerWidth; x < rightTowerStart; x++) {
+      for (let y = plazaY - 18; y <= plazaY - 16; y++) setBlock(x, y, 3);
+    }
+    buildSkyBridge(leftTowerStart + towerWidth - 2, rightTowerStart + 1, plazaY - 128);
+    buildSkyBridge(leftTowerStart + towerWidth - 2, rightTowerStart + 1, plazaY - 286);
   }
 
   getOrCreateChunk(cx, cy) {
@@ -1304,7 +1750,17 @@ isSolid(x, y) {
       const b = chunk.blocks.get(`${x},${y}`);
       if (!b) return false;
       if (b.type === 35) return false; // Ladder is pass-through
+      if (b.type === 64) return false; // Cloud platforms are one-way
       return true;
+  }
+
+  getBlockType(x, y) {
+      const cx = Math.floor(x / CHUNK_SIZE);
+      const cy = Math.floor(y / CHUNK_SIZE);
+      const chunk = this.state.chunks.get(`${cx},${cy}`);
+      if (!chunk) return 0;
+      const b = chunk.blocks.get(`${x},${y}`);
+      return b ? b.type : 0;
   }
 
   simulateTick() {
@@ -1380,23 +1836,8 @@ isSolid(x, y) {
         });
     }
 
-    this.state.bullets.forEach((b, id) => {
-        b.x += b.vx;
-        b.y += b.vy;
-        b.life--;
 
-        let hit = false;
-
-        // Block collision
-        const bx = Math.floor(b.x / TILE_SIZE);
-        const by = Math.floor(b.y / TILE_SIZE);
-        if (this.isSolid(bx, by)) {
-            hit = true;
-        }
-
-        // Player collision
-        if (!hit) {
-        // Furnace Smelting Logic
+    // Furnace Smelting Logic
     this.state.furnaces.forEach(furnace => {
         if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 13 && furnace.inputItem <= 17) {
             // Check if fuel is log/coal
@@ -1412,13 +1853,6 @@ isSolid(x, y) {
                     // Fuel consumption logic: 1 coal smelts 8 items? Let's just do 1:1 for simplicity right now
                     furnace.fuelCount--;
                     if (furnace.fuelCount <= 0) furnace.fuelItem = 0;
-
-                    // Convert Ore -> Ingot/Gem (Using same IDs for simplicity, or we can use armor IDs as ingots. Let's just give them the ingot form of armor, but armor is 18-22... Wait, we need actual ingots or just let them smelt ore -> ingot item. Let's use 18-22 for Ingots, and we'll change the armor recipes to use 18-22 instead of raw ore, and we'll add armor items later, actually armor is 18-22. So let's use 43+ for ingots.)
-                    // 13: Copper Ore -> 43: Copper Ingot
-                    // 14: Iron Ore -> 44: Iron Ingot
-                    // 15: Gold Ore -> 45: Gold Ingot
-                    // 16: Diamond Ore -> 46: Diamond (refined)
-                    // 17: Uranium Ore -> 47: Uranium (refined)
 
                     let outputType = 0;
                     if (furnace.inputItem === 13) outputType = 43;
@@ -1445,14 +1879,34 @@ isSolid(x, y) {
         }
     });
 
-    this.state.players.forEach((p, sessionId) => {
+    this.state.bullets.forEach((b, id) => {
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life--;
+
+        let hit = false;
+
+        // Block collision
+        const bx = Math.floor(b.x / TILE_SIZE);
+        const by = Math.floor(b.y / TILE_SIZE);
+        if (this.isSolid(bx, by)) {
+            hit = true;
+        }
+
+        // Player collision
+        if (!hit) {
+            this.state.players.forEach((p, sessionId) => {
                 if (hit || sessionId === b.ownerId || p.hp <= 0) return;
 
                 if (b.x >= p.x && b.x <= p.x + TILE_SIZE &&
                     b.y >= p.y && b.y <= p.y + TILE_SIZE) {
 
                     const owner = this.state.players.get(b.ownerId);
-                    this.damagePlayer(p, b.damage, owner ? owner.name : "Unknown");
+                    if (b.healing > 0) {
+                        p.hp = Math.min(p.maxHp, p.hp + b.healing);
+                    } else {
+                        this.damagePlayer(p, b.damage, owner ? owner.name : "Unknown");
+                    }
 
                     // Knockback
                     p.vx += b.vx * 0.5;
@@ -1517,6 +1971,9 @@ isSolid(x, y) {
         if (p.hp > 0 && p.armorHp < p.maxArmorHp && Math.random() < (1 / BUILDER_TICK_RATE)) {
             p.armorHp++;
         }
+        if (p.hp > 0 && p.armorType === 62 && Math.random() < (2 / BUILDER_TICK_RATE)) {
+            p.hp = Math.min(p.maxHp, p.hp + 1);
+        }
 
 const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
         const pCy = Math.floor(p.y / (TILE_SIZE * CHUNK_SIZE));
@@ -1547,19 +2004,30 @@ const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
 if (onLadder) {
             p.vx *= 0.7; // slower horizontal on ladder
             p.vy = 0; // nullify gravity
-            if (inp.jumpBuffer > 0) { // moving up
+            if (inp.up) {
                 p.vy = -3;
+            } else if (inp.down) {
+                p.vy = 3;
             }
         }
+
+        p.flightEnabled = p.armorType === 65 && !!inp.flight;
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
 
-        p.vx *= 0.8;
-        if (!onLadder) {
-            p.vy += 0.8; // gravity only if not on ladder
+        if (p.flightEnabled) {
+            if (inp.up) p.vy -= 1.8;
+            if (inp.down) p.vy += 1.8;
+            p.vx *= 0.9;
+            p.vy *= 0.9;
+        } else {
+            p.vx *= 0.8;
+            if (!onLadder) {
+                p.vy += 0.8; // gravity only if not on ladder
+            }
+            p.vy *= 0.98;
         }
-        p.vy *= 0.98;
 
         // Apply X velocity
         p.x += p.vx;
@@ -1612,7 +2080,12 @@ if (onLadder) {
         if (p.vy > 0) {
             const prevPy2 = Math.floor((prevY + TILE_SIZE - 0.01) / TILE_SIZE);
             for (let ty = prevPy2 + 1; ty <= py2; ty++) {
-                if (this.isSolid(px1, ty) || this.isSolid(px2, ty)) {
+                const isCloudLeft = this.getBlockType(px1, ty) === 64;
+                const isCloudRight = this.getBlockType(px2, ty) === 64;
+                const cloudTopY = ty * TILE_SIZE;
+                const wasAboveCloud = (prevY + TILE_SIZE) <= cloudTopY + 1;
+                const cloudCollides = (isCloudLeft || isCloudRight) && wasAboveCloud;
+                if (this.isSolid(px1, ty) || this.isSolid(px2, ty) || cloudCollides) {
                     p.y = ty * TILE_SIZE - TILE_SIZE;
                     p.vy = 0;
                     grounded = true;
@@ -1630,10 +2103,10 @@ if (onLadder) {
             }
         }
 
-        if (grounded && inp.jumpBuffer > 0) {
+        if (!onLadder && grounded && inp.jumpBuffer > 0) {
             p.vy = -12;
             inp.jumpBuffer = 0;
-        } else if (inp.jumpBuffer > 0) {
+        } else if (!onLadder && inp.jumpBuffer > 0) {
             inp.jumpBuffer--;
         }
     });
@@ -1679,6 +2152,7 @@ if (onLadder) {
                         if (chunk) {
                             const b = chunk.blocks.get(`${tx},${ty}`);
                             if (b) {
+                                if (b.type === 48) continue; // Bedrock is blast-proof
                                 // Destroy and maybe drop item
                                 if (Math.random() < (isNuke ? 0.2 : 0.5)) {
                                     const drop = new ItemDrop();
@@ -1689,6 +2163,8 @@ if (onLadder) {
                                     drop.vy = -4 - Math.random() * 8;
                                     drop.type = b.type;
                                     drop.count = 1;
+                                    drop.ownerId = "";
+                                    drop.noPickupBefore = Date.now() + 250;
                                     this.state.drops.set(drop.id, drop);
                                 }
                                 chunk.blocks.delete(`${tx},${ty}`);
@@ -1805,6 +2281,7 @@ class VoiceRoom extends colyseus.Room {
   }
 }
 
+gameServer.define("fnaf_room", FnafRoom);
 gameServer.define("my_game_room", GameRoom);
 gameServer.define("smash_arena", SmashArenaRoom);
 gameServer.define("builder_room", BuilderRoom);

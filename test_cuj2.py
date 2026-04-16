@@ -21,7 +21,7 @@ def run_cuj(page):
     page.wait_for_timeout(2000)
 
     # QUICK JOIN
-    page.get_by_text("QUICK JOIN ANY SERVER").click()
+    page.locator("#btnJoinBuilder").click()
     page.wait_for_timeout(2000)
 
     # In builder, open inventory to show the item icons

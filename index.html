@@ -78,6 +78,16 @@
 
     <div class="dropdown-content" id="menuDropdown"></div>
 
+    <div class="overlay menu-overlay" id="overlayMaintenance">
+      <div class="maintenance-box">
+        <h1 style="color: #f66; text-align: center; margin-bottom: 20px; font-size: 2.5rem; text-shadow: 0 0 15px rgba(255, 102, 102, 0.5);">MAINTENANCE MODE</h1>
+        <p style="text-align: center; color: var(--accent); font-size: 1.2rem; line-height: 1.6;">
+          THE SYSTEM IS CURRENTLY UNDERGOING ROUTINE MAINTENANCE OR EMERGENCY REPAIRS.<br/>
+          PLEASE CHECK BACK SHORTLY.
+        </p>
+      </div>
+    </div>
+
     <div class="overlay menu-overlay" id="overlayTrending">
       <div class="score-box panel-overlay-box">
         <h2>TRENDING GAMES // MONTHLY GRAPH</h2>
@@ -373,6 +383,11 @@
                   </datalist>
                   <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
                 </div>
+
+                <div class="admin-section admin-section-danger">
+                  <p class="admin-section-title">GLOBAL MAINTENANCE</p>
+                  <button class="term-btn" style="border-color: #f66; color: #f66;" onclick="window.adminToggleMaintenance()">TOGGLE MAINTENANCE MODE</button>
+                </div>
               </div>
             </div>
 
@@ -429,6 +444,13 @@
                     <option value="45">45 - GOLD INGOT</option>
                     <option value="46">46 - DIAMOND (REFINED)</option>
                     <option value="47">47 - URANIUM (REFINED)</option>
+                    <option value="48">48 - BEDROCK</option>
+                    <option value="60">60 - TARIQCORE</option>
+                    <option value="61">61 - TARIQCORE BLADE</option>
+                    <option value="62">62 - TARIQCORE ARMOR</option>
+                    <option value="63">63 - TARIQCORE BEAM</option>
+                    <option value="64">64 - CLOUD PLATFORM</option>
+                    <option value="65">65 - TARIQ WINGS</option>
                   </select>
                   <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
                     <input class="term-input" id="adminBuilderItemCount" type="number" step="1" min="1" max="99" value="1" placeholder="COUNT" style="width: 100%;" />
@@ -1066,61 +1088,63 @@
         <h2 style="text-align: center">CREW TERMINAL</h2>
 
         <div class="crew-dashboard" id="crewDashboard" style="display: none;">
-          <div class="crew-dashboard-col">
-            <div class="crew-section">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                <div style="flex: 1;">
-                  <h3 class="crew-section-title">STATUS</h3>
-                  <div class="stat-row"><span>YOUR CREW</span><span id="crewName">NONE</span></div>
-                  <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
-                  <div class="stat-row"><span>YOUR WEEKLY XP</span><span id="crewXp">0</span></div>
-                  <div class="stat-row"><span>MOTTO</span><span id="crewMotto">---</span></div>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; margin-left: 15px;">
-                  <canvas id="crewLogoCanvas" width="32" height="32" style="width: 64px; height: 64px; border: 1px solid var(--accent); background: #000; image-rendering: pixelated; margin: 0;"></canvas>
-                  <button class="menu-btn" id="crewEditLogoBtn" style="font-size: 8px; padding: 4px 6px;">EDIT LOGO</button>
-                </div>
-              </div>
+          <!-- Crew Header Banner -->
+          <div class="crew-banner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px; margin-bottom: 15px; border: 1px solid var(--accent); background: rgba(0, 255, 0, 0.05); box-shadow: 0 0 10px var(--accent-glow);">
+            <canvas id="crewLogoCanvas" width="32" height="32" style="width: 96px; height: 96px; border: 1px solid var(--accent); background: #000; image-rendering: pixelated; margin: 0;"></canvas>
+            <div style="text-align: center;">
+              <h3 style="margin: 0; color: var(--accent); font-size: 24px; letter-spacing: 2px;">[<span id="crewName">NONE</span>]</h3>
+              <p style="margin: 5px 0 0; font-size: 12px; opacity: 0.8; font-style: italic;">"<span id="crewMotto">---</span>"</p>
             </div>
-
-            <div class="crew-section">
-              <h3 class="crew-section-title">BANK & GOAL</h3>
-              <div class="stat-row"><span>WEEKLY WINS</span><span id="crewWins">0</span></div>
-              <div class="stat-row"><span>WEEKLY GOAL</span><span id="crewGoal">$5000</span></div>
-              <div class="profile-progress-wrap" style="margin-top: 10px; margin-bottom: 5px;">
-                <div class="profile-progress-label" id="crewBankLabel">$0 / $5000</div>
-                <div class="profile-progress-track">
-                  <div class="profile-progress-fill" id="crewBankFill"></div>
-                </div>
-              </div>
-              <div style="text-align: right; font-size: 10px;">BANK: <span id="crewBank">$0</span></div>
-            </div>
-
-            <div class="crew-section">
-              <h3 class="crew-section-title">ACTIONS</h3>
-              <input class="term-input" id="crewInput" placeholder="CREW TAG (3-8)" maxlength="8" />
-              <input class="term-input" id="crewMottoInput" placeholder="CREW MOTTO (MAX 24)" maxlength="24" />
-              <input class="term-input" id="crewDonateAmount" placeholder="DONATE AMOUNT" maxlength="7" />
-              <div class="crew-actions">
-                <button class="term-btn" id="crewCreateBtn">JOIN / CREATE</button>
-                <button class="term-btn" id="crewContributeBtn">DONATE TO BANK</button>
-                <button class="term-btn" id="crewMottoBtn">UPDATE MOTTO</button>
-                <button class="term-btn" id="crewGoalBtn">CYCLE WEEKLY GOAL</button>
-              </div>
-            </div>
+            <button class="menu-btn" id="crewEditLogoBtn" style="font-size: 10px; padding: 4px 8px; margin-top: 5px;">EDIT LOGO</button>
           </div>
 
-          <div class="crew-dashboard-col">
-            <div class="crew-section crew-roster-section">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="crew-section-title">ROSTER</h3>
-                <span style="font-size: 10px; opacity: 0.8;" id="crewRecruitment">OPEN</span>
+          <div class="crew-dashboard-grid">
+            <div class="crew-dashboard-col">
+              <div class="crew-section" style="box-shadow: 0 0 10px var(--accent-glow);">
+                <h3 class="crew-section-title">STATUS & BANK</h3>
+                <div class="stat-row"><span>ROLE</span><span id="crewRole">SOLO</span></div>
+                <div class="stat-row"><span>WEEKLY XP</span><span id="crewXp">0</span></div>
+                <div class="stat-row"><span>WEEKLY WINS</span><span id="crewWins">0</span></div>
+                <div class="stat-row" style="margin-top: 10px; border-top: 1px dashed var(--accent-dim); padding-top: 10px;">
+                  <span>BANK</span><span id="crewBank">$0</span>
+                </div>
+                <div class="stat-row"><span>WEEKLY GOAL</span><span id="crewGoal">$5000</span></div>
+                <div class="profile-progress-wrap" style="margin-top: 10px; margin-bottom: 5px;">
+                  <div class="profile-progress-label" id="crewBankLabel">$0 / $5000</div>
+                  <div class="profile-progress-track">
+                    <div class="profile-progress-fill" id="crewBankFill"></div>
+                  </div>
+                </div>
               </div>
-              <div class="crew-roster-list" id="crewMembersList">
-                <div class="crew-roster-empty">NOT IN A CREW.</div>
+
+              <div class="crew-section" style="box-shadow: 0 0 10px var(--accent-glow);">
+                <h3 class="crew-section-title">ACTIONS</h3>
+                <input class="term-input" id="crewInput" placeholder="CREW TAG (3-8)" maxlength="8" />
+                <input class="term-input" id="crewMottoInput" placeholder="CREW MOTTO (MAX 24)" maxlength="24" />
+                <input class="term-input" id="crewDonateAmount" placeholder="DONATE AMOUNT" maxlength="7" />
+                <div class="crew-actions">
+                  <button class="term-btn" id="crewCreateBtn">JOIN / CREATE</button>
+                  <button class="term-btn" id="crewContributeBtn">DONATE TO BANK</button>
+                  <button class="term-btn" id="crewMottoBtn">UPDATE MOTTO</button>
+                  <button class="term-btn" id="crewGoalBtn">CYCLE WEEKLY GOAL</button>
+                </div>
               </div>
-              <button class="term-btn" id="crewRecruitmentBtn" style="margin-top: 10px; width: 100%;">TOGGLE RECRUITMENT</button>
-              <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00; margin-top: 10px; width: 100%;">LEAVE CREW</button>
+            </div>
+
+            <div class="crew-dashboard-col">
+              <div class="crew-section crew-roster-section" style="height: 100%; box-shadow: 0 0 10px var(--accent-glow);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <h3 class="crew-section-title">ROSTER</h3>
+                  <span style="font-size: 10px; opacity: 0.8;" id="crewRecruitment">OPEN</span>
+                </div>
+                <div class="crew-roster-list" id="crewMembersList">
+                  <div class="crew-roster-empty">NOT IN A CREW.</div>
+                </div>
+                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 5px; padding-top: 10px;">
+                  <button class="term-btn" id="crewRecruitmentBtn" style="width: 100%;">TOGGLE RECRUITMENT</button>
+                  <button class="term-btn" id="crewLeaveBtn" style="border: 1px solid #f00; background: transparent; color: #f00; width: 100%;">LEAVE CREW</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1250,6 +1274,10 @@
           <span>REDUCED MOTION</span
           ><button class="menu-btn" id="motionToggle">OFF</button>
         </div>
+        <div class="config-row">
+          <span>STATUS VISIBILITY</span
+          ><button class="menu-btn" id="statusVisibilityToggle">VISIBLE</button>
+        </div>
         <button
           class="term-btn"
           id="btnLogout"
@@ -1356,6 +1384,49 @@
       >
         RESTART
       </button>
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        EXIT SYSTEM
+      </button>
+    </div>
+
+    <!-- Fnaf mini-game. -->
+    <div class="overlay" id="overlayFnaf">
+      <h1>FNAF 3D</h1>
+
+      <div id="fnafMenu" class="menu-box">
+        <select id="fnafNetwork" class="term-input">
+          <option value="auto">AUTO NETWORK (RECOMMENDED)</option>
+          <option value="prod">PRODUCTION NETWORK</option>
+          <option value="local">LOCALHOST NETWORK</option>
+        </select>
+        <button class="menu-btn" id="btnRefreshFnafServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
+        <input type="text" id="fnafServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
+        <button class="term-btn" id="btnCreateFnafServer">CREATE SERVER</button>
+        <div id="fnafServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
+        <button class="menu-btn" id="btnJoinFnaf">QUICK JOIN ANY SERVER</button>
+      </div>
+
+            <div id="fnafGame" style="display: none; position: relative; width: 800px; margin: 0 auto;">
+        <div style="margin-bottom: 10px">
+          SURVIVE (CLICK TO LOCK MOUSE, WASD TO MOVE) <br/>
+          [Q/E] Doors | [1/2] Lights | [SPACE] Cameras
+        </div>
+        <canvas id="fnafCanvas" width="800" height="450" style="background: #000; cursor: crosshair; display: block; margin: 0 auto;"></canvas>
+
+        <div id="fnafUI" style="position: absolute; top: 40px; left: 10px; color: white; font-family: monospace; font-size: 20px; text-shadow: 2px 2px 0 #000; pointer-events: none; text-align: left;">
+          POWER: <span id="fnafPower">100%</span><br/>
+          TIME: <span id="fnafTime">12 AM</span>
+        </div>
+
+        <div id="fnafCams" style="display: none; position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); border: 2px solid #555; padding: 10px;">
+          <div style="color: white; margin-bottom: 5px;">CAMERAS</div>
+          <button class="term-btn" onclick="window.setFnafCam(0)">CAM 1 (Stage)</button><br/>
+          <button class="term-btn" onclick="window.setFnafCam(1)">CAM 2 (Dining)</button><br/>
+          <button class="term-btn" onclick="window.setFnafCam(2)">CAM 3 (W Hall)</button><br/>
+          <button class="term-btn" onclick="window.setFnafCam(3)">CAM 4 (E Hall)</button>
+        </div>
+      </div>
+
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         EXIT SYSTEM
       </button>
