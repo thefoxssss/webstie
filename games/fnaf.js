@@ -1,4 +1,5 @@
 // fnaf.js - 3D Multiplayer Horror Survival Game (Raycaster)
+import { state } from "../core.js";
 
 let canvas, ctx;
 let animationId;
@@ -19,12 +20,9 @@ let map = [
   [1,1,1,1,1,1,1,1,1,1]
 ];
 
-let pX = 2.5, pY = 2.5; // Player position
+let pX = 1.5, pY = 1.5; // Player position
 let pDirX = -1, pDirY = 0; // Player direction vector
 let planeX = 0, planeY = 0.66; // 2D raycaster camera plane
-
-// Keyboard state
-const keys = {};
 
 // Multiplayer state
 let fnafRoom = null;
@@ -125,7 +123,7 @@ async function startFnafGame(options) {
   if (animationId) cancelAnimationFrame(animationId);
 
   // Reset player pos
-  pX = 2.5; pY = 2.5;
+  pX = 1.5; pY = 1.5;
   pDirX = -1; pDirY = 0;
   planeX = 0; planeY = 0.66;
 
@@ -169,8 +167,6 @@ async function startFnafGame(options) {
       return;
   }
 
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
   canvas.addEventListener("click", onCanvasClick);
   document.addEventListener("pointerlockchange", onPointerLockChange);
 
@@ -203,8 +199,6 @@ function onMouseMove(e) {
 window.stopFnaf = () => {
   isFnafRunning = false;
   if (animationId) cancelAnimationFrame(animationId);
-  window.removeEventListener("keydown", onKeyDown);
-  window.removeEventListener("keyup", onKeyUp);
   canvas.removeEventListener("click", onCanvasClick);
   document.removeEventListener("pointerlockchange", onPointerLockChange);
   document.removeEventListener("mousemove", onMouseMove);
@@ -217,9 +211,6 @@ window.stopFnaf = () => {
   }
   networkPlayers = {};
 };
-
-function onKeyDown(e) { keys[e.key.toLowerCase()] = true; }
-function onKeyUp(e) { keys[e.key.toLowerCase()] = false; }
 
 let lastTime = 0;
 
@@ -239,20 +230,20 @@ function fnafLoop() {
 function update(dt) {
   const moveSpeed = 3.0 * dt;
 
-  if (keys['w']) {
+  if (state.keysPressed['w'] || state.keysPressed['W']) {
     if (map[Math.floor(pX + pDirX * moveSpeed)][Math.floor(pY)] == 0) pX += pDirX * moveSpeed;
     if (map[Math.floor(pX)][Math.floor(pY + pDirY * moveSpeed)] == 0) pY += pDirY * moveSpeed;
   }
-  if (keys['s']) {
+  if (state.keysPressed['s'] || state.keysPressed['S']) {
     if (map[Math.floor(pX - pDirX * moveSpeed)][Math.floor(pY)] == 0) pX -= pDirX * moveSpeed;
     if (map[Math.floor(pX)][Math.floor(pY - pDirY * moveSpeed)] == 0) pY -= pDirY * moveSpeed;
   }
-  if (keys['a']) {
+  if (state.keysPressed['a'] || state.keysPressed['A']) {
     // Strafe left (-plane vector)
     if (map[Math.floor(pX - planeX * moveSpeed)][Math.floor(pY)] == 0) pX -= planeX * moveSpeed;
     if (map[Math.floor(pX)][Math.floor(pY - planeY * moveSpeed)] == 0) pY -= planeY * moveSpeed;
   }
-  if (keys['d']) {
+  if (state.keysPressed['d'] || state.keysPressed['D']) {
     // Strafe right (+plane vector)
     if (map[Math.floor(pX + planeX * moveSpeed)][Math.floor(pY)] == 0) pX += planeX * moveSpeed;
     if (map[Math.floor(pX)][Math.floor(pY + planeY * moveSpeed)] == 0) pY += planeY * moveSpeed;
