@@ -201,7 +201,7 @@ const blockColors = {
         65: "TARIQ WINGS",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 61, 62, 63, 65].includes(type) ? 1 : 99);
+    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 36, 61, 62, 63, 65].includes(type) ? 1 : 99);
     const canUseFlight = () => itemType(armorSlot) === 65;
 
     const blockDataUrls = [
@@ -211,7 +211,12 @@ const blockColors = {
         "data/blocks/13.json", "data/blocks/14.json", "data/blocks/15.json", "data/blocks/16.json",
         "data/blocks/17.json", "data/items/18.json", "data/items/19.json", "data/items/20.json",
         "data/items/21.json", "data/items/22.json", "data/items/23.json", "data/items/24.json",
-        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json"
+        "data/items/25.json", "data/items/26.json", "data/items/27.json", "data/items/28.json",
+        "data/blocks/29.json", "data/items/30.json", "data/blocks/31.json", "data/blocks/32.json",
+        "data/blocks/33.json", "data/blocks/34.json", "data/blocks/35.json", "data/items/36.json",
+        "data/blocks/37.json", "data/blocks/38.json", "data/blocks/39.json", "data/blocks/40.json",
+        "data/blocks/41.json", "data/blocks/42.json", "data/items/43.json", "data/items/44.json",
+        "data/items/45.json", "data/items/46.json", "data/items/47.json"
     ];
     let loadedBlockData = {};
     let blockImages = {};
@@ -910,7 +915,7 @@ function sendBuildOrBreak(e) {
         }
 
         // Handle shooting guns
-        if ([23, 24, 25, 26, 27, 63].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
+        if ([23, 24, 25, 26, 27, 28, 36, 63].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
             // Check for ammo
             let hasAmmo = type === 63;
             let ammoSlotIndex = -1;
@@ -979,7 +984,7 @@ function sendBuildOrBreak(e) {
         if (!room || !room.state) return false;
 
         // Cannot place tools/weapons as blocks
-        if (selectedBlockType !== undefined && [11, 23, 24, 25, 26, 27, 61, 63].includes(itemType(selectedBlockType))) return false;
+        if (selectedBlockType !== undefined && [11, 23, 24, 25, 26, 27, 28, 36, 61, 63].includes(itemType(selectedBlockType))) return false;
 
         const localPlayer = room.state.players.get(localPlayerId);
         if (!localPlayer || localPlayer.hp <= 0) return false;
