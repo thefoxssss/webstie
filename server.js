@@ -620,6 +620,7 @@ type("number")(BuilderPlayer.prototype, "armorHp");
 type("number")(BuilderPlayer.prototype, "maxArmorHp");
 type("number")(BuilderPlayer.prototype, "armorType");
 type("number")(BuilderPlayer.prototype, "selectedItemType");
+type("boolean")(BuilderPlayer.prototype, "flightEnabled");
 
 class BuilderBullet extends Schema {}
 type("string")(BuilderBullet.prototype, "id");
@@ -629,6 +630,7 @@ type("number")(BuilderBullet.prototype, "y");
 type("number")(BuilderBullet.prototype, "vx");
 type("number")(BuilderBullet.prototype, "vy");
 type("number")(BuilderBullet.prototype, "damage");
+type("number")(BuilderBullet.prototype, "healing");
 type("number")(BuilderBullet.prototype, "life");
 
 class Block extends Schema {}
@@ -732,6 +734,9 @@ class BuilderRoom extends colyseus.Room {
       if (this.inputs[pId]) {
         this.inputs[pId].left = message.left;
         this.inputs[pId].right = message.right;
+        this.inputs[pId].up = !!message.up;
+        this.inputs[pId].down = !!message.down;
+        this.inputs[pId].flight = !!message.flight;
         if (message.upPress) this.inputs[pId].jumpBuffer = BUILDER_JUMP_BUFFER_TICKS;
       }
     });
@@ -997,15 +1002,24 @@ this.onMessage("hammer", (client, message) => {
       // Melee range logic
       let attackRangeSq = (TILE_SIZE * 3) ** 2;
       let damage = message.damage || 1;
+      let healing = 0;
 
       // If holding sword
       if (attacker.selectedItemType === 11) {
           attackRangeSq = (TILE_SIZE * 4) ** 2; // slightly longer range
           damage = 5; // more damage
+      } else if (attacker.selectedItemType === 61) {
+          attackRangeSq = (TILE_SIZE * 4) ** 2;
+          damage = 0;
+          healing = 3;
       }
 
       if (distSq < attackRangeSq) {
-          this.damagePlayer(target, damage, attacker.name);
+          if (healing > 0) {
+              target.hp = Math.min(target.maxHp, target.hp + healing);
+          } else {
+              this.damagePlayer(target, damage, attacker.name);
+          }
           target.vy = -6;
           target.vx = (target.x - attacker.x > 0 ? 1 : -1) * 8;
       }
@@ -1025,6 +1039,7 @@ this.onMessage("hammer", (client, message) => {
         else if (player.armorType === 20) maxArmor = 15;
         else if (player.armorType === 21) maxArmor = 20;
         else if (player.armorType === 22) maxArmor = 30;
+        else if (player.armorType === 62) maxArmor = 0;
 
         player.maxArmorHp = maxArmor;
         if (player.armorHp > maxArmor) {
@@ -1038,7 +1053,7 @@ this.onMessage("hammer", (client, message) => {
 
         // Ensure they have a gun selected
         const gunType = player.selectedItemType;
-        if (![23, 24, 25, 26, 27].includes(gunType)) return;
+        if (![23, 24, 25, 26, 27, 63].includes(gunType)) return;
 
         const targetX = message.x;
         const targetY = message.y;
@@ -1050,6 +1065,7 @@ this.onMessage("hammer", (client, message) => {
         // Stats based on gun
         let speed = 15;
         let damage = 2;
+        let healing = 0;
         let spread = 0;
         let projectiles = 1;
 
@@ -1058,6 +1074,7 @@ this.onMessage("hammer", (client, message) => {
         else if (gunType === 25) { speed = 20; damage = 4; projectiles = 3; spread = 0.2; } // Shotgun
         else if (gunType === 26) { speed = 30; damage = 5; } // Rifle
         else if (gunType === 27) { speed = 40; damage = 8; } // Laser
+        else if (gunType === 63) { speed = 28; damage = 0; healing = 2; } // TariqCore Beam
 
         for (let i = 0; i < projectiles; i++) {
             const bulletId = Math.random().toString(36).substring(2, 9);
@@ -1075,6 +1092,7 @@ this.onMessage("hammer", (client, message) => {
             b.vx = Math.cos(finalAngle) * speed;
             b.vy = Math.sin(finalAngle) * speed;
             b.damage = damage;
+            b.healing = healing;
             b.life = 40; // ticks
 
             this.state.bullets.set(bulletId, b);
@@ -1105,9 +1123,9 @@ this.onMessage("hammer", (client, message) => {
         if (!p) return;
 
         // Respawn player
-        const spawnX = Math.floor(Math.random() * 200) - 100;
+        const spawnX = this.serverName === "Tariq Heaven" ? -500 : (Math.floor(Math.random() * 200) - 100);
         const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-        const spawnY = Math.floor(20 + noise * 15) - 2;
+        const spawnY = this.serverName === "Tariq Heaven" ? -60 : (Math.floor(20 + noise * 15) - 2);
         p.x = spawnX * TILE_SIZE;
         p.y = spawnY * TILE_SIZE;
         p.vx = 0;
@@ -1121,9 +1139,9 @@ this.onMessage("hammer", (client, message) => {
         if (!p || p.hp <= 0) return;
 
         // Recall player to spawn (0, 0 area)
-        const spawnX = Math.floor(Math.random() * 20) - 10;
+        const spawnX = this.serverName === "Tariq Heaven" ? -500 : (Math.floor(Math.random() * 20) - 10);
         const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-        const spawnY = Math.floor(20 + noise * 15) - 2;
+        const spawnY = this.serverName === "Tariq Heaven" ? -60 : (Math.floor(20 + noise * 15) - 2);
         p.x = spawnX * TILE_SIZE;
         p.y = spawnY * TILE_SIZE;
         p.vx = 0;
@@ -1141,9 +1159,9 @@ this.onMessage("hammer", (client, message) => {
     p.id = client.sessionId;
     p.name = options.name || "Builder";
 
-    const spawnX = Math.floor(Math.random() * 200) - 100;
+    const spawnX = this.serverName === "Tariq Heaven" ? -500 : (Math.floor(Math.random() * 200) - 100);
     const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-    const spawnY = Math.floor(20 + noise * 15) - 2;
+    const spawnY = this.serverName === "Tariq Heaven" ? -60 : (Math.floor(20 + noise * 15) - 2);
 
     p.x = spawnX * TILE_SIZE;
     p.y = spawnY * TILE_SIZE;
@@ -1156,11 +1174,12 @@ this.onMessage("hammer", (client, message) => {
     p.maxArmorHp = 0;
     p.armorType = 0;
     p.selectedItemType = 0;
+    p.flightEnabled = false;
     p.lastCx = -999;
     p.lastCy = -999;
     this.state.players.set(client.sessionId, p);
 
-    this.inputs[client.sessionId] = { left: false, right: false, jumpBuffer: 0 };
+    this.inputs[client.sessionId] = { left: false, right: false, up: false, down: false, flight: false, jumpBuffer: 0 };
     this.syncServerDirectory();
   }
 
@@ -1333,6 +1352,68 @@ this.onMessage("hammer", (client, message) => {
     const minY = cy * CHUNK_SIZE;
     const maxY = (cy + 1) * CHUNK_SIZE;
 
+    if (this.serverName === "Tariq Heaven") {
+      for (let x = 0; x < CHUNK_SIZE; x++) {
+        const worldX = cx * CHUNK_SIZE + x;
+        const surfaceY = -60 + Math.floor(this.seededNoise(worldX, 2200, 2, 0.5, 0.03) * 4);
+        const islandChance = Math.abs(Math.sin(worldX * 0.11)) < 0.1;
+
+        if (islandChance) {
+          const halfWidth = 3 + Math.floor(Math.abs(Math.sin(worldX * 0.31)) * 4);
+          const coreDepth = 2 + Math.floor(Math.abs(Math.cos(worldX * 0.57)) * 3);
+          for (let ix = -halfWidth; ix <= halfWidth; ix++) {
+            const iX = worldX + ix;
+            const topY = surfaceY + Math.floor(Math.abs(ix) * 0.45);
+            for (let dy = 0; dy < coreDepth; dy++) {
+              const y = topY + dy;
+              if (y < minY || y >= maxY || iX < cx * CHUNK_SIZE || iX >= (cx + 1) * CHUNK_SIZE) continue;
+              const b = new Block();
+              b.x = iX;
+              b.y = y;
+              b.meta = 0;
+              b.type = dy === 0 ? 64 : 3;
+              if (dy > 0 && Math.abs(Math.sin(iX * 19.13 + y * 7.71)) < 0.03) b.type = 60;
+              chunk.blocks.set(`${iX},${y}`, b);
+            }
+          }
+
+          if (Math.abs(Math.sin(worldX * 0.41)) < 0.06) {
+            const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(worldX * 0.73)) * 3);
+            for (let dy = 1; dy <= trunkHeight; dy++) {
+              const ty = surfaceY - dy;
+              if (ty >= minY && ty < maxY) {
+                const b = new Block();
+                b.x = worldX;
+                b.y = ty;
+                b.type = 35; // ladder trunk
+                b.meta = 0;
+                chunk.blocks.set(`${worldX},${ty}`, b);
+              }
+            }
+            for (let lx = -2; lx <= 2; lx++) {
+              for (let ly = -2; ly <= 2; ly++) {
+                if (Math.abs(lx) + Math.abs(ly) > 3) continue;
+                const tx = worldX + lx;
+                const ty = surfaceY - trunkHeight - 1 + ly;
+                if (tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE && ty >= minY && ty < maxY) {
+                  const key = `${tx},${ty}`;
+                  if (!chunk.blocks.has(key)) {
+                    const b = new Block();
+                    b.x = tx;
+                    b.y = ty;
+                    b.type = 9; // planks leaves
+                    b.meta = 0;
+                    chunk.blocks.set(key, b);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      return;
+    }
+
     // 1. Generate Ground with Caves
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = cx * CHUNK_SIZE + x;
@@ -1496,7 +1577,17 @@ isSolid(x, y) {
       const b = chunk.blocks.get(`${x},${y}`);
       if (!b) return false;
       if (b.type === 35) return false; // Ladder is pass-through
+      if (b.type === 64) return false; // Cloud platforms are one-way
       return true;
+  }
+
+  getBlockType(x, y) {
+      const cx = Math.floor(x / CHUNK_SIZE);
+      const cy = Math.floor(y / CHUNK_SIZE);
+      const chunk = this.state.chunks.get(`${cx},${cy}`);
+      if (!chunk) return 0;
+      const b = chunk.blocks.get(`${x},${y}`);
+      return b ? b.type : 0;
   }
 
   simulateTick() {
@@ -1638,7 +1729,11 @@ isSolid(x, y) {
                     b.y >= p.y && b.y <= p.y + TILE_SIZE) {
 
                     const owner = this.state.players.get(b.ownerId);
-                    this.damagePlayer(p, b.damage, owner ? owner.name : "Unknown");
+                    if (b.healing > 0) {
+                        p.hp = Math.min(p.maxHp, p.hp + b.healing);
+                    } else {
+                        this.damagePlayer(p, b.damage, owner ? owner.name : "Unknown");
+                    }
 
                     // Knockback
                     p.vx += b.vx * 0.5;
@@ -1662,6 +1757,9 @@ isSolid(x, y) {
         // Armor Regen (1 hp per second roughly, since tick rate is 20)
         if (p.hp > 0 && p.armorHp < p.maxArmorHp && Math.random() < (1 / BUILDER_TICK_RATE)) {
             p.armorHp++;
+        }
+        if (p.hp > 0 && p.armorType === 62 && Math.random() < (2 / BUILDER_TICK_RATE)) {
+            p.hp = Math.min(p.maxHp, p.hp + 1);
         }
 
 const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
@@ -1693,19 +1791,28 @@ const pCx = Math.floor(p.x / (TILE_SIZE * CHUNK_SIZE));
 if (onLadder) {
             p.vx *= 0.7; // slower horizontal on ladder
             p.vy = 0; // nullify gravity
-            if (inp.jumpBuffer > 0) { // moving up
+            if (inp.up) {
                 p.vy = -3;
+            } else if (inp.down) {
+                p.vy = 3;
             }
         }
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
 
-        p.vx *= 0.8;
-        if (!onLadder) {
-            p.vy += 0.8; // gravity only if not on ladder
+        if (p.flightEnabled) {
+            if (inp.up) p.vy -= 1.8;
+            if (inp.down) p.vy += 1.8;
+            p.vx *= 0.9;
+            p.vy *= 0.9;
+        } else {
+            p.vx *= 0.8;
+            if (!onLadder) {
+                p.vy += 0.8; // gravity only if not on ladder
+            }
+            p.vy *= 0.98;
         }
-        p.vy *= 0.98;
 
         // Apply X velocity
         p.x += p.vx;
@@ -1758,7 +1865,12 @@ if (onLadder) {
         if (p.vy > 0) {
             const prevPy2 = Math.floor((prevY + TILE_SIZE - 0.01) / TILE_SIZE);
             for (let ty = prevPy2 + 1; ty <= py2; ty++) {
-                if (this.isSolid(px1, ty) || this.isSolid(px2, ty)) {
+                const isCloudLeft = this.getBlockType(px1, ty) === 64;
+                const isCloudRight = this.getBlockType(px2, ty) === 64;
+                const cloudTopY = ty * TILE_SIZE;
+                const wasAboveCloud = (prevY + TILE_SIZE) <= cloudTopY + 1;
+                const cloudCollides = (isCloudLeft || isCloudRight) && wasAboveCloud;
+                if (this.isSolid(px1, ty) || this.isSolid(px2, ty) || cloudCollides) {
                     p.y = ty * TILE_SIZE - TILE_SIZE;
                     p.vy = 0;
                     grounded = true;
@@ -2291,3 +2403,4 @@ app.get("/builder-servers", (req, res) => {
 
 gameServer.listen(port);
 console.log(`Colyseus game server is listening on port ${port}...`);
+        p.flightEnabled = !!inp.flight;

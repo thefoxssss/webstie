@@ -445,10 +445,16 @@
                     <option value="46">46 - DIAMOND (REFINED)</option>
                     <option value="47">47 - URANIUM (REFINED)</option>
                     <option value="48">48 - BEDROCK</option>
+                    <option value="60">60 - TARIQCORE</option>
+                    <option value="61">61 - TARIQCORE BLADE</option>
+                    <option value="62">62 - TARIQCORE ARMOR</option>
+                    <option value="63">63 - TARIQCORE BEAM</option>
+                    <option value="64">64 - CLOUD PLATFORM</option>
                   </select>
                   <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
                     <input class="term-input" id="adminBuilderItemCount" type="number" step="1" min="1" max="99" value="1" placeholder="COUNT" style="width: 100%;" />
                     <button class="term-btn" onclick="window.adminGiveBuilderItemFromInput()">GIVE ITEM</button>
+                    <button class="term-btn" onclick="window.adminToggleBuilderFlightFromInput()">TOGGLE FLIGHT</button>
                   </div>
                 </div>
               </div>
@@ -2214,6 +2220,7 @@
         <button class="menu-btn" id="btnRefreshBuilderServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
         <input type="text" id="builderServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
         <button class="term-btn" id="btnCreateBuilderServer">CREATE SERVER</button>
+        <button class="term-btn" id="btnJoinTariqHeaven" style="margin-top: 8px;">JOIN TARIQ HEAVEN</button>
         <div id="builderServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
         <button class="menu-btn" id="btnJoinBuilder">QUICK JOIN ANY SERVER</button>
       </div>
