@@ -39,7 +39,6 @@ let selectedRoomId = null;
     const btnJoin = document.getElementById("btnJoinBuilder");
     const btnRefreshServers = document.getElementById("btnRefreshBuilderServers");
     const btnCreateServer = document.getElementById("btnCreateBuilderServer");
-    const btnJoinTariqHeaven = document.getElementById("btnJoinTariqHeaven");
     const serverNameInput = document.getElementById("builderServerName");
     const serverListEl = document.getElementById("builderServerList");
 
@@ -710,23 +709,6 @@ const blockColors = {
             } catch (e) {
                 console.error("Create server error", e);
                 btnCreateServer.textContent = "CREATE SERVER";
-            }
-        };
-    }
-    if (btnJoinTariqHeaven) {
-        btnJoinTariqHeaven.onclick = async () => {
-            try {
-                btnJoinTariqHeaven.textContent = "OPENING HEAVEN...";
-                client = new window.Colyseus.Client(getServerUrl());
-                room = await client.joinOrCreate("builder_room", { name: playerName(), serverName: "Tariq Heaven" });
-                localPlayerId = room.sessionId;
-                setupRoomListeners();
-                menu.style.display = "none";
-                gameArea.style.display = "block";
-                startGameLoop();
-            } catch (e) {
-                console.error("Join Tariq Heaven error", e);
-                btnJoinTariqHeaven.textContent = "JOIN TARIQ HEAVEN";
             }
         };
     }

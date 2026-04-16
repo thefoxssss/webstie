@@ -1123,9 +1123,9 @@ this.onMessage("hammer", (client, message) => {
         if (!p) return;
 
         // Respawn player
-        const spawnX = this.serverName === "Tariq Heaven" ? -500 : (Math.floor(Math.random() * 200) - 100);
+        const spawnX = Math.floor(Math.random() * 200) - 100;
         const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-        const spawnY = this.serverName === "Tariq Heaven" ? -60 : (Math.floor(20 + noise * 15) - 2);
+        const spawnY = Math.floor(20 + noise * 15) - 2;
         p.x = spawnX * TILE_SIZE;
         p.y = spawnY * TILE_SIZE;
         p.vx = 0;
@@ -1139,9 +1139,9 @@ this.onMessage("hammer", (client, message) => {
         if (!p || p.hp <= 0) return;
 
         // Recall player to spawn (0, 0 area)
-        const spawnX = this.serverName === "Tariq Heaven" ? -500 : (Math.floor(Math.random() * 20) - 10);
+        const spawnX = Math.floor(Math.random() * 20) - 10;
         const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-        const spawnY = this.serverName === "Tariq Heaven" ? -60 : (Math.floor(20 + noise * 15) - 2);
+        const spawnY = Math.floor(20 + noise * 15) - 2;
         p.x = spawnX * TILE_SIZE;
         p.y = spawnY * TILE_SIZE;
         p.vx = 0;
@@ -1159,9 +1159,9 @@ this.onMessage("hammer", (client, message) => {
     p.id = client.sessionId;
     p.name = options.name || "Builder";
 
-    const spawnX = this.serverName === "Tariq Heaven" ? -500 : (Math.floor(Math.random() * 200) - 100);
+    const spawnX = Math.floor(Math.random() * 200) - 100;
     const noise = layeredNoise(spawnX, 0, 4, 0.5, 0.05);
-    const spawnY = this.serverName === "Tariq Heaven" ? -60 : (Math.floor(20 + noise * 15) - 2);
+    const spawnY = Math.floor(20 + noise * 15) - 2;
 
     p.x = spawnX * TILE_SIZE;
     p.y = spawnY * TILE_SIZE;
@@ -1352,68 +1352,6 @@ this.onMessage("hammer", (client, message) => {
     const minY = cy * CHUNK_SIZE;
     const maxY = (cy + 1) * CHUNK_SIZE;
 
-    if (this.serverName === "Tariq Heaven") {
-      for (let x = 0; x < CHUNK_SIZE; x++) {
-        const worldX = cx * CHUNK_SIZE + x;
-        const surfaceY = -60 + Math.floor(this.seededNoise(worldX, 2200, 2, 0.5, 0.03) * 4);
-        const islandChance = Math.abs(Math.sin(worldX * 0.11)) < 0.1;
-
-        if (islandChance) {
-          const halfWidth = 3 + Math.floor(Math.abs(Math.sin(worldX * 0.31)) * 4);
-          const coreDepth = 2 + Math.floor(Math.abs(Math.cos(worldX * 0.57)) * 3);
-          for (let ix = -halfWidth; ix <= halfWidth; ix++) {
-            const iX = worldX + ix;
-            const topY = surfaceY + Math.floor(Math.abs(ix) * 0.45);
-            for (let dy = 0; dy < coreDepth; dy++) {
-              const y = topY + dy;
-              if (y < minY || y >= maxY || iX < cx * CHUNK_SIZE || iX >= (cx + 1) * CHUNK_SIZE) continue;
-              const b = new Block();
-              b.x = iX;
-              b.y = y;
-              b.meta = 0;
-              b.type = dy === 0 ? 64 : 3;
-              if (dy > 0 && Math.abs(Math.sin(iX * 19.13 + y * 7.71)) < 0.03) b.type = 60;
-              chunk.blocks.set(`${iX},${y}`, b);
-            }
-          }
-
-          if (Math.abs(Math.sin(worldX * 0.41)) < 0.06) {
-            const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(worldX * 0.73)) * 3);
-            for (let dy = 1; dy <= trunkHeight; dy++) {
-              const ty = surfaceY - dy;
-              if (ty >= minY && ty < maxY) {
-                const b = new Block();
-                b.x = worldX;
-                b.y = ty;
-                b.type = 35; // ladder trunk
-                b.meta = 0;
-                chunk.blocks.set(`${worldX},${ty}`, b);
-              }
-            }
-            for (let lx = -2; lx <= 2; lx++) {
-              for (let ly = -2; ly <= 2; ly++) {
-                if (Math.abs(lx) + Math.abs(ly) > 3) continue;
-                const tx = worldX + lx;
-                const ty = surfaceY - trunkHeight - 1 + ly;
-                if (tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE && ty >= minY && ty < maxY) {
-                  const key = `${tx},${ty}`;
-                  if (!chunk.blocks.has(key)) {
-                    const b = new Block();
-                    b.x = tx;
-                    b.y = ty;
-                    b.type = 9; // planks leaves
-                    b.meta = 0;
-                    chunk.blocks.set(key, b);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      return;
-    }
-
     // 1. Generate Ground with Caves
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = cx * CHUNK_SIZE + x;
@@ -1523,6 +1461,77 @@ this.onMessage("hammer", (client, message) => {
                 }
               }
             }
+        }
+      }
+    }
+
+    // 3. Tariq Heaven biome strip at top of the world (~500 blocks up)
+    this.generateTariqHeavenBiome(chunk, cx, minY, maxY);
+  }
+
+  generateTariqHeavenBiome(chunk, cx, minY, maxY) {
+    const skyBandCenter = -500;
+    if (maxY < skyBandCenter - 32 || minY > skyBandCenter + 32) return;
+
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      const worldX = cx * CHUNK_SIZE + x;
+      const islandBaseY = skyBandCenter + Math.floor(this.seededNoise(worldX, 2200, 2, 0.5, 0.03) * 6);
+      const islandChance = Math.abs(Math.sin(worldX * 0.11)) < 0.12;
+      if (!islandChance) continue;
+
+      const halfWidth = 3 + Math.floor(Math.abs(Math.sin(worldX * 0.31)) * 4);
+      const coreDepth = 2 + Math.floor(Math.abs(Math.cos(worldX * 0.57)) * 3);
+
+      for (let ix = -halfWidth; ix <= halfWidth; ix++) {
+        const iX = worldX + ix;
+        const topY = islandBaseY + Math.floor(Math.abs(ix) * 0.45);
+        for (let dy = 0; dy < coreDepth; dy++) {
+          const y = topY + dy;
+          if (y < minY || y >= maxY || iX < cx * CHUNK_SIZE || iX >= (cx + 1) * CHUNK_SIZE) continue;
+          const b = new Block();
+          b.x = iX;
+          b.y = y;
+          b.meta = 0;
+          b.type = 64; // cloud platform ground
+          if (dy > 0) {
+            b.type = 3;
+            if (Math.abs(Math.sin(iX * 19.13 + y * 7.71)) < 0.03) b.type = 60; // TariqCore
+          }
+          chunk.blocks.set(`${iX},${y}`, b);
+        }
+      }
+
+      // tree: ladder logs + plank leaves
+      if (Math.abs(Math.sin(worldX * 0.41)) < 0.06) {
+        const trunkHeight = 4 + Math.floor(Math.abs(Math.cos(worldX * 0.73)) * 3);
+        for (let dy = 1; dy <= trunkHeight; dy++) {
+          const ty = islandBaseY - dy;
+          if (ty >= minY && ty < maxY) {
+            const b = new Block();
+            b.x = worldX;
+            b.y = ty;
+            b.type = 35;
+            b.meta = 0;
+            chunk.blocks.set(`${worldX},${ty}`, b);
+          }
+        }
+        for (let lx = -2; lx <= 2; lx++) {
+          for (let ly = -2; ly <= 2; ly++) {
+            if (Math.abs(lx) + Math.abs(ly) > 3) continue;
+            const tx = worldX + lx;
+            const ty = islandBaseY - trunkHeight - 1 + ly;
+            if (tx >= cx * CHUNK_SIZE && tx < (cx + 1) * CHUNK_SIZE && ty >= minY && ty < maxY) {
+              const key = `${tx},${ty}`;
+              if (!chunk.blocks.has(key)) {
+                const b = new Block();
+                b.x = tx;
+                b.y = ty;
+                b.type = 9;
+                b.meta = 0;
+                chunk.blocks.set(key, b);
+              }
+            }
+          }
         }
       }
     }
