@@ -1287,28 +1287,51 @@ body::before {
   color: #fff;
 }
 
-.online-status {
-  font-size: 9px;
-  letter-spacing: 0.6px;
-  border: 1px solid;
-  padding: 1px 5px;
+.status-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
+  display: inline-block;
   margin-left: 6px;
+  margin-right: 6px;
   vertical-align: middle;
-  display: inline-flex;
-  align-items: center;
+  box-shadow: 0 0 4px currentColor;
 }
 
-.online-status.online {
-  color: #7dff7d;
-  border-color: rgba(125, 255, 125, 0.65);
-  background: rgba(40, 120, 40, 0.2);
+.status-dot.online {
+  background: #62ff62;
+  color: #62ff62;
 }
 
-.online-status.offline {
-  color: #ffa3a3;
-  border-color: rgba(255, 120, 120, 0.55);
-  background: rgba(140, 40, 40, 0.2);
+.status-dot.offline {
+  background: #ff6a6a;
+  color: #ff6a6a;
+}
+
+.status-dot.hidden {
+  background: #a1a1a1;
+  color: #a1a1a1;
+}
+
+.crew-roster-item .status-dot {
+  margin-left: auto;
+}
+
+.chat-msg .status-dot {
+  margin-left: 0;
+}
+
+.chat-msg .chat-user {
+  vertical-align: middle;
+}
+
+/* Legacy badge selector retained for compatibility with older cached markup. */
+.online-status {
+  border: 1px solid;
+  padding: 0;
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
 }
 
 .crew-roster-you {

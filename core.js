@@ -240,17 +240,21 @@ let seasonBoardUnsub = null;
 let activeSeasonTab = "";
 let activeSeasonSubTab = "solo";
 let cachedSeasonBoards = { solo: [], gang: [] };
+let hideStatus = false;
+let stopChatPresenceSync = null;
+let chatPresenceByUser = {};
 
-function isUserMarkedOnline(lastLogin) {
+function getUserStatusState(lastLogin, isHidden = false) {
+  if (isHidden) return "hidden";
   const ts = Number(lastLogin || 0);
-  if (!Number.isFinite(ts) || ts <= 0) return false;
-  return Date.now() - ts <= ONLINE_STATUS_WINDOW_MS;
+  if (!Number.isFinite(ts) || ts <= 0) return "offline";
+  return Date.now() - ts <= ONLINE_STATUS_WINDOW_MS ? "online" : "offline";
 }
 
-function renderOnlineStatusBadge(isOnline) {
-  const cls = isOnline ? "online" : "offline";
-  const label = isOnline ? "ONLINE" : "OFFLINE";
-  return `<span class="online-status ${cls}">${label}</span>`;
+function renderStatusDot(state = "offline") {
+  const safeState = ["online", "offline", "hidden"].includes(state) ? state : "offline";
+  const label = safeState.toUpperCase();
+  return `<span class="status-dot ${safeState}" title="${label}" aria-label="${label}"></span>`;
 }
 
 // Centralized mutable state wrapper (keeps consumers consistent).
@@ -2320,7 +2324,7 @@ function renderSeasonBoard() {
             if (activeSeasonSubTab === "gang") {
               return `<div class="score-item"><div>#${idx + 1} ${logoHtml}[${escapeHtml(row.tag)}]</div> <div>$${Math.round(row.money)} // ${row.members} OPS</div></div>`;
             } else {
-              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} ${renderOnlineStatusBadge(Boolean(row.online))} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
+              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} ${renderStatusDot(row.status)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
             }
           })
           .join("")
@@ -2401,7 +2405,7 @@ function getLiveSeasonBoardRows(mode = "solo") {
     money: localMoney,
     crewTag: normalizedCrewTag,
     logo: crewData.logo || DEFAULT_CREW_LOGO,
-    online: true,
+    status: hideStatus ? "hidden" : "online",
   });
   return soloRows.sort((a, b) => b.money - a.money);
 }
@@ -2494,7 +2498,7 @@ function loadSeasonLeaderboards() {
         name: playerName,
         money: playerMoney,
         crewTag: crewTag || "SOLO",
-        online: isUserMarkedOnline(data.lastLogin),
+        status: getUserStatusState(data.lastLogin, Boolean(data.hideStatus)),
         _logoRaw: validLogo,
       });
       if (crewTag) {
@@ -2552,7 +2556,7 @@ async function syncCrewData() {
           money: data.money || 0,
           role: data.crewData.role || "MEMBER",
         });
-        memberPresence[memberName.toUpperCase()] = isUserMarkedOnline(data.lastLogin);
+        memberPresence[memberName.toUpperCase()] = getUserStatusState(data.lastLogin, Boolean(data.hideStatus));
         totalBank += Number(data.crewData.bank || 0);
 
         if (data.crewData.wins >= maxWins) {
@@ -2625,7 +2629,7 @@ async function renderCrewPanel() {
       list.innerHTML = crewData.members.map(member =>
         `<div class="crew-roster-item">
            <span class="crew-roster-name">${escapeHtml(member)}</span>
-           ${renderOnlineStatusBadge(Boolean(crewData.memberPresence?.[String(member || "").toUpperCase()]))}
+           ${renderStatusDot(crewData.memberPresence?.[String(member || "").toUpperCase()] || "offline")}
            ${String(member || "").toUpperCase() === String(myName || "").toUpperCase() ? '<span class="crew-roster-you">(YOU)</span>' : ''}
          </div>`
       ).join("");
@@ -3476,6 +3480,7 @@ function loadProfile(data) {
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   adminSettings = data.adminSettings || {};
+  hideStatus = Boolean(data.hideStatus);
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO, ...(data.crewData || crewData || {}) };
   seasonData = { id: getSeasonId(), xp: 0, hall: [], ...(data.seasonData || seasonData || {}) };
@@ -3514,6 +3519,7 @@ function loadProfile(data) {
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
   updateAdminMenu();
+  applyStatusVisibilityToggle(hideStatus);
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -3597,6 +3603,7 @@ async function register(username, pin) {
     builderInventory: null,
     builderHotbar: null,
     builderArmor: null,
+    hideStatus: false,
   };
 
   const localProfile = getLocalProfile(normalized);
@@ -4493,6 +4500,7 @@ export async function saveStats() {
     crewData,
     seasonData,
     adminSettings,
+    hideStatus,
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
@@ -4513,6 +4521,7 @@ export async function saveStats() {
         crewData,
         seasonData,
     adminSettings,
+        hideStatus,
       }),
     "SAVE PROFILE",
     "Progress saved locally; cloud sync retry pending."
@@ -5534,6 +5543,12 @@ function applyReducedMotion(enabled) {
   const motionToggle = document.getElementById("motionToggle");
   if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
 }
+
+function applyStatusVisibilityToggle(hidden) {
+  hideStatus = Boolean(hidden);
+  const statusToggle = document.getElementById("statusVisibilityToggle");
+  if (statusToggle) statusToggle.textContent = hideStatus ? "HIDDEN" : "VISIBLE";
+}
 // Open the shared games panel from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
 const menuDropdownEl = document.getElementById("menuDropdown");
@@ -5642,6 +5657,17 @@ document.getElementById("motionToggle").onclick = () => {
   writeUiConfig({ reducedMotion: enabled });
 };
 
+document.getElementById("statusVisibilityToggle").onclick = async () => {
+  applyStatusVisibilityToggle(!hideStatus);
+  writeUiConfig({ hideStatus });
+  if (myName !== "ANON") {
+    await saveStats();
+    if (isChatInitialized) renderChatTab();
+    renderSeasonPanel();
+    renderCrewPanel();
+  }
+};
+
 (function hydrateUiConfig() {
   const config = readUiConfig();
   const uiScale = Number(config.uiScale || 1);
@@ -5650,6 +5676,7 @@ document.getElementById("motionToggle").onclick = () => {
   applyUiTextSize(uiTextSize);
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
+  applyStatusVisibilityToggle(Boolean(config.hideStatus));
   const uiScaleSlider = document.getElementById("uiScaleSlider");
   const uiTextSlider = document.getElementById("uiTextSlider");
   if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
@@ -5846,6 +5873,35 @@ let globallyMutedUsers = new Set();
 let isChatInitialized = false;
 let isChatModerationModeEnabled = true;
 
+function getStatusStateForUser(username) {
+  const normalized = normalizeUsername(username || "");
+  if (!normalized) return "offline";
+  if (normalized === normalizeUsername(myName)) {
+    return hideStatus ? "hidden" : "online";
+  }
+  return chatPresenceByUser[normalized] || "offline";
+}
+
+function renderChatUserLabel(username, label = username) {
+  return `${renderStatusDot(getStatusStateForUser(username))}<span class="chat-user">${escapeHtml(String(label || "ANON"))}:</span>`;
+}
+
+function startChatPresenceSync() {
+  if (stopChatPresenceSync) return;
+  const q = query(collection(db, "gooner_users"), orderBy("name"), limit(200));
+  stopChatPresenceSync = onSnapshot(q, (snap) => {
+    const nextPresence = {};
+    snap.forEach((row) => {
+      const data = row.data() || {};
+      const user = normalizeUsername(data.name || row.id || "");
+      if (!user) return;
+      nextPresence[user] = getUserStatusState(data.lastLogin, Boolean(data.hideStatus));
+    });
+    chatPresenceByUser = nextPresence;
+    if (isChatInitialized) renderChatTab();
+  });
+}
+
 function canUseChatModeration() {
   return isGodUser() && isChatModerationModeEnabled;
 }
@@ -5892,7 +5948,7 @@ function getChatTabConfig(tab) {
         const mine = sender === normalizeUsername(myName);
         const partner = mine ? to || "UNKNOWN" : sender;
         const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
-        return `<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
     global: {
@@ -5903,7 +5959,7 @@ function getChatTabConfig(tab) {
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
     crew: {
@@ -5921,7 +5977,7 @@ function getChatTabConfig(tab) {
       },
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     }
   };
@@ -5986,7 +6042,7 @@ function renderChatTab() {
       text.className = "chat-msg-text";
       if (isLocallyMuted || isGloballyMuted) {
         const muteScope = isGloballyMuted ? "GLOBAL" : "LOCAL";
-        text.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+        text.innerHTML = `${renderChatUserLabel(user, user)} <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
       } else {
         text.innerHTML = tabConfig.renderMessage(m);
       }
@@ -6136,6 +6192,7 @@ function initChat() {
     });
   });
   initGlobalChatMutes();
+  startChatPresenceSync();
   renderChatTab();
   isChatInitialized = true;
   document.getElementById("chatInput").addEventListener("keydown", async (e) => {
