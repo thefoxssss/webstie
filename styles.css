@@ -1287,6 +1287,53 @@ body::before {
   color: #fff;
 }
 
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-left: 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+  box-shadow: 0 0 4px currentColor;
+}
+
+.status-dot.online {
+  background: #62ff62;
+  color: #62ff62;
+}
+
+.status-dot.offline {
+  background: #ff6a6a;
+  color: #ff6a6a;
+}
+
+.status-dot.hidden {
+  background: #a1a1a1;
+  color: #a1a1a1;
+}
+
+.crew-roster-item .status-dot {
+  margin-left: auto;
+}
+
+.chat-msg .status-dot {
+  margin-left: 0;
+}
+
+.chat-msg .chat-user {
+  vertical-align: middle;
+}
+
+/* Legacy badge selector retained for compatibility with older cached markup. */
+.online-status {
+  border: 1px solid;
+  padding: 0;
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+}
+
 .crew-roster-you {
   color: var(--accent);
 }
