@@ -714,6 +714,11 @@ class BuilderRoom extends colyseus.Room {
       ? options.serverName.trim().slice(0, 24)
       : "Public World";
     this.setMetadata({ serverName: this.serverName });
+    this.worldSeed = Number.isFinite(options?.worldSeed)
+      ? Math.trunc(options.worldSeed)
+      : Math.floor(Math.random() * 2147483647);
+    this.seedOffsetX = (this.worldSeed % 100000) * 0.001;
+    this.seedOffsetY = (Math.floor(this.worldSeed / 100000) % 100000) * 0.001;
 
     const state = new BuilderState();
     this.setState(state);
@@ -1207,7 +1212,7 @@ this.onMessage("hammer", (client, message) => {
       const sanitizedName = this.serverName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       const filePath = path.join(worldsDir, `${sanitizedName}.json`);
 
-      const data = { chunks: {}, chests: {}, furnaces: {} };
+      const data = { worldSeed: this.worldSeed, chunks: {}, chests: {}, furnaces: {} };
       this.state.chunks.forEach((chunk, key) => {
         data.chunks[key] = [];
         chunk.blocks.forEach((block) => {
@@ -1249,6 +1254,11 @@ this.onMessage("hammer", (client, message) => {
         const raw = fs.readFileSync(filePath);
         const rawData = JSON.parse(raw);
         const data = rawData.chunks ? rawData : { chunks: rawData, chests: {}, furnaces: {} }; // backcompat
+        if (Number.isFinite(data.worldSeed)) {
+          this.worldSeed = Math.trunc(data.worldSeed);
+          this.seedOffsetX = (this.worldSeed % 100000) * 0.001;
+          this.seedOffsetY = (Math.floor(this.worldSeed / 100000) % 100000) * 0.001;
+        }
 
         for (const chunkKey in data.chunks) {
           this.offlineChunks.set(chunkKey, data.chunks[chunkKey]);
@@ -1283,16 +1293,26 @@ this.onMessage("hammer", (client, message) => {
     }
   }
 
+  seededNoise(x, y, octaves, persistence, scale) {
+    return layeredNoise(
+      x + this.seedOffsetX,
+      y + this.seedOffsetY,
+      octaves,
+      persistence,
+      scale
+    );
+  }
+
   getSurfaceHeight(worldX) {
     // Add biome variation to surface height
-    const baseNoise = layeredNoise(worldX, 0, 4, 0.5, 0.05);
-    const macroNoise = layeredNoise(worldX, 1000, 2, 0.5, 0.01); // Hills vs flats
+    const baseNoise = this.seededNoise(worldX, 0, 4, 0.5, 0.05);
+    const macroNoise = this.seededNoise(worldX, 1000, 2, 0.5, 0.01); // Hills vs flats
     return Math.floor(20 + baseNoise * 15 + macroNoise * 20);
   }
 
   getBiome(worldX) {
-    const tempNoise = layeredNoise(worldX, 5000, 2, 0.5, 0.005);
-    const moistureNoise = layeredNoise(worldX, 8000, 2, 0.5, 0.005);
+    const tempNoise = this.seededNoise(worldX, 5000, 2, 0.5, 0.005);
+    const moistureNoise = this.seededNoise(worldX, 8000, 2, 0.5, 0.005);
 
     // tempNoise and moistureNoise roughly center around 0 (since they accumulate perlin which can be negative or positive, actually the custom layeredNoise returns 0 to 1 average... wait, let's just use simple thresholds on the return value)
 
@@ -1325,7 +1345,7 @@ this.onMessage("hammer", (client, message) => {
       for (let y = startY; y < endY; y++) {
         let isCave = false;
         if (y >= h + 25) {
-            const caveNoise = layeredNoise(worldX, y, 3, 0.5, 0.1);
+            const caveNoise = this.seededNoise(worldX, y, 3, 0.5, 0.1);
             isCave = Math.abs(caveNoise) < 0.08;
         }
 
