@@ -2468,27 +2468,39 @@ function loadSeasonLeaderboards() {
       const playerMoney = Number(playerSeason.id === getSeasonId() ? data.money : SEASON_STARTING_MONEY) || 0;
       const playerCrew = data.crewData || {};
       const crewTag = String(playerCrew.tag || "").toUpperCase();
-      const logo = playerCrew.logo || DEFAULT_CREW_LOGO;
+      const validLogo = (playerCrew.logo && playerCrew.logo.palette) ? playerCrew.logo : null;
       const wins = Number(playerCrew.wins || 0);
-      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", logo });
+      const currentMembers = playerCrew.members?.length || 1;
+      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", _logoRaw: validLogo });
       if (crewTag) {
-        if (!crews[crewTag]) crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo, maxWins: -1 };
+        if (!crews[crewTag]) {
+          crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo: validLogo, maxWins: -1, repMembers: -1 };
+        }
         crews[crewTag].money += playerMoney;
         crews[crewTag].members += 1;
-        if (wins >= crews[crewTag].maxWins) {
+
+        const isBetter = wins > crews[crewTag].maxWins || (wins === crews[crewTag].maxWins && currentMembers > crews[crewTag].repMembers);
+        if (isBetter) {
           crews[crewTag].maxWins = wins;
-          crews[crewTag].logo = logo;
+          crews[crewTag].repMembers = currentMembers;
+          crews[crewTag].logo = validLogo;
         }
       }
     });
 
     players.forEach(p => {
       if (p.crewTag !== "SOLO" && crews[p.crewTag]) {
-        p.logo = crews[p.crewTag].logo;
+        p.logo = crews[p.crewTag].logo || DEFAULT_CREW_LOGO;
+      } else {
+        p.logo = p._logoRaw || DEFAULT_CREW_LOGO;
       }
+      delete p._logoRaw;
     });
 
     cachedSeasonBoards.solo = players.sort((a, b) => b.money - a.money);
+    Object.values(crews).forEach(c => {
+      if (!c.logo) c.logo = DEFAULT_CREW_LOGO;
+    });
     cachedSeasonBoards.gang = Object.values(crews).sort((a, b) => b.money - a.money);
     renderSeasonBoard();
   });
@@ -2626,10 +2638,6 @@ async function loadOpenCrews() {
             openCrews[tag].members = currentMembers;
             openCrews[tag].motto = data.crewData.motto || openCrews[tag].motto;
             openCrews[tag].goal = data.crewData.goal || openCrews[tag].goal;
-            if (validLogo) {
-              openCrews[tag].logo = validLogo;
-            }
-          } else if (validLogo && !openCrews[tag].logo) {
             openCrews[tag].logo = validLogo;
           }
         }
@@ -6484,13 +6492,18 @@ function loadLeaderboardBoard(board, list) {
           const playerName = data.name || d.id;
           const crewTag = data.crewData?.tag ? String(data.crewData.tag).toUpperCase() : "";
           const wins = Number(data.crewData?.wins || 0);
-          const logo = data.crewData?.logo || DEFAULT_CREW_LOGO;
+          const currentMembers = data.crewData?.members?.length || 1;
+          const validLogo = (data.crewData?.logo && data.crewData?.logo.palette) ? data.crewData.logo : null;
 
           if (crewTag) {
-            if (!crewLogos[crewTag]) crewLogos[crewTag] = { logo, maxWins: -1 };
-            if (wins >= crewLogos[crewTag].maxWins) {
+            if (!crewLogos[crewTag]) {
+              crewLogos[crewTag] = { logo: validLogo, maxWins: -1, repMembers: -1 };
+            }
+            const isBetter = wins > crewLogos[crewTag].maxWins || (wins === crewLogos[crewTag].maxWins && currentMembers > crewLogos[crewTag].repMembers);
+            if (isBetter) {
               crewLogos[crewTag].maxWins = wins;
-              crewLogos[crewTag].logo = logo;
+              crewLogos[crewTag].repMembers = currentMembers;
+              crewLogos[crewTag].logo = validLogo;
             }
           }
 
@@ -6500,14 +6513,17 @@ function loadLeaderboardBoard(board, list) {
             rankData: getRankData(Number(data.money) || 0, playerName),
             canRemove: playerName !== myName && !isGodUser(playerName),
             crewTag,
-            logo: crewTag ? logo : null
+            _logoRaw: crewTag ? validLogo : null
           });
         });
 
         rows.forEach(r => {
           if (r.crewTag && crewLogos[r.crewTag]) {
-            r.logo = crewLogos[r.crewTag].logo;
+            r.logo = crewLogos[r.crewTag].logo || DEFAULT_CREW_LOGO;
+          } else {
+            r.logo = r._logoRaw || DEFAULT_CREW_LOGO;
           }
+          delete r._logoRaw;
         });
 
         renderLeaderboardRows(list, rows, { showAdminRemove: true });
