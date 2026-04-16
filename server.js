@@ -1471,21 +1471,25 @@ this.onMessage("hammer", (client, message) => {
 
   generateTariqHeavenBiome(chunk, cx, minY, maxY) {
     const skyBandCenter = -500;
-    if (maxY < skyBandCenter - 32 || minY > skyBandCenter + 32) return;
+    if (maxY < skyBandCenter - 44 || minY > skyBandCenter + 44) return;
 
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = cx * CHUNK_SIZE + x;
-      const islandBaseY = skyBandCenter + Math.floor(this.seededNoise(worldX, 2200, 2, 0.5, 0.03) * 6);
-      const islandChance = Math.abs(Math.sin(worldX * 0.11)) < 0.12;
+      const islandBaseY = skyBandCenter + Math.floor(this.seededNoise(worldX, 2200, 2, 0.5, 0.03) * 8);
+      const islandChance = Math.abs(Math.sin(worldX * 0.095)) < 0.2;
       if (!islandChance) continue;
 
-      const halfWidth = 3 + Math.floor(Math.abs(Math.sin(worldX * 0.31)) * 4);
-      const coreDepth = 2 + Math.floor(Math.abs(Math.cos(worldX * 0.57)) * 3);
+      const halfWidth = 5 + Math.floor(Math.abs(Math.sin(worldX * 0.31)) * 6);
+      const coreDepth = 3 + Math.floor(Math.abs(Math.cos(worldX * 0.57)) * 4);
 
       for (let ix = -halfWidth; ix <= halfWidth; ix++) {
         const iX = worldX + ix;
-        const topY = islandBaseY + Math.floor(Math.abs(ix) * 0.45);
+        const distanceNorm = Math.abs(ix) / Math.max(1, halfWidth);
+        const roundness = 1 - (distanceNorm * distanceNorm);
+        const topY = islandBaseY + Math.floor((1 - roundness) * 2);
+        const localDepth = Math.max(2, Math.floor(coreDepth * (0.55 + roundness * 0.6)));
         for (let dy = 0; dy < coreDepth; dy++) {
+          if (dy >= localDepth) continue;
           const y = topY + dy;
           if (y < minY || y >= maxY || iX < cx * CHUNK_SIZE || iX >= (cx + 1) * CHUNK_SIZE) continue;
           const b = new Block();
@@ -1493,10 +1497,7 @@ this.onMessage("hammer", (client, message) => {
           b.y = y;
           b.meta = 0;
           b.type = 64; // cloud platform ground
-          if (dy > 0) {
-            b.type = 3;
-            if (Math.abs(Math.sin(iX * 19.13 + y * 7.71)) < 0.03) b.type = 60; // TariqCore
-          }
+          if (dy > 1 && Math.abs(Math.sin(iX * 19.13 + y * 7.71)) < 0.05) b.type = 60; // TariqCore
           chunk.blocks.set(`${iX},${y}`, b);
         }
       }
