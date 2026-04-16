@@ -805,6 +805,32 @@ this.onMessage("interact", (client, message) => {
         const distSq = (p.x+TILE_SIZE/2 - message.x)**2 + (p.y+TILE_SIZE/2 - message.y)**2;
         if (distSq > (TILE_SIZE * 6)**2) return;
 
+        // Right-clicking a live bomb (TNT / Nuke) defuses it and places the block back.
+        let explosiveIdToDefuse = null;
+        let explosiveToDefuse = null;
+        this.state.explosives.forEach((exp, expId) => {
+            if (explosiveIdToDefuse) return;
+            const expTileX = Math.floor(exp.x / TILE_SIZE);
+            const expTileY = Math.floor(exp.y / TILE_SIZE);
+            if (expTileX === x && expTileY === y) {
+                explosiveIdToDefuse = expId;
+                explosiveToDefuse = exp;
+            }
+        });
+        if (explosiveIdToDefuse && explosiveToDefuse) {
+            const chunk = this.getOrCreateChunk(cx, cy);
+            const blockKey = `${x},${y}`;
+            if (!chunk.blocks.get(blockKey)) {
+                const b = new Block();
+                b.x = x;
+                b.y = y;
+                b.type = explosiveToDefuse.type;
+                chunk.blocks.set(blockKey, b);
+            }
+            this.state.explosives.delete(explosiveIdToDefuse);
+            return;
+        }
+
         const chunk = this.state.chunks.get(`${cx},${cy}`);
         if (chunk) {
             const b = chunk.blocks.get(`${x},${y}`);
@@ -814,7 +840,7 @@ this.onMessage("interact", (client, message) => {
                 explosive.x = x * TILE_SIZE + TILE_SIZE/2;
                 explosive.y = y * TILE_SIZE + TILE_SIZE/2;
                 explosive.type = b.type;
-                explosive.timer = b.type === 34 ? 100 : 60; // Nuke takes longer
+                explosive.timer = b.type === 34 ? 200 : 60; // Nuke takes longer
                 this.state.explosives.set(`exp-${Date.now()}-${Math.random()}`, explosive);
 
                 chunk.blocks.delete(`${x},${y}`);
