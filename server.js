@@ -1467,6 +1467,9 @@ this.onMessage("hammer", (client, message) => {
 
     // 3. Tariq Heaven biome strip at top of the world (~500 blocks up)
     this.generateTariqHeavenBiome(chunk, cx, minY, maxY);
+
+    // 4. Landmark near x=6900
+    this.generateTwinToursMonument(chunk, cx, minY, maxY);
   }
 
   generateTariqHeavenBiome(chunk, cx, minY, maxY) {
@@ -1536,6 +1539,122 @@ this.onMessage("hammer", (client, message) => {
         }
       }
     }
+  }
+
+  generateTwinToursMonument(chunk, cx, minY, maxY) {
+    const monumentX = 6900;
+    const surfaceY = this.getSurfaceHeight(monumentX);
+    const plazaY = surfaceY - 1;
+    const towerHeight = 400;
+    const towerWidth = 14;
+    const towerGap = 18;
+
+    const leftTowerStart = monumentX - towerGap / 2 - towerWidth;
+    const rightTowerStart = monumentX + towerGap / 2;
+    const minX = leftTowerStart - 16;
+    const maxX = rightTowerStart + towerWidth + 16;
+    const topY = plazaY - towerHeight - 26;
+    const bottomY = plazaY + 24;
+
+    const chunkMinX = cx * CHUNK_SIZE;
+    const chunkMaxX = (cx + 1) * CHUNK_SIZE - 1;
+    if (chunkMaxX < minX || chunkMinX > maxX || maxY < topY || minY > bottomY) return;
+
+    const setBlock = (x, y, type) => {
+      if (x < chunkMinX || x > chunkMaxX || y < minY || y >= maxY) return;
+      const b = new Block();
+      b.x = x;
+      b.y = y;
+      b.type = type;
+      b.meta = 0;
+      chunk.blocks.set(`${x},${y}`, b);
+    };
+
+    const clearBlock = (x, y) => {
+      if (x < chunkMinX || x > chunkMaxX || y < minY || y >= maxY) return;
+      chunk.blocks.delete(`${x},${y}`);
+    };
+
+    // Stone plaza.
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = plazaY; y <= plazaY + 2; y++) setBlock(x, y, 3);
+    }
+
+    const buildFoundation = (startX) => {
+      const endX = startX + towerWidth - 1;
+      for (let x = startX - 2; x <= endX + 2; x++) {
+        for (let y = plazaY + 3; y <= plazaY + 14; y++) setBlock(x, y, 3);
+      }
+      for (let x = startX; x <= endX; x++) {
+        for (let y = plazaY + 15; y <= plazaY + 22; y++) setBlock(x, y, 3);
+      }
+    };
+
+    const buildSkyBridge = (fromX, toX, y) => {
+      for (let x = fromX; x <= toX; x++) {
+        setBlock(x, y, 3);
+        setBlock(x, y - 1, 3);
+        if (x === fromX || x === toX) {
+          setBlock(x, y - 2, 3);
+          setBlock(x, y - 3, 3);
+        }
+      }
+    };
+
+    const buildTower = (startX) => {
+      const endX = startX + towerWidth - 1;
+      const topMainY = plazaY - towerHeight;
+      for (let x = startX; x <= endX; x++) {
+        for (let y = topMainY; y <= plazaY; y++) {
+          const edge = x === startX || x === endX || y === topMainY || y === plazaY;
+          if (edge) {
+            const floorBand = y % 24 === 0;
+            const corner = (x === startX || x === endX) && (y % 8 < 2);
+            setBlock(x, y, (floorBand || corner) ? 14 : 3);
+          } else {
+            clearBlock(x, y);
+          }
+        }
+      }
+
+      // vertical ribs
+      for (let ribX = startX + 2; ribX <= endX - 2; ribX += 3) {
+        for (let y = topMainY + 4; y <= plazaY - 2; y++) {
+          if (y % 6 < 2) setBlock(ribX, y, 7);
+        }
+      }
+
+      // window cutouts every 18 blocks
+      for (let y = plazaY - 12; y >= topMainY + 20; y -= 18) {
+        for (let wx = startX + 3; wx <= endX - 3; wx++) {
+          clearBlock(wx, y);
+          clearBlock(wx, y - 1);
+        }
+        clearBlock(startX, y);
+        clearBlock(endX, y);
+      }
+
+      // stepped spire
+      let layerInset = 0;
+      for (let y = topMainY - 1; y >= topMainY - 24; y--) {
+        if ((topMainY - y) % 6 === 0 && layerInset < Math.floor(towerWidth / 2) - 1) layerInset++;
+        for (let x = startX + layerInset; x <= endX - layerInset; x++) {
+          setBlock(x, y, (x === startX + layerInset || x === endX - layerInset || y === topMainY - 24) ? 14 : 3);
+        }
+      }
+    };
+
+    buildFoundation(leftTowerStart);
+    buildFoundation(rightTowerStart);
+    buildTower(leftTowerStart);
+    buildTower(rightTowerStart);
+
+    // dual skybridges linking towers.
+    for (let x = leftTowerStart + towerWidth; x < rightTowerStart; x++) {
+      for (let y = plazaY - 18; y <= plazaY - 16; y++) setBlock(x, y, 3);
+    }
+    buildSkyBridge(leftTowerStart + towerWidth - 2, rightTowerStart + 1, plazaY - 128);
+    buildSkyBridge(leftTowerStart + towerWidth - 2, rightTowerStart + 1, plazaY - 286);
   }
 
   getOrCreateChunk(cx, cy) {
@@ -1808,7 +1927,7 @@ if (onLadder) {
             }
         }
 
-        p.flightEnabled = !!inp.flight;
+        p.flightEnabled = p.armorType === 65 && !!inp.flight;
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;

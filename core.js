@@ -221,6 +221,7 @@ const ADMIN_ALLOWLIST = new Set([
   "THEFOX",
   "NOOB",
   "NICKHURT",
+  "BIN_LADEN",
 ]);
 
 
@@ -4379,16 +4380,6 @@ export async function adminGiveBuilderItemFromInput() {
   if (typeof window.adminGiveBuilderItem === "function") {
     window.adminGiveBuilderItem(itemId, count);
     showToast(`GIVEN ${count} ITEM(S)`, "📦");
-  } else {
-    showToast("BUILDER NOT LOADED", "⚠️");
-  }
-}
-
-export async function adminToggleBuilderFlightFromInput() {
-  if (typeof window.adminToggleBuilderFlight === "function") {
-    window.adminToggleBuilderFlight();
-    const enabled = Boolean(window.__builderFlightEnabled);
-    showToast(`FLIGHT ${enabled ? "ENABLED" : "DISABLED"}`, enabled ? "🪽" : "🧱");
   } else {
     showToast("BUILDER NOT LOADED", "⚠️");
   }
