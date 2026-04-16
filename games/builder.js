@@ -202,7 +202,7 @@ const blockColors = {
     };
     const getMergedInventoryType = (type) => type;
     const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 61, 62, 63, 65].includes(type) ? 1 : 99);
-    const canUseFlight = () => isGodUser() || itemType(armorSlot) === 65;
+    const canUseFlight = () => itemType(armorSlot) === 65;
 
     const blockDataUrls = [
         "data/blocks/1.json", "data/blocks/2.json", "data/blocks/3.json", "data/blocks/4.json",
@@ -314,7 +314,7 @@ const blockColors = {
     let lastUiBlockType = null;
 
     // Inputs
-    const keys = { w: false, a: false, d: false, shift: false, flight: false, upPress: false };
+    const keys = { w: false, a: false, d: false, shift: false, upPress: false };
     const mouse = { x: 0, y: 0, isDown: false };
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
@@ -848,10 +848,6 @@ const blockColors = {
             }
         }
 
-        if ((e.key === "f" || e.key === "F") && canUseFlight()) {
-            keys.flight = !keys.flight;
-            window.__builderFlightEnabled = keys.flight;
-        }
     }
 
     function handleKeyUp(e) {
@@ -1012,12 +1008,6 @@ function sendBuildOrBreak(e) {
         addInventoryItem(type, count);
         saveInventoryState();
     };
-    window.adminToggleBuilderFlight = () => {
-        if (!isGodUser()) return;
-        keys.flight = !keys.flight;
-        window.__builderFlightEnabled = keys.flight;
-    };
-
     function addInventoryItem(type, count) {
         const mergedType = getMergedInventoryType(type);
         let remaining = count;
@@ -1882,7 +1872,7 @@ if (e.button === 2 && !e.shiftKey) {
                 upPress: keys.upPress,
                 up: keys.w,
                 down: keys.shift,
-                flight: keys.flight && canUseFlight()
+                flight: canUseFlight()
             });
             keys.upPress = false;
         }
