@@ -934,34 +934,24 @@ function sendBuildOrBreak(e) {
         }
 
         // Handle shooting guns
-        if ([23, 24, 25, 26, 27].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
+        if ([23, 24, 25, 26, 27, 28, 36, 63].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
             const ammoTypeByGun = { 23: 28, 24: 48, 25: 49, 26: 50, 27: 51 };
             const requiredAmmoType = ammoTypeByGun[type] || 28;
 
-        if ([23, 24, 25, 26, 27, 28, 36, 63].includes(type) && !e.shiftKey && (e.button === 0 || e.type === "interval")) { // Support interval events
             // Check for ammo
             let hasAmmo = type === 63;
             let ammoSlotIndex = -1;
             let ammoIsHotbar = false;
 
-            for (let i = 0; i < hotbarSlots.length; i++) {
-                if (hotbarSlots[i] && hotbarSlots[i].type === requiredAmmoType) {
-                    hasAmmo = true; ammoSlotIndex = i; ammoIsHotbar = true; break;
-                }
-            }
-            if (!hasAmmo) {
-                for (let i = 0; i < inventorySlots.length; i++) {
-                    if (inventorySlots[i] && inventorySlots[i].type === requiredAmmoType) {
-                        hasAmmo = true; ammoSlotIndex = i; break;
             if (type !== 63) {
                 for (let i = 0; i < hotbarSlots.length; i++) {
-                    if (hotbarSlots[i] && hotbarSlots[i].type === 28) {
+                    if (hotbarSlots[i] && hotbarSlots[i].type === requiredAmmoType) {
                         hasAmmo = true; ammoSlotIndex = i; ammoIsHotbar = true; break;
                     }
                 }
                 if (!hasAmmo) {
                     for (let i = 0; i < inventorySlots.length; i++) {
-                        if (inventorySlots[i] && inventorySlots[i].type === 28) {
+                        if (inventorySlots[i] && inventorySlots[i].type === requiredAmmoType) {
                             hasAmmo = true; ammoSlotIndex = i; break;
                         }
                     }
