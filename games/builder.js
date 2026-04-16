@@ -100,8 +100,9 @@ const blockColors = {
         48: "#1b1b1b", // Bedrock
     };
 
+    const WOOD_TYPES_FOR_PLANKS = [4, 7, 41];
     const CRAFTING_RECIPES = [
-        { pattern: [[7]], output: { type: 9, count: 4 } }, // 1 Log -> 4 Planks
+        ...WOOD_TYPES_FOR_PLANKS.map((woodType) => ({ pattern: [[woodType]], output: { type: 9, count: 4 } })), // 1 Wood/Log/Pine Log -> 4 Planks
         { pattern: [[9, 9], [9, 9]], output: { type: 10, count: 1 } }, // 4 Planks -> Crafting Table
         { pattern: [[9], [9]], output: { type: 50, count: 4 } }, // 2 Planks -> 4 Sticks (Let's use 50 for stick, wait stick isn't defined... actually stick isn't in original either, let's just use planks for tools for now)
         // Ladder
