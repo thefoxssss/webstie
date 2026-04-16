@@ -209,6 +209,8 @@ const LOCAL_CREW_STORAGE_KEY = "goonerCrewData";
 const LOCAL_SEASON_STORAGE_KEY = "goonerSeasonData";
 let hasAdminClaim = false;
 let permissionMask = 0;
+let isMaintenanceMode = false;
+let stopMaintenanceSync = null;
 const CHAT_BLOCKLIST_KEY = "goonerChatBlocklist";
 const CHAT_MUTED_KEY = "goonerChatMuted";
 const CHAT_BAD_WORDS = ["slur1", "slur2", "idiot", "stupid"];
@@ -1227,6 +1229,26 @@ function subscribeToGlobalMarket() {
   stopMarketSync = onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
     applyMarketPayload(snap.data());
+  }, () => {});
+}
+
+function subscribeToMaintenanceMode() {
+  if (stopMaintenanceSync) return;
+  const ref = doc(db, GLOBAL_MARKET_COLLECTION, "maintenance_mode");
+  stopMaintenanceSync = onSnapshot(ref, (snap) => {
+    isMaintenanceMode = snap.exists() ? Boolean(snap.data().active) : false;
+    const maintenanceOverlay = document.getElementById("overlayMaintenance");
+    if (maintenanceOverlay) {
+      if (isMaintenanceMode && !isGodUser()) {
+        maintenanceOverlay.classList.add("active");
+        document.body.classList.add("overlay-open");
+      } else {
+        maintenanceOverlay.classList.remove("active");
+        // Only toggle overlay-open if no other overlays are active
+        const hasActiveOverlay = Boolean(document.querySelector(".overlay.active:not(#overlayMaintenance)"));
+        document.body.classList.toggle("overlay-open", hasActiveOverlay);
+      }
+    }
   }, () => {});
 }
 
@@ -3103,6 +3125,7 @@ onAuthStateChanged(auth, async (u) => {
     updateAdminMenu();
     await ensureGlobalMarket();
     subscribeToGlobalMarket();
+    subscribeToMaintenanceMode();
     initChat();
     refreshTrendingGames();
     refreshTrendingMonthGraph();
@@ -4150,6 +4173,19 @@ export async function adminClearRecentChatFromInput() {
     showToast(`REMOVED ${snap.docs.length} CHAT MESSAGE(S)`, "🧹");
   } catch {
     showToast("CHAT CLEAR FAILED", "⚠️", "Try again shortly.");
+  }
+}
+
+export async function adminToggleMaintenance() {
+  if (!isGodUser()) return;
+  try {
+    const ref = doc(db, GLOBAL_MARKET_COLLECTION, "maintenance_mode");
+    const snap = await getDoc(ref);
+    const currentlyActive = snap.exists() ? Boolean(snap.data().active) : false;
+    await setDoc(ref, { active: !currentlyActive }, { merge: true });
+    showToast(`MAINTENANCE MODE ${!currentlyActive ? 'ON' : 'OFF'}`, "🔧");
+  } catch (error) {
+    showToast("FAILED TO TOGGLE MAINTENANCE", "⚠️");
   }
 }
 
