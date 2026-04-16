@@ -1807,6 +1807,8 @@ if (onLadder) {
             }
         }
 
+        p.flightEnabled = !!inp.flight;
+
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
 
@@ -1897,10 +1899,10 @@ if (onLadder) {
             }
         }
 
-        if (grounded && inp.jumpBuffer > 0) {
+        if (!onLadder && grounded && inp.jumpBuffer > 0) {
             p.vy = -12;
             inp.jumpBuffer = 0;
-        } else if (inp.jumpBuffer > 0) {
+        } else if (!onLadder && inp.jumpBuffer > 0) {
             inp.jumpBuffer--;
         }
     });
@@ -2412,4 +2414,3 @@ app.get("/builder-servers", (req, res) => {
 
 gameServer.listen(port);
 console.log(`Colyseus game server is listening on port ${port}...`);
-        p.flightEnabled = !!inp.flight;

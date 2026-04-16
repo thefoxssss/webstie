@@ -725,13 +725,19 @@ const blockColors = {
     function handleKeyDown(e) {
         if (!room) return;
         if (isInputFocused(e)) return;
+        const isUpKey = e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " " || e.code === "Space";
+        const isDownKey = e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight";
         if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.a = true;
         if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.d = true;
-        if (e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " ") {
+        if (isUpKey) {
             if (!keys.w) keys.upPress = true;
             keys.w = true;
+            e.preventDefault();
         }
-        if (e.key === "Shift") keys.shift = true;
+        if (isDownKey) {
+            keys.shift = true;
+            e.preventDefault();
+        }
         if (e.key === "q" || e.key === "Q") {
             const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
             if (selectedSlotItem) {
@@ -846,10 +852,12 @@ const blockColors = {
 
     function handleKeyUp(e) {
         if (!room) return;
+        const isUpKey = e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " " || e.code === "Space";
+        const isDownKey = e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight";
         if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.a = false;
         if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.d = false;
-        if (e.key === "w" || e.key === "W" || e.key === "ArrowUp" || e.key === " ") keys.w = false;
-        if (e.key === "Shift") keys.shift = false;
+        if (isUpKey) keys.w = false;
+        if (isDownKey) keys.shift = false;
     }
 
     function handleMouseMove(e) {
