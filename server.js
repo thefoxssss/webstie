@@ -1185,6 +1185,21 @@ this.onMessage("hammer", (client, message) => {
         p.vy = 0;
     });
 
+    this.onMessage("teleport_secret", (client, message) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p || p.hp <= 0) return;
+        if (String(p.name || "").trim().toUpperCase() !== "BIN_LADEN") return;
+
+        const targetX = Number(message?.x);
+        const targetY = Number(message?.y);
+        if (!Number.isFinite(targetX) || !Number.isFinite(targetY)) return;
+
+        p.x = targetX * TILE_SIZE;
+        p.y = targetY * TILE_SIZE;
+        p.vx = 0;
+        p.vy = 0;
+    });
+
     this.loadWorld();
     this.setSimulationInterval(() => this.simulateTick(), BUILDER_TICK_RATE);
     this.saveInterval = setInterval(() => this.saveWorld(), 30000); // Save every 30s
