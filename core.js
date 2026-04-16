@@ -2582,21 +2582,42 @@ async function loadOpenCrews() {
       const data = docSnap.data() || {};
       if (data.crewData && data.crewData.tag && data.crewData.recruitmentOpen) {
         const tag = data.crewData.tag;
-        // Keep the one with the highest wins/members as the representative
-        if (!openCrews[tag] || data.crewData.wins > openCrews[tag].wins) {
+        const currentMembers = data.crewData.members?.length || 1;
+        const validLogo = (data.crewData.logo && data.crewData.logo.palette) ? data.crewData.logo : null;
+
+        if (!openCrews[tag]) {
           openCrews[tag] = {
             tag: tag,
             motto: data.crewData.motto || "---",
             wins: data.crewData.wins || 0,
-            members: data.crewData.members?.length || 1,
+            members: currentMembers,
             goal: data.crewData.goal || 5000,
-            logo: data.crewData.logo || DEFAULT_CREW_LOGO,
+            logo: validLogo,
           };
+        } else {
+          // Keep the one with the highest wins/members as the representative
+          const currentWins = data.crewData.wins || 0;
+          const isBetterRepresentative = currentWins > openCrews[tag].wins || (currentWins === openCrews[tag].wins && currentMembers > openCrews[tag].members);
+
+          if (isBetterRepresentative) {
+            openCrews[tag].wins = currentWins;
+            openCrews[tag].members = currentMembers;
+            openCrews[tag].motto = data.crewData.motto || openCrews[tag].motto;
+            openCrews[tag].goal = data.crewData.goal || openCrews[tag].goal;
+            if (validLogo) {
+              openCrews[tag].logo = validLogo;
+            }
+          } else if (validLogo && !openCrews[tag].logo) {
+            openCrews[tag].logo = validLogo;
+          }
         }
       }
     });
 
     const crewsArray = Object.values(openCrews).sort((a, b) => b.wins - a.wins);
+    crewsArray.forEach(crew => {
+      if (!crew.logo) crew.logo = DEFAULT_CREW_LOGO;
+    });
 
     if (crewsArray.length === 0) {
       list.innerHTML = `<div class="crew-roster-empty">NO OPEN CREWS FOUND.</div>`;
