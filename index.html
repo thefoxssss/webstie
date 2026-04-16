@@ -78,6 +78,16 @@
 
     <div class="dropdown-content" id="menuDropdown"></div>
 
+    <div class="overlay menu-overlay" id="overlayMaintenance">
+      <div class="maintenance-box">
+        <h1 style="color: #f66; text-align: center; margin-bottom: 20px; font-size: 2.5rem; text-shadow: 0 0 15px rgba(255, 102, 102, 0.5);">MAINTENANCE MODE</h1>
+        <p style="text-align: center; color: var(--accent); font-size: 1.2rem; line-height: 1.6;">
+          THE SYSTEM IS CURRENTLY UNDERGOING ROUTINE MAINTENANCE OR EMERGENCY REPAIRS.<br/>
+          PLEASE CHECK BACK SHORTLY.
+        </p>
+      </div>
+    </div>
+
     <div class="overlay menu-overlay" id="overlayTrending">
       <div class="score-box panel-overlay-box">
         <h2>TRENDING GAMES // MONTHLY GRAPH</h2>
@@ -372,6 +382,11 @@
                     <option value="en"></option>
                   </datalist>
                   <button class="term-btn" onclick="window.adminSetPreferenceFromInput()">SET PREFERENCE</button>
+                </div>
+
+                <div class="admin-section admin-section-danger">
+                  <p class="admin-section-title">GLOBAL MAINTENANCE</p>
+                  <button class="term-btn" style="border-color: #f66; color: #f66;" onclick="window.adminToggleMaintenance()">TOGGLE MAINTENANCE MODE</button>
                 </div>
               </div>
             </div>

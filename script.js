@@ -33,6 +33,7 @@ import {
   adminSendChatAnnouncement,
   adminSendChatSystemMessage,
   adminClearRecentChatFromInput,
+  adminToggleMaintenance,
   adminApplySettingActionFromInput,
   adminSetRoleFromInput,
   adminSetStatusFromInput,
@@ -128,6 +129,7 @@ window.adminMarketMultiplyFromInput = adminMarketMultiplyFromInput;
 window.adminSendChatAnnouncement = adminSendChatAnnouncement;
 window.adminSendChatSystemMessage = adminSendChatSystemMessage;
 window.adminClearRecentChatFromInput = adminClearRecentChatFromInput;
+window.adminToggleMaintenance = adminToggleMaintenance;
 window.adminApplySettingActionFromInput = adminApplySettingActionFromInput;
 window.adminSetRoleFromInput = adminSetRoleFromInput;
 window.adminSetStatusFromInput = adminSetStatusFromInput;
