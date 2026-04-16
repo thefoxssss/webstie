@@ -65,11 +65,16 @@ async function refreshFnafServers() {
   const listEl = document.getElementById("fnafServerList");
   listEl.innerHTML = "LOADING SERVERS...";
 
-  let endpoint = "https://" + window.location.hostname;
-  const isLocal = window.location.search.includes("local=1") || document.getElementById("fnafNetwork").value === "local";
-  if (isLocal) {
-    endpoint = "http://localhost:2567";
+  let networkSelect = document.getElementById("fnafNetwork");
+  let selected = networkSelect ? networkSelect.value : "auto";
+  const isLocalEnv = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.search.includes("local=1");
+  let defaultServer = isLocalEnv ? "local" : "prod";
+
+  let endpoint = selected === "local" ? "http://localhost:2567" : "https://seahorse-app-mv4sg.ondigitalocean.app";
+  if (selected === "auto") {
+      endpoint = defaultServer === "local" ? "http://localhost:2567" : "https://seahorse-app-mv4sg.ondigitalocean.app";
   }
+
 
   try {
     const res = await fetch(`${endpoint}/fnaf_servers`);
@@ -126,10 +131,15 @@ async function startFnafGame(options) {
 
   // Colyseus Connect
   try {
-      const isLocal = window.location.search.includes("local=1") || document.getElementById("fnafNetwork").value === "local";
-      const endpoint = isLocal
-        ? "ws://localhost:2567"
-        : "wss://" + window.location.hostname;
+      let networkSelect = document.getElementById("fnafNetwork");
+      let selected = networkSelect ? networkSelect.value : "auto";
+      const isLocalEnv = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.search.includes("local=1");
+      let defaultServer = isLocalEnv ? "local" : "prod";
+
+      let endpoint = selected === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
+      if (selected === "auto") {
+          endpoint = defaultServer === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
+      }
       const client = new Colyseus.Client(endpoint);
 
       if (options.create) {
