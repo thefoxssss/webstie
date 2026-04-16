@@ -447,6 +447,13 @@
                     <option value="45">45 - GOLD INGOT</option>
                     <option value="46">46 - DIAMOND (REFINED)</option>
                     <option value="47">47 - URANIUM (REFINED)</option>
+                    <option value="48">48 - BEDROCK</option>
+                    <option value="60">60 - TARIQCORE</option>
+                    <option value="61">61 - TARIQCORE BLADE</option>
+                    <option value="62">62 - TARIQCORE ARMOR</option>
+                    <option value="63">63 - TARIQCORE BEAM</option>
+                    <option value="64">64 - CLOUD PLATFORM</option>
+                    <option value="65">65 - TARIQ WINGS</option>
                   </select>
                   <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
                     <input class="term-input" id="adminBuilderItemCount" type="number" step="1" min="1" max="99" value="1" placeholder="COUNT" style="width: 100%;" />
@@ -1311,6 +1318,10 @@
           <span>REDUCED MOTION</span
           ><button class="menu-btn" id="motionToggle">OFF</button>
         </div>
+        <div class="config-row">
+          <span>STATUS VISIBILITY</span
+          ><button class="menu-btn" id="statusVisibilityToggle">VISIBLE</button>
+        </div>
         <button
           class="term-btn"
           id="btnLogout"
@@ -1439,11 +1450,25 @@
         <button class="menu-btn" id="btnJoinFnaf">QUICK JOIN ANY SERVER</button>
       </div>
 
-      <div id="fnafGame" style="display: none">
+            <div id="fnafGame" style="display: none; position: relative; width: 800px; margin: 0 auto;">
         <div style="margin-bottom: 10px">
-          SURVIVE (CLICK TO LOCK MOUSE, WASD TO MOVE)
+          SURVIVE (CLICK TO LOCK MOUSE, WASD TO MOVE) <br/>
+          [Q/E] Doors | [1/2] Lights | [SPACE] Cameras
         </div>
-        <canvas id="fnafCanvas" width="800" height="450" style="background: #000; cursor: crosshair;"></canvas>
+        <canvas id="fnafCanvas" width="800" height="450" style="background: #000; cursor: crosshair; display: block; margin: 0 auto;"></canvas>
+
+        <div id="fnafUI" style="position: absolute; top: 40px; left: 10px; color: white; font-family: monospace; font-size: 20px; text-shadow: 2px 2px 0 #000; pointer-events: none; text-align: left;">
+          POWER: <span id="fnafPower">100%</span><br/>
+          TIME: <span id="fnafTime">12 AM</span>
+        </div>
+
+        <div id="fnafCams" style="display: none; position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); border: 2px solid #555; padding: 10px;">
+          <div style="color: white; margin-bottom: 5px;">CAMERAS</div>
+          <button class="term-btn" onclick="window.setFnafCam(0)">CAM 1 (Stage)</button><br/>
+          <button class="term-btn" onclick="window.setFnafCam(1)">CAM 2 (Dining)</button><br/>
+          <button class="term-btn" onclick="window.setFnafCam(2)">CAM 3 (W Hall)</button><br/>
+          <button class="term-btn" onclick="window.setFnafCam(3)">CAM 4 (E Hall)</button>
+        </div>
       </div>
 
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">
