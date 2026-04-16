@@ -632,6 +632,8 @@ type("number")(BuilderBullet.prototype, "vy");
 type("number")(BuilderBullet.prototype, "damage");
 type("number")(BuilderBullet.prototype, "healing");
 type("number")(BuilderBullet.prototype, "life");
+type("number")(BuilderBullet.prototype, "ammoType");
+type("number")(BuilderBullet.prototype, "explosionRadius");
 
 class Block extends Schema {}
 type("number")(Block.prototype, "x");
@@ -1099,7 +1101,14 @@ this.onMessage("hammer", (client, message) => {
         let healing = 0;
         let spread = 0;
         let projectiles = 1;
+        let ammoType = 28;
+        let explosionRadius = 0;
 
+        if (gunType === 23) { speed = 15; damage = 2; ammoType = 28; }
+        else if (gunType === 24) { speed = 20; damage = 3; ammoType = 48; }
+        else if (gunType === 25) { speed = 20; damage = 4; projectiles = 3; spread = 0.2; ammoType = 49; } // Shotgun
+        else if (gunType === 26) { speed = 30; damage = 5; ammoType = 50; } // Rifle
+        else if (gunType === 27) { speed = 40; damage = 8; ammoType = 51; explosionRadius = TILE_SIZE * 3; } // Uranium rounds explode
         if (gunType === 23) { speed = 15; damage = 2; }
         else if (gunType === 24) { speed = 20; damage = 3; }
         else if (gunType === 25) { speed = 20; damage = 4; projectiles = 3; spread = 0.2; } // Shotgun
@@ -1125,6 +1134,8 @@ this.onMessage("hammer", (client, message) => {
             b.damage = damage;
             b.healing = healing;
             b.life = 40; // ticks
+            b.ammoType = ammoType;
+            b.explosionRadius = explosionRadius;
 
             this.state.bullets.set(bulletId, b);
         }
@@ -1906,6 +1917,46 @@ isSolid(x, y) {
         }
 
         if (hit || b.life <= 0) {
+            // Uranium rounds explode in a 3-block radius.
+            if ((b.explosionRadius || 0) > 0) {
+                const blastRadius = b.explosionRadius;
+                const blastRadiusTiles = Math.ceil(blastRadius / TILE_SIZE);
+                const expTx = Math.floor(b.x / TILE_SIZE);
+                const expTy = Math.floor(b.y / TILE_SIZE);
+
+                this.state.players.forEach((p, sessionId) => {
+                    if (p.hp <= 0 || sessionId === b.ownerId) return;
+                    const dx = p.x + TILE_SIZE / 2 - b.x;
+                    const dy = p.y + TILE_SIZE / 2 - b.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= blastRadius) {
+                        const owner = this.state.players.get(b.ownerId);
+                        const splashDamage = Math.max(2, Math.floor(b.damage * 0.75));
+                        this.damagePlayer(p, splashDamage, owner ? owner.name : "Unknown");
+                        const safeDist = Math.max(1, dist);
+                        const knockback = ((blastRadius - dist) / blastRadius) * 16;
+                        p.vx += (dx / safeDist) * knockback;
+                        p.vy += (dy / safeDist) * knockback - 4;
+                    }
+                });
+
+                for (let dx = -blastRadiusTiles; dx <= blastRadiusTiles; dx++) {
+                    for (let dy = -blastRadiusTiles; dy <= blastRadiusTiles; dy++) {
+                        if (dx * dx + dy * dy > blastRadiusTiles * blastRadiusTiles) continue;
+                        const tx = expTx + dx;
+                        const ty = expTy + dy;
+                        const cx = Math.floor(tx / CHUNK_SIZE);
+                        const cy = Math.floor(ty / CHUNK_SIZE);
+                        const chunk = this.state.chunks.get(`${cx},${cy}`);
+                        if (!chunk) continue;
+                        const blockKey = `${tx},${ty}`;
+                        if (chunk.blocks.get(blockKey)) {
+                            chunk.blocks.delete(blockKey);
+                        }
+                    }
+                }
+            }
+
             this.state.bullets.delete(id);
         }
     });
@@ -2067,10 +2118,11 @@ if (onLadder) {
         if (exp.timer <= 0) {
             // EXPLODE!
             const isNuke = exp.type === 34;
-            const radius = isNuke ? (TILE_SIZE * 1000) : (TILE_SIZE * 5);
+            const blockRadius = isNuke ? 15 : 5;
+            const radius = blockRadius * TILE_SIZE;
             const damage = isNuke ? 100 : 20;
 
-            // Damage players
+            // Damage players (nuke damage radius matches block-destruction radius)
             this.state.players.forEach(p => {
                 if (p.hp <= 0) return;
                 const dx = p.x + TILE_SIZE/2 - exp.x;
@@ -2078,14 +2130,14 @@ if (onLadder) {
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 if (dist < radius) {
                     this.damagePlayer(p, damage, isNuke ? "Nuke" : "TNT");
-                    const knockback = (radius - dist) / radius * (isNuke ? 30 : 15);
-                    p.vx += (dx / dist) * knockback;
-                    p.vy += (dy / dist) * knockback - 5;
+                    const safeDist = Math.max(1, dist);
+                    const knockback = (radius - dist) / radius * (isNuke ? 52 : 26);
+                    p.vx += (dx / safeDist) * knockback;
+                    p.vy += (dy / safeDist) * knockback - 8;
                 }
             });
 
             // Destroy blocks
-            const blockRadius = Math.ceil(radius / TILE_SIZE);
             const expTx = Math.floor(exp.x / TILE_SIZE);
             const expTy = Math.floor(exp.y / TILE_SIZE);
 
