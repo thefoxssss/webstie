@@ -1070,6 +1070,84 @@ function sendBuildOrBreak(e) {
         }
     }
 
+    function getRecipeBookLayout(panel) {
+        const itemsPerRow = 2;
+        const rowsPerPage = 6;
+        const recipesPerPage = itemsPerRow * rowsPerPage;
+        const cellWidth = 240;
+        const cellHeight = 70;
+        const hitWidth = 110;
+        const maxScroll = Math.max(0, Math.ceil(CRAFTING_RECIPES.length / itemsPerRow) - rowsPerPage);
+        if (recipeScroll > maxScroll) recipeScroll = maxScroll;
+        const startIdx = recipeScroll * itemsPerRow;
+        const endIdx = Math.min(CRAFTING_RECIPES.length, startIdx + recipesPerPage);
+        return { itemsPerRow, cellWidth, cellHeight, hitWidth, startIdx, endIdx };
+    }
+
+    function fillCraftingGridFromRecipe(recipe) {
+        const size = isCraftingTableOpen ? 3 : 2;
+        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+        const reqH = recipe.pattern.length;
+        const reqW = recipe.pattern[0].length;
+        if (reqW > size || reqH > size) return false;
+        if (grid.some(slot => slot !== undefined)) return false;
+
+        const needed = new Map();
+        for (let r = 0; r < reqH; r++) {
+            for (let c = 0; c < reqW; c++) {
+                const type = recipe.pattern[r][c];
+                if (type !== 0) needed.set(type, (needed.get(type) || 0) + 1);
+            }
+        }
+
+        const available = new Map();
+        const countSlots = (slots) => {
+            for (const slot of slots) {
+                const normalized = normalizeItem(slot);
+                if (!normalized) continue;
+                available.set(normalized.type, (available.get(normalized.type) || 0) + normalized.count);
+            }
+        };
+        countSlots(hotbarSlots);
+        countSlots(inventorySlots);
+
+        for (const [type, count] of needed.entries()) {
+            if ((available.get(type) || 0) < count) return false;
+        }
+
+        const consumeFromSlots = (slots, type, neededCount) => {
+            let remaining = neededCount;
+            for (let i = 0; i < slots.length && remaining > 0; i++) {
+                const slot = normalizeItem(slots[i]);
+                if (!slot || slot.type !== type) continue;
+                const take = Math.min(slot.count, remaining);
+                slot.count -= take;
+                remaining -= take;
+                slots[i] = slot.count > 0 ? slot : undefined;
+            }
+            return remaining;
+        };
+
+        for (const [type, count] of needed.entries()) {
+            let remaining = consumeFromSlots(hotbarSlots, type, count);
+            if (remaining > 0) remaining = consumeFromSlots(inventorySlots, type, remaining);
+            if (remaining > 0) return false;
+        }
+
+        for (let i = 0; i < grid.length; i++) grid[i] = undefined;
+        for (let r = 0; r < reqH; r++) {
+            for (let c = 0; c < reqW; c++) {
+                const type = recipe.pattern[r][c];
+                if (type !== 0) grid[r * size + c] = { type, count: 1 };
+            }
+        }
+
+        checkRecipes();
+        saveInventoryState();
+        showRecipes = false;
+        return true;
+    }
+
     function handleMouseDown(e) {
         if (!room) return;
 
@@ -1084,6 +1162,22 @@ function sendBuildOrBreak(e) {
                 if (mouse.x >= panel.x + panel.width - 80 && mouse.x <= panel.x + panel.width - 20 &&
                     mouse.y >= panel.y - 10 && mouse.y <= panel.y + 10) {
                     showRecipes = false;
+                    return;
+                }
+
+                const recipeLayout = getRecipeBookLayout(panel);
+                for (let i = recipeLayout.startIdx; i < recipeLayout.endIdx; i++) {
+                    const displayIdx = i - recipeLayout.startIdx;
+                    const col = displayIdx % recipeLayout.itemsPerRow;
+                    const row = Math.floor(displayIdx / recipeLayout.itemsPerRow);
+                    const rx = panel.x + 20 + col * recipeLayout.cellWidth;
+                    const ry = panel.y + 50 + row * recipeLayout.cellHeight;
+
+                    if (mouse.x >= rx - 4 && mouse.x <= rx + recipeLayout.hitWidth &&
+                        mouse.y >= ry - 4 && mouse.y <= ry + 30) {
+                        fillCraftingGridFromRecipe(CRAFTING_RECIPES[i]);
+                        return;
+                    }
                 }
                 return; // Prevent other interactions while recipes are open
             }
@@ -1860,9 +1954,10 @@ if (e.button === 2 && !e.shiftKey) {
         if (inventoryOpen && showRecipes) {
             recipeScroll += Math.sign(e.deltaY);
             if (recipeScroll < 0) recipeScroll = 0;
+            e.preventDefault();
             return;
         }
-    });
+    }, { passive: false });
 
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mousedown", handleMouseDown);
@@ -2490,27 +2585,15 @@ if (inventoryOpen) {
                 // Add scrolling logic later if needed. For now we just draw them.
                 // Or let's make the recipes smaller
 
+                const recipeLayout = getRecipeBookLayout(panel);
 
-                // 12 recipes per page
-                const itemsPerRow = 2;
-                const rowsPerPage = 6;
-                const recipesPerPage = itemsPerRow * rowsPerPage;
-                const maxScroll = Math.max(0, Math.ceil(CRAFTING_RECIPES.length / itemsPerRow) - rowsPerPage);
-                if (recipeScroll > maxScroll) recipeScroll = maxScroll;
+                for (let i = recipeLayout.startIdx; i < recipeLayout.endIdx; i++) {
+                    const displayIdx = i - recipeLayout.startIdx;
+                    const col = displayIdx % recipeLayout.itemsPerRow;
+                    const row = Math.floor(displayIdx / recipeLayout.itemsPerRow);
 
-                const startIdx = recipeScroll * itemsPerRow;
-                const endIdx = Math.min(CRAFTING_RECIPES.length, startIdx + recipesPerPage);
-
-                for (let i = startIdx; i < endIdx; i++) {
-                    const displayIdx = i - startIdx;
-                    const col = displayIdx % itemsPerRow;
-                    const row = Math.floor(displayIdx / itemsPerRow);
-
-                    const cellWidth = 240;
-                    const cellHeight = 70;
-
-                    const rx = panel.x + 20 + col * cellWidth;
-                    const ry = panel.y + 50 + row * cellHeight;
+                    const rx = panel.x + 20 + col * recipeLayout.cellWidth;
+                    const ry = panel.y + 50 + row * recipeLayout.cellHeight;
 
                     // Draw the pattern grid (miniature)
                     const pat = CRAFTING_RECIPES[i].pattern;
@@ -2643,62 +2726,64 @@ if (inventoryOpen) {
                         ctx.fillText(`${craftingOutputSlot.count}`, outX + inventoryLayout.slotSize - 3, outY + inventoryLayout.slotSize - 5);
                     }
                 }
-            for (let index = 0; index < totalSlots; index += 1) {
-                const item = inventorySlots[index];
-                const col = index % inventoryLayout.cols;
-                const row = Math.floor(index / inventoryLayout.cols);
-                const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
-                const isEmpty = typeof item === "undefined";
-                const isActive = false; // We don't need active state in the main inventory anymore, just hotbar
+            if (!showRecipes) {
+                for (let index = 0; index < totalSlots; index += 1) {
+                    const item = inventorySlots[index];
+                    const col = index % inventoryLayout.cols;
+                    const row = Math.floor(index / inventoryLayout.cols);
+                    const slotX = startX + (col * (inventoryLayout.slotSize + inventoryLayout.gap));
+                    const slotY = startY + (row * (inventoryLayout.slotSize + inventoryLayout.gap));
+                    const isEmpty = typeof item === "undefined";
+                    const isActive = false; // We don't need active state in the main inventory anymore, just hotbar
 
-                // Slot background
-                ctx.fillStyle = "#8b8b8b";
-                ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+                    // Slot background
+                    ctx.fillStyle = "#8b8b8b";
+                    ctx.fillRect(slotX, slotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
 
-                // Slot inner shadow/bevel
-                ctx.strokeStyle = "#373737";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
-                ctx.lineTo(slotX, slotY);
-                ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
-                ctx.stroke();
+                    // Slot inner shadow/bevel
+                    ctx.strokeStyle = "#373737";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(slotX, slotY + inventoryLayout.slotSize);
+                    ctx.lineTo(slotX, slotY);
+                    ctx.lineTo(slotX + inventoryLayout.slotSize, slotY);
+                    ctx.stroke();
 
-                ctx.strokeStyle = "#ffffff";
-                ctx.beginPath();
-                ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
-                ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
-                ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
-                ctx.stroke();
-
-                if (!isEmpty) {
-                    const inset = 6;
-                        drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
-
-                    // Stack count
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "8px 'Press Start 2P', monospace";
-                    ctx.textAlign = "right";
-                    ctx.fillStyle = "#3f3f3f";
-                    ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
-                }
-
-                if (!hoverItemName && !isEmpty) {
-                    const isHoveringSlot =
-                        mouse.x >= slotX &&
-                        mouse.x <= slotX + inventoryLayout.slotSize &&
-                        mouse.y >= slotY &&
-                        mouse.y <= slotY + inventoryLayout.slotSize;
-                    if (isHoveringSlot) hoverItemName = getItemName(item);
-                }
-
-                if (isActive) {
                     ctx.strokeStyle = "#ffffff";
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
+                    ctx.beginPath();
+                    ctx.moveTo(slotX + inventoryLayout.slotSize, slotY);
+                    ctx.lineTo(slotX + inventoryLayout.slotSize, slotY + inventoryLayout.slotSize);
+                    ctx.lineTo(slotX, slotY + inventoryLayout.slotSize);
+                    ctx.stroke();
+
+                    if (!isEmpty) {
+                        const inset = 6;
+                            drawItemIcon(ctx, item.type, slotX + inset, slotY + inset, inventoryLayout.slotSize - (inset * 2));
+
+                        // Stack count
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "8px 'Press Start 2P', monospace";
+                        ctx.textAlign = "right";
+                        ctx.fillStyle = "#3f3f3f";
+                        ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 2, slotY + inventoryLayout.slotSize - 4);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fillText(`${item.count}`, slotX + inventoryLayout.slotSize - 3, slotY + inventoryLayout.slotSize - 5);
+                    }
+
+                    if (!hoverItemName && !isEmpty) {
+                        const isHoveringSlot =
+                            mouse.x >= slotX &&
+                            mouse.x <= slotX + inventoryLayout.slotSize &&
+                            mouse.y >= slotY &&
+                            mouse.y <= slotY + inventoryLayout.slotSize;
+                        if (isHoveringSlot) hoverItemName = getItemName(item);
+                    }
+
+                    if (isActive) {
+                        ctx.strokeStyle = "#ffffff";
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
+                    }
                 }
             }
             }
