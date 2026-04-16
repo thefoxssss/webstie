@@ -1808,7 +1808,7 @@ if (onLadder) {
             }
         }
 
-        p.flightEnabled = !!inp.flight;
+        p.flightEnabled = p.armorType === 65 && !!inp.flight;
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;

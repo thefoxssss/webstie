@@ -315,6 +315,7 @@ const blockColors = {
 
     // Inputs
     const keys = { w: false, a: false, d: false, shift: false, upPress: false };
+    let flightToggleEnabled = false;
     const mouse = { x: 0, y: 0, isDown: false };
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
@@ -741,6 +742,14 @@ const blockColors = {
         if (isDownKey) {
             keys.shift = true;
             e.preventDefault();
+        }
+        if (e.key === "f" || e.key === "F" || e.code === "KeyF") {
+            if (canUseFlight()) {
+                flightToggleEnabled = !flightToggleEnabled;
+            } else {
+                flightToggleEnabled = false;
+            }
+            return;
         }
         if (e.key === "q" || e.key === "Q") {
             const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
@@ -1866,13 +1875,16 @@ if (e.button === 2 && !e.shiftKey) {
     // Send input loop
     setInterval(() => {
         if (room && localPlayerId && room.state.players.has(localPlayerId)) {
+            if (!canUseFlight()) {
+                flightToggleEnabled = false;
+            }
             room.send("input", {
                 left: keys.a,
                 right: keys.d,
                 upPress: keys.upPress,
                 up: keys.w,
                 down: keys.shift,
-                flight: canUseFlight()
+                flight: canUseFlight() && flightToggleEnabled
             });
             keys.upPress = false;
         }
@@ -1992,6 +2004,25 @@ if (e.button === 2 && !e.shiftKey) {
                 ctx.fillRect(p.x - 2, p.y - 2, TILE_SIZE + 4, 10);
                 // Chest
                 ctx.fillRect(p.x + 4, p.y + 8, TILE_SIZE - 8, 16);
+
+                if (p.armorType === 65) {
+                    const wingInset = p.flightEnabled ? 8 : 12;
+                    ctx.fillStyle = p.flightEnabled ? "#7ceeff" : "#d8f6ff";
+                    // Wings
+                    ctx.fillRect(p.x - wingInset, p.y + 8, 8, 14);
+                    ctx.fillRect(p.x + TILE_SIZE, p.y + 8, 8, 14);
+
+                    // Flight-enabled texture variant (striped highlights)
+                    if (p.flightEnabled) {
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fillRect(p.x - wingInset + 2, p.y + 10, 4, 2);
+                        ctx.fillRect(p.x + TILE_SIZE + 2, p.y + 10, 4, 2);
+                        ctx.fillRect(p.x - wingInset + 2, p.y + 15, 4, 2);
+                        ctx.fillRect(p.x + TILE_SIZE + 2, p.y + 15, 4, 2);
+                        ctx.fillRect(p.x - wingInset + 2, p.y + 20, 4, 2);
+                        ctx.fillRect(p.x + TILE_SIZE + 2, p.y + 20, 4, 2);
+                    }
+                }
             }
 
             // Draw player border
