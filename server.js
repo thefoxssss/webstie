@@ -674,8 +674,6 @@ type("number")(ItemDrop.prototype, "vx");
 type("number")(ItemDrop.prototype, "vy");
 type("number")(ItemDrop.prototype, "type");
 type("number")(ItemDrop.prototype, "count");
-type("string")(ItemDrop.prototype, "ownerId");
-type("number")(ItemDrop.prototype, "noPickupBefore");
 
 class Chunk extends Schema {
   constructor() {
@@ -982,8 +980,6 @@ this.onMessage("hammer", (client, message) => {
               }
 
               drop.count = 1;
-              drop.ownerId = "";
-              drop.noPickupBefore = Date.now() + 250;
               this.state.drops.set(drop.id, drop);
 
               chunk.blocks.delete(key);
@@ -1009,7 +1005,6 @@ this.onMessage("hammer", (client, message) => {
 
       const drop = this.state.drops.get(message.id);
       if (!drop) return;
-      if (Date.now() < (drop.noPickupBefore || 0)) return;
 
       const dx = p.x + TILE_SIZE/2 - drop.x;
       const dy = p.y + TILE_SIZE/2 - drop.y;
@@ -1145,8 +1140,6 @@ this.onMessage("hammer", (client, message) => {
             drop.vy = -4 - Math.random() * 8;
             drop.type = item.type;
             drop.count = item.count;
-            drop.ownerId = client.sessionId;
-            drop.noPickupBefore = Date.now() + 700;
             this.state.drops.set(drop.id, drop);
         });
     });
@@ -2111,8 +2104,6 @@ if (onLadder) {
                                     drop.vy = -4 - Math.random() * 8;
                                     drop.type = b.type;
                                     drop.count = 1;
-                                    drop.ownerId = "";
-                                    drop.noPickupBefore = Date.now() + 250;
                                     this.state.drops.set(drop.id, drop);
                                 }
                                 chunk.blocks.delete(`${tx},${ty}`);
