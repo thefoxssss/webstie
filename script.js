@@ -47,7 +47,6 @@ import {
   adminLogAdminActionFromInput,
   adminScheduleTaskFromInput,
   adminGiveBuilderItemFromInput,
-  adminToggleBuilderFlightFromInput,
   adminClearScheduledTasksFromInput,
   adminUnlockAllAchievements,
   trackGamePlay,
@@ -143,7 +142,6 @@ window.adminSetPreferenceFromInput = adminSetPreferenceFromInput;
 window.adminRemoveRestrictionFromInput = adminRemoveRestrictionFromInput;
 window.adminLogAdminActionFromInput = adminLogAdminActionFromInput;
 window.adminGiveBuilderItemFromInput = adminGiveBuilderItemFromInput;
-window.adminToggleBuilderFlightFromInput = adminToggleBuilderFlightFromInput;
 window.adminScheduleTaskFromInput = adminScheduleTaskFromInput;
 window.adminClearScheduledTasksFromInput = adminClearScheduledTasksFromInput;
 window.adminUnlockAllAchievements = adminUnlockAllAchievements;
