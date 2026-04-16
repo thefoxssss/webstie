@@ -1,0 +1,106 @@
+--- script.js
++++ script.js
+@@ -1071,6 +1071,83 @@
+   }
+ }
+
++// Global Social Network Functions
++window.createSocialPost = async function() {
++  const input = document.getElementById("socialPostInput");
++  if (!input) return;
++  const text = input.value.trim();
++  if (!text) return;
++  if (state.myName === "ANON") {
++    window.showToast("SOCIAL", "❌", "MUST BE LOGGED IN TO POST");
++    return;
++  }
++
++  const postBtn = document.getElementById("socialPostBtn");
++  postBtn.disabled = true;
++  postBtn.innerText = "POSTING...";
++
++  try {
++    const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
++    const { db } = await import("./core.js");
++
++    await addDoc(collection(db, "gooner_social_posts"), {
++      author: state.myName,
++      content: text,
++      timestamp: serverTimestamp(),
++      likes: 0
++    });
++
++    input.value = "";
++    const charsSpan = document.getElementById("socialPostChars");
++    if (charsSpan) charsSpan.innerText = "0 / 140";
++    window.showToast("SOCIAL", "✅", "POSTED SUCCESSFULLY");
++    window.loadSocialFeed();
++  } catch (e) {
++    window.showToast("SOCIAL", "❌", "FAILED TO POST: " + e.message);
++  } finally {
++    postBtn.disabled = false;
++    postBtn.innerText = "POST";
++  }
++};
++
++window.loadSocialFeed = async function() {
++  const feedList = document.getElementById("socialFeedList");
++  if (!feedList) return;
++
++  try {
++    const { collection, query, orderBy, limit, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
++    const { db, escapeHtml } = await import("./core.js");
++
++    const q = query(collection(db, "gooner_social_posts"), orderBy("timestamp", "desc"), limit(50));
++    const snap = await getDocs(q);
++
++    if (snap.empty) {
++      feedList.innerHTML = '<div class="social-empty" style="text-align: center; font-size: 10px; color: #aaa;">NO POSTS YET. BE THE FIRST!</div>';
++      return;
++    }
++
++    feedList.innerHTML = "";
++    snap.forEach(doc => {
++      const data = doc.data();
++      const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString() : "JUST NOW";
++
++      const postEl = document.createElement("div");
++      postEl.className = "social-post";
++      postEl.style.cssText = "border: 1px solid var(--accent-dim); padding: 10px; border-radius: 4px; background: rgba(0,255,0,0.02);";
++
++      postEl.innerHTML = `
++        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 10px;">
++          <strong style="color: var(--accent); cursor: pointer;" onclick="window.adminTargetUser.value='${escapeHtml(data.author)}'; window.toggleTopPanelOverlay('overlayAdmin');">${escapeHtml(data.author)}</strong>
++          <span style="color: #aaa;">${time}</span>
++        </div>
++        <div style="font-size: 12px; word-wrap: break-word;">${escapeHtml(data.content)}</div>
++      `;
++      feedList.appendChild(postEl);
++    });
++  } catch (e) {
++    feedList.innerHTML = `<div class="social-empty" style="text-align: center; font-size: 10px; color: red;">FAILED TO LOAD FEED</div>`;
++  }
++};
+
+ // --- OVERLAY MANAGEMENT ---
+ // Only one panel overlay (Bank, Shop, Inventory, Profile) or game box is visible at a time.
+@@ -1094,6 +1171,11 @@
+     updateLogPanel.style.display = "none";
+     liveOpsPanel.style.display = "none";
+   }
++
++  if (id === "overlaySocial") {
++    window.loadSocialFeed();
++  }
++
+   const active = document.querySelector(".overlay.active");
+   if (active && active.id !== id && active.id !== "overlayLogin") {
+     active.classList.remove("active");
+@@ -1124,6 +1206,7 @@
+     overlaySeason: "tabSeason",
+     overlayCrew: "tabCrew",
+     overlayAdmin: "tabAdmin",
++    overlaySocial: "tabSocial",
+   };
+
+   Object.values(tabMap).forEach((tabId) => {

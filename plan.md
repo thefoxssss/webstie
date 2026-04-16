@@ -1,28 +1,8 @@
-1. **Update `server.js` with Agar.io logic:**
-   - Define `AgarPlayer`, `AgarFood`, and `AgarState` schemas using Colyseus `@colyseus/schema`.
-   - Implement `AgarRoom` class, mimicking `BuilderRoom` for server discovery (`agarServerDirectory`).
-   - Add tick loop inside `AgarRoom` to handle player movement, food collision, and player-to-player collision (eating).
-   - Register the `agar_room` game room and add the `/agar-servers` Express endpoint.
+1. Add profile fields in HTML (bio and social media app): `index.html`. We already applied this partially, but we should make sure the input and display elements are there. Wait, we already did it successfully.
+2. In `core.js`: Add variables `myBio` and `mySocialLink` locally. We successfully did this partially.
+3. Expose them through the proxy state in `core.js`. We failed this. Let's do it cleanly by searching for where to put it.
+4. Update `saveStats()` to include the bio and socialLink. We successfully did it!
+5. Update `loadProfile()` to load `bio` and `socialLink` and set the HTML elements correctly. We successfully did it!
+6. Update `script.js` to attach a click listener to save the profile info. We successfully did it!
 
-2. **Update `index.html`:**
-   - Add a new overlay `<div id="overlayAgar">` containing the menu for server joining/creation, and the game area with a canvas, a leaderboard overlay, and a death screen.
-
-3. **Update `gameCatalog.js`:**
-   - Add the Agar game entry to `GAME_DIRECTORY_ENTRIES` with `id: "agar"`.
-
-4. **Update `script.js`:**
-   - Import `initAgar` from `./games/agar.js`.
-   - Call `initAgar()` in the game launch dispatch.
-
-5. **Create `games/agar.js`:**
-   - Implement the game loop with `requestAnimationFrame`.
-   - Setup Colyseus client connection (handling local vs prod via the UI like Builder).
-   - Draw players, foods, and a grid background.
-   - Handle mouse movement (`mousemove`) to send target coordinates to the server.
-   - Add logic for respawning and updating the leaderboard.
-
-6. **Complete pre commit steps:**
-   - Run pre commit scripts.
-   - Verify server loads correctly, and syntax is clean.
-
-7. **Submit the change.**
+Let's double check if we missed anything. I'll make sure `core.js`'s proxy export handles the `bio` and `socialLink`.

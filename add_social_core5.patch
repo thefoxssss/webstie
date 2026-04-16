@@ -1,0 +1,12 @@
+--- core.js
++++ core.js
+@@ -3212,6 +3212,9 @@
+   if (id === "overlayProfile") renderBadges();
+   if (id === "overlaySeason") renderSeasonPanel();
+   if (id === "overlayCrew") renderCrewPanel();
++  if (id === "overlaySocial" && typeof window.loadSocialFeed === "function") {
++    window.loadSocialFeed();
++  }
+   if (id === "globalChat") {
+     renderChatTab();
+   }

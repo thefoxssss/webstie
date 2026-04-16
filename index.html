@@ -64,6 +64,9 @@
         <button id="tabCrew" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayCrew')">
           CREW
         </button>
+        <button id="tabSocial" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlaySocial')">
+          SOCIAL
+        </button>
         <button
           class="menu-btn"
           id="tabAdmin"
@@ -685,6 +688,18 @@
           <div class="stat-row">
             <span>ACCOUNT ID</span><span id="profUid">...</span>
           </div>
+          <div class="stat-row" style="flex-direction: column; align-items: flex-start; gap: 5px;">
+            <span>BIO / DESCRIPTION</span>
+            <input type="text" id="profBioInput" class="term-input" placeholder="ENTER BIO..." maxlength="100" style="width: 100%; margin-bottom: 5px;" />
+            <span id="profBioDisplay" style="color: var(--accent); font-size: 12px; word-break: break-word; min-height: 14px;"></span>
+          </div>
+          <div class="stat-row" style="flex-direction: column; align-items: flex-start; gap: 5px;">
+            <span>SOCIAL MEDIA LINK</span>
+            <input type="url" id="profSocialInput" class="term-input" placeholder="HTTPS://..." maxlength="100" style="width: 100%; margin-bottom: 5px;" />
+            <a id="profSocialDisplay" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-size: 12px; word-break: break-all; min-height: 14px;"></a>
+          </div>
+          <button class="term-btn" id="btnSaveProfileInfo" style="width: 100%; margin-top: 10px;">SAVE PROFILE INFO</button>
+          <p id="profSaveMsg" style="font-size: 10px; color: #0f0; text-align: center; margin-top: 5px; min-height: 12px;"></p>
         </div>
         <div
           style="
@@ -1213,6 +1228,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Social Media Overlay -->
+    <div class="overlay menu-overlay" id="overlaySocial">
+      <div class="score-box" style="width: min(94vw, 600px);">
+        <h2 style="text-align: center">GOONER FEED</h2>
+        <div style="font-size: 10px; text-align: center; margin-bottom: 10px; color: #aaa;">GLOBAL SOCIAL NETWORK</div>
+
+        <div class="social-compose" style="margin-bottom: 20px; border-bottom: 1px dashed var(--accent-dim); padding-bottom: 15px;">
+          <textarea id="socialPostInput" class="term-input" placeholder="WHAT'S ON YOUR MIND?" maxlength="140" rows="3" style="width: 100%; resize: none; margin-bottom: 10px;"></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="socialPostChars" style="font-size: 10px; color: #aaa;">0 / 140</span>
+            <button class="term-btn" id="socialPostBtn" onclick="window.createSocialPost()">POST</button>
+          </div>
+        </div>
+
+        <div class="social-feed" id="socialFeedList" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+          <div class="social-empty" style="text-align: center; font-size: 10px; color: #aaa;">LOADING FEED...</div>
+        </div>
+
+        <button class="term-btn" style="margin-top: 20px; width: 100%;" onclick="window.closeOverlays()">
+          CLOSE
+        </button>
+      </div>
+    </div>
+
+
+
+
+
 
     <!-- Configuration overlay for display/audio toggles. -->
     <div class="overlay menu-overlay" id="overlayConfig">

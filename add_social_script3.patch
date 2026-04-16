@@ -1,0 +1,18 @@
+--- script.js
++++ script.js
+@@ -1209,6 +1209,7 @@
+     overlayCrew: "tabCrew",
+     globalChat: "tabChat",
+     overlayAdmin: "tabAdmin",
++    overlaySocial: "tabSocial",
+     overlayGamebox: "menuToggle",
+     overlayTrending: "menuToggle",
+     overlayUpdates: "menuToggle",
+@@ -1214,7 +1215,7 @@
+     overlayUpdates: "menuToggle",
+   };
+
+-  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabChat", "tabAdmin", "menuToggle"]
++  const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabSocial", "tabChat", "tabAdmin", "menuToggle"]
+     .map((id) => document.getElementById(id))
+     .filter(Boolean);

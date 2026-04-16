@@ -1,0 +1,10 @@
+--- script.js
++++ script.js
+@@ -1245,6 +1245,7 @@
+     "overlayCrew",
+     "overlayAdmin",
+     "overlayGamebox",
++    "overlaySocial",
+   ];
+
+   const getActiveOverlay = () => {

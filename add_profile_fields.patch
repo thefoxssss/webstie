@@ -1,0 +1,21 @@
+--- index.html
++++ index.html
+@@ -685,6 +685,18 @@
+           <div class="stat-row">
+             <span>ACCOUNT ID</span><span id="profUid">...</span>
+           </div>
++          <div class="stat-row" style="flex-direction: column; align-items: flex-start; gap: 5px;">
++            <span>BIO / DESCRIPTION</span>
++            <input type="text" id="profBioInput" class="term-input" placeholder="ENTER BIO..." maxlength="100" style="width: 100%; margin-bottom: 5px;" />
++            <span id="profBioDisplay" style="color: var(--accent); font-size: 12px; word-break: break-word; min-height: 14px;"></span>
++          </div>
++          <div class="stat-row" style="flex-direction: column; align-items: flex-start; gap: 5px;">
++            <span>SOCIAL MEDIA LINK</span>
++            <input type="url" id="profSocialInput" class="term-input" placeholder="HTTPS://..." maxlength="100" style="width: 100%; margin-bottom: 5px;" />
++            <a id="profSocialDisplay" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-size: 12px; word-break: break-all; min-height: 14px;"></a>
++          </div>
++          <button class="term-btn" id="btnSaveProfileInfo" style="width: 100%; margin-top: 10px;">SAVE PROFILE INFO</button>
++          <p id="profSaveMsg" style="font-size: 10px; color: #0f0; text-align: center; margin-top: 5px; min-height: 12px;"></p>
+         </div>
+         <div
+           style="

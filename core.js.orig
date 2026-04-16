@@ -3212,9 +3212,6 @@ function runOverlayOpenHooks(id) {
   if (id === "overlayInventory") renderInventory();
   if (id === "overlaySeason") renderSeasonPanel();
   if (id === "overlayCrew") renderCrewPanel();
-  if (id === "overlaySocial" && typeof window.loadSocialFeed === "function") {
-    window.loadSocialFeed();
-  }
   if (id === "globalChat") {
     renderChatTab();
   }

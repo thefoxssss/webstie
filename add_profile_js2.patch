@@ -1,0 +1,44 @@
+--- core.js
++++ core.js
+@@ -147,6 +147,8 @@
+ let adminSettings = {};
+ let myItemToggles = {};
+ let myInventory = [];
++let myBio = "";
++let mySocialLink = "";
+
+ // Global state proxy to export variables across modules safely
+ export const state = new Proxy({}, {
+@@ -165,6 +167,8 @@
+       if (prop === "adminSettings") return adminSettings;
+       if (prop === "itemToggles") return myItemToggles;
+       if (prop === "inventory") return myInventory;
++      if (prop === "bio") return myBio;
++      if (prop === "socialLink") return mySocialLink;
+       return undefined;
+     },
+     set(target, prop, value) {
+@@ -216,6 +220,12 @@
+       if (prop === "inventory") {
+         myInventory = value;
+         return true;
++      }
++      if (prop === "bio") {
++        myBio = value;
++        return true;
++      }
++      if (prop === "socialLink") {
++        mySocialLink = value;
++        return true;
+       }
+       return false;
+     }
+@@ -3412,6 +3422,12 @@
+   myMoney = 0;
+   myStats = { games: 0, wpm: 0, wins: 0 };
+   myAchievements = [];
++  myBio = "";
++  mySocialLink = "";
+   myJoined = 0;
+   builderInventory = null;
+   builderHotbar = null;

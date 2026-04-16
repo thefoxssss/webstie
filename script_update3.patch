@@ -1,0 +1,12 @@
+--- script.js
++++ script.js
+@@ -361,8 +361,7 @@
+       const socialInput = document.getElementById("profSocialInput");
+       if (bioInput) state.bio = bioInput.value;
+       if (socialInput) state.socialLink = socialInput.value;
+-      // Import is needed or use core module
+-      window.core.saveStats();
++      saveStats();
+
+       const msgEl = document.getElementById("profSaveMsg");
+       if (msgEl) {

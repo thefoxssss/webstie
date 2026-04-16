@@ -1,0 +1,12 @@
+--- core.js
++++ core.js
+@@ -3213,6 +3214,9 @@
+   if (id === "overlaySeason") renderSeasonPanel();
+   if (id === "overlayCrew") renderCrewPanel();
+   if (id === "overlayAdmin" && state.myName === "ANON") return;
++  if (id === "overlaySocial" && typeof window.loadSocialFeed === "function") {
++    window.loadSocialFeed();
++  }
+
+   const active = document.querySelector(".overlay.active");
+   if (active && active.id !== id && active.id !== "overlayLogin") {

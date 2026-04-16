@@ -1,0 +1,43 @@
+--- script.js
++++ script.js
+@@ -1087,14 +1087,13 @@
+   postBtn.innerText = "POSTING...";
+
+   try {
+-    const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+-    const { db } = await import("./core.js");
++    const { firebase } = await import("./core.js");
+
+-    await addDoc(collection(db, "gooner_social_posts"), {
++    await firebase.addDoc(firebase.collection(firebase.db, "gooner_social_posts"), {
+       author: state.myName,
+       content: text,
+-      timestamp: serverTimestamp(),
++      timestamp: Date.now(),
+       likes: 0
+     });
+
+@@ -1115,11 +1114,10 @@
+   if (!feedList) return;
+
+   try {
+-    const { collection, query, orderBy, limit, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+-    const { db, escapeHtml } = await import("./core.js");
++    const { firebase, escapeHtml } = await import("./core.js");
+
+-    const q = query(collection(db, "gooner_social_posts"), orderBy("timestamp", "desc"), limit(50));
+-    const snap = await getDocs(q);
++    const q = firebase.query(firebase.collection(firebase.db, "gooner_social_posts"), firebase.orderBy("timestamp", "desc"), firebase.limit(50));
++    const snap = await firebase.getDocs(q);
+
+     if (snap.empty) {
+       feedList.innerHTML = '<div class="social-empty" style="text-align: center; font-size: 10px; color: #aaa;">NO POSTS YET. BE THE FIRST!</div>';
+@@ -1129,7 +1127,7 @@
+     feedList.innerHTML = "";
+     snap.forEach(doc => {
+       const data = doc.data();
+-      const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString() : "JUST NOW";
++      const time = data.timestamp ? new Date(data.timestamp).toLocaleString() : "JUST NOW";
+
+       const postEl = document.createElement("div");
+       postEl.className = "social-post";

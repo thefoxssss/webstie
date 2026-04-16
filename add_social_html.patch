@@ -1,0 +1,33 @@
+--- index.html
++++ index.html
+@@ -1246,6 +1246,31 @@
+       </div>
+     </div>
+
++    <!-- Social Media Overlay -->
++    <div class="overlay menu-overlay" id="overlaySocial">
++      <div class="score-box" style="width: min(94vw, 600px);">
++        <h2 style="text-align: center">GOONER FEED</h2>
++        <div style="font-size: 10px; text-align: center; margin-bottom: 10px; color: #aaa;">GLOBAL SOCIAL NETWORK</div>
++
++        <div class="social-compose" style="margin-bottom: 20px; border-bottom: 1px dashed var(--accent-dim); padding-bottom: 15px;">
++          <textarea id="socialPostInput" class="term-input" placeholder="WHAT'S ON YOUR MIND?" maxlength="140" rows="3" style="width: 100%; resize: none; margin-bottom: 10px;"></textarea>
++          <div style="display: flex; justify-content: space-between; align-items: center;">
++            <span id="socialPostChars" style="font-size: 10px; color: #aaa;">0 / 140</span>
++            <button class="term-btn" id="socialPostBtn" onclick="window.createSocialPost()">POST</button>
++          </div>
++        </div>
++
++        <div class="social-feed" id="socialFeedList" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
++          <div class="social-empty" style="text-align: center; font-size: 10px; color: #aaa;">LOADING FEED...</div>
++        </div>
++
++        <button class="term-btn" style="margin-top: 20px; width: 100%;" onclick="window.closeOverlays()">
++          CLOSE
++        </button>
++      </div>
++    </div>
++
+     <!-- Configuration overlay for display/audio toggles. -->
+     <div class="overlay menu-overlay" id="overlayConfig">
+       <div class="config-box">

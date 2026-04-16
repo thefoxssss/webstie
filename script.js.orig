@@ -375,16 +375,6 @@ window.launchGame = (game, source = "direct") => {
     });
   }
 
-  const socialInput = document.getElementById("socialPostInput");
-  const socialChars = document.getElementById("socialPostChars");
-  if (socialInput && socialChars) {
-    socialInput.addEventListener("input", () => {
-      const len = socialInput.value.length;
-      socialChars.innerText = `${len} / 140`;
-      socialChars.style.color = len >= 140 ? "#f66" : "#aaa";
-    });
-  }
-
 const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayGeo",
   "overlayType",

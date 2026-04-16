@@ -1,0 +1,11 @@
+--- core.js
++++ core.js
+@@ -211,6 +211,8 @@
+ export let adminSettings = {};
+ export let myItemToggles = {};
+ export let myInventory = [];
++export let myBio = "";
++export let mySocialLink = "";
+
+ // The locally normalized user config
+ function normalizeUsername(user) {

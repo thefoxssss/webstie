@@ -1,0 +1,21 @@
+--- core.js
++++ core.js
+@@ -280,6 +280,18 @@
+   set myInventory(value) {
+     myInventory = value;
+   },
++  get bio() {
++    return myBio;
++  },
++  set bio(value) {
++    myBio = value;
++  },
++  get socialLink() {
++    return mySocialLink;
++  },
++  set socialLink(value) {
++    mySocialLink = value;
++  },
+   get builderInventory() { return builderInventory; },
+   set builderInventory(v) { builderInventory = v; },
+   get builderHotbar() { return builderHotbar; },
