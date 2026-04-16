@@ -195,12 +195,11 @@ export const DEFAULT_CREW_LOGO = {
 let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO };
 let seasonData = { id: "", xp: 0, hall: [] };
 let adminSettings = {};
-let myBio = "";
-let mySocialLink = "";
+export let myBio = "";
+export let mySocialLink = "";
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
 const SEASON_STARTING_MONEY = 1000;
-const ONLINE_STATUS_WINDOW_MS = 120000;
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
@@ -223,7 +222,6 @@ const ADMIN_ALLOWLIST = new Set([
   "THEFOX",
   "NOOB",
   "NICKHURT",
-  "BIN_LADEN",
 ]);
 
 
@@ -243,22 +241,6 @@ let seasonBoardUnsub = null;
 let activeSeasonTab = "";
 let activeSeasonSubTab = "solo";
 let cachedSeasonBoards = { solo: [], gang: [] };
-let hideStatus = false;
-let stopChatPresenceSync = null;
-let chatPresenceByUser = {};
-
-function getUserStatusState(lastLogin, isHidden = false) {
-  if (isHidden) return "hidden";
-  const ts = Number(lastLogin || 0);
-  if (!Number.isFinite(ts) || ts <= 0) return "offline";
-  return Date.now() - ts <= ONLINE_STATUS_WINDOW_MS ? "online" : "offline";
-}
-
-function renderStatusDot(state = "offline") {
-  const safeState = ["online", "offline", "hidden"].includes(state) ? state : "offline";
-  const label = safeState.toUpperCase();
-  return `<span class="status-dot ${safeState}" title="${label}" aria-label="${label}"></span>`;
-}
 
 // Centralized mutable state wrapper (keeps consumers consistent).
 export const state = {
@@ -310,6 +292,8 @@ export const state = {
   set socialLink(value) {
     mySocialLink = value;
   },
+
+
   get builderInventory() { return builderInventory; },
   set builderInventory(v) { builderInventory = v; },
   get builderHotbar() { return builderHotbar; },
@@ -2339,7 +2323,7 @@ function renderSeasonBoard() {
             if (activeSeasonSubTab === "gang") {
               return `<div class="score-item"><div>#${idx + 1} ${logoHtml}[${escapeHtml(row.tag)}]</div> <div>$${Math.round(row.money)} // ${row.members} OPS</div></div>`;
             } else {
-              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} ${renderStatusDot(row.status)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
+              return `<div class="score-item"><div>#${idx + 1} ${escapeHtml(row.name)} <span style="opacity:.7">${row.crewTag !== "SOLO" ? logoHtml : ""}${escapeHtml(row.crewTag)}</span></div> <div>$${Math.round(row.money)}</div></div>`;
             }
           })
           .join("")
@@ -2415,13 +2399,7 @@ function getLiveSeasonBoardRows(mode = "solo") {
   }
 
   const soloRows = (cachedSeasonBoards.solo || []).filter((row) => String(row.name || "").toUpperCase() !== normalizedName);
-  soloRows.push({
-    name: normalizedName,
-    money: localMoney,
-    crewTag: normalizedCrewTag,
-    logo: crewData.logo || DEFAULT_CREW_LOGO,
-    status: hideStatus ? "hidden" : "online",
-  });
+  soloRows.push({ name: normalizedName, money: localMoney, crewTag: normalizedCrewTag, logo: crewData.logo || DEFAULT_CREW_LOGO });
   return soloRows.sort((a, b) => b.money - a.money);
 }
 
@@ -2509,13 +2487,7 @@ function loadSeasonLeaderboards() {
       const validLogo = (playerCrew.logo && playerCrew.logo.palette) ? playerCrew.logo : null;
       const wins = Number(playerCrew.wins || 0);
       const currentMembers = playerCrew.members?.length || 1;
-      players.push({
-        name: playerName,
-        money: playerMoney,
-        crewTag: crewTag || "SOLO",
-        status: getUserStatusState(data.lastLogin, Boolean(data.hideStatus)),
-        _logoRaw: validLogo,
-      });
+      players.push({ name: playerName, money: playerMoney, crewTag: crewTag || "SOLO", _logoRaw: validLogo });
       if (crewTag) {
         if (!crews[crewTag]) {
           crews[crewTag] = { tag: crewTag, money: 0, members: 0, logo: validLogo, maxWins: -1, repMembers: -1 };
@@ -2557,7 +2529,6 @@ async function syncCrewData() {
     const snap = await getDocs(q);
 
     const matchingMembers = [];
-    const memberPresence = {};
     let authUser = null;
     let maxWins = -1;
     let totalBank = 0;
@@ -2565,13 +2536,7 @@ async function syncCrewData() {
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       if (data.crewData) {
-        const memberName = String(data.name || docSnap.id || "ANON");
-        matchingMembers.push({
-          name: memberName,
-          money: data.money || 0,
-          role: data.crewData.role || "MEMBER",
-        });
-        memberPresence[memberName.toUpperCase()] = getUserStatusState(data.lastLogin, Boolean(data.hideStatus));
+        matchingMembers.push({ name: data.name, money: data.money || 0, role: data.crewData.role || "MEMBER" });
         totalBank += Number(data.crewData.bank || 0);
 
         if (data.crewData.wins >= maxWins) {
@@ -2596,7 +2561,6 @@ async function syncCrewData() {
     });
 
     crewData.members = matchingMembers.map(m => m.name);
-    crewData.memberPresence = memberPresence;
     saveCrewData();
 
   } catch (err) {
@@ -2644,8 +2608,7 @@ async function renderCrewPanel() {
       list.innerHTML = crewData.members.map(member =>
         `<div class="crew-roster-item">
            <span class="crew-roster-name">${escapeHtml(member)}</span>
-           ${renderStatusDot(crewData.memberPresence?.[String(member || "").toUpperCase()] || "offline")}
-           ${String(member || "").toUpperCase() === String(myName || "").toUpperCase() ? '<span class="crew-roster-you">(YOU)</span>' : ''}
+           ${member === myName ? '<span class="crew-roster-you">(YOU)</span>' : ''}
          </div>`
       ).join("");
     }
@@ -3239,9 +3202,9 @@ const TOP_PANEL_OVERLAY_IDS = [
   "overlayProfile",
   "overlaySeason",
   "overlayCrew",
-  "overlaySocial",
   "overlayAdmin",
   "overlayGamebox",
+  "overlaySocial",
 ];
 
 function runOverlayOpenHooks(id) {
@@ -3499,7 +3462,6 @@ function loadProfile(data) {
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   adminSettings = data.adminSettings || {};
-  hideStatus = Boolean(data.hideStatus);
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   myBio = data.bio || "";
   mySocialLink = data.socialLink || "";
@@ -3540,7 +3502,6 @@ function loadProfile(data) {
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
   updateMatrixToggle();
   updateAdminMenu();
-  applyStatusVisibilityToggle(hideStatus);
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -3582,6 +3543,22 @@ export function updateUI() {
       socialDisplay.innerText = mySocialLink;
       socialDisplay.href = mySocialLink.startsWith('http') ? mySocialLink : `https://${mySocialLink}`;
     } else {
+      socialDisplay.innerText = "NO SOCIAL LINK SET";
+      socialDisplay.removeAttribute("href");
+    }
+  }
+
+
+  // Profile Description / Social
+ else {
+      socialDisplay.innerText = "NO SOCIAL LINK SET";
+      socialDisplay.removeAttribute("href");
+    }
+  }
+
+
+  // Profile Description / Social
+ else {
       socialDisplay.innerText = "NO SOCIAL LINK SET";
       socialDisplay.removeAttribute("href");
     }
@@ -3645,7 +3622,8 @@ async function register(username, pin) {
     builderInventory: null,
     builderHotbar: null,
     builderArmor: null,
-    hideStatus: false,
+    bio: "",
+    socialLink: "",
   };
 
   const localProfile = getLocalProfile(normalized);
@@ -4542,7 +4520,8 @@ export async function saveStats() {
     crewData,
     seasonData,
     adminSettings,
-    hideStatus,
+    bio: myBio,
+    socialLink: mySocialLink,
     lastLogin: Date.now(),
   };
   saveLocalProfileSnapshot(snapshot);
@@ -4563,7 +4542,6 @@ export async function saveStats() {
         crewData,
         seasonData,
     adminSettings,
-        hideStatus,
       }),
     "SAVE PROFILE",
     "Progress saved locally; cloud sync retry pending."
@@ -5585,12 +5563,6 @@ function applyReducedMotion(enabled) {
   const motionToggle = document.getElementById("motionToggle");
   if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
 }
-
-function applyStatusVisibilityToggle(hidden) {
-  hideStatus = Boolean(hidden);
-  const statusToggle = document.getElementById("statusVisibilityToggle");
-  if (statusToggle) statusToggle.textContent = hideStatus ? "HIDDEN" : "VISIBLE";
-}
 // Open the shared games panel from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
 const menuDropdownEl = document.getElementById("menuDropdown");
@@ -5699,17 +5671,6 @@ document.getElementById("motionToggle").onclick = () => {
   writeUiConfig({ reducedMotion: enabled });
 };
 
-document.getElementById("statusVisibilityToggle").onclick = async () => {
-  applyStatusVisibilityToggle(!hideStatus);
-  writeUiConfig({ hideStatus });
-  if (myName !== "ANON") {
-    await saveStats();
-    if (isChatInitialized) renderChatTab();
-    renderSeasonPanel();
-    renderCrewPanel();
-  }
-};
-
 (function hydrateUiConfig() {
   const config = readUiConfig();
   const uiScale = Number(config.uiScale || 1);
@@ -5718,7 +5679,6 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   applyUiTextSize(uiTextSize);
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
-  applyStatusVisibilityToggle(Boolean(config.hideStatus));
   const uiScaleSlider = document.getElementById("uiScaleSlider");
   const uiTextSlider = document.getElementById("uiTextSlider");
   if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
@@ -5915,35 +5875,6 @@ let globallyMutedUsers = new Set();
 let isChatInitialized = false;
 let isChatModerationModeEnabled = true;
 
-function getStatusStateForUser(username) {
-  const normalized = normalizeUsername(username || "");
-  if (!normalized) return "offline";
-  if (normalized === normalizeUsername(myName)) {
-    return hideStatus ? "hidden" : "online";
-  }
-  return chatPresenceByUser[normalized] || "offline";
-}
-
-function renderChatUserLabel(username, label = username) {
-  return `${renderStatusDot(getStatusStateForUser(username))}<span class="chat-user">${escapeHtml(String(label || "ANON"))}:</span>`;
-}
-
-function startChatPresenceSync() {
-  if (stopChatPresenceSync) return;
-  const q = query(collection(db, "gooner_users"), orderBy("name"), limit(200));
-  stopChatPresenceSync = onSnapshot(q, (snap) => {
-    const nextPresence = {};
-    snap.forEach((row) => {
-      const data = row.data() || {};
-      const user = normalizeUsername(data.name || row.id || "");
-      if (!user) return;
-      nextPresence[user] = getUserStatusState(data.lastLogin, Boolean(data.hideStatus));
-    });
-    chatPresenceByUser = nextPresence;
-    if (isChatInitialized) renderChatTab();
-  });
-}
-
 function canUseChatModeration() {
   return isGodUser() && isChatModerationModeEnabled;
 }
@@ -5990,7 +5921,7 @@ function getChatTabConfig(tab) {
         const mine = sender === normalizeUsername(myName);
         const partner = mine ? to || "UNKNOWN" : sender;
         const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
-        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
     global: {
@@ -6001,7 +5932,7 @@ function getChatTabConfig(tab) {
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     },
     crew: {
@@ -6019,7 +5950,7 @@ function getChatTabConfig(tab) {
       },
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
       }
     }
   };
@@ -6084,7 +6015,7 @@ function renderChatTab() {
       text.className = "chat-msg-text";
       if (isLocallyMuted || isGloballyMuted) {
         const muteScope = isGloballyMuted ? "GLOBAL" : "LOCAL";
-        text.innerHTML = `${renderChatUserLabel(user, user)} <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+        text.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
       } else {
         text.innerHTML = tabConfig.renderMessage(m);
       }
@@ -6234,7 +6165,6 @@ function initChat() {
     });
   });
   initGlobalChatMutes();
-  startChatPresenceSync();
   renderChatTab();
   isChatInitialized = true;
   document.getElementById("chatInput").addEventListener("keydown", async (e) => {

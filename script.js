@@ -13,8 +13,8 @@ import {
   startJob,
   submitJob,
   state,
-  adminGrantCash,
   saveStats,
+  adminGrantCash,
   adminGrantCashFromInput,
   adminSetCashFromInput,
   adminMultiplyCashFromInput,
@@ -357,33 +357,6 @@ window.launchGame = (game, source = "direct") => {
   unlockAchievement("noob");
 };
 
-  // Setup profile info save button
-  const btnSaveProfileInfo = document.getElementById("btnSaveProfileInfo");
-  if (btnSaveProfileInfo) {
-    btnSaveProfileInfo.addEventListener("click", () => {
-      const bioInput = document.getElementById("profBioInput");
-      const socialInput = document.getElementById("profSocialInput");
-      if (bioInput) state.bio = bioInput.value;
-      if (socialInput) state.socialLink = socialInput.value;
-      saveStats();
-
-      const msgEl = document.getElementById("profSaveMsg");
-      if (msgEl) {
-        msgEl.innerText = "PROFILE INFO SAVED";
-        setTimeout(() => { msgEl.innerText = ""; }, 3000);
-      }
-    });
-  }
-
-  const socialInput = document.getElementById("socialPostInput");
-  const socialChars = document.getElementById("socialPostChars");
-  if (socialInput && socialChars) {
-    socialInput.addEventListener("input", () => {
-      const len = socialInput.value.length;
-      socialChars.innerText = `${len} / 140`;
-      socialChars.style.color = len >= 140 ? "#f66" : "#aaa";
-    });
-  }
 
 const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlayGeo",
@@ -839,81 +812,6 @@ async function toggleGameFullscreen(overlay, button) {
 }
 
 
-// Global Social Network Functions
-window.createSocialPost = async function() {
-  const input = document.getElementById("socialPostInput");
-  if (!input) return;
-  const text = input.value.trim();
-  if (!text) return;
-  if (state.myName === "ANON") {
-    window.showToast("SOCIAL", "❌", "MUST BE LOGGED IN TO POST");
-    return;
-  }
-
-  const postBtn = document.getElementById("socialPostBtn");
-  postBtn.disabled = true;
-  postBtn.innerText = "POSTING...";
-
-  try {
-    const { firebase } = await import("./core.js");
-
-    await firebase.addDoc(firebase.collection(firebase.db, "gooner_social_posts"), {
-      author: state.myName,
-      content: text,
-      timestamp: Date.now(),
-      likes: 0
-    });
-
-    input.value = "";
-    const charsSpan = document.getElementById("socialPostChars");
-    if (charsSpan) charsSpan.innerText = "0 / 140";
-    window.showToast("SOCIAL", "✅", "POSTED SUCCESSFULLY");
-    window.loadSocialFeed();
-  } catch (e) {
-    window.showToast("SOCIAL", "❌", "FAILED TO POST: " + e.message);
-  } finally {
-    postBtn.disabled = false;
-    postBtn.innerText = "POST";
-  }
-};
-
-window.loadSocialFeed = async function() {
-  const feedList = document.getElementById("socialFeedList");
-  if (!feedList) return;
-
-  try {
-    const { firebase, escapeHtml } = await import("./core.js");
-
-    const q = firebase.query(firebase.collection(firebase.db, "gooner_social_posts"), firebase.orderBy("timestamp", "desc"), firebase.limit(50));
-    const snap = await firebase.getDocs(q);
-
-    if (snap.empty) {
-      feedList.innerHTML = '<div class="social-empty" style="text-align: center; font-size: 10px; color: #aaa;">NO POSTS YET. BE THE FIRST!</div>';
-      return;
-    }
-
-    feedList.innerHTML = "";
-    snap.forEach(doc => {
-      const data = doc.data();
-      const time = data.timestamp ? new Date(data.timestamp).toLocaleString() : "JUST NOW";
-
-      const postEl = document.createElement("div");
-      postEl.className = "social-post";
-      postEl.style.cssText = "border: 1px solid var(--accent-dim); padding: 10px; border-radius: 4px; background: rgba(0,255,0,0.02);";
-
-      postEl.innerHTML = `
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 10px;">
-          <strong style="color: var(--accent); cursor: pointer;" onclick="window.adminTargetUser.value='${escapeHtml(data.author)}'; window.toggleTopPanelOverlay('overlayAdmin');">${escapeHtml(data.author)}</strong>
-          <span style="color: #aaa;">${time}</span>
-        </div>
-        <div style="font-size: 12px; word-wrap: break-word;">${escapeHtml(data.content)}</div>
-      `;
-      feedList.appendChild(postEl);
-    });
-  } catch (e) {
-    feedList.innerHTML = `<div class="social-empty" style="text-align: center; font-size: 10px; color: red;">FAILED TO LOAD FEED</div>`;
-  }
-};
 
 function initMainSiteSearch() {
   const form = document.getElementById("siteSearchForm");
@@ -1217,10 +1115,10 @@ function initTopBarOverlayControls() {
     overlayCrew: "tabCrew",
     globalChat: "tabChat",
     overlayAdmin: "tabAdmin",
-    overlaySocial: "tabSocial",
     overlayGamebox: "menuToggle",
     overlayTrending: "menuToggle",
     overlayUpdates: "menuToggle",
+    overlaySocial: "tabSocial",
   };
 
   const topTabs = ["tabConfig", "tabBank", "tabShop", "tabInventory", "tabProfile", "tabSeason", "tabCrew", "tabSocial", "tabChat", "tabAdmin", "menuToggle"]
