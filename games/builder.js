@@ -97,6 +97,7 @@ const blockColors = {
         45: "#FFD700", // Gold Ingot
         46: "#00FFFF", // Diamond (Refined)
         47: "#39FF14", // Uranium (Refined)
+        48: "#1b1b1b", // Bedrock
     };
 
     const CRAFTING_RECIPES = [
@@ -180,6 +181,7 @@ const blockColors = {
         45: "GOLD INGOT",
         46: "DIAMOND (REFINED)",
         47: "URANIUM (REFINED)",
+        48: "BEDROCK",
     };
     const getMergedInventoryType = (type) => type;
     const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].includes(type) ? 1 : 99);

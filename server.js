@@ -894,6 +894,7 @@ this.onMessage("hammer", (client, message) => {
         if (chunk) {
             const b = chunk.blocks.get(`${x},${y}`);
             if (b) {
+                if (b.type === 48) return; // Bedrock cannot be reshaped
                 // Cycle meta: 0 (full) -> 1 (bottom slab) -> 2 (top slab) -> 3 (left slope) -> 4 (right slope)
                 b.meta = ((b.meta || 0) + 1) % 5;
             }
@@ -924,6 +925,7 @@ this.onMessage("hammer", (client, message) => {
           const key = `${x},${y}`;
           const b = chunk.blocks.get(key);
           if (b) {
+              if (b.type === 48) return; // Bedrock is unbreakable
               const drop = new ItemDrop();
               drop.id = `drop-${Date.now()}-${Math.random()}`;
               drop.x = x * TILE_SIZE + TILE_SIZE / 2;
@@ -1802,6 +1804,7 @@ if (onLadder) {
                         if (chunk) {
                             const b = chunk.blocks.get(`${tx},${ty}`);
                             if (b) {
+                                if (b.type === 48) continue; // Bedrock is blast-proof
                                 // Destroy and maybe drop item
                                 if (Math.random() < (isNuke ? 0.2 : 0.5)) {
                                     const drop = new ItemDrop();
