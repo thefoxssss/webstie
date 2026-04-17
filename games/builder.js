@@ -1,4 +1,4 @@
-import { state, isInputFocused, saveStats, builderHotbar, builderInventory, builderArmor, updateBuilderInventoryState, isGodUser, escapeHtml } from "../core.js";
+import { state, isInputFocused, saveStats, builderHotbar, builderInventory, builderArmor, updateBuilderInventoryState, isGodUser, escapeHtml, openBuilderCharacterEditor } from "../core.js";
 
 export function initBuilder() {
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
@@ -45,6 +45,7 @@ let selectedRoomId = null;
     const btnJoin = document.getElementById("btnJoinBuilder");
     const btnRefreshServers = document.getElementById("btnRefreshBuilderServers");
     const btnCreateServer = document.getElementById("btnCreateBuilderServer");
+    const btnCustomizeBuilderCharacter = document.getElementById("btnCustomizeBuilderCharacter");
     const serverNameInput = document.getElementById("builderServerName");
     const serverListEl = document.getElementById("builderServerList");
 
@@ -232,6 +233,18 @@ const blockColors = {
     let loadedBlockData = {};
     let blockImages = {};
     let assetsLoaded = false;
+    const DEFAULT_PLAYER_SPRITE = {
+        palette: ["transparent", "#e7b08d", "#1a1a1a", "#4a90e2"],
+        pixels: (() => {
+            const rows = Array(32).fill("                                ").map((r) => r.split(""));
+            for (let y = 7; y <= 24; y++) {
+                for (let x = 10; x <= 21; x++) rows[y][x] = "1";
+            }
+            for (let y = 7; y <= 11; y++) for (let x = 13; x <= 18; x++) rows[y][x] = "2";
+            for (let y = 12; y <= 16; y++) for (let x = 12; x <= 19; x++) rows[y][x] = "3";
+            return rows.map((r) => r.join(""));
+        })(),
+    };
 
     Promise.all(blockDataUrls.map(url => fetch(url).then(res => res.json()))).then(results => {
         let loadedImgs = 0;
@@ -261,6 +274,47 @@ const blockColors = {
         if (item === null) return undefined;
         const normalized = normalizeItem(item);
         return normalized ? { ...normalized } : undefined;
+    };
+    const decodePaletteChar = (char) => {
+        if (char >= "0" && char <= "9") return parseInt(char, 10);
+        if (char >= "a" && char <= "z") return char.charCodeAt(0) - 87;
+        if (char >= "A" && char <= "Z") return char.charCodeAt(0) - 29;
+        return -1;
+    };
+    const normalizeSprite = (sprite) => {
+        if (!sprite || !Array.isArray(sprite.palette) || !Array.isArray(sprite.pixels) || sprite.pixels.length !== 32) {
+            return DEFAULT_PLAYER_SPRITE;
+        }
+        return sprite;
+    };
+    let localCharacterSprite = normalizeSprite(state.builderCharacterSprite);
+    const spriteToPayload = (sprite) => {
+        const safe = normalizeSprite(sprite);
+        return JSON.stringify({ palette: safe.palette, pixels: safe.pixels });
+    };
+    const spriteFromPayload = (value) => {
+        if (!value) return DEFAULT_PLAYER_SPRITE;
+        try {
+            return normalizeSprite(typeof value === "string" ? JSON.parse(value) : value);
+        } catch {
+            return DEFAULT_PLAYER_SPRITE;
+        }
+    };
+    const drawCharacterSprite = (spritePayload, x, y, size) => {
+        const sprite = spriteFromPayload(spritePayload);
+        const scale = size / 32;
+        const palette = Array.isArray(sprite.palette) ? sprite.palette : [];
+        for (let py = 0; py < 32; py++) {
+            const row = sprite.pixels?.[py] || "";
+            for (let px = 0; px < 32; px++) {
+                const idx = decodePaletteChar(row[px] || " ");
+                if (idx < 0 || idx >= palette.length) continue;
+                const color = palette[idx];
+                if (!color || color === "transparent") continue;
+                ctx.fillStyle = color;
+                ctx.fillRect(x + (px * scale), y + (py * scale), Math.max(1, scale), Math.max(1, scale));
+            }
+        }
     };
     const itemType = (item) => normalizeItem(item)?.type;
     const itemCount = (item) => normalizeItem(item)?.count || 0;
@@ -338,6 +392,8 @@ const blockColors = {
     let rightMouseHeld = false;
     let rightDragVisitedSlots = new Set();
     let dropMode = null;
+    let pickedItemOnMouseDown = false;
+    const pendingPickupIds = new Set();
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
     let buildHoldTimeout = null;
@@ -475,17 +531,17 @@ const blockColors = {
     window.addEventListener(CHAT_BUBBLE_EVENT, handleIncomingChatBubbleEvent);
     const playerName = () => state.myName || "Player";
     const hotbarLayout = {
-        slotSize: 40,
-        gap: 4,
-        padding: 6,
-        bottom: 8,
+        slotSize: 34,
+        gap: 3,
+        padding: 5,
+        bottom: 6,
     };
     const inventoryLayout = {
-        widthRatio: 0.85, // Increase width to fit inventory and crafting side-by-side
-        heightRatio: 0.60,
-        padding: 16,
-        slotSize: 40,
-        gap: 4,
+        widthRatio: 0.80,
+        heightRatio: 0.56,
+        padding: 12,
+        slotSize: 34,
+        gap: 3,
         cols: 9,
         rows: 3,
     };
@@ -765,7 +821,15 @@ const blockColors = {
             stopBuilder();
         });
         room.onMessage("picked_up", (message) => {
-            addInventoryItem(message.type, message.count);
+            pendingPickupIds.delete(message.id);
+            const remaining = addInventoryItem(message.type, message.count);
+            if (remaining > 0) {
+                room.send("spawn_drops", {
+                    items: [{ type: message.type, count: remaining }],
+                    targetX: message.x ?? undefined,
+                    targetY: message.y ?? undefined,
+                });
+            }
         });
 
         room.onMessage("died", (message) => {
@@ -791,7 +855,7 @@ const blockColors = {
         try {
             btnJoin.textContent = "CONNECTING...";
             client = new window.Colyseus.Client(getServerUrl());
-            room = await client.joinById(roomId, { name: playerName() });
+            room = await client.joinById(roomId, { name: playerName(), sprite: spriteToPayload(localCharacterSprite) });
             localPlayerId = room.sessionId;
             setupRoomListeners();
             menu.style.display = "none";
@@ -807,7 +871,7 @@ const blockColors = {
         try {
             btnJoin.textContent = "CONNECTING...";
             client = new window.Colyseus.Client(getServerUrl());
-            room = await client.joinOrCreate("builder_room", { name: playerName() });
+            room = await client.joinOrCreate("builder_room", { name: playerName(), sprite: spriteToPayload(localCharacterSprite) });
             localPlayerId = room.sessionId;
             setupRoomListeners();
             menu.style.display = "none";
@@ -825,7 +889,7 @@ const blockColors = {
                 btnCreateServer.textContent = "CREATING...";
                 const serverName = (serverNameInput?.value || "").trim() || "Public World";
                 client = new window.Colyseus.Client(getServerUrl());
-                room = await client.create("builder_room", { name: playerName(), serverName });
+                room = await client.create("builder_room", { name: playerName(), serverName, sprite: spriteToPayload(localCharacterSprite) });
                 localPlayerId = room.sessionId;
                 setupRoomListeners();
                 menu.style.display = "none";
@@ -838,6 +902,14 @@ const blockColors = {
         };
     }
     if (btnRefreshServers) btnRefreshServers.onclick = refreshServerList;
+    if (btnCustomizeBuilderCharacter) {
+        btnCustomizeBuilderCharacter.onclick = () => {
+            openBuilderCharacterEditor((savedSprite) => {
+                localCharacterSprite = normalizeSprite(savedSprite);
+                state.builderCharacterSprite = localCharacterSprite;
+            });
+        };
+    }
     if (networkSelect) {
         networkSelect.onchange = () => {
             selectedRoomId = null;
@@ -1246,6 +1318,22 @@ function sendBuildOrBreak(e) {
         addInventoryItem(type, count);
         saveInventoryState();
     };
+    function canFitItemInInventory(type, count = 1) {
+        const mergedType = getMergedInventoryType(type);
+        let free = 0;
+        const addCapacity = (slot) => {
+            if (!slot) {
+                free += getMaxStack(mergedType);
+                return;
+            }
+            if (getMergedInventoryType(slot.type) === mergedType) {
+                free += Math.max(0, getMaxStack(mergedType) - slot.count);
+            }
+        };
+        hotbarSlots.forEach(addCapacity);
+        inventorySlots.forEach(addCapacity);
+        return free >= count;
+    }
     function addInventoryItem(type, count) {
         const mergedType = getMergedInventoryType(type);
         let remaining = count;
@@ -1256,7 +1344,7 @@ function sendBuildOrBreak(e) {
                 const add = Math.min(remaining, getMaxStack(mergedType) - hotbarSlots[i].count);
                 hotbarSlots[i].count += add;
                 remaining -= add;
-                if (remaining <= 0) return;
+                if (remaining <= 0) return 0;
             }
         }
         for (let i = 0; i < inventorySlots.length; i++) {
@@ -1264,7 +1352,7 @@ function sendBuildOrBreak(e) {
                 const add = Math.min(remaining, getMaxStack(mergedType) - inventorySlots[i].count);
                 inventorySlots[i].count += add;
                 remaining -= add;
-                if (remaining <= 0) return;
+                if (remaining <= 0) return 0;
             }
         }
 
@@ -1275,7 +1363,7 @@ function sendBuildOrBreak(e) {
                 remaining -= hotbarSlots[i].count;
                 if (remaining <= 0) {
                     selectedBlockType = hotbarSlots[selectedHotbarIndex];
-                    return;
+                    return 0;
                 }
             }
         }
@@ -1283,9 +1371,10 @@ function sendBuildOrBreak(e) {
             if (inventorySlots[i] === undefined) {
                 inventorySlots[i] = { type: mergedType, count: Math.min(remaining, getMaxStack(mergedType)) };
                 remaining -= inventorySlots[i].count;
-                if (remaining <= 0) return;
+                if (remaining <= 0) return 0;
             }
         }
+        return remaining;
     }
 
     function mergeIntoSlot(slotArray, index, incoming) {
@@ -1297,8 +1386,7 @@ function sendBuildOrBreak(e) {
             return undefined;
         }
         if (existing.type !== item.type) {
-            slotArray[index] = cloneItem(item);
-            return existing;
+            return cloneItem(item);
         }
         const cap = getMaxStack(existing.type);
         const space = Math.max(0, cap - existing.count);
@@ -1324,14 +1412,27 @@ function sendBuildOrBreak(e) {
         const itemsPerRow = 2;
         const rowsPerPage = 8;
         const recipesPerPage = itemsPerRow * rowsPerPage;
-        const cellWidth = 120;
+        const cellWidth = 102;
         const cellHeight = 42;
-        const hitWidth = 92;
+        const hitWidth = 98;
         const maxScroll = Math.max(0, Math.ceil(CRAFTING_RECIPES.length / itemsPerRow) - rowsPerPage);
         if (recipeScroll > maxScroll) recipeScroll = maxScroll;
         const startIdx = recipeScroll * itemsPerRow;
         const endIdx = Math.min(CRAFTING_RECIPES.length, startIdx + recipesPerPage);
         return { itemsPerRow, cellWidth, cellHeight, hitWidth, startIdx, endIdx };
+    }
+
+    function craftRecipeAsMuchAsPossible(recipe) {
+        let crafted = 0;
+        while (fillCraftingGridFromRecipe(recipe)) {
+            if (!craftingOutputSlot) break;
+            const remainder = addInventoryItem(craftingOutputSlot.type, craftingOutputSlot.count);
+            if (remainder > 0) break;
+            consumeCraftingMaterials();
+            crafted++;
+        }
+        if (crafted > 0) saveInventoryState();
+        return crafted;
     }
 
     function fillCraftingGridFromRecipe(recipe) {
@@ -1400,6 +1501,7 @@ function sendBuildOrBreak(e) {
 
     function handleMouseDown(e) {
         if (!room) return;
+        pickedItemOnMouseDown = false;
         if (showEscapeMenu) {
             const mw = 220, mh = isGodUser() ? 164 : 120;
             const mx = Math.floor((canvas.width - mw)/2), my = Math.floor((canvas.height - mh)/2);
@@ -1469,7 +1571,9 @@ function sendBuildOrBreak(e) {
 
                     if (mouse.x >= rx - 4 && mouse.x <= rx + recipeLayout.hitWidth &&
                         mouse.y >= ry - 4 && mouse.y <= ry + 30) {
-                        if (e.shiftKey) { while (fillCraftingGridFromRecipe(CRAFTING_RECIPES[i])) {} }
+                        if (e.shiftKey) {
+                            craftRecipeAsMuchAsPossible(CRAFTING_RECIPES[i]);
+                        }
                         else fillCraftingGridFromRecipe(CRAFTING_RECIPES[i]);
                         return;
                     }
@@ -1851,6 +1955,7 @@ function sendBuildOrBreak(e) {
                                 const splitCount = Math.ceil(currentItem.count / 2);
                                 draggedItemType = { type: currentItem.type, count: splitCount };
                                 currentItem.count -= splitCount;
+                                pickedItemOnMouseDown = true;
                                 if (isArmor) room.send("equip_armor", { type: currentItem.type });
                                 dragSourceHotbarIndex = null;
                                 dragSourceInventoryIndex = null;
@@ -1861,6 +1966,7 @@ function sendBuildOrBreak(e) {
                             } else {
                                 // Just pick it up if it's 1
                                 draggedItemType = cloneItem(currentItem);
+                                pickedItemOnMouseDown = true;
                                 dragSourceHotbarIndex = slotArray === hotbarSlots ? index : null;
                                 dragSourceInventoryIndex = slotArray === inventorySlots ? index : null;
                                 dragSourceArmorSlot = isArmor;
@@ -1870,6 +1976,7 @@ function sendBuildOrBreak(e) {
                         } else {
                             // Left click pickup
                             draggedItemType = cloneItem(currentItem);
+                            pickedItemOnMouseDown = true;
                             dragSourceHotbarIndex = slotArray === hotbarSlots ? index : null;
                             dragSourceInventoryIndex = slotArray === inventorySlots ? index : null;
                             dragSourceArmorSlot = isArmor;
@@ -1986,6 +2093,7 @@ function sendBuildOrBreak(e) {
                             const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
                             if (grid[craftingIndex] !== undefined) {
                                 draggedItemType = cloneItem(grid[craftingIndex]);
+                                pickedItemOnMouseDown = true;
                                 dragSourceHotbarIndex = null;
                                 dragSourceInventoryIndex = null;
                                 dragSourceCraftingIndex = craftingIndex;
@@ -2016,6 +2124,7 @@ function sendBuildOrBreak(e) {
                             return;
                         }
                         draggedItemType = cloneItem(craftingOutputSlot);
+                        pickedItemOnMouseDown = true;
                         dragSourceHotbarIndex = null;
                         dragSourceInventoryIndex = null;
                         dragSourceCraftingIndex = null;
@@ -2141,6 +2250,10 @@ if (e.button === 2 && !e.shiftKey) {
         rightMouseHeld = false;
         rightDragVisitedSlots.clear();
         clearBuildHoldTimers();
+        if (inventoryOpen && pickedItemOnMouseDown) {
+            pickedItemOnMouseDown = false;
+            return;
+        }
         if (inventoryOpen && draggedItemType !== null) {
             setTimeout(() => saveInventoryState(), 10);
             const hotbarPanel = getHotbarBounds();
@@ -2212,13 +2325,34 @@ if (e.button === 2 && !e.shiftKey) {
                     else if (dragSourceInventoryIndex !== null) inventorySlots[dragSourceInventoryIndex] = cloneItem(draggedItemType);
                     else if (dragSourceArmorSlot) { armorSlot = cloneItem(draggedItemType); room.send("equip_armor", { type: armorSlot.type }); }
                 }
-            } else if (hotbarIndex !== null && !dragSourceOutputSlot) {
+        } else if (hotbarIndex !== null && !dragSourceOutputSlot) {
                 // Dropped on a hotbar slot
                 const existingItem = cloneItem(hotbarSlots[hotbarIndex]);
-                const remainder = mergeIntoSlot(hotbarSlots, hotbarIndex, draggedItemType);
+                if (existingItem && existingItem.type !== draggedItemType.type) {
+                    hotbarSlots[hotbarIndex] = cloneItem(draggedItemType);
+                    if (dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
+                        hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
+                    } else if (dragSourceInventoryIndex !== null) {
+                        inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
+                    } else if (dragSourceArmorSlot) {
+                        if ([18, 19, 20, 21, 22, 62, 65].includes(existingItem.type)) {
+                            armorSlot = cloneItem(existingItem);
+                            room.send("equip_armor", { type: armorSlot.type });
+                        } else {
+                            hotbarSlots[hotbarIndex] = cloneItem(existingItem);
+                            armorSlot = cloneItem(draggedItemType);
+                            room.send("equip_armor", { type: armorSlot.type });
+                        }
+                    } else if (dragSourceCraftingIndex !== null) {
+                        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+                        grid[dragSourceCraftingIndex] = cloneItem(existingItem);
+                    }
+                    draggedItemType = null;
+                }
+                const remainder = draggedItemType ? mergeIntoSlot(hotbarSlots, hotbarIndex, draggedItemType) : undefined;
 
                 // Swap logic
-                if (existingItem !== undefined && (!remainder || existingItem.type !== draggedItemType.type)) {
+                if (draggedItemType && existingItem !== undefined && (!remainder || existingItem.type !== draggedItemType.type)) {
                     if (dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
                         hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     } else if (dragSourceInventoryIndex !== null) {
@@ -2277,10 +2411,31 @@ if (e.button === 2 && !e.shiftKey) {
         } else if (inventoryIndex !== null && !dragSourceOutputSlot) {
                 // Dropped on an inventory slot
                 const existingItem = cloneItem(inventorySlots[inventoryIndex]);
-                const remainder = mergeIntoSlot(inventorySlots, inventoryIndex, draggedItemType);
+                if (existingItem && existingItem.type !== draggedItemType.type) {
+                    inventorySlots[inventoryIndex] = cloneItem(draggedItemType);
+                    if (dragSourceInventoryIndex !== null && dragSourceInventoryIndex !== inventoryIndex) {
+                        inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
+                    } else if (dragSourceHotbarIndex !== null) {
+                        hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
+                    } else if (dragSourceArmorSlot) {
+                        if ([18, 19, 20, 21, 22, 62, 65].includes(existingItem.type)) {
+                            armorSlot = cloneItem(existingItem);
+                            room.send("equip_armor", { type: armorSlot.type });
+                        } else {
+                            inventorySlots[inventoryIndex] = cloneItem(existingItem);
+                            armorSlot = cloneItem(draggedItemType);
+                            room.send("equip_armor", { type: armorSlot.type });
+                        }
+                    } else if (dragSourceCraftingIndex !== null) {
+                        const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
+                        grid[dragSourceCraftingIndex] = cloneItem(existingItem);
+                    }
+                    draggedItemType = null;
+                }
+                const remainder = draggedItemType ? mergeIntoSlot(inventorySlots, inventoryIndex, draggedItemType) : undefined;
 
                 // Swap logic
-                if (existingItem !== undefined && (!remainder || existingItem.type !== draggedItemType.type)) {
+                if (draggedItemType && existingItem !== undefined && (!remainder || existingItem.type !== draggedItemType.type)) {
                     if (dragSourceInventoryIndex !== null && dragSourceInventoryIndex !== inventoryIndex) {
                         inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     } else if (dragSourceHotbarIndex !== null) {
@@ -2437,7 +2592,7 @@ if (e.button === 2 && !e.shiftKey) {
             const craftStartY = panel.y + 40;
             const recipePanelX = craftStartX - 4;
             const recipePanelY = craftStartY + 20;
-            const recipePanelW = 186;
+            const recipePanelW = 216;
             const recipePanelH = panel.height - 36;
             if (mouse.x < recipePanelX || mouse.x > recipePanelX + recipePanelW || mouse.y < recipePanelY || mouse.y > recipePanelY + recipePanelH) return;
             recipeScroll += Math.sign(e.deltaY);
@@ -2576,9 +2731,8 @@ if (e.button === 2 && !e.shiftKey) {
         });
 
         sortedPlayers.forEach(({ p }) => {
-            // Draw player body
-            ctx.fillStyle = p.color;
-            ctx.fillRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
+            // Draw player body / custom sprite
+            drawCharacterSprite(p.sprite, p.x, p.y, TILE_SIZE);
 
             // Draw armor if equipped
             if ([18, 19, 20, 21, 22, 62, 65].includes(p.armorType)) {
@@ -2699,6 +2853,9 @@ if (e.button === 2 && !e.shiftKey) {
                 const dx = localPlayer.x + TILE_SIZE/2 - drop.x;
                 const dy = localPlayer.y + TILE_SIZE/2 - drop.y;
                 if (dx*dx + dy*dy < (TILE_SIZE * 1.5) ** 2) {
+                    if (pendingPickupIds.has(drop.id)) return;
+                    if (!canFitItemInInventory(drop.type, drop.count)) return;
+                    pendingPickupIds.add(drop.id);
                     room.send("pickup", { id: drop.id });
                 }
             }
@@ -3145,7 +3302,7 @@ if (inventoryOpen) {
                 if (showRecipes) {
                 const recipePanelX = craftStartX - 4;
                 const recipePanelY = craftStartY + 20;
-                const recipePanelW = 186;
+                const recipePanelW = 216;
                 const recipePanelH = panel.height - 36;
                 ctx.fillStyle = "rgba(25, 25, 25, 0.92)";
                 ctx.fillRect(recipePanelX, recipePanelY, recipePanelW, recipePanelH);
@@ -3167,8 +3324,8 @@ if (inventoryOpen) {
                     const col = displayIdx % recipeLayout.itemsPerRow;
                     const row = Math.floor(displayIdx / recipeLayout.itemsPerRow);
 
-                    const rx = recipePanelX + 10 + col * 120;
-                    const ry = recipePanelY + 28 + row * 42;
+                    const rx = recipePanelX + 10 + col * recipeLayout.cellWidth;
+                    const ry = recipePanelY + 28 + row * recipeLayout.cellHeight;
 
                     // Draw the pattern grid (miniature)
                     const pat = CRAFTING_RECIPES[i].pattern;

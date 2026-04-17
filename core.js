@@ -141,6 +141,7 @@ let myItemToggles = {};
 let builderInventory = null;
 let builderHotbar = null;
 let builderArmor = null;
+let builderCharacterSprite = null;
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
@@ -302,6 +303,8 @@ export const state = {
   set builderHotbar(v) { builderHotbar = v; },
   get builderArmor() { return builderArmor; },
   set builderArmor(v) { builderArmor = v; },
+  get builderCharacterSprite() { return builderCharacterSprite; },
+  set builderCharacterSprite(v) { builderCharacterSprite = v; },
   get myItemToggles() {
     return myItemToggles;
   },
@@ -358,6 +361,19 @@ export const state = {
     stockData = value;
   }
 };
+
+function isValidPixelLogo(logoData) {
+  return Boolean(
+    logoData &&
+    Array.isArray(logoData.palette) &&
+    Array.isArray(logoData.pixels) &&
+    logoData.pixels.length === 32
+  );
+}
+
+function sanitizePixelLogo(logoData, fallback = DEFAULT_CREW_LOGO) {
+  return isValidPixelLogo(logoData) ? logoData : fallback;
+}
 
 export function getStateSnapshot() {
   return Object.freeze({
@@ -2774,6 +2790,7 @@ let crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
 let crewLogoEditorPalette = ["transparent"];
 let currentEditorTool = "draw"; // "draw" or "erase"
 let currentEditorColor = "#00ff00";
+let pixelEditorSession = { mode: "crew", onSave: null };
 
 function charForPaletteIndex(idx) {
   if (idx < 0) return ' ';
@@ -2916,6 +2933,12 @@ function initCrewUx() {
   if (editLogoBtn) {
     editLogoBtn.onclick = () => {
       if (!crewData.tag) return setText("crewMsg", "JOIN A CREW FIRST");
+      pixelEditorSession = { mode: "crew", onSave: null };
+      const title = document.getElementById("crewLogoEditorTitle");
+      const subtitle = document.getElementById("crewLogoEditorSubtitle");
+      if (title) title.innerText = "CREW LOGO EDITOR";
+      if (subtitle) subtitle.innerText = "32x32 PIXEL ART";
+      if (saveLogoBtn) saveLogoBtn.innerText = "SAVE LOGO";
       parseLogoToEditor(crewData.logo || DEFAULT_CREW_LOGO);
       document.getElementById("overlayCrewLogoEditor").classList.add("active");
       renderCrewLogoEditor();
@@ -2930,7 +2953,13 @@ function initCrewUx() {
 
   if (saveLogoBtn) {
     saveLogoBtn.onclick = async () => {
-      crewData.logo = serializeEditorToLogo();
+      const savedLogo = serializeEditorToLogo();
+      if (pixelEditorSession.mode === "builder_character" && typeof pixelEditorSession.onSave === "function") {
+        pixelEditorSession.onSave(savedLogo);
+        document.getElementById("overlayCrewLogoEditor").classList.remove("active");
+        return;
+      }
+      crewData.logo = savedLogo;
       saveCrewData();
       await saveStats();
       renderCrewPanel();
@@ -3131,6 +3160,30 @@ function initCrewUx() {
       setText("crewMsg", `WEEKLY GOAL SET TO $${crewData.goal}`);
     };
   }
+}
+
+export function openBuilderCharacterEditor(onSaved) {
+  const title = document.getElementById("crewLogoEditorTitle");
+  const subtitle = document.getElementById("crewLogoEditorSubtitle");
+  const saveLogoBtn = document.getElementById("crewLogoSaveBtn");
+  if (title) title.innerText = "CHARACTER SPRITE EDITOR";
+  if (subtitle) subtitle.innerText = "32x32 PIXEL ART // USED IN BUILDER";
+  if (saveLogoBtn) saveLogoBtn.innerText = "SAVE CHARACTER";
+
+  pixelEditorSession = {
+    mode: "builder_character",
+    onSave: async (logo) => {
+      builderCharacterSprite = sanitizePixelLogo(logo, DEFAULT_CREW_LOGO);
+      await saveStats();
+      showToast("BUILDER", "🧩", "CHARACTER SPRITE SAVED");
+      if (typeof onSaved === "function") onSaved(builderCharacterSprite);
+      pixelEditorSession = { mode: "crew", onSave: null };
+    },
+  };
+
+  parseLogoToEditor(sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO));
+  document.getElementById("overlayCrewLogoEditor")?.classList.add("active");
+  renderCrewLogoEditor();
 }
 
 // Track recent money changes and general event notes in one merged bank log feed.
@@ -3477,6 +3530,7 @@ function loadProfile(data) {
   builderInventory = data.builderInventory || null;
   builderHotbar = data.builderHotbar || null;
   builderArmor = data.builderArmor || null;
+  builderCharacterSprite = sanitizePixelLogo(data.builderCharacterSprite || null, DEFAULT_CREW_LOGO);
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
@@ -3604,6 +3658,7 @@ async function register(username, pin) {
     builderInventory: null,
     builderHotbar: null,
     builderArmor: null,
+    builderCharacterSprite: DEFAULT_CREW_LOGO,
     hideStatus: false,
   };
 
@@ -4495,6 +4550,7 @@ export async function saveStats() {
     builderInventory: Array.isArray(builderInventory) ? builderInventory.map(item => item === undefined ? null : item) : null,
     builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
     builderArmor: builderArmor === undefined ? null : builderArmor,
+    builderCharacterSprite: sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO),
     jobs: jobData,
     loanData,
     stockData,
@@ -4516,6 +4572,7 @@ export async function saveStats() {
         builderInventory: Array.isArray(builderInventory) ? builderInventory.map(item => item === undefined ? null : item) : null,
         builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
         builderArmor: builderArmor === undefined ? null : builderArmor,
+        builderCharacterSprite: sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO),
         jobs: jobData,
         loanData,
         stockData,

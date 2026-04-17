@@ -622,6 +622,7 @@ type("number")(BuilderPlayer.prototype, "armorType");
 type("number")(BuilderPlayer.prototype, "selectedItemType");
 type("boolean")(BuilderPlayer.prototype, "flightEnabled");
 type("boolean")(BuilderPlayer.prototype, "creativeMode");
+type("string")(BuilderPlayer.prototype, "sprite");
 
 class BuilderBullet extends Schema {}
 type("string")(BuilderBullet.prototype, "id");
@@ -1026,7 +1027,7 @@ this.onMessage("hammer", (client, message) => {
       const dy = p.y + TILE_SIZE/2 - drop.y;
       if (dx*dx + dy*dy < (TILE_SIZE * 2) ** 2) {
           this.state.drops.delete(drop.id);
-          client.send("picked_up", { type: drop.type, count: drop.count });
+          client.send("picked_up", { id: drop.id, type: drop.type, count: drop.count, x: drop.x, y: drop.y });
       }
     });
 
@@ -1230,6 +1231,7 @@ this.onMessage("hammer", (client, message) => {
     p.selectedItemType = 0;
     p.flightEnabled = false;
     p.creativeMode = false;
+    p.sprite = typeof options.sprite === "string" ? options.sprite.slice(0, 10000) : "";
     p.lastCx = -999;
     p.lastCy = -999;
     this.state.players.set(client.sessionId, p);
