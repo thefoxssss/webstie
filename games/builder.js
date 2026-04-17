@@ -335,6 +335,7 @@ const blockColors = {
     const mouse = { x: 0, y: 0, isDown: false };
     let rightMouseHeld = false;
     let rightDragVisitedSlots = new Set();
+    let dropMode = null;
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
     let buildHoldTimeout = null;
@@ -627,6 +628,9 @@ const blockColors = {
     };
 
     const setupRoomListeners = () => {
+        room.onLeave(() => {
+            stopBuilder();
+        });
         room.onMessage("picked_up", (message) => {
             addInventoryItem(message.type, message.count);
         });
@@ -733,17 +737,37 @@ const blockColors = {
             }
             return;
         }
+        if (isGodUser() && (e.key === "c" || e.key === "C" || e.code === "KeyC")) {
+            setCreativeMode(!creativeModeEnabled);
+            return;
+        }
         if (e.key === "q" || e.key === "Q") {
-            const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
+            const dropCountForSlot = (slot) => (e.ctrlKey ? slot.count : 1);
+            let targetArray = hotbarSlots;
+            let targetIndex = selectedHotbarIndex;
+            if (inventoryOpen) {
+                const hotbarPanel = getHotbarBounds();
+                const hoverHotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
+                const panel = getInventoryBounds();
+                const hoverInventoryIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
+                if (hoverInventoryIndex !== null) {
+                    targetArray = inventorySlots;
+                    targetIndex = hoverInventoryIndex;
+                } else if (hoverHotbarIndex !== null) {
+                    targetArray = hotbarSlots;
+                    targetIndex = hoverHotbarIndex;
+                }
+            }
+            const selectedSlotItem = targetArray[targetIndex];
             if (selectedSlotItem) {
-                const dropCount = e.ctrlKey ? selectedSlotItem.count : 1;
+                const dropCount = dropCountForSlot(selectedSlotItem);
                 room.send("spawn_drops", { items: [{ type: selectedSlotItem.type, count: dropCount }], targetX: mouse.x + camera.x, targetY: mouse.y + camera.y });
                 selectedSlotItem.count -= dropCount;
-                if (selectedSlotItem.count <= 0) {
-                    hotbarSlots[selectedHotbarIndex] = undefined;
-                }
+                if (selectedSlotItem.count <= 0) targetArray[targetIndex] = undefined;
                 saveInventoryState();
             }
+            dropMode = e.ctrlKey ? "stack" : "single";
+            rightDragVisitedSlots.clear();
         }
         if (e.key === "r" || e.key === "R") {
             room.send("recall");
@@ -877,6 +901,7 @@ const blockColors = {
         if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.d = false;
         if (isUpKey) keys.w = false;
         if (isDownKey) keys.shift = false;
+        if (e.key === "q" || e.key === "Q" || e.code === "ControlLeft" || e.code === "ControlRight") dropMode = null;
     }
 
     function handleMouseMove(e) {
@@ -885,6 +910,27 @@ const blockColors = {
         const scaleY = canvas.height / rect.height;
         mouse.x = (e.clientX - rect.left) * scaleX;
         mouse.y = (e.clientY - rect.top) * scaleY;
+
+        if (inventoryOpen && dropMode) {
+            const hotbarPanel = getHotbarBounds();
+            const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
+            const panel = getInventoryBounds();
+            const invIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
+            const key = hotbarIndex !== null ? `drop-hotbar:${hotbarIndex}` : (invIndex !== null ? `drop-inv:${invIndex}` : null);
+            if (key && !rightDragVisitedSlots.has(key)) {
+                const targetArray = hotbarIndex !== null ? hotbarSlots : inventorySlots;
+                const index = hotbarIndex !== null ? hotbarIndex : invIndex;
+                const slot = targetArray[index];
+                if (slot) {
+                    const dropCount = dropMode === "stack" ? slot.count : 1;
+                    room.send("spawn_drops", { items: [{ type: slot.type, count: dropCount }], targetX: mouse.x + camera.x, targetY: mouse.y + camera.y });
+                    slot.count -= dropCount;
+                    if (slot.count <= 0) targetArray[index] = undefined;
+                    saveInventoryState();
+                    rightDragVisitedSlots.add(key);
+                }
+            }
+        }
 
         if (!inventoryOpen || !rightMouseHeld || !draggedItemType || draggedItemType.count <= 0) return;
 
@@ -1109,6 +1155,27 @@ function sendBuildOrBreak(e) {
         }
     }
 
+    function mergeIntoSlot(slotArray, index, incoming) {
+        const item = normalizeItem(incoming);
+        if (!item) return undefined;
+        const existing = normalizeItem(slotArray[index]);
+        if (!existing) {
+            slotArray[index] = cloneItem(item);
+            return undefined;
+        }
+        if (existing.type !== item.type) {
+            slotArray[index] = cloneItem(item);
+            return existing;
+        }
+        const cap = getMaxStack(existing.type);
+        const space = Math.max(0, cap - existing.count);
+        const add = Math.min(space, item.count);
+        existing.count += add;
+        slotArray[index] = existing;
+        const remaining = item.count - add;
+        return remaining > 0 ? { type: item.type, count: remaining } : undefined;
+    }
+
     function clearBuildHoldTimers() {
         if (buildHoldTimeout) {
             clearTimeout(buildHoldTimeout);
@@ -1200,18 +1267,15 @@ function sendBuildOrBreak(e) {
 
     function handleMouseDown(e) {
         if (!room) return;
-        if (isGodUser()) {
-            const btnW = 170, btnH = 28, btnX = canvas.width - btnW - 12, btnY = 12;
-            if (mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= btnY && mouse.y <= btnY + btnH) {
-                setCreativeMode(!creativeModeEnabled);
-                return;
-            }
-        }
         if (showEscapeMenu) {
-            const mw = 220, mh = 120;
+            const mw = 220, mh = isGodUser() ? 164 : 120;
             const mx = Math.floor((canvas.width - mw)/2), my = Math.floor((canvas.height - mh)/2);
             if (mouse.x >= mx + 50 && mouse.x <= mx + 170 && mouse.y >= my + 48 && mouse.y <= my + 78) {
                 stopBuilder();
+                return;
+            }
+            if (isGodUser() && mouse.x >= mx + 50 && mouse.x <= mx + 170 && mouse.y >= my + 88 && mouse.y <= my + 118) {
+                setCreativeMode(!creativeModeEnabled);
                 return;
             }
             showEscapeMenu = false;
@@ -1225,7 +1289,8 @@ function sendBuildOrBreak(e) {
         // Handle inventory and dragging mechanics first
         if (inventoryOpen) {
             const panel = getInventoryBounds();
-            if (creativeModeEnabled) {
+            const showCreativeCatalog = creativeModeEnabled && !isChestOpen && !isFurnaceOpen && !isCraftingTableOpen;
+            if (showCreativeCatalog) {
                 const cp = getCreativePanelBounds(panel);
                 if (mouse.x >= cp.x + 10 && mouse.x <= cp.x + cp.width - 10 && mouse.y >= cp.y + 24 && mouse.y <= cp.y + cp.height - 10) {
                     const cell = 34;
@@ -1252,21 +1317,20 @@ function sendBuildOrBreak(e) {
             const craftingUiEnabled = !isChestOpen && !isFurnaceOpen;
             if (!craftingUiEnabled) showRecipes = false;
 
+            const craftStartX = panel.x + panel.width - 190;
+            const craftStartY = panel.y + 40;
+            const recipeBtnX = craftStartX + 120;
+            const recipeBtnY = craftStartY - 20;
+            const recipePanelX = craftStartX - 4;
+            const recipePanelY = craftStartY + 20;
+
             if (showRecipes) {
-                // Check close button
-                if (mouse.x >= panel.x - 70 && mouse.x <= panel.x - 10 &&
-                    mouse.y >= panel.y + 8 && mouse.y <= panel.y + 28) {
-                    showRecipes = false;
-                    return;
-                }
 
                 const recipeLayout = getRecipeBookLayout(panel);
                 for (let i = recipeLayout.startIdx; i < recipeLayout.endIdx; i++) {
                     const displayIdx = i - recipeLayout.startIdx;
                     const col = displayIdx % recipeLayout.itemsPerRow;
                     const row = Math.floor(displayIdx / recipeLayout.itemsPerRow);
-                    const recipePanelX = Math.min(canvas.width - 262, panel.x + panel.width + 12);
-                    const recipePanelY = panel.y + 8;
                     const rx = recipePanelX + 10 + col * recipeLayout.cellWidth;
                     const ry = recipePanelY + 28 + row * recipeLayout.cellHeight;
 
@@ -1279,15 +1343,11 @@ function sendBuildOrBreak(e) {
                 }
             }
 
-            const craftStartX = panel.x + panel.width - 190;
-            const craftStartY = panel.y + 40;
             if (craftingUiEnabled) {
                 // Check Recipe Button toggle
-                const recipeBtnX = craftStartX + 120;
-                const recipeBtnY = craftStartY - 20;
                 if (mouse.x >= recipeBtnX && mouse.x <= recipeBtnX + 60 &&
                     mouse.y >= recipeBtnY && mouse.y <= recipeBtnY + 16) {
-                    showRecipes = true;
+                    showRecipes = !showRecipes;
                     return;
                 }
             }
@@ -1580,32 +1640,55 @@ function sendBuildOrBreak(e) {
 
                 if (draggedItemType === null) {
                     if (currentItem !== undefined) {
+                        if (creativeModeEnabled && e.shiftKey && isRightClick) {
+                            draggedItemType = { type: currentItem.type, count: getMaxStack(currentItem.type) };
+                            dragSourceHotbarIndex = null;
+                            dragSourceInventoryIndex = null;
+                            dragSourceCraftingIndex = null;
+                            dragSourceOutputSlot = false;
+                            dragSourceArmorSlot = false;
+                            return true;
+                        }
                         if (!isArmor && isShiftQuickMove) {
                             let moved = false;
                             if (isChestOpen) moved = quickMoveToChest(currentItem);
                             else if (isFurnaceOpen) moved = quickMoveToFurnace(currentItem);
                             else if (slotArray === hotbarSlots) {
+                                const moving = cloneItem(currentItem);
+                                let remaining = moving.count;
                                 for (let i = 0; i < inventorySlots.length; i++) {
-                                    if (!inventorySlots[i]) { inventorySlots[i] = cloneItem(currentItem); moved = true; break; }
+                                    if (!inventorySlots[i]) {
+                                        inventorySlots[i] = { type: moving.type, count: remaining };
+                                        remaining = 0;
+                                        moved = true;
+                                        break;
+                                    }
                                     if (inventorySlots[i].type === currentItem.type && inventorySlots[i].count < getMaxStack(currentItem.type)) {
-                                        const add = Math.min(getMaxStack(currentItem.type) - inventorySlots[i].count, currentItem.count);
+                                        const add = Math.min(getMaxStack(currentItem.type) - inventorySlots[i].count, remaining);
                                         inventorySlots[i].count += add;
-                                        currentItem.count -= add;
-                                        if (currentItem.count <= 0) { moved = true; break; }
+                                        remaining -= add;
+                                        if (remaining <= 0) { moved = true; break; }
                                     }
                                 }
-                                if (moved && currentItem.count > 0) moved = false;
+                                if (remaining > 0) moved = false;
                             } else if (slotArray === inventorySlots) {
+                                const moving = cloneItem(currentItem);
+                                let remaining = moving.count;
                                 for (let i = 0; i < hotbarSlots.length; i++) {
-                                    if (!hotbarSlots[i]) { hotbarSlots[i] = cloneItem(currentItem); moved = true; break; }
+                                    if (!hotbarSlots[i]) {
+                                        hotbarSlots[i] = { type: moving.type, count: remaining };
+                                        remaining = 0;
+                                        moved = true;
+                                        break;
+                                    }
                                     if (hotbarSlots[i].type === currentItem.type && hotbarSlots[i].count < getMaxStack(currentItem.type)) {
-                                        const add = Math.min(getMaxStack(currentItem.type) - hotbarSlots[i].count, currentItem.count);
+                                        const add = Math.min(getMaxStack(currentItem.type) - hotbarSlots[i].count, remaining);
                                         hotbarSlots[i].count += add;
-                                        currentItem.count -= add;
-                                        if (currentItem.count <= 0) { moved = true; break; }
+                                        remaining -= add;
+                                        if (remaining <= 0) { moved = true; break; }
                                     }
                                 }
-                                if (moved && currentItem.count > 0) moved = false;
+                                if (remaining > 0) moved = false;
                             }
                             if (moved) {
                                 const now = Date.now();
@@ -1789,6 +1872,16 @@ function sendBuildOrBreak(e) {
                 if (mouse.x >= outX && mouse.x <= outX + inventoryLayout.slotSize &&
                     mouse.y >= outY && mouse.y <= outY + inventoryLayout.slotSize) {
                     if (craftingOutputSlot !== undefined) {
+                        if (e.shiftKey) {
+                            let craftedAny = false;
+                            while (craftingOutputSlot) {
+                                addInventoryItem(craftingOutputSlot.type, craftingOutputSlot.count);
+                                consumeCraftingMaterials();
+                                craftedAny = true;
+                            }
+                            if (craftedAny) saveInventoryState();
+                            return;
+                        }
                         draggedItemType = cloneItem(craftingOutputSlot);
                         dragSourceHotbarIndex = null;
                         dragSourceInventoryIndex = null;
@@ -1989,10 +2082,10 @@ if (e.button === 2 && !e.shiftKey) {
             } else if (hotbarIndex !== null && !dragSourceOutputSlot) {
                 // Dropped on a hotbar slot
                 const existingItem = cloneItem(hotbarSlots[hotbarIndex]);
-                hotbarSlots[hotbarIndex] = cloneItem(draggedItemType);
+                const remainder = mergeIntoSlot(hotbarSlots, hotbarIndex, draggedItemType);
 
                 // Swap logic
-                if (existingItem !== undefined) {
+                if (existingItem !== undefined && (!remainder || existingItem.type !== draggedItemType.type)) {
                     if (dragSourceHotbarIndex !== null && dragSourceHotbarIndex !== hotbarIndex) {
                         hotbarSlots[dragSourceHotbarIndex] = cloneItem(existingItem);
                     } else if (dragSourceInventoryIndex !== null) {
@@ -2010,6 +2103,10 @@ if (e.button === 2 && !e.shiftKey) {
                         const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
                         grid[dragSourceCraftingIndex] = cloneItem(existingItem);
                     }
+                }
+                if (remainder) {
+                    draggedItemType = remainder;
+                    return;
                 }
 
         } else if (hotbarIndex !== null && e.button === 2) {
@@ -2047,10 +2144,10 @@ if (e.button === 2 && !e.shiftKey) {
         } else if (inventoryIndex !== null && !dragSourceOutputSlot) {
                 // Dropped on an inventory slot
                 const existingItem = cloneItem(inventorySlots[inventoryIndex]);
-                inventorySlots[inventoryIndex] = cloneItem(draggedItemType);
+                const remainder = mergeIntoSlot(inventorySlots, inventoryIndex, draggedItemType);
 
                 // Swap logic
-                if (existingItem !== undefined) {
+                if (existingItem !== undefined && (!remainder || existingItem.type !== draggedItemType.type)) {
                     if (dragSourceInventoryIndex !== null && dragSourceInventoryIndex !== inventoryIndex) {
                         inventorySlots[dragSourceInventoryIndex] = cloneItem(existingItem);
                     } else if (dragSourceHotbarIndex !== null) {
@@ -2068,6 +2165,10 @@ if (e.button === 2 && !e.shiftKey) {
                         const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
                         grid[dragSourceCraftingIndex] = cloneItem(existingItem);
                     }
+                }
+                if (remainder) {
+                    draggedItemType = remainder;
+                    return;
                 }
             } else if (inventoryIndex !== null && dragSourceOutputSlot) {
                 // Dropped crafted item on inventory
@@ -2199,10 +2300,12 @@ if (e.button === 2 && !e.shiftKey) {
         }
         if (inventoryOpen && showRecipes) {
             const panel = getInventoryBounds();
-            const recipePanelX = Math.min(canvas.width - 262, panel.x + panel.width + 12);
-            const recipePanelY = panel.y + 8;
-            const recipePanelW = 250;
-            const recipePanelH = panel.height - 16;
+            const craftStartX = panel.x + panel.width - 190;
+            const craftStartY = panel.y + 40;
+            const recipePanelX = craftStartX - 4;
+            const recipePanelY = craftStartY + 20;
+            const recipePanelW = 186;
+            const recipePanelH = panel.height - 36;
             if (mouse.x < recipePanelX || mouse.x > recipePanelX + recipePanelW || mouse.y < recipePanelY || mouse.y > recipePanelY + recipePanelH) return;
             recipeScroll += Math.sign(e.deltaY);
             if (recipeScroll < 0) recipeScroll = 0;
@@ -2244,7 +2347,7 @@ if (e.button === 2 && !e.shiftKey) {
 
         // Get local player for camera centering
         const localPlayer = room.state.players.get(localPlayerId);
-        if (localPlayer && !creativeModeEnabled) {
+        if (localPlayer) {
             // Snap camera to whole pixels so tile edges don't anti-alias into a faint moving grid.
             camera.x = Math.round(localPlayer.x - canvas.width / 2 + TILE_SIZE / 2);
             camera.y = Math.round(localPlayer.y - canvas.height / 2 + TILE_SIZE / 2);
@@ -2698,7 +2801,8 @@ if (inventoryOpen) {
             ctx.font = "8px 'Press Start 2P', monospace";
             ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 16);
 
-            if (creativeModeEnabled) {
+            const showCreativeCatalog = creativeModeEnabled && !isChestOpen && !isFurnaceOpen && !isCraftingTableOpen;
+            if (showCreativeCatalog) {
                 const cp = getCreativePanelBounds(panel);
                 ctx.fillStyle = "rgba(18,18,18,0.95)";
                 ctx.fillRect(cp.x, cp.y, cp.width, cp.height);
@@ -2905,10 +3009,10 @@ if (inventoryOpen) {
                 ctx.textAlign = "left";
 
                 if (showRecipes) {
-                const recipePanelX = Math.min(canvas.width - 262, panel.x + panel.width + 12);
-                const recipePanelY = panel.y + 8;
-                const recipePanelW = 250;
-                const recipePanelH = panel.height - 16;
+                const recipePanelX = craftStartX - 4;
+                const recipePanelY = craftStartY + 20;
+                const recipePanelW = 186;
+                const recipePanelH = panel.height - 36;
                 ctx.fillStyle = "rgba(25, 25, 25, 0.92)";
                 ctx.fillRect(recipePanelX, recipePanelY, recipePanelW, recipePanelH);
                 ctx.strokeStyle = "#ffffff";
@@ -2956,6 +3060,7 @@ if (inventoryOpen) {
                             ctx.fillRect(cx, cy, iconSize, iconSize);
                             if (item !== 0) {
                                 drawItemIcon(ctx, item, cx, cy, iconSize);
+                                captureHoverItem({ type: item, count: 1 }, cx, cy, iconSize);
                             }
                         }
                     }
@@ -2972,12 +3077,6 @@ if (inventoryOpen) {
                 }
 
                 ctx.restore();
-
-                // Draw close button
-                ctx.fillStyle = "#f44336";
-                ctx.fillRect(panel.x - 70, panel.y + 8, 60, 20);
-                ctx.fillStyle = "#fff";
-                ctx.fillText("CLOSE", panel.x - 60, panel.y + 22);
                 } else {
                     const size = isCraftingTableOpen ? 3 : 2;
                     const stride = inventoryLayout.slotSize + inventoryLayout.gap;
@@ -3150,24 +3249,8 @@ if (inventoryOpen) {
             }
         }
 
-
-        if (isGodUser()) {
-            const btnW = 170;
-            const btnH = 28;
-            const btnX = canvas.width - btnW - 12;
-            const btnY = 12;
-            ctx.fillStyle = creativeModeEnabled ? "#3cae3c" : "#444";
-            ctx.fillRect(btnX, btnY, btnW, btnH);
-            ctx.strokeStyle = "#fff";
-            ctx.strokeRect(btnX, btnY, btnW, btnH);
-            ctx.fillStyle = "#fff";
-            ctx.font = "9px 'Press Start 2P', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(`Creative: ${creativeModeEnabled ? "ON" : "OFF"}`, btnX + btnW/2, btnY + 18);
-        }
-
         if (showEscapeMenu) {
-            const mw = 220, mh = 120;
+            const mw = 220, mh = isGodUser() ? 164 : 120;
             const mx = Math.floor((canvas.width - mw)/2), my = Math.floor((canvas.height - mh)/2);
             ctx.fillStyle = "rgba(0,0,0,0.8)";
             ctx.fillRect(mx, my, mw, mh);
@@ -3181,6 +3264,12 @@ if (inventoryOpen) {
             ctx.fillRect(mx + 50, my + 48, 120, 30);
             ctx.fillStyle = "#fff";
             ctx.fillText("Leave", mx + mw/2, my + 68);
+            if (isGodUser()) {
+                ctx.fillStyle = creativeModeEnabled ? "#2b8f2b" : "#444";
+                ctx.fillRect(mx + 50, my + 88, 120, 30);
+                ctx.fillStyle = "#fff";
+                ctx.fillText(`Creative: ${creativeModeEnabled ? "ON" : "OFF"}`, mx + mw/2, my + 108);
+            }
         }
         animationFrameId = requestAnimationFrame(render);
     }
@@ -3203,10 +3292,14 @@ if (inventoryOpen) {
 
     // Cleanup hook
     const stopBuilder = () => {
+        showEscapeMenu = false;
+        inventoryOpen = false;
+        closeAllContainerUi();
         if (room) {
             room.leave();
             room = null;
         }
+        localPlayerId = null;
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         document.removeEventListener("keydown", handleKeyDown);
         document.removeEventListener("keyup", handleKeyUp);
