@@ -765,6 +765,9 @@ class BuilderRoom extends colyseus.Room {
     this.onMessage("build", (client, message) => {
       const p = this.state.players.get(client.sessionId);
       if (!p || p.hp <= 0) return;
+      const requestedType = Number.parseInt(message?.type, 10);
+      const nonPlaceableTypes = new Set([11, 23, 24, 25, 26, 27, 28, 30, 36, 61, 63]);
+      if (!Number.isFinite(requestedType) || nonPlaceableTypes.has(requestedType)) return;
 
       const playerCenterX = p.x + TILE_SIZE / 2;
       const playerCenterY = p.y + TILE_SIZE / 2;
@@ -801,7 +804,7 @@ class BuilderRoom extends colyseus.Room {
               const b = new Block();
               b.x = x;
               b.y = y;
-              b.type = message.type || 3;
+              b.type = requestedType;
               chunk.blocks.set(key, b);
           }
       }
@@ -908,7 +911,9 @@ this.onMessage("interact", (client, message) => {
         const p = this.state.players.get(client.sessionId);
         if (!p || p.hp <= 0) return;
 
+        if (!message || typeof message !== "object") return;
         const containerId = message.containerId;
+        if (typeof containerId !== "string" || !containerId.includes(",")) return;
         let furnace = this.state.furnaces.get(containerId);
         if (!furnace) {
             const [xStr, yStr] = (containerId || "").split(",");
@@ -924,12 +929,26 @@ this.onMessage("interact", (client, message) => {
             this.state.furnaces.set(containerId, furnace);
         }
 
-        furnace.inputItem = message.inputItem || 0;
-        furnace.inputCount = message.inputCount || 0;
-        furnace.fuelItem = message.fuelItem || 0;
-        furnace.fuelCount = message.fuelCount || 0;
-        furnace.outputItem = message.outputItem || 0;
-        furnace.outputCount = message.outputCount || 0;
+        const toSafeInt = (value, fallback = 0) => {
+            const num = Number.parseInt(value, 10);
+            return Number.isFinite(num) ? num : fallback;
+        };
+        const sanitizeSlot = (itemVal, countVal) => {
+            const item = Math.max(0, toSafeInt(itemVal, 0));
+            const count = Math.max(0, Math.min(99, toSafeInt(countVal, 0)));
+            if (item <= 0 || count <= 0) return { item: 0, count: 0 };
+            return { item, count };
+        };
+        const input = sanitizeSlot(message.inputItem, message.inputCount);
+        const fuel = sanitizeSlot(message.fuelItem, message.fuelCount);
+        const output = sanitizeSlot(message.outputItem, message.outputCount);
+
+        furnace.inputItem = input.item;
+        furnace.inputCount = input.count;
+        furnace.fuelItem = fuel.item;
+        furnace.fuelCount = fuel.count;
+        furnace.outputItem = output.item;
+        furnace.outputCount = output.count;
     });
 
 this.onMessage("hammer", (client, message) => {

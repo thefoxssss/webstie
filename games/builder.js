@@ -377,11 +377,23 @@ const blockColors = {
         inventorySlots = normalizeSlots([], 27);
     }
 
-    let armorSlot = builderArmor ? cloneItem(builderArmor) : undefined;
-    let backSlot = undefined;
+    const resolveArmorState = (rawArmorState) => {
+        if (!rawArmorState) return { armor: undefined, back: undefined };
+        if (rawArmorState.armor !== undefined || rawArmorState.back !== undefined) {
+            return {
+                armor: cloneItem(rawArmorState.armor),
+                back: cloneItem(rawArmorState.back),
+            };
+        }
+        return { armor: cloneItem(rawArmorState), back: undefined };
+    };
+    const initialArmorState = resolveArmorState(builderArmor);
+    let armorSlot = initialArmorState.armor;
+    let backSlot = initialArmorState.back;
+    const ACCESSORY_TYPES = new Set([18, 19, 20, 21, 22, 62, 65]);
 
     const saveInventoryState = () => {
-        updateBuilderInventoryState(hotbarSlots, inventorySlots, armorSlot);
+        updateBuilderInventoryState(hotbarSlots, inventorySlots, { armor: armorSlot, back: backSlot });
         saveStats();
     };
 
@@ -568,8 +580,8 @@ const blockColors = {
         bottom: 6,
     };
     const inventoryLayout = {
-        widthRatio: 0.80,
-        heightRatio: 0.56,
+        widthRatio: 0.72,
+        heightRatio: 0.54,
         padding: 12,
         slotSize: 34,
         gap: 3,
@@ -597,7 +609,9 @@ const blockColors = {
     }
 
     function getInventoryBounds() {
-        const rightPanelExtraWidth = isPlayerInventoryOnlyView() || isCraftingTableOpen ? 220 : 130;
+        const rightPanelExtraWidth = isChestOpen || isFurnaceOpen
+            ? 76
+            : (isPlayerInventoryOnlyView() || isCraftingTableOpen ? 220 : 130);
         const minWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap) + (inventoryLayout.padding * 2) + rightPanelExtraWidth;
         const width = Math.min(canvas.width - 12, Math.max(minWidth, Math.floor(canvas.width * inventoryLayout.widthRatio)));
         const height = Math.min(canvas.height - 12, Math.max(250, Math.floor(canvas.height * inventoryLayout.heightRatio)));
@@ -946,19 +960,23 @@ const blockColors = {
             if (room !== activeRoom) return;
             console.log(`Died to ${message.killer}`);
 
-            // Drop all items
+            // Drop non-accessory items only; keep accessories equipped/in inventory
             const dropItems = [];
-            hotbarSlots.forEach(s => { const item = normalizeItem(s); if (item) dropItems.push(item); });
-            inventorySlots.forEach(s => { const item = normalizeItem(s); if (item) dropItems.push(item); });
+            const keepOrDrop = (slot) => {
+                const item = normalizeItem(slot);
+                if (!item) return slot;
+                if (ACCESSORY_TYPES.has(item.type)) return slot;
+                dropItems.push(item);
+                return undefined;
+            };
+            hotbarSlots = hotbarSlots.map(keepOrDrop);
+            inventorySlots = inventorySlots.map(keepOrDrop);
 
-            room.send("spawn_drops", { items: dropItems });
+            if (dropItems.length > 0) room.send("spawn_drops", { items: dropItems });
             room.send("respawn");
-
-            // Clear inventory
-            hotbarSlots = new Array(9).fill(undefined).map(cloneItem);
-            inventorySlots = new Array(27).fill(undefined).map(cloneItem);
             selectedBlockType = hotbarSlots[selectedHotbarIndex];
             room.send("select_item", { type: 0 });
+            saveInventoryState();
         });
     };
 
@@ -1420,7 +1438,7 @@ function sendBuildOrBreak(e) {
         if (!room || !room.state) return false;
 
         // Cannot place tools/weapons as blocks
-        if (selectedBlockType !== undefined && [11, 23, 24, 25, 26, 27, 28, 36, 61, 63].includes(itemType(selectedBlockType))) return false;
+        if (selectedBlockType !== undefined && [11, 23, 24, 25, 26, 27, 28, 30, 36, 61, 63].includes(itemType(selectedBlockType))) return false;
 
         const localPlayer = room.state.players.get(localPlayerId);
         if (!localPlayer || localPlayer.hp <= 0) return false;
@@ -1842,6 +1860,7 @@ function sendBuildOrBreak(e) {
                                     draggedItemType = cloneItem(currentItem);
                                     room.send("container_move", { action: "take", containerId: currentChestId, slot: indexStr, item: cloneItem(currentItem) });
                                 }
+                                pickedItemOnMouseDown = true;
                             }
                         } else {
                             if (isRightClick) {
@@ -1931,6 +1950,7 @@ function sendBuildOrBreak(e) {
                                 draggedItemType = cloneItem(currentItem);
                                 setSlot(undefined);
                             }
+                            pickedItemOnMouseDown = true;
                         }
                         return;
                     }
@@ -1952,9 +1972,11 @@ function sendBuildOrBreak(e) {
                                     draggedItemType = cloneItem(currentItem);
                                     setSlot(undefined);
                                 }
+                                pickedItemOnMouseDown = true;
                             } else {
                                 draggedItemType = cloneItem(currentItem);
                                 setSlot(undefined);
+                                pickedItemOnMouseDown = true;
                             }
                         }
                     } else {
@@ -2218,7 +2240,7 @@ function sendBuildOrBreak(e) {
                             backSlot = cloneItem(draggedItemType);
                             draggedItemType = currentItem;
                         }
-                        room.send("equip_armor", { type: backSlot ? backSlot.type : (armorSlot ? armorSlot.type : 0) });
+                        room.send("equip_armor", { type: armorSlot ? armorSlot.type : 0 });
                     }
                     saveInventoryState();
                     return;
@@ -2710,7 +2732,7 @@ if (e.button === 2 && !e.shiftKey) {
                         if (dragSourceHotbarIndex !== null) { hotbarSlots[dragSourceHotbarIndex] = undefined; saveInventoryState(); }
                         else if (dragSourceInventoryIndex !== null) { inventorySlots[dragSourceInventoryIndex] = undefined; saveInventoryState(); }
                         else if (dragSourceArmorSlot) { armorSlot = undefined; room.send("equip_armor", { type: 0 }); }
-                        else if (dragSourceCraftingIndex !== null && dragSourceCraftingIndex !== targetCraftingIndex) grid[dragSourceCraftingIndex] = undefined;
+                        // dragSourceCraftingIndex is already updated during pickup/split; do not clear here.
                     }
                 }
 
