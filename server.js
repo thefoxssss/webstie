@@ -970,33 +970,53 @@ this.onMessage("hammer", (client, message) => {
       const cx = Math.floor(x / CHUNK_SIZE);
       const cy = Math.floor(y / CHUNK_SIZE);
       const chunk = this.state.chunks.get(`${cx},${cy}`);
+      const spawnDropAt = (type, count = 1) => {
+          if (!type || count <= 0) return;
+          const drop = new ItemDrop();
+          drop.id = `drop-${Date.now()}-${Math.random()}`;
+          drop.x = x * TILE_SIZE + TILE_SIZE / 2;
+          drop.y = y * TILE_SIZE + TILE_SIZE / 2;
+          drop.vx = (Math.random() - 0.5) * 4;
+          drop.vy = -4 - Math.random() * 4;
+          drop.type = type;
+          drop.count = count;
+          drop.ownerId = "";
+          drop.noPickupBefore = Date.now() + 250;
+          this.state.drops.set(drop.id, drop);
+      };
 
       if (chunk) {
           const key = `${x},${y}`;
           const b = chunk.blocks.get(key);
           if (b) {
               if (b.type === 48 && !p.creativeMode) return; // Bedrock is unbreakable unless creative
-              const drop = new ItemDrop();
-              drop.id = `drop-${Date.now()}-${Math.random()}`;
-              drop.x = x * TILE_SIZE + TILE_SIZE / 2;
-              drop.y = y * TILE_SIZE + TILE_SIZE / 2;
-              drop.vx = (Math.random() - 0.5) * 4;
-              drop.vy = -4 - Math.random() * 4;
-
-              drop.type = b.type;
-              if (b.type === 7 || b.type === 41) drop.type = b.type; // Logs
+              let dropType = b.type;
+              if (b.type === 7 || b.type === 41) dropType = b.type; // Logs
               else if (b.type === 8 || b.type === 42) {
                   // Leaves have a chance to drop Sapling (29) or Apple (30)
                   const r = Math.random();
-                  if (r < 0.05) drop.type = 30; // 5% apple
-                  else if (r < 0.15) drop.type = 29; // 10% sapling
-                  else drop.type = b.type; // 85% leaf
+                  if (r < 0.05) dropType = 30; // 5% apple
+                  else if (r < 0.15) dropType = 29; // 10% sapling
+                  else dropType = b.type; // 85% leaf
+              } else if (b.type === 31) {
+                  const containerId = `${x},${y}`;
+                  const chest = this.state.chests.get(containerId);
+                  if (chest) {
+                      chest.items.forEach((item) => spawnDropAt(item.type, item.count));
+                      this.state.chests.delete(containerId);
+                  }
+              } else if (b.type === 32) {
+                  const containerId = `${x},${y}`;
+                  const furnace = this.state.furnaces.get(containerId);
+                  if (furnace) {
+                      if (furnace.inputItem && furnace.inputCount > 0) spawnDropAt(furnace.inputItem, furnace.inputCount);
+                      if (furnace.fuelItem && furnace.fuelCount > 0) spawnDropAt(furnace.fuelItem, furnace.fuelCount);
+                      if (furnace.outputItem && furnace.outputCount > 0) spawnDropAt(furnace.outputItem, furnace.outputCount);
+                      this.state.furnaces.delete(containerId);
+                  }
               }
 
-              drop.count = 1;
-              drop.ownerId = "";
-              drop.noPickupBefore = Date.now() + 250;
-              this.state.drops.set(drop.id, drop);
+              spawnDropAt(dropType, 1);
 
               chunk.blocks.delete(key);
           }

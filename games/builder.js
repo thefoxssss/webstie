@@ -212,7 +212,7 @@ const blockColors = {
     let creativeModeEnabled = false;
     let showEscapeMenu = false;
     let creativeScroll = 0;
-    const canUseFlight = () => creativeModeEnabled || itemType(armorSlot) === 65;
+    const canUseFlight = () => creativeModeEnabled || itemType(armorSlot) === 65 || itemType(backSlot) === 65;
 
     const blockDataUrls = [
         "data/blocks/1.json", "data/blocks/2.json", "data/blocks/3.json", "data/blocks/4.json",
@@ -236,12 +236,12 @@ const blockColors = {
     const DEFAULT_PLAYER_SPRITE = {
         palette: ["transparent", "#e7b08d", "#1a1a1a", "#4a90e2"],
         pixels: (() => {
-            const rows = Array(32).fill("                                ").map((r) => r.split(""));
-            for (let y = 7; y <= 24; y++) {
-                for (let x = 10; x <= 21; x++) rows[y][x] = "1";
+            const rows = Array(16).fill("                ").map((r) => r.split(""));
+            for (let y = 3; y <= 12; y++) {
+                for (let x = 5; x <= 10; x++) rows[y][x] = "1";
             }
-            for (let y = 7; y <= 11; y++) for (let x = 13; x <= 18; x++) rows[y][x] = "2";
-            for (let y = 12; y <= 16; y++) for (let x = 12; x <= 19; x++) rows[y][x] = "3";
+            for (let y = 3; y <= 5; y++) for (let x = 6; x <= 9; x++) rows[y][x] = "2";
+            for (let y = 6; y <= 8; y++) for (let x = 6; x <= 9; x++) rows[y][x] = "3";
             return rows.map((r) => r.join(""));
         })(),
     };
@@ -281,16 +281,26 @@ const blockColors = {
         if (char >= "A" && char <= "Z") return char.charCodeAt(0) - 29;
         return -1;
     };
-    const sanitizeSprite = (sprite) => {
-        if (!sprite || !Array.isArray(sprite.palette) || !Array.isArray(sprite.pixels) || sprite.pixels.length !== 32) {
-            return DEFAULT_PLAYER_SPRITE;
+    const downscaleSprite32to16 = (sprite) => {
+        const out = [];
+        for (let y = 0; y < 16; y++) {
+            const sourceRow = typeof sprite.pixels?.[y * 2] === "string" ? sprite.pixels[y * 2] : "";
+            let row = "";
+            for (let x = 0; x < 16; x++) row += sourceRow[x * 2] || " ";
+            out.push(row.padEnd(16, " ").slice(0, 16));
         }
+        return { palette: Array.isArray(sprite.palette) ? sprite.palette : [], pixels: out };
+    };
+    const sanitizeSprite = (sprite) => {
+        if (!sprite || !Array.isArray(sprite.palette) || !Array.isArray(sprite.pixels)) return DEFAULT_PLAYER_SPRITE;
+        const pixelRows = sprite.pixels.length === 32 ? downscaleSprite32to16(sprite).pixels : sprite.pixels;
+        if (pixelRows.length !== 16) return DEFAULT_PLAYER_SPRITE;
         const safePalette = sprite.palette
             .slice(0, 62)
             .map((c) => (typeof c === "string" && c.length <= 32 ? c : "transparent"));
-        const safePixels = sprite.pixels.slice(0, 32).map((row) => {
+        const safePixels = pixelRows.slice(0, 16).map((row) => {
             const raw = typeof row === "string" ? row : "";
-            return raw.padEnd(32, " ").slice(0, 32);
+            return raw.padEnd(16, " ").slice(0, 16);
         });
         return { palette: safePalette, pixels: safePixels };
     };
@@ -314,11 +324,11 @@ const blockColors = {
     };
     const drawCharacterSprite = (spritePayload, x, y, size) => {
         const sprite = spriteFromPayload(spritePayload);
-        const scale = size / 32;
+        const scale = size / 16;
         const palette = Array.isArray(sprite.palette) ? sprite.palette : [];
-        for (let py = 0; py < 32; py++) {
+        for (let py = 0; py < 16; py++) {
             const row = sprite.pixels?.[py] || "";
-            for (let px = 0; px < 32; px++) {
+            for (let px = 0; px < 16; px++) {
                 const idx = decodePaletteChar(row[px] || " ");
                 if (idx < 0 || idx >= palette.length) continue;
                 const color = palette[idx];
@@ -367,6 +377,7 @@ const blockColors = {
     }
 
     let armorSlot = builderArmor ? cloneItem(builderArmor) : undefined;
+    let backSlot = undefined;
 
     const saveInventoryState = () => {
         updateBuilderInventoryState(hotbarSlots, inventorySlots, armorSlot);
@@ -571,7 +582,7 @@ const blockColors = {
         const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
         const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
         const startX = panel.x + inventoryLayout.padding; // Shift inventory left to make room
-        const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 10;
+        const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 40;
         return { rows, gridWidth, gridHeight, startX, startY };
     }
 
@@ -643,17 +654,24 @@ const blockColors = {
         if (!leftDragSplitActive || !draggedItemType || leftDragSplitVisited.length === 0) return;
         const total = leftDragSplitSourceTotal;
         let remaining = total;
-        const placements = [];
-
-        for (let i = 0; i < leftDragSplitVisited.length; i++) {
-            const key = leftDragSplitVisited[i];
+        const placements = new Map();
+        const validKeys = leftDragSplitVisited.filter((key) => {
             const meta = leftDragSplitBaseByKey.get(key);
-            if (!meta) continue;
-            const slotsLeft = leftDragSplitVisited.length - i;
-            const targetForThisSlot = Math.ceil(remaining / slotsLeft);
-            const place = Math.max(0, Math.min(meta.capacity, targetForThisSlot));
-            placements.push([key, place]);
-            remaining -= place;
+            return !!meta && meta.capacity > 0;
+        });
+        validKeys.forEach((key) => placements.set(key, 0));
+        while (remaining > 0) {
+            let placedAny = false;
+            for (const key of validKeys) {
+                if (remaining <= 0) break;
+                const meta = leftDragSplitBaseByKey.get(key);
+                const current = placements.get(key) || 0;
+                if (!meta || current >= meta.capacity) continue;
+                placements.set(key, current + 1);
+                remaining -= 1;
+                placedAny = true;
+            }
+            if (!placedAny) break;
         }
 
         leftDragSplitPlacedByKey.clear();
@@ -662,7 +680,7 @@ const blockColors = {
             if (!meta) continue;
             setSplitSlotByKey(key, meta.base);
         }
-        for (const [key, place] of placements) {
+        for (const [key, place] of placements.entries()) {
             const meta = leftDragSplitBaseByKey.get(key);
             if (!meta) continue;
             const next = meta.base
@@ -901,10 +919,13 @@ const blockColors = {
     };
 
     const setupRoomListeners = () => {
+        const activeRoom = room;
         room.onLeave(() => {
-            stopBuilder();
+            if (room !== activeRoom) return;
+            stopBuilder(true);
         });
         room.onMessage("picked_up", (message) => {
+            if (room !== activeRoom) return;
             pendingPickupIds.delete(message.id);
             const remaining = addInventoryItem(message.type, message.count);
             if (remaining > 0) {
@@ -917,6 +938,7 @@ const blockColors = {
         });
 
         room.onMessage("died", (message) => {
+            if (room !== activeRoom) return;
             console.log(`Died to ${message.killer}`);
 
             // Drop all items
@@ -1138,8 +1160,8 @@ const blockColors = {
         }
 
         // Hotbar selection (1-9) and hover swap when inventory is open
-        if (!isNaN(e.key)) {
-            const keyNum = parseInt(e.key);
+        if ((e.code && e.code.startsWith("Digit")) || !isNaN(e.key)) {
+            const keyNum = parseInt((e.code && e.code.startsWith("Digit")) ? e.code.replace("Digit", "") : e.key);
             if (keyNum >= 1 && keyNum <= 9) {
                 const targetHotbarIndex = keyNum - 1;
                 if (inventoryOpen) {
@@ -1171,6 +1193,10 @@ const blockColors = {
                             saveInventoryState();
                             break;
                         }
+                    } else {
+                        selectedHotbarIndex = targetHotbarIndex;
+                        selectedBlockType = hotbarSlots[selectedHotbarIndex];
+                        room.send("select_item", { type: selectedBlockType ? itemType(selectedBlockType) : 0 });
                     }
                 } else {
                     selectedHotbarIndex = targetHotbarIndex;
@@ -1653,6 +1679,7 @@ function sendBuildOrBreak(e) {
                     const type = list[idx];
                     if (type) {
                         draggedItemType = { type, count: e.shiftKey ? getMaxStack(type) : 1 };
+                        pickedItemOnMouseDown = true;
                         dragSourceHotbarIndex = null;
                         dragSourceInventoryIndex = null;
                         dragSourceCraftingIndex = null;
@@ -1662,7 +1689,7 @@ function sendBuildOrBreak(e) {
                     }
                 }
             }
-            const craftingUiEnabled = !isChestOpen && !isFurnaceOpen;
+            const craftingUiEnabled = !isChestOpen && !isFurnaceOpen && !showCreativeCatalog;
             if (!craftingUiEnabled) showRecipes = false;
 
             const craftStartX = panel.x + panel.width - 190;
@@ -2166,6 +2193,30 @@ function sendBuildOrBreak(e) {
                 if (mouse.x >= armorSlotX && mouse.x <= armorSlotX + inventoryLayout.slotSize &&
                     mouse.y >= armorSlotY && mouse.y <= armorSlotY + inventoryLayout.slotSize) {
                     if (handleSlotInteraction(null, null, true)) return;
+                }
+                const backSlotX = armorSlotX + inventoryLayout.slotSize + 8;
+                if (mouse.x >= backSlotX && mouse.x <= backSlotX + inventoryLayout.slotSize &&
+                    mouse.y >= armorSlotY && mouse.y <= armorSlotY + inventoryLayout.slotSize) {
+                    const currentItem = backSlot ? cloneItem(backSlot) : undefined;
+                    if (draggedItemType === null) {
+                        if (currentItem) {
+                            draggedItemType = cloneItem(currentItem);
+                            pickedItemOnMouseDown = true;
+                            backSlot = undefined;
+                            room.send("equip_armor", { type: armorSlot ? armorSlot.type : 0 });
+                        }
+                    } else if (draggedItemType.type === 65) {
+                        if (!currentItem) {
+                            backSlot = cloneItem(draggedItemType);
+                            draggedItemType = null;
+                        } else {
+                            backSlot = cloneItem(draggedItemType);
+                            draggedItemType = currentItem;
+                        }
+                        room.send("equip_armor", { type: backSlot ? backSlot.type : (armorSlot ? armorSlot.type : 0) });
+                    }
+                    saveInventoryState();
+                    return;
                 }
             }
 
@@ -3264,14 +3315,16 @@ if (inventoryOpen) {
                 const chestSlotSize = inventoryLayout.slotSize;
                 const chestStride = chestSlotSize + inventoryLayout.gap;
                 const chestY = startY - (chestStride * 3) - 28;
+                const chestBgWidth = gridWidth + (inventoryLayout.padding * 2);
+                const chestBgX = startX - inventoryLayout.padding;
 
                 ctx.fillStyle = "#c6c6c6"; // Panel color
-                ctx.fillRect(panel.x, chestY - 10, panel.width, (chestStride * 3) + 26);
+                ctx.fillRect(chestBgX, chestY - 10, chestBgWidth, (chestStride * 3) + 26);
 
                 ctx.fillStyle = "#3f3f3f";
                 ctx.font = "8px 'Press Start 2P', monospace";
                 ctx.textAlign = "left";
-                ctx.fillText("Chest", panel.x + 10, chestY + 5);
+                ctx.fillText("Chest", chestBgX + 10, chestY + 5);
 
                 for (let i = 0; i < 27; i++) {
                     const col = i % 9;
@@ -3378,7 +3431,7 @@ if (inventoryOpen) {
             }
 
             if (isPlayerInventoryOnlyView()) {
-                // Draw Armor Slot only in the base player inventory view
+                // Draw Armor + Back slots only in the base player inventory view
                 const armorSlotX = panel.x + inventoryLayout.padding;
                 const armorSlotY = panel.y + 40;
                 ctx.fillStyle = "#8b8b8b";
@@ -3408,10 +3461,34 @@ if (inventoryOpen) {
                     ctx.textAlign = "center";
                     ctx.fillText("Armor", armorSlotX + inventoryLayout.slotSize/2, armorSlotY + inventoryLayout.slotSize/2 + 4);
                 }
+
+                const backSlotX = armorSlotX + inventoryLayout.slotSize + 8;
+                ctx.fillStyle = "#8b8b8b";
+                ctx.fillRect(backSlotX, armorSlotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+                ctx.strokeStyle = "#373737";
+                ctx.beginPath();
+                ctx.moveTo(backSlotX, armorSlotY + inventoryLayout.slotSize);
+                ctx.lineTo(backSlotX, armorSlotY);
+                ctx.lineTo(backSlotX + inventoryLayout.slotSize, armorSlotY);
+                ctx.stroke();
+                ctx.strokeStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.moveTo(backSlotX + inventoryLayout.slotSize, armorSlotY);
+                ctx.lineTo(backSlotX + inventoryLayout.slotSize, armorSlotY + inventoryLayout.slotSize);
+                ctx.lineTo(backSlotX, armorSlotY + inventoryLayout.slotSize);
+                ctx.stroke();
+                if (backSlot) {
+                    const inset = 6;
+                    drawItemIcon(ctx, backSlot.type, backSlotX + inset, armorSlotY + inset, inventoryLayout.slotSize - (inset * 2));
+                } else {
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Back", backSlotX + inventoryLayout.slotSize/2, armorSlotY + inventoryLayout.slotSize/2 + 4);
+                }
             }
 
             const totalSlots = inventoryLayout.cols * rows;
-            if (!isChestOpen && !isFurnaceOpen) {
+            if (!isChestOpen && !isFurnaceOpen && !showCreativeCatalog) {
                 // Draw Crafting Area (2x2 grid + output)
                 const craftStartX = panel.x + panel.width - 190;
                 const craftStartY = panel.y + 40;
@@ -3714,14 +3791,17 @@ if (inventoryOpen) {
     }
 
     // Cleanup hook
-    const stopBuilder = () => {
+    let isStoppingBuilder = false;
+    const stopBuilder = (fromRoomLeave = false) => {
+        if (isStoppingBuilder) return;
+        isStoppingBuilder = true;
         showEscapeMenu = false;
         inventoryOpen = false;
         closeAllContainerUi();
-        if (room) {
+        if (room && !fromRoomLeave) {
             room.leave();
-            room = null;
         }
+        room = null;
         localPlayerId = null;
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         document.removeEventListener("keydown", handleKeyDown);
@@ -3739,6 +3819,7 @@ if (inventoryOpen) {
         if (btnCreateServer) btnCreateServer.textContent = "CREATE SERVER";
         selectedRoomId = null;
         refreshServerList();
+        isStoppingBuilder = false;
     };
 
     if (window.gameStops) {

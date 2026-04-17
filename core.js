@@ -3167,7 +3167,7 @@ export function openBuilderCharacterEditor(onSaved) {
   const subtitle = document.getElementById("crewLogoEditorSubtitle");
   const saveLogoBtn = document.getElementById("crewLogoSaveBtn");
   if (title) title.innerText = "CHARACTER SPRITE EDITOR";
-  if (subtitle) subtitle.innerText = "32x32 PIXEL ART // USED IN BUILDER";
+  if (subtitle) subtitle.innerText = "16x16 PIXEL ART // USED IN BUILDER";
   if (saveLogoBtn) saveLogoBtn.innerText = "SAVE CHARACTER";
 
   pixelEditorSession = {
