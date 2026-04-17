@@ -877,23 +877,28 @@ this.onMessage("interact", (client, message) => {
         const containerId = message.containerId; // "x,y"
         const chest = this.state.chests.get(containerId);
         if (!chest) return;
+        if (!message?.item || !Number.isFinite(message.item.type) || !Number.isFinite(message.item.count)) return;
+        if (message.item.count <= 0) return;
+        const slotKey = message.slot?.toString?.();
+        if (slotKey === undefined) return;
+        const maxStack = 99;
 
         if (message.action === "put") {
-            const currentItem = chest.items.get(message.slot.toString());
+            const currentItem = chest.items.get(slotKey);
             if (currentItem && currentItem.type === message.item.type) {
-                currentItem.count += message.item.count;
+                currentItem.count = Math.min(maxStack, currentItem.count + message.item.count);
             } else if (!currentItem) {
                 const newItem = new ChestItem();
                 newItem.type = message.item.type;
-                newItem.count = message.item.count;
-                chest.items.set(message.slot.toString(), newItem);
+                newItem.count = Math.min(maxStack, message.item.count);
+                chest.items.set(slotKey, newItem);
             }
         } else if (message.action === "take") {
-            const currentItem = chest.items.get(message.slot.toString());
+            const currentItem = chest.items.get(slotKey);
             if (currentItem && currentItem.type === message.item.type) {
-                currentItem.count -= message.item.count;
+                currentItem.count -= Math.min(currentItem.count, message.item.count);
                 if (currentItem.count <= 0) {
-                    chest.items.delete(message.slot.toString());
+                    chest.items.delete(slotKey);
                 }
             }
         }
@@ -1871,45 +1876,48 @@ isSolid(x, y) {
 
 
     // Furnace Smelting Logic
-    this.state.furnaces.forEach(furnace => {
-        if (furnace.inputCount > 0 && furnace.fuelCount > 0 && furnace.inputItem >= 13 && furnace.inputItem <= 17) {
-            // Check if fuel is log/coal
-            if (furnace.fuelItem === 12 || furnace.fuelItem === 7 || furnace.fuelItem === 9) {
-                furnace.progress += 1;
-                if (furnace.progress >= 100) {
-                    furnace.progress = 0;
+    const furnaceOutputByInput = new Map([
+        [13, 43],
+        [14, 44],
+        [15, 45],
+        [16, 46],
+        [17, 47],
+    ]);
+    const furnaceFuelTypes = new Set([12, 7, 9]); // coal, log, planks
+    const furnaceProgressPerSmelt = 100;
+    const furnaceOutputMaxStack = 99;
 
-                    // Consume input & fuel
-                    furnace.inputCount--;
-                    if (furnace.inputCount <= 0) furnace.inputItem = 0;
-
-                    // Fuel consumption logic: 1 coal smelts 8 items? Let's just do 1:1 for simplicity right now
-                    furnace.fuelCount--;
-                    if (furnace.fuelCount <= 0) furnace.fuelItem = 0;
-
-                    let outputType = 0;
-                    if (furnace.inputItem === 13) outputType = 43;
-                    if (furnace.inputItem === 14) outputType = 44;
-                    if (furnace.inputItem === 15) outputType = 45;
-                    if (furnace.inputItem === 16) outputType = 46;
-                    if (furnace.inputItem === 17) outputType = 47;
-                    if (furnace.inputItem === 12) outputType = 12; // Coal just cooks coal? Skip.
-
-                    if (outputType !== 0) {
-                        if (furnace.outputItem === 0 || furnace.outputItem === outputType) {
-                            furnace.outputItem = outputType;
-                            furnace.outputCount++;
-                        } else {
-                            // Output full of something else, refund
-                            furnace.inputCount++;
-                            furnace.fuelCount++;
-                        }
-                    }
-                }
-            }
-        } else {
+    this.state.furnaces.forEach((furnace) => {
+        const outputType = furnaceOutputByInput.get(furnace.inputItem) || 0;
+        const canUseFuel = furnaceFuelTypes.has(furnace.fuelItem);
+        const hasWork = furnace.inputCount > 0 && furnace.fuelCount > 0 && outputType > 0 && canUseFuel;
+        const outputCompatible = furnace.outputCount === 0 || furnace.outputItem === outputType;
+        const outputHasSpace = furnace.outputCount < furnaceOutputMaxStack;
+        if (!(hasWork && outputCompatible && outputHasSpace)) {
             furnace.progress = 0;
+            return;
         }
+
+        furnace.progress += 1;
+        if (furnace.progress < furnaceProgressPerSmelt) return;
+        furnace.progress = 0;
+
+        const smeltingInputType = furnace.inputItem;
+        const smeltingOutputType = furnaceOutputByInput.get(smeltingInputType) || 0;
+        if (smeltingOutputType <= 0) return;
+
+        furnace.inputCount = Math.max(0, furnace.inputCount - 1);
+        if (furnace.inputCount === 0) furnace.inputItem = 0;
+
+        furnace.fuelCount = Math.max(0, furnace.fuelCount - 1);
+        if (furnace.fuelCount === 0) furnace.fuelItem = 0;
+
+        if (furnace.outputCount === 0) {
+            furnace.outputItem = smeltingOutputType;
+            furnace.outputCount = 1;
+            return;
+        }
+        furnace.outputCount = Math.min(furnaceOutputMaxStack, furnace.outputCount + 1);
     });
 
     this.state.bullets.forEach((b, id) => {
