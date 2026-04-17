@@ -363,11 +363,12 @@ export const state = {
 };
 
 function isValidPixelLogo(logoData) {
+  const size = Array.isArray(logoData?.pixels) ? logoData.pixels.length : 0;
   return Boolean(
     logoData &&
     Array.isArray(logoData.palette) &&
     Array.isArray(logoData.pixels) &&
-    logoData.pixels.length === 32
+    (size === 16 || size === 32)
   );
 }
 
@@ -2786,7 +2787,8 @@ function renderCrewLogo(canvasId, logoData) {
 }
 
 // Global pixel editor state
-let crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
+let editorGridSize = 32;
+let crewLogoEditorPixels = Array(editorGridSize).fill().map(() => Array(editorGridSize).fill(-1));
 let crewLogoEditorPalette = ["transparent"];
 let currentEditorTool = "draw"; // "draw" or "erase"
 let currentEditorColor = "#00ff00";
@@ -2801,16 +2803,19 @@ function charForPaletteIndex(idx) {
 }
 
 function parseLogoToEditor(logoData) {
-  crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
+  const sourcePixels = Array.isArray(logoData?.pixels) ? logoData.pixels : [];
+  const inferredSize = sourcePixels.length === 16 ? 16 : 32;
+  editorGridSize = pixelEditorSession.mode === "builder_character" ? 16 : inferredSize;
+  crewLogoEditorPixels = Array(editorGridSize).fill().map(() => Array(editorGridSize).fill(-1));
   crewLogoEditorPalette = ["transparent"];
 
   if (!logoData || !logoData.palette || !logoData.pixels) return;
 
   crewLogoEditorPalette = [...logoData.palette];
 
-  for (let y = 0; y < 32; y++) {
+  for (let y = 0; y < editorGridSize; y++) {
     const row = logoData.pixels[y] || "";
-    for (let x = 0; x < 32; x++) {
+    for (let x = 0; x < editorGridSize; x++) {
       const char = row[x] || " ";
       if (char !== " ") {
         let colorIdx = -1;
@@ -2828,9 +2833,9 @@ function parseLogoToEditor(logoData) {
 
 function serializeEditorToLogo() {
   const rows = [];
-  for (let y = 0; y < 32; y++) {
+  for (let y = 0; y < editorGridSize; y++) {
     let rowStr = "";
-    for (let x = 0; x < 32; x++) {
+    for (let x = 0; x < editorGridSize; x++) {
       rowStr += charForPaletteIndex(crewLogoEditorPixels[y][x]);
     }
     rows.push(rowStr);
@@ -2849,11 +2854,13 @@ function getPaletteIndex(color) {
 function renderCrewLogoEditor() {
   const canvas = document.getElementById("crewLogoEditorCanvas");
   if (!canvas) return;
+  canvas.width = editorGridSize;
+  canvas.height = editorGridSize;
   const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, 32, 32);
+  ctx.clearRect(0, 0, editorGridSize, editorGridSize);
 
-  for (let y = 0; y < 32; y++) {
-    for (let x = 0; x < 32; x++) {
+  for (let y = 0; y < editorGridSize; y++) {
+    for (let x = 0; x < editorGridSize; x++) {
       const idx = crewLogoEditorPixels[y][x];
       if (idx >= 0 && idx < crewLogoEditorPalette.length && crewLogoEditorPalette[idx] !== "transparent") {
         ctx.fillStyle = crewLogoEditorPalette[idx];
@@ -2874,7 +2881,7 @@ function floodFill(startX, startY, targetColorIndex) {
     const [x, y] = stack.pop();
     const key = `${x},${y}`;
 
-    if (x < 0 || x >= 32 || y < 0 || y >= 32) continue;
+    if (x < 0 || x >= editorGridSize || y < 0 || y >= editorGridSize) continue;
     if (visited.has(key)) continue;
     if (crewLogoEditorPixels[y][x] !== startColorIndex) continue;
 
@@ -2970,7 +2977,7 @@ function initCrewUx() {
 
   if (clearLogoBtn) {
     clearLogoBtn.onclick = () => {
-      crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
+      crewLogoEditorPixels = Array(editorGridSize).fill().map(() => Array(editorGridSize).fill(-1));
       renderCrewLogoEditor();
     };
   }
@@ -3036,8 +3043,8 @@ function initCrewUx() {
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
       }
-      const x = Math.floor(((clientX - rect.left) / rect.width) * 32);
-      const y = Math.floor(((clientY - rect.top) / rect.height) * 32);
+      const x = Math.floor(((clientX - rect.left) / rect.width) * editorGridSize);
+      const y = Math.floor(((clientY - rect.top) / rect.height) * editorGridSize);
       return { x, y };
     };
 
@@ -3045,7 +3052,7 @@ function initCrewUx() {
       e.preventDefault();
       isDrawing = true;
       const { x, y } = getPos(e);
-      if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
+      if (x < 0 || x >= editorGridSize || y < 0 || y >= editorGridSize) return;
 
       if (currentEditorTool === "fill") {
         const targetIdx = getPaletteIndex(currentEditorColor);
@@ -3064,7 +3071,7 @@ function initCrewUx() {
       e.preventDefault();
       if (currentEditorTool === "fill") return;
       const { x, y } = getPos(e);
-      if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
+      if (x < 0 || x >= editorGridSize || y < 0 || y >= editorGridSize) return;
 
       const targetIdx = currentEditorTool === "draw" ? getPaletteIndex(currentEditorColor) : -1;
       if (crewLogoEditorPixels[y][x] !== targetIdx) {
