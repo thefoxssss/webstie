@@ -2093,6 +2093,7 @@ if (onLadder) {
             const isNuke = exp.type === 34;
             const radius = isNuke ? (TILE_SIZE * 1000) : (TILE_SIZE * 5);
             const damage = isNuke ? 100 : 20;
+            const chainFuse = isNuke ? 30 : 10;
 
             // Damage players
             this.state.players.forEach(p => {
@@ -2105,6 +2106,17 @@ if (onLadder) {
                     const knockback = (radius - dist) / radius * (isNuke ? 30 : 15);
                     p.vx += (dx / dist) * knockback;
                     p.vy += (dy / dist) * knockback - 5;
+                }
+            });
+
+            // Chain-react with nearby live explosives instead of deleting them.
+            this.state.explosives.forEach((otherExp, otherId) => {
+                if (otherId === id) return;
+                const dx = otherExp.x - exp.x;
+                const dy = otherExp.y - exp.y;
+                if (dx * dx + dy * dy > radius * radius) return;
+                if (otherExp.timer > chainFuse) {
+                    otherExp.timer = chainFuse;
                 }
             });
 
@@ -2125,6 +2137,17 @@ if (onLadder) {
                             const b = chunk.blocks.get(`${tx},${ty}`);
                             if (b) {
                                 if (b.type === 48) continue; // Bedrock is blast-proof
+                                if (b.type === 33 || b.type === 34) {
+                                    // TNT / Nuke chain reaction: ignite instead of destroying.
+                                    const explosive = new Explosive();
+                                    explosive.x = tx * TILE_SIZE + TILE_SIZE / 2;
+                                    explosive.y = ty * TILE_SIZE + TILE_SIZE / 2;
+                                    explosive.type = b.type;
+                                    explosive.timer = chainFuse;
+                                    this.state.explosives.set(`exp-${Date.now()}-${Math.random()}`, explosive);
+                                    chunk.blocks.delete(`${tx},${ty}`);
+                                    continue;
+                                }
                                 // Destroy and maybe drop item
                                 if (Math.random() < (isNuke ? 0.2 : 0.5)) {
                                     const drop = new ItemDrop();
