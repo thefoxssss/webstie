@@ -987,13 +987,36 @@ const blockColors = {
         }
     };
 
+    const isSeatReservationExpiredError = (error) => {
+        const message = `${error?.message || error || ""}`.toLowerCase();
+        return message.includes("seat reservation expired");
+    };
+
     if (btnCreateServer) {
+        let isCreatingServer = false;
         btnCreateServer.onclick = async () => {
+            if (isCreatingServer) return;
+            isCreatingServer = true;
             try {
                 btnCreateServer.textContent = "CREATING...";
                 const serverName = (serverNameInput?.value || "").trim() || "Public World";
-                client = new window.Colyseus.Client(getServerUrl());
-                room = await client.create("builder_room", { name: playerName(), serverName, sprite: spriteToPayload(localCharacterSprite) });
+                const createPayload = { name: playerName(), serverName, sprite: spriteToPayload(localCharacterSprite) };
+                let lastError = null;
+
+                for (let attempt = 0; attempt < 2; attempt += 1) {
+                    try {
+                        client = new window.Colyseus.Client(getServerUrl());
+                        room = await client.create("builder_room", createPayload);
+                        break;
+                    } catch (e) {
+                        lastError = e;
+                        if (!isSeatReservationExpiredError(e) || attempt > 0) throw e;
+                        console.warn("Create server seat reservation expired; retrying once.", e);
+                    }
+                }
+
+                if (!room) throw lastError || new Error("Failed to create room");
+
                 localPlayerId = room.sessionId;
                 setupRoomListeners();
                 menu.style.display = "none";
@@ -1002,6 +1025,8 @@ const blockColors = {
             } catch (e) {
                 console.error("Create server error", e);
                 btnCreateServer.textContent = "CREATE SERVER";
+            } finally {
+                isCreatingServer = false;
             }
         };
     }
