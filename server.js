@@ -619,6 +619,7 @@ type("number")(BuilderPlayer.prototype, "maxHp");
 type("number")(BuilderPlayer.prototype, "armorHp");
 type("number")(BuilderPlayer.prototype, "maxArmorHp");
 type("number")(BuilderPlayer.prototype, "armorType");
+type("number")(BuilderPlayer.prototype, "backType");
 type("number")(BuilderPlayer.prototype, "selectedItemType");
 type("boolean")(BuilderPlayer.prototype, "flightEnabled");
 type("boolean")(BuilderPlayer.prototype, "creativeMode");
@@ -998,6 +999,53 @@ this.onMessage("hammer", (client, message) => {
               drop.noPickupBefore = Date.now() + 250;
               this.state.drops.set(drop.id, drop);
 
+              // Drop container contents if it's a chest or furnace
+              const containerId = `${x},${y}`;
+              if (b.type === 31) { // Chest
+                  const chest = this.state.chests.get(containerId);
+                  if (chest) {
+                      chest.items.forEach((item) => {
+                          const dropId = `drop-${Date.now()}-${Math.random()}`;
+                          const d = new ItemDrop();
+                          d.id = dropId;
+                          d.x = x * TILE_SIZE + TILE_SIZE / 2;
+                          d.y = y * TILE_SIZE + TILE_SIZE / 2;
+                          d.vx = (Math.random() - 0.5) * 6;
+                          d.vy = -4 - Math.random() * 6;
+                          d.type = item.type;
+                          d.count = item.count;
+                          d.noPickupBefore = Date.now() + 500;
+                          this.state.drops.set(dropId, d);
+                      });
+                      this.state.chests.delete(containerId);
+                  }
+              } else if (b.type === 32) { // Furnace
+                  const furnace = this.state.furnaces.get(containerId);
+                  if (furnace) {
+                      const contents = [
+                          { type: furnace.inputItem, count: furnace.inputCount },
+                          { type: furnace.fuelItem, count: furnace.fuelCount },
+                          { type: furnace.outputItem, count: furnace.outputCount }
+                      ];
+                      contents.forEach(item => {
+                          if (item.count > 0) {
+                              const dropId = `drop-${Date.now()}-${Math.random()}`;
+                              const d = new ItemDrop();
+                              d.id = dropId;
+                              d.x = x * TILE_SIZE + TILE_SIZE / 2;
+                              d.y = y * TILE_SIZE + TILE_SIZE / 2;
+                              d.vx = (Math.random() - 0.5) * 6;
+                              d.vy = -4 - Math.random() * 6;
+                              d.type = item.type;
+                              d.count = item.count;
+                              d.noPickupBefore = Date.now() + 500;
+                              this.state.drops.set(dropId, d);
+                          }
+                      });
+                      this.state.furnaces.delete(containerId);
+                  }
+              }
+
               chunk.blocks.delete(key);
           }
       }
@@ -1088,6 +1136,12 @@ this.onMessage("hammer", (client, message) => {
         if (player.armorHp > maxArmor) {
             player.armorHp = maxArmor;
         }
+    });
+
+    this.onMessage("equip_back", (client, message) => {
+        const player = this.state.players.get(client.sessionId);
+        if (!player || player.hp <= 0) return;
+        player.backType = message.type || 0;
     });
 
     this.onMessage("shoot", (client, message) => {
@@ -1228,6 +1282,7 @@ this.onMessage("hammer", (client, message) => {
     p.armorHp = 0;
     p.maxArmorHp = 0;
     p.armorType = 0;
+    p.backType = 0;
     p.selectedItemType = 0;
     p.flightEnabled = false;
     p.creativeMode = false;
@@ -1984,7 +2039,7 @@ if (onLadder) {
             }
         }
 
-        p.flightEnabled = p.creativeMode || (p.armorType === 65 && !!inp.flight);
+        p.flightEnabled = p.creativeMode || ((p.armorType === 65 || p.backType === 65) && !!inp.flight);
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
