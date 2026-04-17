@@ -645,6 +645,18 @@ body::before {
   flex: 1;
   min-width: 0;
 }
+.chat-msg.chat-msg-continuation {
+  margin-top: -2px;
+}
+.chat-msg.chat-msg-continuation .chat-msg-text {
+  padding-left: 18px;
+}
+.chat-crew-tag {
+  color: #8fb6ff;
+  font-size: 9px;
+  margin-right: 4px;
+  opacity: 0.9;
+}
 .chat-muted-placeholder {
   color: #7f8c9a;
   font-style: italic;

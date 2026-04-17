@@ -342,6 +342,137 @@ const blockColors = {
     const BUILD_HOLD_REPEAT_MS = 120;
     let buildHoldTimeout = null;
     let buildHoldInterval = null;
+    const CHAT_BUBBLE_EVENT = "gooner:builder-chat-message";
+    const CHAT_BUBBLE_MAX_STACK = 5;
+    const CHAT_BUBBLE_NEARBY_RANGE = TILE_SIZE * 14;
+    const CHAT_BUBBLE_DURATION_MS = 6500;
+    const CHAT_BUBBLE_FADE_MS = 900;
+    const CHAT_BUBBLE_BASE_OFFSET = 24;
+    const CHAT_BUBBLE_SPACING = 24;
+    const CHAT_BUBBLE_TRANSITION_SMOOTHING = 0.22;
+    const inWorldChatBubblesByUser = new Map();
+    const normalizedName = (name) => String(name || "").trim().toUpperCase();
+    const readLocalCrewTag = () => {
+        try {
+            const parsed = JSON.parse(localStorage.getItem("goonerCrewData") || "{}");
+            return normalizedName(parsed?.tag || "");
+        } catch (_err) {
+            return "";
+        }
+    };
+    const findPlayerByNormalizedName = (name) => {
+        if (!room || !room.state?.players || !name) return null;
+        let found = null;
+        room.state.players.forEach((player, sessionId) => {
+            if (found) return;
+            if (normalizedName(player?.name) === name) {
+                found = { player, sessionId };
+            }
+        });
+        return found;
+    };
+    const shouldRenderBubbleForMessage = (message, localPlayer, senderPlayer) => {
+        if (!message || !senderPlayer || !localPlayer) return false;
+        const tab = String(message.tab || "global");
+        const me = normalizedName(state.myName || "");
+        const sender = normalizedName(message.user);
+        if (!sender || !message.msg) return false;
+        if (tab === "global") {
+            const dx = (senderPlayer.x + TILE_SIZE / 2) - (localPlayer.x + TILE_SIZE / 2);
+            const dy = (senderPlayer.y + TILE_SIZE / 2) - (localPlayer.y + TILE_SIZE / 2);
+            return (dx * dx) + (dy * dy) <= CHAT_BUBBLE_NEARBY_RANGE * CHAT_BUBBLE_NEARBY_RANGE;
+        }
+        if (tab === "crew") {
+            const localCrew = readLocalCrewTag();
+            const msgCrew = normalizedName(message.crewTag || "");
+            return Boolean(localCrew && msgCrew && localCrew === msgCrew);
+        }
+        if (tab === "dm") {
+            const to = normalizedName(message.to || "");
+            return sender === me || to === me;
+        }
+        return false;
+    };
+    const handleIncomingChatBubbleEvent = (event) => {
+        const detail = event?.detail;
+        if (!detail || !room || !localPlayerId || !room.state?.players?.has(localPlayerId)) return;
+        const senderName = normalizedName(detail.user);
+        if (!senderName) return;
+        const senderEntry = findPlayerByNormalizedName(senderName);
+        const localPlayer = room.state.players.get(localPlayerId);
+        if (!senderEntry || !localPlayer) return;
+        if (!shouldRenderBubbleForMessage(detail, localPlayer, senderEntry.player)) return;
+        const now = Date.now();
+        const stack = inWorldChatBubblesByUser.get(senderName) || [];
+        stack.push({
+            id: detail.id || `${senderName}:${detail.ts || now}`,
+            text: String(detail.msg || "").slice(0, 80),
+            createdAt: now,
+            expiresAt: now + CHAT_BUBBLE_DURATION_MS,
+            yOffset: CHAT_BUBBLE_BASE_OFFSET,
+            targetOffset: CHAT_BUBBLE_BASE_OFFSET,
+        });
+        while (stack.length > CHAT_BUBBLE_MAX_STACK) stack.shift();
+        inWorldChatBubblesByUser.set(senderName, stack);
+    };
+    const updateAndDrawInWorldChatBubbles = (localPlayer) => {
+        if (!room || !localPlayer) return;
+        const now = Date.now();
+        inWorldChatBubblesByUser.forEach((stack, name) => {
+            const playerEntry = findPlayerByNormalizedName(name);
+            if (!playerEntry || !Array.isArray(stack) || stack.length === 0) {
+                inWorldChatBubblesByUser.delete(name);
+                return;
+            }
+            const filtered = stack.filter((bubble) => bubble.expiresAt > now);
+            if (filtered.length === 0) {
+                inWorldChatBubblesByUser.delete(name);
+                return;
+            }
+            for (let i = filtered.length - 1; i >= 0; i -= 1) {
+                const bubble = filtered[i];
+                const fromNewest = filtered.length - 1 - i;
+                bubble.targetOffset = CHAT_BUBBLE_BASE_OFFSET + (fromNewest * CHAT_BUBBLE_SPACING);
+                bubble.yOffset += (bubble.targetOffset - bubble.yOffset) * CHAT_BUBBLE_TRANSITION_SMOOTHING;
+            }
+            inWorldChatBubblesByUser.set(name, filtered);
+            filtered.forEach((bubble) => {
+                const remaining = bubble.expiresAt - now;
+                const alpha = remaining >= CHAT_BUBBLE_FADE_MS ? 1 : Math.max(0, remaining / CHAT_BUBBLE_FADE_MS);
+                if (alpha <= 0.01) return;
+                const anchorX = playerEntry.player.x + (TILE_SIZE / 2);
+                const anchorY = playerEntry.player.y - bubble.yOffset;
+                const bubblePaddingX = 6;
+                const bubbleHeight = 16;
+                ctx.font = "8px 'Press Start 2P', monospace";
+                const maxTextWidth = 190;
+                const rawText = bubble.text;
+                let drawText = rawText;
+                while (ctx.measureText(drawText).width > maxTextWidth && drawText.length > 4) {
+                    drawText = `${drawText.slice(0, -2)}…`;
+                }
+                const textWidth = ctx.measureText(drawText).width;
+                const bubbleWidth = textWidth + (bubblePaddingX * 2);
+                const bubbleX = anchorX - (bubbleWidth / 2);
+                const bubbleY = anchorY - bubbleHeight;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = "rgba(10, 18, 25, 0.9)";
+                ctx.strokeStyle = "rgba(170, 230, 255, 0.95)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.rect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = "#dff7ff";
+                ctx.textAlign = "center";
+                ctx.fillText(drawText, anchorX, bubbleY + 11);
+                ctx.restore();
+            });
+        });
+    };
+    window.removeEventListener(CHAT_BUBBLE_EVENT, handleIncomingChatBubbleEvent);
+    window.addEventListener(CHAT_BUBBLE_EVENT, handleIncomingChatBubbleEvent);
     const playerName = () => state.myName || "Player";
     const hotbarLayout = {
         slotSize: 40,
@@ -2536,6 +2667,7 @@ if (e.button === 2 && !e.shiftKey) {
             ctx.textAlign = "center";
             ctx.fillText(p.name, p.x + TILE_SIZE / 2, p.y - 5);
         });
+        updateAndDrawInWorldChatBubbles(localPlayer);
 
         // Draw bullets
         room.state.bullets.forEach((b) => {
@@ -3310,6 +3442,8 @@ if (inventoryOpen) {
         canvas.removeEventListener("mouseup", handleMouseUp);
 
         clearBuildHoldTimers();
+        inWorldChatBubblesByUser.clear();
+        window.removeEventListener(CHAT_BUBBLE_EVENT, handleIncomingChatBubbleEvent);
         menu.style.display = "block";
         gameArea.style.display = "none";
         btnJoin.textContent = "QUICK JOIN ANY SERVER";

@@ -5873,6 +5873,8 @@ let activeDmUser = "";
 let globallyMutedUsers = new Set();
 let isChatInitialized = false;
 let isChatModerationModeEnabled = true;
+const emittedBubbleMessageKeys = new Set();
+const MAX_EMITTED_BUBBLE_KEYS = 400;
 
 function getStatusStateForUser(username) {
   const normalized = normalizeUsername(username || "");
@@ -5885,6 +5887,38 @@ function getStatusStateForUser(username) {
 
 function renderChatUserLabel(username, label = username) {
   return `${renderStatusDot(getStatusStateForUser(username))}<span class="chat-user">${escapeHtml(String(label || "ANON"))}:</span>`;
+}
+
+function renderCrewAffiliationTag(message = {}) {
+  const inferredCrew = normalizeCrewTag(message.crewTag || message?.crew?.tag || "");
+  const safeCrew = inferredCrew || "SOLO";
+  return `<span class="chat-crew-tag">[${escapeHtml(safeCrew)}]</span>`;
+}
+
+function emitBuilderChatBubbleMessage(tab, message) {
+  if (!message || !message.msg) return;
+  const msgId = String(message.id || `${message.user || "ANON"}:${message.ts || 0}:${message.msg || ""}`);
+  const eventKey = `${tab}:${msgId}`;
+  if (emittedBubbleMessageKeys.has(eventKey)) return;
+  emittedBubbleMessageKeys.add(eventKey);
+  if (emittedBubbleMessageKeys.size > MAX_EMITTED_BUBBLE_KEYS) {
+    const oldest = emittedBubbleMessageKeys.values().next().value;
+    if (oldest) emittedBubbleMessageKeys.delete(oldest);
+  }
+  window.dispatchEvent(
+    new CustomEvent("gooner:builder-chat-message", {
+      detail: {
+        id: msgId,
+        tab,
+        user: normalizeUsername(message.user || "ANON"),
+        msg: String(message.msg || ""),
+        ts: Number(message.ts || Date.now()),
+        to: normalizeUsername(message.to || ""),
+        crewTag: normalizeCrewTag(message.crewTag || ""),
+        participants: Array.isArray(message.participants) ? message.participants.map((entry) => normalizeUsername(entry || "")) : [],
+      },
+    })
+  );
 }
 
 function startChatPresenceSync() {
@@ -5949,8 +5983,9 @@ function getChatTabConfig(tab) {
         const mine = sender === normalizeUsername(myName);
         const partner = mine ? to || "UNKNOWN" : sender;
         const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
-        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(filterChatMessage(m.msg || ""))}`;
-      }
+        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${renderCrewAffiliationTag(m)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      },
+      renderMessageBody: (m) => escapeHtml(filterChatMessage(m.msg || "")),
     },
     global: {
       label: "GLOBAL",
@@ -5960,8 +5995,9 @@ function getChatTabConfig(tab) {
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
-      }
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${renderCrewAffiliationTag(m)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      },
+      renderMessageBody: (m) => escapeHtml(filterChatMessage(m.msg || "")),
     },
     crew: {
       label: "CREW",
@@ -5978,8 +6014,9 @@ function getChatTabConfig(tab) {
       },
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
-      }
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${renderCrewAffiliationTag(m)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+      },
+      renderMessageBody: (m) => escapeHtml(filterChatMessage(m.msg || "")),
     }
   };
   return configs[tab] || configs.global;
@@ -6029,28 +6066,41 @@ function renderChatTab() {
     const muted = getChatSet(CHAT_MUTED_KEY);
     const msgs = [];
     snap.forEach((d) => msgs.push({ id: d.id, ...d.data() }));
+    let previousVisibleSender = "";
     msgs
       .sort((a, b) => Number(a?.ts || 0) - Number(b?.ts || 0))
       .forEach((m) => {
       const user = normalizeUsername(m.user || "ANON");
       if (blocklist.has(user)) return;
+      const isContinuation = previousVisibleSender === user;
+      previousVisibleSender = user;
       const isLocallyMuted = muted.has(user);
       const isGloballyMuted = globallyMutedUsers.has(user);
       const row = document.createElement("div");
       row.className = "chat-msg";
+      row.classList.toggle("chat-msg-continuation", isContinuation);
 
       const text = document.createElement("div");
       text.className = "chat-msg-text";
       if (isLocallyMuted || isGloballyMuted) {
         const muteScope = isGloballyMuted ? "GLOBAL" : "LOCAL";
-        text.innerHTML = `${renderChatUserLabel(user, user)} <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+        if (isContinuation) {
+          text.innerHTML = `<span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+        } else {
+          text.innerHTML = `${renderChatUserLabel(user, user)} <span class="chat-muted-placeholder">[${escapeHtml(muteScope)} MUTED MESSAGE]</span>`;
+        }
       } else {
-        text.innerHTML = tabConfig.renderMessage(m);
+        if (isContinuation && typeof tabConfig.renderMessageBody === "function") {
+          text.innerHTML = tabConfig.renderMessageBody(m);
+        } else {
+          text.innerHTML = tabConfig.renderMessage(m);
+        }
+        emitBuilderChatBubbleMessage(currentTab, m);
       }
       row.appendChild(text);
 
       const canTargetUser = user && user !== "ANON" && user !== normalizeUsername(myName);
-      if (canTargetUser) {
+      if (canTargetUser && !isContinuation) {
         const canModerateChat = canUseChatModeration();
 
         const localMuteBtn = document.createElement("button");
