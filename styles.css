@@ -641,6 +641,14 @@ body::before {
   margin-bottom: 5px;
   word-wrap: break-word;
 }
+.chat-msg-replyable {
+  cursor: pointer;
+}
+.chat-msg-replyable:hover .chat-msg-text {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
 .chat-msg-text {
   flex: 1;
   min-width: 0;

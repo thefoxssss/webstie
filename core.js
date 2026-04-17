@@ -5889,10 +5889,9 @@ function renderChatUserLabel(username, label = username) {
   return `${renderStatusDot(getStatusStateForUser(username))}<span class="chat-user">${escapeHtml(String(label || "ANON"))}:</span>`;
 }
 
-function renderCrewAffiliationTag(message = {}) {
-  const inferredCrew = normalizeCrewTag(message.crewTag || message?.crew?.tag || "");
-  const safeCrew = inferredCrew || "SOLO";
-  return `<span class="chat-crew-tag">[${escapeHtml(safeCrew)}]</span>`;
+function getDisplayChatMessage(rawMessage) {
+  const cleaned = filterChatMessage(rawMessage || "");
+  return cleaned.replace(/^\s*\[ADMIN\]\s*/i, "");
 }
 
 function emitBuilderChatBubbleMessage(tab, message) {
@@ -5983,9 +5982,9 @@ function getChatTabConfig(tab) {
         const mine = sender === normalizeUsername(myName);
         const partner = mine ? to || "UNKNOWN" : sender;
         const prefix = activeDmUser ? (mine ? "YOU" : `@${sender}`) : `${mine ? "YOU" : `@${sender}`} → @${partner}`;
-        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${renderCrewAffiliationTag(m)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderStatusDot(getStatusStateForUser(sender))}<span class="chat-user">${escapeHtml(prefix)}:</span> ${escapeHtml(getDisplayChatMessage(m.msg || ""))}`;
       },
-      renderMessageBody: (m) => escapeHtml(filterChatMessage(m.msg || "")),
+      renderMessageBody: (m) => escapeHtml(getDisplayChatMessage(m.msg || "")),
     },
     global: {
       label: "GLOBAL",
@@ -5995,9 +5994,9 @@ function getChatTabConfig(tab) {
       send: (txt) => ({ payload: { user: myName, msg: filterChatMessage(txt).slice(0, 60), ts: Date.now() }, collectionName: "gooner_global_chat" }),
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `${renderChatUserLabel(m.user || "ANON", user)} ${renderCrewAffiliationTag(m)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(getDisplayChatMessage(m.msg || ""))}`;
       },
-      renderMessageBody: (m) => escapeHtml(filterChatMessage(m.msg || "")),
+      renderMessageBody: (m) => escapeHtml(getDisplayChatMessage(m.msg || "")),
     },
     crew: {
       label: "CREW",
@@ -6014,12 +6013,29 @@ function getChatTabConfig(tab) {
       },
       renderMessage: (m) => {
         const user = String(m.user || "ANON").toUpperCase();
-        return `${renderChatUserLabel(m.user || "ANON", user)} ${renderCrewAffiliationTag(m)} ${escapeHtml(filterChatMessage(m.msg || ""))}`;
+        return `${renderChatUserLabel(m.user || "ANON", user)} ${escapeHtml(getDisplayChatMessage(m.msg || ""))}`;
       },
-      renderMessageBody: (m) => escapeHtml(filterChatMessage(m.msg || "")),
+      renderMessageBody: (m) => escapeHtml(getDisplayChatMessage(m.msg || "")),
     }
   };
   return configs[tab] || configs.global;
+}
+
+function setChatReplyTarget(tab, username) {
+  const target = normalizeUsername(username || "");
+  if (!target || target === normalizeUsername(myName)) return;
+  const input = document.getElementById("chatInput");
+  if (!input) return;
+  if (tab === "dm") {
+    activeDmUser = target;
+    input.focus();
+    showToast("DM TARGET READY", "💬", `@${target}`);
+    return;
+  }
+  input.value = `@${target} `;
+  input.focus();
+  input.selectionStart = input.value.length;
+  input.selectionEnd = input.value.length;
 }
 
 function renderChatTab() {
@@ -6079,6 +6095,15 @@ function renderChatTab() {
       const row = document.createElement("div");
       row.className = "chat-msg";
       row.classList.toggle("chat-msg-continuation", isContinuation);
+      const canReplyToUser = user && user !== "ANON" && user !== normalizeUsername(myName);
+      if (canReplyToUser) {
+        row.classList.add("chat-msg-replyable");
+        row.title = `Reply to @${user}`;
+        row.addEventListener("click", (event) => {
+          if (event.target && event.target.closest("button")) return;
+          setChatReplyTarget(currentTab, user);
+        });
+      }
 
       const text = document.createElement("div");
       text.className = "chat-msg-text";
@@ -6099,7 +6124,7 @@ function renderChatTab() {
       }
       row.appendChild(text);
 
-      const canTargetUser = user && user !== "ANON" && user !== normalizeUsername(myName);
+      const canTargetUser = canReplyToUser;
       if (canTargetUser && !isContinuation) {
         const canModerateChat = canUseChatModeration();
 
