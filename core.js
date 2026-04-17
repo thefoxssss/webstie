@@ -141,7 +141,6 @@ let myItemToggles = {};
 let builderInventory = null;
 let builderHotbar = null;
 let builderArmor = null;
-let builderBack = null;
 let builderCharacterSprite = null;
 let transactionLog = [];
 let globalVol = 0.5;
@@ -304,8 +303,6 @@ export const state = {
   set builderHotbar(v) { builderHotbar = v; },
   get builderArmor() { return builderArmor; },
   set builderArmor(v) { builderArmor = v; },
-  get builderBack() { return builderBack; },
-  set builderBack(v) { builderBack = v; },
   get builderCharacterSprite() { return builderCharacterSprite; },
   set builderCharacterSprite(v) { builderCharacterSprite = v; },
   get myItemToggles() {
@@ -2804,17 +2801,16 @@ function charForPaletteIndex(idx) {
 }
 
 function parseLogoToEditor(logoData) {
-  const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-  crewLogoEditorPixels = Array(res).fill().map(() => Array(res).fill(-1));
+  crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
   crewLogoEditorPalette = ["transparent"];
 
   if (!logoData || !logoData.palette || !logoData.pixels) return;
 
   crewLogoEditorPalette = [...logoData.palette];
 
-  for (let y = 0; y < Math.min(res, logoData.pixels.length); y++) {
+  for (let y = 0; y < 32; y++) {
     const row = logoData.pixels[y] || "";
-    for (let x = 0; x < Math.min(res, row.length); x++) {
+    for (let x = 0; x < 32; x++) {
       const char = row[x] || " ";
       if (char !== " ") {
         let colorIdx = -1;
@@ -2832,10 +2828,9 @@ function parseLogoToEditor(logoData) {
 
 function serializeEditorToLogo() {
   const rows = [];
-  const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-  for (let y = 0; y < res; y++) {
+  for (let y = 0; y < 32; y++) {
     let rowStr = "";
-    for (let x = 0; x < res; x++) {
+    for (let x = 0; x < 32; x++) {
       rowStr += charForPaletteIndex(crewLogoEditorPixels[y][x]);
     }
     rows.push(rowStr);
@@ -2855,11 +2850,10 @@ function renderCrewLogoEditor() {
   const canvas = document.getElementById("crewLogoEditorCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-  ctx.clearRect(0, 0, res, res);
+  ctx.clearRect(0, 0, 32, 32);
 
-  for (let y = 0; y < res; y++) {
-    for (let x = 0; x < res; x++) {
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
       const idx = crewLogoEditorPixels[y][x];
       if (idx >= 0 && idx < crewLogoEditorPalette.length && crewLogoEditorPalette[idx] !== "transparent") {
         ctx.fillStyle = crewLogoEditorPalette[idx];
@@ -2875,13 +2869,12 @@ function floodFill(startX, startY, targetColorIndex) {
 
   const stack = [[startX, startY]];
   const visited = new Set();
-  const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
 
   while (stack.length > 0) {
     const [x, y] = stack.pop();
     const key = `${x},${y}`;
 
-    if (x < 0 || x >= res || y < 0 || y >= res) continue;
+    if (x < 0 || x >= 32 || y < 0 || y >= 32) continue;
     if (visited.has(key)) continue;
     if (crewLogoEditorPixels[y][x] !== startColorIndex) continue;
 
@@ -2943,14 +2936,9 @@ function initCrewUx() {
       pixelEditorSession = { mode: "crew", onSave: null };
       const title = document.getElementById("crewLogoEditorTitle");
       const subtitle = document.getElementById("crewLogoEditorSubtitle");
-      const editorCanvas = document.getElementById("crewLogoEditorCanvas");
       if (title) title.innerText = "CREW LOGO EDITOR";
       if (subtitle) subtitle.innerText = "32x32 PIXEL ART";
       if (saveLogoBtn) saveLogoBtn.innerText = "SAVE LOGO";
-      if (editorCanvas) {
-        editorCanvas.width = 32;
-        editorCanvas.height = 32;
-      }
       parseLogoToEditor(crewData.logo || DEFAULT_CREW_LOGO);
       document.getElementById("overlayCrewLogoEditor").classList.add("active");
       renderCrewLogoEditor();
@@ -2982,8 +2970,7 @@ function initCrewUx() {
 
   if (clearLogoBtn) {
     clearLogoBtn.onclick = () => {
-      const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-      crewLogoEditorPixels = Array(res).fill().map(() => Array(res).fill(-1));
+      crewLogoEditorPixels = Array(32).fill().map(() => Array(32).fill(-1));
       renderCrewLogoEditor();
     };
   }
@@ -3049,9 +3036,8 @@ function initCrewUx() {
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
       }
-      const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-      const x = Math.floor(((clientX - rect.left) / rect.width) * res);
-      const y = Math.floor(((clientY - rect.top) / rect.height) * res);
+      const x = Math.floor(((clientX - rect.left) / rect.width) * 32);
+      const y = Math.floor(((clientY - rect.top) / rect.height) * 32);
       return { x, y };
     };
 
@@ -3059,8 +3045,7 @@ function initCrewUx() {
       e.preventDefault();
       isDrawing = true;
       const { x, y } = getPos(e);
-      const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-      if (x < 0 || x >= res || y < 0 || y >= res) return;
+      if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
 
       if (currentEditorTool === "fill") {
         const targetIdx = getPaletteIndex(currentEditorColor);
@@ -3079,8 +3064,7 @@ function initCrewUx() {
       e.preventDefault();
       if (currentEditorTool === "fill") return;
       const { x, y } = getPos(e);
-      const res = pixelEditorSession.mode === "builder_character" ? 16 : 32;
-      if (x < 0 || x >= res || y < 0 || y >= res) return;
+      if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
 
       const targetIdx = currentEditorTool === "draw" ? getPaletteIndex(currentEditorColor) : -1;
       if (crewLogoEditorPixels[y][x] !== targetIdx) {
@@ -3182,15 +3166,9 @@ export function openBuilderCharacterEditor(onSaved) {
   const title = document.getElementById("crewLogoEditorTitle");
   const subtitle = document.getElementById("crewLogoEditorSubtitle");
   const saveLogoBtn = document.getElementById("crewLogoSaveBtn");
-  const editorCanvas = document.getElementById("crewLogoEditorCanvas");
-
   if (title) title.innerText = "CHARACTER SPRITE EDITOR";
-  if (subtitle) subtitle.innerText = "16x16 PIXEL ART // USED IN BUILDER";
+  if (subtitle) subtitle.innerText = "32x32 PIXEL ART // USED IN BUILDER";
   if (saveLogoBtn) saveLogoBtn.innerText = "SAVE CHARACTER";
-  if (editorCanvas) {
-    editorCanvas.width = 16;
-    editorCanvas.height = 16;
-  }
 
   pixelEditorSession = {
     mode: "builder_character",
@@ -3552,7 +3530,6 @@ function loadProfile(data) {
   builderInventory = data.builderInventory || null;
   builderHotbar = data.builderHotbar || null;
   builderArmor = data.builderArmor || null;
-  builderBack = data.builderBack || null;
   builderCharacterSprite = sanitizePixelLogo(data.builderCharacterSprite || null, DEFAULT_CREW_LOGO);
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
@@ -4573,7 +4550,6 @@ export async function saveStats() {
     builderInventory: Array.isArray(builderInventory) ? builderInventory.map(item => item === undefined ? null : item) : null,
     builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
     builderArmor: builderArmor === undefined ? null : builderArmor,
-    builderBack: builderBack === undefined ? null : builderBack,
     builderCharacterSprite: sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO),
     jobs: jobData,
     loanData,
@@ -4596,7 +4572,6 @@ export async function saveStats() {
         builderInventory: Array.isArray(builderInventory) ? builderInventory.map(item => item === undefined ? null : item) : null,
         builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
         builderArmor: builderArmor === undefined ? null : builderArmor,
-        builderBack: builderBack === undefined ? null : builderBack,
         builderCharacterSprite: sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO),
         jobs: jobData,
         loanData,
@@ -7113,11 +7088,10 @@ document.addEventListener("keyup", (e) => {
   keysPressed[e.key] = false;
 });
 
-export function updateBuilderInventoryState(hotbar, inventory, armor, back) {
+export function updateBuilderInventoryState(hotbar, inventory, armor) {
     builderHotbar = hotbar;
     builderInventory = inventory;
     builderArmor = armor;
-    builderBack = back;
 }
 
-export { builderHotbar, builderInventory, builderArmor, builderBack };
+export { builderHotbar, builderInventory, builderArmor };
