@@ -950,11 +950,6 @@ const blockColors = {
         });
     };
 
-    const restartRenderLoop = () => {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        render();
-    };
-
     const joinRoomById = async (roomId) => {
         try {
             btnJoin.textContent = "CONNECTING...";
@@ -964,7 +959,7 @@ const blockColors = {
             setupRoomListeners();
             menu.style.display = "none";
             gameArea.style.display = "block";
-            restartRenderLoop();
+            startGameLoop();
         } catch (e) {
             console.error("Join by id error", e);
             btnJoin.textContent = "QUICK JOIN ANY SERVER";
@@ -980,7 +975,7 @@ const blockColors = {
             setupRoomListeners();
             menu.style.display = "none";
             gameArea.style.display = "block";
-            restartRenderLoop();
+            startGameLoop();
         } catch (e) {
             console.error("Quick join error", e);
             btnJoin.textContent = "QUICK JOIN ANY SERVER";
@@ -998,7 +993,7 @@ const blockColors = {
                 setupRoomListeners();
                 menu.style.display = "none";
                 gameArea.style.display = "block";
-                restartRenderLoop();
+                startGameLoop();
             } catch (e) {
                 console.error("Create server error", e);
                 btnCreateServer.textContent = "CREATE SERVER";
@@ -3960,6 +3955,11 @@ if (inventoryOpen) {
             ctx.fillStyle = blockColors[type] || "#fff";
             ctx.fillRect(x, y, size, size);
         }
+    }
+
+    function startGameLoop() {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        render();
     }
 
     // Cleanup hook
