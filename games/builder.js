@@ -597,7 +597,8 @@ const blockColors = {
     }
 
     function getInventoryBounds() {
-        const minWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap) + (inventoryLayout.padding * 2) + 220;
+        const rightPanelExtraWidth = isPlayerInventoryOnlyView() || isCraftingTableOpen ? 220 : 130;
+        const minWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap) + (inventoryLayout.padding * 2) + rightPanelExtraWidth;
         const width = Math.min(canvas.width - 12, Math.max(minWidth, Math.floor(canvas.width * inventoryLayout.widthRatio)));
         const height = Math.min(canvas.height - 12, Math.max(250, Math.floor(canvas.height * inventoryLayout.heightRatio)));
         const x = Math.floor((canvas.width - width) / 2);
@@ -2261,15 +2262,22 @@ function sendBuildOrBreak(e) {
                             mouse.y >= slotY && mouse.y <= slotY + inventoryLayout.slotSize) {
                             const craftingIndex = r * size + c;
                             const grid = isCraftingTableOpen ? craftingGrid3x3 : craftingGrid2x2;
-                            if (grid[craftingIndex] !== undefined) {
-                                draggedItemType = cloneItem(grid[craftingIndex]);
+                            const itemInSlot = grid[craftingIndex];
+                            if (itemInSlot !== undefined) {
+                                if (isRightClick && itemInSlot.count > 1) {
+                                    const splitCount = Math.ceil(itemInSlot.count / 2);
+                                    draggedItemType = { type: itemInSlot.type, count: splitCount };
+                                    grid[craftingIndex] = { type: itemInSlot.type, count: itemInSlot.count - splitCount };
+                                } else {
+                                    draggedItemType = cloneItem(itemInSlot);
+                                    grid[craftingIndex] = undefined;
+                                }
                                 pickedItemOnMouseDown = true;
                                 dragSourceHotbarIndex = null;
                                 dragSourceInventoryIndex = null;
                                 dragSourceCraftingIndex = craftingIndex;
                                 dragSourceOutputSlot = false;
                                 dragSourceArmorSlot = false;
-                                grid[craftingIndex] = undefined;
                                 checkRecipes();
                             }
                             return;
