@@ -208,7 +208,10 @@ const blockColors = {
     };
     const getMergedInventoryType = (type) => type;
     const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 36, 61, 62, 63, 65].includes(type) ? 1 : 99);
-    const canUseFlight = () => itemType(armorSlot) === 65;
+    let creativeModeEnabled = false;
+    let showEscapeMenu = false;
+    let creativeScroll = 0;
+    const canUseFlight = () => creativeModeEnabled || itemType(armorSlot) === 65;
 
     const blockDataUrls = [
         "data/blocks/1.json", "data/blocks/2.json", "data/blocks/3.json", "data/blocks/4.json",
@@ -380,6 +383,10 @@ const blockColors = {
         return { x, y, width, height };
     }
 
+    function getCreativePanelBounds(panel) {
+        return { x: panel.x, y: Math.max(8, panel.y - 170), width: panel.width, height: 154 };
+    }
+
     function getItemName(item) {
         const type = itemType(item);
         if (!type) return "";
@@ -392,6 +399,14 @@ const blockColors = {
         isCraftingTableOpen = false;
         currentChestId = null;
         currentFurnaceId = null;
+    }
+
+    function setCreativeMode(nextEnabled) {
+        const enabled = !!nextEnabled;
+        if (creativeModeEnabled === enabled) return;
+        creativeModeEnabled = enabled;
+        if (!enabled) creativeScroll = 0;
+        room?.send("set_creative_mode", { enabled });
     }
 
     function openContainerUi(containerType, opts = {}) {
@@ -722,7 +737,7 @@ const blockColors = {
             const selectedSlotItem = hotbarSlots[selectedHotbarIndex];
             if (selectedSlotItem) {
                 const dropCount = e.ctrlKey ? selectedSlotItem.count : 1;
-                room.send("spawn_drops", { items: [{ type: selectedSlotItem.type, count: dropCount }] });
+                room.send("spawn_drops", { items: [{ type: selectedSlotItem.type, count: dropCount }], targetX: mouse.x + camera.x, targetY: mouse.y + camera.y });
                 selectedSlotItem.count -= dropCount;
                 if (selectedSlotItem.count <= 0) {
                     hotbarSlots[selectedHotbarIndex] = undefined;
@@ -775,11 +790,16 @@ const blockColors = {
             return;
         }
 
-        if (e.key === "Escape" && inventoryOpen) {
-            inventoryOpen = false;
-            closeAllContainerUi();
-            showRecipes = false;
-            returnCraftingItems();
+        if (e.key === "Escape") {
+            if (inventoryOpen) {
+                inventoryOpen = false;
+                closeAllContainerUi();
+                showRecipes = false;
+                returnCraftingItems();
+            } else {
+                showEscapeMenu = !showEscapeMenu;
+                return;
+            }
             if (draggedItemType !== null) {
                 if (dragSourceHotbarIndex !== null) {
                     hotbarSlots[dragSourceHotbarIndex] = cloneItem(draggedItemType);
@@ -926,8 +946,8 @@ function sendBuildOrBreak(e) {
         // Handle eating apple
         if (type === 30 && e.button === 0 && e.type !== "interval") {
             room.send("consume", { type: 30 });
-            selectedSlotItem.count--;
-            if (selectedSlotItem.count <= 0) {
+            if (!creativeModeEnabled) selectedSlotItem.count--;
+            if (!creativeModeEnabled && selectedSlotItem.count <= 0) {
                 hotbarSlots[selectedHotbarIndex] = undefined;
                 saveInventoryState();
                 selectedBlockType = undefined;
@@ -961,10 +981,10 @@ function sendBuildOrBreak(e) {
 
             if (hasAmmo) {
                 // Consume ammo
-                if (type !== 63 && ammoIsHotbar) {
+                if (!creativeModeEnabled && type !== 63 && ammoIsHotbar) {
                     hotbarSlots[ammoSlotIndex].count--;
                     if (hotbarSlots[ammoSlotIndex].count <= 0) { hotbarSlots[ammoSlotIndex] = undefined; saveInventoryState(); }
-                } else if (type !== 63) {
+                } else if (!creativeModeEnabled && type !== 63) {
                     inventorySlots[ammoSlotIndex].count--;
                     if (inventorySlots[ammoSlotIndex].count <= 0) { inventorySlots[ammoSlotIndex] = undefined; saveInventoryState(); }
                 }
@@ -995,10 +1015,12 @@ function sendBuildOrBreak(e) {
             // Build (only if a valid block is selected)
             room.send("build", { x: worldX, y: worldY, type: itemType(selectedSlotItem) });
 
-            selectedSlotItem.count--;
-            if (selectedSlotItem.count <= 0) {
-                hotbarSlots[selectedHotbarIndex] = undefined; saveInventoryState();
-                selectedBlockType = undefined;
+            if (!creativeModeEnabled) {
+                selectedSlotItem.count--;
+                if (selectedSlotItem.count <= 0) {
+                    hotbarSlots[selectedHotbarIndex] = undefined; saveInventoryState();
+                    selectedBlockType = undefined;
+                }
             }
         }
     }
@@ -1178,6 +1200,23 @@ function sendBuildOrBreak(e) {
 
     function handleMouseDown(e) {
         if (!room) return;
+        if (isGodUser()) {
+            const btnW = 170, btnH = 28, btnX = canvas.width - btnW - 12, btnY = 12;
+            if (mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= btnY && mouse.y <= btnY + btnH) {
+                setCreativeMode(!creativeModeEnabled);
+                return;
+            }
+        }
+        if (showEscapeMenu) {
+            const mw = 220, mh = 120;
+            const mx = Math.floor((canvas.width - mw)/2), my = Math.floor((canvas.height - mh)/2);
+            if (mouse.x >= mx + 50 && mouse.x <= mx + 170 && mouse.y >= my + 48 && mouse.y <= my + 78) {
+                stopBuilder();
+                return;
+            }
+            showEscapeMenu = false;
+            return;
+        }
         if (e.button === 2) {
             rightMouseHeld = true;
             rightDragVisitedSlots.clear();
@@ -1186,6 +1225,30 @@ function sendBuildOrBreak(e) {
         // Handle inventory and dragging mechanics first
         if (inventoryOpen) {
             const panel = getInventoryBounds();
+            if (creativeModeEnabled) {
+                const cp = getCreativePanelBounds(panel);
+                if (mouse.x >= cp.x + 10 && mouse.x <= cp.x + cp.width - 10 && mouse.y >= cp.y + 24 && mouse.y <= cp.y + cp.height - 10) {
+                    const cell = 34;
+                    const cols = Math.max(1, Math.floor((cp.width - 20) / cell));
+                    const list = getBlockTypes();
+                    const rowOffset = Math.floor(creativeScroll);
+                    const localX = mouse.x - (cp.x + 10);
+                    const localY = mouse.y - (cp.y + 24);
+                    const col = Math.floor(localX / cell);
+                    const row = Math.floor(localY / cell) + rowOffset;
+                    const idx = row * cols + col;
+                    const type = list[idx];
+                    if (type) {
+                        draggedItemType = { type, count: e.shiftKey ? getMaxStack(type) : 1 };
+                        dragSourceHotbarIndex = null;
+                        dragSourceInventoryIndex = null;
+                        dragSourceCraftingIndex = null;
+                        dragSourceOutputSlot = false;
+                        dragSourceArmorSlot = false;
+                        return;
+                    }
+                }
+            }
             const craftingUiEnabled = !isChestOpen && !isFurnaceOpen;
             if (!craftingUiEnabled) showRecipes = false;
 
@@ -1202,12 +1265,15 @@ function sendBuildOrBreak(e) {
                     const displayIdx = i - recipeLayout.startIdx;
                     const col = displayIdx % recipeLayout.itemsPerRow;
                     const row = Math.floor(displayIdx / recipeLayout.itemsPerRow);
-                    const rx = panel.x + 20 + col * recipeLayout.cellWidth;
-                    const ry = panel.y + 50 + row * recipeLayout.cellHeight;
+                    const recipePanelX = Math.min(canvas.width - 262, panel.x + panel.width + 12);
+                    const recipePanelY = panel.y + 8;
+                    const rx = recipePanelX + 10 + col * recipeLayout.cellWidth;
+                    const ry = recipePanelY + 28 + row * recipeLayout.cellHeight;
 
                     if (mouse.x >= rx - 4 && mouse.x <= rx + recipeLayout.hitWidth &&
                         mouse.y >= ry - 4 && mouse.y <= ry + 30) {
-                        fillCraftingGridFromRecipe(CRAFTING_RECIPES[i]);
+                        if (e.shiftKey) { while (fillCraftingGridFromRecipe(CRAFTING_RECIPES[i])) {} }
+                        else fillCraftingGridFromRecipe(CRAFTING_RECIPES[i]);
                         return;
                     }
                 }
@@ -1515,9 +1581,32 @@ function sendBuildOrBreak(e) {
                 if (draggedItemType === null) {
                     if (currentItem !== undefined) {
                         if (!isArmor && isShiftQuickMove) {
-                            const moved = isChestOpen
-                                ? quickMoveToChest(currentItem)
-                                : (isFurnaceOpen ? quickMoveToFurnace(currentItem) : false);
+                            let moved = false;
+                            if (isChestOpen) moved = quickMoveToChest(currentItem);
+                            else if (isFurnaceOpen) moved = quickMoveToFurnace(currentItem);
+                            else if (slotArray === hotbarSlots) {
+                                for (let i = 0; i < inventorySlots.length; i++) {
+                                    if (!inventorySlots[i]) { inventorySlots[i] = cloneItem(currentItem); moved = true; break; }
+                                    if (inventorySlots[i].type === currentItem.type && inventorySlots[i].count < getMaxStack(currentItem.type)) {
+                                        const add = Math.min(getMaxStack(currentItem.type) - inventorySlots[i].count, currentItem.count);
+                                        inventorySlots[i].count += add;
+                                        currentItem.count -= add;
+                                        if (currentItem.count <= 0) { moved = true; break; }
+                                    }
+                                }
+                                if (moved && currentItem.count > 0) moved = false;
+                            } else if (slotArray === inventorySlots) {
+                                for (let i = 0; i < hotbarSlots.length; i++) {
+                                    if (!hotbarSlots[i]) { hotbarSlots[i] = cloneItem(currentItem); moved = true; break; }
+                                    if (hotbarSlots[i].type === currentItem.type && hotbarSlots[i].count < getMaxStack(currentItem.type)) {
+                                        const add = Math.min(getMaxStack(currentItem.type) - hotbarSlots[i].count, currentItem.count);
+                                        hotbarSlots[i].count += add;
+                                        currentItem.count -= add;
+                                        if (currentItem.count <= 0) { moved = true; break; }
+                                    }
+                                }
+                                if (moved && currentItem.count > 0) moved = false;
+                            }
                             if (moved) {
                                 const now = Date.now();
                                 const isDoubleShiftClick = now - lastShiftClickAt < 300 && lastShiftClickType === currentItem.type;
@@ -1543,7 +1632,7 @@ function sendBuildOrBreak(e) {
                         if (isRightClick) {
                             // Split stack
                             if (currentItem.count > 1) {
-                                const splitCount = Math.floor(currentItem.count / 2);
+                                const splitCount = Math.ceil(currentItem.count / 2);
                                 draggedItemType = { type: currentItem.type, count: splitCount };
                                 currentItem.count -= splitCount;
                                 if (isArmor) room.send("equip_armor", { type: currentItem.type });
@@ -1842,7 +1931,7 @@ if (e.button === 2 && !e.shiftKey) {
                   mouse.y >= hotbarPanel.y && mouse.y <= hotbarPanel.y + hotbarPanel.height)) {
 
                 // Drop on ground
-                room.send("spawn_drops", { items: [{ type: draggedItemType.type, count: draggedItemType.count }] });
+                room.send("spawn_drops", { items: [{ type: draggedItemType.type, count: draggedItemType.count }], targetX: mouse.x + camera.x, targetY: mouse.y + camera.y });
                 draggedItemType = null;
                 saveInventoryState();
                 return;
@@ -2001,7 +2090,7 @@ if (e.button === 2 && !e.shiftKey) {
                 // Let's drop 1 item from the stack if right clicking, otherwise whole stack.
                 // Playwright tests don't easily do drag with right click, so let's just drop 1 item ALWAYS into crafting grid if we have >1, so we can make tools easily.
 
-                let dropCount = 1; // By default drop 1 into crafting
+                let dropCount = e.button === 2 ? 1 : draggedItemType.count;
                 let remainingCount = draggedItemType.count - dropCount;
 
                 const existingItem = cloneItem(grid[targetCraftingIndex]);
@@ -2081,7 +2170,7 @@ if (e.button === 2 && !e.shiftKey) {
 
         } else if (draggedItemType !== null) {
             // Drop outside inventory logic -> drop items in world
-            room.send("spawn_drops", { items: [cloneItem(draggedItemType)] });
+            room.send("spawn_drops", { items: [cloneItem(draggedItemType)], targetX: mouse.x + camera.x, targetY: mouse.y + camera.y });
             draggedItemType = null;
             dragSourceHotbarIndex = null;
             dragSourceInventoryIndex = null;
@@ -2095,7 +2184,26 @@ if (e.button === 2 && !e.shiftKey) {
     document.addEventListener("keyup", handleKeyUp);
     canvas.addEventListener("wheel", (e) => {
         if (!room) return;
+        if (inventoryOpen && creativeModeEnabled) {
+            const panel = getInventoryBounds();
+            const cp = getCreativePanelBounds(panel);
+            if (mouse.x >= cp.x && mouse.x <= cp.x + cp.width && mouse.y >= cp.y && mouse.y <= cp.y + cp.height) {
+                const cell = 34;
+                const cols = Math.max(1, Math.floor((cp.width - 20) / cell));
+                const maxRows = Math.ceil(getBlockTypes().length / cols);
+                const visibleRows = Math.max(1, Math.floor((cp.height - 34) / cell));
+                creativeScroll = Math.max(0, Math.min(maxRows - visibleRows, creativeScroll + Math.sign(e.deltaY)));
+                e.preventDefault();
+                return;
+            }
+        }
         if (inventoryOpen && showRecipes) {
+            const panel = getInventoryBounds();
+            const recipePanelX = Math.min(canvas.width - 262, panel.x + panel.width + 12);
+            const recipePanelY = panel.y + 8;
+            const recipePanelW = 250;
+            const recipePanelH = panel.height - 16;
+            if (mouse.x < recipePanelX || mouse.x > recipePanelX + recipePanelW || mouse.y < recipePanelY || mouse.y > recipePanelY + recipePanelH) return;
             recipeScroll += Math.sign(e.deltaY);
             if (recipeScroll < 0) recipeScroll = 0;
             e.preventDefault();
@@ -2106,7 +2214,7 @@ if (e.button === 2 && !e.shiftKey) {
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mouseup", handleMouseUp);
-    canvas.addEventListener("mouseleave", handleMouseUp);
+
 
     // Prevent context menu on canvas for right click breaking
     canvas.addEventListener("contextmenu", e => e.preventDefault());
@@ -2136,7 +2244,7 @@ if (e.button === 2 && !e.shiftKey) {
 
         // Get local player for camera centering
         const localPlayer = room.state.players.get(localPlayerId);
-        if (localPlayer) {
+        if (localPlayer && !creativeModeEnabled) {
             // Snap camera to whole pixels so tile edges don't anti-alias into a faint moving grid.
             camera.x = Math.round(localPlayer.x - canvas.width / 2 + TILE_SIZE / 2);
             camera.y = Math.round(localPlayer.y - canvas.height / 2 + TILE_SIZE / 2);
@@ -2590,6 +2698,40 @@ if (inventoryOpen) {
             ctx.font = "8px 'Press Start 2P', monospace";
             ctx.fillText("Press I to close", panel.x + inventoryLayout.padding, panel.y + inventoryLayout.padding + 16);
 
+            if (creativeModeEnabled) {
+                const cp = getCreativePanelBounds(panel);
+                ctx.fillStyle = "rgba(18,18,18,0.95)";
+                ctx.fillRect(cp.x, cp.y, cp.width, cp.height);
+                ctx.strokeStyle = "#fff";
+                ctx.strokeRect(cp.x, cp.y, cp.width, cp.height);
+                ctx.fillStyle = "#fff";
+                ctx.font = "9px 'Press Start 2P', monospace";
+                ctx.fillText("Creative Catalog", cp.x + 10, cp.y + 14);
+                const cell = 34;
+                const cols = Math.max(1, Math.floor((cp.width - 20) / cell));
+                const visibleRows = Math.max(1, Math.floor((cp.height - 34) / cell));
+                const list = getBlockTypes();
+                const rowOffset = Math.floor(creativeScroll);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(cp.x + 8, cp.y + 22, cp.width - 16, cp.height - 28);
+                ctx.clip();
+                for (let vr = 0; vr < visibleRows + 1; vr++) {
+                    for (let c = 0; c < cols; c++) {
+                        const idx = (vr + rowOffset) * cols + c;
+                        const type = list[idx];
+                        if (!type) continue;
+                        const sx = cp.x + 10 + c * cell;
+                        const sy = cp.y + 24 + vr * cell;
+                        ctx.fillStyle = "#666";
+                        ctx.fillRect(sx, sy, 30, 30);
+                        drawItemIcon(ctx, type, sx + 4, sy + 4, 22);
+                        captureHoverItem({ type, count: getMaxStack(type) }, sx, sy, 30, "∞");
+                    }
+                }
+                ctx.restore();
+            }
+
             // Chest or Furnace rendering logic
             if (isChestOpen && currentChestId && room.state.chests && room.state.chests.has(currentChestId)) {
                 // Render Chest UI
@@ -2763,7 +2905,7 @@ if (inventoryOpen) {
                 ctx.textAlign = "left";
 
                 if (showRecipes) {
-                const recipePanelX = Math.max(12, panel.x - 270);
+                const recipePanelX = Math.min(canvas.width - 262, panel.x + panel.width + 12);
                 const recipePanelY = panel.y + 8;
                 const recipePanelW = 250;
                 const recipePanelH = panel.height - 16;
@@ -2777,6 +2919,10 @@ if (inventoryOpen) {
                 ctx.fillText("Recipe Book", recipePanelX + 8, recipePanelY + 14);
 
                 const recipeLayout = getRecipeBookLayout(panel);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(recipePanelX + 6, recipePanelY + 22, recipePanelW - 12, recipePanelH - 30);
+                ctx.clip();
 
                 for (let i = recipeLayout.startIdx; i < recipeLayout.endIdx; i++) {
                     const displayIdx = i - recipeLayout.startIdx;
@@ -2824,6 +2970,8 @@ if (inventoryOpen) {
                         ctx.fillText("x" + CRAFTING_RECIPES[i].output.count, rx + 76, ry + 16);
                     }
                 }
+
+                ctx.restore();
 
                 // Draw close button
                 ctx.fillStyle = "#f44336";
@@ -2918,7 +3066,7 @@ if (inventoryOpen) {
                         captureHoverItem(craftingOutputSlot, outX, outY, inventoryLayout.slotSize, `x${craftingOutputSlot.count}`);
                     }
                 }
-            if (!showRecipes) {
+            {
                 for (let index = 0; index < totalSlots; index += 1) {
                     const item = inventorySlots[index];
                     const col = index % inventoryLayout.cols;
@@ -3002,6 +3150,38 @@ if (inventoryOpen) {
             }
         }
 
+
+        if (isGodUser()) {
+            const btnW = 170;
+            const btnH = 28;
+            const btnX = canvas.width - btnW - 12;
+            const btnY = 12;
+            ctx.fillStyle = creativeModeEnabled ? "#3cae3c" : "#444";
+            ctx.fillRect(btnX, btnY, btnW, btnH);
+            ctx.strokeStyle = "#fff";
+            ctx.strokeRect(btnX, btnY, btnW, btnH);
+            ctx.fillStyle = "#fff";
+            ctx.font = "9px 'Press Start 2P', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(`Creative: ${creativeModeEnabled ? "ON" : "OFF"}`, btnX + btnW/2, btnY + 18);
+        }
+
+        if (showEscapeMenu) {
+            const mw = 220, mh = 120;
+            const mx = Math.floor((canvas.width - mw)/2), my = Math.floor((canvas.height - mh)/2);
+            ctx.fillStyle = "rgba(0,0,0,0.8)";
+            ctx.fillRect(mx, my, mw, mh);
+            ctx.strokeStyle = "#fff";
+            ctx.strokeRect(mx, my, mw, mh);
+            ctx.fillStyle = "#fff";
+            ctx.textAlign = "center";
+            ctx.font = "10px 'Press Start 2P', monospace";
+            ctx.fillText("Paused", mx + mw/2, my + 24);
+            ctx.fillStyle = "#922";
+            ctx.fillRect(mx + 50, my + 48, 120, 30);
+            ctx.fillStyle = "#fff";
+            ctx.fillText("Leave", mx + mw/2, my + 68);
+        }
         animationFrameId = requestAnimationFrame(render);
     }
 
@@ -3033,7 +3213,7 @@ if (inventoryOpen) {
         canvas.removeEventListener("mousemove", handleMouseMove);
         canvas.removeEventListener("mousedown", handleMouseDown);
         canvas.removeEventListener("mouseup", handleMouseUp);
-        canvas.removeEventListener("mouseleave", handleMouseUp);
+
         clearBuildHoldTimers();
         menu.style.display = "block";
         gameArea.style.display = "none";

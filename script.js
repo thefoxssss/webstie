@@ -1213,6 +1213,7 @@ function initOverlayBackdropExit() {
       if (!overlay.classList.contains("active")) return;
       if (event.target !== overlay) return;
       if (overlay.id === "overlayLogin") return;
+      if (overlay.classList.contains("game-overlay") || overlay.id.startsWith("overlayJob") || overlay.id.startsWith("overlayBuilder")) return;
       closeOverlays();
     });
   });

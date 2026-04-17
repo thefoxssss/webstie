@@ -145,8 +145,7 @@
               <div class="score-tab" data-admin-tab="economy">ECONOMY</div>
               <div class="score-tab" data-admin-tab="server">SERVER TOOLS</div>
               <div class="score-tab" data-admin-tab="automation">AUTOMATION</div>
-              <div class="score-tab" data-admin-tab="builder">BUILDER</div>
-            </div>
+                          </div>
 
             <!-- USER MANAGEMENT TAB -->
             <div class="admin-tab-content active" id="adminTabUser" style="display: block;">
@@ -387,75 +386,6 @@
                 <div class="admin-section admin-section-danger">
                   <p class="admin-section-title">GLOBAL MAINTENANCE</p>
                   <button class="term-btn" style="border-color: #f66; color: #f66;" onclick="window.adminToggleMaintenance()">TOGGLE MAINTENANCE MODE</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- BUILDER TAB -->
-            <div class="admin-tab-content" id="adminTabBuilder" style="display: none;">
-              <div class="admin-actions admin-actions-overhaul">
-                <div class="admin-section">
-                  <p class="admin-section-title">GIVE BLOCKS/ITEMS</p>
-                  <select class="term-input" id="adminBuilderItemInput" style="margin-bottom: 10px;">
-                    <option value="1">1 - GRASS</option>
-                    <option value="2">2 - DIRT</option>
-                    <option value="3">3 - STONE</option>
-                    <option value="4">4 - WOOD</option>
-                    <option value="5">5 - GLASS</option>
-                    <option value="6">6 - BRICK</option>
-                    <option value="7">7 - LOG</option>
-                    <option value="8">8 - LEAVES</option>
-                    <option value="9">9 - PLANKS</option>
-                    <option value="10">10 - CRAFTING TABLE</option>
-                    <option value="11">11 - SWORD</option>
-                    <option value="12">12 - COAL</option>
-                    <option value="13">13 - COPPER</option>
-                    <option value="14">14 - IRON</option>
-                    <option value="15">15 - GOLD</option>
-                    <option value="16">16 - DIAMOND</option>
-                    <option value="17">17 - URANIUM</option>
-                    <option value="18">18 - COPPER ARMOR</option>
-                    <option value="19">19 - IRON ARMOR</option>
-                    <option value="20">20 - GOLD ARMOR</option>
-                    <option value="21">21 - DIAMOND ARMOR</option>
-                    <option value="22">22 - URANIUM ARMOR</option>
-                    <option value="23">23 - COPPER GUN</option>
-                    <option value="24">24 - IRON GUN</option>
-                    <option value="25">25 - GOLD GUN</option>
-                    <option value="26">26 - DIAMOND RIFLE</option>
-                    <option value="27">27 - URANIUM LASER</option>
-                    <option value="28">28 - COPPER AMMO</option>
-                    <option value="29">29 - SAPLING</option>
-                    <option value="30">30 - APPLE</option>
-                    <option value="31">31 - CHEST</option>
-                    <option value="32">32 - FURNACE</option>
-                    <option value="33">33 - TNT</option>
-                    <option value="34">34 - NUKE</option>
-                    <option value="35">35 - LADDER</option>
-                    <option value="36">36 - HAMMER</option>
-                    <option value="37">37 - CACTUS</option>
-                    <option value="38">38 - SAND</option>
-                    <option value="39">39 - SNOW</option>
-                    <option value="40">40 - SANDSTONE</option>
-                    <option value="41">41 - PINE LOG</option>
-                    <option value="42">42 - PINE LEAVES</option>
-                    <option value="43">43 - COPPER INGOT</option>
-                    <option value="44">44 - IRON INGOT</option>
-                    <option value="45">45 - GOLD INGOT</option>
-                    <option value="46">46 - DIAMOND (REFINED)</option>
-                    <option value="47">47 - URANIUM (REFINED)</option>
-                    <option value="48">48 - BEDROCK</option>
-                    <option value="60">60 - TARIQCORE</option>
-                    <option value="61">61 - TARIQCORE BLADE</option>
-                    <option value="62">62 - TARIQCORE ARMOR</option>
-                    <option value="63">63 - TARIQCORE BEAM</option>
-                    <option value="64">64 - CLOUD PLATFORM</option>
-                    <option value="65">65 - TARIQ WINGS</option>
-                  </select>
-                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
-                    <input class="term-input" id="adminBuilderItemCount" type="number" step="1" min="1" max="99" value="1" placeholder="COUNT" style="width: 100%;" />
-                    <button class="term-btn" onclick="window.adminGiveBuilderItemFromInput()">GIVE ITEM</button>
-                  </div>
                 </div>
               </div>
             </div>
