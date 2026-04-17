@@ -621,6 +621,7 @@ type("number")(BuilderPlayer.prototype, "maxArmorHp");
 type("number")(BuilderPlayer.prototype, "armorType");
 type("number")(BuilderPlayer.prototype, "selectedItemType");
 type("boolean")(BuilderPlayer.prototype, "flightEnabled");
+type("boolean")(BuilderPlayer.prototype, "creativeMode");
 
 class BuilderBullet extends Schema {}
 type("string")(BuilderBullet.prototype, "id");
@@ -747,6 +748,16 @@ class BuilderRoom extends colyseus.Room {
       const p = this.state.players.get(client.sessionId);
       if (p) {
         p.selectedItemType = message.type;
+      }
+    });
+
+    this.onMessage("set_creative_mode", (client, message) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+      p.creativeMode = !!message?.enabled;
+      if (p.creativeMode) {
+        p.hp = p.maxHp;
+        p.armorHp = p.maxArmorHp;
       }
     });
 
@@ -932,7 +943,7 @@ this.onMessage("hammer", (client, message) => {
         if (chunk) {
             const b = chunk.blocks.get(`${x},${y}`);
             if (b) {
-                if (b.type === 48) return; // Bedrock cannot be reshaped
+                if (b.type === 48 && !p.creativeMode) return; // Bedrock cannot be reshaped
                 // Cycle meta: 0 (full) -> 1 (bottom slab) -> 2 (top slab) -> 3 (left slope) -> 4 (right slope)
                 b.meta = ((b.meta || 0) + 1) % 5;
             }
@@ -963,7 +974,7 @@ this.onMessage("hammer", (client, message) => {
           const key = `${x},${y}`;
           const b = chunk.blocks.get(key);
           if (b) {
-              if (b.type === 48) return; // Bedrock is unbreakable
+              if (b.type === 48 && !p.creativeMode) return; // Bedrock is unbreakable unless creative
               const drop = new ItemDrop();
               drop.id = `drop-${Date.now()}-${Math.random()}`;
               drop.x = x * TILE_SIZE + TILE_SIZE / 2;
@@ -1024,7 +1035,7 @@ this.onMessage("hammer", (client, message) => {
       if (!attacker || attacker.hp <= 0) return;
 
       const target = this.state.players.get(message.targetId);
-      if (!target || target.hp <= 0) return;
+      if (!target || target.hp <= 0 || target.creativeMode) return;
 
       const dx = attacker.x - target.x;
       const dy = attacker.y - target.y;
@@ -1141,8 +1152,18 @@ this.onMessage("hammer", (client, message) => {
             drop.id = `drop-${Date.now()}-${Math.random()}`;
             drop.x = p.x + TILE_SIZE / 2;
             drop.y = p.y + TILE_SIZE / 2;
-            drop.vx = (Math.random() - 0.5) * 8;
-            drop.vy = -4 - Math.random() * 8;
+            const tx = Number(message?.targetX);
+            const ty = Number(message?.targetY);
+            if (Number.isFinite(tx) && Number.isFinite(ty)) {
+                const dx = tx - drop.x;
+                const dy = ty - drop.y;
+                const mag = Math.hypot(dx, dy) || 1;
+                drop.vx = (dx / mag) * 8;
+                drop.vy = (dy / mag) * 8 - 3;
+            } else {
+                drop.vx = (Math.random() - 0.5) * 8;
+                drop.vy = -4 - Math.random() * 8;
+            }
             drop.type = item.type;
             drop.count = item.count;
             drop.ownerId = client.sessionId;
@@ -1208,6 +1229,7 @@ this.onMessage("hammer", (client, message) => {
     p.armorType = 0;
     p.selectedItemType = 0;
     p.flightEnabled = false;
+    p.creativeMode = false;
     p.lastCx = -999;
     p.lastCy = -999;
     this.state.players.set(client.sessionId, p);
@@ -1226,7 +1248,7 @@ this.onMessage("hammer", (client, message) => {
   }
 
   damagePlayer(target, amount, killerName) {
-      if (target.hp <= 0) return;
+      if (target.hp <= 0 || target.creativeMode) return;
 
       if (target.armorHp > 0) {
           if (amount >= target.armorHp) {
@@ -1885,7 +1907,7 @@ isSolid(x, y) {
         // Player collision
         if (!hit) {
             this.state.players.forEach((p, sessionId) => {
-                if (hit || sessionId === b.ownerId || p.hp <= 0) return;
+                if (hit || sessionId === b.ownerId || p.hp <= 0 || p.creativeMode) return;
 
                 if (b.x >= p.x && b.x <= p.x + TILE_SIZE &&
                     b.y >= p.y && b.y <= p.y + TILE_SIZE) {
@@ -1960,7 +1982,7 @@ if (onLadder) {
             }
         }
 
-        p.flightEnabled = p.armorType === 65 && !!inp.flight;
+        p.flightEnabled = p.creativeMode || (p.armorType === 65 && !!inp.flight);
 
         if (inp.left) p.vx -= 1.5;
         if (inp.right) p.vx += 1.5;
@@ -2011,7 +2033,7 @@ if (onLadder) {
         p.y += p.vy;
 
         // Fall into the void respawn
-        if (p.y > 300 * TILE_SIZE) {
+        if (!p.creativeMode && p.y > 300 * TILE_SIZE) {
             if (p.hp > 0) {
                 p.hp = 0;
                 const c = this.clients.find(c => c.sessionId === sessionId);
@@ -2072,7 +2094,7 @@ if (onLadder) {
 
             // Damage players
             this.state.players.forEach(p => {
-                if (p.hp <= 0) return;
+                if (p.hp <= 0 || p.creativeMode) return;
                 const dx = p.x + TILE_SIZE/2 - exp.x;
                 const dy = p.y + TILE_SIZE/2 - exp.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
