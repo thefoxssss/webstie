@@ -4004,3 +4004,4 @@ if (inventoryOpen) {
         window.gameStops = [stopBuilder];
     }
 }
+}
