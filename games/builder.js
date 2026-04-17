@@ -24,6 +24,7 @@ export function initBuilder() {
     let room;
     let client;
     let animationFrameId;
+    let inputLoopId = null;
 let selectedRoomId = null;
     let inventoryOpen = false;
     let isCraftingTableOpen = false;
@@ -581,8 +582,8 @@ const blockColors = {
         const rows = inventoryLayout.rows;
         const gridWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap);
         const gridHeight = (rows * inventoryLayout.slotSize) + ((rows - 1) * inventoryLayout.gap);
-        const startX = panel.x + inventoryLayout.padding; // Shift inventory left to make room
-        const startY = panel.y + Math.floor((panel.height - gridHeight) / 2) + 40;
+        const startX = panel.x + inventoryLayout.padding;
+        const startY = panel.y + panel.height - gridHeight - inventoryLayout.padding;
         return { rows, gridWidth, gridHeight, startX, startY };
     }
 
@@ -596,15 +597,18 @@ const blockColors = {
     }
 
     function getInventoryBounds() {
-        const width = Math.floor(canvas.width * inventoryLayout.widthRatio);
-        const height = Math.floor(canvas.height * inventoryLayout.heightRatio);
+        const minWidth = (inventoryLayout.cols * inventoryLayout.slotSize) + ((inventoryLayout.cols - 1) * inventoryLayout.gap) + (inventoryLayout.padding * 2) + 220;
+        const width = Math.min(canvas.width - 12, Math.max(minWidth, Math.floor(canvas.width * inventoryLayout.widthRatio)));
+        const height = Math.min(canvas.height - 12, Math.max(250, Math.floor(canvas.height * inventoryLayout.heightRatio)));
         const x = Math.floor((canvas.width - width) / 2);
         const y = Math.floor((canvas.height - height) / 2);
         return { x, y, width, height };
     }
 
     function getCreativePanelBounds(panel) {
-        return { x: panel.x, y: Math.max(8, panel.y - 170), width: panel.width, height: 154 };
+        const width = Math.min(260, panel.width - 16);
+        const height = Math.max(140, panel.height - 110);
+        return { x: panel.x + panel.width - width - 8, y: panel.y + 28, width, height };
     }
 
     function getItemName(item) {
@@ -2745,9 +2749,7 @@ if (e.button === 2 && !e.shiftKey) {
         }
     }
 
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("keyup", handleKeyUp);
-    canvas.addEventListener("wheel", (e) => {
+    const handleCanvasWheel = (e) => {
         if (!room) return;
         if (inventoryOpen && creativeModeEnabled) {
             const panel = getInventoryBounds();
@@ -2776,7 +2778,12 @@ if (e.button === 2 && !e.shiftKey) {
             e.preventDefault();
             return;
         }
-    }, { passive: false });
+    };
+    const handleCanvasContextMenu = (e) => e.preventDefault();
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
+    canvas.addEventListener("wheel", handleCanvasWheel, { passive: false });
 
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mousedown", handleMouseDown);
@@ -2784,10 +2791,10 @@ if (e.button === 2 && !e.shiftKey) {
 
 
     // Prevent context menu on canvas for right click breaking
-    canvas.addEventListener("contextmenu", e => e.preventDefault());
+    canvas.addEventListener("contextmenu", handleCanvasContextMenu);
 
     // Send input loop
-    setInterval(() => {
+    inputLoopId = setInterval(() => {
         if (room && localPlayerId && room.state.players.has(localPlayerId)) {
             if (!canUseFlight()) {
                 flightToggleEnabled = false;
@@ -3240,9 +3247,9 @@ if (e.button === 2 && !e.shiftKey) {
             if (inventoryOpen) captureHoverItem(item, slotX, slotY, hotbarLayout.slotSize);
         });
 
-if (inventoryOpen) {
+if (inventoryOpen && !showEscapeMenu) {
             const panel = getInventoryBounds();
-            const { rows, startX, startY } = getInventoryMetrics(panel);
+            const { rows, gridWidth, startX, startY } = getInventoryMetrics(panel);
 
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3665,6 +3672,8 @@ if (inventoryOpen) {
                         captureHoverItem(craftingOutputSlot, outX, outY, inventoryLayout.slotSize, `x${craftingOutputSlot.count}`);
                     }
                 }
+            }
+
             {
                 for (let index = 0; index < totalSlots; index += 1) {
                     const item = inventorySlots[index];
@@ -3717,7 +3726,6 @@ if (inventoryOpen) {
                         ctx.strokeRect(slotX - 1, slotY - 1, inventoryLayout.slotSize + 2, inventoryLayout.slotSize + 2);
                     }
                 }
-            }
             }
 
             if (hoverItemName) {
@@ -3809,6 +3817,12 @@ if (inventoryOpen) {
         canvas.removeEventListener("mousemove", handleMouseMove);
         canvas.removeEventListener("mousedown", handleMouseDown);
         canvas.removeEventListener("mouseup", handleMouseUp);
+        canvas.removeEventListener("wheel", handleCanvasWheel);
+        canvas.removeEventListener("contextmenu", handleCanvasContextMenu);
+        if (inputLoopId) {
+            clearInterval(inputLoopId);
+            inputLoopId = null;
+        }
 
         clearBuildHoldTimers();
         inWorldChatBubblesByUser.clear();
