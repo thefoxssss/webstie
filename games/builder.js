@@ -281,16 +281,28 @@ const blockColors = {
         if (char >= "A" && char <= "Z") return char.charCodeAt(0) - 29;
         return -1;
     };
-    const normalizeSprite = (sprite) => {
+    const sanitizeSprite = (sprite) => {
         if (!sprite || !Array.isArray(sprite.palette) || !Array.isArray(sprite.pixels) || sprite.pixels.length !== 32) {
             return DEFAULT_PLAYER_SPRITE;
         }
-        return sprite;
+        const safePalette = sprite.palette
+            .slice(0, 62)
+            .map((c) => (typeof c === "string" && c.length <= 32 ? c : "transparent"));
+        const safePixels = sprite.pixels.slice(0, 32).map((row) => {
+            const raw = typeof row === "string" ? row : "";
+            return raw.padEnd(32, " ").slice(0, 32);
+        });
+        return { palette: safePalette, pixels: safePixels };
     };
+    const normalizeSprite = (sprite) => sanitizeSprite(sprite);
     let localCharacterSprite = normalizeSprite(state.builderCharacterSprite);
     const spriteToPayload = (sprite) => {
         const safe = normalizeSprite(sprite);
-        return JSON.stringify({ palette: safe.palette, pixels: safe.pixels });
+        try {
+            return JSON.stringify({ palette: safe.palette, pixels: safe.pixels });
+        } catch {
+            return JSON.stringify(DEFAULT_PLAYER_SPRITE);
+        }
     };
     const spriteFromPayload = (value) => {
         if (!value) return DEFAULT_PLAYER_SPRITE;
@@ -390,10 +402,17 @@ const blockColors = {
     let flightToggleEnabled = false;
     const mouse = { x: 0, y: 0, isDown: false };
     let rightMouseHeld = false;
+    let leftMouseHeld = false;
     let rightDragVisitedSlots = new Set();
+    let leftDragSplitActive = false;
+    let leftDragSplitSourceTotal = 0;
+    let leftDragSplitVisited = [];
+    let leftDragSplitPlacedByKey = new Map();
+    let leftDragSplitBaseByKey = new Map();
+    let consumedLeftDragSplitOnMouseUp = false;
     let dropMode = null;
     let pickedItemOnMouseDown = false;
-    const pendingPickupIds = new Set();
+    const pendingPickupIds = new Map();
     const BUILD_HOLD_DELAY_MS = 180;
     const BUILD_HOLD_REPEAT_MS = 120;
     let buildHoldTimeout = null;
@@ -589,6 +608,71 @@ const blockColors = {
         isCraftingTableOpen = false;
         currentChestId = null;
         currentFurnaceId = null;
+    }
+    const isPlayerInventoryOnlyView = () => !isChestOpen && !isFurnaceOpen && !isCraftingTableOpen;
+
+    function resetLeftDragSplit() {
+        leftDragSplitActive = false;
+        leftDragSplitSourceTotal = 0;
+        leftDragSplitVisited = [];
+        leftDragSplitPlacedByKey.clear();
+        leftDragSplitBaseByKey.clear();
+    }
+
+    function getSplitSlotCapacityAndBase(key) {
+        const [kind, idxStr] = key.split(":");
+        const idx = Number(idxStr);
+        const slotArray = kind === "hotbar" ? hotbarSlots : inventorySlots;
+        const slot = cloneItem(slotArray[idx]);
+        if (!slot) return { base: undefined, capacity: getMaxStack(draggedItemType.type) };
+        if (slot.type !== draggedItemType.type) return null;
+        return {
+            base: slot,
+            capacity: Math.max(0, getMaxStack(slot.type) - slot.count),
+        };
+    }
+
+    function setSplitSlotByKey(key, value) {
+        const [kind, idxStr] = key.split(":");
+        const idx = Number(idxStr);
+        if (kind === "hotbar") hotbarSlots[idx] = value ? cloneItem(value) : undefined;
+        else inventorySlots[idx] = value ? cloneItem(value) : undefined;
+    }
+
+    function redistributeLeftDragSplit() {
+        if (!leftDragSplitActive || !draggedItemType || leftDragSplitVisited.length === 0) return;
+        const total = leftDragSplitSourceTotal;
+        let remaining = total;
+        const placements = [];
+
+        for (let i = 0; i < leftDragSplitVisited.length; i++) {
+            const key = leftDragSplitVisited[i];
+            const meta = leftDragSplitBaseByKey.get(key);
+            if (!meta) continue;
+            const slotsLeft = leftDragSplitVisited.length - i;
+            const targetForThisSlot = Math.ceil(remaining / slotsLeft);
+            const place = Math.max(0, Math.min(meta.capacity, targetForThisSlot));
+            placements.push([key, place]);
+            remaining -= place;
+        }
+
+        leftDragSplitPlacedByKey.clear();
+        for (const key of leftDragSplitVisited) {
+            const meta = leftDragSplitBaseByKey.get(key);
+            if (!meta) continue;
+            setSplitSlotByKey(key, meta.base);
+        }
+        for (const [key, place] of placements) {
+            const meta = leftDragSplitBaseByKey.get(key);
+            if (!meta) continue;
+            const next = meta.base
+                ? { type: meta.base.type, count: meta.base.count + place }
+                : { type: draggedItemType.type, count: place };
+            setSplitSlotByKey(key, place > 0 ? next : meta.base);
+            leftDragSplitPlacedByKey.set(key, place);
+        }
+        draggedItemType.count = remaining;
+        if (draggedItemType.count <= 0) draggedItemType = null;
     }
 
     function setCreativeMode(nextEnabled) {
@@ -1137,6 +1221,31 @@ const blockColors = {
             }
         }
 
+        if (inventoryOpen && leftMouseHeld && !rightMouseHeld && draggedItemType && draggedItemType.count > 0) {
+            const hotbarPanel = getHotbarBounds();
+            const hotbarIndex = getHotbarIndexAt(mouse.x, mouse.y, hotbarPanel);
+            const panel = getInventoryBounds();
+            const invIndex = getInventorySlotAt(mouse.x, mouse.y, panel);
+            const splitKey = hotbarIndex !== null ? `hotbar:${hotbarIndex}` : (invIndex !== null ? `inv:${invIndex}` : null);
+            if (splitKey && !leftDragSplitBaseByKey.has(splitKey)) {
+                const meta = getSplitSlotCapacityAndBase(splitKey);
+                if (meta) {
+                    if (!leftDragSplitActive) {
+                        leftDragSplitActive = true;
+                        leftDragSplitSourceTotal = draggedItemType.count;
+                        leftDragSplitVisited = [];
+                    } else {
+                        leftDragSplitSourceTotal = draggedItemType.count + Array.from(leftDragSplitPlacedByKey.values()).reduce((a, b) => a + b, 0);
+                    }
+                    leftDragSplitBaseByKey.set(splitKey, meta);
+                    leftDragSplitVisited.push(splitKey);
+                    redistributeLeftDragSplit();
+                    consumedLeftDragSplitOnMouseUp = true;
+                    saveInventoryState();
+                }
+            }
+        }
+
         if (!inventoryOpen || !rightMouseHeld || !draggedItemType || draggedItemType.count <= 0) return;
 
         const hotbarPanel = getHotbarBounds();
@@ -1519,6 +1628,10 @@ function sendBuildOrBreak(e) {
         if (e.button === 2) {
             rightMouseHeld = true;
             rightDragVisitedSlots.clear();
+        } else if (e.button === 0) {
+            leftMouseHeld = true;
+            consumedLeftDragSplitOnMouseUp = false;
+            if (!draggedItemType) resetLeftDragSplit();
         }
 
         // Handle inventory and dragging mechanics first
@@ -2047,11 +2160,13 @@ function sendBuildOrBreak(e) {
             }
 
             // Armor Slot Check
-            const armorSlotX = panel.x + inventoryLayout.padding;
-            const armorSlotY = panel.y + 40;
-            if (mouse.x >= armorSlotX && mouse.x <= armorSlotX + inventoryLayout.slotSize &&
-                mouse.y >= armorSlotY && mouse.y <= armorSlotY + inventoryLayout.slotSize) {
-                if (handleSlotInteraction(null, null, true)) return;
+            if (isPlayerInventoryOnlyView()) {
+                const armorSlotX = panel.x + inventoryLayout.padding;
+                const armorSlotY = panel.y + 40;
+                if (mouse.x >= armorSlotX && mouse.x <= armorSlotX + inventoryLayout.slotSize &&
+                    mouse.y >= armorSlotY && mouse.y <= armorSlotY + inventoryLayout.slotSize) {
+                    if (handleSlotInteraction(null, null, true)) return;
+                }
             }
 
             if (craftingUiEnabled) {
@@ -2248,8 +2363,17 @@ if (e.button === 2 && !e.shiftKey) {
     function handleMouseUp(e) {
         mouse.isDown = false;
         rightMouseHeld = false;
+        leftMouseHeld = false;
         rightDragVisitedSlots.clear();
         clearBuildHoldTimers();
+        if (inventoryOpen && consumedLeftDragSplitOnMouseUp) {
+            consumedLeftDragSplitOnMouseUp = false;
+            resetLeftDragSplit();
+            saveInventoryState();
+            return;
+        }
+        consumedLeftDragSplitOnMouseUp = false;
+        resetLeftDragSplit();
         if (inventoryOpen && pickedItemOnMouseDown) {
             pickedItemOnMouseDown = false;
             return;
@@ -2297,7 +2421,8 @@ if (e.button === 2 && !e.shiftKey) {
                 if (targetCraftingIndex !== null) break;
             }
 
-            const isArmorSlotDrop = mouse.x >= inventoryPanel.x + inventoryLayout.padding &&
+            const isArmorSlotDrop = isPlayerInventoryOnlyView() &&
+                                  mouse.x >= inventoryPanel.x + inventoryLayout.padding &&
                                   mouse.x <= inventoryPanel.x + inventoryLayout.padding + inventoryLayout.slotSize &&
                                   mouse.y >= inventoryPanel.y + 40 &&
                                   mouse.y <= inventoryPanel.y + 40 + inventoryLayout.slotSize;
@@ -2840,6 +2965,9 @@ if (e.button === 2 && !e.shiftKey) {
         });
 
         // Draw item drops
+        pendingPickupIds.forEach((_, id) => {
+            if (!room.state.drops.has(id)) pendingPickupIds.delete(id);
+        });
         room.state.drops.forEach((drop) => {
             const dropSize = TILE_SIZE * 0.4;
             ctx.fillStyle = blockColors[drop.type] || "#ffffff";
@@ -2853,9 +2981,11 @@ if (e.button === 2 && !e.shiftKey) {
                 const dx = localPlayer.x + TILE_SIZE/2 - drop.x;
                 const dy = localPlayer.y + TILE_SIZE/2 - drop.y;
                 if (dx*dx + dy*dy < (TILE_SIZE * 1.5) ** 2) {
-                    if (pendingPickupIds.has(drop.id)) return;
+                    const now = Date.now();
+                    const sentAt = pendingPickupIds.get(drop.id) || 0;
+                    if (sentAt && (now - sentAt) < 300) return;
                     if (!canFitItemInInventory(drop.type, drop.count)) return;
-                    pendingPickupIds.add(drop.id);
+                    pendingPickupIds.set(drop.id, now);
                     room.send("pickup", { id: drop.id });
                 }
             }
@@ -3247,35 +3377,37 @@ if (inventoryOpen) {
                 ctx.fillText(getFurnaceStatus(furnace), inputSlotX, furY + 92);
             }
 
-            // Draw Armor Slot
-            const armorSlotX = panel.x + inventoryLayout.padding;
-            const armorSlotY = panel.y + 40;
-            ctx.fillStyle = "#8b8b8b";
-            ctx.fillRect(armorSlotX, armorSlotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
+            if (isPlayerInventoryOnlyView()) {
+                // Draw Armor Slot only in the base player inventory view
+                const armorSlotX = panel.x + inventoryLayout.padding;
+                const armorSlotY = panel.y + 40;
+                ctx.fillStyle = "#8b8b8b";
+                ctx.fillRect(armorSlotX, armorSlotY, inventoryLayout.slotSize, inventoryLayout.slotSize);
 
-            ctx.strokeStyle = "#373737";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(armorSlotX, armorSlotY + inventoryLayout.slotSize);
-            ctx.lineTo(armorSlotX, armorSlotY);
-            ctx.lineTo(armorSlotX + inventoryLayout.slotSize, armorSlotY);
-            ctx.stroke();
+                ctx.strokeStyle = "#373737";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(armorSlotX, armorSlotY + inventoryLayout.slotSize);
+                ctx.lineTo(armorSlotX, armorSlotY);
+                ctx.lineTo(armorSlotX + inventoryLayout.slotSize, armorSlotY);
+                ctx.stroke();
 
-            ctx.strokeStyle = "#ffffff";
-            ctx.beginPath();
-            ctx.moveTo(armorSlotX + inventoryLayout.slotSize, armorSlotY);
-            ctx.lineTo(armorSlotX + inventoryLayout.slotSize, armorSlotY + inventoryLayout.slotSize);
-            ctx.lineTo(armorSlotX, armorSlotY + inventoryLayout.slotSize);
-            ctx.stroke();
+                ctx.strokeStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.moveTo(armorSlotX + inventoryLayout.slotSize, armorSlotY);
+                ctx.lineTo(armorSlotX + inventoryLayout.slotSize, armorSlotY + inventoryLayout.slotSize);
+                ctx.lineTo(armorSlotX, armorSlotY + inventoryLayout.slotSize);
+                ctx.stroke();
 
-            if (armorSlot) {
-                const inset = 6;
-                drawItemIcon(ctx, armorSlot.type, armorSlotX + inset, armorSlotY + inset, inventoryLayout.slotSize - (inset * 2));
-            } else {
-                // Placeholder
-                ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
-                ctx.textAlign = "center";
-                ctx.fillText("Armor", armorSlotX + inventoryLayout.slotSize/2, armorSlotY + inventoryLayout.slotSize/2 + 4);
+                if (armorSlot) {
+                    const inset = 6;
+                    drawItemIcon(ctx, armorSlot.type, armorSlotX + inset, armorSlotY + inset, inventoryLayout.slotSize - (inset * 2));
+                } else {
+                    // Placeholder
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Armor", armorSlotX + inventoryLayout.slotSize/2, armorSlotY + inventoryLayout.slotSize/2 + 4);
+                }
             }
 
             const totalSlots = inventoryLayout.cols * rows;
