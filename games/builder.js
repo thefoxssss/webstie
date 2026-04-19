@@ -80,6 +80,7 @@ const blockColors = {
         20: "#E6C200", // Gold Armor
         21: "#00E6E6", // Diamond Armor
         22: "#32E612", // Uranium Armor
+        66: "#808080", // Plane
         23: "#B87333", // Copper Gun
         24: "#D0D0D0", // Iron Gun
         25: "#FFD700", // Gold Gun
@@ -150,6 +151,7 @@ const blockColors = {
         { pattern: [[60, 60, 60], [60, 0, 60], [0, 0, 0]], output: { type: 62, count: 1 } }, // TariqCore Armor
         { pattern: [[60, 60, 60], [0, 9, 0], [0, 60, 0]], output: { type: 63, count: 1 } }, // TariqCore Beam
         { pattern: [[35, 64, 35], [64, 60, 64], [0, 0, 0]], output: { type: 65, count: 1 } }, // Tariq Wings (Ladders + Clouds + TariqCore)
+        { pattern: [[14, 14, 14], [14, 9, 14], [0, 0, 0]], output: { type: 66, count: 1 } }, // Plane
     ];
 
     const blockNames = {
@@ -207,9 +209,10 @@ const blockColors = {
         63: "TARIQCORE BEAM",
         64: "CLOUD PLATFORM",
         65: "TARIQ WINGS",
+        66: "PLANE",
     };
     const getMergedInventoryType = (type) => type;
-    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 36, 61, 62, 63, 65].includes(type) ? 1 : 99);
+    const getMaxStack = (type) => loadedBlockData[type] ? loadedBlockData[type].maxStack : ([11, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 36, 61, 62, 63, 65, 66].includes(type) ? 1 : 99);
     let creativeModeEnabled = false;
     let showEscapeMenu = false;
     let creativeScroll = 0;
@@ -229,7 +232,7 @@ const blockColors = {
         "data/blocks/41.json", "data/blocks/42.json", "data/items/43.json", "data/items/44.json",
         "data/items/45.json", "data/items/46.json", "data/items/47.json", "data/blocks/48.json",
         "data/blocks/60.json", "data/items/61.json", "data/items/62.json", "data/items/63.json",
-        "data/blocks/64.json", "data/items/65.json"
+        "data/blocks/64.json", "data/items/65.json", "data/items/66.json"
     ];
     let loadedBlockData = {};
     let blockImages = {};
@@ -1057,6 +1060,18 @@ const blockColors = {
             setCreativeMode(!creativeModeEnabled);
             return;
         }
+        if (e.key === "e" || e.key === "E") {
+            if (room && room.state.vehicles) {
+                let driving = false;
+                room.state.vehicles.forEach(v => {
+                    if (v.driverId === localPlayerId) driving = true;
+                });
+                if (driving) {
+                    room.send("interact_vehicle", { action: "exit" });
+                    return;
+                }
+            }
+        }
         if (e.key === "q" || e.key === "Q") {
             const dropCountForSlot = (slot) => (e.ctrlKey ? slot.count : 1);
             let targetArray = hotbarSlots;
@@ -1642,6 +1657,25 @@ function sendBuildOrBreak(e) {
     function handleMouseDown(e) {
         if (!room) return;
         pickedItemOnMouseDown = false;
+
+        // Check for vehicle click
+        if (room.state.vehicles && !inventoryOpen && !isChestOpen && !isFurnaceOpen && !isCraftingTableOpen) {
+            let clickedVehicle = null;
+            const worldX = mouse.x + camera.x;
+            const worldY = mouse.y + camera.y;
+
+            room.state.vehicles.forEach((v, vId) => {
+                if (worldX >= v.x && worldX <= v.x + TILE_SIZE &&
+                    worldY >= v.y && worldY <= v.y + TILE_SIZE) {
+                    clickedVehicle = vId;
+                }
+            });
+
+            if (clickedVehicle) {
+                room.send("interact_vehicle", { action: "enter", vehicleId: clickedVehicle });
+                return;
+            }
+        }
         if (showEscapeMenu) {
             const mw = 220, mh = isGodUser() ? 164 : 120;
             const mx = Math.floor((canvas.width - mw)/2), my = Math.floor((canvas.height - mh)/2);
@@ -2911,10 +2945,37 @@ if (e.button === 2 && !e.shiftKey) {
 
         // Draw players
 
+        // Draw vehicles
+        if (room.state.vehicles) {
+            room.state.vehicles.forEach(v => {
+                if (v.type === 66) { // Plane
+                    ctx.save();
+                    ctx.translate(v.x + TILE_SIZE / 2, v.y + TILE_SIZE / 2);
+                    if (v.dir === -1) ctx.scale(-1, 1);
+                    ctx.translate(-(v.x + TILE_SIZE / 2), -(v.y + TILE_SIZE / 2));
+
+                    ctx.fillStyle = "#808080";
+                    ctx.fillRect(v.x - 8, v.y + 8, TILE_SIZE + 16, 8);
+                    ctx.fillStyle = "#606060";
+                    ctx.fillRect(v.x + 4, v.y + 4, TILE_SIZE - 8, 12);
+
+                    ctx.restore();
+                }
+            });
+        }
+
         // Draw players (sorted by Y so lower players render in front)
         const sortedPlayers = [];
         room.state.players.forEach((p, sessionId) => {
-            sortedPlayers.push({ p, sessionId });
+            let isDriving = false;
+            if (room.state.vehicles) {
+                room.state.vehicles.forEach(v => {
+                    if (v.driverId === sessionId) isDriving = true;
+                });
+            }
+            if (!isDriving) {
+                sortedPlayers.push({ p, sessionId });
+            }
         });
         sortedPlayers.sort((a, b) => {
             if (a.p.y === b.p.y) return a.sessionId.localeCompare(b.sessionId);
@@ -2951,6 +3012,8 @@ if (e.button === 2 && !e.shiftKey) {
                         ctx.fillRect(p.x + TILE_SIZE + 2, p.y + 20, 4, 2);
                     }
                 }
+
+
             }
 
             // Draw player border
