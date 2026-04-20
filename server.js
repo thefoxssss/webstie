@@ -2348,10 +2348,16 @@ class FPSState extends schema.Schema {
   constructor() {
     super();
     this.players = new schema.MapSchema();
+    this.mapId = 0; // 0 = Classic, 1 = City, 2 = Platforms
+    this.roundOver = false;
+    this.winnerName = "";
   }
 }
 schema.defineTypes(FPSState, {
-  players: { map: FPSPlayer }
+  players: { map: FPSPlayer },
+  mapId: "number",
+  roundOver: "boolean",
+  winnerName: "string"
 });
 
 class FPSRoom extends colyseus.Room {
@@ -2360,7 +2366,21 @@ class FPSRoom extends colyseus.Room {
     this.setMetadata({ serverName: options.serverName || "Arena Server" });
     this.setState(new FPSState());
 
+    this.mapVotes = { 0: 0, 1: 0, 2: 0 };
+    this.playerVotes = new Map();
+
+    this.onMessage("voteMap", (client, mapId) => {
+      if (!this.state.roundOver) return;
+      if (this.playerVotes.has(client.sessionId)) {
+        this.mapVotes[this.playerVotes.get(client.sessionId)]--;
+      }
+      this.playerVotes.set(client.sessionId, mapId);
+      this.mapVotes[mapId]++;
+      this.broadcast("mapVotes", this.mapVotes);
+    });
+
     this.onMessage("move", (client, data) => {
+      if (this.state.roundOver) return;
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       if (player.health <= 0) return; // Dead players can't move
@@ -2371,6 +2391,7 @@ class FPSRoom extends colyseus.Room {
     });
 
     this.onMessage("shoot", (client, data) => {
+      if (this.state.roundOver) return;
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
 
@@ -2421,10 +2442,20 @@ class FPSRoom extends colyseus.Room {
       });
 
       if (hitClient) {
-        hitClient.player.health -= 25; // 4 shots to kill
+        let damage = 25;
+        if (data.weaponId === 1) damage = 20; // Shotgun per bullet
+        if (data.weaponId === 2) damage = 100; // Sniper
+
+        hitClient.player.health -= damage;
         if (hitClient.player.health <= 0) {
           hitClient.player.health = 0;
           shooter.kills += 1;
+
+          if (shooter.kills >= 50 && !this.state.roundOver) {
+            this.state.roundOver = true;
+            this.state.winnerName = shooter.name;
+            setTimeout(() => this.resetRound(), 10000); // 10 seconds to vote
+          }
 
           // Notify the dead client
           const victimClient = this.clients.find(c => c.sessionId === hitClient.id);
@@ -2433,7 +2464,7 @@ class FPSRoom extends colyseus.Room {
 
             // Respawn after 3 seconds
             setTimeout(() => {
-              if (this.state.players.has(hitClient.id)) {
+              if (this.state.players.has(hitClient.id) && !this.state.roundOver) {
                 const respawnX = (Math.random() * 40 - 20) * 4;
                 const respawnZ = (Math.random() * 40 - 20) * 4;
                 hitClient.player.health = 100;
@@ -2447,6 +2478,37 @@ class FPSRoom extends colyseus.Room {
         }
       }
     });
+  }
+
+  resetRound() {
+    // Tally votes
+    let winningMap = 0;
+    let maxVotes = -1;
+    for (let i = 0; i < 3; i++) {
+      if (this.mapVotes[i] > maxVotes) {
+        maxVotes = this.mapVotes[i];
+        winningMap = i;
+      }
+    }
+    this.state.mapId = winningMap;
+    this.state.roundOver = false;
+    this.state.winnerName = "";
+    this.mapVotes = { 0: 0, 1: 0, 2: 0 };
+    this.playerVotes.clear();
+
+    // Reset players
+    this.state.players.forEach((player, sessionId) => {
+      player.kills = 0;
+      player.health = 100;
+      player.x = (Math.random() * 40 - 20) * 4;
+      player.y = 1.5;
+      player.z = (Math.random() * 40 - 20) * 4;
+      const client = this.clients.find(c => c.sessionId === sessionId);
+      if (client) {
+        client.send("respawn", { x: player.x, y: player.y, z: player.z });
+      }
+    });
+    this.broadcast("mapVotes", this.mapVotes);
   }
 
   onJoin(client, options) {
