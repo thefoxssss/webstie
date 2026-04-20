@@ -63,9 +63,9 @@ async function fetchServers() {
   serverList.innerHTML = "<div>SCANNING...</div>";
   try {
     const endpoint = getColyseusEndpoint().replace("ws", "http");
-    const res = await fetch(`${endpoint}/colyseus/api`);
-    const rooms = await res.json();
-    const fpsRooms = rooms.filter(r => r.name === "fps_room");
+    const res = await fetch(`${endpoint}/fps-servers`);
+    const payload = await res.json();
+    const fpsRooms = payload.servers || [];
 
     serverList.innerHTML = "";
     if (fpsRooms.length === 0) {
@@ -74,15 +74,18 @@ async function fetchServers() {
     }
 
     fpsRooms.forEach(r => {
-      const metadata = r.metadata || {};
       const row = document.createElement("div");
       row.style.display = "flex";
-      row.style.justifyContent = "space-between";
+      row.style.flexDirection = "column";
       row.style.padding = "5px";
       row.style.borderBottom = "1px solid #333";
 
+      const topRow = document.createElement("div");
+      topRow.style.display = "flex";
+      topRow.style.justifyContent = "space-between";
+
       const info = document.createElement("span");
-      info.textContent = `${metadata.serverName || r.roomId} (${r.clients}/${r.maxClients})`;
+      info.textContent = `${r.serverName || r.roomId} (${r.clients}/${r.maxClients})`;
 
       const btn = document.createElement("button");
       btn.className = "term-btn";
@@ -90,8 +93,19 @@ async function fetchServers() {
       btn.style.padding = "2px 8px";
       btn.onclick = () => joinRoom(r.roomId);
 
-      row.appendChild(info);
-      row.appendChild(btn);
+      topRow.appendChild(info);
+      topRow.appendChild(btn);
+      row.appendChild(topRow);
+
+      if (r.players && r.players.length > 0) {
+          const playersDiv = document.createElement("div");
+          playersDiv.style.fontSize = "12px";
+          playersDiv.style.color = "#aaa";
+          playersDiv.style.marginTop = "4px";
+          playersDiv.textContent = "Players: " + r.players.map(p => p.name).join(", ");
+          row.appendChild(playersDiv);
+      }
+
       serverList.appendChild(row);
     });
   } catch (err) {
