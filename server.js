@@ -78,6 +78,7 @@ const app = express();
 app.use(cors());
 const port = process.env.PORT || 2567;
 const builderServerDirectory = new Map();
+const fpsServerDirectory = new Map();
 
 const gameServer = new colyseus.Server({
   transport: new WebSocketTransport({
@@ -2363,7 +2364,8 @@ schema.defineTypes(FPSState, {
 class FPSRoom extends colyseus.Room {
   onCreate(options) {
     this.maxClients = 1000;
-    this.setMetadata({ serverName: options.serverName || "Arena Server" });
+    this.serverName = options.serverName || "Arena Server";
+    this.setMetadata({ serverName: this.serverName });
     this.setState(new FPSState());
 
     this.mapVotes = { 0: 0, 1: 0, 2: 0 };
@@ -2478,6 +2480,13 @@ class FPSRoom extends colyseus.Room {
         }
       }
     });
+
+    fpsServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      serverName: this.serverName,
+      clients: this.clients.length,
+      maxClients: this.maxClients
+    });
   }
 
   resetRound() {
@@ -2521,10 +2530,28 @@ class FPSRoom extends colyseus.Room {
 
     // Initial spawn pos
     client.send("respawn", { x: player.x, y: player.y, z: player.z });
+    this.updateMetadata();
   }
 
   onLeave(client) {
     this.state.players.delete(client.sessionId);
+    this.updateMetadata();
+  }
+
+  updateMetadata() {
+    const d = fpsServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      d.players = [];
+      this.state.players.forEach((player) => {
+        d.players.push({ name: player.name });
+      });
+      fpsServerDirectory.set(this.roomId, d);
+    }
+  }
+
+  onDispose() {
+    fpsServerDirectory.delete(this.roomId);
   }
 }
 
@@ -2844,6 +2871,14 @@ app.get("/agar-servers", (req, res) => {
 
 app.get("/builder-servers", (req, res) => {
   const servers = Array.from(builderServerDirectory.values()).sort((a, b) => {
+    if (b.clients !== a.clients) return b.clients - a.clients;
+    return a.serverName.localeCompare(b.serverName);
+  });
+  res.json({ servers });
+});
+
+app.get("/fps-servers", (req, res) => {
+  const servers = Array.from(fpsServerDirectory.values()).sort((a, b) => {
     if (b.clients !== a.clients) return b.clients - a.clients;
     return a.serverName.localeCompare(b.serverName);
   });
