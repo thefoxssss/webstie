@@ -6,6 +6,8 @@ let raycaster;
 let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0 };
 let otherPlayers = {}; // id -> { mesh, data }
 let gunMesh;
+let muzzleFlash, muzzleLight;
+let muzzleFlashTime = 0;
 let nextFireTime = 0;
 let gameLoopId;
 let initialized = false;
@@ -398,11 +400,25 @@ function initThreeJs() {
   gunMesh.position.set(0.3, -0.3, -0.5);
   camera.add(gunMesh);
 
+  // Muzzle flash
+  const flashGeo = new THREE.PlaneGeometry(0.5, 0.5);
+  const flashMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+  muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
+  muzzleFlash.position.set(0, 0, -0.5);
+  muzzleFlash.rotation.y = Math.PI / 2;
+  muzzleFlash.visible = false;
+  gunMesh.add(muzzleFlash);
+
+  muzzleLight = new THREE.PointLight(0xffff00, 0, 5);
+  muzzleLight.position.set(0, 0, -0.5);
+  gunMesh.add(muzzleLight);
+
   scene.add(controls.getObject());
 
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('keyup', onKeyUp);
   document.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mouseup', onMouseUp);
 
   fpsCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -480,21 +496,25 @@ function onKeyUp(event) {
   }
 }
 
+function onMouseUp(event) {
+  if (event.button === 2) {
+    if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
+      unzoomSniper();
+    }
+  }
+}
+
 function onMouseDown(event) {
   if (!controls.isLocked) return;
   if (localPlayer.health <= 0) return;
 
   if (event.button === 2) {
     if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
-      isSniperZoomed = !isSniperZoomed;
-      if (isSniperZoomed) {
-        camera.fov = 20;
-        camera.updateProjectionMatrix();
-        if (gunMesh) gunMesh.visible = false;
-        document.getElementById("fpsScopeOverlay").style.display = "block";
-      } else {
-        unzoomSniper();
-      }
+      isSniperZoomed = true;
+      camera.fov = 20;
+      camera.updateProjectionMatrix();
+      if (gunMesh) gunMesh.visible = false;
+      document.getElementById("fpsScopeOverlay").style.display = "block";
     }
     return;
   }
@@ -506,6 +526,14 @@ function onMouseDown(event) {
 
   const weapon = WEAPONS[localPlayer.weapon];
   nextFireTime = now + weapon.cooldown;
+
+  // Show Muzzle Flash
+  if (muzzleFlash && muzzleLight && !isSniperZoomed) {
+    muzzleFlash.visible = true;
+    muzzleFlash.rotation.z = Math.random() * Math.PI;
+    muzzleLight.intensity = 2;
+    muzzleFlashTime = now;
+  }
 
   // Fire
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -564,6 +592,11 @@ function animate() {
   const delta = (time - prevTime) / 1000;
 
   updateTracers(time);
+
+  if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
+    muzzleFlash.visible = false;
+    muzzleLight.intensity = 0;
+  }
 
   if (controls.isLocked && localPlayer.health > 0) {
     velocity.x -= velocity.x * 10.0 * delta;
@@ -644,6 +677,7 @@ window.stopFps = () => {
   document.removeEventListener('keydown', onKeyDown);
   document.removeEventListener('keyup', onKeyUp);
   document.removeEventListener('mousedown', onMouseDown);
+  document.removeEventListener('mouseup', onMouseUp);
 
   if (scene) {
      while(scene.children.length > 0){
