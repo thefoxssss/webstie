@@ -4556,3 +4556,7 @@ body.reduce-motion *::after {
 .admin-tab-content.active {
   display: block;
 }
+
+/* Added for FPS fullscreen */
+#fpsGame:fullscreen { width: 100vw !important; height: 100vh !important; background: black; }
+#fpsGame:fullscreen canvas { width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; margin: 0 !important; object-fit: contain; }

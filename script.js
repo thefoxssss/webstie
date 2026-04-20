@@ -803,6 +803,7 @@ function initGameScroller() {
 
 
 function getFullscreenTarget(overlay) {
+  if (overlay.id === "overlayFps") return overlay.querySelector("#fpsGame");
   return overlay.querySelector("canvas, iframe") || overlay;
 }
 
