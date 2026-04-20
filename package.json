@@ -9,11 +9,13 @@
   "dependencies": {
     "@colyseus/schema": "^2.0.37",
     "@colyseus/ws-transport": "^0.15.3",
+    "acorn": "^8.16.0",
     "colyseus": "^0.15.57",
     "colyseus.js": "^0.15.0",
     "cors": "^2.8.6",
     "express": "^4.22.1",
     "firebase-admin": "^12.7.0",
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "three": "^0.184.0"
   }
 }

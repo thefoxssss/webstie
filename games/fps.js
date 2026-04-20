@@ -464,9 +464,9 @@ function onMouseDown(event) {
   nextFireTime = now + weapon.cooldown;
 
   // Fire
-  const origin = controls.getObject().position.clone();
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const origin = raycaster.ray.origin.clone();
+  const dir = raycaster.ray.direction.clone();
 
   const bullets = weapon.bullets || 1;
   const spread = weapon.spread || 0;
