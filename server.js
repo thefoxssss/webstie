@@ -1,6 +1,7 @@
 const colyseus = require("colyseus");
 const { WebSocketTransport } = require("@colyseus/ws-transport");
-const { Schema, type, MapSchema } = require("@colyseus/schema");
+const schema = require("@colyseus/schema");
+const { Schema, type, MapSchema } = schema;
 const http = require("http");
 const express = require("express");
 const cors = require("cors");
