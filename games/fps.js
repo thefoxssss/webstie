@@ -537,7 +537,7 @@ function createTracer(origin, dir, color = 0xffff00) {
   const material = new THREE.LineBasicMaterial({ color: color });
   const points = [];
   points.push(origin);
-  const end = origin.clone().add(dir.clone().multiplyScalar(50));
+  const end = origin.clone().add(dir.clone().multiplyScalar(1000));
   points.push(end);
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
   const line = new THREE.Line(geometry, material);

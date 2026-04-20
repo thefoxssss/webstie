@@ -2420,7 +2420,7 @@ class FPSRoom extends colyseus.Room {
 
         // Distance from origin to target
         const distToTarget = Math.sqrt(vx*vx + vy*vy + vz*vz);
-        if (distToTarget > 100) return; // Out of range
+        if (distToTarget > 1000) return; // Out of range
 
         // Normalize v
         const invD = 1 / distToTarget;
