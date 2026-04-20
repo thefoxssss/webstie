@@ -2321,6 +2321,150 @@ const AGAR_MERGE_COOLDOWN_MS = 9000;
 
 const agarServerDirectory = new Map();
 
+class FPSPlayer extends schema.Schema {
+  constructor() {
+    super();
+    this.x = 0;
+    this.y = 1.5;
+    this.z = 0;
+    this.rotY = 0;
+    this.health = 100;
+    this.kills = 0;
+    this.name = "Unknown";
+  }
+}
+schema.defineTypes(FPSPlayer, {
+  x: "number",
+  y: "number",
+  z: "number",
+  rotY: "number",
+  health: "number",
+  kills: "number",
+  name: "string"
+});
+
+class FPSState extends schema.Schema {
+  constructor() {
+    super();
+    this.players = new schema.MapSchema();
+  }
+}
+schema.defineTypes(FPSState, {
+  players: { map: FPSPlayer }
+});
+
+class FPSRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 1000;
+    this.setMetadata({ serverName: options.serverName || "Arena Server" });
+    this.setState(new FPSState());
+
+    this.onMessage("move", (client, data) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      if (player.health <= 0) return; // Dead players can't move
+      player.x = data.x;
+      player.y = data.y;
+      player.z = data.z;
+      player.rotY = data.rotY;
+    });
+
+    this.onMessage("shoot", (client, data) => {
+      const shooter = this.state.players.get(client.sessionId);
+      if (!shooter || shooter.health <= 0) return;
+
+      this.broadcast("shoot", { origin: data.origin, dir: data.dir }, { except: client });
+
+      // Very simple server-side hit validation/raycast approximation
+      const ox = data.origin.x;
+      const oy = data.origin.y;
+      const oz = data.origin.z;
+      const dx = data.dir.x;
+      const dy = data.dir.y;
+      const dz = data.dir.z;
+
+      let hitClient = null;
+      let minDistance = Infinity;
+
+      this.state.players.forEach((target, targetId) => {
+        if (targetId === client.sessionId || target.health <= 0) return;
+
+        // Vector from origin to target
+        const vx = target.x - ox;
+        const vy = (target.y + 1) - oy; // target center is roughly y+1
+        const vz = target.z - oz;
+
+        // Distance from origin to target
+        const distToTarget = Math.sqrt(vx*vx + vy*vy + vz*vz);
+        if (distToTarget > 100) return; // Out of range
+
+        // Normalize v
+        const invD = 1 / distToTarget;
+        const nvx = vx * invD;
+        const nvy = vy * invD;
+        const nvz = vz * invD;
+
+        // Dot product with aim direction
+        const dot = dx * nvx + dy * nvy + dz * nvz;
+
+        const radius = 1.5; // Generous hitbox
+        const maxAngle = Math.atan2(radius, distToTarget);
+        const aimAngle = Math.acos(Math.max(-1, Math.min(1, dot)));
+
+        if (aimAngle < maxAngle) {
+          if (distToTarget < minDistance) {
+            minDistance = distToTarget;
+            hitClient = { id: targetId, player: target };
+          }
+        }
+      });
+
+      if (hitClient) {
+        hitClient.player.health -= 25; // 4 shots to kill
+        if (hitClient.player.health <= 0) {
+          hitClient.player.health = 0;
+          shooter.kills += 1;
+
+          // Notify the dead client
+          const victimClient = this.clients.find(c => c.sessionId === hitClient.id);
+          if (victimClient) {
+            victimClient.send("killed", { killer: shooter.name });
+
+            // Respawn after 3 seconds
+            setTimeout(() => {
+              if (this.state.players.has(hitClient.id)) {
+                const respawnX = (Math.random() * 40 - 20) * 4;
+                const respawnZ = (Math.random() * 40 - 20) * 4;
+                hitClient.player.health = 100;
+                hitClient.player.x = respawnX;
+                hitClient.player.y = 1.5;
+                hitClient.player.z = respawnZ;
+                victimClient.send("respawn", { x: respawnX, y: 1.5, z: respawnZ });
+              }
+            }, 3000);
+          }
+        }
+      }
+    });
+  }
+
+  onJoin(client, options) {
+    const player = new FPSPlayer();
+    player.name = options.playerName || "Unknown";
+    player.x = (Math.random() * 40 - 20) * 4;
+    player.y = 1.5;
+    player.z = (Math.random() * 40 - 20) * 4;
+    this.state.players.set(client.sessionId, player);
+
+    // Initial spawn pos
+    client.send("respawn", { x: player.x, y: player.y, z: player.z });
+  }
+
+  onLeave(client) {
+    this.state.players.delete(client.sessionId);
+  }
+}
+
 class AgarRoom extends colyseus.Room {
   onCreate(options) {
     this.maxClients = 50;
@@ -2624,6 +2768,7 @@ class AgarRoom extends colyseus.Room {
 gameServer.define("voice_room", VoiceRoom);
 
 gameServer.define("agar_room", AgarRoom);
+gameServer.define("fps_room", FPSRoom);
 
 app.get("/agar-servers", (req, res) => {
   const servers = Array.from(agarServerDirectory.values()).sort((a, b) => {
