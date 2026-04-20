@@ -3,8 +3,10 @@ import { state, isInputFocused, escapeHtml } from "../core.js";
 let room = null;
 let scene, camera, renderer, controls;
 let raycaster;
-let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0 };
+let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0 };
 let otherPlayers = {}; // id -> { mesh, data }
+let gunMesh;
+let nextFireTime = 0;
 let gameLoopId;
 let initialized = false;
 
@@ -12,16 +14,22 @@ let moveForward = false;
 let moveBackward = false;
 let moveLeft = false;
 let moveRight = false;
+let isSprinting = false;
+let isCrouching = false;
 let canJump = false;
 let velocity = new THREE.Vector3();
 let direction = new THREE.Vector3();
 const speed = 40.0;
+const sprintSpeed = 70.0;
+const crouchSpeed = 20.0;
 const jumpVelocity = 15.0;
 const gravity = 40.0;
 let prevTime = performance.now();
 
 // Bullet tracers
 let tracers = [];
+
+let obstaclesGroup;
 
 const networkSelect = document.getElementById("fpsNetwork");
 const btnRefresh = document.getElementById("btnRefreshFpsServers");
@@ -150,6 +158,26 @@ function setupRoom() {
     );
   });
 
+  room.onMessage("mapVotes", (votes) => {
+    document.getElementById("mapVote0").textContent = `(${votes[0]})`;
+    document.getElementById("mapVote1").textContent = `(${votes[1]})`;
+    document.getElementById("mapVote2").textContent = `(${votes[2]})`;
+  });
+
+  room.state.listen("roundOver", (isOver) => {
+    if (isOver) {
+      document.getElementById("fpsRoundScreen").style.display = "flex";
+      document.getElementById("fpsRoundWinner").textContent = `Winner: ${room.state.winnerName}`;
+      controls.unlock();
+    } else {
+      document.getElementById("fpsRoundScreen").style.display = "none";
+    }
+  });
+
+  room.state.listen("mapId", (mapId) => {
+    loadMap(mapId);
+  });
+
   room.state.players.onAdd((player, sessionId) => {
     if (sessionId === room.sessionId) {
       localPlayer.id = sessionId;
@@ -192,6 +220,9 @@ function setupRoom() {
       // Hide if dead
       player.listen("health", (val) => playerGroup.visible = val > 0);
     }
+    player.listen("kills", () => {
+      updateLeaderboard();
+    });
     updateLeaderboard();
   });
 
@@ -200,11 +231,6 @@ function setupRoom() {
       scene.remove(otherPlayers[sessionId].mesh);
       delete otherPlayers[sessionId];
     }
-    updateLeaderboard();
-  });
-
-  // Call updateLeaderboard whenever kills change
-  room.state.players.onChange(() => {
     updateLeaderboard();
   });
 }
@@ -219,6 +245,76 @@ function updateLeaderboard() {
     `<div>${escapeHtml(p.name)}: ${p.kills}</div>`
   ).join("");
 }
+
+function loadMap(mapId) {
+  if (!obstaclesGroup) return;
+
+  // Clear existing obstacles
+  while (obstaclesGroup.children.length > 0) {
+    const mesh = obstaclesGroup.children[0];
+    obstaclesGroup.remove(mesh);
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) mesh.material.dispose();
+  }
+
+  const boxGeo = new THREE.BoxGeometry(4, 4, 4);
+  let color = 0x00ff00;
+  if (mapId === 1) color = 0xff0000;
+  if (mapId === 2) color = 0x0000ff;
+
+  const boxMat = new THREE.MeshPhongMaterial({ color: color });
+
+  // Use mapId as a simple seed for Math.random to make it deterministic across clients
+  // A better way would be sending exact obstacle coords, but for this demo random with resetting works if we don't care about sync too much,
+  // Actually, we do want sync. Let's just generate a set pattern based on mapId instead of random.
+
+  if (mapId === 0) {
+    for (let i = 0; i < 30; i++) {
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.x = (i % 5) * 10 - 20;
+      box.position.y = 2;
+      box.position.z = Math.floor(i / 5) * 10 - 20;
+      box.castShadow = true;
+      box.receiveShadow = true;
+      obstaclesGroup.add(box);
+    }
+  } else if (mapId === 1) {
+    for (let i = 0; i < 40; i++) {
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.x = Math.sin(i) * 30;
+      box.position.y = 2;
+      box.position.z = Math.cos(i) * 30;
+      box.castShadow = true;
+      box.receiveShadow = true;
+      obstaclesGroup.add(box);
+    }
+  } else if (mapId === 2) {
+    for (let i = 0; i < 20; i++) {
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.x = (i % 4) * 15 - 20;
+      box.position.y = 2;
+      box.position.z = Math.floor(i / 4) * 15 - 20;
+      // taller boxes
+      box.scale.y = 3;
+      box.position.y = 6;
+      box.castShadow = true;
+      box.receiveShadow = true;
+      obstaclesGroup.add(box);
+    }
+  }
+}
+
+window.voteMap = (mapId) => {
+  if (room) {
+    room.send("voteMap", mapId);
+  }
+};
+
+const WEAPONS = [
+  { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0 },
+  { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5 },
+  { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0 }
+];
 
 function initThreeJs() {
   initialized = true;
@@ -261,18 +357,8 @@ function initThreeJs() {
   grid.material.transparent = true;
   scene.add(grid);
 
-  // Obstacles
-  const boxGeo = new THREE.BoxGeometry(4, 4, 4);
-  const boxMat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-  for (let i = 0; i < 30; i++) {
-    const box = new THREE.Mesh(boxGeo, boxMat);
-    box.position.x = Math.floor(Math.random() * 40 - 20) * 4;
-    box.position.y = 2;
-    box.position.z = Math.floor(Math.random() * 40 - 20) * 4;
-    box.castShadow = true;
-    box.receiveShadow = true;
-    scene.add(box);
-  }
+  obstaclesGroup = new THREE.Group();
+  scene.add(obstaclesGroup);
 
   controls = new THREE.PointerLockControls(camera, document.body);
 
@@ -291,8 +377,8 @@ function initThreeJs() {
   });
 
   const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
-  const gunMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
-  const gunMesh = new THREE.Mesh(gunGeo, gunMat);
+  const gunMat = new THREE.MeshPhongMaterial({ color: WEAPONS[0].color });
+  gunMesh = new THREE.Mesh(gunGeo, gunMat);
   gunMesh.position.set(0.3, -0.3, -0.5);
   camera.add(gunMesh);
 
@@ -324,6 +410,27 @@ function onKeyDown(event) {
       if (canJump === true) velocity.y += jumpVelocity;
       canJump = false;
       break;
+    case 'ShiftLeft':
+    case 'ShiftRight': isSprinting = true; break;
+    case 'ControlLeft':
+    case 'ControlRight':
+    case 'KeyC': isCrouching = true; break;
+    case 'Digit1': switchWeapon(0); break;
+    case 'Digit2': switchWeapon(1); break;
+    case 'Digit3': switchWeapon(2); break;
+  }
+}
+
+function switchWeapon(id) {
+  if (id >= WEAPONS.length) return;
+  localPlayer.weapon = id;
+  const w = WEAPONS[id];
+  document.getElementById("fpsWeapon").textContent = w.name;
+  if (gunMesh) {
+    gunMesh.material.color.setHex(w.color);
+    if (id === 0) gunMesh.scale.set(1, 1, 1);
+    if (id === 1) gunMesh.scale.set(1.5, 1.5, 0.8);
+    if (id === 2) gunMesh.scale.set(0.8, 0.8, 2.0);
   }
 }
 
@@ -337,6 +444,11 @@ function onKeyUp(event) {
     case 'KeyS': moveBackward = false; break;
     case 'ArrowRight':
     case 'KeyD': moveRight = false; break;
+    case 'ShiftLeft':
+    case 'ShiftRight': isSprinting = false; break;
+    case 'ControlLeft':
+    case 'ControlRight':
+    case 'KeyC': isCrouching = false; break;
   }
 }
 
@@ -345,22 +457,40 @@ function onMouseDown(event) {
   if (localPlayer.health <= 0) return;
   if (event.button !== 0) return; // Left click only
 
+  const now = performance.now();
+  if (now < nextFireTime) return;
+
+  const weapon = WEAPONS[localPlayer.weapon];
+  nextFireTime = now + weapon.cooldown;
+
   // Fire
   const origin = controls.getObject().position.clone();
-
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
 
-  createTracer(origin, dir);
+  const bullets = weapon.bullets || 1;
+  const spread = weapon.spread || 0;
 
-  room.send("shoot", {
-    origin: { x: origin.x, y: origin.y, z: origin.z },
-    dir: { x: dir.x, y: dir.y, z: dir.z }
-  });
+  for (let i = 0; i < bullets; i++) {
+    const bDir = dir.clone();
+    if (spread > 0) {
+      bDir.x += (Math.random() - 0.5) * spread;
+      bDir.y += (Math.random() - 0.5) * spread;
+      bDir.z += (Math.random() - 0.5) * spread;
+      bDir.normalize();
+    }
+    createTracer(origin, bDir, weapon.color);
+
+    room.send("shoot", {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      dir: { x: bDir.x, y: bDir.y, z: bDir.z },
+      weaponId: localPlayer.weapon
+    });
+  }
 }
 
-function createTracer(origin, dir) {
-  const material = new THREE.LineBasicMaterial({ color: 0xffff00 });
+function createTracer(origin, dir, color = 0xffff00) {
+  const material = new THREE.LineBasicMaterial({ color: color });
   const points = [];
   points.push(origin);
   const end = origin.clone().add(dir.clone().multiplyScalar(50));
@@ -400,18 +530,24 @@ function animate() {
     direction.x = Number(moveRight) - Number(moveLeft);
     direction.normalize();
 
-    if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-    if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+    let currentSpeed = speed;
+    if (isSprinting) currentSpeed = sprintSpeed;
+    if (isCrouching) currentSpeed = crouchSpeed;
+
+    if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
+    if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
 
     controls.moveRight(-velocity.x * delta);
     controls.moveForward(-velocity.z * delta);
 
     controls.getObject().position.y += (velocity.y * delta);
 
+    let targetY = isCrouching ? 0.8 : 1.5;
+
     // Floor collision
-    if (controls.getObject().position.y < 1.5) {
+    if (controls.getObject().position.y < targetY) {
       velocity.y = 0;
-      controls.getObject().position.y = 1.5;
+      controls.getObject().position.y = targetY;
       canJump = true;
     }
 
