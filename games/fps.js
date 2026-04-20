@@ -17,6 +17,7 @@ let moveRight = false;
 let isSprinting = false;
 let isCrouching = false;
 let canJump = false;
+let isSniperZoomed = false;
 let velocity = new THREE.Vector3();
 let direction = new THREE.Vector3();
 const speed = 40.0;
@@ -147,6 +148,7 @@ function setupRoom() {
   });
 
   room.onMessage("killed", (data) => {
+    unzoomSniper();
     fpsDeathMessage.textContent = `FRAGGED BY ${data.killer}`;
     fpsDeathScreen.style.display = "flex";
   });
@@ -388,10 +390,21 @@ function initThreeJs() {
   document.addEventListener('keyup', onKeyUp);
   document.addEventListener('mousedown', onMouseDown);
 
+  fpsCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
   raycaster = new THREE.Raycaster();
 
   prevTime = performance.now();
   animate();
+}
+
+function unzoomSniper() {
+  if (!isSniperZoomed) return;
+  isSniperZoomed = false;
+  camera.fov = 75;
+  camera.updateProjectionMatrix();
+  if (gunMesh) gunMesh.visible = true;
+  document.getElementById("fpsScopeOverlay").style.display = "none";
 }
 
 function onKeyDown(event) {
@@ -423,6 +436,7 @@ function onKeyDown(event) {
 
 function switchWeapon(id) {
   if (id >= WEAPONS.length) return;
+  unzoomSniper();
   localPlayer.weapon = id;
   const w = WEAPONS[id];
   document.getElementById("fpsWeapon").textContent = w.name;
@@ -455,6 +469,22 @@ function onKeyUp(event) {
 function onMouseDown(event) {
   if (!controls.isLocked) return;
   if (localPlayer.health <= 0) return;
+
+  if (event.button === 2) {
+    if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
+      isSniperZoomed = !isSniperZoomed;
+      if (isSniperZoomed) {
+        camera.fov = 20;
+        camera.updateProjectionMatrix();
+        if (gunMesh) gunMesh.visible = false;
+        document.getElementById("fpsScopeOverlay").style.display = "block";
+      } else {
+        unzoomSniper();
+      }
+    }
+    return;
+  }
+
   if (event.button !== 0) return; // Left click only
 
   const now = performance.now();
