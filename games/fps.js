@@ -167,20 +167,30 @@ function setupRoom() {
 
     } else {
       // Create mesh for other player
+      const playerGroup = new THREE.Group();
+
       const geometry = new THREE.BoxGeometry(1, 2, 1);
       const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(player.x, player.y, player.z);
-      scene.add(mesh);
+      playerGroup.add(mesh);
 
-      otherPlayers[sessionId] = { mesh, data: player };
+      const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
+      const gunMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
+      const otherGunMesh = new THREE.Mesh(gunGeo, gunMat);
+      otherGunMesh.position.set(0.6, 0.2, -0.4);
+      playerGroup.add(otherGunMesh);
 
-      player.listen("x", (val) => mesh.position.x = val);
-      player.listen("y", (val) => mesh.position.y = val);
-      player.listen("z", (val) => mesh.position.z = val);
-      player.listen("rotY", (val) => mesh.rotation.y = val);
+      playerGroup.position.set(player.x, player.y, player.z);
+      scene.add(playerGroup);
+
+      otherPlayers[sessionId] = { mesh: playerGroup, data: player };
+
+      player.listen("x", (val) => playerGroup.position.x = val);
+      player.listen("y", (val) => playerGroup.position.y = val);
+      player.listen("z", (val) => playerGroup.position.z = val);
+      player.listen("rotY", (val) => playerGroup.rotation.y = val);
       // Hide if dead
-      player.listen("health", (val) => mesh.visible = val > 0);
+      player.listen("health", (val) => playerGroup.visible = val > 0);
     }
     updateLeaderboard();
   });
@@ -279,6 +289,12 @@ function initThreeJs() {
   controls.addEventListener('unlock', function () {
     fpsHint.style.display = 'block';
   });
+
+  const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
+  const gunMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
+  const gunMesh = new THREE.Mesh(gunGeo, gunMat);
+  gunMesh.position.set(0.3, -0.3, -0.5);
+  camera.add(gunMesh);
 
   scene.add(controls.getObject());
 
