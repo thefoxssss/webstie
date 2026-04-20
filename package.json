@@ -9,6 +9,7 @@
   "dependencies": {
     "@colyseus/schema": "^2.0.37",
     "@colyseus/ws-transport": "^0.15.3",
+    "acorn": "^8.16.0",
     "colyseus": "^0.15.57",
     "colyseus.js": "^0.15.0",
     "cors": "^2.8.6",
