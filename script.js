@@ -63,6 +63,7 @@ import { initPong, setPongDiff } from "./games/pong.js";
 import { initSnake } from "./games/snake.js";
 import { initRunner } from "./games/runner.js";
 import { initDodge } from "./games/dodge.js";
+import { initWordle } from "./games/wordle.js";
 import { initBJ } from "./games/blackjack.js";
 import { initTTT } from "./games/ttt.js";
 import { initHangman } from "./games/hangman.js";
@@ -310,6 +311,7 @@ window.launchGame = (game, source = "direct") => {
     window.showGeoMenu();
   }
   if (game === "type") initTypeGame();
+  if (game === "wordle") initWordle();
   if (game === "blackjack") initBJ();
   if (game === "ttt") initTTT();
   if (game === "hangman") initHangman();
@@ -378,6 +380,7 @@ const GAME_TEMPLATE_OVERLAY_IDS = [
   "overlaySlots",
   "overlayTTT",
   "overlayHangman",
+  "overlayWordle",
   "overlayBlackjack",
   "overlayBonk",
   "overlayFlappy",

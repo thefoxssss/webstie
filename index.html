@@ -1724,6 +1724,94 @@
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
+    <!-- Wordle overlay. -->
+    <div class="overlay" id="overlayWordle">
+      <h1>WORDLE</h1>
+      <div id="wordleGameBox" class="wordle-room">
+        <div class="wordle-header">
+           <div id="wordleStatus" class="wordle-status">GUESS THE WORD</div>
+           <button class="term-btn" onclick="window.showWordleStats()" style="font-size: 10px; padding: 4px;">STATS</button>
+           <button class="term-btn" onclick="window.startNewWordleGame()" style="font-size: 10px; padding: 4px;">NEW GAME</button>
+        </div>
+        <div class="wordle-grid-container">
+          <div id="wordleGrid" class="wordle-grid"></div>
+        </div>
+        <div id="wordleKeyboard" class="wordle-keyboard">
+          <div class="wordle-kbd-row">
+            <button class="wordle-key" data-key="Q" onclick="window.handleWordleKeyClick('Q')">Q</button>
+            <button class="wordle-key" data-key="W" onclick="window.handleWordleKeyClick('W')">W</button>
+            <button class="wordle-key" data-key="E" onclick="window.handleWordleKeyClick('E')">E</button>
+            <button class="wordle-key" data-key="R" onclick="window.handleWordleKeyClick('R')">R</button>
+            <button class="wordle-key" data-key="T" onclick="window.handleWordleKeyClick('T')">T</button>
+            <button class="wordle-key" data-key="Y" onclick="window.handleWordleKeyClick('Y')">Y</button>
+            <button class="wordle-key" data-key="U" onclick="window.handleWordleKeyClick('U')">U</button>
+            <button class="wordle-key" data-key="I" onclick="window.handleWordleKeyClick('I')">I</button>
+            <button class="wordle-key" data-key="O" onclick="window.handleWordleKeyClick('O')">O</button>
+            <button class="wordle-key" data-key="P" onclick="window.handleWordleKeyClick('P')">P</button>
+          </div>
+          <div class="wordle-kbd-row">
+            <div class="wordle-spacer"></div>
+            <button class="wordle-key" data-key="A" onclick="window.handleWordleKeyClick('A')">A</button>
+            <button class="wordle-key" data-key="S" onclick="window.handleWordleKeyClick('S')">S</button>
+            <button class="wordle-key" data-key="D" onclick="window.handleWordleKeyClick('D')">D</button>
+            <button class="wordle-key" data-key="F" onclick="window.handleWordleKeyClick('F')">F</button>
+            <button class="wordle-key" data-key="G" onclick="window.handleWordleKeyClick('G')">G</button>
+            <button class="wordle-key" data-key="H" onclick="window.handleWordleKeyClick('H')">H</button>
+            <button class="wordle-key" data-key="J" onclick="window.handleWordleKeyClick('J')">J</button>
+            <button class="wordle-key" data-key="K" onclick="window.handleWordleKeyClick('K')">K</button>
+            <button class="wordle-key" data-key="L" onclick="window.handleWordleKeyClick('L')">L</button>
+            <div class="wordle-spacer"></div>
+          </div>
+          <div class="wordle-kbd-row">
+            <button class="wordle-key wordle-key-large" data-key="ENTER" onclick="window.handleWordleKeyClick('ENTER')">ENTER</button>
+            <button class="wordle-key" data-key="Z" onclick="window.handleWordleKeyClick('Z')">Z</button>
+            <button class="wordle-key" data-key="X" onclick="window.handleWordleKeyClick('X')">X</button>
+            <button class="wordle-key" data-key="C" onclick="window.handleWordleKeyClick('C')">C</button>
+            <button class="wordle-key" data-key="V" onclick="window.handleWordleKeyClick('V')">V</button>
+            <button class="wordle-key" data-key="B" onclick="window.handleWordleKeyClick('B')">B</button>
+            <button class="wordle-key" data-key="N" onclick="window.handleWordleKeyClick('N')">N</button>
+            <button class="wordle-key" data-key="M" onclick="window.handleWordleKeyClick('M')">M</button>
+            <button class="wordle-key wordle-key-large" data-key="BACKSPACE" onclick="window.handleWordleKeyClick('BACKSPACE')">⌫</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wordle Stats Modal -->
+      <div id="wordleStatsModal" class="wordle-stats-modal" style="display: none;">
+        <div class="wordle-stats-content">
+          <h2>STATISTICS</h2>
+          <div class="wordle-stats-row">
+            <div class="wordle-stat-item">
+              <div class="wordle-stat-val" id="wordleStatPlayed">0</div>
+              <div class="wordle-stat-label">Played</div>
+            </div>
+            <div class="wordle-stat-item">
+              <div class="wordle-stat-val" id="wordleStatWinPct">0</div>
+              <div class="wordle-stat-label">Win %</div>
+            </div>
+            <div class="wordle-stat-item">
+              <div class="wordle-stat-val" id="wordleStatStreak">0</div>
+              <div class="wordle-stat-label">Current<br>Streak</div>
+            </div>
+            <div class="wordle-stat-item">
+              <div class="wordle-stat-val" id="wordleStatMaxStreak">0</div>
+              <div class="wordle-stat-label">Max<br>Streak</div>
+            </div>
+          </div>
+          <h3>GUESS DISTRIBUTION</h3>
+          <div id="wordleGuessDist" class="wordle-guess-dist"></div>
+          <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+              <button class="term-btn" onclick="window.closeWordleStats()">CLOSE</button>
+              <button class="term-btn" onclick="window.startNewWordleGame()">NEXT WORD</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
+        <span class="icon">×</span><span class="text">EXIT</span>
+      </button>
+    </div>
+
     <!-- Multiplayer Hangman overlay. -->
     <div class="overlay" id="overlayHangman">
       <h1>HANGMAN</h1>
