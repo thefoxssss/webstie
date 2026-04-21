@@ -1600,7 +1600,7 @@ export function beep(freq = 440, type = "square", len = 0.1) {
 }
 
 // "Success" melody used after achievements or purchases.
-function playSuccessSound() {
+export function playSuccessSound() {
   beep(523.25, "triangle", 0.1);
   setTimeout(() => beep(659.25, "triangle", 0.1), 100);
   setTimeout(() => beep(783.99, "triangle", 0.2), 200);
