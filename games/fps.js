@@ -126,9 +126,12 @@ async function fetchServers() {
 
 async function createRoom() {
   const serverName = serverNameInput.value.trim() || `${state.myName}'s Server`;
+  const mapSelect = document.getElementById("fpsMapSelect");
+  const mapId = mapSelect ? Number(mapSelect.value) : 0;
+
   try {
     const client = new Colyseus.Client(getColyseusEndpoint());
-    room = await client.create("fps_room", { serverName, playerName: state.myName });
+    room = await client.create("fps_room", { serverName, playerName: state.myName, mapId });
     setupRoom();
   } catch (err) {
     console.error("Create room failed:", err);

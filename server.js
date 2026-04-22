@@ -2368,6 +2368,10 @@ class FPSRoom extends colyseus.Room {
     this.setMetadata({ serverName: this.serverName });
     this.setState(new FPSState());
 
+    if (options.mapId !== undefined) {
+      this.state.mapId = options.mapId;
+    }
+
     this.mapVotes = { 0: 0, 1: 0, 2: 0 };
     this.playerVotes = new Map();
 
@@ -2467,8 +2471,8 @@ class FPSRoom extends colyseus.Room {
             // Respawn after 3 seconds
             setTimeout(() => {
               if (this.state.players.has(hitClient.id) && !this.state.roundOver) {
-                const respawnX = (Math.random() * 40 - 20) * 4;
-                const respawnZ = (Math.random() * 40 - 20) * 4;
+                const respawnX = (Math.random() * 40 - 20) * 2;
+                const respawnZ = (Math.random() * 40 - 20) * 2;
                 hitClient.player.health = 100;
                 hitClient.player.x = respawnX;
                 hitClient.player.y = 1.5;
@@ -2509,9 +2513,9 @@ class FPSRoom extends colyseus.Room {
     this.state.players.forEach((player, sessionId) => {
       player.kills = 0;
       player.health = 100;
-      player.x = (Math.random() * 40 - 20) * 4;
+      player.x = (Math.random() * 40 - 20) * 2;
       player.y = 1.5;
-      player.z = (Math.random() * 40 - 20) * 4;
+      player.z = (Math.random() * 40 - 20) * 2;
       const client = this.clients.find(c => c.sessionId === sessionId);
       if (client) {
         client.send("respawn", { x: player.x, y: player.y, z: player.z });
@@ -2523,9 +2527,9 @@ class FPSRoom extends colyseus.Room {
   onJoin(client, options) {
     const player = new FPSPlayer();
     player.name = options.playerName || "Unknown";
-    player.x = (Math.random() * 40 - 20) * 4;
+    player.x = (Math.random() * 40 - 20) * 2;
     player.y = 1.5;
-    player.z = (Math.random() * 40 - 20) * 4;
+    player.z = (Math.random() * 40 - 20) * 2;
     this.state.players.set(client.sessionId, player);
 
     // Initial spawn pos
