@@ -9,6 +9,12 @@ let gunMesh;
 let muzzleFlash, muzzleLight;
 let muzzleFlashTime = 0;
 let nextFireTime = 0;
+let isReloading = false;
+let reloadEndTime = 0;
+let ammo = [12, 6, 5]; // Current ammo for each weapon
+let recoilTime = 0;
+let recoilIntensity = 0;
+let bobTime = 0;
 let gameLoopId;
 let initialized = false;
 
@@ -329,9 +335,9 @@ window.voteMap = (mapId) => {
 };
 
 const WEAPONS = [
-  { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0 },
-  { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5 },
-  { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0 }
+  { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
+  { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
+  { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 5, reloadTime: 2500 }
 ];
 
 function initThreeJs() {
@@ -394,11 +400,12 @@ function initThreeJs() {
     fpsHint.style.display = 'block';
   });
 
-  const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
-  const gunMat = new THREE.MeshPhongMaterial({ color: WEAPONS[0].color });
-  gunMesh = new THREE.Mesh(gunGeo, gunMat);
+  gunMesh = new THREE.Group();
   gunMesh.position.set(0.3, -0.3, -0.5);
   camera.add(gunMesh);
+
+  createGunModel(0);
+  updateAmmoUI();
 
   // Muzzle flash
   const flashGeo = new THREE.PlaneGeometry(0.5, 0.5);
@@ -461,21 +468,123 @@ function onKeyDown(event) {
     case 'Digit1': switchWeapon(0); break;
     case 'Digit2': switchWeapon(1); break;
     case 'Digit3': switchWeapon(2); break;
+    case 'KeyR': startReload(); break;
+  }
+}
+
+function createGunModel(id) {
+  if (!gunMesh) return;
+
+  // Clear existing parts (except muzzle flash and light)
+  for (let i = gunMesh.children.length - 1; i >= 0; i--) {
+    const child = gunMesh.children[i];
+    if (child !== muzzleFlash && child !== muzzleLight) {
+      gunMesh.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+    }
+  }
+
+  const matDark = new THREE.MeshPhongMaterial({ color: 0x222222 });
+  const matMain = new THREE.MeshPhongMaterial({ color: WEAPONS[id].color });
+
+  if (id === 0) { // Pistol
+    const barrelGeo = new THREE.BoxGeometry(0.15, 0.15, 0.6);
+    const barrel = new THREE.Mesh(barrelGeo, matMain);
+    barrel.position.set(0, 0, 0);
+    gunMesh.add(barrel);
+
+    const gripGeo = new THREE.BoxGeometry(0.12, 0.3, 0.15);
+    const grip = new THREE.Mesh(gripGeo, matDark);
+    grip.position.set(0, -0.2, 0.15);
+    grip.rotation.x = -Math.PI / 8;
+    gunMesh.add(grip);
+  } else if (id === 1) { // Shotgun
+    const barrelGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 16);
+    const barrel = new THREE.Mesh(barrelGeo, matMain);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0.05, -0.2);
+    gunMesh.add(barrel);
+
+    const underBarrelGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.0, 16);
+    const underBarrel = new THREE.Mesh(underBarrelGeo, matDark);
+    underBarrel.rotation.x = Math.PI / 2;
+    underBarrel.position.set(0, -0.05, -0.1);
+    gunMesh.add(underBarrel);
+
+    const stockGeo = new THREE.BoxGeometry(0.12, 0.2, 0.5);
+    const stock = new THREE.Mesh(stockGeo, matDark);
+    stock.position.set(0, -0.1, 0.5);
+    stock.rotation.x = -Math.PI / 16;
+    gunMesh.add(stock);
+  } else if (id === 2) { // Sniper
+    const barrelGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.8, 16);
+    const barrel = new THREE.Mesh(barrelGeo, matMain);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0, -0.4);
+    gunMesh.add(barrel);
+
+    const bodyGeo = new THREE.BoxGeometry(0.12, 0.18, 0.8);
+    const body = new THREE.Mesh(bodyGeo, matDark);
+    body.position.set(0, -0.05, 0.3);
+    gunMesh.add(body);
+
+    const scopeBaseGeo = new THREE.BoxGeometry(0.06, 0.1, 0.2);
+    const scopeBase = new THREE.Mesh(scopeBaseGeo, matDark);
+    scopeBase.position.set(0, 0.1, 0.2);
+    gunMesh.add(scopeBase);
+
+    const scopeGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.6, 16);
+    const scope = new THREE.Mesh(scopeGeo, matMain);
+    scope.rotation.x = Math.PI / 2;
+    scope.position.set(0, 0.15, 0.2);
+    gunMesh.add(scope);
+
+    const stockGeo = new THREE.BoxGeometry(0.1, 0.25, 0.6);
+    const stock = new THREE.Mesh(stockGeo, matDark);
+    stock.position.set(0, -0.1, 0.9);
+    stock.rotation.x = -Math.PI / 32;
+    gunMesh.add(stock);
   }
 }
 
 function switchWeapon(id) {
   if (id >= WEAPONS.length) return;
   unzoomSniper();
+  isReloading = false;
+  if (gunMesh) {
+    gunMesh.rotation.x = 0;
+    gunMesh.rotation.y = 0;
+    gunMesh.rotation.z = 0;
+  }
   localPlayer.weapon = id;
   const w = WEAPONS[id];
   document.getElementById("fpsWeapon").textContent = w.name;
-  if (gunMesh) {
-    gunMesh.material.color.setHex(w.color);
-    if (id === 0) gunMesh.scale.set(1, 1, 1);
-    if (id === 1) gunMesh.scale.set(1.5, 1.5, 0.8);
-    if (id === 2) gunMesh.scale.set(0.8, 0.8, 2.0);
+  updateAmmoUI();
+  createGunModel(id);
+}
+
+function updateAmmoUI() {
+  const w = WEAPONS[localPlayer.weapon];
+  const currentAmmo = ammo[localPlayer.weapon];
+  const ammoSpan = document.getElementById("fpsAmmo");
+  if (isReloading) {
+    ammoSpan.textContent = "RELOADING...";
+    ammoSpan.style.color = "red";
+  } else {
+    ammoSpan.textContent = currentAmmo + "/" + w.magSize;
+    ammoSpan.style.color = currentAmmo === 0 ? "red" : "orange";
   }
+}
+
+function startReload() {
+  if (isReloading || ammo[localPlayer.weapon] === WEAPONS[localPlayer.weapon].magSize) return;
+
+  const w = WEAPONS[localPlayer.weapon];
+  isReloading = true;
+  reloadEndTime = performance.now() + w.reloadTime;
+  updateAmmoUI();
+  unzoomSniper();
 }
 
 function onKeyUp(event) {
@@ -521,10 +630,22 @@ function onMouseDown(event) {
 
   if (event.button !== 0) return; // Left click only
 
+  if (isReloading) return; // Cannot fire while reloading
+
   const now = performance.now();
   if (now < nextFireTime) return;
 
   const weapon = WEAPONS[localPlayer.weapon];
+
+  // Check Ammo
+  if (ammo[localPlayer.weapon] <= 0) {
+    startReload();
+    return;
+  }
+
+  ammo[localPlayer.weapon]--;
+  updateAmmoUI();
+
   nextFireTime = now + weapon.cooldown;
 
   // Show Muzzle Flash
@@ -534,6 +655,12 @@ function onMouseDown(event) {
     muzzleLight.intensity = 2;
     muzzleFlashTime = now;
   }
+
+  // Trigger Recoil
+  recoilTime = now;
+  if (localPlayer.weapon === 0) recoilIntensity = 0.2;
+  else if (localPlayer.weapon === 1) recoilIntensity = 0.4;
+  else if (localPlayer.weapon === 2) recoilIntensity = 0.6;
 
   // Fire
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -591,6 +718,12 @@ function animate() {
   const time = performance.now();
   const delta = (time - prevTime) / 1000;
 
+  if (isReloading && time >= reloadEndTime) {
+    isReloading = false;
+    ammo[localPlayer.weapon] = WEAPONS[localPlayer.weapon].magSize;
+    updateAmmoUI();
+  }
+
   updateTracers(time);
 
   if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
@@ -637,6 +770,52 @@ function animate() {
 
       room.send("move", { x: pos.x, y: pos.y, z: pos.z, rotY: euler.y });
     }
+  }
+
+  if (gunMesh) {
+    const isMoving = controls.isLocked && localPlayer.health > 0 && (moveForward || moveBackward || moveLeft || moveRight);
+    const speedMult = isSprinting ? 1.5 : 1.0;
+
+    if (isMoving && !canJump && velocity.y === 0) {
+      bobTime += delta * 10 * speedMult;
+    } else {
+      // Return to center when not moving
+      bobTime += (0 - bobTime) * 10 * delta;
+    }
+
+    // Base gun positioning
+    let targetX = 0.3;
+    let targetY = -0.3;
+    let targetZ = -0.5;
+    let targetRotX = 0;
+
+    // Weapon bobbing animation
+    if (!isSniperZoomed) {
+      targetX += Math.cos(bobTime) * 0.01;
+      targetY += Math.abs(Math.sin(bobTime)) * 0.01;
+    }
+
+    // Recoil animation
+    const timeSinceFire = time - recoilTime;
+    if (timeSinceFire < 150) {
+      const p = timeSinceFire / 150;
+      targetZ += Math.sin(p * Math.PI) * recoilIntensity * 0.5;
+      targetRotX += Math.sin(p * Math.PI) * recoilIntensity * 0.2;
+    }
+
+    // Reloading animation
+    if (isReloading) {
+      const reloadProgress = 1 - (reloadEndTime - time) / WEAPONS[localPlayer.weapon].reloadTime;
+      targetY -= Math.sin(reloadProgress * Math.PI) * 0.3;
+      targetRotX -= Math.sin(reloadProgress * Math.PI) * 0.5;
+    }
+
+    // Smooth dampening to target positions (clamped to prevent high-delta glitches)
+    const dampFactor = Math.min(20 * delta, 1.0);
+    gunMesh.position.x += (targetX - gunMesh.position.x) * dampFactor;
+    gunMesh.position.y += (targetY - gunMesh.position.y) * dampFactor;
+    gunMesh.position.z += (targetZ - gunMesh.position.z) * dampFactor;
+    gunMesh.rotation.x += (targetRotX - gunMesh.rotation.x) * dampFactor;
   }
 
   renderer.render(scene, camera);
