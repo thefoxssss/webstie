@@ -2362,6 +2362,37 @@ schema.defineTypes(FPSState, {
 });
 
 class FPSRoom extends colyseus.Room {
+  getSafeSpawn(mapId) {
+    let x = (Math.random() * 40 - 20) * 2;
+    let z = (Math.random() * 40 - 20) * 2;
+    let y = 1.5;
+
+    if (mapId === 1) { // City Streets
+      // Avoid spawning inside buildings. Buildings are roughly at:
+      // x = Math.sin(i * 1.5) * 35; z = Math.cos(i * 2.1) * 35;
+      // We will define specific safe spawn zones (the main roads).
+      // The map size is ~ [-40, 40] for x and z.
+      const safeRoads = [
+        // Horizontal road (center)
+        { xMin: -35, xMax: 35, zMin: -5, zMax: 5 },
+        // Vertical road (center)
+        { xMin: -5, xMax: 5, zMin: -35, zMax: 35 },
+        // Outer ring roads
+        { xMin: -40, xMax: 40, zMin: 35, zMax: 40 },
+        { xMin: -40, xMax: 40, zMin: -40, zMax: -35 },
+        { xMin: 35, xMax: 40, zMin: -40, zMax: 40 },
+        { xMin: -40, xMax: -35, zMin: -40, zMax: 40 },
+      ];
+      const road = safeRoads[Math.floor(Math.random() * safeRoads.length)];
+      x = road.xMin + Math.random() * (road.xMax - road.xMin);
+      z = road.zMin + Math.random() * (road.zMax - road.zMin);
+    } else if (mapId === 2) {
+      y = 15; // platforms map spawns you higher up
+    }
+
+    return { x, y, z };
+  }
+
   onCreate(options) {
     this.maxClients = 1000;
     this.serverName = options.serverName || "Arena Server";
@@ -2471,13 +2502,12 @@ class FPSRoom extends colyseus.Room {
             // Respawn after 3 seconds
             setTimeout(() => {
               if (this.state.players.has(hitClient.id) && !this.state.roundOver) {
-                const respawnX = (Math.random() * 40 - 20) * 2;
-                const respawnZ = (Math.random() * 40 - 20) * 2;
+                const spawnPos = this.getSafeSpawn(this.state.mapId);
                 hitClient.player.health = 100;
-                hitClient.player.x = respawnX;
-                hitClient.player.y = 1.5;
-                hitClient.player.z = respawnZ;
-                victimClient.send("respawn", { x: respawnX, y: 1.5, z: respawnZ });
+                hitClient.player.x = spawnPos.x;
+                hitClient.player.y = spawnPos.y;
+                hitClient.player.z = spawnPos.z;
+                victimClient.send("respawn", spawnPos);
               }
             }, 3000);
           }
@@ -2513,12 +2543,13 @@ class FPSRoom extends colyseus.Room {
     this.state.players.forEach((player, sessionId) => {
       player.kills = 0;
       player.health = 100;
-      player.x = (Math.random() * 40 - 20) * 2;
-      player.y = 1.5;
-      player.z = (Math.random() * 40 - 20) * 2;
+      const spawnPos = this.getSafeSpawn(this.state.mapId);
+      player.x = spawnPos.x;
+      player.y = spawnPos.y;
+      player.z = spawnPos.z;
       const client = this.clients.find(c => c.sessionId === sessionId);
       if (client) {
-        client.send("respawn", { x: player.x, y: player.y, z: player.z });
+        client.send("respawn", spawnPos);
       }
     });
     this.broadcast("mapVotes", this.mapVotes);
@@ -2527,13 +2558,14 @@ class FPSRoom extends colyseus.Room {
   onJoin(client, options) {
     const player = new FPSPlayer();
     player.name = options.playerName || "Unknown";
-    player.x = (Math.random() * 40 - 20) * 2;
-    player.y = 1.5;
-    player.z = (Math.random() * 40 - 20) * 2;
+    const spawnPos = this.getSafeSpawn(this.state.mapId);
+    player.x = spawnPos.x;
+    player.y = spawnPos.y;
+    player.z = spawnPos.z;
     this.state.players.set(client.sessionId, player);
 
     // Initial spawn pos
-    client.send("respawn", { x: player.x, y: player.y, z: player.z });
+    client.send("respawn", spawnPos);
     this.updateMetadata();
   }
 

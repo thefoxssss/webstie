@@ -320,21 +320,108 @@ function loadMap(mapId) {
     const mat = new THREE.MeshPhongMaterial({ color: 0x444455 });
     const windowMat = new THREE.MeshPhongMaterial({ color: 0x88ccff });
 
-    // Buildings - deterministic layout using Math.sin/cos for sync
-    for(let i=0; i<8; i++) {
-      let x = Math.sin(i * 1.5) * 40;
-      let z = Math.cos(i * 2.1) * 40;
-      let w = 8 + Math.abs(Math.sin(i)) * 10;
-      let d = 8 + Math.abs(Math.cos(i)) * 10;
-      let h = 10 + Math.abs(Math.sin(i * 3.3)) * 20;
-      addBox(w, h, d, x, h/2, z, mat);
-    }
-    // Vehicles / low cover
+    // helper to create hollow buildings with doors and windows
+    const createBuilding = (x, z, sizeX, sizeZ, floors) => {
+      const floorHeight = 4;
+      const wallThickness = 1;
+      const doorWidth = 2;
+      const doorHeight = 3;
+      const windowWidth = 2;
+      const windowHeight = 2;
+
+      for (let f = 0; f < floors; f++) {
+        const baseY = f * floorHeight;
+
+        // Front wall (has door on ground floor, windows on upper floors)
+        if (f === 0) {
+          // Left of door
+          addBox((sizeX - doorWidth) / 2, floorHeight, wallThickness, x - sizeX / 2 + (sizeX - doorWidth) / 4, baseY + floorHeight / 2, z + sizeZ / 2 - wallThickness / 2, mat);
+          // Right of door
+          addBox((sizeX - doorWidth) / 2, floorHeight, wallThickness, x + sizeX / 2 - (sizeX - doorWidth) / 4, baseY + floorHeight / 2, z + sizeZ / 2 - wallThickness / 2, mat);
+          // Above door
+          addBox(doorWidth, floorHeight - doorHeight, wallThickness, x, baseY + doorHeight + (floorHeight - doorHeight) / 2, z + sizeZ / 2 - wallThickness / 2, mat);
+        } else {
+          // Window
+          addBox((sizeX - windowWidth) / 2, floorHeight, wallThickness, x - sizeX / 2 + (sizeX - windowWidth) / 4, baseY + floorHeight / 2, z + sizeZ / 2 - wallThickness / 2, mat);
+          addBox((sizeX - windowWidth) / 2, floorHeight, wallThickness, x + sizeX / 2 - (sizeX - windowWidth) / 4, baseY + floorHeight / 2, z + sizeZ / 2 - wallThickness / 2, mat);
+          // Below window
+          addBox(windowWidth, 1, wallThickness, x, baseY + 0.5, z + sizeZ / 2 - wallThickness / 2, mat);
+          // Above window
+          addBox(windowWidth, floorHeight - windowHeight - 1, wallThickness, x, baseY + 1 + windowHeight + (floorHeight - windowHeight - 1) / 2, z + sizeZ / 2 - wallThickness / 2, mat);
+          // The window itself
+          addBox(windowWidth, windowHeight, wallThickness / 2, x, baseY + 1 + windowHeight / 2, z + sizeZ / 2 - wallThickness / 2, windowMat);
+        }
+
+        // Back wall (solid)
+        addBox(sizeX, floorHeight, wallThickness, x, baseY + floorHeight / 2, z - sizeZ / 2 + wallThickness / 2, mat);
+
+        // Left wall
+        addBox(wallThickness, floorHeight, sizeZ - wallThickness * 2, x - sizeX / 2 + wallThickness / 2, baseY + floorHeight / 2, z, mat);
+
+        // Right wall
+        addBox(wallThickness, floorHeight, sizeZ - wallThickness * 2, x + sizeX / 2 - wallThickness / 2, baseY + floorHeight / 2, z, mat);
+
+        // Floor / ceiling
+        if (f > 0) {
+          // Add a floor, but leave a gap for stairs
+          const stairGap = 4;
+          // Floor part 1 (main area)
+          addBox(sizeX - wallThickness * 2 - stairGap, 0.5, sizeZ - wallThickness * 2, x - stairGap / 2, baseY, z, mat);
+          // Floor part 2 (strip next to stairs)
+          addBox(stairGap, 0.5, sizeZ - wallThickness * 2 - stairGap, x + sizeX / 2 - wallThickness - stairGap / 2, baseY, z + stairGap / 2, mat);
+
+          // Stairs
+          const numSteps = 8;
+          const stepHeight = floorHeight / numSteps;
+          const stepDepth = stairGap / numSteps;
+          for (let s = 0; s < numSteps; s++) {
+            addBox(stairGap, stepHeight, stepDepth, x + sizeX / 2 - wallThickness - stairGap / 2, baseY - floorHeight + stepHeight / 2 + s * stepHeight, z - sizeZ / 2 + wallThickness + stepDepth / 2 + s * stepDepth, mat);
+          }
+        } else {
+           // Ground floor (fully solid just in case, but usually rests on map ground)
+           addBox(sizeX - wallThickness * 2, 0.5, sizeZ - wallThickness * 2, x, baseY, z, mat);
+        }
+      }
+
+      // Roof
+      addBox(sizeX, 0.5, sizeZ, x, floors * floorHeight, z, mat);
+    };
+
+    // Generate deterministic buildings around the map
     for(let i=0; i<6; i++) {
-      let x = Math.cos(i * 2.5) * 30;
-      let z = Math.sin(i * 1.8) * 30;
-      addBox(3, 2, 6, x, 1, z, windowMat);
+      let x = Math.sin(i * 1.5) * 35;
+      let z = Math.cos(i * 2.1) * 35;
+      let sizeX = 12 + Math.abs(Math.sin(i)) * 6;
+      let sizeZ = 12 + Math.abs(Math.cos(i)) * 6;
+      let floors = 3 + Math.floor(Math.abs(Math.sin(i * 3.3)) * 4);
+
+      createBuilding(x, z, sizeX, sizeZ, floors);
     }
+
+    // Add central monument/fountain
+    const monumentMat = new THREE.MeshPhongMaterial({ color: 0xaa8866 });
+    addBox(6, 1, 6, 0, 0.5, 0, monumentMat);
+    addBox(4, 2, 4, 0, 2, 0, monumentMat);
+    addBox(2, 6, 2, 0, 6, 0, monumentMat);
+
+    // Add some parked cars (simple blocky cars)
+    const carMat1 = new THREE.MeshPhongMaterial({ color: 0xcc2222 }); // Red car
+    const carMat2 = new THREE.MeshPhongMaterial({ color: 0x2222cc }); // Blue car
+    const carWindowMat = new THREE.MeshPhongMaterial({ color: 0x222222 }); // Dark tinted windows
+
+    const createCar = (cx, cz, mat, rotAngle) => {
+      // Very basic blocky car. Because our addBox takes x/y/z directly, we can just approximate it
+      // if it's axis-aligned. For arbitrary rotation, we'd need more logic, but we'll keep them axis aligned.
+      // Chassis
+      addBox(2.5, 1, 5, cx, 0.5, cz, mat);
+      // Cabin
+      addBox(2, 1, 2.5, cx, 1.5, cz, carWindowMat);
+    };
+
+    createCar(15, 5, carMat1, 0);
+    createCar(-15, -8, carMat2, 0);
+    createCar(5, 15, carMat1, 0);
+    createCar(-5, -15, carMat2, 0);
 
   } else if (mapId === 2) { // Platforms / Vertical
     const mat = new THREE.MeshPhongMaterial({ color: 0x882222 });
@@ -787,15 +874,25 @@ function animate() {
         new THREE.Vector3(playerRadius * 2, 2, playerRadius * 2) // Approximate player bounds
     );
     let collidedX = false;
+    let stepUpAmountX = 0;
     for (const box of obstacleBoxes) {
         if (box.intersectsBox(playerBox)) {
-            collidedX = true;
-            break;
+            // Check if we can step up
+            const playerBaseY = controls.getObject().position.y - 1; // since center is at y=1.5 and height is ~2
+            const obstacleTopY = box.max.y;
+            if (obstacleTopY - playerBaseY <= 0.6 && obstacleTopY > playerBaseY) {
+                stepUpAmountX = Math.max(stepUpAmountX, obstacleTopY - playerBaseY);
+            } else {
+                collidedX = true;
+                break;
+            }
         }
     }
     if (collidedX) {
         controls.moveRight(-dx); // Revert X
         velocity.x = 0;
+    } else if (stepUpAmountX > 0) {
+        controls.getObject().position.y += stepUpAmountX;
     }
 
     // Apply Z movement
@@ -805,15 +902,25 @@ function animate() {
         new THREE.Vector3(playerRadius * 2, 2, playerRadius * 2)
     );
     let collidedZ = false;
+    let stepUpAmountZ = 0;
     for (const box of obstacleBoxes) {
         if (box.intersectsBox(playerBox)) {
-            collidedZ = true;
-            break;
+            // Check if we can step up
+            const playerBaseY = controls.getObject().position.y - 1;
+            const obstacleTopY = box.max.y;
+            if (obstacleTopY - playerBaseY <= 0.6 && obstacleTopY > playerBaseY) {
+                stepUpAmountZ = Math.max(stepUpAmountZ, obstacleTopY - playerBaseY);
+            } else {
+                collidedZ = true;
+                break;
+            }
         }
     }
     if (collidedZ) {
         controls.moveForward(-dz); // Revert Z
         velocity.z = 0;
+    } else if (stepUpAmountZ > 0) {
+        controls.getObject().position.y += stepUpAmountZ;
     }
 
     controls.getObject().position.y += (velocity.y * delta);
