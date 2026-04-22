@@ -126,8 +126,7 @@ function submitGuess() {
 
     if (!WORDS.includes(currentGuess)) {
         showToast("NOT IN WORD LIST", "⚠️");
-        // We still allow it in some versions, but let's be strict
-        // return;
+        return;
     }
 
     guesses.push(currentGuess);
@@ -245,9 +244,8 @@ function updateKeyboard() {
     const keys = document.querySelectorAll('.wordle-key');
     keys.forEach(key => {
         const letter = key.dataset.key;
-        if (keyStates[letter]) {
-            key.className = `wordle-key ${keyStates[letter]}`;
-        }
+        const stateClass = keyStates[letter];
+        key.className = stateClass ? `wordle-key ${stateClass}` : 'wordle-key';
     });
 }
 
