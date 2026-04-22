@@ -225,21 +225,76 @@ function setupRoom() {
       // Create mesh for other player
       const playerGroup = new THREE.Group();
 
-      const geometry = new THREE.BoxGeometry(1, 2, 1);
-      const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-      const mesh = new THREE.Mesh(geometry, material);
-      playerGroup.add(mesh);
+      // Helper for limbs
+      const createLimb = (w, h, d, color) => {
+        const group = new THREE.Group();
+        const geo = new THREE.BoxGeometry(w, h, d);
+        const mat = new THREE.MeshLambertMaterial({ color });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.y = -h / 2; // Pivot from top
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+        return group;
+      };
 
-      const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
-      const gunMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
+      // Head
+      const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      const headMat = new THREE.MeshLambertMaterial({ color: 0xffccaa });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 0.75;
+      head.castShadow = true;
+      playerGroup.add(head);
+
+      // Torso
+      const torsoGeo = new THREE.BoxGeometry(0.8, 1, 0.4);
+      const torsoMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+      const torso = new THREE.Mesh(torsoGeo, torsoMat);
+      torso.position.y = 0;
+      torso.castShadow = true;
+      playerGroup.add(torso);
+
+      // Left Arm
+      const leftArm = createLimb(0.25, 1, 0.25, 0xffccaa);
+      leftArm.position.set(-0.55, 0.5, 0);
+      playerGroup.add(leftArm);
+
+      // Right Arm
+      const rightArm = createLimb(0.25, 1, 0.25, 0xffccaa);
+      rightArm.position.set(0.55, 0.5, 0);
+      playerGroup.add(rightArm);
+
+      // Left Leg
+      const leftLeg = createLimb(0.3, 1, 0.3, 0x002288);
+      leftLeg.position.set(-0.25, -0.5, 0);
+      playerGroup.add(leftLeg);
+
+      // Right Leg
+      const rightLeg = createLimb(0.3, 1, 0.3, 0x002288);
+      rightLeg.position.set(0.25, -0.5, 0);
+      playerGroup.add(rightLeg);
+
+      const gunGeo = new THREE.BoxGeometry(0.15, 0.15, 0.8);
+      const gunMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
       const otherGunMesh = new THREE.Mesh(gunGeo, gunMat);
-      otherGunMesh.position.set(0.6, 0.2, -0.4);
-      playerGroup.add(otherGunMesh);
+      otherGunMesh.position.set(0, -0.8, 0.2); // Position relative to arm pivot
+      otherGunMesh.castShadow = true;
+      rightArm.add(otherGunMesh); // Attach gun to right arm
+      rightArm.rotation.x = -Math.PI / 2; // Default to holding gun up
 
       playerGroup.position.set(player.x, player.y, player.z);
       scene.add(playerGroup);
 
-      otherPlayers[sessionId] = { mesh: playerGroup, data: player };
+      otherPlayers[sessionId] = {
+        mesh: playerGroup,
+        data: player,
+        leftArm,
+        rightArm,
+        leftLeg,
+        rightLeg,
+        walkTime: 0,
+        prevPos: new THREE.Vector3(player.x, player.y, player.z)
+      };
 
       player.listen("x", (val) => playerGroup.position.x = val);
       player.listen("y", (val) => playerGroup.position.y = val);
@@ -836,6 +891,34 @@ function animate() {
 
       room.send("move", { x: pos.x, y: pos.y, z: pos.z, rotY: euler.y });
     }
+  }
+
+  // Animate other players
+  for (const id in otherPlayers) {
+    const op = otherPlayers[id];
+    const currentPos = op.mesh.position;
+
+    // Calculate movement
+    const dx = currentPos.x - op.prevPos.x;
+    const dz = currentPos.z - op.prevPos.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist > 0.005) {
+      op.walkTime += dist * 15;
+      const swing = Math.sin(op.walkTime) * 0.8;
+      op.leftLeg.rotation.x = swing;
+      op.rightLeg.rotation.x = -swing;
+      op.leftArm.rotation.x = -swing;
+      // rightArm holding gun
+      op.rightArm.rotation.x = -Math.PI / 2 + Math.sin(op.walkTime * 2) * 0.1;
+    } else {
+      op.leftLeg.rotation.x += (0 - op.leftLeg.rotation.x) * 10 * delta;
+      op.rightLeg.rotation.x += (0 - op.rightLeg.rotation.x) * 10 * delta;
+      op.leftArm.rotation.x += (0 - op.leftArm.rotation.x) * 10 * delta;
+      op.rightArm.rotation.x += (-Math.PI / 2 - op.rightArm.rotation.x) * 10 * delta;
+    }
+
+    op.prevPos.copy(currentPos);
   }
 
   if (gunMesh) {
