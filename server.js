@@ -2449,9 +2449,12 @@ class FPSRoom extends colyseus.Room {
         if (data.weaponId === 2) damage = 100; // Sniper
 
         hitClient.player.health -= damage;
+
+        let killed = false;
         if (hitClient.player.health <= 0) {
           hitClient.player.health = 0;
           shooter.kills += 1;
+          killed = true;
 
           if (shooter.kills >= 50 && !this.state.roundOver) {
             this.state.roundOver = true;
@@ -2478,6 +2481,8 @@ class FPSRoom extends colyseus.Room {
             }, 3000);
           }
         }
+
+        client.send("hitmarker", { killed });
       }
     });
 
