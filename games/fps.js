@@ -33,6 +33,7 @@ let prevTime = performance.now();
 let tracers = [];
 
 let obstaclesGroup;
+let obstacleBoxes = [];
 
 const networkSelect = document.getElementById("fpsNetwork");
 const btnRefresh = document.getElementById("btnRefreshFpsServers");
@@ -274,51 +275,76 @@ function loadMap(mapId) {
     if (mesh.geometry) mesh.geometry.dispose();
     if (mesh.material) mesh.material.dispose();
   }
+  obstacleBoxes = [];
 
-  const boxGeo = new THREE.BoxGeometry(4, 4, 4);
-  let color = 0x00ff00;
-  if (mapId === 1) color = 0xff0000;
-  if (mapId === 2) color = 0x0000ff;
+  const addBox = (w, h, d, x, y, z, mat) => {
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    obstaclesGroup.add(mesh);
 
-  const boxMat = new THREE.MeshPhongMaterial({ color: color });
+    // Create bounding box for collision
+    const box3 = new THREE.Box3().setFromObject(mesh);
+    obstacleBoxes.push(box3);
+  };
 
-  // Use mapId as a simple seed for Math.random to make it deterministic across clients
-  // A better way would be sending exact obstacle coords, but for this demo random with resetting works if we don't care about sync too much,
-  // Actually, we do want sync. Let's just generate a set pattern based on mapId instead of random.
+  if (mapId === 0) { // Classic Arena
+    const mat = new THREE.MeshPhongMaterial({ color: 0x228822 });
+    // Outer walls
+    addBox(100, 10, 2, 0, 5, -50, mat);
+    addBox(100, 10, 2, 0, 5, 50, mat);
+    addBox(2, 10, 100, -50, 5, 0, mat);
+    addBox(2, 10, 100, 50, 5, 0, mat);
 
-  if (mapId === 0) {
-    for (let i = 0; i < 30; i++) {
-      const box = new THREE.Mesh(boxGeo, boxMat);
-      box.position.x = (i % 5) * 10 - 20;
-      box.position.y = 2;
-      box.position.z = Math.floor(i / 5) * 10 - 20;
-      box.castShadow = true;
-      box.receiveShadow = true;
-      obstaclesGroup.add(box);
+    // Center structure
+    addBox(10, 8, 10, 0, 4, 0, mat);
+
+    // Cover blocks
+    addBox(6, 4, 2, -20, 2, -20, mat);
+    addBox(6, 4, 2, 20, 2, 20, mat);
+    addBox(2, 4, 6, -20, 2, 20, mat);
+    addBox(2, 4, 6, 20, 2, -20, mat);
+
+  } else if (mapId === 1) { // City Streets
+    const mat = new THREE.MeshPhongMaterial({ color: 0x444455 });
+    const windowMat = new THREE.MeshPhongMaterial({ color: 0x88ccff });
+
+    // Buildings - deterministic layout using Math.sin/cos for sync
+    for(let i=0; i<8; i++) {
+      let x = Math.sin(i * 1.5) * 40;
+      let z = Math.cos(i * 2.1) * 40;
+      let w = 8 + Math.abs(Math.sin(i)) * 10;
+      let d = 8 + Math.abs(Math.cos(i)) * 10;
+      let h = 10 + Math.abs(Math.sin(i * 3.3)) * 20;
+      addBox(w, h, d, x, h/2, z, mat);
     }
-  } else if (mapId === 1) {
-    for (let i = 0; i < 40; i++) {
-      const box = new THREE.Mesh(boxGeo, boxMat);
-      box.position.x = Math.sin(i) * 30;
-      box.position.y = 2;
-      box.position.z = Math.cos(i) * 30;
-      box.castShadow = true;
-      box.receiveShadow = true;
-      obstaclesGroup.add(box);
+    // Vehicles / low cover
+    for(let i=0; i<6; i++) {
+      let x = Math.cos(i * 2.5) * 30;
+      let z = Math.sin(i * 1.8) * 30;
+      addBox(3, 2, 6, x, 1, z, windowMat);
     }
-  } else if (mapId === 2) {
-    for (let i = 0; i < 20; i++) {
-      const box = new THREE.Mesh(boxGeo, boxMat);
-      box.position.x = (i % 4) * 15 - 20;
-      box.position.y = 2;
-      box.position.z = Math.floor(i / 4) * 15 - 20;
-      // taller boxes
-      box.scale.y = 3;
-      box.position.y = 6;
-      box.castShadow = true;
-      box.receiveShadow = true;
-      obstaclesGroup.add(box);
-    }
+
+  } else if (mapId === 2) { // Platforms / Vertical
+    const mat = new THREE.MeshPhongMaterial({ color: 0x882222 });
+
+    // Central tower
+    addBox(15, 2, 15, 0, 1, 0, mat);
+    addBox(10, 2, 10, 0, 8, 0, mat);
+    addBox(5, 2, 5, 0, 15, 0, mat);
+
+    // Ramps/Stairs (approximated as blocks for now)
+    addBox(4, 2, 4, 10, 3, 0, mat);
+    addBox(4, 2, 4, 15, 5, 0, mat);
+    addBox(4, 2, 4, 20, 7, 0, mat);
+
+    // Outer pillars
+    addBox(4, 20, 4, -30, 10, -30, mat);
+    addBox(4, 20, 4, 30, 10, -30, mat);
+    addBox(4, 20, 4, -30, 10, 30, mat);
+    addBox(4, 20, 4, 30, 10, 30, mat);
   }
 }
 
@@ -614,8 +640,45 @@ function animate() {
     if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
     if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
 
-    controls.moveRight(-velocity.x * delta);
-    controls.moveForward(-velocity.z * delta);
+    const playerRadius = 0.5;
+    const dx = -velocity.x * delta;
+    const dz = -velocity.z * delta;
+
+    // Apply X movement
+    controls.moveRight(dx);
+    let playerBox = new THREE.Box3().setFromCenterAndSize(
+        controls.getObject().position,
+        new THREE.Vector3(playerRadius * 2, 2, playerRadius * 2) // Approximate player bounds
+    );
+    let collidedX = false;
+    for (const box of obstacleBoxes) {
+        if (box.intersectsBox(playerBox)) {
+            collidedX = true;
+            break;
+        }
+    }
+    if (collidedX) {
+        controls.moveRight(-dx); // Revert X
+        velocity.x = 0;
+    }
+
+    // Apply Z movement
+    controls.moveForward(dz);
+    playerBox.setFromCenterAndSize(
+        controls.getObject().position,
+        new THREE.Vector3(playerRadius * 2, 2, playerRadius * 2)
+    );
+    let collidedZ = false;
+    for (const box of obstacleBoxes) {
+        if (box.intersectsBox(playerBox)) {
+            collidedZ = true;
+            break;
+        }
+    }
+    if (collidedZ) {
+        controls.moveForward(-dz); // Revert Z
+        velocity.z = 0;
+    }
 
     controls.getObject().position.y += (velocity.y * delta);
 
