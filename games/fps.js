@@ -29,6 +29,37 @@ const jumpVelocity = 15.0;
 const gravity = 40.0;
 let prevTime = performance.now();
 
+// Audio context
+let audioCtx;
+const playSound = (freq, type, duration, vol) => {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+};
+
+// Gun Recoil, Sway, Bobbing
+let gunRecoilY = 0;
+let gunRecoilZ = 0;
+let gunSwayX = 0;
+let gunSwayY = 0;
+let bobTime = 0;
+
+let currentSpread = 0;
+
+let damageFlashTimeout;
+let hitmarkerTimeout;
+
 // Bullet tracers
 let tracers = [];
 
@@ -169,6 +200,15 @@ function setupRoom() {
     fpsDeathScreen.style.display = "flex";
   });
 
+  room.onMessage("hitmarker", (data) => {
+    const hm = document.getElementById("fpsHitmarker");
+    hm.style.display = "block";
+    hm.style.color = data.killed ? "red" : "white";
+    playSound(data.killed ? 400 : 800, "square", 0.1, 0.5);
+    clearTimeout(hitmarkerTimeout);
+    hitmarkerTimeout = setTimeout(() => { hm.style.display = "none"; }, 200);
+  });
+
   room.onMessage("shoot", (data) => {
     createTracer(
       new THREE.Vector3(data.origin.x, data.origin.y, data.origin.z),
@@ -202,7 +242,14 @@ function setupRoom() {
       localPlayer.health = player.health;
       localPlayer.kills = player.kills;
 
-      player.listen("health", (val) => {
+        player.listen("health", (val) => {
+        if (val < localPlayer.health && val > 0) {
+          const flash = document.getElementById("fpsDamageFlash");
+          flash.style.display = "block";
+          clearTimeout(damageFlashTimeout);
+          damageFlashTimeout = setTimeout(() => { flash.style.display = "none"; }, 300);
+          playSound(200, "sawtooth", 0.2, 0.8);
+        }
         localPlayer.health = val;
         fpsHealth.textContent = val;
       });
@@ -422,6 +469,12 @@ function initThreeJs() {
 
   fpsCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  document.addEventListener('mousemove', (e) => {
+    if (!controls.isLocked) return;
+    gunSwayX = THREE.MathUtils.lerp(gunSwayX, -e.movementX * 0.0005, 0.1);
+    gunSwayY = THREE.MathUtils.lerp(gunSwayY, e.movementY * 0.0005, 0.1);
+  });
+
   raycaster = new THREE.Raycaster();
 
   prevTime = performance.now();
@@ -541,7 +594,15 @@ function onMouseDown(event) {
   const dir = raycaster.ray.direction.clone();
 
   const bullets = weapon.bullets || 1;
-  const spread = weapon.spread || 0;
+  const spread = (weapon.spread || 0) + currentSpread;
+
+  // Gun recoil
+  gunRecoilY = 0.05;
+  gunRecoilZ = 0.2;
+
+  if (localPlayer.weapon === 0) playSound(600, "square", 0.1, 0.5);
+  else if (localPlayer.weapon === 1) playSound(150, "sawtooth", 0.3, 0.8);
+  else if (localPlayer.weapon === 2) playSound(100, "square", 0.4, 0.8);
 
   for (let i = 0; i < bullets; i++) {
     const bDir = dir.clone();
@@ -608,8 +669,25 @@ function animate() {
     direction.normalize();
 
     let currentSpeed = speed;
-    if (isSprinting) currentSpeed = sprintSpeed;
-    if (isCrouching) currentSpeed = crouchSpeed;
+    let targetSpread = 0.01;
+    if (isSprinting) { currentSpeed = sprintSpeed; targetSpread = 0.05; }
+    else if (isCrouching) { currentSpeed = crouchSpeed; targetSpread = 0.005; }
+
+    if (moveForward || moveBackward || moveLeft || moveRight) {
+        if (!isSprinting && !isCrouching) targetSpread = 0.03;
+    }
+
+    if (velocity.y !== 0) targetSpread = 0.08; // jumping/falling
+    if (isSniperZoomed) targetSpread = 0;
+
+    currentSpread = THREE.MathUtils.lerp(currentSpread, targetSpread, 0.1);
+
+    // Update Crosshair UI
+    const chSpread = currentSpread * 500;
+    document.getElementById("fpsChTop").style.top = `-${10 + chSpread}px`;
+    document.getElementById("fpsChBottom").style.top = `${4 + chSpread}px`;
+    document.getElementById("fpsChLeft").style.left = `-${10 + chSpread}px`;
+    document.getElementById("fpsChRight").style.left = `${4 + chSpread}px`;
 
     if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
     if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
@@ -626,6 +704,41 @@ function animate() {
       velocity.y = 0;
       controls.getObject().position.y = targetY;
       canJump = true;
+    }
+
+    // Dynamic FOV
+    const targetFov = isSprinting ? 85 : 75;
+    if (!isSniperZoomed && camera.fov !== targetFov) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.1);
+        camera.updateProjectionMatrix();
+    }
+
+    // Gun Animations (Recoil, Sway, Bobbing)
+    if (gunMesh) {
+      gunRecoilY = THREE.MathUtils.lerp(gunRecoilY, 0, 0.1);
+      gunRecoilZ = THREE.MathUtils.lerp(gunRecoilZ, 0, 0.1);
+      gunSwayX = THREE.MathUtils.lerp(gunSwayX, 0, 0.05);
+      gunSwayY = THREE.MathUtils.lerp(gunSwayY, 0, 0.05);
+
+      const isMoving = (moveForward || moveBackward || moveLeft || moveRight) && canJump;
+      if (isMoving) {
+        bobTime += delta * (isSprinting ? 15 : 10);
+      } else {
+        bobTime = 0;
+      }
+
+      const bobX = Math.sin(bobTime) * 0.02;
+      const bobY = Math.abs(Math.cos(bobTime)) * 0.02;
+
+      // Base position: 0.3, -0.3, -0.5
+      // For sniper, it's bigger so it might look weird, but let's apply general offsets
+      gunMesh.position.set(
+        0.3 + gunSwayX + bobX,
+        -0.3 + gunSwayY + bobY,
+        -0.5 + gunRecoilZ
+      );
+
+      gunMesh.rotation.set(gunRecoilY, 0, 0);
     }
 
     // Sync to server
