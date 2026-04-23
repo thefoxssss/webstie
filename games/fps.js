@@ -19,6 +19,7 @@ let grenades = 2;
 let nextGrenadeTime = 0;
 let grenadeEffects = [];
 let gatlingMovementLockUntil = 0;
+let isPrimaryFireHeld = false;
 let gameLoopId;
 let initialized = false;
 
@@ -779,6 +780,9 @@ function onKeyUp(event) {
 }
 
 function onMouseUp(event) {
+  if (event.button === 0) {
+    isPrimaryFireHeld = false;
+  }
   if (event.button === 2) {
     if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
       unzoomSniper();
@@ -786,29 +790,14 @@ function onMouseUp(event) {
   }
 }
 
-function onMouseDown(event) {
+function tryFireWeapon() {
   if (!controls.isLocked) return;
   if (localPlayer.health <= 0) return;
-
-  if (event.button === 2) {
-    if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
-      isSniperZoomed = true;
-      camera.fov = 20;
-      camera.updateProjectionMatrix();
-      if (gunMesh) gunMesh.visible = false;
-      document.getElementById("fpsScopeOverlay").style.display = "block";
-    }
-    return;
-  }
-
-  if (event.button !== 0) return; // Left click only
-
   if (isReloading) return; // Cannot fire while reloading
 
+  const weapon = WEAPONS[localPlayer.weapon];
   const now = performance.now();
   if (now < nextFireTime) return;
-
-  const weapon = WEAPONS[localPlayer.weapon];
 
   // Check Ammo
   if (ammo[localPlayer.weapon] <= 0) {
@@ -862,6 +851,27 @@ function onMouseDown(event) {
       weaponId: localPlayer.weapon
     });
   }
+}
+
+function onMouseDown(event) {
+  if (!controls.isLocked) return;
+  if (localPlayer.health <= 0) return;
+
+  if (event.button === 2) {
+    if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
+      isSniperZoomed = true;
+      camera.fov = 20;
+      camera.updateProjectionMatrix();
+      if (gunMesh) gunMesh.visible = false;
+      document.getElementById("fpsScopeOverlay").style.display = "block";
+    }
+    return;
+  }
+
+  if (event.button !== 0) return; // Left click only
+
+  isPrimaryFireHeld = true;
+  tryFireWeapon();
 }
 
 function updateGrenadeUI() {
@@ -1121,6 +1131,10 @@ function animate() {
     gunMesh.rotation.x += (targetRotX - gunMesh.rotation.x) * dampFactor;
   }
 
+  if (isPrimaryFireHeld && localPlayer.weapon === 3) {
+    tryFireWeapon();
+  }
+
   renderer.render(scene, camera);
   prevTime = time;
 }
@@ -1132,6 +1146,7 @@ export function initFps() {
   grenades = 2;
   nextGrenadeTime = 0;
   gatlingMovementLockUntil = 0;
+  isPrimaryFireHeld = false;
   updateGrenadeUI();
 
   if (room) {
@@ -1164,6 +1179,7 @@ window.stopFps = () => {
   document.removeEventListener('keyup', onKeyUp);
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
+  isPrimaryFireHeld = false;
 
   if (scene) {
      while(scene.children.length > 0){
