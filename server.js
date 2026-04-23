@@ -2427,6 +2427,35 @@ class FPSRoom extends colyseus.Room {
       player.rotY = data.rotY;
     });
 
+    const handleElimination = (shooter, hitClient) => {
+      if (hitClient.player.health > 0) return;
+      hitClient.player.health = 0;
+      shooter.kills += 1;
+
+      if (shooter.kills >= 50 && !this.state.roundOver) {
+        this.state.roundOver = true;
+        this.state.winnerName = shooter.name;
+        setTimeout(() => this.resetRound(), 10000); // 10 seconds to vote
+      }
+
+      const victimClient = this.clients.find(c => c.sessionId === hitClient.id);
+      if (victimClient) {
+        victimClient.send("killed", { killer: shooter.name });
+
+        // Respawn after 3 seconds
+        setTimeout(() => {
+          if (this.state.players.has(hitClient.id) && !this.state.roundOver) {
+            const spawnPos = this.getSafeSpawn(this.state.mapId);
+            hitClient.player.health = 100;
+            hitClient.player.x = spawnPos.x;
+            hitClient.player.y = spawnPos.y;
+            hitClient.player.z = spawnPos.z;
+            victimClient.send("respawn", spawnPos);
+          }
+        }, 3000);
+      }
+    };
+
     this.onMessage("shoot", (client, data) => {
       if (this.state.roundOver) return;
       const shooter = this.state.players.get(client.sessionId);
@@ -2484,35 +2513,48 @@ class FPSRoom extends colyseus.Room {
         if (data.weaponId === 2) damage = 100; // Sniper
 
         hitClient.player.health -= damage;
-        if (hitClient.player.health <= 0) {
-          hitClient.player.health = 0;
-          shooter.kills += 1;
-
-          if (shooter.kills >= 50 && !this.state.roundOver) {
-            this.state.roundOver = true;
-            this.state.winnerName = shooter.name;
-            setTimeout(() => this.resetRound(), 10000); // 10 seconds to vote
-          }
-
-          // Notify the dead client
-          const victimClient = this.clients.find(c => c.sessionId === hitClient.id);
-          if (victimClient) {
-            victimClient.send("killed", { killer: shooter.name });
-
-            // Respawn after 3 seconds
-            setTimeout(() => {
-              if (this.state.players.has(hitClient.id) && !this.state.roundOver) {
-                const spawnPos = this.getSafeSpawn(this.state.mapId);
-                hitClient.player.health = 100;
-                hitClient.player.x = spawnPos.x;
-                hitClient.player.y = spawnPos.y;
-                hitClient.player.z = spawnPos.z;
-                victimClient.send("respawn", spawnPos);
-              }
-            }, 3000);
-          }
-        }
+        handleElimination(shooter, hitClient);
       }
+    });
+
+    this.onMessage("throwGrenade", (client, data) => {
+      if (this.state.roundOver) return;
+      const shooter = this.state.players.get(client.sessionId);
+      if (!shooter || shooter.health <= 0) return;
+
+      const ox = data.origin?.x ?? shooter.x;
+      const oy = data.origin?.y ?? shooter.y + 1;
+      const oz = data.origin?.z ?? shooter.z;
+      const dx = data.dir?.x ?? 0;
+      const dy = data.dir?.y ?? 0;
+      const dz = data.dir?.z ?? -1;
+
+      const throwDistance = 18;
+      const ex = ox + dx * throwDistance;
+      const ey = Math.max(1, oy + dy * throwDistance);
+      const ez = oz + dz * throwDistance;
+
+      this.broadcast("grenadeExplode", {
+        x: ex,
+        y: ey,
+        z: ez,
+        ownerId: client.sessionId
+      });
+
+      const radius = 12;
+      this.state.players.forEach((target, targetId) => {
+        if (target.health <= 0 || targetId === client.sessionId) return;
+        const tx = target.x - ex;
+        const ty = (target.y + 1) - ey;
+        const tz = target.z - ez;
+        const dist = Math.sqrt(tx * tx + ty * ty + tz * tz);
+        if (dist > radius) return;
+
+        const t = 1 - (dist / radius);
+        const damage = Math.max(10, Math.round(90 * t));
+        target.health -= damage;
+        handleElimination(shooter, { id: targetId, player: target });
+      });
     });
 
     fpsServerDirectory.set(this.roomId, {
