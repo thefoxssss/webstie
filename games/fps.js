@@ -11,13 +11,14 @@ let muzzleFlashTime = 0;
 let nextFireTime = 0;
 let isReloading = false;
 let reloadEndTime = 0;
-let ammo = [12, 6, 5]; // Current ammo for each weapon
+let ammo = [12, 6, 5, 120]; // Current ammo for each weapon
 let recoilTime = 0;
 let recoilIntensity = 0;
 let bobTime = 0;
 let grenades = 2;
 let nextGrenadeTime = 0;
 let grenadeEffects = [];
+let gatlingMovementLockUntil = 0;
 let gameLoopId;
 let initialized = false;
 
@@ -231,6 +232,9 @@ function setupRoom() {
       player.listen("kills", (val) => {
         localPlayer.kills = val;
         fpsKills.textContent = val;
+        if (!isGatlingUnlocked() && localPlayer.weapon === 3) {
+          switchWeapon(0);
+        }
       });
 
     } else {
@@ -478,7 +482,8 @@ window.voteMap = (mapId) => {
 const WEAPONS = [
   { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
   { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
-  { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 5, reloadTime: 2500 }
+  { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 5, reloadTime: 2500 },
+  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.06, magSize: 120, reloadTime: 3000, immobilizesOnFire: true, unlockKills: 25 }
 ];
 
 function initThreeJs() {
@@ -609,6 +614,7 @@ function onKeyDown(event) {
     case 'Digit1': switchWeapon(0); break;
     case 'Digit2': switchWeapon(1); break;
     case 'Digit3': switchWeapon(2); break;
+    case 'Digit4': switchWeapon(3); break;
     case 'KeyR': startReload(); break;
     case 'KeyG': throwGrenade(); break;
   }
@@ -687,11 +693,36 @@ function createGunModel(id) {
     stock.position.set(0, -0.1, 0.9);
     stock.rotation.x = -Math.PI / 32;
     gunMesh.add(stock);
+  } else if (id === 3) { // Gatling
+    const bodyGeo = new THREE.BoxGeometry(0.2, 0.22, 0.9);
+    const body = new THREE.Mesh(bodyGeo, matDark);
+    body.position.set(0, -0.02, 0.2);
+    gunMesh.add(body);
+
+    const handleGeo = new THREE.BoxGeometry(0.1, 0.28, 0.14);
+    const handle = new THREE.Mesh(handleGeo, matDark);
+    handle.position.set(0, -0.22, 0.45);
+    handle.rotation.x = -Math.PI / 12;
+    gunMesh.add(handle);
+
+    const barrelOffsets = [-0.06, 0, 0.06];
+    barrelOffsets.forEach((yOffset) => {
+      const barrelGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 16);
+      const barrel = new THREE.Mesh(barrelGeo, matMain);
+      barrel.rotation.x = Math.PI / 2;
+      barrel.position.set(0, yOffset, -0.35);
+      gunMesh.add(barrel);
+    });
   }
+}
+
+function isGatlingUnlocked() {
+  return localPlayer.kills >= WEAPONS[3].unlockKills;
 }
 
 function switchWeapon(id) {
   if (id >= WEAPONS.length) return;
+  if (id === 3 && !isGatlingUnlocked()) return;
   unzoomSniper();
   isReloading = false;
   if (gunMesh) {
@@ -789,6 +820,9 @@ function onMouseDown(event) {
   updateAmmoUI();
 
   nextFireTime = now + weapon.cooldown;
+  if (weapon.immobilizesOnFire) {
+    gatlingMovementLockUntil = now + weapon.cooldown;
+  }
 
   // Show Muzzle Flash
   if (muzzleFlash && muzzleLight && !isSniperZoomed) {
@@ -925,20 +959,21 @@ function animate() {
   }
 
   if (controls.isLocked && localPlayer.health > 0) {
+    const movementLockedByWeapon = time < gatlingMovementLockUntil;
     velocity.x -= velocity.x * 10.0 * delta;
     velocity.z -= velocity.z * 10.0 * delta;
     velocity.y -= gravity * delta; // 100.0 = mass
 
-    direction.z = Number(moveForward) - Number(moveBackward);
-    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.z = movementLockedByWeapon ? 0 : Number(moveForward) - Number(moveBackward);
+    direction.x = movementLockedByWeapon ? 0 : Number(moveRight) - Number(moveLeft);
     direction.normalize();
 
     let currentSpeed = speed;
     if (isSprinting) currentSpeed = sprintSpeed;
     if (isCrouching) currentSpeed = crouchSpeed;
 
-    if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
-    if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
+    if (!movementLockedByWeapon && (moveForward || moveBackward)) velocity.z -= direction.z * currentSpeed * delta;
+    if (!movementLockedByWeapon && (moveLeft || moveRight)) velocity.x -= direction.x * currentSpeed * delta;
 
     const playerRadius = 0.5;
     const dx = -velocity.x * delta;
@@ -1096,6 +1131,7 @@ export function initFps() {
   fpsDeathScreen.style.display = "none";
   grenades = 2;
   nextGrenadeTime = 0;
+  gatlingMovementLockUntil = 0;
   updateGrenadeUI();
 
   if (room) {
