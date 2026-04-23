@@ -2362,6 +2362,10 @@ schema.defineTypes(FPSState, {
 });
 
 class FPSRoom extends colyseus.Room {
+  isNukeOwner(player) {
+    return String(player?.name || "").toUpperCase() === "NICKHURT";
+  }
+
   getSafeSpawn(mapId) {
     let x = (Math.random() * 40 - 20) * 2;
     let z = (Math.random() * 40 - 20) * 2;
@@ -2417,6 +2421,7 @@ class FPSRoom extends colyseus.Room {
 
     this.mapVotes = { 0: 0, 1: 0, 2: 0 };
     this.playerVotes = new Map();
+    this.nukeSequenceActive = false;
 
     this.onMessage("voteMap", (client, mapId) => {
       if (!this.state.roundOver) return;
@@ -2488,6 +2493,7 @@ class FPSRoom extends colyseus.Room {
 
       this.state.players.forEach((target, targetId) => {
         if (targetId === client.sessionId || target.health <= 0) return;
+        if (this.isNukeOwner(target)) return; // invincible target
 
         // Vector from origin to target
         const vx = target.x - ox;
@@ -2529,6 +2535,65 @@ class FPSRoom extends colyseus.Room {
       }
     });
 
+    this.onMessage("nuke", (client) => {
+      if (this.state.roundOver) return;
+      if (this.nukeSequenceActive) return;
+      const shooter = this.state.players.get(client.sessionId);
+      if (!shooter || shooter.health <= 0) return;
+      if (!this.isNukeOwner(shooter)) return;
+      this.nukeSequenceActive = true;
+
+      const impact = { x: shooter.x, y: 1.5, z: shooter.z };
+      this.broadcast("nukeIncoming", {
+        by: shooter.name,
+        countdownMs: 10000,
+        impact
+      });
+
+      setTimeout(() => {
+        if (!this.state.players.has(client.sessionId)) {
+          this.nukeSequenceActive = false;
+          return;
+        }
+        this.broadcast("nukeDrop", {
+          x: impact.x,
+          z: impact.z,
+          startY: 45,
+          endY: 1.5,
+          durationMs: 3000
+        });
+      }, 7000);
+
+      setTimeout(() => {
+        if (!this.state.players.has(client.sessionId)) {
+          this.nukeSequenceActive = false;
+          return;
+        }
+
+        this.broadcast("nukeDetonated", { by: shooter.name, impact });
+        this.broadcast("grenadeExplode", {
+          x: impact.x,
+          y: impact.y,
+          z: impact.z,
+          ownerId: client.sessionId
+        });
+
+        this.state.players.forEach((target, targetId) => {
+          if (target.health <= 0) return;
+          if (this.isNukeOwner(target)) return; // NICKHURT stays invincible
+          target.health = 0;
+          handleElimination(shooter, { id: targetId, player: target });
+        });
+
+        if (shooter.kills >= 50 && !this.state.roundOver) {
+          this.state.roundOver = true;
+          this.state.winnerName = shooter.name;
+          setTimeout(() => this.resetRound(), 10000);
+        }
+        this.nukeSequenceActive = false;
+      }, 10000);
+    });
+
     this.onMessage("throwGrenade", (client, data) => {
       if (this.state.roundOver) return;
       const shooter = this.state.players.get(client.sessionId);
@@ -2556,6 +2621,7 @@ class FPSRoom extends colyseus.Room {
       const radius = 12;
       this.state.players.forEach((target, targetId) => {
         if (target.health <= 0 || targetId === client.sessionId) return;
+        if (this.isNukeOwner(target)) return; // invincible target
         const tx = target.x - ex;
         const ty = (target.y + 1) - ey;
         const tz = target.z - ez;
@@ -2578,6 +2644,7 @@ class FPSRoom extends colyseus.Room {
   }
 
   resetRound() {
+    this.nukeSequenceActive = false;
     // Tally votes
     let winningMap = 0;
     let maxVotes = -1;
