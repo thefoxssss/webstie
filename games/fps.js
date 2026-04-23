@@ -15,6 +15,9 @@ let ammo = [12, 6, 5]; // Current ammo for each weapon
 let recoilTime = 0;
 let recoilIntensity = 0;
 let bobTime = 0;
+let grenades = 2;
+let nextGrenadeTime = 0;
+let grenadeEffects = [];
 let gameLoopId;
 let initialized = false;
 
@@ -57,6 +60,7 @@ const fpsLeaderboardList = document.getElementById("fpsLeaderboardList");
 const fpsDeathScreen = document.getElementById("fpsDeathScreen");
 const fpsDeathMessage = document.getElementById("fpsDeathMessage");
 const fpsHint = document.getElementById("fpsHint");
+const fpsGrenades = document.getElementById("fpsGrenades");
 
 function getColyseusEndpoint() {
   const mode = networkSelect.value;
@@ -164,6 +168,8 @@ function setupRoom() {
 
   room.onMessage("respawn", (data) => {
     localPlayer.health = 100;
+    grenades = 2;
+    updateGrenadeUI();
     localPlayer.x = data.x;
     localPlayer.y = data.y;
     localPlayer.z = data.z;
@@ -184,6 +190,10 @@ function setupRoom() {
       new THREE.Vector3(data.origin.x, data.origin.y, data.origin.z),
       new THREE.Vector3(data.dir.x, data.dir.y, data.dir.z)
     );
+  });
+
+  room.onMessage("grenadeExplode", (data) => {
+    createGrenadeEffect(new THREE.Vector3(data.x, data.y, data.z));
   });
 
   room.onMessage("mapVotes", (votes) => {
@@ -211,6 +221,8 @@ function setupRoom() {
       localPlayer.id = sessionId;
       localPlayer.health = player.health;
       localPlayer.kills = player.kills;
+      grenades = 2;
+      updateGrenadeUI();
 
       player.listen("health", (val) => {
         localPlayer.health = val;
@@ -585,6 +597,7 @@ function onKeyDown(event) {
     case 'Digit2': switchWeapon(1); break;
     case 'Digit3': switchWeapon(2); break;
     case 'KeyR': startReload(); break;
+    case 'KeyG': throwGrenade(); break;
   }
 }
 
@@ -804,6 +817,38 @@ function onMouseDown(event) {
   }
 }
 
+function updateGrenadeUI() {
+  if (fpsGrenades) fpsGrenades.textContent = String(grenades);
+}
+
+function throwGrenade() {
+  if (!room || localPlayer.health <= 0) return;
+  const now = performance.now();
+  if (now < nextGrenadeTime) return;
+  if (grenades <= 0) return;
+
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const origin = raycaster.ray.origin.clone();
+  const dir = raycaster.ray.direction.clone();
+
+  grenades -= 1;
+  updateGrenadeUI();
+  nextGrenadeTime = now + 2500;
+  room.send("throwGrenade", {
+    origin: { x: origin.x, y: origin.y, z: origin.z },
+    dir: { x: dir.x, y: dir.y, z: dir.z }
+  });
+}
+
+function createGrenadeEffect(position) {
+  const geometry = new THREE.SphereGeometry(0.3, 10, 10);
+  const material = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.8 });
+  const sphere = new THREE.Mesh(geometry, material);
+  sphere.position.copy(position);
+  scene.add(sphere);
+  grenadeEffects.push({ mesh: sphere, born: performance.now() });
+}
+
 function createTracer(origin, dir, color = 0xffff00) {
   const material = new THREE.LineBasicMaterial({ color: color });
   const points = [];
@@ -828,6 +873,24 @@ function updateTracers(time) {
   }
 }
 
+function updateGrenadeEffects(time) {
+  for (let i = grenadeEffects.length - 1; i >= 0; i--) {
+    const fx = grenadeEffects[i];
+    const age = time - fx.born;
+    if (age > 400) {
+      scene.remove(fx.mesh);
+      fx.mesh.geometry.dispose();
+      fx.mesh.material.dispose();
+      grenadeEffects.splice(i, 1);
+      continue;
+    }
+    const p = age / 400;
+    const scale = 1 + p * 8;
+    fx.mesh.scale.set(scale, scale, scale);
+    fx.mesh.material.opacity = 0.8 * (1 - p);
+  }
+}
+
 function animate() {
   gameLoopId = requestAnimationFrame(animate);
 
@@ -841,6 +904,7 @@ function animate() {
   }
 
   updateTracers(time);
+  updateGrenadeEffects(time);
 
   if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
     muzzleFlash.visible = false;
@@ -1017,6 +1081,9 @@ export function initFps() {
   fpsMenu.style.display = "block";
   fpsGame.style.display = "none";
   fpsDeathScreen.style.display = "none";
+  grenades = 2;
+  nextGrenadeTime = 0;
+  updateGrenadeUI();
 
   if (room) {
     room.leave();
@@ -1054,6 +1121,7 @@ window.stopFps = () => {
         scene.remove(scene.children[0]);
     }
   }
+  grenadeEffects = [];
 
   fpsMenu.style.display = "block";
   fpsGame.style.display = "none";
