@@ -2362,10 +2362,6 @@ schema.defineTypes(FPSState, {
 });
 
 class FPSRoom extends colyseus.Room {
-  isNukeOwner(player) {
-    return String(player?.name || "").toUpperCase() === "NICKHURT";
-  }
-
   getSafeSpawn(mapId) {
     let x = (Math.random() * 40 - 20) * 2;
     let z = (Math.random() * 40 - 20) * 2;
@@ -2493,7 +2489,6 @@ class FPSRoom extends colyseus.Room {
 
       this.state.players.forEach((target, targetId) => {
         if (targetId === client.sessionId || target.health <= 0) return;
-        if (this.isNukeOwner(target)) return; // invincible target
 
         // Vector from origin to target
         const vx = target.x - ox;
@@ -2540,7 +2535,6 @@ class FPSRoom extends colyseus.Room {
       if (this.nukeSequenceActive) return;
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
-      if (!this.isNukeOwner(shooter)) return;
       this.nukeSequenceActive = true;
 
       const impact = { x: shooter.x, y: 1.5, z: shooter.z };
@@ -2580,7 +2574,6 @@ class FPSRoom extends colyseus.Room {
 
         this.state.players.forEach((target, targetId) => {
           if (target.health <= 0) return;
-          if (this.isNukeOwner(target)) return; // NICKHURT stays invincible
           target.health = 0;
           handleElimination(shooter, { id: targetId, player: target });
         });
@@ -2621,7 +2614,6 @@ class FPSRoom extends colyseus.Room {
       const radius = 12;
       this.state.players.forEach((target, targetId) => {
         if (target.health <= 0 || targetId === client.sessionId) return;
-        if (this.isNukeOwner(target)) return; // invincible target
         const tx = target.x - ex;
         const ty = (target.y + 1) - ey;
         const tz = target.z - ez;

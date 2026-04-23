@@ -746,7 +746,7 @@ function onKeyDown(event) {
     case 'Digit4': switchWeapon(3); break;
     case 'KeyR': startReload(); break;
     case 'KeyG': throwGrenade(); break;
-    case 'Digit9': triggerNuke(); break;
+    case 'Backquote': triggerNuke(); break;
   }
 }
 
@@ -851,13 +851,8 @@ function isGatlingUnlocked() {
 }
 
 
-function canUseNuke() {
-  return String(state.myName || "").toUpperCase() === "NICKHURT";
-}
-
 function triggerNuke() {
   if (!room || !controls?.isLocked) return;
-  if (!canUseNuke()) return;
   room.send("nuke");
 }
 
