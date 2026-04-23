@@ -923,14 +923,32 @@ function animate() {
         controls.getObject().position.y += stepUpAmountZ;
     }
 
+    let prevY = controls.getObject().position.y;
     controls.getObject().position.y += (velocity.y * delta);
 
     let targetY = isCrouching ? 0.8 : 1.5;
 
+    // Find highest floor below player
+    let highestFloorY = 0; // Default ground is 0
+    let prevFeetY = prevY - targetY;
+    const px = controls.getObject().position.x;
+    const pz = controls.getObject().position.z;
+
+    for (const box of obstacleBoxes) {
+        if (px + playerRadius > box.min.x && px - playerRadius < box.max.x &&
+            pz + playerRadius > box.min.z && pz - playerRadius < box.max.z) {
+            if (prevFeetY + 0.5 >= box.max.y) {
+                if (box.max.y > highestFloorY) {
+                    highestFloorY = box.max.y;
+                }
+            }
+        }
+    }
+
     // Floor collision
-    if (controls.getObject().position.y < targetY) {
+    if (controls.getObject().position.y < highestFloorY + targetY) {
       velocity.y = 0;
-      controls.getObject().position.y = targetY;
+      controls.getObject().position.y = highestFloorY + targetY;
       canJump = true;
     }
 
