@@ -223,6 +223,7 @@ const ADMIN_ALLOWLIST = new Set([
   "NOOB",
   "NICKHURT",
   "BIN_LADEN",
+  "HYDRA"
 ]);
 
 
