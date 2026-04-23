@@ -18,6 +18,9 @@ let bobTime = 0;
 let grenades = 2;
 let nextGrenadeTime = 0;
 let grenadeEffects = [];
+let activeGrenades = [];
+let grenadeSpriteTexture = null;
+let grenadeThrowTime = 0;
 let gameLoopId;
 let initialized = false;
 
@@ -468,6 +471,48 @@ const WEAPONS = [
   { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 5, reloadTime: 2500 }
 ];
 
+function createGrenadeSpriteTexture() {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, size, size);
+
+  // Body
+  ctx.fillStyle = "#2f7f3b";
+  ctx.beginPath();
+  ctx.arc(32, 36, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body highlight
+  ctx.fillStyle = "rgba(255,255,255,0.2)";
+  ctx.beginPath();
+  ctx.arc(26, 30, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cap
+  ctx.fillStyle = "#666";
+  ctx.fillRect(24, 14, 16, 11);
+  ctx.fillStyle = "#888";
+  ctx.fillRect(22, 11, 20, 4);
+
+  // Pin
+  ctx.strokeStyle = "#d8d8d8";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(45, 18, 5, -Math.PI / 2, Math.PI / 2);
+  ctx.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function initThreeJs() {
   initialized = true;
 
@@ -558,6 +603,7 @@ function initThreeJs() {
   fpsCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   raycaster = new THREE.Raycaster();
+  grenadeSpriteTexture = createGrenadeSpriteTexture();
 
   prevTime = performance.now();
   animate();
@@ -834,6 +880,25 @@ function throwGrenade() {
   grenades -= 1;
   updateGrenadeUI();
   nextGrenadeTime = now + 2500;
+  grenadeThrowTime = now;
+
+  const grenadeMaterial = new THREE.SpriteMaterial({
+    map: grenadeSpriteTexture,
+    transparent: true,
+    depthWrite: false
+  });
+  const grenadeSprite = new THREE.Sprite(grenadeMaterial);
+  grenadeSprite.position.copy(origin);
+  grenadeSprite.scale.set(0.8, 0.8, 0.8);
+  scene.add(grenadeSprite);
+
+  const projectileSpeed = 20;
+  activeGrenades.push({
+    sprite: grenadeSprite,
+    velocity: dir.clone().multiplyScalar(projectileSpeed).add(new THREE.Vector3(0, 4.5, 0)),
+    born: now
+  });
+
   room.send("throwGrenade", {
     origin: { x: origin.x, y: origin.y, z: origin.z },
     dir: { x: dir.x, y: dir.y, z: dir.z }
@@ -891,6 +956,23 @@ function updateGrenadeEffects(time) {
   }
 }
 
+function updateActiveGrenades(time, delta) {
+  for (let i = activeGrenades.length - 1; i >= 0; i--) {
+    const g = activeGrenades[i];
+    const age = time - g.born;
+
+    g.velocity.y -= gravity * 0.8 * delta;
+    g.sprite.position.addScaledVector(g.velocity, delta);
+    g.sprite.material.rotation += delta * 6;
+
+    if (age > 1800 || g.sprite.position.y < -5) {
+      scene.remove(g.sprite);
+      g.sprite.material.dispose();
+      activeGrenades.splice(i, 1);
+    }
+  }
+}
+
 function animate() {
   gameLoopId = requestAnimationFrame(animate);
 
@@ -905,6 +987,7 @@ function animate() {
 
   updateTracers(time);
   updateGrenadeEffects(time);
+  updateActiveGrenades(time, delta);
 
   if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
     muzzleFlash.visible = false;
@@ -1065,6 +1148,15 @@ function animate() {
       targetRotX -= Math.sin(reloadProgress * Math.PI) * 0.5;
     }
 
+    // Grenade throw animation
+    const throwElapsed = time - grenadeThrowTime;
+    if (throwElapsed >= 0 && throwElapsed < 280) {
+      const throwProgress = throwElapsed / 280;
+      targetY -= Math.sin(throwProgress * Math.PI) * 0.22;
+      targetZ += Math.sin(throwProgress * Math.PI) * 0.3;
+      targetRotX -= Math.sin(throwProgress * Math.PI) * 1.15;
+    }
+
     // Smooth dampening to target positions (clamped to prevent high-delta glitches)
     const dampFactor = Math.min(20 * delta, 1.0);
     gunMesh.position.x += (targetX - gunMesh.position.x) * dampFactor;
@@ -1122,6 +1214,17 @@ window.stopFps = () => {
     }
   }
   grenadeEffects = [];
+  for (const g of activeGrenades) {
+    if (g?.sprite) {
+      scene.remove(g.sprite);
+      if (g.sprite.material) g.sprite.material.dispose();
+    }
+  }
+  activeGrenades = [];
+  if (grenadeSpriteTexture) {
+    grenadeSpriteTexture.dispose();
+    grenadeSpriteTexture = null;
+  }
 
   fpsMenu.style.display = "block";
   fpsGame.style.display = "none";
