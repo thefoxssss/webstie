@@ -2349,7 +2349,7 @@ class FPSState extends schema.Schema {
   constructor() {
     super();
     this.players = new schema.MapSchema();
-    this.mapId = 0; // 0 = Classic, 1 = City, 2 = Platforms
+    this.mapId = 0; // 0 = Classic, 1 = City, 2 = Maze
     this.roundOver = false;
     this.winnerName = "";
   }
@@ -2386,8 +2386,20 @@ class FPSRoom extends colyseus.Room {
       const road = safeRoads[Math.floor(Math.random() * safeRoads.length)];
       x = road.xMin + Math.random() * (road.xMax - road.xMin);
       z = road.zMin + Math.random() * (road.zMax - road.zMin);
-    } else if (mapId === 2) {
-      y = 15; // platforms map spawns you higher up
+    } else if (mapId === 2) { // Maze
+      const mazeSpawns = [
+        { x: -38, z: -38 },
+        { x: 38, z: -38 },
+        { x: -38, z: 38 },
+        { x: 38, z: 38 },
+        { x: -6, z: -30 },
+        { x: 28, z: 22 },
+        { x: -26, z: 18 },
+        { x: 8, z: -10 }
+      ];
+      const spawn = mazeSpawns[Math.floor(Math.random() * mazeSpawns.length)];
+      x = spawn.x + (Math.random() * 4 - 2);
+      z = spawn.z + (Math.random() * 4 - 2);
     }
 
     return { x, y, z };

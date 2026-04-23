@@ -435,24 +435,37 @@ function loadMap(mapId) {
     createCar(5, 15, carMat1, 0);
     createCar(-5, -15, carMat2, 0);
 
-  } else if (mapId === 2) { // Platforms / Vertical
-    const mat = new THREE.MeshPhongMaterial({ color: 0x882222 });
+  } else if (mapId === 2) { // Maze
+    const wallMat = new THREE.MeshPhongMaterial({ color: 0x7a2233 });
+    const coverMat = new THREE.MeshPhongMaterial({ color: 0x4f1a24 });
+    const wallHeight = 6;
 
-    // Central tower
-    addBox(15, 2, 15, 0, 1, 0, mat);
-    addBox(10, 2, 10, 0, 8, 0, mat);
-    addBox(5, 2, 5, 0, 15, 0, mat);
+    // Outer boundaries
+    addBox(100, wallHeight, 2, 0, wallHeight / 2, -50, wallMat);
+    addBox(100, wallHeight, 2, 0, wallHeight / 2, 50, wallMat);
+    addBox(2, wallHeight, 100, -50, wallHeight / 2, 0, wallMat);
+    addBox(2, wallHeight, 100, 50, wallHeight / 2, 0, wallMat);
 
-    // Ramps/Stairs (approximated as blocks for now)
-    addBox(4, 2, 4, 10, 3, 0, mat);
-    addBox(4, 2, 4, 15, 5, 0, mat);
-    addBox(4, 2, 4, 20, 7, 0, mat);
+    // Maze walls laid out to create multiple loops and flank routes
+    addBox(48, wallHeight, 2, -18, wallHeight / 2, -32, wallMat);
+    addBox(2, wallHeight, 36, -42, wallHeight / 2, -12, wallMat);
+    addBox(2, wallHeight, 30, -20, wallHeight / 2, -3, wallMat);
+    addBox(26, wallHeight, 2, -6, wallHeight / 2, 14, wallMat);
+    addBox(2, wallHeight, 26, 6, wallHeight / 2, -4, wallMat);
+    addBox(28, wallHeight, 2, 22, wallHeight / 2, -22, wallMat);
+    addBox(2, wallHeight, 42, 34, wallHeight / 2, -2, wallMat);
+    addBox(34, wallHeight, 2, 16, wallHeight / 2, 26, wallMat);
+    addBox(2, wallHeight, 24, -4, wallHeight / 2, 34, wallMat);
+    addBox(22, wallHeight, 2, -30, wallHeight / 2, 30, wallMat);
+    addBox(2, wallHeight, 20, -30, wallHeight / 2, 10, wallMat);
+    addBox(14, wallHeight, 2, -34, wallHeight / 2, -2, wallMat);
 
-    // Outer pillars
-    addBox(4, 20, 4, -30, 10, -30, mat);
-    addBox(4, 20, 4, 30, 10, -30, mat);
-    addBox(4, 20, 4, -30, 10, 30, mat);
-    addBox(4, 20, 4, 30, 10, 30, mat);
+    // Mid-lane cover so firefights are less binary in corridors
+    addBox(4, 3, 4, -10, 1.5, -18, coverMat);
+    addBox(4, 3, 4, 12, 1.5, -6, coverMat);
+    addBox(4, 3, 4, 20, 1.5, 16, coverMat);
+    addBox(4, 3, 4, -18, 1.5, 20, coverMat);
+    addBox(4, 3, 4, 0, 1.5, 30, coverMat);
   }
 }
 
