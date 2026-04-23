@@ -22,6 +22,11 @@ let gatlingMovementLockUntil = 0;
 let isPrimaryFireHeld = false;
 let gameLoopId;
 let initialized = false;
+let nukeAlertEl = null;
+let nukeCountdownInterval = null;
+let nukeCountdownEndAt = 0;
+let nukeBombMesh = null;
+let nukeBombFallEndAt = 0;
 
 let moveForward = false;
 let moveBackward = false;
@@ -196,6 +201,18 @@ function setupRoom() {
 
   room.onMessage("grenadeExplode", (data) => {
     createGrenadeEffect(new THREE.Vector3(data.x, data.y, data.z));
+  });
+
+  room.onMessage("nukeIncoming", (data) => {
+    showNukeAnnouncement(data);
+  });
+
+  room.onMessage("nukeDrop", (data) => {
+    createNukeBombDrop(data);
+  });
+
+  room.onMessage("nukeDetonated", () => {
+    clearNukeAnnouncement();
   });
 
   room.onMessage("mapVotes", (votes) => {
@@ -577,9 +594,120 @@ function initThreeJs() {
   fpsCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   raycaster = new THREE.Raycaster();
+  ensureNukeAlert();
 
   prevTime = performance.now();
   animate();
+}
+
+function ensureNukeAlert() {
+  if (nukeAlertEl) return;
+  nukeAlertEl = document.createElement("div");
+  nukeAlertEl.style.display = "none";
+  nukeAlertEl.style.position = "absolute";
+  nukeAlertEl.style.top = "20px";
+  nukeAlertEl.style.left = "50%";
+  nukeAlertEl.style.transform = "translateX(-50%)";
+  nukeAlertEl.style.padding = "8px 14px";
+  nukeAlertEl.style.border = "2px solid #ff4d4d";
+  nukeAlertEl.style.background = "rgba(0,0,0,0.75)";
+  nukeAlertEl.style.color = "#ff7373";
+  nukeAlertEl.style.fontFamily = "monospace";
+  nukeAlertEl.style.fontWeight = "bold";
+  nukeAlertEl.style.letterSpacing = "0.5px";
+  nukeAlertEl.style.zIndex = "25";
+  nukeAlertEl.style.pointerEvents = "none";
+  fpsGame.appendChild(nukeAlertEl);
+}
+
+function clearNukeAnnouncement() {
+  if (nukeCountdownInterval) {
+    clearInterval(nukeCountdownInterval);
+    nukeCountdownInterval = null;
+  }
+  nukeCountdownEndAt = 0;
+  if (nukeAlertEl) {
+    nukeAlertEl.style.display = "none";
+    nukeAlertEl.textContent = "";
+  }
+}
+
+function showNukeAnnouncement(data) {
+  ensureNukeAlert();
+  const countdownMs = Math.max(0, Number(data?.countdownMs || 10000));
+  nukeCountdownEndAt = performance.now() + countdownMs;
+  const sender = escapeHtml(data?.by || "UNKNOWN");
+
+  const updateBanner = () => {
+    const remainingMs = Math.max(0, nukeCountdownEndAt - performance.now());
+    const remaining = Math.ceil(remainingMs / 1000);
+    nukeAlertEl.textContent = `⚠ NUKE INCOMING BY ${sender} • DETONATION IN ${remaining}s`;
+    nukeAlertEl.style.display = "block";
+    if (remaining <= 0) {
+      clearNukeAnnouncement();
+    }
+  };
+
+  if (nukeCountdownInterval) clearInterval(nukeCountdownInterval);
+  updateBanner();
+  nukeCountdownInterval = setInterval(updateBanner, 200);
+}
+
+function createNukeBombDrop(data) {
+  if (!scene) return;
+  if (nukeBombMesh) {
+    scene.remove(nukeBombMesh);
+    nukeBombMesh.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+    nukeBombMesh = null;
+  }
+
+  const x = Number(data?.x ?? 0);
+  const z = Number(data?.z ?? 0);
+  const durationMs = Math.max(200, Number(data?.durationMs || 3000));
+  const startY = Number(data?.startY ?? 45);
+  const endY = Number(data?.endY ?? 1.5);
+
+  const bomb = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 20, 20),
+    new THREE.MeshPhongMaterial({ color: 0xf4b942 })
+  );
+  body.scale.set(1, 1, 1.35);
+  bomb.add(body);
+
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(0.85, 1.2, 20),
+    new THREE.MeshPhongMaterial({ color: 0xd6982d })
+  );
+  nose.rotation.x = Math.PI;
+  nose.position.z = 2.1;
+  bomb.add(nose);
+
+  const tail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.75, 0.85, 1.2, 20),
+    new THREE.MeshPhongMaterial({ color: 0xdba037 })
+  );
+  tail.rotation.x = Math.PI / 2;
+  tail.position.z = -2.1;
+  bomb.add(tail);
+
+  const finMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+  for (let i = 0; i < 4; i++) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 1), finMaterial);
+    fin.position.set(Math.cos((Math.PI / 2) * i) * 0.62, Math.sin((Math.PI / 2) * i) * 0.62, -2.1);
+    fin.rotation.z = (Math.PI / 2) * i;
+    bomb.add(fin);
+  }
+
+  bomb.rotation.y = Math.PI / 2;
+  bomb.position.set(x, startY, z);
+  bomb.userData = { startY, endY, born: performance.now(), durationMs };
+  scene.add(bomb);
+  nukeBombMesh = bomb;
+  nukeBombFallEndAt = performance.now() + durationMs;
 }
 
 function unzoomSniper() {
@@ -593,7 +721,7 @@ function unzoomSniper() {
 
 function onKeyDown(event) {
   if (isInputFocused(event)) return;
-  if (!controls.isLocked) return;
+  if (!controls.isLocked && event.code !== "Backquote") return;
   switch (event.code) {
     case 'ArrowUp':
     case 'KeyW': moveForward = true; break;
@@ -618,6 +746,7 @@ function onKeyDown(event) {
     case 'Digit4': switchWeapon(3); break;
     case 'KeyR': startReload(); break;
     case 'KeyG': throwGrenade(); break;
+    case 'Backquote': triggerNuke(); break;
   }
 }
 
@@ -719,6 +848,12 @@ function createGunModel(id) {
 
 function isGatlingUnlocked() {
   return localPlayer.kills >= WEAPONS[3].unlockKills;
+}
+
+
+function triggerNuke() {
+  if (!room) return;
+  room.send("nuke");
 }
 
 function switchWeapon(id) {
@@ -962,6 +1097,7 @@ function animate() {
 
   updateTracers(time);
   updateGrenadeEffects(time);
+  updateNukeBomb(time);
 
   if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
     muzzleFlash.visible = false;
@@ -1139,6 +1275,26 @@ function animate() {
   prevTime = time;
 }
 
+function updateNukeBomb(time) {
+  if (!nukeBombMesh) return;
+  const born = nukeBombMesh.userData?.born ?? time;
+  const durationMs = Math.max(1, nukeBombMesh.userData?.durationMs ?? 3000);
+  const p = Math.min(1, Math.max(0, (time - born) / durationMs));
+  const eased = 1 - Math.pow(1 - p, 3);
+  const startY = nukeBombMesh.userData?.startY ?? 45;
+  const endY = nukeBombMesh.userData?.endY ?? 1.5;
+  nukeBombMesh.position.y = startY + (endY - startY) * eased;
+  nukeBombMesh.rotation.z += 0.04;
+  if (time >= nukeBombFallEndAt) {
+    scene.remove(nukeBombMesh);
+    nukeBombMesh.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+    nukeBombMesh = null;
+  }
+}
+
 export function initFps() {
   fpsMenu.style.display = "block";
   fpsGame.style.display = "none";
@@ -1147,6 +1303,9 @@ export function initFps() {
   nextGrenadeTime = 0;
   gatlingMovementLockUntil = 0;
   isPrimaryFireHeld = false;
+  clearNukeAnnouncement();
+  nukeBombFallEndAt = 0;
+  nukeCountdownEndAt = 0;
   updateGrenadeUI();
 
   if (room) {
@@ -1180,6 +1339,16 @@ window.stopFps = () => {
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
   isPrimaryFireHeld = false;
+  clearNukeAnnouncement();
+  nukeBombFallEndAt = 0;
+  if (nukeBombMesh && scene) {
+    scene.remove(nukeBombMesh);
+    nukeBombMesh.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+    nukeBombMesh = null;
+  }
 
   if (scene) {
      while(scene.children.length > 0){
