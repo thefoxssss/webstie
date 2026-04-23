@@ -721,7 +721,7 @@ function unzoomSniper() {
 
 function onKeyDown(event) {
   if (isInputFocused(event)) return;
-  if (!controls.isLocked) return;
+  if (!controls.isLocked && event.code !== "Backquote") return;
   switch (event.code) {
     case 'ArrowUp':
     case 'KeyW': moveForward = true; break;
@@ -852,7 +852,7 @@ function isGatlingUnlocked() {
 
 
 function triggerNuke() {
-  if (!room || !controls?.isLocked) return;
+  if (!room) return;
   room.send("nuke");
 }
 

@@ -2418,6 +2418,7 @@ class FPSRoom extends colyseus.Room {
     this.mapVotes = { 0: 0, 1: 0, 2: 0 };
     this.playerVotes = new Map();
     this.nukeSequenceActive = false;
+    this.nukeDamageInterval = null;
 
     this.onMessage("voteMap", (client, mapId) => {
       if (!this.state.roundOver) return;
@@ -2572,11 +2573,25 @@ class FPSRoom extends colyseus.Room {
           ownerId: client.sessionId
         });
 
-        this.state.players.forEach((target, targetId) => {
-          if (target.health <= 0) return;
-          target.health = 0;
-          handleElimination(shooter, { id: targetId, player: target });
-        });
+        const nukeDamageEndAt = Date.now() + 5000;
+        const applyNukeDamageTick = () => {
+          if (Date.now() > nukeDamageEndAt || this.state.roundOver) {
+            if (this.nukeDamageInterval) {
+              clearInterval(this.nukeDamageInterval);
+              this.nukeDamageInterval = null;
+            }
+            return;
+          }
+          this.state.players.forEach((target, targetId) => {
+            if (target.health <= 0) return;
+            target.health = -999999; // effectively infinite damage
+            handleElimination(shooter, { id: targetId, player: target });
+          });
+        };
+
+        applyNukeDamageTick();
+        if (this.nukeDamageInterval) clearInterval(this.nukeDamageInterval);
+        this.nukeDamageInterval = setInterval(applyNukeDamageTick, 200);
 
         if (shooter.kills >= 50 && !this.state.roundOver) {
           this.state.roundOver = true;
@@ -2637,6 +2652,10 @@ class FPSRoom extends colyseus.Room {
 
   resetRound() {
     this.nukeSequenceActive = false;
+    if (this.nukeDamageInterval) {
+      clearInterval(this.nukeDamageInterval);
+      this.nukeDamageInterval = null;
+    }
     // Tally votes
     let winningMap = 0;
     let maxVotes = -1;
@@ -2700,6 +2719,10 @@ class FPSRoom extends colyseus.Room {
   }
 
   onDispose() {
+    if (this.nukeDamageInterval) {
+      clearInterval(this.nukeDamageInterval);
+      this.nukeDamageInterval = null;
+    }
     fpsServerDirectory.delete(this.roomId);
   }
 }
