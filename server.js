@@ -626,6 +626,17 @@ type("boolean")(BuilderPlayer.prototype, "flightEnabled");
 type("boolean")(BuilderPlayer.prototype, "creativeMode");
 type("string")(BuilderPlayer.prototype, "sprite");
 
+
+class BuilderVehicle extends Schema {}
+type("string")(BuilderVehicle.prototype, "id");
+type("number")(BuilderVehicle.prototype, "x");
+type("number")(BuilderVehicle.prototype, "y");
+type("number")(BuilderVehicle.prototype, "vx");
+type("number")(BuilderVehicle.prototype, "vy");
+type("number")(BuilderVehicle.prototype, "type");
+type("string")(BuilderVehicle.prototype, "driverId");
+type("number")(BuilderVehicle.prototype, "dir");
+
 class BuilderBullet extends Schema {}
 type("string")(BuilderBullet.prototype, "id");
 type("string")(BuilderBullet.prototype, "ownerId");
@@ -699,6 +710,7 @@ class BuilderState extends Schema {
         this.chests = new MapSchema();
         this.furnaces = new MapSchema();
         this.explosives = new MapSchema();
+        this.vehicles = new MapSchema();
     }
 }
 type({ map: BuilderPlayer })(BuilderState.prototype, "players");
@@ -708,6 +720,7 @@ type({ map: BuilderBullet })(BuilderState.prototype, "bullets");
 type({ map: ChestData })(BuilderState.prototype, "chests");
 type({ map: FurnaceData })(BuilderState.prototype, "furnaces");
 type({ map: Explosive })(BuilderState.prototype, "explosives");
+type({ map: BuilderVehicle })(BuilderState.prototype, "vehicles");
 
 const BUILDER_TICK_RATE = 20;
 const TILE_SIZE = 32;
@@ -764,6 +777,34 @@ class BuilderRoom extends colyseus.Room {
       }
     });
 
+
+    this.onMessage("interact_vehicle", (client, message) => {
+        const pId = client.sessionId;
+        const p = this.state.players.get(pId);
+        if (!p || p.hp <= 0) return;
+
+        if (message.action === "enter") {
+            const vId = message.vehicleId;
+            const vehicle = this.state.vehicles.get(vId);
+            if (vehicle && !vehicle.driverId) {
+                // Check distance
+                const dist = Math.hypot(vehicle.x - p.x, vehicle.y - p.y);
+                if (dist < TILE_SIZE * 4) {
+                    vehicle.driverId = pId;
+                }
+            }
+        } else if (message.action === "exit") {
+            // Find any vehicle driven by this player
+            this.state.vehicles.forEach((v) => {
+                if (v.driverId === pId) {
+                    v.driverId = "";
+                    // Nudge player up slightly to avoid getting stuck inside
+                    p.y -= TILE_SIZE;
+                }
+            });
+        }
+    });
+
     this.onMessage("build", (client, message) => {
       const p = this.state.players.get(client.sessionId);
       if (!p || p.hp <= 0) return;
@@ -778,7 +819,25 @@ class BuilderRoom extends colyseus.Room {
 
       if (distSq > maxBuildDistance ** 2) return;
 
+
+      // Check for vehicle placement
+      if (message.type === 66) { // Plane
+          const v = new BuilderVehicle();
+          v.id = Math.random().toString(36).substring(2, 9);
+          v.x = message.x;
+          v.y = message.y;
+          v.vx = 0;
+          v.vy = 0;
+          v.type = 66;
+          v.driverId = "";
+          v.dir = 1;
+          this.state.vehicles.set(v.id, v);
+          client.send("consume");
+          return;
+      }
+
       const x = Math.floor(message.x / TILE_SIZE);
+
       const y = Math.floor(message.y / TILE_SIZE);
       const cx = Math.floor(x / CHUNK_SIZE);
       const cy = Math.floor(y / CHUNK_SIZE);
@@ -1964,9 +2023,61 @@ isSolid(x, y) {
         }
     });
 
+    // Vehicle movement
+    this.state.vehicles.forEach((v, vId) => {
+        if (v.driverId && this.inputs[v.driverId]) {
+            const inp = this.inputs[v.driverId];
+            if (v.type === 66) { // Plane logic
+                if (inp.up) v.vy -= 2.5;
+                if (inp.down) v.vy += 2.5;
+                if (inp.left) v.vx -= 3.0;
+                if (inp.right) v.vx += 3.0;
+                v.vx *= 0.95;
+                v.vy *= 0.95;
+                if (inp.left) v.dir = -1;
+                if (inp.right) v.dir = 1;
+            }
+        } else {
+            // Gravity if no driver or not a plane
+            v.vy += 0.8;
+            v.vx *= 0.8;
+            v.vy *= 0.98;
+        }
+
+        v.x += v.vx;
+        v.y += v.vy;
+
+        // Collision for vehicle
+        const cx = Math.floor(v.x / (TILE_SIZE * CHUNK_SIZE));
+        const cy = Math.floor(v.y / (TILE_SIZE * CHUNK_SIZE));
+        const chunk = this.getOrCreateChunk(cx, cy);
+
+        // Basic collision (bottom)
+        const bx = Math.floor((v.x + TILE_SIZE / 2) / TILE_SIZE);
+        const by = Math.floor((v.y + TILE_SIZE) / TILE_SIZE);
+        if (this.isSolid(bx, by)) {
+            v.y = by * TILE_SIZE - TILE_SIZE;
+            v.vy = 0;
+        }
+    });
+
     this.state.players.forEach((p, sessionId) => {
         const inp = this.inputs[sessionId];
         if (!inp) return;
+
+        // If player is in a vehicle, snap to it and skip normal movement
+        let inVehicle = false;
+        this.state.vehicles.forEach((v) => {
+            if (v.driverId === sessionId) {
+                p.x = v.x;
+                p.y = v.y;
+                p.vx = 0;
+                p.vy = 0;
+                inVehicle = true;
+            }
+        });
+        if (inVehicle) return;
+
         const prevX = p.x;
         const prevY = p.y;
 
@@ -2020,7 +2131,8 @@ if (onLadder) {
         if (inp.right) p.vx += 1.5;
 
         if (p.flightEnabled) {
-            if (inp.up) p.vy -= 1.8;
+
+                if (inp.up) p.vy -= 1.8;
             if (inp.down) p.vy += 1.8;
             p.vx *= 0.9;
             p.vy *= 0.9;
