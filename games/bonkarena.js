@@ -9,8 +9,11 @@ const TICK_MS = 1000 / 40;
 const MOVE_ACCEL = 0.8;
 const AIR_CONTROL = 0.45;
 const FRICTION = 0.86;
+const BHOP_GROUND_FRICTION = 0.97;
 const GRAVITY = 0.65;
 const JUMP_FORCE = 11.5;
+const BHOP_BONUS_ACCEL = 0.5;
+const BHOP_MAX_SPEED = 16.5;
 const BUMP_FORCE = 2.3;
 const BOUNCE_RESTITUTION = 0.88;
 const ARROW_SPEED = 11;
@@ -85,7 +88,7 @@ function resetOverlay() {
   document.getElementById("baGame").style.display = "none";
   setText("baStatus", "CREATE OR JOIN A ROOM");
   setText("baLobbyStatus", "CREATE OR JOIN A ROOM");
-  setText("baHint", "LEFT/RIGHT TO MOVE • UP TO JUMP");
+  setText("baHint", "LEFT/RIGHT TO MOVE • HOLD UP TO B-HOP");
   setText("baWinner", "");
   const joinInput = document.getElementById("joinBACode");
   if (joinInput) joinInput.value = "";
@@ -359,9 +362,9 @@ function drawArena(data) {
 
 
 function modeHint(mode) {
-  if (mode === "arrows") return "LEFT/RIGHT MOVE • UP JUMP • DOWN SHOOTS ARROWS";
-  if (mode === "grapple") return "LEFT/RIGHT MOVE • UP JUMP • DOWN GRAPPLES ENEMY";
-  return "LEFT/RIGHT TO MOVE • UP TO JUMP • KNOCK OTHERS OUT";
+  if (mode === "arrows") return "LEFT/RIGHT MOVE • HOLD UP TO B-HOP • DOWN SHOOTS ARROWS";
+  if (mode === "grapple") return "LEFT/RIGHT MOVE • HOLD UP TO B-HOP • DOWN GRAPPLES ENEMY";
+  return "LEFT/RIGHT TO MOVE • HOLD UP TO B-HOP • KNOCK OTHERS OUT";
 }
 
 function drawProjectiles(ctx, projectiles) {
@@ -611,8 +614,16 @@ function simulatePlayerStep(player, input, dt, radius) {
   const move = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   const control = player.grounded ? MOVE_ACCEL : AIR_CONTROL;
   player.vx += move * control * dt;
+  if (!player.grounded && move !== 0) {
+    player.vx += move * BHOP_BONUS_ACCEL * dt;
+  }
   if (move !== 0) player.facing = move > 0 ? 1 : -1;
-  player.vx *= Math.pow(FRICTION, dt);
+  const friction = player.grounded && input.up ? BHOP_GROUND_FRICTION : FRICTION;
+  player.vx *= Math.pow(friction, dt);
+  const maxSpeed = BHOP_MAX_SPEED;
+  if (Math.abs(player.vx) > maxSpeed) {
+    player.vx = Math.sign(player.vx) * maxSpeed;
+  }
 
   if (input.up && player.grounded) {
     player.vy = -JUMP_FORCE;
