@@ -2243,6 +2243,8 @@
           <option value="0">MAP: CLASSIC</option>
           <option value="1">MAP: CITY</option>
           <option value="2">MAP: MAZE</option>
+          <option value="3">MAP: SPACE STATION</option>
+          <option value="4">MAP: SNIPER TOWER</option>
         </select>
         <input type="text" id="fpsServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
         <button class="term-btn" id="btnCreateFpsServer">CREATE SERVER</button>
@@ -2283,10 +2285,12 @@
           <p id="fpsRoundWinner" style="color: white; font-size: 18px; margin-bottom: 20px; text-shadow: 1px 1px 0 #000;">Winner: Unknown</p>
           <div style="background: rgba(255,255,255,0.1); padding: 20px; border: 1px solid #fff;">
             <h3 style="color: white; text-align: center; margin-bottom: 10px;">VOTE FOR NEXT MAP</h3>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
               <button class="term-btn" onclick="window.voteMap(0)">CLASSIC <span id="mapVote0">(0)</span></button>
               <button class="term-btn" onclick="window.voteMap(1)">CITY <span id="mapVote1">(0)</span></button>
               <button class="term-btn" onclick="window.voteMap(2)">MAZE <span id="mapVote2">(0)</span></button>
+              <button class="term-btn" onclick="window.voteMap(3)">SPACE <span id="mapVote3">(0)</span></button>
+              <button class="term-btn" onclick="window.voteMap(4)">SNIPER <span id="mapVote4">(0)</span></button>
             </div>
           </div>
         </div>

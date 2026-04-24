@@ -2400,6 +2400,24 @@ class FPSRoom extends colyseus.Room {
       const spawn = mazeSpawns[Math.floor(Math.random() * mazeSpawns.length)];
       x = spawn.x + (Math.random() * 4 - 2);
       z = spawn.z + (Math.random() * 4 - 2);
+    } else if (mapId === 3) { // Space Station
+      const spawns = [
+        { x: 0, z: 0 },
+        { x: 30, z: 30 },
+        { x: -30, z: -30 },
+        { x: -30, z: 30 },
+        { x: 30, z: -30 }
+      ];
+      const spawn = spawns[Math.floor(Math.random() * spawns.length)];
+      x = spawn.x + (Math.random() * 10 - 5);
+      z = spawn.z + (Math.random() * 10 - 5);
+      y = 10; // Elevate slightly since floors vary
+    } else if (mapId === 4) { // Sniper Tower
+      // Spawn at the top of the towers
+      const spawnInTowerA = Math.random() < 0.5;
+      x = spawnInTowerA ? 0 : 0;
+      z = spawnInTowerA ? -40 : 40;
+      y = 22;
     }
 
     return { x, y, z };
@@ -2415,7 +2433,7 @@ class FPSRoom extends colyseus.Room {
       this.state.mapId = options.mapId;
     }
 
-    this.mapVotes = { 0: 0, 1: 0, 2: 0 };
+    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
     this.playerVotes = new Map();
 
     this.onMessage("voteMap", (client, mapId) => {
@@ -2529,6 +2547,38 @@ class FPSRoom extends colyseus.Room {
       }
     });
 
+    this.onMessage("barrelHit", (client, data) => {
+      if (this.state.roundOver) return;
+      const shooter = this.state.players.get(client.sessionId);
+      if (!shooter || shooter.health <= 0) return;
+
+      const ex = data.x;
+      const ey = data.y;
+      const ez = data.z;
+
+      this.broadcast("grenadeExplode", {
+        x: ex,
+        y: ey,
+        z: ez,
+        ownerId: client.sessionId
+      });
+
+      const radius = 15;
+      this.state.players.forEach((target, targetId) => {
+        if (target.health <= 0) return;
+        const tx = target.x - ex;
+        const ty = (target.y + 1) - ey;
+        const tz = target.z - ez;
+        const dist = Math.sqrt(tx * tx + ty * ty + tz * tz);
+        if (dist > radius) return;
+
+        const t = 1 - (dist / radius);
+        const damage = Math.max(20, Math.round(100 * t));
+        target.health -= damage;
+        handleElimination(shooter, { id: targetId, player: target });
+      });
+    });
+
     this.onMessage("throwGrenade", (client, data) => {
       if (this.state.roundOver) return;
       const shooter = this.state.players.get(client.sessionId);
@@ -2581,7 +2631,7 @@ class FPSRoom extends colyseus.Room {
     // Tally votes
     let winningMap = 0;
     let maxVotes = -1;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       if (this.mapVotes[i] > maxVotes) {
         maxVotes = this.mapVotes[i];
         winningMap = i;
@@ -2590,7 +2640,7 @@ class FPSRoom extends colyseus.Room {
     this.state.mapId = winningMap;
     this.state.roundOver = false;
     this.state.winnerName = "";
-    this.mapVotes = { 0: 0, 1: 0, 2: 0 };
+    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
     this.playerVotes.clear();
 
     // Reset players

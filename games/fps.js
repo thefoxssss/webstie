@@ -3,6 +3,7 @@ import { state, isInputFocused, escapeHtml } from "../core.js";
 let room = null;
 let scene, camera, renderer, controls;
 let raycaster;
+let floorMesh;
 let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0 };
 let otherPlayers = {}; // id -> { mesh, data }
 let gunMesh;
@@ -196,12 +197,30 @@ function setupRoom() {
 
   room.onMessage("grenadeExplode", (data) => {
     createGrenadeEffect(new THREE.Vector3(data.x, data.y, data.z));
+
+    // Also destroy nearby barrels locally
+    if (obstaclesGroup) {
+      for (let i = obstaclesGroup.children.length - 1; i >= 0; i--) {
+        const mesh = obstaclesGroup.children[i];
+        if (mesh.userData && mesh.userData.isBarrel) {
+          const dist = mesh.position.distanceTo(new THREE.Vector3(data.x, data.y, data.z));
+          if (dist < 15) { // Grenade radius
+            obstaclesGroup.remove(mesh);
+            mesh.geometry.dispose();
+            mesh.material.dispose();
+            obstacleBoxes = obstacleBoxes.filter(b => b.userData !== mesh.userData);
+          }
+        }
+      }
+    }
   });
 
   room.onMessage("mapVotes", (votes) => {
     document.getElementById("mapVote0").textContent = `(${votes[0]})`;
     document.getElementById("mapVote1").textContent = `(${votes[1]})`;
     document.getElementById("mapVote2").textContent = `(${votes[2]})`;
+    if (document.getElementById("mapVote3")) document.getElementById("mapVote3").textContent = `(${votes[3] || 0})`;
+    if (document.getElementById("mapVote4")) document.getElementById("mapVote4").textContent = `(${votes[4] || 0})`;
   });
 
   room.state.listen("roundOver", (isOver) => {
@@ -291,8 +310,130 @@ function updateLeaderboard() {
   ).join("");
 }
 
+// Procedural textures
+function createProceduralTexture(type) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+
+  if (type === "brick") {
+    ctx.fillStyle = "#a52a2a";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = "#eeeeee";
+    for (let y = 0; y < 256; y += 32) {
+      ctx.fillRect(0, y, 256, 2);
+      const offset = (y / 32) % 2 === 0 ? 0 : 32;
+      for (let x = 0; x < 256; x += 64) {
+        ctx.fillRect(x + offset, y, 2, 32);
+      }
+    }
+  } else if (type === "grass") {
+    ctx.fillStyle = "#3b5e2b";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = "#4a7c36";
+    for (let i = 0; i < 1000; i++) {
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 8);
+    }
+  } else if (type === "asphalt") {
+    ctx.fillStyle = "#333333";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = "#444444";
+    for (let i = 0; i < 5000; i++) {
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 1, 1);
+    }
+  } else if (type === "metal") {
+    ctx.fillStyle = "#777777";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = "#999999";
+    for (let i = 0; i < 20; i++) {
+      ctx.fillRect(Math.random() * 256, 0, 2, 256);
+      ctx.fillRect(0, Math.random() * 256, 256, 2);
+    }
+    // Bolts
+    ctx.fillStyle = "#444444";
+    ctx.beginPath(); ctx.arc(16, 16, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(240, 16, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(16, 240, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(240, 240, 4, 0, Math.PI*2); ctx.fill();
+  } else if (type === "space") {
+    ctx.fillStyle = "#111122";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = "#ffffff";
+    for (let i = 0; i < 100; i++) {
+      const r = Math.random() * 1.5;
+      ctx.beginPath(); ctx.arc(Math.random() * 256, Math.random() * 256, r, 0, Math.PI*2); ctx.fill();
+    }
+  } else if (type === "concrete") {
+    ctx.fillStyle = "#666666";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = "#555555";
+    for (let i = 0; i < 5000; i++) {
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  // We'll adjust repeat per-mesh if needed, but default 1
+  return texture;
+}
+
+const textures = {};
+
+function getTexture(type) {
+  if (!textures[type]) {
+    textures[type] = createProceduralTexture(type);
+  }
+  return textures[type];
+}
+
 function loadMap(mapId) {
   if (!obstaclesGroup) return;
+
+  // Set Fog and Sky Color based on map
+  if (mapId === 3) { // Space Station
+    scene.background = new THREE.Color(0x050510);
+    scene.fog = new THREE.Fog(0x050510, 20, 150);
+    if (floorMesh) {
+      floorMesh.material = new THREE.MeshPhongMaterial({ map: getTexture("metal").clone(), color: 0x888888 });
+      floorMesh.material.map.needsUpdate = true;
+      floorMesh.material.map.repeat.set(10, 10);
+    }
+  } else if (mapId === 4) { // Sniper Tower
+    scene.background = new THREE.Color(0xddeeff);
+    scene.fog = new THREE.Fog(0xddeeff, 20, 250);
+    if (floorMesh) {
+      floorMesh.material = new THREE.MeshPhongMaterial({ map: getTexture("grass").clone(), color: 0x888888 });
+      floorMesh.material.map.needsUpdate = true;
+      floorMesh.material.map.repeat.set(20, 20);
+    }
+  } else if (mapId === 1) { // City
+    scene.background = new THREE.Color(0x8899aa);
+    scene.fog = new THREE.FogExp2(0x8899aa, 0.015);
+    if (floorMesh) {
+      floorMesh.material = new THREE.MeshPhongMaterial({ map: getTexture("asphalt").clone(), color: 0x888888 });
+      floorMesh.material.map.needsUpdate = true;
+      floorMesh.material.map.repeat.set(20, 20);
+    }
+  } else if (mapId === 2) { // Maze
+    scene.background = new THREE.Color(0x222222);
+    scene.fog = new THREE.Fog(0x222222, 5, 80);
+    if (floorMesh) {
+      floorMesh.material = new THREE.MeshPhongMaterial({ map: getTexture("concrete").clone(), color: 0x555555 });
+      floorMesh.material.map.needsUpdate = true;
+      floorMesh.material.map.repeat.set(20, 20);
+    }
+  } else { // Classic
+    scene.background = new THREE.Color(0x55aaee);
+    scene.fog = new THREE.Fog(0x55aaee, 20, 150);
+    if (floorMesh) {
+      floorMesh.material = new THREE.MeshPhongMaterial({ map: getTexture("grass").clone(), color: 0x888888 });
+      floorMesh.material.map.needsUpdate = true;
+      floorMesh.material.map.repeat.set(20, 20);
+    }
+  }
 
   // Clear existing obstacles
   while (obstaclesGroup.children.length > 0) {
@@ -303,21 +444,33 @@ function loadMap(mapId) {
   }
   obstacleBoxes = [];
 
-  const addBox = (w, h, d, x, y, z, mat) => {
+  const addBox = (w, h, d, x, y, z, mat, userData = {}) => {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.userData = userData;
     obstaclesGroup.add(mesh);
 
     // Create bounding box for collision
     const box3 = new THREE.Box3().setFromObject(mesh);
+    box3.userData = userData; // Attach userData to the box
     obstacleBoxes.push(box3);
+    return mesh;
+  };
+
+  const barrelMat = new THREE.MeshPhongMaterial({ color: 0xdd2222 });
+  const addBarrel = (x, y, z) => {
+    // Unique ID for filtering later
+    addBox(2, 3, 2, x, y, z, barrelMat, { isBarrel: true, id: Math.random() });
   };
 
   if (mapId === 0) { // Classic Arena
-    const mat = new THREE.MeshPhongMaterial({ color: 0x228822 });
+    const mat = new THREE.MeshPhongMaterial({ map: getTexture("brick").clone(), color: 0x999999 });
+    mat.map.needsUpdate = true;
+    mat.map.repeat.set(2, 1);
+
     // Outer walls
     addBox(100, 10, 2, 0, 5, -50, mat);
     addBox(100, 10, 2, 0, 5, 50, mat);
@@ -328,14 +481,29 @@ function loadMap(mapId) {
     addBox(10, 8, 10, 0, 4, 0, mat);
 
     // Cover blocks
-    addBox(6, 4, 2, -20, 2, -20, mat);
-    addBox(6, 4, 2, 20, 2, 20, mat);
-    addBox(2, 4, 6, -20, 2, 20, mat);
-    addBox(2, 4, 6, 20, 2, -20, mat);
+    const coverMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x777777 });
+    addBox(6, 4, 2, -20, 2, -20, coverMat);
+    addBox(6, 4, 2, 20, 2, 20, coverMat);
+    addBox(2, 4, 6, -20, 2, 20, coverMat);
+    addBox(2, 4, 6, 20, 2, -20, coverMat);
+
+    // Ramps to center structure
+    const rampMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+    // Left ramp
+    for(let i=0; i<5; i++) {
+      addBox(2, i, 4, -6 - (4-i)*2, i/2, 0, rampMat);
+    }
+    // Right ramp
+    for(let i=0; i<5; i++) {
+      addBox(2, i, 4, 6 + (4-i)*2, i/2, 0, rampMat);
+    }
+
+    addBarrel(0, 1.5, -20);
+    addBarrel(0, 1.5, 20);
 
   } else if (mapId === 1) { // City Streets
-    const mat = new THREE.MeshPhongMaterial({ color: 0x444455 });
-    const windowMat = new THREE.MeshPhongMaterial({ color: 0x88ccff });
+    const mat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0x777777 });
+    const windowMat = new THREE.MeshPhongMaterial({ color: 0x88ccff, transparent: true, opacity: 0.8 });
 
     // helper to create hollow buildings with doors and windows
     const createBuilding = (x, z, sizeX, sizeZ, floors) => {
@@ -404,19 +572,18 @@ function loadMap(mapId) {
       addBox(sizeX, 0.5, sizeZ, x, floors * floorHeight, z, mat);
     };
 
-    // Generate deterministic buildings around the map
-    for(let i=0; i<6; i++) {
-      let x = Math.sin(i * 1.5) * 35;
-      let z = Math.cos(i * 2.1) * 35;
-      let sizeX = 12 + Math.abs(Math.sin(i)) * 6;
-      let sizeZ = 12 + Math.abs(Math.cos(i)) * 6;
-      let floors = 3 + Math.floor(Math.abs(Math.sin(i * 3.3)) * 4);
+    // Hand-crafted building layout for better chokepoints
+    createBuilding(-20, -20, 16, 16, 3);
+    createBuilding(20, -20, 16, 16, 4);
+    createBuilding(-20, 20, 16, 16, 2);
+    createBuilding(20, 20, 16, 16, 3);
 
-      createBuilding(x, z, sizeX, sizeZ, floors);
-    }
+    // Some long alleyway walls
+    addBox(40, 8, 2, 0, 4, -30, mat);
+    addBox(40, 8, 2, 0, 4, 30, mat);
 
     // Add central monument/fountain
-    const monumentMat = new THREE.MeshPhongMaterial({ color: 0xaa8866 });
+    const monumentMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0xaa8866 });
     addBox(6, 1, 6, 0, 0.5, 0, monumentMat);
     addBox(4, 2, 4, 0, 2, 0, monumentMat);
     addBox(2, 6, 2, 0, 6, 0, monumentMat);
@@ -424,14 +591,11 @@ function loadMap(mapId) {
     // Add some parked cars (simple blocky cars)
     const carMat1 = new THREE.MeshPhongMaterial({ color: 0xcc2222 }); // Red car
     const carMat2 = new THREE.MeshPhongMaterial({ color: 0x2222cc }); // Blue car
+    const carMat3 = new THREE.MeshPhongMaterial({ color: 0x22cc22 }); // Green car
     const carWindowMat = new THREE.MeshPhongMaterial({ color: 0x222222 }); // Dark tinted windows
 
     const createCar = (cx, cz, mat, rotAngle) => {
-      // Very basic blocky car. Because our addBox takes x/y/z directly, we can just approximate it
-      // if it's axis-aligned. For arbitrary rotation, we'd need more logic, but we'll keep them axis aligned.
-      // Chassis
       addBox(2.5, 1, 5, cx, 0.5, cz, mat);
-      // Cabin
       addBox(2, 1, 2.5, cx, 1.5, cz, carWindowMat);
     };
 
@@ -439,10 +603,23 @@ function loadMap(mapId) {
     createCar(-15, -8, carMat2, 0);
     createCar(5, 15, carMat1, 0);
     createCar(-5, -15, carMat2, 0);
+    createCar(0, 10, carMat3, 0);
+
+    // Dumpsters / Cover
+    const dumpsterMat = new THREE.MeshPhongMaterial({ color: 0x114411 });
+    addBox(4, 3, 2, 10, 1.5, -10, dumpsterMat);
+    addBox(4, 3, 2, -10, 1.5, 10, dumpsterMat);
+    addBox(2, 3, 4, -25, 1.5, 0, dumpsterMat);
+    addBox(2, 3, 4, 25, 1.5, 0, dumpsterMat);
+
+    addBarrel(2, 1.5, -10);
+    addBarrel(-2, 1.5, 10);
+    addBarrel(-25, 1.5, -6);
+    addBarrel(25, 1.5, 6);
 
   } else if (mapId === 2) { // Maze
-    const wallMat = new THREE.MeshPhongMaterial({ color: 0x7a2233 });
-    const coverMat = new THREE.MeshPhongMaterial({ color: 0x4f1a24 });
+    const wallMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x7a2233 });
+    const coverMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x4f1a24 });
     const wallHeight = 6;
 
     // Outer boundaries
@@ -471,6 +648,94 @@ function loadMap(mapId) {
     addBox(4, 3, 4, 20, 1.5, 16, coverMat);
     addBox(4, 3, 4, -18, 1.5, 20, coverMat);
     addBox(4, 3, 4, 0, 1.5, 30, coverMat);
+
+    addBarrel(-6, 1.5, -18);
+    addBarrel(16, 1.5, -6);
+    addBarrel(16, 1.5, 16);
+    addBarrel(-14, 1.5, 20);
+    addBarrel(0, 1.5, 25);
+
+  } else if (mapId === 3) { // Space Station
+    const wallMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x777788 });
+    const accentMat = new THREE.MeshPhongMaterial({ color: 0xee5500 });
+
+    // Outer glass-like barrier
+    const glassMat = new THREE.MeshPhongMaterial({ color: 0x88ccff, transparent: true, opacity: 0.3 });
+    addBox(100, 20, 2, 0, 10, -50, glassMat);
+    addBox(100, 20, 2, 0, 10, 50, glassMat);
+    addBox(2, 20, 100, -50, 10, 0, glassMat);
+    addBox(2, 20, 100, 50, 10, 0, glassMat);
+
+    // Main central hub
+    addBox(20, 10, 20, 0, 5, 0, wallMat);
+    // Hub roof access
+    addBox(10, 1, 10, 0, 10.5, 0, accentMat);
+
+    // Corridors
+    addBox(10, 6, 30, 0, 3, 25, wallMat);
+    addBox(10, 6, 30, 0, 3, -25, wallMat);
+    addBox(30, 6, 10, 25, 3, 0, wallMat);
+    addBox(30, 6, 10, -25, 3, 0, wallMat);
+
+    // Outer platforms
+    addBox(20, 4, 20, 30, 2, 30, wallMat);
+    addBox(20, 4, 20, -30, 2, -30, wallMat);
+    addBox(20, 4, 20, 30, 2, -30, wallMat);
+    addBox(20, 4, 20, -30, 2, 30, wallMat);
+
+    // Jump pads to roof
+    const jumpPadMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.5 });
+    addBox(4, 0.5, 4, 25, 4.25, 25, jumpPadMat, { isJumpPad: true });
+    addBox(4, 0.5, 4, -25, 4.25, -25, jumpPadMat, { isJumpPad: true });
+    addBox(4, 0.5, 4, 25, 4.25, -25, jumpPadMat, { isJumpPad: true });
+    addBox(4, 0.5, 4, -25, 4.25, 25, jumpPadMat, { isJumpPad: true });
+
+    // Ramps to platforms
+    const rampMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x555555 });
+    // This is approximate stair stepping
+    for(let i=0; i<8; i++) {
+      addBox(4, i*0.5, 4, 15 + i*2, (i*0.5)/2, 30, rampMat);
+      addBox(4, i*0.5, 4, -15 - i*2, (i*0.5)/2, -30, rampMat);
+      addBox(4, i*0.5, 4, 15 + i*2, (i*0.5)/2, -30, rampMat);
+      addBox(4, i*0.5, 4, -15 - i*2, (i*0.5)/2, 30, rampMat);
+    }
+  } else if (mapId === 4) { // Sniper Tower
+    const wallMat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0x999999 });
+    const coverMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x555555 });
+
+    // Tower A
+    addBox(10, 20, 10, 0, 10, -40, wallMat);
+    // Tower A stairs
+    for(let i=0; i<20; i++) {
+      addBox(2, i, 2, 6, i/2, -40 + (i%5)*2, coverMat);
+    }
+    // Tower B
+    addBox(10, 20, 10, 0, 10, 40, wallMat);
+    // Tower B stairs
+    for(let i=0; i<20; i++) {
+      addBox(2, i, 2, 6, i/2, 40 - (i%5)*2, coverMat);
+    }
+
+    // Quick access jump pads to top of towers
+    const jumpPadMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.5 });
+    addBox(4, 0.5, 4, 0, 0.25, -30, jumpPadMat, { isJumpPad: true });
+    addBox(4, 0.5, 4, 0, 0.25, 30, jumpPadMat, { isJumpPad: true });
+
+    // Sparse mid cover
+    for(let i=0; i<15; i++) {
+      let cx = (Math.random() - 0.5) * 60;
+      let cz = (Math.random() - 0.5) * 60;
+      let ch = 2 + Math.random() * 4;
+      addBox(3, ch, 3, cx, ch/2, cz, coverMat);
+    }
+
+    addBarrel(0, 1.5, 0);
+    addBarrel(10, 1.5, 10);
+    addBarrel(-10, 1.5, -10);
+
+    // Side walls
+    addBox(2, 8, 100, -30, 4, 0, wallMat);
+    addBox(2, 8, 100, 30, 4, 0, wallMat);
   }
 }
 
@@ -517,10 +782,10 @@ function initThreeJs() {
   // Floor
   const floorGeo = new THREE.PlaneGeometry(200, 200);
   const floorMat = new THREE.MeshPhongMaterial({ color: 0x333333, depthWrite: false });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  scene.add(floor);
+  floorMesh = new THREE.Mesh(floorGeo, floorMat);
+  floorMesh.rotation.x = -Math.PI / 2;
+  floorMesh.receiveShadow = true;
+  scene.add(floorMesh);
 
   // Grid
   const grid = new THREE.GridHelper(200, 40, 0x000000, 0x000000);
@@ -845,6 +1110,29 @@ function tryFireWeapon() {
     }
     createTracer(origin, bDir, weapon.color);
 
+    // Client-side barrel check
+    const rc = new THREE.Raycaster(origin, bDir, 0, 100);
+    if (obstaclesGroup) {
+      const intersects = rc.intersectObjects(obstaclesGroup.children);
+      for (const hit of intersects) {
+        if (hit.object.userData && hit.object.userData.isBarrel) {
+          // Tell server barrel hit
+          room.send("barrelHit", { x: hit.object.position.x, y: hit.object.position.y, z: hit.object.position.z });
+
+          // Remove from local immediately so we don't shoot it again
+          obstaclesGroup.remove(hit.object);
+          hit.object.geometry.dispose();
+          hit.object.material.dispose();
+
+          // Remove its collision box
+          obstacleBoxes = obstacleBoxes.filter(b => b.userData !== hit.object.userData);
+          break; // Stop ray
+        } else {
+          break; // Hit a wall
+        }
+      }
+    }
+
     room.send("shoot", {
       origin: { x: origin.x, y: origin.y, z: origin.z },
       dir: { x: bDir.x, y: bDir.y, z: bDir.z },
@@ -1067,11 +1355,28 @@ function animate() {
         }
     }
 
+    let onJumpPad = false;
+    for (const box of obstacleBoxes) {
+        if (px + playerRadius > box.min.x && px - playerRadius < box.max.x &&
+            pz + playerRadius > box.min.z && pz - playerRadius < box.max.z) {
+            if (controls.getObject().position.y - targetY <= box.max.y + 0.5 && controls.getObject().position.y - targetY >= box.max.y - 0.5) {
+                if (box.userData && box.userData.isJumpPad) {
+                    onJumpPad = true;
+                }
+            }
+        }
+    }
+
     // Floor collision
     if (controls.getObject().position.y < highestFloorY + targetY) {
       velocity.y = 0;
       controls.getObject().position.y = highestFloorY + targetY;
       canJump = true;
+    }
+
+    if (onJumpPad) {
+      velocity.y = 30; // Jump pad boost
+      canJump = false;
     }
 
     // Sync to server
