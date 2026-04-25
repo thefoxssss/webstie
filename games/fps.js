@@ -685,10 +685,10 @@ function loadMap(mapId) {
 
     // Jump pads to roof
     const jumpPadMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.5 });
-    addBox(4, 0.5, 4, 25, 4.25, 25, jumpPadMat, { isJumpPad: true });
-    addBox(4, 0.5, 4, -25, 4.25, -25, jumpPadMat, { isJumpPad: true });
-    addBox(4, 0.5, 4, 25, 4.25, -25, jumpPadMat, { isJumpPad: true });
-    addBox(4, 0.5, 4, -25, 4.25, 25, jumpPadMat, { isJumpPad: true });
+    addBox(4, 0.5, 4, 25, 4.25, 25, jumpPadMat, { isJumpPad: true, boostX: -280, boostZ: -280 });
+    addBox(4, 0.5, 4, -25, 4.25, -25, jumpPadMat, { isJumpPad: true, boostX: 280, boostZ: 280 });
+    addBox(4, 0.5, 4, 25, 4.25, -25, jumpPadMat, { isJumpPad: true, boostX: -280, boostZ: 280 });
+    addBox(4, 0.5, 4, -25, 4.25, 25, jumpPadMat, { isJumpPad: true, boostX: 280, boostZ: -280 });
 
     // Ramps to platforms
     const rampMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x555555 });
@@ -718,8 +718,8 @@ function loadMap(mapId) {
 
     // Quick access jump pads to top of towers
     const jumpPadMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.5 });
-    addBox(4, 0.5, 4, 0, 0.25, -30, jumpPadMat, { isJumpPad: true });
-    addBox(4, 0.5, 4, 0, 0.25, 30, jumpPadMat, { isJumpPad: true });
+    addBox(4, 0.5, 4, 0, 0.25, -30, jumpPadMat, { isJumpPad: true, boostX: 0, boostZ: 280 });
+    addBox(4, 0.5, 4, 0, 0.25, 30, jumpPadMat, { isJumpPad: true, boostX: 0, boostZ: -280 });
 
     // Sparse mid cover
     for(let i=0; i<15; i++) {
@@ -1356,12 +1356,16 @@ function animate() {
     }
 
     let onJumpPad = false;
+    let jumpPadBoostX = 0;
+    let jumpPadBoostZ = 0;
     for (const box of obstacleBoxes) {
         if (px + playerRadius > box.min.x && px - playerRadius < box.max.x &&
             pz + playerRadius > box.min.z && pz - playerRadius < box.max.z) {
             if (controls.getObject().position.y - targetY <= box.max.y + 0.5 && controls.getObject().position.y - targetY >= box.max.y - 0.5) {
                 if (box.userData && box.userData.isJumpPad) {
                     onJumpPad = true;
+                    if (box.userData.boostX !== undefined) jumpPadBoostX = box.userData.boostX;
+                    if (box.userData.boostZ !== undefined) jumpPadBoostZ = box.userData.boostZ;
                 }
             }
         }
@@ -1375,8 +1379,18 @@ function animate() {
     }
 
     if (onJumpPad) {
-      velocity.y = 30; // Jump pad boost
+      velocity.y = 45; // Jump pad boost
       canJump = false;
+      if (jumpPadBoostX !== 0 || jumpPadBoostZ !== 0) {
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        euler.x = controls.getObject().rotation.x;
+        euler.y = controls.getObject().rotation.y;
+        const worldBoost = new THREE.Vector3(jumpPadBoostX, 0, jumpPadBoostZ);
+        const invEuler = new THREE.Euler(0, -euler.y, 0, 'YXZ');
+        worldBoost.applyEuler(invEuler);
+        velocity.x = -worldBoost.x;
+        velocity.z = worldBoost.z;
+      }
     }
 
     // Sync to server
