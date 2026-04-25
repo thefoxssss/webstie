@@ -272,6 +272,9 @@ function setupRoom() {
       otherGunMesh.position.set(0.6, 0.2, -0.4);
       playerGroup.add(otherGunMesh);
 
+      let nameSprite = createNameSprite(player.name);
+      playerGroup.add(nameSprite);
+
       playerGroup.position.set(player.x, player.y, player.z);
       scene.add(playerGroup);
 
@@ -281,6 +284,13 @@ function setupRoom() {
       player.listen("y", (val) => playerGroup.position.y = val);
       player.listen("z", (val) => playerGroup.position.z = val);
       player.listen("rotY", (val) => playerGroup.rotation.y = val);
+      player.listen("name", (val) => {
+        playerGroup.remove(nameSprite);
+        if (nameSprite.material.map) nameSprite.material.map.dispose();
+        nameSprite.material.dispose();
+        nameSprite = createNameSprite(val);
+        playerGroup.add(nameSprite);
+      });
       // Hide if dead
       player.listen("health", (val) => playerGroup.visible = val > 0);
     }
@@ -293,6 +303,12 @@ function setupRoom() {
   room.state.players.onRemove((player, sessionId) => {
     if (otherPlayers[sessionId]) {
       scene.remove(otherPlayers[sessionId].mesh);
+      otherPlayers[sessionId].mesh.children.forEach(child => {
+        if (child.isSprite && child.material) {
+          if (child.material.map) child.material.map.dispose();
+          child.material.dispose();
+        }
+      });
       delete otherPlayers[sessionId];
     }
     updateLeaderboard();
@@ -311,6 +327,29 @@ function updateLeaderboard() {
 }
 
 // Procedural textures
+
+function createNameSprite(name) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = 256;
+  canvas.height = 64;
+  ctx.font = "bold 32px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "white";
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 4;
+  ctx.strokeText(name || "Unknown", 128, 32);
+  ctx.fillText(name || "Unknown", 128, 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(2.5, 0.625, 1); // Maintain aspect ratio: 256/64 = 4. 2.5 / 4 = 0.625
+  sprite.position.y = 1.6; // Above player head
+  return sprite;
+}
+
 function createProceduralTexture(type) {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
