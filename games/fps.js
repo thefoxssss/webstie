@@ -775,6 +775,72 @@ function loadMap(mapId) {
     // Side walls
     addBox(2, 8, 100, -30, 4, 0, wallMat);
     addBox(2, 8, 100, 30, 4, 0, wallMat);
+  } else if (mapId === 5) { // CTF Two Forts Strategic Map
+    const redBaseMat = new THREE.MeshPhongMaterial({ color: 0xcc3333 });
+    const blueBaseMat = new THREE.MeshPhongMaterial({ color: 0x3333cc });
+    const wallMat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0x888888 });
+    const bridgeMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x555555 });
+    const coverMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x666666 });
+
+    // Red Fort (Left side)
+    // Front Wall with gap
+    addBox(20, 8, 2, -30, 4, 15, redBaseMat);
+    addBox(20, 8, 2, -30, 4, -15, redBaseMat);
+    // Back Wall
+    addBox(40, 8, 2, -50, 4, 0, redBaseMat);
+    // Side Walls
+    addBox(2, 8, 50, -40, 4, 24, redBaseMat);
+    addBox(2, 8, 50, -40, 4, -24, redBaseMat);
+    // Upper Balcony (Sniper nest)
+    addBox(40, 1, 10, -45, 8.5, 0, redBaseMat);
+    addBox(4, 1, 10, -35, 4, 0, redBaseMat); // Ramp block
+    addBox(4, 1, 10, -39, 6, 0, redBaseMat); // Ramp block 2
+
+    // Blue Fort (Right side)
+    // Front Wall with gap
+    addBox(20, 8, 2, 30, 4, 15, blueBaseMat);
+    addBox(20, 8, 2, 30, 4, -15, blueBaseMat);
+    // Back Wall
+    addBox(40, 8, 2, 50, 4, 0, blueBaseMat);
+    // Side Walls
+    addBox(2, 8, 50, 40, 4, 24, blueBaseMat);
+    addBox(2, 8, 50, 40, 4, -24, blueBaseMat);
+    // Upper Balcony (Sniper nest)
+    addBox(40, 1, 10, 45, 8.5, 0, blueBaseMat);
+    addBox(4, 1, 10, 35, 4, 0, blueBaseMat); // Ramp block
+    addBox(4, 1, 10, 39, 6, 0, blueBaseMat); // Ramp block 2
+
+    // Center Map Elements (No Man's Land)
+    // High Bridge linking sniper nests
+    addBox(60, 1, 8, 0, 8.5, 0, bridgeMat);
+    // Bridge Cover
+    addBox(2, 2, 8, -10, 10, 0, coverMat);
+    addBox(2, 2, 8, 10, 10, 0, coverMat);
+
+    // Lower Center Obstacles (Trenches & Cover)
+    addBox(8, 4, 4, 0, 2, 10, wallMat);
+    addBox(8, 4, 4, 0, 2, -10, wallMat);
+    addBox(4, 4, 8, 0, 2, 25, wallMat);
+    addBox(4, 4, 8, 0, 2, -25, wallMat);
+
+    // Flank Routes Cover
+    addBox(6, 3, 2, -15, 1.5, 20, coverMat);
+    addBox(6, 3, 2, 15, 1.5, 20, coverMat);
+    addBox(6, 3, 2, -15, 1.5, -20, coverMat);
+    addBox(6, 3, 2, 15, 1.5, -20, coverMat);
+
+    // Create physical flag models so they can be seen holding or dropped
+    const flagGeo = new THREE.CylinderGeometry(0.1, 0.1, 3);
+    const flagMatRed = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const flagMatBlue = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+
+    redFlagMesh = new THREE.Mesh(flagGeo, flagMatRed);
+    redFlagMesh.position.set(-40, 1.5, 0); // Inner Red Base
+    scene.add(redFlagMesh);
+
+    blueFlagMesh = new THREE.Mesh(flagGeo, flagMatBlue);
+    blueFlagMesh.position.set(40, 1.5, 0); // Inner Blue Base
+    scene.add(blueFlagMesh);
   }
 }
 
@@ -1018,16 +1084,58 @@ function createGunModel(id) {
       barrel.position.set(0, yOffset, -0.35);
       gunMesh.add(barrel);
     });
+  } else if (id === 4) { // Rocket Launcher
+    const barrelGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 12);
+    barrelGeo.rotateX(Math.PI / 2);
+    const barrel = new THREE.Mesh(barrelGeo, matMain);
+    barrel.position.set(0, 0, 0);
+    gunMesh.add(barrel);
+
+    const scopeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.3);
+    const scope = new THREE.Mesh(scopeGeo, matDark);
+    scope.position.set(0, 0.25, 0);
+    gunMesh.add(scope);
+  } else if (id === 5) { // Assault Rifle
+    const barrelGeo = new THREE.BoxGeometry(0.15, 0.2, 0.8);
+    const barrel = new THREE.Mesh(barrelGeo, matMain);
+    barrel.position.set(0, 0, 0);
+    gunMesh.add(barrel);
+
+    const stockGeo = new THREE.BoxGeometry(0.1, 0.3, 0.4);
+    const stock = new THREE.Mesh(stockGeo, matDark);
+    stock.position.set(0, -0.1, 0.5);
+    gunMesh.add(stock);
+
+    const magGeo = new THREE.BoxGeometry(0.1, 0.4, 0.15);
+    const mag = new THREE.Mesh(magGeo, matDark);
+    mag.position.set(0, -0.2, -0.1);
+    mag.rotation.x = 0.2;
+    gunMesh.add(mag);
+  } else if (id === 6) { // Melee
+    const handleGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8);
+    handleGeo.rotateX(Math.PI / 2);
+    const handle = new THREE.Mesh(handleGeo, matDark);
+    handle.position.set(0, 0, 0.2);
+    gunMesh.add(handle);
+
+    const bladeGeo = new THREE.BoxGeometry(0.02, 0.1, 0.6);
+    const blade = new THREE.Mesh(bladeGeo, matMain);
+    blade.position.set(0, 0, -0.3);
+    gunMesh.add(blade);
   }
 }
 
-function isGatlingUnlocked() {
-  return localPlayer.kills >= WEAPONS[3].unlockKills;
+function isWeaponUnlocked(id) {
+  const w = WEAPONS[id];
+  if (w && w.unlockKills) {
+    return localPlayer.kills >= w.unlockKills;
+  }
+  return true;
 }
 
 function switchWeapon(id) {
   if (id >= WEAPONS.length) return;
-  if (id === 3 && !isGatlingUnlocked()) return;
+  if (!isWeaponUnlocked(id)) return;
   unzoomSniper();
   isReloading = false;
   if (gunMesh) {
@@ -1130,6 +1238,9 @@ function tryFireWeapon() {
   if (localPlayer.weapon === 0) recoilIntensity = 0.2;
   else if (localPlayer.weapon === 1) recoilIntensity = 0.4;
   else if (localPlayer.weapon === 2) recoilIntensity = 0.6;
+  else if (localPlayer.weapon === 4) recoilIntensity = 0.8;
+  else if (localPlayer.weapon === 5) recoilIntensity = 0.15;
+  else if (localPlayer.weapon === 6) recoilIntensity = 0; // Melee
 
   // Fire
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -1201,8 +1312,22 @@ function onMouseDown(event) {
   tryFireWeapon();
 }
 
+function cycleGrenade() {
+  if (typeof currentGrenadeType !== 'undefined') {
+    currentGrenadeType = (currentGrenadeType + 1) % 3;
+  }
+  updateGrenadeUI();
+}
+
 function updateGrenadeUI() {
-  if (fpsGrenades) fpsGrenades.textContent = String(grenades);
+  if (fpsGrenades) {
+    let typeName = "FRAG";
+    if (typeof currentGrenadeType !== 'undefined') {
+        if (currentGrenadeType === 1) typeName = "SMOKE";
+        if (currentGrenadeType === 2) typeName = "FLASH";
+    }
+    fpsGrenades.textContent = `${grenades} (${typeName})`;
+  }
 }
 
 function throwGrenade() {
@@ -1220,7 +1345,8 @@ function throwGrenade() {
   nextGrenadeTime = now + 2500;
   room.send("throwGrenade", {
     origin: { x: origin.x, y: origin.y, z: origin.z },
-    dir: { x: dir.x, y: dir.y, z: dir.z }
+    dir: { x: dir.x, y: dir.y, z: dir.z },
+    type: currentGrenadeType
   });
 }
 
@@ -1231,6 +1357,63 @@ function createGrenadeEffect(position) {
   sphere.position.copy(position);
   scene.add(sphere);
   grenadeEffects.push({ mesh: sphere, born: performance.now() });
+}
+
+function createSmokeEffect(position) {
+  const geometry = new THREE.SphereGeometry(1, 8, 8);
+  const material = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.9, fog: false });
+  playProceduralSound("explosion");
+
+  for (let i = 0; i < 20; i++) {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(position);
+    mesh.position.x += (Math.random() - 0.5) * 5;
+    mesh.position.y += Math.random() * 5;
+    mesh.position.z += (Math.random() - 0.5) * 5;
+
+    // Random scale for smoke clouds
+    const s = 2 + Math.random() * 3;
+    mesh.scale.set(s, s, s);
+
+    scene.add(mesh);
+    smokeParticles.push({ mesh: mesh, born: performance.now() });
+  }
+}
+
+function updateFlagPositions() {
+  if (!room || room.state.mapId !== 5) return;
+  if (!redFlagMesh || !blueFlagMesh) return;
+
+  const RED_FLAG_BASE = new THREE.Vector3(-40, 1.5, 0);
+  const BLUE_FLAG_BASE = new THREE.Vector3(40, 1.5, 0);
+
+  if (room.state.redFlagStatus === 0 || room.state.redFlagStatus === 2) {
+    redFlagMesh.position.copy(RED_FLAG_BASE);
+    redFlagMesh.visible = true;
+  } else if (room.state.redFlagStatus === 1) {
+    const carrierId = room.state.redFlagCarrier;
+    if (carrierId === localPlayer.id) {
+       redFlagMesh.visible = false;
+    } else if (otherPlayers[carrierId]) {
+       redFlagMesh.position.copy(otherPlayers[carrierId].mesh.position);
+       redFlagMesh.position.y += 2.5;
+       redFlagMesh.visible = true;
+    }
+  }
+
+  if (room.state.blueFlagStatus === 0 || room.state.blueFlagStatus === 2) {
+    blueFlagMesh.position.copy(BLUE_FLAG_BASE);
+    blueFlagMesh.visible = true;
+  } else if (room.state.blueFlagStatus === 1) {
+    const carrierId = room.state.blueFlagCarrier;
+    if (carrierId === localPlayer.id) {
+       blueFlagMesh.visible = false;
+    } else if (otherPlayers[carrierId]) {
+       blueFlagMesh.position.copy(otherPlayers[carrierId].mesh.position);
+       blueFlagMesh.position.y += 2.5;
+       blueFlagMesh.visible = true;
+    }
+  }
 }
 
 function createTracer(origin, dir, color = 0xffff00) {
@@ -1272,6 +1455,23 @@ function updateGrenadeEffects(time) {
     const scale = 1 + p * 8;
     fx.mesh.scale.set(scale, scale, scale);
     fx.mesh.material.opacity = 0.8 * (1 - p);
+  }
+
+  for (let i = smokeParticles.length - 1; i >= 0; i--) {
+    const fx = smokeParticles[i];
+    const age = time - fx.born;
+    const maxAge = 10000; // 10 seconds of smoke
+    if (age > maxAge) {
+      scene.remove(fx.mesh);
+      fx.mesh.geometry.dispose();
+      smokeParticles.splice(i, 1);
+      continue;
+    }
+    const p = age / maxAge;
+    // Fade out at end
+    if (p > 0.8) {
+      fx.mesh.material.opacity = 0.9 * (1 - ((p - 0.8) * 5));
+    }
   }
 }
 

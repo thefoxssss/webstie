@@ -2331,8 +2331,11 @@ class FPSPlayer extends schema.Schema {
     this.z = 0;
     this.rotY = 0;
     this.health = 100;
+    this.armor = 0;
     this.kills = 0;
     this.name = "Unknown";
+    this.team = 0; // 0=FFA, 1=Red, 2=Blue
+    this.killStreak = 0;
   }
 }
 schema.defineTypes(FPSPlayer, {
@@ -2341,33 +2344,108 @@ schema.defineTypes(FPSPlayer, {
   z: "number",
   rotY: "number",
   health: "number",
+  armor: "number",
   kills: "number",
-  name: "string"
+  name: "string",
+  team: "number",
+  killStreak: "number"
+});
+
+class FPSPickup extends schema.Schema {
+  constructor() {
+    super();
+    this.id = "";
+    this.type = 0; // 0 = Health, 1 = Armor
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+  }
+}
+schema.defineTypes(FPSPickup, {
+  id: "string",
+  type: "number",
+  x: "number",
+  y: "number",
+  z: "number"
+});
+
+class FPSProjectile extends schema.Schema {
+  constructor() {
+    super();
+    this.id = "";
+    this.ownerId = "";
+    this.type = 0; // 0=Rocket, 1=Frag, 2=Smoke, 3=Flash
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    this.dx = 0;
+    this.dy = 0;
+    this.dz = 0;
+    this.speed = 0;
+    this.life = 0;
+  }
+}
+schema.defineTypes(FPSProjectile, {
+  id: "string",
+  ownerId: "string",
+  type: "number",
+  x: "number",
+  y: "number",
+  z: "number",
+  dx: "number",
+  dy: "number",
+  dz: "number",
+  speed: "number",
+  life: "number"
 });
 
 class FPSState extends schema.Schema {
   constructor() {
     super();
     this.players = new schema.MapSchema();
-    this.mapId = 0; // 0 = Classic, 1 = City, 2 = Maze
+    this.pickups = new schema.MapSchema();
+    this.projectiles = new schema.MapSchema();
+    this.mapId = 0; // 0 = Classic, 1 = City, 2 = Maze, 5 = CTF
     this.roundOver = false;
     this.winnerName = "";
+    this.redScore = 0;
+    this.blueScore = 0;
+    this.redFlagStatus = 0; // 0=Base, 1=Carried, 2=Dropped
+    this.blueFlagStatus = 0; // 0=Base, 1=Carried, 2=Dropped
+    this.redFlagCarrier = "";
+    this.blueFlagCarrier = "";
   }
 }
 schema.defineTypes(FPSState, {
   players: { map: FPSPlayer },
+  pickups: { map: FPSPickup },
+  projectiles: { map: FPSProjectile },
   mapId: "number",
   roundOver: "boolean",
-  winnerName: "string"
+  winnerName: "string",
+  redScore: "number",
+  blueScore: "number",
+  redFlagStatus: "number",
+  blueFlagStatus: "number",
+  redFlagCarrier: "string",
+  blueFlagCarrier: "string"
 });
 
 class FPSRoom extends colyseus.Room {
-  getSafeSpawn(mapId) {
+  getSafeSpawn(mapId, team = 0) {
     let x = (Math.random() * 40 - 20) * 2;
     let z = (Math.random() * 40 - 20) * 2;
     let y = 1.5;
 
-    if (mapId === 1) { // City Streets
+    if (mapId === 5) { // CTF Map
+      if (team === 1) {
+        x = (Math.random() * 20 - 10) - 40;
+        z = (Math.random() * 20 - 10);
+      } else if (team === 2) {
+        x = (Math.random() * 20 - 10) + 40;
+        z = (Math.random() * 20 - 10);
+      }
+    } else if (mapId === 1) { // City Streets
       // Avoid spawning inside buildings. Buildings are roughly at:
       // x = Math.sin(i * 1.5) * 35; z = Math.cos(i * 2.1) * 35;
       // We will define specific safe spawn zones (the main roads).
@@ -2423,7 +2501,294 @@ class FPSRoom extends colyseus.Room {
     return { x, y, z };
   }
 
+  spawnPickups() {
+    this.state.pickups.clear();
+    const spawnPickup = (type, minX, maxX, minZ, maxZ) => {
+      const p = new FPSPickup();
+      p.id = Math.random().toString(36).substr(2, 9);
+      p.type = type;
+      p.x = minX + Math.random() * (maxX - minX);
+      p.y = 2.0;
+      p.z = minZ + Math.random() * (maxZ - minZ);
+      this.state.pickups.set(p.id, p);
+    };
+
+    for (let i = 0; i < 5; i++) {
+      spawnPickup(0, -30, 30, -30, 30); // Health
+      spawnPickup(1, -30, 30, -30, 30); // Armor
+    }
+  }
+
+  simulateTick() {
+    if (this.state.roundOver) return;
+
+    // Process Projectiles
+    this.state.projectiles.forEach((proj, projId) => {
+      if (proj.type === 0) { // Rocket
+        proj.x += proj.dx * proj.speed;
+        proj.y += proj.dy * proj.speed;
+        proj.z += proj.dz * proj.speed;
+
+        if (proj.x < -100 || proj.x > 100 || proj.y < -10 || proj.y > 100 || proj.z < -100 || proj.z > 100) {
+          this.explodeRocket(proj.x, proj.y, proj.z, proj.ownerId);
+          this.state.projectiles.delete(projId);
+          return;
+        }
+
+        let hit = false;
+        this.state.players.forEach((target, targetId) => {
+          if (target.health <= 0 || targetId === proj.ownerId) return;
+          const dist = Math.sqrt((target.x - proj.x)**2 + (target.y - proj.y)**2 + (target.z - proj.z)**2);
+          if (dist < 3) hit = true;
+        });
+
+        if (hit) {
+          this.explodeRocket(proj.x, proj.y, proj.z, proj.ownerId);
+          this.state.projectiles.delete(projId);
+        }
+      } else {
+        // Grenades
+        proj.life -= 50; // tick rate
+        proj.x += proj.dx * proj.speed;
+        proj.y += proj.dy * proj.speed;
+        proj.z += proj.dz * proj.speed;
+        proj.dy -= 0.05; // gravity
+
+        if (proj.y <= 1.5) {
+           proj.y = 1.5;
+           proj.dx *= 0.8;
+           proj.dz *= 0.8;
+           if (Math.abs(proj.dy) > 0.2) proj.dy *= -0.5; // bounce
+           else proj.dy = 0;
+        }
+
+        if (proj.life <= 0) {
+           this.explodeGrenade(proj.x, proj.y, proj.z, proj.ownerId, proj.type);
+           this.state.projectiles.delete(projId);
+        }
+      }
+    });
+
+    // Process Pickups
+    this.state.players.forEach((player, playerId) => {
+      if (player.health <= 0) return;
+      this.state.pickups.forEach((pickup, pickupId) => {
+        const dist = Math.sqrt((player.x - pickup.x)**2 + (player.y - pickup.y)**2 + (player.z - pickup.z)**2);
+        if (dist < 2.5) {
+          if (pickup.type === 0 && player.health < 100) {
+            player.health = Math.min(100, player.health + 50);
+            this.state.pickups.delete(pickupId);
+          } else if (pickup.type === 1 && player.armor < 100) {
+            player.armor = Math.min(100, player.armor + 50);
+            this.state.pickups.delete(pickupId);
+          }
+        }
+      });
+    });
+
+    // Process CTF Logic
+    if (this.state.mapId === 5) {
+      const RED_FLAG_BASE = { x: -40, y: 1.5, z: 0 };
+      const BLUE_FLAG_BASE = { x: 40, y: 1.5, z: 0 };
+
+      // Red flag logic
+      if (this.state.redFlagStatus === 0) {
+        this.state.players.forEach((player, playerId) => {
+          if (player.health > 0 && player.team === 2) {
+            const dist = Math.sqrt((player.x - RED_FLAG_BASE.x)**2 + (player.z - RED_FLAG_BASE.z)**2);
+            if (dist < 3) {
+              this.state.redFlagStatus = 1;
+              this.state.redFlagCarrier = playerId;
+              this.broadcast("chat", { sender: "SYSTEM", text: `${player.name} has taken the RED flag!` });
+            }
+          }
+        });
+      }
+
+      // Blue flag logic
+      if (this.state.blueFlagStatus === 0) {
+        this.state.players.forEach((player, playerId) => {
+          if (player.health > 0 && player.team === 1) {
+            const dist = Math.sqrt((player.x - BLUE_FLAG_BASE.x)**2 + (player.z - BLUE_FLAG_BASE.z)**2);
+            if (dist < 3) {
+              this.state.blueFlagStatus = 1;
+              this.state.blueFlagCarrier = playerId;
+              this.broadcast("chat", { sender: "SYSTEM", text: `${player.name} has taken the BLUE flag!` });
+            }
+          }
+        });
+      }
+
+      // Check for captures
+      this.state.players.forEach((player, playerId) => {
+        if (player.health > 0) {
+          if (player.team === 1 && this.state.blueFlagCarrier === playerId) {
+            const dist = Math.sqrt((player.x - RED_FLAG_BASE.x)**2 + (player.z - RED_FLAG_BASE.z)**2);
+            if (dist < 3 && this.state.redFlagStatus === 0) {
+              this.state.redScore += 1;
+              this.state.blueFlagStatus = 0;
+              this.state.blueFlagCarrier = "";
+              this.broadcast("chat", { sender: "SYSTEM", text: `RED team has captured the BLUE flag! Score: Red ${this.state.redScore} - Blue ${this.state.blueScore}` });
+              if (this.state.redScore >= 3) {
+                this.state.roundOver = true;
+                this.state.winnerName = "RED TEAM";
+                this.broadcast("roundOver", { winner: "RED TEAM" });
+                setTimeout(() => this.resetRound(), 5000);
+              }
+            }
+          } else if (player.team === 2 && this.state.redFlagCarrier === playerId) {
+            const dist = Math.sqrt((player.x - BLUE_FLAG_BASE.x)**2 + (player.z - BLUE_FLAG_BASE.z)**2);
+            if (dist < 3 && this.state.blueFlagStatus === 0) {
+              this.state.blueScore += 1;
+              this.state.redFlagStatus = 0;
+              this.state.redFlagCarrier = "";
+              this.broadcast("chat", { sender: "SYSTEM", text: `BLUE team has captured the RED flag! Score: Red ${this.state.redScore} - Blue ${this.state.blueScore}` });
+              if (this.state.blueScore >= 3) {
+                this.state.roundOver = true;
+                this.state.winnerName = "BLUE TEAM";
+                this.broadcast("roundOver", { winner: "BLUE TEAM" });
+                setTimeout(() => this.resetRound(), 5000);
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  explodeRocket(ex, ey, ez, ownerId) {
+    this.broadcast("rocketExplode", { x: ex, y: ey, z: ez });
+    const radius = 15;
+    const maxDamage = 80;
+
+    let shooterClient = this.clients.find(c => c.sessionId === ownerId);
+    let shooter = this.state.players.get(ownerId);
+
+    this.state.players.forEach((target, targetId) => {
+      if (target.health <= 0) return;
+      if (this.state.mapId === 5 && shooter && shooter.team !== 0 && shooter.team === target.team && targetId !== ownerId) return; // Friendly fire check (can hurt self)
+
+      const dist = Math.sqrt((target.x - ex)**2 + (target.y - ey)**2 + (target.z - ez)**2);
+      if (dist <= radius) {
+        const damage = Math.floor(maxDamage * (1 - (dist / radius)));
+        if (target.armor > 0) {
+          const armorDmg = Math.min(target.armor, damage);
+          target.armor -= armorDmg;
+          target.health -= (damage - armorDmg);
+        } else {
+          target.health -= damage;
+        }
+
+        let hitClient = this.clients.find(c => c.sessionId === targetId);
+        if (hitClient) {
+          if (target.health > 0) {
+            if (shooterClient) shooterClient.send("hitmarker", { killed: false });
+          } else {
+            if (shooterClient) shooterClient.send("hitmarker", { killed: true });
+            this.handleElimination(shooter, shooterClient, target, hitClient);
+          }
+        }
+      }
+    });
+  }
+
+  explodeGrenade(ex, ey, ez, ownerId, type) {
+    this.broadcast("grenadeExplode", { x: ex, y: ey, z: ez, type: type - 1 });
+    const radius = 15;
+    const maxDamage = 100;
+
+    let shooterClient = this.clients.find(c => c.sessionId === ownerId);
+    let shooter = this.state.players.get(ownerId);
+
+    this.state.players.forEach((target, targetId) => {
+      if (target.health <= 0) return;
+      if (this.state.mapId === 5 && shooter && shooter.team !== 0 && shooter.team === target.team && targetId !== ownerId) return; // Friendly fire check
+
+      const dist = Math.sqrt((target.x - ex)**2 + (target.y - ey)**2 + (target.z - ez)**2);
+
+      if (type === 1) { // Frag
+          if (dist <= radius) {
+            const damage = Math.floor(maxDamage * (1 - (dist / radius)));
+            if (target.armor > 0) {
+              const armorDmg = Math.min(target.armor, damage);
+              target.armor -= armorDmg;
+              target.health -= (damage - armorDmg);
+            } else {
+              target.health -= damage;
+            }
+
+            let hitClient = this.clients.find(c => c.sessionId === targetId);
+            if (hitClient) {
+              if (target.health > 0) {
+                if (shooterClient) shooterClient.send("hitmarker", { killed: false });
+              } else {
+                if (shooterClient) shooterClient.send("hitmarker", { killed: true });
+                this.handleElimination(shooter, shooterClient, target, hitClient);
+              }
+            }
+          }
+      } else if (type === 3) { // Flashbang
+          if (dist <= radius) {
+             let hitClient = this.clients.find(c => c.sessionId === targetId);
+             if (hitClient) {
+                 hitClient.send("flashbang", { ex, ey, ez });
+             }
+          }
+      }
+    });
+  }
+
+  handleElimination(shooter, shooterClient, victim, victimClient) {
+    victim.health = 0;
+    victim.killStreak = 0;
+    if (shooter && shooterClient && shooter !== victim) {
+      shooter.kills += 1;
+      shooter.killStreak += 1;
+      if (shooter.kills >= 25 && this.state.mapId !== 5) {
+        this.state.roundOver = true;
+        this.state.winnerName = shooter.name;
+        this.broadcast("roundOver", { winner: shooter.name });
+        setTimeout(() => this.resetRound(), 5000);
+      }
+
+      if (shooter.killStreak === 3) {
+         shooterClient.send("killStreak", { type: "speed" });
+      } else if (shooter.killStreak === 5) {
+         shooterClient.send("killStreak", { type: "radar" });
+      }
+    }
+
+    if (victimClient) {
+      victimClient.send("killed", { killer: shooter ? shooter.name : "Explosion" });
+
+      if (this.state.redFlagCarrier === victimClient.sessionId) {
+        this.state.redFlagStatus = 0;
+        this.state.redFlagCarrier = "";
+        this.broadcast("chat", { sender: "SYSTEM", text: `${victim.name} dropped the RED flag!` });
+      }
+      if (this.state.blueFlagCarrier === victimClient.sessionId) {
+        this.state.blueFlagStatus = 0;
+        this.state.blueFlagCarrier = "";
+        this.broadcast("chat", { sender: "SYSTEM", text: `${victim.name} dropped the BLUE flag!` });
+      }
+
+      setTimeout(() => {
+        if (this.state.players.has(victimClient.sessionId) && !this.state.roundOver) {
+          const spawnPos = this.getSafeSpawn(this.state.mapId, victim.team);
+          victim.health = 100;
+          victim.armor = 0;
+          victim.x = spawnPos.x;
+          victim.y = spawnPos.y;
+          victim.z = spawnPos.z;
+          victimClient.send("respawn", spawnPos);
+        }
+      }, 3000);
+    }
+  }
+
   onCreate(options) {
+    this.setSimulationInterval(() => this.simulateTick(), 50);
+
     this.maxClients = 1000;
     this.serverName = options.serverName || "Arena Server";
     this.setMetadata({ serverName: this.serverName });
@@ -2433,7 +2798,7 @@ class FPSRoom extends colyseus.Room {
       this.state.mapId = options.mapId;
     }
 
-    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     this.playerVotes = new Map();
 
     this.onMessage("voteMap", (client, mapId) => {
@@ -2584,39 +2949,36 @@ class FPSRoom extends colyseus.Room {
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
 
-      const ox = data.origin?.x ?? shooter.x;
-      const oy = data.origin?.y ?? shooter.y + 1;
-      const oz = data.origin?.z ?? shooter.z;
-      const dx = data.dir?.x ?? 0;
-      const dy = data.dir?.y ?? 0;
-      const dz = data.dir?.z ?? -1;
+      const proj = new FPSProjectile();
+      proj.id = Math.random().toString(36).substr(2, 9);
+      proj.ownerId = client.sessionId;
+      proj.type = (data.type || 0) + 1; // 1=Frag, 2=Smoke, 3=Flash
+      proj.x = data.origin.x;
+      proj.y = data.origin.y;
+      proj.z = data.origin.z;
+      proj.dx = data.dir.x;
+      proj.dy = data.dir.y + 0.2; // slight upward throw
+      proj.dz = data.dir.z;
+      proj.speed = 1.0;
+      proj.life = 1500; // 1.5 seconds until boom
+      this.state.projectiles.set(proj.id, proj);
+    });
 
-      const throwDistance = 18;
-      const ex = ox + dx * throwDistance;
-      const ey = Math.max(1, oy + dy * throwDistance);
-      const ez = oz + dz * throwDistance;
+    this.onMessage("joinTeam", (client, teamId) => {
+      if (this.state.mapId !== 5) return;
+      const player = this.state.players.get(client.sessionId);
+      if (player) {
+        player.team = teamId;
+        const spawnPos = this.getSafeSpawn(this.state.mapId, player.team);
+        player.x = spawnPos.x;
+        player.y = spawnPos.y;
+        player.z = spawnPos.z;
+        client.send("respawn", spawnPos);
 
-      this.broadcast("grenadeExplode", {
-        x: ex,
-        y: ey,
-        z: ez,
-        ownerId: client.sessionId
-      });
-
-      const radius = 12;
-      this.state.players.forEach((target, targetId) => {
-        if (target.health <= 0 || targetId === client.sessionId) return;
-        const tx = target.x - ex;
-        const ty = (target.y + 1) - ey;
-        const tz = target.z - ez;
-        const dist = Math.sqrt(tx * tx + ty * ty + tz * tz);
-        if (dist > radius) return;
-
-        const t = 1 - (dist / radius);
-        const damage = Math.max(10, Math.round(90 * t));
-        target.health -= damage;
-        handleElimination(shooter, { id: targetId, player: target });
-      });
+        // Broadcast a join message
+        const teamName = teamId === 1 ? "RED" : "BLUE";
+        this.broadcast("chat", { sender: "SYSTEM", text: `${player.name} joined the ${teamName} team.` });
+      }
     });
 
     fpsServerDirectory.set(this.roomId, {
@@ -2631,7 +2993,7 @@ class FPSRoom extends colyseus.Room {
     // Tally votes
     let winningMap = 0;
     let maxVotes = -1;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i <= 5; i++) {
       if (this.mapVotes[i] > maxVotes) {
         maxVotes = this.mapVotes[i];
         winningMap = i;
@@ -2640,14 +3002,29 @@ class FPSRoom extends colyseus.Room {
     this.state.mapId = winningMap;
     this.state.roundOver = false;
     this.state.winnerName = "";
-    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     this.playerVotes.clear();
+
+    // Reset CTF State
+    this.state.redScore = 0;
+    this.state.blueScore = 0;
+    this.state.redFlagStatus = 0;
+    this.state.blueFlagStatus = 0;
+    this.state.redFlagCarrier = "";
+    this.state.blueFlagCarrier = "";
+    this.state.projectiles.clear();
+    this.state.pickups.clear();
 
     // Reset players
     this.state.players.forEach((player, sessionId) => {
       player.kills = 0;
+      player.killStreak = 0;
       player.health = 100;
-      const spawnPos = this.getSafeSpawn(this.state.mapId);
+      player.armor = 0;
+      if (this.state.mapId !== 5) {
+        player.team = 0;
+      }
+      const spawnPos = this.getSafeSpawn(this.state.mapId, player.team);
       player.x = spawnPos.x;
       player.y = spawnPos.y;
       player.z = spawnPos.z;
@@ -2662,7 +3039,7 @@ class FPSRoom extends colyseus.Room {
   onJoin(client, options) {
     const player = new FPSPlayer();
     player.name = options.playerName || "Unknown";
-    const spawnPos = this.getSafeSpawn(this.state.mapId);
+    const spawnPos = this.getSafeSpawn(this.state.mapId, player.team);
     player.x = spawnPos.x;
     player.y = spawnPos.y;
     player.z = spawnPos.z;
