@@ -53,9 +53,18 @@ let selectedRoomId = null;
     const uiX = document.getElementById("builderX");
     const uiY = document.getElementById("builderY");
     const uiBlockType = document.getElementById("builderBlockType");
-    const graphicsPresetSelect = document.getElementById("builderGraphicsPreset");
-    const graphicsShadowsToggle = document.getElementById("builderGraphicsShadows");
-    const graphicsTrailsToggle = document.getElementById("builderGraphicsTrails");
+    const graphicsPresetControls = [
+        document.getElementById("builderGraphicsPreset"),
+        document.getElementById("builderGraphicsPresetHud"),
+    ].filter(Boolean);
+    const graphicsShadowsControls = [
+        document.getElementById("builderGraphicsShadows"),
+        document.getElementById("builderGraphicsShadowsHud"),
+    ].filter(Boolean);
+    const graphicsTrailsControls = [
+        document.getElementById("builderGraphicsTrails"),
+        document.getElementById("builderGraphicsTrailsHud"),
+    ].filter(Boolean);
 
     const TILE_SIZE = 32;
     const CHUNK_SIZE = 16;
@@ -96,21 +105,35 @@ let selectedRoomId = null;
         }
     };
     const syncGraphicsControls = () => {
-        if (graphicsPresetSelect) graphicsPresetSelect.value = graphicsSettings.preset;
-        if (graphicsShadowsToggle) graphicsShadowsToggle.checked = graphicsSettings.shadows;
-        if (graphicsTrailsToggle) graphicsTrailsToggle.checked = graphicsSettings.trails;
+        graphicsPresetControls.forEach((control) => {
+            control.value = graphicsSettings.preset;
+        });
+        graphicsShadowsControls.forEach((control) => {
+            control.checked = graphicsSettings.shadows;
+        });
+        graphicsTrailsControls.forEach((control) => {
+            control.checked = graphicsSettings.trails;
+        });
     };
-    const handleGraphicsControlChange = () => {
-        graphicsSettings.preset = clampPreset(graphicsPresetSelect?.value);
-        graphicsSettings.shadows = graphicsShadowsToggle ? graphicsShadowsToggle.checked : true;
-        graphicsSettings.trails = graphicsTrailsToggle ? graphicsTrailsToggle.checked : true;
+    const handleGraphicsControlChange = (event) => {
+        const control = event?.currentTarget;
+        if (control?.matches('select[id^="builderGraphicsPreset"]')) {
+            graphicsSettings.preset = clampPreset(control.value);
+        }
+        if (control?.matches('input[id^="builderGraphicsShadows"]')) {
+            graphicsSettings.shadows = Boolean(control.checked);
+        }
+        if (control?.matches('input[id^="builderGraphicsTrails"]')) {
+            graphicsSettings.trails = Boolean(control.checked);
+        }
+        syncGraphicsControls();
         saveGraphicsSettings();
     };
     readGraphicsSettings();
     syncGraphicsControls();
-    if (graphicsPresetSelect) graphicsPresetSelect.addEventListener("change", handleGraphicsControlChange);
-    if (graphicsShadowsToggle) graphicsShadowsToggle.addEventListener("change", handleGraphicsControlChange);
-    if (graphicsTrailsToggle) graphicsTrailsToggle.addEventListener("change", handleGraphicsControlChange);
+    graphicsPresetControls.forEach((control) => control.addEventListener("change", handleGraphicsControlChange));
+    graphicsShadowsControls.forEach((control) => control.addEventListener("change", handleGraphicsControlChange));
+    graphicsTrailsControls.forEach((control) => control.addEventListener("change", handleGraphicsControlChange));
 
 const blockColors = {
         1: "#3c9e3c", // Grass
@@ -3901,9 +3924,9 @@ if (inventoryOpen && !showEscapeMenu) {
         canvas.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("wheel", handleCanvasWheel);
         canvas.removeEventListener("contextmenu", handleCanvasContextMenu);
-        if (graphicsPresetSelect) graphicsPresetSelect.removeEventListener("change", handleGraphicsControlChange);
-        if (graphicsShadowsToggle) graphicsShadowsToggle.removeEventListener("change", handleGraphicsControlChange);
-        if (graphicsTrailsToggle) graphicsTrailsToggle.removeEventListener("change", handleGraphicsControlChange);
+        graphicsPresetControls.forEach((control) => control.removeEventListener("change", handleGraphicsControlChange));
+        graphicsShadowsControls.forEach((control) => control.removeEventListener("change", handleGraphicsControlChange));
+        graphicsTrailsControls.forEach((control) => control.removeEventListener("change", handleGraphicsControlChange));
         if (inputLoopId) {
             clearInterval(inputLoopId);
             inputLoopId = null;
