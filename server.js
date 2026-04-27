@@ -2432,6 +2432,16 @@ schema.defineTypes(FPSState, {
 });
 
 class FPSRoom extends colyseus.Room {
+  getBalancedTeam() {
+    let redCount = 0;
+    let blueCount = 0;
+    this.state.players.forEach((p) => {
+      if (p.team === 1) redCount++;
+      if (p.team === 2) blueCount++;
+    });
+    return redCount <= blueCount ? 1 : 2;
+  }
+
   getSafeSpawn(mapId, team = 0) {
     let x = (Math.random() * 40 - 20) * 2;
     let z = (Math.random() * 40 - 20) * 2;
@@ -2822,35 +2832,6 @@ class FPSRoom extends colyseus.Room {
       player.rotY = data.rotY;
     });
 
-    const handleElimination = (shooter, hitClient) => {
-      if (hitClient.player.health > 0) return;
-      hitClient.player.health = 0;
-      shooter.kills += 1;
-
-      if (shooter.kills >= 50 && !this.state.roundOver) {
-        this.state.roundOver = true;
-        this.state.winnerName = shooter.name;
-        setTimeout(() => this.resetRound(), 10000); // 10 seconds to vote
-      }
-
-      const victimClient = this.clients.find(c => c.sessionId === hitClient.id);
-      if (victimClient) {
-        victimClient.send("killed", { killer: shooter.name });
-
-        // Respawn after 3 seconds
-        setTimeout(() => {
-          if (this.state.players.has(hitClient.id) && !this.state.roundOver) {
-            const spawnPos = this.getSafeSpawn(this.state.mapId);
-            hitClient.player.health = 100;
-            hitClient.player.x = spawnPos.x;
-            hitClient.player.y = spawnPos.y;
-            hitClient.player.z = spawnPos.z;
-            victimClient.send("respawn", spawnPos);
-          }
-        }, 3000);
-      }
-    };
-
     this.onMessage("shoot", (client, data) => {
       if (this.state.roundOver) return;
       const shooter = this.state.players.get(client.sessionId);
@@ -2871,6 +2852,7 @@ class FPSRoom extends colyseus.Room {
 
       this.state.players.forEach((target, targetId) => {
         if (targetId === client.sessionId || target.health <= 0) return;
+        if (this.state.mapId === 5 && shooter.team !== 0 && shooter.team === target.team) return;
 
         // Vector from origin to target
         const vx = target.x - ox;
@@ -2906,9 +2888,23 @@ class FPSRoom extends colyseus.Room {
         let damage = 25;
         if (data.weaponId === 1) damage = 20; // Shotgun per bullet
         if (data.weaponId === 2) damage = 100; // Sniper
+        const target = hitClient.player;
 
-        hitClient.player.health -= damage;
-        handleElimination(shooter, hitClient);
+        if (target.armor > 0) {
+          const armorDmg = Math.min(target.armor, damage);
+          target.armor -= armorDmg;
+          target.health -= (damage - armorDmg);
+        } else {
+          target.health -= damage;
+        }
+
+        if (target.health > 0) {
+          client.send("hitmarker", { killed: false });
+        } else {
+          client.send("hitmarker", { killed: true });
+          const victimClient = this.clients.find(c => c.sessionId === hitClient.id);
+          this.handleElimination(shooter, client, target, victimClient);
+        }
       }
     });
 
@@ -2931,6 +2927,7 @@ class FPSRoom extends colyseus.Room {
       const radius = 15;
       this.state.players.forEach((target, targetId) => {
         if (target.health <= 0) return;
+        if (this.state.mapId === 5 && shooter.team !== 0 && shooter.team === target.team && targetId !== client.sessionId) return;
         const tx = target.x - ex;
         const ty = (target.y + 1) - ey;
         const tz = target.z - ez;
@@ -2939,8 +2936,17 @@ class FPSRoom extends colyseus.Room {
 
         const t = 1 - (dist / radius);
         const damage = Math.max(20, Math.round(100 * t));
-        target.health -= damage;
-        handleElimination(shooter, { id: targetId, player: target });
+        if (target.armor > 0) {
+          const armorDmg = Math.min(target.armor, damage);
+          target.armor -= armorDmg;
+          target.health -= (damage - armorDmg);
+        } else {
+          target.health -= damage;
+        }
+        if (target.health <= 0) {
+          const victimClient = this.clients.find(c => c.sessionId === targetId);
+          this.handleElimination(shooter, client, target, victimClient);
+        }
       });
     });
 
@@ -3023,6 +3029,8 @@ class FPSRoom extends colyseus.Room {
       player.armor = 0;
       if (this.state.mapId !== 5) {
         player.team = 0;
+      } else if (player.team === 0) {
+        player.team = this.getBalancedTeam();
       }
       const spawnPos = this.getSafeSpawn(this.state.mapId, player.team);
       player.x = spawnPos.x;
@@ -3039,6 +3047,9 @@ class FPSRoom extends colyseus.Room {
   onJoin(client, options) {
     const player = new FPSPlayer();
     player.name = options.playerName || "Unknown";
+    if (this.state.mapId === 5) {
+      player.team = this.getBalancedTeam();
+    }
     const spawnPos = this.getSafeSpawn(this.state.mapId, player.team);
     player.x = spawnPos.x;
     player.y = spawnPos.y;
@@ -3061,7 +3072,7 @@ class FPSRoom extends colyseus.Room {
       d.clients = this.clients.length;
       d.players = [];
       this.state.players.forEach((player) => {
-        d.players.push({ name: player.name });
+        d.players.push({ name: player.name, team: player.team });
       });
       fpsServerDirectory.set(this.roomId, d);
     }
