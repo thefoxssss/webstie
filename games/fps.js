@@ -23,6 +23,7 @@ let gatlingMovementLockUntil = 0;
 let isPrimaryFireHeld = false;
 let gameLoopId;
 let initialized = false;
+let handleFpsResize = null;
 
 let moveForward = false;
 let moveBackward = false;
@@ -885,7 +886,19 @@ function initThreeJs() {
   camera = new THREE.PerspectiveCamera(75, 800 / 450, 0.1, 1000);
 
   renderer = new THREE.WebGLRenderer({ canvas: fpsCanvas, antialias: true });
-  renderer.setSize(800, 450);
+  const updateRendererSize = () => {
+    const width = Math.max(1, Math.floor(fpsGame.clientWidth || 800));
+    const height = Math.max(1, Math.floor(fpsGame.clientHeight || 450));
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  };
+  handleFpsResize = updateRendererSize;
+  updateRendererSize();
+  window.addEventListener("resize", updateRendererSize);
+  document.addEventListener("fullscreenchange", updateRendererSize);
   renderer.shadowMap.enabled = true;
 
   // Lights
@@ -1756,6 +1769,11 @@ window.stopFps = () => {
   document.removeEventListener('keyup', onKeyUp);
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
+  if (handleFpsResize) {
+    window.removeEventListener("resize", handleFpsResize);
+    document.removeEventListener("fullscreenchange", handleFpsResize);
+    handleFpsResize = null;
+  }
   isPrimaryFireHeld = false;
 
   if (scene) {
