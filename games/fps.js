@@ -5,7 +5,7 @@ let scene, camera, renderer, controls;
 let raycaster;
 let floorMesh;
 let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0, team: 0 };
-let otherPlayers = {}; // id -> { mesh, data }
+let otherPlayers = {}; // id -> { mesh, data, targetPos, targetRotY, lastNetUpdate }
 let gunMesh;
 let muzzleFlash, muzzleLight;
 let muzzleFlashTime = 0;
@@ -302,12 +302,38 @@ function setupRoom() {
       playerGroup.position.set(player.x, player.y, player.z);
       scene.add(playerGroup);
 
-      otherPlayers[sessionId] = { mesh: playerGroup, data: player };
+      otherPlayers[sessionId] = {
+        mesh: playerGroup,
+        data: player,
+        targetPos: new THREE.Vector3(player.x, player.y, player.z),
+        targetRotY: player.rotY || 0,
+        lastNetUpdate: performance.now()
+      };
 
-      player.listen("x", (val) => playerGroup.position.x = val);
-      player.listen("y", (val) => playerGroup.position.y = val);
-      player.listen("z", (val) => playerGroup.position.z = val);
-      player.listen("rotY", (val) => playerGroup.rotation.y = val);
+      player.listen("x", (val) => {
+        const remote = otherPlayers[sessionId];
+        if (!remote) return;
+        remote.targetPos.x = val;
+        remote.lastNetUpdate = performance.now();
+      });
+      player.listen("y", (val) => {
+        const remote = otherPlayers[sessionId];
+        if (!remote) return;
+        remote.targetPos.y = val;
+        remote.lastNetUpdate = performance.now();
+      });
+      player.listen("z", (val) => {
+        const remote = otherPlayers[sessionId];
+        if (!remote) return;
+        remote.targetPos.z = val;
+        remote.lastNetUpdate = performance.now();
+      });
+      player.listen("rotY", (val) => {
+        const remote = otherPlayers[sessionId];
+        if (!remote) return;
+        remote.targetRotY = val;
+        remote.lastNetUpdate = performance.now();
+      });
       player.listen("name", (val) => {
         playerGroup.remove(nameSprite);
         if (nameSprite.material.map) nameSprite.material.map.dispose();
@@ -1574,6 +1600,41 @@ function updateGrenadeEffects(time) {
   }
 }
 
+function normalizeAngle(angle) {
+  let a = angle;
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+function updateRemotePlayers(delta) {
+  const follow = Math.min(1, delta * 24); // fast follow for live feel
+  const snapThresholdSq = 64;
+
+  Object.values(otherPlayers).forEach((entry) => {
+    if (!entry?.mesh || !entry.targetPos) return;
+
+    const mesh = entry.mesh;
+    const target = entry.targetPos;
+    const dx = target.x - mesh.position.x;
+    const dy = target.y - mesh.position.y;
+    const dz = target.z - mesh.position.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+
+    if (distSq > snapThresholdSq) {
+      mesh.position.set(target.x, target.y, target.z);
+    } else {
+      mesh.position.x += dx * follow;
+      mesh.position.y += dy * follow;
+      mesh.position.z += dz * follow;
+    }
+
+    const targetRot = entry.targetRotY ?? mesh.rotation.y;
+    const rotDelta = normalizeAngle(targetRot - mesh.rotation.y);
+    mesh.rotation.y += rotDelta * follow;
+  });
+}
+
 function animate() {
   gameLoopId = requestAnimationFrame(animate);
 
@@ -1588,6 +1649,7 @@ function animate() {
 
   updateTracers(time);
   updateGrenadeEffects(time);
+  updateRemotePlayers(delta);
   updateFlagPositions();
   updateCtfHud();
   updateTeamSelectUI();
