@@ -2797,7 +2797,11 @@ class FPSRoom extends colyseus.Room {
   }
 
   onCreate(options) {
-    this.setSimulationInterval(() => this.simulateTick(), 50);
+    // Run FPS room at higher simulation + patch rates so remote player movement
+    // appears near-instant instead of stepping at ~20hz.
+    const FPS_NET_TICK_MS = 1000 / 60;
+    this.setSimulationInterval(() => this.simulateTick(), FPS_NET_TICK_MS);
+    this.setPatchRate(FPS_NET_TICK_MS);
 
     this.maxClients = 1000;
     this.serverName = options.serverName || "Arena Server";
