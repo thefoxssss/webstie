@@ -2325,6 +2325,23 @@
         <input type="text" id="builderServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
         <button class="term-btn" id="btnCreateBuilderServer">CREATE SERVER</button>
         <button class="menu-btn" id="btnCustomizeBuilderCharacter" style="margin-top: 8px;">CUSTOMIZE CHARACTER</button>
+        <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+          <label for="builderGraphicsPreset" style="font-size: 10px;">GRAPHICS</label>
+          <select id="builderGraphicsPreset" class="term-input" style="width: auto; min-width: 130px; height: 28px; padding: 2px 8px;">
+            <option value="low">LOW (PERFORMANCE)</option>
+            <option value="medium">MEDIUM</option>
+            <option value="high">HIGH (RECOMMENDED)</option>
+            <option value="ultra">ULTRA</option>
+          </select>
+          <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px;">
+            <input id="builderGraphicsShadows" type="checkbox" checked />
+            SHADOWS
+          </label>
+          <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px;">
+            <input id="builderGraphicsTrails" type="checkbox" checked />
+            TRAILS
+          </label>
+        </div>
         <div id="builderServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
         <button class="menu-btn" id="btnJoinBuilder">QUICK JOIN ANY SERVER</button>
       </div>
