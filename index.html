@@ -2332,6 +2332,23 @@
         <div class="builder-hud">
           <span>X: <span id="builderX">0</span> Y: <span id="builderY">0</span></span>
           <span style="margin-left: 20px;">BLOCK: <span id="builderBlockType">GRASS</span></span>
+          <div style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+            <label for="builderGraphicsPreset" style="font-size: 10px;">GRAPHICS</label>
+            <select id="builderGraphicsPreset" class="term-input" style="width: auto; min-width: 130px; height: 28px; padding: 2px 8px;">
+              <option value="low">LOW (PERFORMANCE)</option>
+              <option value="medium">MEDIUM</option>
+              <option value="high">HIGH (RECOMMENDED)</option>
+              <option value="ultra">ULTRA</option>
+            </select>
+            <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px;">
+              <input id="builderGraphicsShadows" type="checkbox" checked />
+              SHADOWS
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px;">
+              <input id="builderGraphicsTrails" type="checkbox" checked />
+              TRAILS
+            </label>
+          </div>
         </div>
         <canvas id="builderCanvas" width="800" height="450" style="background: #87CEEB;"></canvas>
         <div class="mobile-hint active" style="margin-top: 10px">
