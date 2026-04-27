@@ -40,6 +40,8 @@ const sprintSpeed = 70.0;
 const crouchSpeed = 20.0;
 const jumpVelocity = 15.0;
 const gravity = 40.0;
+let redFlagMesh, blueFlagMesh;
+let smokeParticles = [];
 let prevTime = performance.now();
 
 // Bullet tracers
@@ -271,7 +273,7 @@ function setupRoom() {
       player.listen("kills", (val) => {
         localPlayer.kills = val;
         fpsKills.textContent = val;
-        if (!isGatlingUnlocked() && localPlayer.weapon === 3) {
+        if (!isWeaponUnlocked(3) && localPlayer.weapon === 3) {
           switchWeapon(0);
         }
       });
