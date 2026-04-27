@@ -4,7 +4,7 @@ let room = null;
 let scene, camera, renderer, controls;
 let raycaster;
 let floorMesh;
-let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0 };
+let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0, team: 0 };
 let otherPlayers = {}; // id -> { mesh, data }
 let gunMesh;
 let muzzleFlash, muzzleLight;
@@ -68,6 +68,10 @@ const fpsDeathScreen = document.getElementById("fpsDeathScreen");
 const fpsDeathMessage = document.getElementById("fpsDeathMessage");
 const fpsHint = document.getElementById("fpsHint");
 const fpsGrenades = document.getElementById("fpsGrenades");
+const fpsTeam = document.getElementById("fpsTeam");
+const fpsObjective = document.getElementById("fpsObjective");
+const fpsCtfScore = document.getElementById("fpsCtfScore");
+const fpsTeamSelect = document.getElementById("fpsTeamSelect");
 
 function getColyseusEndpoint() {
   const mode = networkSelect.value;
@@ -241,15 +245,23 @@ function setupRoom() {
 
   room.state.listen("mapId", (mapId) => {
     loadMap(mapId);
+    updateCtfHud();
+    updateTeamSelectUI();
   });
+
+  room.state.listen("redScore", updateCtfHud);
+  room.state.listen("blueScore", updateCtfHud);
 
   room.state.players.onAdd((player, sessionId) => {
     if (sessionId === room.sessionId) {
       localPlayer.id = sessionId;
       localPlayer.health = player.health;
       localPlayer.kills = player.kills;
+      localPlayer.team = player.team;
       grenades = 2;
       updateGrenadeUI();
+      updateCtfHud();
+      updateTeamSelectUI();
 
       player.listen("health", (val) => {
         localPlayer.health = val;
@@ -262,13 +274,18 @@ function setupRoom() {
           switchWeapon(0);
         }
       });
+      player.listen("team", (val) => {
+        localPlayer.team = val;
+        updateCtfHud();
+        updateTeamSelectUI();
+      });
 
     } else {
       // Create mesh for other player
       const playerGroup = new THREE.Group();
 
       const geometry = new THREE.BoxGeometry(1, 2, 1);
-      const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+      const material = new THREE.MeshLambertMaterial({ color: player.team === 1 ? 0xff3333 : (player.team === 2 ? 0x3333ff : 0xaaaaaa) });
       const mesh = new THREE.Mesh(geometry, material);
       playerGroup.add(mesh);
 
@@ -297,6 +314,9 @@ function setupRoom() {
         nameSprite = createNameSprite(val);
         playerGroup.add(nameSprite);
       });
+      player.listen("team", (val) => {
+        material.color.setHex(val === 1 ? 0xff3333 : (val === 2 ? 0x3333ff : 0xaaaaaa));
+      });
       // Hide if dead
       player.listen("health", (val) => playerGroup.visible = val > 0);
     }
@@ -319,6 +339,9 @@ function setupRoom() {
     }
     updateLeaderboard();
   });
+
+  updateCtfHud();
+  updateTeamSelectUI();
 }
 
 function updateLeaderboard() {
@@ -331,6 +354,46 @@ function updateLeaderboard() {
     `<div>${escapeHtml(p.name)}: ${p.kills}</div>`
   ).join("");
 }
+
+function teamLabel(teamId) {
+  if (teamId === 1) return "RED";
+  if (teamId === 2) return "BLUE";
+  return "FFA";
+}
+
+function updateCtfHud() {
+  if (!fpsTeam || !fpsObjective || !fpsCtfScore) return;
+  const mapId = room?.state?.mapId ?? 0;
+  fpsTeam.textContent = teamLabel(localPlayer.team);
+  fpsTeam.style.color = localPlayer.team === 1 ? "#ff6666" : (localPlayer.team === 2 ? "#6666ff" : "#bbbbbb");
+
+  if (mapId === 5) {
+    fpsObjective.textContent = "CAPTURE THE FLAG";
+    fpsObjective.style.color = "#ffff66";
+    fpsCtfScore.style.display = "inline";
+    fpsCtfScore.textContent = `RED ${room.state.redScore} - ${room.state.blueScore} BLUE`;
+    fpsCtfScore.style.color = "#ffffff";
+  } else {
+    fpsObjective.textContent = "DEATHMATCH";
+    fpsObjective.style.color = "#bbbbbb";
+    fpsCtfScore.style.display = "none";
+  }
+}
+
+function updateTeamSelectUI() {
+  if (!fpsTeamSelect) return;
+  const shouldShow = !!room && room.state.mapId === 5 && localPlayer.team === 0;
+  fpsTeamSelect.style.display = shouldShow ? "flex" : "none";
+  if (shouldShow && controls?.isLocked) {
+    controls.unlock();
+  }
+}
+
+window.fpsChooseTeam = (teamId) => {
+  if (!room || room.state.mapId !== 5) return;
+  if (teamId !== 1 && teamId !== 2) return;
+  room.send("joinTeam", teamId);
+};
 
 // Procedural textures
 
@@ -800,52 +863,57 @@ function loadMap(mapId) {
     const bridgeMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x555555 });
     const coverMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x666666 });
 
-    // Red Fort (Left side)
-    // Front Wall with gap
-    addBox(20, 8, 2, -30, 4, 15, redBaseMat);
-    addBox(20, 8, 2, -30, 4, -15, redBaseMat);
-    // Back Wall
-    addBox(40, 8, 2, -50, 4, 0, redBaseMat);
-    // Side Walls
-    addBox(2, 8, 50, -40, 4, 24, redBaseMat);
-    addBox(2, 8, 50, -40, 4, -24, redBaseMat);
-    // Upper Balcony (Sniper nest)
-    addBox(40, 1, 10, -45, 8.5, 0, redBaseMat);
-    addBox(4, 1, 10, -35, 4, 0, redBaseMat); // Ramp block
-    addBox(4, 1, 10, -39, 6, 0, redBaseMat); // Ramp block 2
+    // Larger arena bounds
+    addBox(2, 12, 220, -110, 6, 0, wallMat);
+    addBox(2, 12, 220, 110, 6, 0, wallMat);
+    addBox(220, 12, 2, 0, 6, -110, wallMat);
+    addBox(220, 12, 2, 0, 6, 110, wallMat);
 
-    // Blue Fort (Right side)
-    // Front Wall with gap
-    addBox(20, 8, 2, 30, 4, 15, blueBaseMat);
-    addBox(20, 8, 2, 30, 4, -15, blueBaseMat);
-    // Back Wall
-    addBox(40, 8, 2, 50, 4, 0, blueBaseMat);
-    // Side Walls
-    addBox(2, 8, 50, 40, 4, 24, blueBaseMat);
-    addBox(2, 8, 50, 40, 4, -24, blueBaseMat);
-    // Upper Balcony (Sniper nest)
-    addBox(40, 1, 10, 45, 8.5, 0, blueBaseMat);
-    addBox(4, 1, 10, 35, 4, 0, blueBaseMat); // Ramp block
-    addBox(4, 1, 10, 39, 6, 0, blueBaseMat); // Ramp block 2
+    // Red fort
+    addBox(22, 8, 2, -38, 4, 18, redBaseMat);
+    addBox(22, 8, 2, -38, 4, -18, redBaseMat);
+    addBox(2, 8, 38, -49, 4, 0, redBaseMat);
+    // Inner wall split with doorway so enemies can breach and steal flag
+    addBox(2, 8, 14, -27, 4, 12, redBaseMat);
+    addBox(2, 8, 14, -27, 4, -12, redBaseMat);
+    addBox(22, 1, 12, -38, 8.5, 0, redBaseMat);
+    addBox(6, 2, 8, -33, 2, 0, coverMat);
+    addBox(6, 2, 8, -43, 2, 0, coverMat);
 
-    // Center Map Elements (No Man's Land)
-    // High Bridge linking sniper nests
-    addBox(60, 1, 8, 0, 8.5, 0, bridgeMat);
-    // Bridge Cover
-    addBox(2, 2, 8, -10, 10, 0, coverMat);
-    addBox(2, 2, 8, 10, 10, 0, coverMat);
+    // Blue fort
+    addBox(22, 8, 2, 38, 4, 18, blueBaseMat);
+    addBox(22, 8, 2, 38, 4, -18, blueBaseMat);
+    addBox(2, 8, 38, 49, 4, 0, blueBaseMat);
+    // Inner wall split with doorway so enemies can breach and steal flag
+    addBox(2, 8, 14, 27, 4, 12, blueBaseMat);
+    addBox(2, 8, 14, 27, 4, -12, blueBaseMat);
+    addBox(22, 1, 12, 38, 8.5, 0, blueBaseMat);
+    addBox(6, 2, 8, 33, 2, 0, coverMat);
+    addBox(6, 2, 8, 43, 2, 0, coverMat);
 
-    // Lower Center Obstacles (Trenches & Cover)
-    addBox(8, 4, 4, 0, 2, 10, wallMat);
-    addBox(8, 4, 4, 0, 2, -10, wallMat);
-    addBox(4, 4, 8, 0, 2, 25, wallMat);
-    addBox(4, 4, 8, 0, 2, -25, wallMat);
+    // Mid bridge and lower lane
+    addBox(74, 1, 12, 0, 8.5, 0, bridgeMat);
+    addBox(12, 3, 4, -14, 2, 0, wallMat);
+    addBox(12, 3, 4, 14, 2, 0, wallMat);
+    addBox(12, 3, 4, 0, 2, 18, wallMat);
+    addBox(12, 3, 4, 0, 2, -18, wallMat);
 
-    // Flank Routes Cover
-    addBox(6, 3, 2, -15, 1.5, 20, coverMat);
-    addBox(6, 3, 2, 15, 1.5, 20, coverMat);
-    addBox(6, 3, 2, -15, 1.5, -20, coverMat);
-    addBox(6, 3, 2, 15, 1.5, -20, coverMat);
+    // Side flank routes and jump pads (extended for larger map)
+    addBox(2, 3, 60, -14, 1.5, 54, coverMat);
+    addBox(2, 3, 60, 14, 1.5, -54, coverMat);
+    const jumpPadMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.4 });
+    addBox(4, 0.5, 4, -14, 0.25, 54, jumpPadMat, { isJumpPad: true, boostX: 220, boostZ: -260 });
+    addBox(4, 0.5, 4, 14, 0.25, -54, jumpPadMat, { isJumpPad: true, boostX: -220, boostZ: 260 });
+
+    // Symmetric cover fields
+    const coverSpots = [
+      [-22, 18], [-22, -18], [22, 18], [22, -18],
+      [-8, 28], [-8, -28], [8, 28], [8, -28],
+      [-30, 34], [-30, -34], [30, 34], [30, -34],
+      [-52, 60], [-52, -60], [52, 60], [52, -60],
+      [-70, 44], [-70, -44], [70, 44], [70, -44]
+    ];
+    coverSpots.forEach(([x, z]) => addBox(6, 3, 3, x, 1.5, z, coverMat));
 
     // Create physical flag models so they can be seen holding or dropped
     const flagGeo = new THREE.CylinderGeometry(0.1, 0.1, 3);
@@ -1508,6 +1576,8 @@ function animate() {
   updateTracers(time);
   updateGrenadeEffects(time);
   updateFlagPositions();
+  updateCtfHud();
+  updateTeamSelectUI();
 
   if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
     muzzleFlash.visible = false;
@@ -1724,7 +1794,10 @@ export function initFps() {
   nextGrenadeTime = 0;
   gatlingMovementLockUntil = 0;
   isPrimaryFireHeld = false;
+  localPlayer.team = 0;
   updateGrenadeUI();
+  updateCtfHud();
+  updateTeamSelectUI();
 
   if (room) {
     room.leave();
