@@ -2259,6 +2259,9 @@
         <div id="fpsUI" style="position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; text-shadow: 1px 1px 0 #000; pointer-events: none; text-align: left;">
           HP: <span id="fpsHealth" style="color: lime;">100</span><br/>
           KILLS: <span id="fpsKills">0</span><br/>
+          TEAM: <span id="fpsTeam" style="color: #bbbbbb;">FFA</span><br/>
+          MODE: <span id="fpsObjective" style="color: #bbbbbb;">DEATHMATCH</span><br/>
+          CTF: <span id="fpsCtfScore" style="color: #bbbbbb;">RED 0 - 0 BLUE</span><br/>
           WEAPON: <span id="fpsWeapon" style="color: yellow;">PISTOL</span><br/>
           AMMO: <span id="fpsAmmo" style="color: orange;">12/12</span><br/>
           GRENADES: <span id="fpsGrenades" style="color: #ff8800;">2</span>
@@ -2294,6 +2297,14 @@
               <button class="term-btn" onclick="window.voteMap(4)">SNIPER <span id="mapVote4">(0)</span></button>
               <button class="term-btn" onclick="window.voteMap(5)">CTF <span id="mapVote5">(0)</span></button>
             </div>
+          </div>
+        </div>
+        <div id="fpsTeamSelect" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.82); flex-direction: column; justify-content: center; align-items: center; z-index: 30;">
+          <h2 style="color: white; margin-bottom: 10px;">CHOOSE YOUR TEAM</h2>
+          <p style="color: #ccc; margin-top: 0; margin-bottom: 16px;">Pick RED or BLUE to spawn in.</p>
+          <div style="display: flex; gap: 16px;">
+            <button class="term-btn" onclick="window.fpsChooseTeam(1)" style="background:#b62222; border-color:#ff6666;">JOIN RED</button>
+            <button class="term-btn" onclick="window.fpsChooseTeam(2)" style="background:#2233aa; border-color:#6688ff;">JOIN BLUE</button>
           </div>
         </div>
       </div>
