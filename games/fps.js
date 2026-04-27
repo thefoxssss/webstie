@@ -46,6 +46,10 @@ let tracers = [];
 
 let obstaclesGroup;
 let obstacleBoxes = [];
+let smokeParticles = [];
+let redFlagMesh = null;
+let blueFlagMesh = null;
+let currentGrenadeType = 0;
 
 const networkSelect = document.getElementById("fpsNetwork");
 const btnRefresh = document.getElementById("btnRefreshFpsServers");
@@ -172,6 +176,7 @@ function setupRoom() {
   room.onMessage("respawn", (data) => {
     localPlayer.health = 100;
     grenades = 2;
+    currentGrenadeType = 0;
     updateGrenadeUI();
     localPlayer.x = data.x;
     localPlayer.y = data.y;
@@ -221,6 +226,7 @@ function setupRoom() {
     document.getElementById("mapVote2").textContent = `(${votes[2]})`;
     if (document.getElementById("mapVote3")) document.getElementById("mapVote3").textContent = `(${votes[3] || 0})`;
     if (document.getElementById("mapVote4")) document.getElementById("mapVote4").textContent = `(${votes[4] || 0})`;
+    if (document.getElementById("mapVote5")) document.getElementById("mapVote5").textContent = `(${votes[5] || 0})`;
   });
 
   room.state.listen("roundOver", (isOver) => {
@@ -482,6 +488,18 @@ function loadMap(mapId) {
     if (mesh.material) mesh.material.dispose();
   }
   obstacleBoxes = [];
+  if (redFlagMesh) {
+    scene.remove(redFlagMesh);
+    if (redFlagMesh.geometry) redFlagMesh.geometry.dispose();
+    if (redFlagMesh.material) redFlagMesh.material.dispose();
+    redFlagMesh = null;
+  }
+  if (blueFlagMesh) {
+    scene.remove(blueFlagMesh);
+    if (blueFlagMesh.geometry) blueFlagMesh.geometry.dispose();
+    if (blueFlagMesh.material) blueFlagMesh.material.dispose();
+    blueFlagMesh = null;
+  }
 
   const addBox = (w, h, d, x, y, z, mat, userData = {}) => {
     const geo = new THREE.BoxGeometry(w, h, d);
@@ -1489,6 +1507,7 @@ function animate() {
 
   updateTracers(time);
   updateGrenadeEffects(time);
+  updateFlagPositions();
 
   if (muzzleFlash && muzzleFlash.visible && time - muzzleFlashTime > 50) {
     muzzleFlash.visible = false;
