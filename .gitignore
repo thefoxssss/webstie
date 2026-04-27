@@ -1,3 +1,18 @@
 node_modules
 worlds
 *.log
+
+# Generated media assets
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.mp4
+*.webm
+*.mov
+*.avi
+
+# AI-generated Playwright/media artifacts
+.ai-artifacts/
