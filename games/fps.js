@@ -884,7 +884,7 @@ function initThreeJs() {
 
   camera = new THREE.PerspectiveCamera(75, 800 / 450, 0.1, 1000);
 
-  renderer = new THREE.WebGLRenderer({ canvas: fpsCanvas, antialias: false });
+  renderer = new THREE.WebGLRenderer({ canvas: fpsCanvas, antialias: true });
   renderer.setSize(800, 450);
   renderer.shadowMap.enabled = true;
 
