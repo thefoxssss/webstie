@@ -53,9 +53,64 @@ let selectedRoomId = null;
     const uiX = document.getElementById("builderX");
     const uiY = document.getElementById("builderY");
     const uiBlockType = document.getElementById("builderBlockType");
+    const graphicsPresetSelect = document.getElementById("builderGraphicsPreset");
+    const graphicsShadowsToggle = document.getElementById("builderGraphicsShadows");
+    const graphicsTrailsToggle = document.getElementById("builderGraphicsTrails");
 
     const TILE_SIZE = 32;
     const CHUNK_SIZE = 16;
+    const BUILDER_GRAPHICS_STORAGE_KEY = "builderGraphicsSettingsV1";
+    const GRAPHICS_PRESETS = {
+        low: { chunkPadding: 1, playerNames: false, dropDetails: false, explosivePulse: false },
+        medium: { chunkPadding: 2, playerNames: true, dropDetails: false, explosivePulse: true },
+        high: { chunkPadding: 3, playerNames: true, dropDetails: true, explosivePulse: true },
+        ultra: { chunkPadding: 5, playerNames: true, dropDetails: true, explosivePulse: true },
+    };
+    const graphicsSettings = {
+        preset: "high",
+        shadows: true,
+        trails: true,
+    };
+
+    const getGraphicsProfile = () => GRAPHICS_PRESETS[graphicsSettings.preset] || GRAPHICS_PRESETS.high;
+    const clampPreset = (preset) => (GRAPHICS_PRESETS[preset] ? preset : "high");
+    const readGraphicsSettings = () => {
+        try {
+            const raw = localStorage.getItem(BUILDER_GRAPHICS_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            graphicsSettings.preset = clampPreset(parsed?.preset);
+            graphicsSettings.shadows = parsed?.shadows !== false;
+            graphicsSettings.trails = parsed?.trails !== false;
+        } catch {
+            graphicsSettings.preset = "high";
+            graphicsSettings.shadows = true;
+            graphicsSettings.trails = true;
+        }
+    };
+    const saveGraphicsSettings = () => {
+        try {
+            localStorage.setItem(BUILDER_GRAPHICS_STORAGE_KEY, JSON.stringify(graphicsSettings));
+        } catch {
+            // Ignore write failures (private mode / quota).
+        }
+    };
+    const syncGraphicsControls = () => {
+        if (graphicsPresetSelect) graphicsPresetSelect.value = graphicsSettings.preset;
+        if (graphicsShadowsToggle) graphicsShadowsToggle.checked = graphicsSettings.shadows;
+        if (graphicsTrailsToggle) graphicsTrailsToggle.checked = graphicsSettings.trails;
+    };
+    const handleGraphicsControlChange = () => {
+        graphicsSettings.preset = clampPreset(graphicsPresetSelect?.value);
+        graphicsSettings.shadows = graphicsShadowsToggle ? graphicsShadowsToggle.checked : true;
+        graphicsSettings.trails = graphicsTrailsToggle ? graphicsTrailsToggle.checked : true;
+        saveGraphicsSettings();
+    };
+    readGraphicsSettings();
+    syncGraphicsControls();
+    if (graphicsPresetSelect) graphicsPresetSelect.addEventListener("change", handleGraphicsControlChange);
+    if (graphicsShadowsToggle) graphicsShadowsToggle.addEventListener("change", handleGraphicsControlChange);
+    if (graphicsTrailsToggle) graphicsTrailsToggle.addEventListener("change", handleGraphicsControlChange);
 
 const blockColors = {
         1: "#3c9e3c", // Grass
@@ -2821,6 +2876,7 @@ if (e.button === 2 && !e.shiftKey) {
 
     function render() {
         if (!room || !room.state) return;
+        const graphicsProfile = getGraphicsProfile();
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -2854,7 +2910,15 @@ if (e.button === 2 && !e.shiftKey) {
         ctx.translate(-camera.x, -camera.y);
 
         // Draw blocks (chunked)
-        room.state.chunks.forEach((chunk) => {
+        const minVisibleChunkX = Math.floor(camera.x / (TILE_SIZE * CHUNK_SIZE)) - graphicsProfile.chunkPadding;
+        const minVisibleChunkY = Math.floor(camera.y / (TILE_SIZE * CHUNK_SIZE)) - graphicsProfile.chunkPadding;
+        const maxVisibleChunkX = Math.floor((camera.x + canvas.width) / (TILE_SIZE * CHUNK_SIZE)) + graphicsProfile.chunkPadding;
+        const maxVisibleChunkY = Math.floor((camera.y + canvas.height) / (TILE_SIZE * CHUNK_SIZE)) + graphicsProfile.chunkPadding;
+        room.state.chunks.forEach((chunk, chunkKey) => {
+          const [chunkX, chunkY] = String(chunkKey || "").split(",").map(Number);
+          if (Number.isFinite(chunkX) && Number.isFinite(chunkY)) {
+              if (chunkX < minVisibleChunkX || chunkX > maxVisibleChunkX || chunkY < minVisibleChunkY || chunkY > maxVisibleChunkY) return;
+          }
           chunk.blocks.forEach((block) => {
             if (assetsLoaded && blockImages[block.type]) {
                 ctx.drawImage(blockImages[block.type], block.x * TILE_SIZE, block.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -2896,7 +2960,7 @@ if (e.button === 2 && !e.shiftKey) {
             }
 
             // Pulse size
-            const scale = 1 + Math.sin(exp.timer * 0.5) * 0.1;
+            const scale = graphicsProfile.explosivePulse ? 1 + Math.sin(exp.timer * 0.5) * 0.1 : 1;
             ctx.scale(scale, scale);
 
             ctx.fillRect(-TILE_SIZE/2, -TILE_SIZE/2, TILE_SIZE, TILE_SIZE);
@@ -2957,6 +3021,10 @@ if (e.button === 2 && !e.shiftKey) {
             ctx.strokeStyle = "#000";
             ctx.lineWidth = 2;
             ctx.strokeRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
+            if (graphicsSettings.shadows) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+                ctx.fillRect(p.x + 3, p.y + TILE_SIZE, TILE_SIZE - 6, 4);
+            }
 
             // Draw held item (Sword or Gun)
             if (p.selectedItemType === 11 || [23, 24, 25, 26, 27].includes(p.selectedItemType)) {
@@ -3007,10 +3075,12 @@ if (e.button === 2 && !e.shiftKey) {
             }
 
             // Draw player name
-            ctx.fillStyle = "#000";
-            ctx.font = "10px 'Press Start 2P', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(p.name, p.x + TILE_SIZE / 2, p.y - 5);
+            if (graphicsProfile.playerNames) {
+                ctx.fillStyle = "#000";
+                ctx.font = "10px 'Press Start 2P', monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(p.name, p.x + TILE_SIZE / 2, p.y - 5);
+            }
         });
         updateAndDrawInWorldChatBubbles(localPlayer);
 
@@ -3021,13 +3091,15 @@ if (e.button === 2 && !e.shiftKey) {
             ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
             ctx.fill();
 
-            // Trail
-            ctx.strokeStyle = "rgba(255, 204, 0, 0.5)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(b.x, b.y);
-            ctx.lineTo(b.x - b.vx * 2, b.y - b.vy * 2);
-            ctx.stroke();
+            if (graphicsSettings.trails) {
+                // Trail
+                ctx.strokeStyle = "rgba(255, 204, 0, 0.5)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                ctx.lineTo(b.x - b.vx * 2, b.y - b.vy * 2);
+                ctx.stroke();
+            }
         });
 
         // Draw item drops
@@ -3038,9 +3110,11 @@ if (e.button === 2 && !e.shiftKey) {
             const dropSize = TILE_SIZE * 0.4;
             ctx.fillStyle = blockColors[drop.type] || "#ffffff";
             ctx.fillRect(drop.x - dropSize / 2, drop.y - dropSize / 2, dropSize, dropSize);
-            ctx.strokeStyle = "#000";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(drop.x - dropSize / 2, drop.y - dropSize / 2, dropSize, dropSize);
+            if (graphicsProfile.dropDetails) {
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(drop.x - dropSize / 2, drop.y - dropSize / 2, dropSize, dropSize);
+            }
 
             // Pickup logic on client
             if (localPlayer) {
@@ -3827,6 +3901,9 @@ if (inventoryOpen && !showEscapeMenu) {
         canvas.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("wheel", handleCanvasWheel);
         canvas.removeEventListener("contextmenu", handleCanvasContextMenu);
+        if (graphicsPresetSelect) graphicsPresetSelect.removeEventListener("change", handleGraphicsControlChange);
+        if (graphicsShadowsToggle) graphicsShadowsToggle.removeEventListener("change", handleGraphicsControlChange);
+        if (graphicsTrailsToggle) graphicsTrailsToggle.removeEventListener("change", handleGraphicsControlChange);
         if (inputLoopId) {
             clearInterval(inputLoopId);
             inputLoopId = null;
