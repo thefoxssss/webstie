@@ -42,6 +42,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "flappy", title: "FLAPPY GOON", description: "Secret bonus mode: tap to survive.", icon: "🐤", tags: ["arcade", "skill"], hidden: true, shopItems: ["item_flappy", "item_shield"] },
   { id: "fnaf", title: "FNAF 3D", description: "Multiplayer horror survival.", icon: "🐻", tags: ["arcade", "multiplayer", "survival"] },
   { id: "fps", title: "ARENA SHOOTER", description: "Fast-paced 3D multiplayer arena shooter.", icon: "🔫", tags: ["arcade", "multiplayer", "pvp", "fps"] },
+  { id: "hexfall", title: "HEXFALL", description: "Navigate the falling hex grid and survive.", icon: "⬢", tags: ["arcade", "skill", "puzzle"], shopItems: ["item_dodge_stabilizer", "item_shield"] },
 ]);
 
 export const LEADERBOARD_GAME_COLUMNS = Object.freeze(

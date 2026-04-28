@@ -85,6 +85,7 @@ import { initGlitchGate } from "./games/glitchgate.js";
 import { initOrbWeaver } from "./games/orbweaver.js";
 import { initLaserLock } from "./games/laserlock.js";
 import { initMetroMaze } from "./games/metromaze.js";
+import { initHexfall } from "./games/hexfall.js";
 import { initStackSmash } from "./games/stacksmash.js";
 import { initQuantumFlip } from "./games/quantumflip.js";
 import { initUltimateTTT } from "./games/ultimatettt.js";
@@ -348,6 +349,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "mines") initMines();
   if (game === "fnaf") window.initFnaf();
   if (game === "fps") initFps();
+  if (game === "hexfall") initHexfall();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
 
   if (game === "fnaf" && typeof window.registerGameStop === "function") {
@@ -1382,6 +1384,7 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "smasharena") initSmashArena();
   if (state.currentGame === "builder") initBuilder();
   if (state.currentGame === "agar") initAgar();
+  if (state.currentGame === "hexfall") initHexfall();
   if (state.currentGame === "mines") {
     initMines();
     document.getElementById("overlayMines").classList.add("active");
