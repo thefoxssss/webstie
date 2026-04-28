@@ -884,75 +884,196 @@ function loadMap(mapId) {
     addBox(2, 8, 100, -30, 4, 0, wallMat);
     addBox(2, 8, 100, 30, 4, 0, wallMat);
   } else if (mapId === 5) { // CTF Two Forts Strategic Map
-    const redBaseMat = new THREE.MeshPhongMaterial({ color: 0xcc3333 });
-    const blueBaseMat = new THREE.MeshPhongMaterial({ color: 0x3333cc });
-    const wallMat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0x888888 });
-    const bridgeMat = new THREE.MeshPhongMaterial({ map: getTexture("metal"), color: 0x555555 });
-    const coverMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x666666 });
+    const redBaseMat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0xff6666 });
+    const blueBaseMat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0x6666ff });
+    const wallMat = new THREE.MeshPhongMaterial({ map: getTexture("brick"), color: 0x666666 });
+    const floorMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x555555 });
+    const woodMat = new THREE.MeshPhongMaterial({ map: getTexture("wood"), color: 0x8b5a2b });
 
-    // Larger arena bounds
-    addBox(2, 12, 220, -110, 6, 0, wallMat);
-    addBox(2, 12, 220, 110, 6, 0, wallMat);
-    addBox(220, 12, 2, 0, 6, -110, wallMat);
-    addBox(220, 12, 2, 0, 6, 110, wallMat);
+    // Larger arena bounds (much longer)
+    // Z is the long axis between bases. From Z=-180 to Z=180
+    addBox(2, 24, 360, -80, 12, 0, wallMat); // Left wall
+    addBox(2, 24, 360, 80, 12, 0, wallMat); // Right wall
+    addBox(160, 24, 2, 0, 12, -180, wallMat); // Red back wall
+    addBox(160, 24, 2, 0, 12, 180, wallMat); // Blue back wall
 
-    // Red fort
-    addBox(22, 8, 2, -38, 4, 18, redBaseMat);
-    addBox(22, 8, 2, -38, 4, -18, redBaseMat);
-    addBox(2, 8, 38, -49, 4, 0, redBaseMat);
-    // Inner wall split with doorway so enemies can breach and steal flag
-    addBox(2, 8, 14, -27, 4, 12, redBaseMat);
-    addBox(2, 8, 14, -27, 4, -12, redBaseMat);
-    addBox(22, 1, 12, -38, 8.5, 0, redBaseMat);
-    addBox(6, 2, 8, -33, 2, 0, coverMat);
-    addBox(6, 2, 8, -43, 2, 0, coverMat);
+    // The floor spans across the whole map, but there's a central gap for the "sewer/trench"
+    // Ground level: y=0, thickness=2, so top is y=1.
+    // Red side ground
+    addBox(160, 2, 160, 0, 0, -100, floorMat);
+    // Blue side ground
+    addBox(160, 2, 160, 0, 0, 100, floorMat);
 
-    // Blue fort
-    addBox(22, 8, 2, 38, 4, 18, blueBaseMat);
-    addBox(22, 8, 2, 38, 4, -18, blueBaseMat);
-    addBox(2, 8, 38, 49, 4, 0, blueBaseMat);
-    // Inner wall split with doorway so enemies can breach and steal flag
-    addBox(2, 8, 14, 27, 4, 12, blueBaseMat);
-    addBox(2, 8, 14, 27, 4, -12, blueBaseMat);
-    addBox(22, 1, 12, 38, 8.5, 0, blueBaseMat);
-    addBox(6, 2, 8, 33, 2, 0, coverMat);
-    addBox(6, 2, 8, 43, 2, 0, coverMat);
+    // Trench bottom (sewers), spans the middle 40 units (from Z=-20 to Z=20)
+    addBox(160, 2, 40, 0, -6, 0, floorMat);
 
-    // Mid bridge and lower lane
-    addBox(74, 1, 12, 0, 8.5, 0, bridgeMat);
-    addBox(12, 3, 4, -14, 2, 0, wallMat);
-    addBox(12, 3, 4, 14, 2, 0, wallMat);
-    addBox(12, 3, 4, 0, 2, 18, wallMat);
-    addBox(12, 3, 4, 0, 2, -18, wallMat);
+    // Water in trench (decorative, non-solid block)
+    const waterMat = new THREE.MeshPhongMaterial({ color: 0x3366cc, transparent: true, opacity: 0.6 });
+    const waterGeo = new THREE.BoxGeometry(160, 2, 40);
+    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterMesh.position.set(0, -4, 0);
+    scene.add(waterMesh);
 
-    // Side flank routes and jump pads (extended for larger map)
-    addBox(2, 3, 60, -14, 1.5, 54, coverMat);
-    addBox(2, 3, 60, 14, 1.5, -54, coverMat);
+    // Slopes / Stairs leading out of trench
+    const stairMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x444444 });
+    addBox(40, 1, 6, 0, -5.5, -17, stairMat);
+    addBox(40, 1, 6, 0, -4.5, -18, stairMat);
+    addBox(40, 1, 6, 0, -3.5, -19, stairMat);
+    addBox(40, 1, 6, 0, -2.5, -20, stairMat);
+    addBox(40, 1, 6, 0, -1.5, -21, stairMat);
+    addBox(40, 1, 6, 0, -0.5, -22, stairMat);
+
+    addBox(40, 1, 6, 0, -5.5, 17, stairMat);
+    addBox(40, 1, 6, 0, -4.5, 18, stairMat);
+    addBox(40, 1, 6, 0, -3.5, 19, stairMat);
+    addBox(40, 1, 6, 0, -2.5, 20, stairMat);
+    addBox(40, 1, 6, 0, -1.5, 21, stairMat);
+    addBox(40, 1, 6, 0, -0.5, 22, stairMat);
+
+
+    // Central Bridge over the trench
+    addBox(40, 1, 40, 0, 1.5, 0, woodMat);
+    addBox(2, 3, 40, -19, 3, 0, woodMat); // Bridge railing
+    addBox(2, 3, 40, 19, 3, 0, woodMat);  // Bridge railing
+
+    // Central bridge roof/cover
+    addBox(44, 1, 20, 0, 10, 0, woodMat);
+    addBox(2, 8, 2, -21, 5.5, 9, woodMat);
+    addBox(2, 8, 2, 21, 5.5, 9, woodMat);
+    addBox(2, 8, 2, -21, 5.5, -9, woodMat);
+    addBox(2, 8, 2, 21, 5.5, -9, woodMat);
+
+
+    // --- RED CASTLE ---
+    // Ground floor castle walls
+    addBox(4, 10, 40, -28, 6, -160, redBaseMat); // Left wall
+    addBox(4, 10, 40, 28, 6, -160, redBaseMat); // Right wall
+
+    // Main entrance gate (hole in front wall) - we simulate this by making the front wall in pieces
+    addBox(20, 10, 4, -40, 6, -140, redBaseMat);
+    addBox(20, 10, 4, 40, 6, -140, redBaseMat);
+    addBox(20, 4, 4, 0, 9, -140, redBaseMat); // Above gate
+
+    // Castle floor
+    addBox(60, 1, 40, 0, 1.5, -160, floorMat);
+
+    // Ramp to 2nd floor battlements
+    addBox(10, 1, 10, 0, 2, -150, woodMat);
+    addBox(10, 1, 10, 0, 4, -155, woodMat);
+    addBox(10, 1, 10, 0, 6, -160, woodMat);
+    addBox(10, 1, 10, 0, 8, -165, woodMat);
+
+    // 2nd floor battlements (front wall)
+    addBox(100, 1, 10, 0, 10.5, -140, redBaseMat);
+    // Crenellations (teeth on top of wall)
+    for(let x=-45; x<=45; x+=10) {
+       addBox(4, 3, 2, x, 12, -137, redBaseMat);
+    }
+
+    // Towers
+    addBox(12, 16, 12, -45, 9, -140, redBaseMat); // Front Left Tower
+    addBox(12, 16, 12, 45, 9, -140, redBaseMat);  // Front Right Tower
+    addBox(12, 16, 12, -28, 9, -174, redBaseMat); // Back Left Tower
+    addBox(12, 16, 12, 28, 9, -174, redBaseMat);  // Back Right Tower
+
+    // Tower sniper nests (hollow out top by using smaller walls)
+    const addTowerTop = (cx, cz, mat) => {
+       addBox(12, 1, 12, cx, 17.5, cz, floorMat); // Nest floor
+       addBox(12, 3, 2, cx, 19, cz+5, mat); // Wall
+       addBox(12, 3, 2, cx, 19, cz-5, mat);
+       addBox(2, 3, 8, cx+5, 19, cz, mat);
+       addBox(2, 3, 8, cx-5, 19, cz, mat);
+    };
+    addTowerTop(-45, -140, redBaseMat);
+    addTowerTop(45, -140, redBaseMat);
+    addTowerTop(-28, -174, redBaseMat);
+    addTowerTop(28, -174, redBaseMat);
+
+
+    // --- BLUE CASTLE ---
+    // Ground floor castle walls
+    addBox(4, 10, 40, -28, 6, 160, blueBaseMat); // Left wall
+    addBox(4, 10, 40, 28, 6, 160, blueBaseMat); // Right wall
+
+    // Main entrance gate (hole in front wall)
+    addBox(20, 10, 4, -40, 6, 140, blueBaseMat);
+    addBox(20, 10, 4, 40, 6, 140, blueBaseMat);
+    addBox(20, 4, 4, 0, 9, 140, blueBaseMat); // Above gate
+
+    // Castle floor
+    addBox(60, 1, 40, 0, 1.5, 160, floorMat);
+
+    // Ramp to 2nd floor battlements
+    addBox(10, 1, 10, 0, 2, 150, woodMat);
+    addBox(10, 1, 10, 0, 4, 155, woodMat);
+    addBox(10, 1, 10, 0, 6, 160, woodMat);
+    addBox(10, 1, 10, 0, 8, 165, woodMat);
+
+    // 2nd floor battlements (front wall)
+    addBox(100, 1, 10, 0, 10.5, 140, blueBaseMat);
+    // Crenellations (teeth on top of wall)
+    for(let x=-45; x<=45; x+=10) {
+       addBox(4, 3, 2, x, 12, 137, blueBaseMat);
+    }
+
+    // Towers
+    addBox(12, 16, 12, -45, 9, 140, blueBaseMat); // Front Left Tower
+    addBox(12, 16, 12, 45, 9, 140, blueBaseMat);  // Front Right Tower
+    addBox(12, 16, 12, -28, 9, 174, blueBaseMat); // Back Left Tower
+    addBox(12, 16, 12, 28, 9, 174, blueBaseMat);  // Back Right Tower
+
+    addTowerTop(-45, 140, blueBaseMat);
+    addTowerTop(45, 140, blueBaseMat);
+    addTowerTop(-28, 174, blueBaseMat);
+    addTowerTop(28, 174, blueBaseMat);
+
+
+    // Tunnels (Sewers)
+    // Connecting the trench to the base of the castles
+    const sewerMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x333333 });
+    // Trench to Red Base tunnel
+    addBox(12, 6, 120, -60, -2, -80, sewerMat); // Left sewer Red
+    addBox(12, 6, 120, 60, -2, -80, sewerMat);  // Right sewer Red
+
+    // Trench to Blue Base tunnel
+    addBox(12, 6, 120, -60, -2, 80, sewerMat); // Left sewer Blue
+    addBox(12, 6, 120, 60, -2, 80, sewerMat);  // Right sewer Blue
+
+    // Entrances from sewer to surface
+    const sewerHoleMat = new THREE.MeshPhongMaterial({ color: 0x000000 }); // Black hole illusion
+    addBox(10, 1, 10, -60, 1, -140, sewerHoleMat);
+    addBox(10, 1, 10, 60, 1, -140, sewerHoleMat);
+    addBox(10, 1, 10, -60, 1, 140, sewerHoleMat);
+    addBox(10, 1, 10, 60, 1, 140, sewerHoleMat);
+
+    // Jump pads in sewers to get up to surface
     const jumpPadMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.4 });
-    addBox(4, 0.5, 4, -14, 0.25, 54, jumpPadMat, { isJumpPad: true, boostX: 220, boostZ: -260 });
-    addBox(4, 0.5, 4, 14, 0.25, -54, jumpPadMat, { isJumpPad: true, boostX: -220, boostZ: 260 });
+    addBox(8, 0.5, 8, -60, 1.25, -140, jumpPadMat, { isJumpPad: true, boostY: 20 });
+    addBox(8, 0.5, 8, 60, 1.25, -140, jumpPadMat, { isJumpPad: true, boostY: 20 });
+    addBox(8, 0.5, 8, -60, 1.25, 140, jumpPadMat, { isJumpPad: true, boostY: 20 });
+    addBox(8, 0.5, 8, 60, 1.25, 140, jumpPadMat, { isJumpPad: true, boostY: 20 });
 
-    // Symmetric cover fields
+    // Additional Cover around the map
+    const crateMat = new THREE.MeshPhongMaterial({ map: getTexture("wood"), color: 0xa87e5b });
     const coverSpots = [
-      [-22, 18], [-22, -18], [22, 18], [22, -18],
-      [-8, 28], [-8, -28], [8, 28], [8, -28],
-      [-30, 34], [-30, -34], [30, 34], [30, -34],
-      [-52, 60], [-52, -60], [52, 60], [52, -60],
-      [-70, 44], [-70, -44], [70, 44], [70, -44]
+      // Red side
+      [-20, -40], [20, -40], [-40, -60], [40, -60], [0, -80], [-20, -100], [20, -100],
+      // Blue side
+      [-20, 40], [20, 40], [-40, 60], [40, 60], [0, 80], [-20, 100], [20, 100],
     ];
-    coverSpots.forEach(([x, z]) => addBox(6, 3, 3, x, 1.5, z, coverMat));
+    coverSpots.forEach(([x, z]) => addBox(8, 6, 8, x, 4, z, crateMat));
 
-    // Create physical flag models so they can be seen holding or dropped
-    const flagGeo = new THREE.CylinderGeometry(0.1, 0.1, 3);
+    // Flags
+    const flagGeo = new THREE.CylinderGeometry(0.5, 0.5, 6);
     const flagMatRed = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const flagMatBlue = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 
     redFlagMesh = new THREE.Mesh(flagGeo, flagMatRed);
-    redFlagMesh.position.set(-40, 1.5, 0); // Inner Red Base
+    redFlagMesh.position.set(0, 5, -165); // Deep inside Red Base
     scene.add(redFlagMesh);
 
     blueFlagMesh = new THREE.Mesh(flagGeo, flagMatBlue);
-    blueFlagMesh.position.set(40, 1.5, 0); // Inner Blue Base
+    blueFlagMesh.position.set(0, 5, 165); // Deep inside Blue Base
     scene.add(blueFlagMesh);
   }
 }

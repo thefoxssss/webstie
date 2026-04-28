@@ -2448,12 +2448,14 @@ class FPSRoom extends colyseus.Room {
     let y = 1.5;
 
     if (mapId === 5) { // CTF Map
-      if (team === 1) {
-        x = (Math.random() * 20 - 10) - 40;
-        z = (Math.random() * 20 - 10);
-      } else if (team === 2) {
-        x = (Math.random() * 20 - 10) + 40;
-        z = (Math.random() * 20 - 10);
+      if (team === 1) { // Red Team
+        x = (Math.random() * 40 - 20); // x between -20 and 20
+        z = -165 + (Math.random() * 10 - 5); // z inside the castle
+        y = 2.5; // Above the base floor (y=1.5)
+      } else if (team === 2) { // Blue Team
+        x = (Math.random() * 40 - 20); // x between -20 and 20
+        z = 165 + (Math.random() * 10 - 5); // z inside the castle
+        y = 2.5;
       }
     } else if (mapId === 1) { // City Streets
       // Avoid spawning inside buildings. Buildings are roughly at:
@@ -2598,8 +2600,8 @@ class FPSRoom extends colyseus.Room {
 
     // Process CTF Logic
     if (this.state.mapId === 5) {
-      const RED_FLAG_BASE = { x: -40, y: 1.5, z: 0 };
-      const BLUE_FLAG_BASE = { x: 40, y: 1.5, z: 0 };
+      const RED_FLAG_BASE = { x: 0, y: 5, z: -165 };
+      const BLUE_FLAG_BASE = { x: 0, y: 5, z: 165 };
 
       // Red flag logic
       if (this.state.redFlagStatus === 0) {
