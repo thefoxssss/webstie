@@ -204,6 +204,9 @@ const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
 const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
 const STOCK_TICK_MS = 2000;
+const OIL_SYMBOL = "OIL";
+const OIL_QUOTE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d";
+const OIL_QUOTE_REFRESH_MS = 10_000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
 const LOCAL_USER_STORAGE_KEY = "goonerLocalUsers";
@@ -1147,6 +1150,7 @@ const STOCK_SYMBOLS = [
   { symbol: "BYTE", name: "BYTE INDUSTRIES" },
   { symbol: "NOVA", name: "NOVA ENERGY" },
   { symbol: "PUMP", name: "PUMP CAPITAL" },
+  { symbol: OIL_SYMBOL, name: "CRUDE OIL FUTURES" },
 ];
 
 const STOCK_BASE_PRICES = {
@@ -1155,9 +1159,15 @@ const STOCK_BASE_PRICES = {
   BYTE: 118,
   NOVA: 76,
   PUMP: 64,
+  OIL: 80,
 };
 
 let stopMarketSync = null;
+let oilQuoteState = {
+  price: null,
+  fetchedAt: 0,
+  isFetching: false,
+};
 
 function buildInitialStockState() {
   return STOCK_SYMBOLS.map((entry) => {
@@ -1224,13 +1234,60 @@ function getInitialMarketPayload() {
 function applyMarketPayload(payload) {
   const stocks = normalizeMarketStocks(payload?.stocks);
   marketState.stocks = stocks;
+  applyLiveOilPriceToMarket();
   if (document.getElementById("overlayBank")?.classList.contains("active")) {
     renderStockMarket();
   }
 }
 
+function applyLiveOilPriceToMarket() {
+  const livePrice = Number(oilQuoteState.price);
+  if (!Number.isFinite(livePrice) || livePrice <= 0) return false;
+  const oilStock = marketState.stocks.find((stock) => stock.symbol === OIL_SYMBOL);
+  if (!oilStock) return false;
+  const current = Math.max(3, Number(oilStock.price) || 3);
+  const next = Number(livePrice.toFixed(2));
+  oilStock.price = next;
+  oilStock.lastMove = (next - current) / current;
+  oilStock.history = [...(Array.isArray(oilStock.history) ? oilStock.history : []), next].slice(-80);
+  return true;
+}
+
+async function refreshLiveOilPrice(force = false) {
+  if (oilQuoteState.isFetching) return;
+  const now = Date.now();
+  if (!force && now - oilQuoteState.fetchedAt < OIL_QUOTE_REFRESH_MS) return;
+  oilQuoteState.isFetching = true;
+  try {
+    const res = await fetch(`${OIL_QUOTE_URL}&_=${now}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const payload = await res.json();
+    const quote = payload?.chart?.result?.[0]?.meta;
+    const rawPrice = Number(quote?.regularMarketPrice ?? quote?.previousClose);
+    if (!Number.isFinite(rawPrice) || rawPrice <= 0) return;
+    oilQuoteState.price = rawPrice;
+    oilQuoteState.fetchedAt = now;
+    const changed = applyLiveOilPriceToMarket();
+    if (changed && document.getElementById("overlayBank")?.classList.contains("active")) {
+      renderStockMarket();
+    }
+  } catch {
+    // Best-effort remote quote fetch; keep gameplay running when quote API is unavailable.
+  } finally {
+    oilQuoteState.isFetching = false;
+  }
+}
+
 function evolveMarketStocks(stocks) {
   return stocks.map((stock) => {
+    if (stock.symbol === OIL_SYMBOL) {
+      return {
+        ...stock,
+        price: Number(Math.max(3, Number(stock.price) || 3).toFixed(2)),
+        history: (Array.isArray(stock.history) && stock.history.length ? stock.history : [Number(stock.price) || 3]).slice(-80),
+        lastMove: Number(stock.lastMove) || 0,
+      };
+    }
     const drift = (Math.random() - 0.49) * 0.09;
     const momentum = (Number(stock.lastMove) || 0) * 0.35;
     const swing = (Math.random() - 0.5) * 0.04;
@@ -1248,6 +1305,7 @@ function evolveMarketStocks(stocks) {
 }
 
 async function ensureGlobalMarket() {
+  await refreshLiveOilPrice(true);
   const ref = marketDocRef();
   const snap = await getDoc(ref);
   if (snap.exists()) {
@@ -1289,6 +1347,7 @@ function subscribeToMaintenanceMode() {
 }
 
 async function tickStockMarket() {
+  refreshLiveOilPrice();
   const ref = marketDocRef();
   try {
     await runTransaction(db, async (t) => {
@@ -1464,9 +1523,12 @@ function renderStockMarket() {
   const tradeLabel = buyMultiplier === "MAX" ? "MAX" : buyMultiplier;
   setText("stockDetailName", `${selected.name} (${selected.symbol})`);
   setText("stockDetailPrice", formatStockMoney(selected.price));
+  const oilLiveLabel = selected.symbol === OIL_SYMBOL && oilQuoteState.fetchedAt
+    ? ` | LIVE: ${new Date(oilQuoteState.fetchedAt).toLocaleTimeString("en-US", { hour12: false, timeZone: "UTC" })} UTC`
+    : "";
   setText(
     "stockDetailMeta",
-    `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))}`
+    `OWNED: ${holdings} SHARES | RANGE: ${formatStockMoney(Math.min(...selected.history))} - ${formatStockMoney(Math.max(...selected.history))}${oilLiveLabel}`
   );
   const buyBtn = document.getElementById("stockBuyBtn");
   const sellBtn = document.getElementById("stockSellBtn");
@@ -3302,6 +3364,7 @@ function runOverlayOpenHooks(id) {
   }
   if (["overlayJobs", "overlayJobCashier", "overlayJobFrontdesk", "overlayJobDelivery", "overlayJobStocker", "overlayJobJanitor", "overlayJobBarista"].includes(id)) renderJobs();
   if (id === "overlayBank") {
+    refreshLiveOilPrice(true);
     updateBankLog();
     renderStockMarket();
     setText("bankTransferMsg", "");
