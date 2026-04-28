@@ -272,7 +272,7 @@ function animate() {
     // Custom raycast down for floor
     raycaster.set(pos, new THREE.Vector3(0, -1, 0));
     const floorMeshes = Object.values(hexMeshes).map(h => h.mesh);
-    const intersects = raycaster.intersectObjects(floorMeshes);
+    const intersects = raycaster.intersectObjects(floorMeshes, false);
 
     let onFloor = false;
     if (intersects.length > 0 && intersects[0].distance < 2.0) {
