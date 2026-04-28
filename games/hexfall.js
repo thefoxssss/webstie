@@ -272,23 +272,31 @@ function animate() {
 
     const pos = controls.getObject().position;
 
-    // Custom raycast down for floor
-    raycaster.set(pos, new THREE.Vector3(0, -1, 0));
+    // Cast from above the camera position so we can still detect floors
+    // even if a low frame rate lets us dip slightly into a platform.
+    const rayOrigin = new THREE.Vector3(pos.x, pos.y + 3, pos.z);
+    raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
     const floorMeshes = Object.values(hexMeshes).map(h => h.mesh);
     const intersects = raycaster.intersectObjects(floorMeshes, false);
 
     let onFloor = false;
-    if (intersects.length > 0 && intersects[0].distance < 2.0) {
-      velocity.y = Math.max(0, velocity.y);
-      pos.y = intersects[0].point.y + 1.5; // snap to floor + eye height
-      onFloor = true;
+    if (intersects.length > 0) {
+      const floorY = intersects[0].point.y + 1.5; // floor + eye height
+      const grounded = velocity.y <= 0 && pos.y <= floorY + 1.2;
+      if (grounded) {
+        velocity.y = Math.max(0, velocity.y);
+        pos.y = floorY;
+        onFloor = true;
+      }
 
       // We are standing on this hex. Find its ID and tell server.
-      const hitMesh = intersects[0].object;
-      for (const [key, data] of Object.entries(hexMeshes)) {
-        if (data.mesh === hitMesh && !data.hexObj.stepped) {
-           room.send("stepHex", { id: key });
-           break;
+      if (onFloor) {
+        const hitMesh = intersects[0].object;
+        for (const [key, data] of Object.entries(hexMeshes)) {
+          if (data.mesh === hitMesh && !data.hexObj.stepped) {
+             room.send("stepHex", { id: key });
+             break;
+          }
         }
       }
     }
