@@ -207,7 +207,6 @@ const STOCK_TICK_MS = 2000;
 const OIL_SYMBOL = "OIL";
 const OIL_QUOTE_URLS = [
   "/api/oil-quote",
-  "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d",
 ];
 const OIL_QUOTE_REFRESH_MS = 10_000;
 
