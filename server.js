@@ -8,6 +8,9 @@ const cors = require("cors");
 const admin = require("firebase-admin"); // <-- Firebase is here!
 const fs = require("fs");
 const path = require("path");
+const { execFile } = require("child_process");
+const { promisify } = require("util");
+const execFileAsync = promisify(execFile);
 
 // Simple Perlin-like noise
 const permutation = new Uint8Array(512);
@@ -77,7 +80,74 @@ function layeredNoise(x, y, octaves, persistence, scale) {
 const app = express();
 app.use(cors());
 const port = process.env.PORT || 2567;
-const OIL_QUOTE_UPSTREAM_URL = "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d";
+const OIL_QUOTE_SOURCES = [
+  {
+    name: "yahoo-finance",
+    url: "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d",
+    parser: async (bodyText) => {
+      const payload = JSON.parse(bodyText);
+      const quote = payload?.chart?.result?.[0]?.meta || {};
+      const price = Number(quote.regularMarketPrice ?? quote.previousClose);
+      if (!Number.isFinite(price) || price <= 0) return null;
+      return {
+        symbol: "CL=F",
+        price,
+        regularMarketPrice: price,
+        previousClose: Number(quote.previousClose) || price,
+      };
+    },
+  },
+  {
+    name: "stooq",
+    url: "https://stooq.com/q/l/?s=cl.f&i=d",
+    parser: async (bodyText) => {
+      const line = String(bodyText || "").trim().split(/\r?\n/).find(Boolean);
+      if (!line) return null;
+      const parts = line.split(",");
+      if (parts.length < 7) return null;
+      const close = Number(parts[6]);
+      const previousClose = Number(parts[3]);
+      if (!Number.isFinite(close) || close <= 0) return null;
+      return {
+        symbol: "CL=F",
+        price: close,
+        regularMarketPrice: close,
+        previousClose: Number.isFinite(previousClose) && previousClose > 0 ? previousClose : close,
+      };
+    },
+  },
+];
+
+async function requestOilQuoteBody(url) {
+  const fullUrl = `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}`;
+  try {
+    const response = await fetch(fullUrl, {
+      headers: {
+        "accept": "application/json,text/plain,*/*",
+        "user-agent": "Mozilla/5.0 (compatible; FoxsssMarketBot/1.0)",
+      },
+    });
+    if (!response.ok) return null;
+    return await response.text();
+  } catch {
+    try {
+      const { stdout } = await execFileAsync("curl", [
+        "-L",
+        "--max-time",
+        "12",
+        "-A",
+        "Mozilla/5.0 (compatible; FoxsssMarketBot/1.0)",
+        "-H",
+        "accept: application/json,text/plain,*/*",
+        "-sS",
+        fullUrl,
+      ], { maxBuffer: 512 * 1024 });
+      return stdout;
+    } catch {
+      return null;
+    }
+  }
+}
 const builderServerDirectory = new Map();
 const fpsServerDirectory = new Map();
 
@@ -568,34 +638,20 @@ app.get("/fnaf_servers", (req, res) => {
 
 app.get("/api/oil-quote", async (req, res) => {
   try {
-    const upstream = await fetch(`${OIL_QUOTE_UPSTREAM_URL}&_=${Date.now()}`, {
-      headers: {
-        "accept": "application/json",
-        "user-agent": "Mozilla/5.0 (compatible; FoxsssMarketBot/1.0)",
-      },
-    });
-    if (!upstream.ok) {
-      res.status(upstream.status).json({ error: "upstream quote unavailable" });
+    for (const source of OIL_QUOTE_SOURCES) {
+      const body = await requestOilQuoteBody(source.url);
+      if (!body) continue;
+      const quote = await source.parser(body);
+      if (!quote) continue;
+      res.set("cache-control", "no-store");
+      res.json({
+        quote,
+        source: source.name,
+        fetchedAt: Date.now(),
+      });
       return;
     }
-    const payload = await upstream.json();
-    const quote = payload?.chart?.result?.[0]?.meta || {};
-    const price = Number(quote.regularMarketPrice ?? quote.previousClose);
-    if (!Number.isFinite(price) || price <= 0) {
-      res.status(502).json({ error: "invalid quote payload" });
-      return;
-    }
-    res.set("cache-control", "no-store");
-    res.json({
-      quote: {
-        symbol: "CL=F",
-        price,
-        regularMarketPrice: price,
-        previousClose: Number(quote.previousClose) || price,
-      },
-      source: "yahoo-finance",
-      fetchedAt: Date.now(),
-    });
+    res.status(502).json({ error: "all quote sources unavailable" });
   } catch {
     res.status(502).json({ error: "quote fetch failed" });
   }
