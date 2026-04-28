@@ -18,6 +18,15 @@ let raycaster = new THREE.Raycaster();
 let animationId;
 let prevTime = performance.now();
 let lastSyncTime = 0;
+const moveState = {
+  forward: false,
+  backward: false,
+  left: false,
+  right: false,
+  jump: false
+};
+let hexfallKeyDownHandler = null;
+let hexfallKeyUpHandler = null;
 
 const HEX_RADIUS = 2.5;
 
@@ -236,12 +245,76 @@ function initThreeJS() {
   canvas.addEventListener("click", () => {
     if (!isDead) controls.lock();
   });
+  bindMovementKeys();
 
   controls.getObject().position.set(0, 35, 0);
   scene.add(controls.getObject());
 
   prevTime = performance.now();
   animate();
+}
+
+function bindMovementKeys() {
+  if (hexfallKeyDownHandler || hexfallKeyUpHandler) return;
+
+  hexfallKeyDownHandler = (e) => {
+    const tag = e.target && e.target.tagName ? String(e.target.tagName).toLowerCase() : "";
+    const isTextInput = tag === "input" || tag === "textarea" || e.target?.isContentEditable;
+    if (isTextInput) return;
+
+    switch (e.code) {
+      case "KeyW":
+      case "ArrowUp":
+        moveState.forward = true;
+        break;
+      case "KeyS":
+      case "ArrowDown":
+        moveState.backward = true;
+        break;
+      case "KeyA":
+      case "ArrowLeft":
+        moveState.left = true;
+        break;
+      case "KeyD":
+      case "ArrowRight":
+        moveState.right = true;
+        break;
+      case "Space":
+        moveState.jump = true;
+        break;
+      default:
+        break;
+    }
+  };
+
+  hexfallKeyUpHandler = (e) => {
+    switch (e.code) {
+      case "KeyW":
+      case "ArrowUp":
+        moveState.forward = false;
+        break;
+      case "KeyS":
+      case "ArrowDown":
+        moveState.backward = false;
+        break;
+      case "KeyA":
+      case "ArrowLeft":
+        moveState.left = false;
+        break;
+      case "KeyD":
+      case "ArrowRight":
+        moveState.right = false;
+        break;
+      case "Space":
+        moveState.jump = false;
+        break;
+      default:
+        break;
+    }
+  };
+
+  document.addEventListener("keydown", hexfallKeyDownHandler);
+  document.addEventListener("keyup", hexfallKeyUpHandler);
 }
 
 function animate() {
@@ -262,13 +335,13 @@ function animate() {
     velocity.z -= velocity.z * 10.0 * delta;
     velocity.y -= 30.0 * delta; // Gravity
 
-    direction.z = Number(state.keysPressed.ArrowUp || state.keysPressed.w) - Number(state.keysPressed.ArrowDown || state.keysPressed.s);
-    direction.x = Number(state.keysPressed.ArrowRight || state.keysPressed.d) - Number(state.keysPressed.ArrowLeft || state.keysPressed.a);
+    direction.z = Number(moveState.forward) - Number(moveState.backward);
+    direction.x = Number(moveState.right) - Number(moveState.left);
     direction.normalize();
 
     const speed = 60.0;
-    if (state.keysPressed.ArrowUp || state.keysPressed.w || state.keysPressed.ArrowDown || state.keysPressed.s) velocity.z -= direction.z * speed * delta;
-    if (state.keysPressed.ArrowLeft || state.keysPressed.a || state.keysPressed.ArrowRight || state.keysPressed.d) velocity.x -= direction.x * speed * delta;
+    if (moveState.forward || moveState.backward) velocity.z -= direction.z * speed * delta;
+    if (moveState.left || moveState.right) velocity.x -= direction.x * speed * delta;
 
     const pos = controls.getObject().position;
 
@@ -301,9 +374,9 @@ function animate() {
       }
     }
 
-    if (onFloor && state.keysPressed[" "]) {
+    if (onFloor && moveState.jump) {
       velocity.y = 12; // Jump
-      state.keysPressed[" "] = false; // consume
+      moveState.jump = false; // consume
     }
 
     controls.moveRight(-velocity.x * delta);
@@ -336,4 +409,17 @@ registerGameStop(() => {
   if (moveInterval) clearInterval(moveInterval);
   if (animationId) cancelAnimationFrame(animationId);
   if (controls) controls.unlock();
+  if (hexfallKeyDownHandler) {
+    document.removeEventListener("keydown", hexfallKeyDownHandler);
+    hexfallKeyDownHandler = null;
+  }
+  if (hexfallKeyUpHandler) {
+    document.removeEventListener("keyup", hexfallKeyUpHandler);
+    hexfallKeyUpHandler = null;
+  }
+  moveState.forward = false;
+  moveState.backward = false;
+  moveState.left = false;
+  moveState.right = false;
+  moveState.jump = false;
 });
