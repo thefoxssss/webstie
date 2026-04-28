@@ -205,7 +205,10 @@ const GLOBAL_MARKET_COLLECTION = "gooner_meta";
 const GLOBAL_MARKET_DOC_ID = "stock_market";
 const STOCK_TICK_MS = 2000;
 const OIL_SYMBOL = "OIL";
-const OIL_QUOTE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d";
+const OIL_QUOTE_URLS = [
+  "/api/oil-quote",
+  "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d",
+];
 const OIL_QUOTE_REFRESH_MS = 10_000;
 
 const SHOP_TOGGLE_STORAGE_PREFIX = "goonerItemToggles:";
@@ -1259,11 +1262,19 @@ async function refreshLiveOilPrice(force = false) {
   if (!force && now - oilQuoteState.fetchedAt < OIL_QUOTE_REFRESH_MS) return;
   oilQuoteState.isFetching = true;
   try {
-    const res = await fetch(`${OIL_QUOTE_URL}&_=${now}`, { cache: "no-store" });
-    if (!res.ok) return;
-    const payload = await res.json();
-    const quote = payload?.chart?.result?.[0]?.meta;
-    const rawPrice = Number(quote?.regularMarketPrice ?? quote?.previousClose);
+    let rawPrice = null;
+    for (const baseUrl of OIL_QUOTE_URLS) {
+      const joiner = baseUrl.includes("?") ? "&" : "?";
+      const res = await fetch(`${baseUrl}${joiner}_=${now}`, { cache: "no-store" });
+      if (!res.ok) continue;
+      const payload = await res.json();
+      const quote = payload?.chart?.result?.[0]?.meta || payload?.quote || payload;
+      const candidate = Number(quote?.regularMarketPrice ?? quote?.price ?? quote?.previousClose);
+      if (Number.isFinite(candidate) && candidate > 0) {
+        rawPrice = candidate;
+        break;
+      }
+    }
     if (!Number.isFinite(rawPrice) || rawPrice <= 0) return;
     oilQuoteState.price = rawPrice;
     oilQuoteState.fetchedAt = now;

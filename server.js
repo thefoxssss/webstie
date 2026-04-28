@@ -77,6 +77,7 @@ function layeredNoise(x, y, octaves, persistence, scale) {
 const app = express();
 app.use(cors());
 const port = process.env.PORT || 2567;
+const OIL_QUOTE_UPSTREAM_URL = "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1m&range=1d";
 const builderServerDirectory = new Map();
 const fpsServerDirectory = new Map();
 
@@ -563,6 +564,41 @@ app.get("/fnaf_servers", (req, res) => {
     .sort((a, b) => b.clients - a.clients)
     .slice(0, 50);
   res.json(active);
+});
+
+app.get("/api/oil-quote", async (req, res) => {
+  try {
+    const upstream = await fetch(`${OIL_QUOTE_UPSTREAM_URL}&_=${Date.now()}`, {
+      headers: {
+        "accept": "application/json",
+        "user-agent": "Mozilla/5.0 (compatible; FoxsssMarketBot/1.0)",
+      },
+    });
+    if (!upstream.ok) {
+      res.status(upstream.status).json({ error: "upstream quote unavailable" });
+      return;
+    }
+    const payload = await upstream.json();
+    const quote = payload?.chart?.result?.[0]?.meta || {};
+    const price = Number(quote.regularMarketPrice ?? quote.previousClose);
+    if (!Number.isFinite(price) || price <= 0) {
+      res.status(502).json({ error: "invalid quote payload" });
+      return;
+    }
+    res.set("cache-control", "no-store");
+    res.json({
+      quote: {
+        symbol: "CL=F",
+        price,
+        regularMarketPrice: price,
+        previousClose: Number(quote.previousClose) || price,
+      },
+      source: "yahoo-finance",
+      fetchedAt: Date.now(),
+    });
+  } catch {
+    res.status(502).json({ error: "quote fetch failed" });
+  }
 });
 
 // --------------------------------------------------------
