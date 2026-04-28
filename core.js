@@ -206,7 +206,7 @@ const GLOBAL_MARKET_DOC_ID = "stock_market";
 const STOCK_TICK_MS = 2000;
 const OIL_SYMBOL = "OIL";
 const OIL_QUOTE_URLS = [
-  "/api/oil-quote",
+  "https://seahorse-app-mv4sg.ondigitalocean.app/api/oil-quote",
 ];
 const OIL_QUOTE_REFRESH_MS = 10_000;
 
