@@ -2448,12 +2448,14 @@ class FPSRoom extends colyseus.Room {
     let y = 1.5;
 
     if (mapId === 5) { // CTF Map
-      if (team === 1) {
-        x = (Math.random() * 20 - 10) - 40;
-        z = (Math.random() * 20 - 10);
-      } else if (team === 2) {
-        x = (Math.random() * 20 - 10) + 40;
-        z = (Math.random() * 20 - 10);
+      if (team === 1) { // Red Team
+        x = (Math.random() * 16 - 8); // Safe spawn width between the keep walls
+        z = -175 + (Math.random() * 15); // z inside the red castle
+        y = 2.5; // Above the base floor (y=1.5)
+      } else if (team === 2) { // Blue Team
+        x = (Math.random() * 16 - 8); // Safe spawn width between the keep walls
+        z = 160 + (Math.random() * 15); // z inside the blue castle
+        y = 2.5;
       }
     } else if (mapId === 1) { // City Streets
       // Avoid spawning inside buildings. Buildings are roughly at:
@@ -2598,10 +2600,25 @@ class FPSRoom extends colyseus.Room {
 
     // Process CTF Logic
     if (this.state.mapId === 5) {
-      const RED_FLAG_BASE = { x: -40, y: 1.5, z: 0 };
-      const BLUE_FLAG_BASE = { x: 40, y: 1.5, z: 0 };
+      const RED_FLAG_BASE = { x: 0, y: 5, z: -165 };
+      const BLUE_FLAG_BASE = { x: 0, y: 5, z: 165 };
+
+
+
+      // Check for lava deaths
+      this.state.players.forEach((player, playerId) => {
+        // Lava is at Z: -40 to 40, top surface is at Y = -15
+        if (player.health > 0 && player.y < -14.5 && player.z >= -40 && player.z <= 40) {
+           player.health = 0;
+           const victimClient = this.clients.find(c => c.sessionId === playerId);
+           if (victimClient) {
+             this.handleElimination(player, victimClient, player, victimClient);
+           }
+        }
+      });
 
       // Red flag logic
+
       if (this.state.redFlagStatus === 0) {
         this.state.players.forEach((player, playerId) => {
           if (player.health > 0 && player.team === 2) {
