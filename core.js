@@ -1250,8 +1250,12 @@ function applyLiveOilPriceToMarket() {
   const current = Math.max(3, Number(oilStock.price) || 3);
   const next = Number(livePrice.toFixed(2));
   oilStock.price = next;
-  oilStock.lastMove = (next - current) / current;
-  oilStock.history = [...(Array.isArray(oilStock.history) ? oilStock.history : []), next].slice(-80);
+  oilStock.lastMove = current > 0 ? (next - current) / current : 0;
+  if (Array.isArray(oilStock.history) && oilStock.history.length > 0) {
+    oilStock.history[oilStock.history.length - 1] = next;
+  } else {
+    oilStock.history = [next];
+  }
   return true;
 }
 
@@ -1291,11 +1295,16 @@ async function refreshLiveOilPrice(force = false) {
 function evolveMarketStocks(stocks) {
   return stocks.map((stock) => {
     if (stock.symbol === OIL_SYMBOL) {
+      const livePrice = Number(oilQuoteState.price);
+      const current = Math.max(3, Number(stock.price) || 3);
+      const next = (Number.isFinite(livePrice) && livePrice > 0) ? Number(livePrice.toFixed(2)) : current;
+      const history = [...(Array.isArray(stock.history) && stock.history.length ? stock.history : [current]), next].slice(-80);
+      const lastMove = current > 0 ? (next - current) / current : 0;
       return {
         ...stock,
-        price: Number(Math.max(3, Number(stock.price) || 3).toFixed(2)),
-        history: (Array.isArray(stock.history) && stock.history.length ? stock.history : [Number(stock.price) || 3]).slice(-80),
-        lastMove: Number(stock.lastMove) || 0,
+        price: next,
+        history,
+        lastMove,
       };
     }
     const drift = (Math.random() - 0.49) * 0.09;
