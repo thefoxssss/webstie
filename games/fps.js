@@ -1573,8 +1573,8 @@ function updateFlagPositions() {
   if (!room || room.state.mapId !== 5) return;
   if (!redFlagMesh || !blueFlagMesh) return;
 
-  const RED_FLAG_BASE = new THREE.Vector3(-40, 1.5, 0);
-  const BLUE_FLAG_BASE = new THREE.Vector3(40, 1.5, 0);
+  const RED_FLAG_BASE = new THREE.Vector3(0, 5, -165);
+  const BLUE_FLAG_BASE = new THREE.Vector3(0, 5, 165);
 
   if (room.state.redFlagStatus === 0 || room.state.redFlagStatus === 2) {
     redFlagMesh.position.copy(RED_FLAG_BASE);
