@@ -46,6 +46,8 @@ let prevTime = performance.now();
 
 // Bullet tracers
 let tracers = [];
+let projectileVisuals = {};
+let grenadeSpriteTexture = null;
 
 let obstaclesGroup;
 let obstacleBoxes = [];
@@ -369,6 +371,46 @@ function setupRoom() {
     updateLeaderboard();
   });
 
+  room.state.projectiles.onAdd((projectile, projectileId) => {
+    if (!projectile || projectile.type <= 0) return; // only render grenades
+
+    const spriteMaterial = new THREE.SpriteMaterial({
+      map: getGrenadeSpriteTexture(),
+      color: projectile.type === 1 ? 0xffffff : (projectile.type === 2 ? 0xaaaaaa : 0xffffaa),
+      transparent: true
+    });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(1.4, 1.4, 1.4);
+    sprite.position.set(projectile.x, projectile.y, projectile.z);
+    scene.add(sprite);
+
+    projectileVisuals[projectileId] = {
+      mesh: sprite,
+      targetPos: new THREE.Vector3(projectile.x, projectile.y, projectile.z)
+    };
+
+    projectile.listen("x", (val) => {
+      const v = projectileVisuals[projectileId];
+      if (v) v.targetPos.x = val;
+    });
+    projectile.listen("y", (val) => {
+      const v = projectileVisuals[projectileId];
+      if (v) v.targetPos.y = val;
+    });
+    projectile.listen("z", (val) => {
+      const v = projectileVisuals[projectileId];
+      if (v) v.targetPos.z = val;
+    });
+  });
+
+  room.state.projectiles.onRemove((projectile, projectileId) => {
+    const visual = projectileVisuals[projectileId];
+    if (!visual) return;
+    scene.remove(visual.mesh);
+    if (visual.mesh.material) visual.mesh.material.dispose();
+    delete projectileVisuals[projectileId];
+  });
+
   updateCtfHud();
   updateTeamSelectUI();
 }
@@ -446,6 +488,37 @@ function createNameSprite(name) {
   sprite.scale.set(2.5, 0.625, 1); // Maintain aspect ratio: 256/64 = 4. 2.5 / 4 = 0.625
   sprite.position.y = 1.6; // Above player head
   return sprite;
+}
+
+function getGrenadeSpriteTexture() {
+  if (grenadeSpriteTexture) return grenadeSpriteTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, 128, 128);
+  ctx.fillStyle = "#2e3439";
+  ctx.beginPath();
+  ctx.arc(64, 70, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#89939b";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(64, 18);
+  ctx.lineTo(64, 42);
+  ctx.stroke();
+
+  ctx.fillStyle = "#b8c3cc";
+  ctx.fillRect(50, 40, 28, 10);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  grenadeSpriteTexture = texture;
+  return grenadeSpriteTexture;
 }
 
 function createProceduralTexture(type) {
@@ -1713,6 +1786,14 @@ function updateGrenadeEffects(time) {
   }
 }
 
+function updateProjectileVisuals(delta) {
+  const follow = Math.min(1, delta * 20);
+  Object.values(projectileVisuals).forEach((entry) => {
+    if (!entry?.mesh || !entry.targetPos) return;
+    entry.mesh.position.lerp(entry.targetPos, follow);
+  });
+}
+
 function normalizeAngle(angle) {
   let a = angle;
   while (a > Math.PI) a -= Math.PI * 2;
@@ -1763,6 +1844,7 @@ function animate() {
   updateTracers(time);
   updateGrenadeEffects(time);
   updateRemotePlayers(delta);
+  updateProjectileVisuals(delta);
   updateFlagPositions();
   updateCtfHud();
   updateTeamSelectUI();
@@ -2032,6 +2114,17 @@ window.stopFps = () => {
     }
   }
   grenadeEffects = [];
+  Object.keys(projectileVisuals).forEach((id) => {
+    const visual = projectileVisuals[id];
+    if (!visual) return;
+    scene.remove(visual.mesh);
+    if (visual.mesh.material) visual.mesh.material.dispose();
+  });
+  projectileVisuals = {};
+  if (grenadeSpriteTexture) {
+    grenadeSpriteTexture.dispose();
+    grenadeSpriteTexture = null;
+  }
 
   fpsMenu.style.display = "block";
   fpsGame.style.display = "none";

@@ -2623,6 +2623,37 @@ class FPSRoom extends colyseus.Room {
     }
   }
 
+  getGrenadeBounds() {
+    if (this.state.mapId === 5) {
+      return { minX: -28, maxX: 28, minZ: -160, maxZ: 160 };
+    }
+    if (this.state.mapId === 4) {
+      return { minX: -45, maxX: 45, minZ: -55, maxZ: 55 };
+    }
+    return { minX: -95, maxX: 95, minZ: -95, maxZ: 95 };
+  }
+
+  bounceGrenadeOnWalls(proj) {
+    const bounds = this.getGrenadeBounds();
+    const damp = 0.65;
+
+    if (proj.x < bounds.minX) {
+      proj.x = bounds.minX;
+      proj.dx = Math.abs(proj.dx) * damp;
+    } else if (proj.x > bounds.maxX) {
+      proj.x = bounds.maxX;
+      proj.dx = -Math.abs(proj.dx) * damp;
+    }
+
+    if (proj.z < bounds.minZ) {
+      proj.z = bounds.minZ;
+      proj.dz = Math.abs(proj.dz) * damp;
+    } else if (proj.z > bounds.maxZ) {
+      proj.z = bounds.maxZ;
+      proj.dz = -Math.abs(proj.dz) * damp;
+    }
+  }
+
   simulateTick() {
     if (this.state.roundOver) return;
 
@@ -2665,6 +2696,8 @@ class FPSRoom extends colyseus.Room {
            if (Math.abs(proj.dy) > 0.2) proj.dy *= -0.5; // bounce
            else proj.dy = 0;
         }
+
+        this.bounceGrenadeOnWalls(proj);
 
         if (proj.life <= 0) {
            this.explodeGrenade(proj.x, proj.y, proj.z, proj.ownerId, proj.type);
