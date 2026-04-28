@@ -12,7 +12,7 @@ let muzzleFlashTime = 0;
 let nextFireTime = 0;
 let isReloading = false;
 let reloadEndTime = 0;
-let ammo = [12, 6, 2, 300]; // Current ammo for each weapon
+let ammo = [12, 6, 2, 250]; // Current ammo for each weapon
 let recoilTime = 0;
 let recoilIntensity = 0;
 let bobTime = 0;
@@ -1039,7 +1039,7 @@ const WEAPONS = [
   { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
   { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
   { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 2, reloadTime: 2500 },
-  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 300, reloadTime: 3000, immobilizesOnFire: true, unlockKills: 25 }
+  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3000, immobilizesOnFire: true }
 ];
 
 function resetGatlingRamp() {
@@ -1050,19 +1050,19 @@ function resetGatlingRamp() {
 function getGatlingCooldown(now) {
   const startCooldown = 180;
   const minCooldown = 30;
-  const rampRate = 2.2;
+  const rampRate = 1.1;
   if (!gatlingFireStartTime) return startCooldown;
   const heldSeconds = Math.max(0, (now - gatlingFireStartTime) / 1000);
   return minCooldown + (startCooldown - minCooldown) * Math.exp(-rampRate * heldSeconds);
 }
 
 function getGatlingSpread(now, baseSpread) {
-  const startSpread = Math.min(0.05, baseSpread * 1.5);
-  const minSpread = Math.max(0.01, baseSpread * 0.5);
-  const rampRate = 2.2;
+  const startSpread = Math.max(0.03, baseSpread);
+  const maxSpread = Math.max(0.08, baseSpread * 2.2);
+  const rampRate = 1.1;
   if (!gatlingFireStartTime) return startSpread;
   const heldSeconds = Math.max(0, (now - gatlingFireStartTime) / 1000);
-  return minSpread + (startSpread - minSpread) * Math.exp(-rampRate * heldSeconds);
+  return maxSpread - (maxSpread - startSpread) * Math.exp(-rampRate * heldSeconds);
 }
 
 function initThreeJs() {
