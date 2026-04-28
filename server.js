@@ -3485,6 +3485,10 @@ schema.defineTypes(HexfallState, {
 const hexfallServerDirectory = new Map();
 
 class HexfallRoom extends colyseus.Room {
+  getTopPlatformSpawn() {
+    return { x: 0, y: 31.5, z: 0 };
+  }
+
   onCreate(options) {
     this.maxClients = 20;
     this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
@@ -3564,12 +3568,13 @@ class HexfallRoom extends colyseus.Room {
     this.state.status = "playing";
     this.state.winnerName = "";
     this.generateMap();
+    const spawn = this.getTopPlatformSpawn();
 
     this.state.players.forEach((p) => {
       p.isAlive = true;
-      p.x = (Math.random() - 0.5) * 10;
-      p.y = 35;
-      p.z = (Math.random() - 0.5) * 10;
+      p.x = spawn.x;
+      p.y = spawn.y;
+      p.z = spawn.z;
     });
 
     this.broadcast("matchStart", {});
