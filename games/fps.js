@@ -1039,7 +1039,7 @@ const WEAPONS = [
   { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
   { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
   { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 2, reloadTime: 2500 },
-  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3000, immobilizesOnFire: true }
+  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3600, immobilizesOnFire: true }
 ];
 
 function resetGatlingRamp() {
