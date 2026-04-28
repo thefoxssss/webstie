@@ -12,7 +12,7 @@ let muzzleFlashTime = 0;
 let nextFireTime = 0;
 let isReloading = false;
 let reloadEndTime = 0;
-let ammo = [12, 6, 2, 120]; // Current ammo for each weapon
+let ammo = [12, 6, 2, 300]; // Current ammo for each weapon
 let recoilTime = 0;
 let recoilIntensity = 0;
 let bobTime = 0;
@@ -20,6 +20,8 @@ let grenades = 2;
 let nextGrenadeTime = 0;
 let grenadeEffects = [];
 let gatlingMovementLockUntil = 0;
+let gatlingFireStartTime = 0;
+let gatlingLastShotTime = 0;
 let isPrimaryFireHeld = false;
 let gameLoopId;
 let initialized = false;
@@ -1037,8 +1039,31 @@ const WEAPONS = [
   { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
   { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
   { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 2, reloadTime: 2500 },
-  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.06, magSize: 120, reloadTime: 3000, immobilizesOnFire: true, unlockKills: 25 }
+  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 300, reloadTime: 3000, immobilizesOnFire: true, unlockKills: 25 }
 ];
+
+function resetGatlingRamp() {
+  gatlingFireStartTime = 0;
+  gatlingLastShotTime = 0;
+}
+
+function getGatlingCooldown(now) {
+  const startCooldown = 180;
+  const minCooldown = 30;
+  const rampRate = 2.2;
+  if (!gatlingFireStartTime) return startCooldown;
+  const heldSeconds = Math.max(0, (now - gatlingFireStartTime) / 1000);
+  return minCooldown + (startCooldown - minCooldown) * Math.exp(-rampRate * heldSeconds);
+}
+
+function getGatlingSpread(now, baseSpread) {
+  const startSpread = Math.min(0.05, baseSpread * 1.5);
+  const minSpread = Math.max(0.01, baseSpread * 0.5);
+  const rampRate = 2.2;
+  if (!gatlingFireStartTime) return startSpread;
+  const heldSeconds = Math.max(0, (now - gatlingFireStartTime) / 1000);
+  return minSpread + (startSpread - minSpread) * Math.exp(-rampRate * heldSeconds);
+}
 
 function initThreeJs() {
   initialized = true;
@@ -1333,6 +1358,7 @@ function switchWeapon(id) {
   if (!isWeaponUnlocked(id)) return;
   unzoomSniper();
   isReloading = false;
+  resetGatlingRamp();
   if (gunMesh) {
     gunMesh.rotation.x = 0;
     gunMesh.rotation.y = 0;
@@ -1363,6 +1389,7 @@ function startReload() {
 
   const w = WEAPONS[localPlayer.weapon];
   isReloading = true;
+  resetGatlingRamp();
   reloadEndTime = performance.now() + w.reloadTime;
   updateAmmoUI();
   unzoomSniper();
@@ -1389,6 +1416,7 @@ function onKeyUp(event) {
 function onMouseUp(event) {
   if (event.button === 0) {
     isPrimaryFireHeld = false;
+    resetGatlingRamp();
   }
   if (event.button === 2) {
     if (WEAPONS[localPlayer.weapon].name === "SNIPER") {
@@ -1404,6 +1432,9 @@ function tryFireWeapon() {
 
   const weapon = WEAPONS[localPlayer.weapon];
   const now = performance.now();
+  if (localPlayer.weapon === 3 && gatlingLastShotTime > 0 && now - gatlingLastShotTime > 250) {
+    resetGatlingRamp();
+  }
   if (now < nextFireTime) return;
 
   // Check Ammo
@@ -1415,9 +1446,15 @@ function tryFireWeapon() {
   ammo[localPlayer.weapon]--;
   updateAmmoUI();
 
-  nextFireTime = now + weapon.cooldown;
+  let shotCooldown = weapon.cooldown;
+  if (localPlayer.weapon === 3) {
+    if (!gatlingFireStartTime) gatlingFireStartTime = now;
+    shotCooldown = getGatlingCooldown(now);
+    gatlingLastShotTime = now;
+  }
+  nextFireTime = now + shotCooldown;
   if (weapon.immobilizesOnFire) {
-    gatlingMovementLockUntil = now + weapon.cooldown;
+    gatlingMovementLockUntil = now + shotCooldown;
   }
 
   // Show Muzzle Flash
@@ -1443,7 +1480,10 @@ function tryFireWeapon() {
   const dir = raycaster.ray.direction.clone();
 
   const bullets = weapon.bullets || 1;
-  const spread = weapon.spread || 0;
+  let spread = weapon.spread || 0;
+  if (localPlayer.weapon === 3) {
+    spread = getGatlingSpread(now, spread);
+  }
 
   for (let i = 0; i < bullets; i++) {
     const bDir = dir.clone();
@@ -1938,6 +1978,7 @@ export function initFps() {
   grenades = 2;
   nextGrenadeTime = 0;
   gatlingMovementLockUntil = 0;
+  resetGatlingRamp();
   isPrimaryFireHeld = false;
   localPlayer.team = 0;
   updateGrenadeUI();
@@ -1980,6 +2021,7 @@ window.stopFps = () => {
     handleFpsResize = null;
   }
   isPrimaryFireHeld = false;
+  resetGatlingRamp();
 
   if (scene) {
      while(scene.children.length > 0){
