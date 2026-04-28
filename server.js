@@ -2450,11 +2450,11 @@ class FPSRoom extends colyseus.Room {
     if (mapId === 5) { // CTF Map
       if (team === 1) { // Red Team
         x = (Math.random() * 16 - 8); // Safe spawn width between the keep walls
-        z = -175 + (Math.random() * 15); // z inside the red castle
+        z = -150 + (Math.random() * 12); // z inside the red castle keep
         y = 2.5; // Above the base floor (y=1.5)
       } else if (team === 2) { // Blue Team
         x = (Math.random() * 16 - 8); // Safe spawn width between the keep walls
-        z = 160 + (Math.random() * 15); // z inside the blue castle
+        z = 138 + (Math.random() * 12); // z inside the blue castle keep
         y = 2.5;
       }
     } else if (mapId === 1) { // City Streets
@@ -2600,8 +2600,8 @@ class FPSRoom extends colyseus.Room {
 
     // Process CTF Logic
     if (this.state.mapId === 5) {
-      const RED_FLAG_BASE = { x: 0, y: 5, z: -165 };
-      const BLUE_FLAG_BASE = { x: 0, y: 5, z: 165 };
+      const RED_FLAG_BASE = { x: 0, y: 5, z: -142 };
+      const BLUE_FLAG_BASE = { x: 0, y: 5, z: 142 };
 
 
 
