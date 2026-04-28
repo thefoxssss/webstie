@@ -3404,8 +3404,234 @@ class AgarRoom extends colyseus.Room {
 
 gameServer.define("voice_room", VoiceRoom);
 
+// --------------------------------------------------------
+// HEXFALL ROOM DEFINITION
+// --------------------------------------------------------
+class HexfallPlayer extends schema.Schema {
+  constructor() {
+    super();
+    this.x = 0;
+    this.y = 10;
+    this.z = 0;
+    this.rotY = 0;
+    this.name = "Unknown";
+    this.isAlive = true;
+    this.color = "#ffffff";
+  }
+}
+schema.defineTypes(HexfallPlayer, {
+  x: "number",
+  y: "number",
+  z: "number",
+  rotY: "number",
+  name: "string",
+  isAlive: "boolean",
+  color: "string"
+});
+
+class HexTile extends schema.Schema {
+  constructor() {
+    super();
+    this.id = "";
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    this.floor = 0;
+    this.stepped = false;
+  }
+}
+schema.defineTypes(HexTile, {
+  id: "string",
+  x: "number",
+  y: "number",
+  z: "number",
+  floor: "number",
+  stepped: "boolean"
+});
+
+class HexfallState extends schema.Schema {
+  constructor() {
+    super();
+    this.players = new schema.MapSchema();
+    this.hexes = new schema.MapSchema();
+    this.status = "lobby"; // lobby, playing, finished
+    this.winnerName = "";
+  }
+}
+schema.defineTypes(HexfallState, {
+  players: { map: HexfallPlayer },
+  hexes: { map: HexTile },
+  status: "string",
+  winnerName: "string"
+});
+
+const hexfallServerDirectory = new Map();
+
+class HexfallRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 20;
+    this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
+      ? options.serverName.trim().slice(0, 24)
+      : "Public Hexfall Arena";
+    this.setMetadata({ serverName: this.serverName });
+
+    this.setState(new HexfallState());
+
+    this.onMessage("start", (client) => {
+      if (this.state.status !== "playing") {
+        this.startGame();
+      }
+    });
+
+    this.onMessage("move", (client, data) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p && p.isAlive) {
+        p.x = data.x;
+        p.y = data.y;
+        p.z = data.z;
+        p.rotY = data.rotY;
+      }
+    });
+
+    this.onMessage("stepHex", (client, data) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p && p.isAlive && this.state.status === "playing") {
+        const hex = this.state.hexes.get(data.id);
+        if (hex && !hex.stepped) {
+          hex.stepped = true;
+          this.clock.setTimeout(() => {
+             this.state.hexes.delete(data.id);
+          }, 800); // Tile falls after 800ms
+        }
+      }
+    });
+
+    this.onMessage("die", (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p && p.isAlive) {
+        p.isAlive = false;
+        this.checkWinCondition();
+      }
+    });
+
+    this.setSimulationInterval(() => this.simulateTick(), 1000 / 20);
+  }
+
+  generateMap() {
+    this.state.hexes.clear();
+    const floors = 3;
+    const floorHeight = 15;
+    const hexRadius = 2.5; // Apothem of hex
+    const hexSpacingX = hexRadius * 2;
+    const hexSpacingZ = hexRadius * Math.sqrt(3);
+
+    for (let f = 0; f < floors; f++) {
+      const y = 30 - f * floorHeight;
+      // create a hexagonal grid pattern
+      const rings = 6;
+      for (let q = -rings; q <= rings; q++) {
+        for (let r = Math.max(-rings, -q - rings); r <= Math.min(rings, -q + rings); r++) {
+          const hex = new HexTile();
+          hex.id = `f${f}_q${q}_r${r}`;
+          hex.x = hexRadius * 1.5 * q;
+          hex.z = hexRadius * Math.sqrt(3) * (r + q / 2);
+          hex.y = y;
+          hex.floor = f;
+          this.state.hexes.set(hex.id, hex);
+        }
+      }
+    }
+  }
+
+  startGame() {
+    this.state.status = "playing";
+    this.state.winnerName = "";
+    this.generateMap();
+
+    this.state.players.forEach((p) => {
+      p.isAlive = true;
+      p.x = (Math.random() - 0.5) * 10;
+      p.y = 35;
+      p.z = (Math.random() - 0.5) * 10;
+    });
+
+    this.broadcast("matchStart", {});
+  }
+
+  checkWinCondition() {
+    if (this.state.status !== "playing") return;
+
+    let aliveCount = 0;
+    let lastAlive = null;
+    this.state.players.forEach(p => {
+      if (p.isAlive) {
+        aliveCount++;
+        lastAlive = p;
+      }
+    });
+
+    if (aliveCount <= 1 && this.state.players.size > 1) {
+      this.state.status = "finished";
+      this.state.winnerName = lastAlive ? lastAlive.name : "NOBODY";
+      this.broadcast("matchOver", { winner: this.state.winnerName });
+      this.clock.setTimeout(() => this.startGame(), 5000);
+    } else if (aliveCount === 0) {
+      this.state.status = "finished";
+      this.state.winnerName = "NOBODY";
+      this.broadcast("matchOver", { winner: "NOBODY" });
+      this.clock.setTimeout(() => this.startGame(), 5000);
+    }
+  }
+
+  simulateTick() {
+    // any continuous server-side simulation if needed
+  }
+
+  onJoin(client, options) {
+    const p = new HexfallPlayer();
+    p.name = (options.playerName || "Unknown").slice(0, 16);
+    p.color = "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    if (this.state.status === "playing") {
+       p.isAlive = false; // Join as spectator
+       p.y = 50;
+    } else {
+       p.x = (Math.random() - 0.5) * 10;
+       p.z = (Math.random() - 0.5) * 10;
+       p.y = 35;
+    }
+    this.state.players.set(client.sessionId, p);
+    this.updateMetadata();
+  }
+
+  onLeave(client) {
+    this.state.players.delete(client.sessionId);
+    this.checkWinCondition();
+    this.updateMetadata();
+  }
+
+  updateMetadata() {
+    const d = hexfallServerDirectory.get(this.roomId) || { roomId: this.roomId, serverName: this.serverName, maxClients: this.maxClients };
+    d.clients = this.clients.length;
+    hexfallServerDirectory.set(this.roomId, d);
+  }
+
+  onDispose() {
+    hexfallServerDirectory.delete(this.roomId);
+  }
+}
+
+gameServer.define("hexfall_room", HexfallRoom);
+
 gameServer.define("agar_room", AgarRoom);
 gameServer.define("fps_room", FPSRoom);
+
+app.get("/hexfall-servers", (req, res) => {
+  const servers = Array.from(hexfallServerDirectory.values()).sort((a, b) => {
+    if (b.clients !== a.clients) return b.clients - a.clients;
+    return a.serverName.localeCompare(b.serverName);
+  });
+  res.json({ servers });
+});
 
 app.get("/agar-servers", (req, res) => {
   const servers = Array.from(agarServerDirectory.values()).sort((a, b) => {

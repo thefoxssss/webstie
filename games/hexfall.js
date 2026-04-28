@@ -1,213 +1,328 @@
 import {
   registerGameStop,
-  checkLossStreak,
-  resetLossStreak,
-  setText,
-  showGameOver,
-  showToast,
-  unlockAchievement,
-  updateHighScore,
-  loadHighScores,
-  consumeShield,
-  getShieldStatusLabel,
   state,
-  hasActiveItem,
+  dispatch,
+  showToast
 } from "../core.js";
 
-let hCtx;
-let hCv;
-let player = {};
-let hexes = [];
-let hScore = 0;
-let hElapsed = 0;
-let hAnim;
-let spawnRate = 80;
-let spawnTimer = 0;
-let hLastTime = 0;
-let hexfallStarted = false;
+let room;
+let scene, camera, renderer, controls;
+let hexMeshes = {};
+let playerMeshes = {};
+let localPlayerId = null;
+let isDead = false;
+let moveInterval;
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+let raycaster = new THREE.Raycaster();
+let animationId;
+let prevTime = performance.now();
+let lastSyncTime = 0;
 
-const CANVAS_W = 800;
-const CANVAS_H = 450;
-const FPS = 60;
-const FRAME_MS = 1000 / FPS;
-const MAX_DT_FRAMES = 2.5;
+const HEX_RADIUS = 2.5;
 
-export function initHexfall() {
-  state.currentGame = "hexfall";
-  loadHighScores();
-  hCv = document.getElementById("hexfallCanvas");
-  hCtx = hCv.getContext("2d");
-  player = {
-    x: CANVAS_W / 2,
-    y: CANVAS_H - 40,
-    r: 12,
-    speed: 5.5,
-  };
-  hexes = [];
-  hScore = 0;
-  hElapsed = 0;
-  spawnRate = 80;
-  spawnTimer = 0;
-  hLastTime = 0;
-  hexfallStarted = false;
-  updateHexfallHud();
-  loopHexfall(performance.now());
+function getNetworkUrl() {
+  const select = document.getElementById("hexfallNetwork");
+  const net = select ? select.value : "auto";
+  if (net === "local") return "ws://localhost:2567";
+  if (net === "prod") return "wss://server.thefoxssss.com";
+  // auto
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    return "ws://localhost:2567";
+  }
+  return "wss://server.thefoxssss.com";
 }
 
-function spawnHex() {
-  const size = 20 + Math.random() * 30;
-  hexes.push({
-    x: Math.random() * CANVAS_W,
-    y: -size,
-    r: size,
-    speed: 2.0 + Math.random() * 3.0 + hScore * 0.05,
-    rot: Math.random() * Math.PI * 2,
-    rotSpeed: (Math.random() - 0.5) * 0.1,
-    hue: Math.random() * 360
+function getApiUrl() {
+  return getNetworkUrl().replace("ws://", "http://").replace("wss://", "https://");
+}
+
+export function initHexfall() {
+  dispatch({ type: "SET_CURRENT_GAME", payload: "hexfall" });
+  document.getElementById("hexfallMenu").style.display = "block";
+  document.getElementById("hexfallGame").style.display = "none";
+  document.getElementById("hexfallDeathScreen").style.display = "none";
+  document.getElementById("hexfallRoundScreen").style.display = "none";
+
+  refreshServerList();
+
+  document.getElementById("btnRefreshHexfallServers").onclick = refreshServerList;
+  document.getElementById("btnCreateHexfallServer").onclick = () => {
+    joinServer({ create: true, serverName: document.getElementById("hexfallServerName").value });
+  };
+  document.getElementById("btnJoinHexfall").onclick = () => {
+    joinServer({});
+  };
+}
+
+function refreshServerList() {
+  const url = getApiUrl() + "/hexfall-servers";
+  fetch(url).then(r => r.json()).then(data => {
+    const list = document.getElementById("hexfallServerList");
+    list.innerHTML = "";
+    if (!data.servers || data.servers.length === 0) {
+      list.innerHTML = "<div style='font-size:10px'>NO SERVERS FOUND</div>";
+      return;
+    }
+    data.servers.forEach(s => {
+      const div = document.createElement("div");
+      div.style.marginBottom = "5px";
+      div.style.borderBottom = "1px dashed var(--accent-dim)";
+      div.style.paddingBottom = "5px";
+      div.style.display = "flex";
+      div.style.justifyContent = "space-between";
+      div.style.alignItems = "center";
+
+      const info = document.createElement("div");
+      info.innerHTML = `<strong style="color:var(--accent)">${s.serverName}</strong><br/><span style="font-size:10px">${s.clients}/${s.maxClients} PLAYERS</span>`;
+
+      const btn = document.createElement("button");
+      btn.className = "term-btn";
+      btn.style.fontSize = "10px";
+      btn.style.padding = "4px";
+      btn.innerText = "JOIN";
+      btn.onclick = () => joinServer({ roomId: s.roomId });
+
+      div.appendChild(info);
+      div.appendChild(btn);
+      list.appendChild(div);
+    });
+  }).catch(e => {
+    document.getElementById("hexfallServerList").innerHTML = "<div style='font-size:10px;color:#f66;'>ERROR LOADING SERVERS</div>";
   });
 }
 
-function updatePlayer(dtFrames) {
-  const left = state.keysPressed.ArrowLeft || state.keysPressed.a;
-  const right = state.keysPressed.ArrowRight || state.keysPressed.d;
-  const up = state.keysPressed.ArrowUp || state.keysPressed.w;
-  const down = state.keysPressed.ArrowDown || state.keysPressed.s;
-  if (left) player.x -= player.speed * dtFrames;
-  if (right) player.x += player.speed * dtFrames;
-  if (up) player.y -= player.speed * dtFrames;
-  if (down) player.y += player.speed * dtFrames;
-  player.x = Math.max(player.r, Math.min(CANVAS_W - player.r, player.x));
-  player.y = Math.max(player.r, Math.min(CANVAS_H - player.r, player.y));
-}
+function joinServer(options) {
+  document.getElementById("hexfallMenu").style.display = "none";
+  document.getElementById("hexfallGame").style.display = "block";
+  document.getElementById("hexfallStatus").innerText = "CONNECTING...";
 
-function drawHud() {
-  hCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
-  hCtx.lineWidth = 2;
-  hCtx.strokeRect(4, 4, CANVAS_W - 8, CANVAS_H - 8);
-}
+  const client = new Colyseus.Client(getNetworkUrl());
 
-function updateHexfallHud() {
-  setText("hexfallScore", `TIME: ${hScore}s • ${getShieldStatusLabel("hexfall")}`);
-}
-
-function updateScoreFromTime() {
-  const timeScore = Math.floor(hElapsed);
-  if (timeScore === hScore) return;
-  hScore = timeScore;
-  updateHighScore("hexfall", hScore);
-  updateHexfallHud();
-  if (hScore === 30) unlockAchievement("hex_master");
-  resetLossStreak();
-}
-
-function drawHexagon(ctx, x, y, r, rot) {
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const angle = rot + (Math.PI / 3) * i;
-    const px = x + r * Math.cos(angle);
-    const py = y + r * Math.sin(angle);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
+  const joinOpts = { playerName: state.bio?.name || state.username || "Guest" };
+  if (options.create) {
+    joinOpts.serverName = options.serverName;
+    client.create("hexfall_room", joinOpts).then(r => onJoined(r)).catch(e => showToast("JOIN ERROR", "❌"));
+  } else if (options.roomId) {
+    client.joinById(options.roomId, joinOpts).then(r => onJoined(r)).catch(e => showToast("JOIN ERROR", "❌"));
+  } else {
+    client.joinOrCreate("hexfall_room", joinOpts).then(r => onJoined(r)).catch(e => showToast("JOIN ERROR", "❌"));
   }
-  ctx.closePath();
 }
 
-// Simple circle collision
-function checkCollision(px, py, pr, hx, hy, hr) {
-  const dx = px - hx;
-  const dy = py - hy;
-  // Approximate hex as a circle with slightly smaller radius to be forgiving
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  return dist < pr + hr * 0.85;
-}
+function onJoined(r) {
+  room = r;
+  localPlayerId = room.sessionId;
 
-function loopHexfall(now) {
-  if (state.currentGame !== "hexfall") return;
-  updateHexfallHud();
-  const movementInput =
-    state.keysPressed.ArrowLeft || state.keysPressed.a || state.keysPressed.ArrowRight || state.keysPressed.d ||
-    state.keysPressed.ArrowUp || state.keysPressed.w || state.keysPressed.ArrowDown || state.keysPressed.s;
-  if (movementInput) hexfallStarted = true;
-  const dtFrames = hexfallStarted && hLastTime
-    ? Math.min((now - hLastTime) / FRAME_MS, MAX_DT_FRAMES)
-    : 0;
-  hLastTime = now;
-  hElapsed += dtFrames / FPS;
-  spawnTimer += dtFrames;
+  document.getElementById("hexfallStatus").innerText = "CONNECTED";
+  initThreeJS();
 
-  hCtx.fillStyle = "#000";
-  hCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  room.state.hexes.onAdd((hex, key) => {
+    const geo = new THREE.CylinderGeometry(HEX_RADIUS * 0.95, HEX_RADIUS * 0.95, 1, 6);
+    const mat = new THREE.MeshLambertMaterial({ color: 0x00ff00 }); // Green floors
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(hex.x, hex.y, hex.z);
 
-  // Background cool effect
-  const pulse = (Math.sin(now * 0.002) + 1) * 0.5;
-  hCtx.globalAlpha = 0.05 + pulse * 0.05;
-  hCtx.strokeStyle = "#fff";
-  hCtx.lineWidth = 1;
-  drawHexagon(hCtx, CANVAS_W/2, CANVAS_H/2, CANVAS_H * 0.8 + pulse * 20, now * 0.0005);
-  hCtx.stroke();
-  hCtx.globalAlpha = 1.0;
+    // Create an outline edge
+    const edges = new THREE.EdgesGeometry(geo);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x005500 }));
+    mesh.add(line);
 
-  updatePlayer(dtFrames);
-  drawHud();
-  updateScoreFromTime();
+    scene.add(mesh);
+    hexMeshes[key] = { mesh, hexObj: hex };
 
-  while (spawnTimer >= spawnRate) {
-    spawnTimer -= spawnRate;
-    spawnHex();
-    if (Math.random() > 0.4) spawnHex(); // Spawn multiple
-    if (Math.random() > 0.8) spawnHex();
-    if (spawnRate > 20) spawnRate -= 0.5;
-  }
-
-  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
-  hCtx.fillStyle = accent;
-  hCtx.beginPath();
-  hCtx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-  hCtx.fill();
-
-  // Neon glow player
-  hCtx.shadowBlur = 10;
-  hCtx.shadowColor = accent;
-  hCtx.fill();
-  hCtx.shadowBlur = 0;
-
-  const hexSlowdown = hasActiveItem("item_dodge_stabilizer") ? 0.75 : 1;
-
-  for (let i = hexes.length - 1; i >= 0; i--) {
-    const h = hexes[i];
-    h.y += h.speed * hexSlowdown * dtFrames;
-    h.rot += h.rotSpeed * hexSlowdown * dtFrames;
-
-    hCtx.strokeStyle = `hsl(${h.hue}, 100%, 60%)`;
-    hCtx.fillStyle = `hsla(${h.hue}, 100%, 60%, 0.2)`;
-    hCtx.lineWidth = 2;
-    hCtx.shadowBlur = 8;
-    hCtx.shadowColor = hCtx.strokeStyle;
-    drawHexagon(hCtx, h.x, h.y, h.r, h.rot);
-    hCtx.fill();
-    hCtx.stroke();
-    hCtx.shadowBlur = 0; // Reset for next items
-
-    if (checkCollision(player.x, player.y, player.r, h.x, h.y, h.r)) {
-      const shieldResult = consumeShield("hexfall");
-      if (shieldResult) {
-        hexes.splice(i, 1);
-        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
-        continue;
+    hex.listen("stepped", (isStepped) => {
+      if (isStepped) {
+        mesh.material.color.setHex(0xff0000); // Turn red
       }
-      checkLossStreak();
-      showGameOver("hexfall", hScore);
-      return;
-    }
+    });
+  });
 
-    if (h.y > CANVAS_H + h.r) {
-      hexes.splice(i, 1);
+  room.state.hexes.onRemove((hex, key) => {
+    if (hexMeshes[key]) {
+      scene.remove(hexMeshes[key].mesh);
+      hexMeshes[key].mesh.geometry.dispose();
+      hexMeshes[key].mesh.material.dispose();
+      delete hexMeshes[key];
     }
+  });
+
+  room.state.players.onAdd((player, key) => {
+    if (key === localPlayerId) return; // Don't draw ourselves as a mesh
+
+    const geo = new THREE.SphereGeometry(1, 16, 16);
+    const mat = new THREE.MeshBasicMaterial({ color: player.color });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(player.x, player.y, player.z);
+    scene.add(mesh);
+    playerMeshes[key] = { mesh, playerObj: player };
+
+    player.onChange(() => {
+      mesh.position.set(player.x, player.y, player.z);
+      mesh.visible = player.isAlive;
+    });
+  });
+
+  room.state.players.onRemove((player, key) => {
+    if (playerMeshes[key]) {
+      scene.remove(playerMeshes[key].mesh);
+      playerMeshes[key].mesh.geometry.dispose();
+      playerMeshes[key].mesh.material.dispose();
+      delete playerMeshes[key];
+    }
+  });
+
+  room.state.listen("status", (s) => {
+    document.getElementById("hexfallStatus").innerText = s.toUpperCase();
+    if (s === "lobby") {
+       // Auto-start if we are the first ones
+       if (room.state.players.size >= 1) {
+           room.send("start");
+       }
+    }
+  });
+
+  room.onMessage("matchStart", () => {
+    document.getElementById("hexfallRoundScreen").style.display = "none";
+    document.getElementById("hexfallDeathScreen").style.display = "none";
+    isDead = false;
+
+    // Reset our position visually instantly based on server state
+    setTimeout(() => {
+      const lp = room.state.players.get(localPlayerId);
+      if (lp) {
+        controls.getObject().position.set(lp.x, lp.y, lp.z);
+      }
+    }, 50);
+  });
+
+  room.onMessage("matchOver", (data) => {
+    document.getElementById("hexfallRoundScreen").style.display = "flex";
+    document.getElementById("hexfallRoundWinner").innerText = "Winner: " + data.winner;
+  });
+
+  moveInterval = setInterval(() => {
+    if (!room || !controls) return;
+    if (Date.now() - lastSyncTime > 50) {
+      const pos = controls.getObject().position;
+      room.send("move", { x: pos.x, y: pos.y, z: pos.z, rotY: camera.rotation.y });
+      lastSyncTime = Date.now();
+    }
+  }, 50);
+}
+
+function initThreeJS() {
+  const canvas = document.getElementById("hexfallCanvas");
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a1a);
+  scene.fog = new THREE.Fog(0x0a0a1a, 20, 100);
+
+  camera = new THREE.PerspectiveCamera(75, 800 / 450, 0.1, 1000);
+
+  renderer = new THREE.WebGLRenderer({ canvas });
+  renderer.setSize(800, 450);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  dirLight.position.set(10, 20, 10);
+  scene.add(dirLight);
+
+  controls = new THREE.PointerLockControls(camera, canvas);
+  canvas.addEventListener("click", () => {
+    if (!isDead) controls.lock();
+  });
+
+  controls.getObject().position.set(0, 35, 0);
+  scene.add(controls.getObject());
+
+  prevTime = performance.now();
+  animate();
+}
+
+function animate() {
+  animationId = requestAnimationFrame(animate);
+
+  const time = performance.now();
+  const delta = (time - prevTime) / 1000;
+  prevTime = time;
+
+  if (room) {
+    let aliveCount = 0;
+    room.state.players.forEach(p => { if (p.isAlive) aliveCount++; });
+    document.getElementById("hexfallAlive").innerText = aliveCount;
   }
 
-  hAnim = requestAnimationFrame(loopHexfall);
+  if (controls && controls.isLocked && !isDead) {
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z -= velocity.z * 10.0 * delta;
+    velocity.y -= 30.0 * delta; // Gravity
+
+    direction.z = Number(state.keysPressed.ArrowUp || state.keysPressed.w) - Number(state.keysPressed.ArrowDown || state.keysPressed.s);
+    direction.x = Number(state.keysPressed.ArrowRight || state.keysPressed.d) - Number(state.keysPressed.ArrowLeft || state.keysPressed.a);
+    direction.normalize();
+
+    const speed = 60.0;
+    if (state.keysPressed.ArrowUp || state.keysPressed.w || state.keysPressed.ArrowDown || state.keysPressed.s) velocity.z -= direction.z * speed * delta;
+    if (state.keysPressed.ArrowLeft || state.keysPressed.a || state.keysPressed.ArrowRight || state.keysPressed.d) velocity.x -= direction.x * speed * delta;
+
+    const pos = controls.getObject().position;
+
+    // Custom raycast down for floor
+    raycaster.set(pos, new THREE.Vector3(0, -1, 0));
+    const floorMeshes = Object.values(hexMeshes).map(h => h.mesh);
+    const intersects = raycaster.intersectObjects(floorMeshes);
+
+    let onFloor = false;
+    if (intersects.length > 0 && intersects[0].distance < 2.0) {
+      velocity.y = Math.max(0, velocity.y);
+      pos.y = intersects[0].point.y + 1.5; // snap to floor + eye height
+      onFloor = true;
+
+      // We are standing on this hex. Find its ID and tell server.
+      const hitMesh = intersects[0].object;
+      for (const [key, data] of Object.entries(hexMeshes)) {
+        if (data.mesh === hitMesh && !data.hexObj.stepped) {
+           room.send("stepHex", { id: key });
+           break;
+        }
+      }
+    }
+
+    if (onFloor && state.keysPressed[" "]) {
+      velocity.y = 12; // Jump
+      state.keysPressed[" "] = false; // consume
+    }
+
+    controls.moveRight(-velocity.x * delta);
+    controls.moveForward(-velocity.z * delta);
+    controls.getObject().position.y += velocity.y * delta;
+
+    // Death check
+    if (pos.y < -10) {
+       isDead = true;
+       controls.unlock();
+       document.getElementById("hexfallDeathScreen").style.display = "flex";
+       room.send("die");
+    }
+  } else if (isDead && controls) {
+     // Spectator float slowly down
+     const pos = controls.getObject().position;
+     if (pos.y > 0) pos.y -= 5 * delta;
+  }
+
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  }
 }
 
 registerGameStop(() => {
-  if (hAnim) cancelAnimationFrame(hAnim);
+  if (room) {
+    room.leave();
+    room = null;
+  }
+  if (moveInterval) clearInterval(moveInterval);
+  if (animationId) cancelAnimationFrame(animationId);
+  if (controls) controls.unlock();
 });

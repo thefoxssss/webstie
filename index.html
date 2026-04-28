@@ -2755,11 +2755,40 @@
 
     <!-- Hexfall mini-game overlay. -->
     <div class="overlay" id="overlayHexfall">
-      <h1>HEXFALL</h1>
-      <div class="high-score-display">HIGH: <span id="hsHexfall">0</span></div>
-      <div style="margin-bottom: 10px" id="hexfallScore">TIME: 0s</div>
-      <canvas id="hexfallCanvas" width="800" height="450"></canvas>
-      <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS TO MOVE. AVOID FALLING HEXAGONS.</div>
+      <h1>HEXFALL ARENA</h1>
+      <div id="hexfallMenu" class="menu-box">
+        <select id="hexfallNetwork" class="term-input">
+          <option value="auto">AUTO NETWORK (RECOMMENDED)</option>
+          <option value="prod">PRODUCTION NETWORK</option>
+          <option value="local">LOCALHOST NETWORK</option>
+        </select>
+        <button class="menu-btn" id="btnRefreshHexfallServers" style="margin-top: 10px;">REFRESH SERVER LIST</button>
+        <input type="text" id="hexfallServerName" class="term-input" placeholder="NEW SERVER NAME" maxlength="24" />
+        <button class="term-btn" id="btnCreateHexfallServer">CREATE SERVER</button>
+        <div id="hexfallServerList" style="text-align: left; margin-top: 12px; max-height: 180px; overflow-y: auto;"></div>
+        <button class="menu-btn" id="btnJoinHexfall">QUICK JOIN ANY SERVER</button>
+      </div>
+
+      <div id="hexfallGame" style="display: none; position: relative; width: 800px; height: 450px; margin: 0 auto; background: #000;">
+        <canvas id="hexfallCanvas" width="800" height="450" style="display: block; width: 100%; height: 100%;"></canvas>
+        <div id="hexfallUI" style="position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; text-shadow: 1px 1px 0 #000; pointer-events: none; text-align: left;">
+          STATUS: <span id="hexfallStatus" style="color: lime;">LOBBY</span><br/>
+          ALIVE: <span id="hexfallAlive">0</span>
+        </div>
+        <div id="hexfallHint" style="position: absolute; bottom: 10px; width: 100%; text-align: center; color: rgba(255,255,255,0.7); font-family: monospace; font-size: 12px; pointer-events: none;">
+          CLICK TO LOCK MOUSE | WASD: MOVE | SPACE: JUMP
+        </div>
+
+        <div id="hexfallDeathScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.4); flex-direction: column; justify-content: center; align-items: center; z-index: 10;">
+          <h2 style="color: white; font-size: 32px; margin-bottom: 10px; text-shadow: 2px 2px 0 #000;">ELIMINATED</h2>
+          <p style="color: white; font-size: 14px; text-shadow: 1px 1px 0 #000;">Spectating...</p>
+        </div>
+
+        <div id="hexfallRoundScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); flex-direction: column; justify-content: center; align-items: center; z-index: 20;">
+          <h2 style="color: lime; font-size: 32px; margin-bottom: 10px; text-shadow: 2px 2px 0 #000;">ROUND OVER</h2>
+          <p id="hexfallRoundWinner" style="color: white; font-size: 18px; margin-bottom: 20px; text-shadow: 1px 1px 0 #000;">Winner: Unknown</p>
+        </div>
+      </div>
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
