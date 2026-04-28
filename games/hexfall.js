@@ -25,16 +25,19 @@ function getNetworkUrl() {
   const select = document.getElementById("hexfallNetwork");
   const net = select ? select.value : "auto";
   if (net === "local") return "ws://localhost:2567";
-  if (net === "prod") return "wss://server.thefoxssss.com";
+  if (net === "prod") return "wss://seahorse-app-mv4sg.ondigitalocean.app";
   // auto
   if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
     return "ws://localhost:2567";
   }
-  return "wss://server.thefoxssss.com";
+  return "wss://seahorse-app-mv4sg.ondigitalocean.app";
 }
 
 function getApiUrl() {
-  return getNetworkUrl().replace("ws://", "http://").replace("wss://", "https://");
+  const wsUrl = getNetworkUrl();
+  if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice(6)}`;
+  if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice(5)}`;
+  return wsUrl;
 }
 
 export function initHexfall() {
