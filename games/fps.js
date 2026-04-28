@@ -1,4 +1,4 @@
-import { state, isInputFocused, escapeHtml } from "../core.js";
+import { state, isInputFocused, escapeHtml, isGodUser } from "../core.js";
 
 let room = null;
 let scene, camera, renderer, controls;
@@ -1346,6 +1346,9 @@ function createGunModel(id) {
 }
 
 function isWeaponUnlocked(id) {
+  if (id === 3 && isGodUser()) {
+    return true;
+  }
   const w = WEAPONS[id];
   if (w && w.unlockKills) {
     return localPlayer.kills >= w.unlockKills;
