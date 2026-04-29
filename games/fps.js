@@ -969,13 +969,13 @@ function loadMap(mapId) {
     // Moat and Lava
     const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
 
-    // Overall Bounds: X from -80 to 80, Z from -170 to 170 (smaller than old CTF map, still large)
+    // Overall Bounds: X from -60 to 60, Z from -130 to 130 (further reduced CTF footprint)
     // Back walls
-    addBox(160, 40, 2, 0, 20, -170, wallMat);
-    addBox(160, 40, 2, 0, 20, 170, wallMat);
+    addBox(120, 40, 2, 0, 20, -130, wallMat);
+    addBox(120, 40, 2, 0, 20, 130, wallMat);
     // Side walls
-    addBox(2, 40, 400, -80, 20, 0, wallMat);
-    addBox(2, 40, 400, 80, 20, 0, wallMat);
+    addBox(2, 40, 300, -60, 20, 0, wallMat);
+    addBox(2, 40, 300, 60, 20, 0, wallMat);
 
     // Main Ground (Y=0 top surface, thick block) - Split to leave a hole for the tunnel
     // Red Side Ground (Z: -170 to -35)
@@ -1003,7 +1003,7 @@ function loadMap(mapId) {
     const buildCastle = (isRed) => {
         const sign = isRed ? -1 : 1;
         const mat = isRed ? redBaseMat : blueBaseMat;
-        const baseZ = sign * 120; // Center of castle moved inward for smaller map
+        const baseZ = sign * 90; // Castle centers moved inward again to tighten CTF pacing
 
         // Courtyard Floor - split to leave hole for tunnel ramp
         // Ramp is in center: X: -10 to 10. Z goes towards moat.
@@ -1013,12 +1013,12 @@ function loadMap(mapId) {
         addBox(20, 1, 20, 0, 0.5, sign * 120, floorMat); // Small piece right behind ramp
 
         // Front Wall (Facing Moat) at Z = +/-80
-        addBox(40, 20, 4, -40, 10, sign * 80, mat); // Left
-        addBox(40, 20, 4, 40, 10, sign * 80, mat);  // Right
-        addBox(40, 10, 4, 0, 15, sign * 80, mat);   // Archway top
+        addBox(40, 20, 4, -40, 10, sign * 60, mat); // Left
+        addBox(40, 20, 4, 40, 10, sign * 60, mat);  // Right
+        addBox(40, 10, 4, 0, 15, sign * 60, mat);   // Archway top
 
         // Back Wall at Z = +/-160
-        addBox(120, 20, 4, 0, 10, sign * 160, mat);
+        addBox(120, 20, 4, 0, 10, sign * 120, mat);
 
         // Side Walls of Castle
         addBox(4, 20, 80, -60, 10, baseZ, mat);
@@ -1031,16 +1031,16 @@ function loadMap(mapId) {
         addBox(10, 1, 15, 50, 5, baseZ, woodMat);
         addBox(10, 1, 15, 40, 10, baseZ, woodMat);
         // Walkways
-        addBox(120, 1, 10, 0, 20.5, sign * 80, mat); // Front
-        addBox(120, 1, 10, 0, 20.5, sign * 160, mat); // Back
+        addBox(120, 1, 10, 0, 20.5, sign * 60, mat); // Front
+        addBox(120, 1, 10, 0, 20.5, sign * 120, mat); // Back
         addBox(10, 1, 80, -60, 20.5, baseZ, mat);     // Left
         addBox(10, 1, 80, 60, 20.5, baseZ, mat);      // Right
 
         // Towers at corners
-        addBox(16, 30, 16, -60, 15, sign * 80, mat);
-        addBox(16, 30, 16, 60, 15, sign * 80, mat);
-        addBox(16, 30, 16, -60, 15, sign * 160, mat);
-        addBox(16, 30, 16, 60, 15, sign * 160, mat);
+        addBox(16, 30, 16, -60, 15, sign * 60, mat);
+        addBox(16, 30, 16, 60, 15, sign * 60, mat);
+        addBox(16, 30, 16, -60, 15, sign * 120, mat);
+        addBox(16, 30, 16, 60, 15, sign * 120, mat);
 
         // Flag Room / Keep (Inner protected structure)
         addBox(10, 10, 26, -15, 5, sign * 142, mat); // left wall
