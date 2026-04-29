@@ -980,15 +980,15 @@ function loadMap(mapId) {
     // Main Ground (Y=0 top surface, thick block) - Split to leave a hole for the tunnel
     // Red Side Ground (Z: -170 to -35)
     // The tunnel goes down at Z=-110 to -70, width 40 (X: -20 to 20).
-    addBox(160, 20, 30, 0, -10, -155, grassMat); // Back section behind tunnel entrance
-    addBox(60, 20, 105, -50, -10, -87.5, grassMat); // Left side
-    addBox(60, 20, 105, 50, -10, -87.5, grassMat);  // Right side
+    addBox(120, 20, 20, 0, -10, -120, grassMat); // Back section behind tunnel entrance
+    addBox(60, 20, 85, -50, -10, -75, grassMat); // Left side
+    addBox(60, 20, 85, 50, -10, -75, grassMat);  // Right side
     // No ground directly under the courtyard center where the ramp is
 
     // Blue Side Ground (Z: 35 to 170)
-    addBox(160, 20, 30, 0, -10, 155, grassMat); // Back section behind tunnel entrance
-    addBox(60, 20, 105, -50, -10, 87.5, grassMat); // Left side
-    addBox(60, 20, 105, 50, -10, 87.5, grassMat);  // Right side
+    addBox(120, 20, 20, 0, -10, 120, grassMat); // Back section behind tunnel entrance
+    addBox(60, 20, 85, -50, -10, 75, grassMat); // Left side
+    addBox(60, 20, 85, 50, -10, 75, grassMat);  // Right side
 
     // The Moat (Z: -40 to 40)
     // Lava at Y=-15
@@ -1007,10 +1007,10 @@ function loadMap(mapId) {
 
         // Courtyard Floor - split to leave hole for tunnel ramp
         // Ramp is in center: X: -10 to 10. Z goes towards moat.
-        addBox(120, 1, 28, 0, 0.5, sign * 142, floorMat); // Back of courtyard
+        addBox(120, 1, 28, 0, 0.5, sign * 112, floorMat); // Back of courtyard
         addBox(50, 1, 45, -35, 0.5, sign * 107.5, floorMat); // Left of courtyard
         addBox(50, 1, 45, 35, 0.5, sign * 107.5, floorMat);  // Right of courtyard
-        addBox(20, 1, 20, 0, 0.5, sign * 120, floorMat); // Small piece right behind ramp
+        addBox(20, 1, 20, 0, 0.5, sign * 102, floorMat); // Small piece right behind ramp
 
         // Front Wall (Facing Moat) at Z = +/-80
         addBox(40, 20, 4, -40, 10, sign * 60, mat); // Left
@@ -1043,13 +1043,13 @@ function loadMap(mapId) {
         addBox(16, 30, 16, 60, 15, sign * 120, mat);
 
         // Flag Room / Keep (Inner protected structure)
-        addBox(10, 10, 26, -15, 5, sign * 142, mat); // left wall
-        addBox(10, 10, 26, 15, 5, sign * 142, mat);  // right wall
-        addBox(40, 10, 4, 0, 5, sign * 153, mat);    // back wall
-        addBox(40, 2, 26, 0, 11, sign * 142, mat);   // Roof
-        addBox(40, 4, 4, 0, 8, sign * 131, mat);     // Front arch top
-        addBox(10, 10, 4, -15, 5, sign * 131, mat);  // Front left
-        addBox(10, 10, 4, 15, 5, sign * 131, mat);   // Front right
+        addBox(10, 10, 26, -15, 5, sign * 112, mat); // left wall
+        addBox(10, 10, 26, 15, 5, sign * 112, mat);  // right wall
+        addBox(40, 10, 4, 0, 5, sign * 123, mat);    // back wall
+        addBox(40, 2, 26, 0, 11, sign * 112, mat);   // Roof
+        addBox(40, 4, 4, 0, 8, sign * 101, mat);     // Front arch top
+        addBox(10, 10, 4, -15, 5, sign * 101, mat);  // Front left
+        addBox(10, 10, 4, 15, 5, sign * 101, mat);   // Front right
 
         // Underground Entrance Ramp (Visible ramp going down in courtyard)
         const rampMat = new THREE.MeshPhongMaterial({ map: getTexture("concrete"), color: 0x444444 });
@@ -1093,11 +1093,11 @@ function loadMap(mapId) {
     const flagMatBlue = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 
     redFlagMesh = new THREE.Mesh(flagGeo, flagMatRed);
-    redFlagMesh.position.set(0, 5, -142); // In Red Keep
+    redFlagMesh.position.set(0, 5, -112); // In Red Keep
     scene.add(redFlagMesh);
 
     blueFlagMesh = new THREE.Mesh(flagGeo, flagMatBlue);
-    blueFlagMesh.position.set(0, 5, 142); // In Blue Keep
+    blueFlagMesh.position.set(0, 5, 112); // In Blue Keep
     scene.add(blueFlagMesh);
   }
 }
