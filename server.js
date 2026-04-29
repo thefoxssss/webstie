@@ -2810,8 +2810,8 @@ class FPSRoom extends colyseus.Room {
 
   explodeRocket(ex, ey, ez, ownerId) {
     this.broadcast("rocketExplode", { x: ex, y: ey, z: ez });
-    const radius = 15;
-    const maxDamage = 80;
+    const radius = 28;
+    const maxDamage = 140;
 
     let shooterClient = this.clients.find(c => c.sessionId === ownerId);
     let shooter = this.state.players.get(ownerId);
@@ -2984,6 +2984,24 @@ class FPSRoom extends colyseus.Room {
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
       if (this.state.mapId === 5 && shooter.team === 0) return;
+
+      if (data.weaponId === 4) {
+        const proj = new FPSProjectile();
+        proj.id = Math.random().toString(36).substr(2, 9);
+        proj.ownerId = client.sessionId;
+        proj.type = 0; // Rocket
+        proj.x = data.origin.x;
+        proj.y = data.origin.y;
+        proj.z = data.origin.z;
+        proj.dx = data.dir.x;
+        proj.dy = data.dir.y;
+        proj.dz = data.dir.z;
+        proj.speed = 0.55; // intentionally low velocity
+        proj.life = 3500;
+        this.state.projectiles.set(proj.id, proj);
+        this.broadcast("shoot", { origin: data.origin, dir: data.dir }, { except: client });
+        return;
+      }
 
       this.broadcast("shoot", { origin: data.origin, dir: data.dir }, { except: client });
 

@@ -12,7 +12,7 @@ let muzzleFlashTime = 0;
 let nextFireTime = 0;
 let isReloading = false;
 let reloadEndTime = 0;
-let ammo = [12, 6, 2, 250]; // Current ammo for each weapon
+let ammo = [12, 6, 2, 250, 1]; // Current ammo for each weapon
 let recoilTime = 0;
 let recoilIntensity = 0;
 let bobTime = 0;
@@ -1112,7 +1112,8 @@ const WEAPONS = [
   { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
   { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
   { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 2, reloadTime: 2500 },
-  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3600, immobilizesOnFire: true }
+  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3600, immobilizesOnFire: true },
+  { name: "ROCKET LAUNCHER", color: 0xcc5522, cooldown: 1300, damage: 140, spread: 0.01, magSize: 1, reloadTime: 2200, firesProjectile: true }
 ];
 
 function resetGatlingRamp() {
@@ -1279,6 +1280,7 @@ function onKeyDown(event) {
     case 'Digit2': switchWeapon(1); break;
     case 'Digit3': switchWeapon(2); break;
     case 'Digit4': switchWeapon(3); break;
+    case 'Digit5': switchWeapon(4); break;
     case 'KeyR': startReload(); break;
     case 'KeyG': throwGrenade(); break;
   }
@@ -1559,6 +1561,15 @@ function tryFireWeapon() {
   let spread = weapon.spread || 0;
   if (localPlayer.weapon === 3) {
     spread = getGatlingSpread(now, spread);
+  }
+
+  if (weapon.firesProjectile) {
+    room.send("shoot", {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      dir: { x: dir.x, y: dir.y, z: dir.z },
+      weaponId: localPlayer.weapon
+    });
+    return;
   }
 
   for (let i = 0; i < bullets; i++) {
