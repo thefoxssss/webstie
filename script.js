@@ -901,7 +901,7 @@ function initMainSiteSearch() {
 
   function findBestGameMatch(query) {
     return GAME_DIRECTORY_ENTRIES
-      .filter((entry) => !entry.hidden && (!entry.adminOnly || isGodUser()))
+      .filter((entry) => ((!entry.hidden) || (entry.adminOnly && isGodUser())) && (!entry.adminOnly || isGodUser()))
       .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
       .filter((item) => item.score < 99)
       .sort((a, b) => {
@@ -938,7 +938,7 @@ function initMainSiteSearch() {
     if (!query) return [];
 
     const gameSuggestions = GAME_DIRECTORY_ENTRIES
-      .filter((entry) => !entry.hidden && (!entry.adminOnly || isGodUser()))
+      .filter((entry) => ((!entry.hidden) || (entry.adminOnly && isGodUser())) && (!entry.adminOnly || isGodUser()))
       .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
       .filter((item) => item.score < 99)
       .sort((a, b) => {
