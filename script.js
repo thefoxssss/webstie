@@ -101,7 +101,7 @@ import { initMines } from "./games/mines.js";
 import "./games/fnaf.js";
 import { initFps } from "./games/fps.js";
 import { initFpsMapMaker } from "./games/fpsmapmaker.js";
-import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
+import { GAME_DIRECTORY_ENTRIES, canAccessGameEntry } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -901,7 +901,7 @@ function initMainSiteSearch() {
 
   function findBestGameMatch(query) {
     return GAME_DIRECTORY_ENTRIES
-      .filter((entry) => ((!entry.hidden) || (entry.adminOnly && isGodUser())) && (!entry.adminOnly || isGodUser()))
+      .filter((entry) => canAccessGameEntry(entry, { isAdmin: isGodUser() }))
       .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
       .filter((item) => item.score < 99)
       .sort((a, b) => {
@@ -938,7 +938,7 @@ function initMainSiteSearch() {
     if (!query) return [];
 
     const gameSuggestions = GAME_DIRECTORY_ENTRIES
-      .filter((entry) => ((!entry.hidden) || (entry.adminOnly && isGodUser())) && (!entry.adminOnly || isGodUser()))
+      .filter((entry) => canAccessGameEntry(entry, { isAdmin: isGodUser() }))
       .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
       .filter((item) => item.score < 99)
       .sort((a, b) => {

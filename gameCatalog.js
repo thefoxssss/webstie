@@ -57,6 +57,13 @@ export const LEADERBOARD_GAME_COLUMNS = Object.freeze(
   }))
 );
 
+export function canAccessGameEntry(entry, { isAdmin = false } = {}) {
+  if (!entry) return false;
+  if (entry.adminOnly && !isAdmin) return false;
+  if (entry.hidden && !(entry.adminOnly && isAdmin)) return false;
+  return true;
+}
+
 export const GAME_TAG_EMOJI = Object.freeze({
   arcade: "🕹️",
   skill: "🎯",

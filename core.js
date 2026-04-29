@@ -22,7 +22,7 @@ import {
   deleteDoc,
   getDocs,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { GAME_DIRECTORY_ENTRIES, LEADERBOARD_GAME_COLUMNS } from "./gameCatalog.js";
+import { GAME_DIRECTORY_ENTRIES, LEADERBOARD_GAME_COLUMNS, canAccessGameEntry } from "./gameCatalog.js";
 
 // Firebase project configuration.
 const defaultFirebaseConfig = {
@@ -2328,7 +2328,7 @@ function initRandomGameButton() {
   button.addEventListener("click", () => {
     if (typeof window.launchGame !== "function") return;
     const availableGames = GAME_DIRECTORY_ENTRIES
-      .filter((entry) => !entry.hidden)
+      .filter((entry) => canAccessGameEntry(entry, { isAdmin: isGodUser() }))
       .map((entry) => String(entry.id || "").trim())
       .filter((gameId) => Boolean(gameId));
     if (!availableGames.length) return;
