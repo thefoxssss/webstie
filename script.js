@@ -236,6 +236,7 @@ function renderInGameShopPanel(game, overlayId) {
 
 function getOverlayIdForGame(gameId) {
   if (!gameId) return "";
+  if (gameId === "voice") return "globalChat";
   return `overlay${gameId === "ttt" ? gameId.toUpperCase() : gameId.charAt(0).toUpperCase() + gameId.slice(1)}`;
 }
 
