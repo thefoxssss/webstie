@@ -55,6 +55,7 @@ import {
   claimAprilFoolsSecretItem,
   openGameLeaderboard,
   escapeHtml,
+  isGodUser,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
@@ -99,6 +100,7 @@ import { initBaccarat } from "./games/baccarat.js";
 import { initMines } from "./games/mines.js";
 import "./games/fnaf.js";
 import { initFps } from "./games/fps.js";
+import { initFpsMapMaker } from "./games/fpsmapmaker.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -292,6 +294,8 @@ function initSharedGamebox() {
 
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
+  const entry = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === game);
+  if (entry?.adminOnly && !isGodUser()) return;
   window.__goonerLastGameLaunchSource = source;
   window.closeOverlays();
 
@@ -350,6 +354,7 @@ window.launchGame = (game, source = "direct") => {
   if (game === "mines") initMines();
   if (game === "fnaf") window.initFnaf();
   if (game === "fps") initFps();
+  if (game === "fpsmapmaker") initFpsMapMaker();
   if (game === "hexfall") initHexfall();
   if (typeof window.__updateGameSwitcherState === "function") window.__updateGameSwitcherState(game);
 
@@ -551,7 +556,11 @@ function initGameScroller() {
       overlayId: getOverlayIdForGame(entry.id),
       searchText: `${entry.id} ${entry.title} ${entry.description || ""} ${(entry.tags || []).join(" ")}`.toUpperCase(),
     }))
-    .filter((entry) => document.getElementById(entry.overlayId));
+    .filter((entry) => document.getElementById(entry.overlayId))
+    .filter((entry) => {
+      const meta = GAME_DIRECTORY_ENTRIES.find((candidate) => candidate.id === entry.id);
+      return !(meta?.adminOnly) || isGodUser();
+    });
   if (!orderedGames.length) return;
 
   const strip = document.getElementById("gameboxGameStrip");
@@ -892,7 +901,7 @@ function initMainSiteSearch() {
 
   function findBestGameMatch(query) {
     return GAME_DIRECTORY_ENTRIES
-      .filter((entry) => !entry.hidden)
+      .filter((entry) => !entry.hidden && (!entry.adminOnly || isGodUser()))
       .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
       .filter((item) => item.score < 99)
       .sort((a, b) => {
@@ -929,7 +938,7 @@ function initMainSiteSearch() {
     if (!query) return [];
 
     const gameSuggestions = GAME_DIRECTORY_ENTRIES
-      .filter((entry) => !entry.hidden)
+      .filter((entry) => !entry.hidden && (!entry.adminOnly || isGodUser()))
       .map((entry) => ({ entry, score: scoreGameSuggestion(entry, query) }))
       .filter((item) => item.score < 99)
       .sort((a, b) => {

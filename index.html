@@ -2792,6 +2792,21 @@
       <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
+    <div class="overlay" id="overlayFpsmapmaker">
+      <div id="fpsMapMakerMenu" class="menu-box" style="width:min(95vw,1040px);">
+        <h2 style="color:#8be9fd; margin-top:0;">FPS MAP MAKER (ADMIN)</h2>
+        <p style="font-size:12px; color:#aaa;">Design FPS maps and export JSON files for your repo's <code>maps/</code> folder.</p>
+        <input id="fpsMapMakerName" class="term-input" placeholder="MAP NAME" value="fps_custom_map" style="margin-bottom:8px;"/>
+        <div id="fpsMapMakerTools" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+        <canvas id="fpsMapMakerCanvas" width="720" height="432" style="border:1px solid #3d3d3d; background:#111; width:100%; max-width:720px;"></canvas>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+          <button id="fpsMapMakerClear" class="menu-btn" type="button">CLEAR</button>
+          <button id="fpsMapMakerExport" class="menu-btn" type="button">EXPORT JSON</button>
+        </div>
+        <textarea id="fpsMapMakerOutput" class="term-input" style="margin-top:10px; height:140px; font-family:monospace;" placeholder="Exported JSON preview appears here..."></textarea>
+      </div>
+    </div>
+
     <!-- Game-over modal shared across mini-games. -->
     <div id="modalGameOver" class="game-over-modal">
       <h1>SYSTEM FAILURE</h1>
