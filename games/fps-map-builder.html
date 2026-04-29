@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset='utf-8'><title>FPS Map Builder</title><style>body{margin:0;font-family:monospace;display:flex;height:100vh}#ui{width:320px;background:#111;color:#eee;padding:10px;overflow:auto}button,input,select,textarea{width:100%;margin:4px 0;background:#222;color:#eee;border:1px solid #444}#view{flex:1}</style></head><body>
+<div id='ui'>
+<h3>FPS Map Builder</h3>
+<label>Material <select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
+<label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
+<button id='add'>Add Box At Cursor</button><button id='undo'>Undo</button>
+<hr/>
+<label>Map Name<input id='mapName' value='New Map'></label>
+<label>Optional script<textarea id='script' rows='6' placeholder='Optional JS script string'></textarea></label>
+<button id='download'>Download JSON</button>
+<pre id='status'></pre>
+</div><canvas id='view'></canvas>
+<script src='https://unpkg.com/three@0.161.0/build/three.min.js'></script>
+<script>
+const canvas=document.getElementById('view'); const r=new THREE.WebGLRenderer({canvas,antialias:true}); r.setSize(innerWidth-320,innerHeight);
+const s=new THREE.Scene(); s.background=new THREE.Color(0x333344); const c=new THREE.PerspectiveCamera(75,(innerWidth-320)/innerHeight,.1,1000); c.position.set(20,20,20); c.lookAt(0,0,0);
+const light=new THREE.DirectionalLight(0xffffff,1); light.position.set(10,20,10); s.add(light); s.add(new THREE.AmbientLight(0x808080));
+const grid=new THREE.GridHelper(200,100); s.add(grid); const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshBasicMaterial({visible:false})); floor.rotateX(-Math.PI/2); s.add(floor);
+let yaw=0,pitch=-0.5; const keys={}; addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1); addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+let md=false; canvas.addEventListener('mousedown',()=>md=true); addEventListener('mouseup',()=>md=false); addEventListener('mousemove',e=>{if(!md)return; yaw-=e.movementX*0.003; pitch=Math.max(-1.5,Math.min(1.5,pitch-e.movementY*0.003));});
+const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2(); const marker=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x00ff00,wireframe:true})); s.add(marker);
+const boxes=[]; const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
+function animate(){requestAnimationFrame(animate); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); c.lookAt(c.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)); const sp=0.6; if(keys.w)c.position.addScaledVector(dir,sp); if(keys.s)c.position.addScaledVector(dir,-sp); if(keys.a)c.position.addScaledVector(right,sp); if(keys.d)c.position.addScaledVector(right,-sp);
+ray.set(c.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ const p=hit.point; marker.position.set(Math.round(p.x),0.5,Math.round(p.z)); }
+r.render(s,c);} animate();
+function addBox(){const sx=+sxEl.value,sy=+syEl.value,sz=+szEl.value; const m=mat.value; const p=marker.position; boxes.push({size:[sx,sy,sz],pos:[p.x,sy/2,p.z],material:m}); const mesh=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshPhongMaterial({color:0xcccccc})); mesh.position.set(p.x,sy/2,p.z); s.add(mesh);} 
+const sxEl=sx,syEl=sy,szEl=sz; add.onclick=addBox; undo.onclick=()=>{if(!boxes.length)return; boxes.pop(); for(let i=s.children.length-1;i>=0;i--){const o=s.children[i]; if(o.geometry&&o!==marker&&o!==floor&&!(o instanceof THREE.GridHelper)){s.remove(o);break;}}};
+download.onclick=()=>{const map={schema:'fps-map-v1',name:mapName.value,environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:script.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); status.textContent=`Boxes: ${boxes.length}`;};
+</script></body></html>

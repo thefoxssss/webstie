@@ -1,0 +1,27 @@
+{
+  "schema": "fps-map-v1",
+  "id": 5,
+  "name": "Map 5",
+  "environment": {
+    "background": 5614318,
+    "fogType": "linear",
+    "fogColor": 5614318,
+    "fogNear": 20,
+    "fogFar": 150,
+    "floorTexture": "grass",
+    "floorColor": 8947848,
+    "floorRepeatX": 20,
+    "floorRepeatY": 20
+  },
+  "materials": {
+    "default": { "color": 10066329 },
+    "brick": { "color": 10066329, "texture": "brick", "repeat": [2,1] },
+    "grass": { "color": 8947848, "texture": "grass" },
+    "asphalt": { "color": 8947848, "texture": "asphalt" },
+    "metal": { "color": 8947848, "texture": "metal" },
+    "concrete": { "color": 5592405, "texture": "concrete" },
+    "wood": { "color": 9136731 }
+  },
+  "boxes": [],
+  "script": ""
+}

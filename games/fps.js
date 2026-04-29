@@ -580,7 +580,19 @@ function createProceduralTexture(type) {
     ctx.fillStyle = "#555555";
     for (let i = 0; i < 5000; i++) {
       ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
-    }
+    } else if (type === "wood") {
+    ctx.fillStyle = "#8b5a2b";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = "#6e4521";
+    for (let y = 0; y < 256; y += 18) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(256,y+4); ctx.stroke(); }
+  }
+  }
+  } else if (type === "wood") {
+    ctx.fillStyle = "#8b5a2b";
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = "#6e4521";
+    for (let y = 0; y < 256; y += 18) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(256,y+4); ctx.stroke(); }
+  }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -599,7 +611,91 @@ function getTexture(type) {
   return textures[type];
 }
 
-function loadMap(mapId) {
+
+async function loadMap(mapId) {
+  const map = await loadMapDefinition(mapId);
+  if (!map) {
+    loadMapLegacy(mapId);
+    return;
+  }
+  applyMapFromDefinition(map, mapId);
+}
+
+async function loadMapDefinition(mapId) {
+  try {
+    const res = await fetch(`data/fps/maps/${mapId}.json`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Map definition load failed:', err);
+    return null;
+  }
+}
+
+function applyMapFromDefinition(map, mapId) {
+  if (!obstaclesGroup) return;
+  while (obstaclesGroup.children.length > 0) {
+    const mesh = obstaclesGroup.children[0];
+    obstaclesGroup.remove(mesh);
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) mesh.material.dispose();
+  }
+  obstacleBoxes = [];
+
+  const env = map.environment || {};
+  scene.background = new THREE.Color(env.background ?? 0x55aaee);
+  if (env.fogType === 'exp2') scene.fog = new THREE.FogExp2(env.fogColor ?? 0x55aaee, env.fogDensity ?? 0.015);
+  else scene.fog = new THREE.Fog(env.fogColor ?? 0x55aaee, env.fogNear ?? 20, env.fogFar ?? 150);
+  if (floorMesh) {
+    const floorTexture = getTexture(env.floorTexture || 'grass').clone();
+    floorTexture.needsUpdate = true;
+    floorTexture.repeat.set(env.floorRepeatX || 20, env.floorRepeatY || 20);
+    floorMesh.material = new THREE.MeshPhongMaterial({ map: floorTexture, color: env.floorColor ?? 0x888888 });
+  }
+
+  const mats = {};
+  const materialFor = (key) => {
+    if (!mats[key]) {
+      const def = (map.materials || {})[key] || {};
+      const opts = { color: def.color ?? 0x999999 };
+      if (def.texture) opts.map = getTexture(def.texture).clone();
+      mats[key] = new THREE.MeshPhongMaterial(opts);
+      if (mats[key].map && def.repeat) {
+        mats[key].map.needsUpdate = true;
+        mats[key].map.repeat.set(def.repeat[0], def.repeat[1]);
+      }
+      if (def.transparent) { mats[key].transparent = true; mats[key].opacity = def.opacity ?? 0.5; }
+      if (def.emissive) mats[key].emissive = new THREE.Color(def.emissive);
+      if (def.emissiveIntensity) mats[key].emissiveIntensity = def.emissiveIntensity;
+    }
+    return mats[key];
+  };
+
+  const addBox = (b) => {
+    const geo = new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]);
+    const mesh = new THREE.Mesh(geo, materialFor(b.material || 'default'));
+    mesh.position.set(b.pos[0], b.pos[1], b.pos[2]);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.userData = b.userData || {};
+    obstaclesGroup.add(mesh);
+    const box3 = new THREE.Box3().setFromObject(mesh);
+    box3.userData = mesh.userData;
+    obstacleBoxes.push(box3);
+  };
+
+  (map.boxes || []).forEach(addBox);
+
+  if (map.script) {
+    try {
+      const fn = new Function('THREE','addBox','getTexture','mapId', map.script);
+      fn(THREE, (w,h,d,x,y,z,materialKey,userData={}) => addBox({size:[w,h,d],pos:[x,y,z],material:materialKey,userData}), getTexture, mapId);
+    } catch (err) {
+      console.error('Map script failed', err);
+    }
+  }
+}
+
+function loadMapLegacy(mapId) {
   if (!obstaclesGroup) return;
 
   // Set Fog and Sky Color based on map
