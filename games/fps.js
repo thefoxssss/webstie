@@ -580,19 +580,12 @@ function createProceduralTexture(type) {
     ctx.fillStyle = "#555555";
     for (let i = 0; i < 5000; i++) {
       ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
-    } else if (type === "wood") {
-    ctx.fillStyle = "#8b5a2b";
-    ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = "#6e4521";
-    for (let y = 0; y < 256; y += 18) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(256,y+4); ctx.stroke(); }
-  }
-  }
+    }
   } else if (type === "wood") {
     ctx.fillStyle = "#8b5a2b";
     ctx.fillRect(0, 0, 256, 256);
     ctx.strokeStyle = "#6e4521";
     for (let y = 0; y < 256; y += 18) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(256,y+4); ctx.stroke(); }
-  }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
