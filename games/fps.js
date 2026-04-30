@@ -7,6 +7,7 @@ let floorMesh;
 let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0, team: 0 };
 let otherPlayers = {}; // id -> { mesh, data, targetPos, targetRotY, lastNetUpdate }
 let gunMesh;
+let gatlingBarrelCluster = null;
 let muzzleFlash, muzzleLight;
 let muzzleFlashTime = 0;
 let nextFireTime = 0;
@@ -1286,6 +1287,7 @@ function onKeyDown(event) {
 
 function createGunModel(id) {
   if (!gunMesh) return;
+  gatlingBarrelCluster = null;
 
   // Clear existing parts (except muzzle flash and light)
   for (let i = gunMesh.children.length - 1; i >= 0; i--) {
@@ -1369,13 +1371,22 @@ function createGunModel(id) {
     handle.rotation.x = -Math.PI / 12;
     gunMesh.add(handle);
 
-    const barrelOffsets = [-0.06, 0, 0.06];
-    barrelOffsets.forEach((yOffset) => {
+    gatlingBarrelCluster = new THREE.Group();
+    gatlingBarrelCluster.position.set(0, 0, -0.35);
+    gunMesh.add(gatlingBarrelCluster);
+
+    const barrelRadius = 0.06;
+    const barrelAngles = [
+      Math.PI / 2,
+      Math.PI / 2 + (Math.PI * 2 / 3),
+      Math.PI / 2 + (Math.PI * 4 / 3)
+    ];
+    barrelAngles.forEach((angle) => {
       const barrelGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 16);
       const barrel = new THREE.Mesh(barrelGeo, matMain);
       barrel.rotation.x = Math.PI / 2;
-      barrel.position.set(0, yOffset, -0.35);
-      gunMesh.add(barrel);
+      barrel.position.set(0, Math.cos(angle) * barrelRadius, Math.sin(angle) * barrelRadius);
+      gatlingBarrelCluster.add(barrel);
     });
   } else if (id === 4) { // Rocket Launcher
     const barrelGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 12);
@@ -2046,6 +2057,13 @@ function animate() {
     gunMesh.position.y += (targetY - gunMesh.position.y) * dampFactor;
     gunMesh.position.z += (targetZ - gunMesh.position.z) * dampFactor;
     gunMesh.rotation.x += (targetRotX - gunMesh.rotation.x) * dampFactor;
+  }
+
+  if (gatlingBarrelCluster) {
+    const isGatlingFiring = isPrimaryFireHeld && localPlayer.weapon === 3 && !isReloading && ammo[3] > 0 && localPlayer.health > 0;
+    if (isGatlingFiring) {
+      gatlingBarrelCluster.rotation.z += delta * 25;
+    }
   }
 
   if (isPrimaryFireHeld && localPlayer.weapon === 3) {
