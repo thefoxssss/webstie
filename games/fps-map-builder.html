@@ -1,44 +1,42 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>FPS Map Builder</title>
-<style>
-body{margin:0;font-family:monospace;display:flex;height:100vh}
-#ui{width:340px;background:#111;color:#eee;padding:10px;overflow:auto;position:relative;z-index:2}
-#view{flex:1;display:block;position:relative;z-index:1}
-button,input,select,textarea{width:100%;margin:4px 0;background:#222;color:#eee;border:1px solid #444}
-</style></head><body>
-<div id="ui">...UI...</div><canvas id="view"></canvas>
-<script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
-<script>
-(() => {
-const ui = document.getElementById('ui');
-ui.innerHTML = `<h3>FPS Map Builder</h3>
+<style>body{margin:0;font-family:monospace;display:flex;height:100vh}#ui{width:340px;background:#111;color:#eee;padding:10px;overflow:auto}#view{flex:1;display:block}button,input,select,textarea{width:100%;margin:4px 0;background:#222;color:#eee;border:1px solid #444}</style>
+</head><body>
+<div id="ui"><h3>FPS Map Builder</h3>
 <label>Map file<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
 <button id='loadMapBtn' type='button'>Load Selected Map</button>
 <label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
 <label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
-<button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo</button><hr/>
-<label>Map Name<input id='mapName' value='New Map'></label>
-<label>Optional script<textarea id='script' rows='6'></textarea></label>
-<button id='downloadBtn' type='button'>Download JSON</button><pre id='status'></pre>`;
-const statusEl=document.getElementById('status');
-if(!window.THREE){statusEl.textContent='Three.js failed to load. Buttons still work for JSON edits only.';return;}
-// existing logic simplified
-const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script');
-let boxes=[]; const boxMeshes=[];
+<button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo</button>
+<label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6'></textarea></label>
+<button id='downloadBtn' type='button'>Download JSON</button><pre id='status'></pre></div>
+<canvas id="view"></canvas>
+<script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
+<script>
+(() => {
+const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
-const canvas=document.getElementById('view'); const renderer=new THREE.WebGLRenderer({canvas,antialias:true}); const scene=new THREE.Scene(); scene.background=new THREE.Color(0x333344); const camera=new THREE.PerspectiveCamera(75,1,0.1,1000); camera.position.set(20,20,20);
-const onResize=()=>{const w=Math.max(300,window.innerWidth-340),h=window.innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};window.addEventListener('resize',onResize);onResize();
-scene.add(new THREE.AmbientLight(0x888888)); const dl=new THREE.DirectionalLight(0xffffff,1); dl.position.set(10,20,10); scene.add(dl); scene.add(new THREE.GridHelper(240,120));
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(240,240),new THREE.MeshBasicMaterial({visible:false})); floor.rotation.x=-Math.PI/2; scene.add(floor);
-const marker=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x00ff00,wireframe:true})); marker.position.y=.5; scene.add(marker);
-function renderBox(b){const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); scene.add(mesh); boxMeshes.push(mesh);} 
-function clearBoxes(){while(boxMeshes.length){const mesh=boxMeshes.pop(); scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose();}}
-const addBox=()=>{const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[marker.position.x,sy/2,marker.position.z],material:matEl.value||'default'}; boxes.push(b); renderBox(b); statusEl.textContent=`Boxes: ${boxes.length}`;};
+let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[];
+function renderBox(b){ if(!scene||!window.THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); scene.add(mesh); boxMeshes.push(mesh); }
+function clearBoxes(){ while(boxMeshes.length){const mesh=boxMeshes.pop(); if(scene) scene.remove(mesh); mesh.geometry?.dispose?.(); mesh.material?.dispose?.();}}
+function refreshStatus(prefix=''){statusEl.textContent=`${prefix}${prefix?' ':''}Boxes: ${boxes.length}`;}
+
+async function loadMap(){ try{ if(!mapFileEl.value) return; const res=await fetch(`../data/fps/maps/${mapFileEl.value}.json`); if(!res.ok) throw new Error(`HTTP ${res.status}`); const map=await res.json(); boxes=Array.isArray(map.boxes)?map.boxes.map(b=>({...b,size:[...b.size],pos:[...b.pos]})):[]; mapNameEl.value=map.name||''; scriptEl.value=map.script||''; clearBoxes(); boxes.forEach(renderBox); refreshStatus(`Loaded ${mapFileEl.value}.`);}catch(e){statusEl.textContent='Load failed: '+e.message;}}
+function addBox(){const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[markerPos.x,sy/2,markerPos.z],material:matEl.value||'default'}; boxes.push(b); renderBox(b); refreshStatus();}
+function undo(){if(!boxes.length)return; boxes.pop(); const mesh=boxMeshes.pop(); if(mesh&&scene){scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose();} refreshStatus();}
+function download(){const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); refreshStatus('Downloaded.');}
+
+document.getElementById('loadMapBtn').addEventListener('click',loadMap);
 document.getElementById('addBtn').addEventListener('click',addBox);
-document.getElementById('undoBtn').addEventListener('click',()=>{if(!boxes.length)return; boxes.pop(); const m=boxMeshes.pop(); if(m){scene.remove(m);m.geometry.dispose();m.material.dispose();} statusEl.textContent=`Boxes: ${boxes.length}`;});
-document.getElementById('loadMapBtn').addEventListener('click',async()=>{try{if(!mapFileEl.value)return; const res=await fetch(`../data/fps/maps/${mapFileEl.value}.json`); const map=await res.json(); boxes=Array.isArray(map.boxes)?map.boxes.map(b=>({...b,size:[...b.size],pos:[...b.pos]})):[]; clearBoxes(); boxes.forEach(renderBox); mapNameEl.value=map.name||''; scriptEl.value=map.script||''; statusEl.textContent=`Loaded ${mapFileEl.value}. Boxes: ${boxes.length}`;}catch(e){statusEl.textContent='Load failed: '+e.message;}});
-document.getElementById('downloadBtn').addEventListener('click',()=>{const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click();});
-let yaw=0,pitch=-.4,mouseDown=false;const keys={};const ray=new THREE.Raycaster();window.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);canvas.addEventListener('mousedown',()=>mouseDown=true);window.addEventListener('mouseup',()=>mouseDown=false);window.addEventListener('mousemove',e=>{if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));});
-(function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,sp); if(keys.d)camera.position.addScaledVector(right,-sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit) marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); renderer.render(scene,camera);})();
+document.getElementById('undoBtn').addEventListener('click',undo);
+document.getElementById('downloadBtn').addEventListener('click',download);
+refreshStatus();
+
+if(!window.THREE){ statusEl.textContent='Three.js unavailable; JSON edit buttons still work.'; return; }
+const canvas=document.getElementById('view'); renderer=new THREE.WebGLRenderer({canvas,antialias:true}); scene=new THREE.Scene(); scene.background=new THREE.Color(0x333344); camera=new THREE.PerspectiveCamera(75,1,0.1,1000); camera.position.set(20,20,20);
+const resize=()=>{const w=Math.max(300,window.innerWidth-340),h=window.innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();}; window.addEventListener('resize',resize); resize();
+scene.add(new THREE.AmbientLight(0x888888)); const dl=new THREE.DirectionalLight(0xffffff,1); dl.position.set(10,20,10); scene.add(dl); scene.add(new THREE.GridHelper(240,120)); floor=new THREE.Mesh(new THREE.PlaneGeometry(240,240),new THREE.MeshBasicMaterial({visible:false})); floor.rotation.x=-Math.PI/2; scene.add(floor); marker=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x00ff00,wireframe:true})); marker.position.y=.5; scene.add(marker);
+let yaw=0,pitch=-.4,mouseDown=false; const keys={}; const ray=new THREE.Raycaster(); window.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true); window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false); canvas.addEventListener('mousedown',()=>mouseDown=true); window.addEventListener('mouseup',()=>mouseDown=false); window.addEventListener('mousemove',e=>{if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));});
+(function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,sp); if(keys.d)camera.position.addScaledVector(right,-sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); markerPos={x:marker.position.x,z:marker.position.z}; } renderer.render(scene,camera);})();
 })();
 </script></body></html>
