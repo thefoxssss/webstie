@@ -1,27 +1,182 @@
 {
   "schema": "fps-map-v1",
   "id": 5,
-  "name": "Map 5",
+  "name": "CTF",
   "environment": {
-    "background": 5614318,
+    "background": 8900331,
     "fogType": "linear",
-    "fogColor": 5614318,
+    "fogColor": 8900331,
     "fogNear": 20,
-    "fogFar": 150,
-    "floorTexture": "grass",
-    "floorColor": 8947848,
-    "floorRepeatX": 20,
-    "floorRepeatY": 20
+    "fogFar": 250,
+    "floorTexture": "concrete",
+    "floorColor": 6710886,
+    "floorRepeatX": 24,
+    "floorRepeatY": 24
   },
   "materials": {
-    "default": { "color": 10066329 },
-    "brick": { "color": 10066329, "texture": "brick", "repeat": [2,1] },
-    "grass": { "color": 8947848, "texture": "grass" },
-    "asphalt": { "color": 8947848, "texture": "asphalt" },
-    "metal": { "color": 8947848, "texture": "metal" },
-    "concrete": { "color": 5592405, "texture": "concrete" },
-    "wood": { "color": 9136731 }
+    "default": {
+      "color": 10066329
+    },
+    "brick": {
+      "color": 10066329,
+      "texture": "brick",
+      "repeat": [
+        2,
+        1
+      ]
+    },
+    "grass": {
+      "color": 8947848,
+      "texture": "grass"
+    },
+    "asphalt": {
+      "color": 8947848,
+      "texture": "asphalt"
+    },
+    "metal": {
+      "color": 8947848,
+      "texture": "metal"
+    },
+    "concrete": {
+      "color": 5592405,
+      "texture": "concrete"
+    },
+    "wood": {
+      "color": 9136731,
+      "texture": "wood"
+    }
   },
-  "boxes": [],
+  "boxes": [
+    {
+      "size": [
+        160,
+        40,
+        2
+      ],
+      "pos": [
+        0,
+        20,
+        -170
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        160,
+        40,
+        2
+      ],
+      "pos": [
+        0,
+        20,
+        170
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        2,
+        40,
+        400
+      ],
+      "pos": [
+        -80,
+        20,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        2,
+        40,
+        400
+      ],
+      "pos": [
+        80,
+        20,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        24,
+        16,
+        24
+      ],
+      "pos": [
+        -45,
+        8,
+        -130
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        24,
+        16,
+        24
+      ],
+      "pos": [
+        45,
+        8,
+        130
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        14,
+        10,
+        14
+      ],
+      "pos": [
+        -45,
+        5,
+        -130
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        14,
+        10,
+        14
+      ],
+      "pos": [
+        45,
+        5,
+        130
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        20,
+        4,
+        40
+      ],
+      "pos": [
+        0,
+        2,
+        -70
+      ],
+      "material": "wood"
+    },
+    {
+      "size": [
+        20,
+        4,
+        40
+      ],
+      "pos": [
+        0,
+        2,
+        70
+      ],
+      "material": "wood"
+    }
+  ],
   "script": ""
 }
