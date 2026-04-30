@@ -1376,13 +1376,15 @@ function createGunModel(id) {
     gunMesh.add(gatlingBarrelCluster);
 
     const barrelCount = 7;
-    const barrelRadius = 0.075;
+    const radialDistanceFromCenter = 0.075;
+    const angleStep = (Math.PI * 2) / barrelCount;
+    const startAngle = -Math.PI / 2;
     for (let i = 0; i < barrelCount; i++) {
-      const angle = (i / barrelCount) * Math.PI * 2;
+      const angle = startAngle + i * angleStep;
       const barrelGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 16);
       const barrel = new THREE.Mesh(barrelGeo, matMain);
       barrel.rotation.x = Math.PI / 2;
-      barrel.position.set(0, Math.cos(angle) * barrelRadius, Math.sin(angle) * barrelRadius);
+      barrel.position.set(0, Math.cos(angle) * radialDistanceFromCenter, Math.sin(angle) * radialDistanceFromCenter);
       gatlingBarrelCluster.add(barrel);
     }
   } else if (id === 4) { // Rocket Launcher
