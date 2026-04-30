@@ -1375,7 +1375,7 @@ function createGunModel(id) {
     gatlingBarrelCluster.position.set(0, 0, -0.35);
     gunMesh.add(gatlingBarrelCluster);
 
-    const barrelCount = 7;
+    const barrelCount = 6;
     const radialDistanceFromCenter = 0.075;
     const angleStep = (Math.PI * 2) / barrelCount;
     const startAngle = -Math.PI / 2;
@@ -1387,6 +1387,18 @@ function createGunModel(id) {
       barrel.position.set(0, Math.cos(angle) * radialDistanceFromCenter, Math.sin(angle) * radialDistanceFromCenter);
       gatlingBarrelCluster.add(barrel);
     }
+
+    const hubGeo = new THREE.CylinderGeometry(0.028, 0.028, 1.2, 16);
+    const hub = new THREE.Mesh(hubGeo, matDark);
+    hub.rotation.x = Math.PI / 2;
+    hub.position.set(0, 0, 0);
+    gatlingBarrelCluster.add(hub);
+
+    const muzzleRingGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.1, 20, 1, true);
+    const muzzleRing = new THREE.Mesh(muzzleRingGeo, matDark);
+    muzzleRing.rotation.x = Math.PI / 2;
+    muzzleRing.position.set(0, 0, -0.58);
+    gatlingBarrelCluster.add(muzzleRing);
   } else if (id === 4) { // Rocket Launcher
     const barrelGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 12);
     barrelGeo.rotateX(Math.PI / 2);
