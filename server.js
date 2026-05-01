@@ -3805,5 +3805,19 @@ app.get("/fps-servers", (req, res) => {
   res.json({ servers });
 });
 
-gameServer.listen(port);
-console.log(`Colyseus game server is listening on port ${port}...`);
+if (require.main === module) {
+  gameServer.listen(port);
+  console.log(`Colyseus game server is listening on port ${port}...`);
+}
+
+module.exports = {
+  AgarRoom,
+  AgarState,
+  AgarCell,
+  AGAR_MAP_WIDTH,
+  AGAR_MAP_HEIGHT,
+  AGAR_MAX_CELLS,
+  AGAR_SPLIT_MIN_RADIUS,
+  AGAR_SPLIT_LAUNCH_SPEED,
+  AGAR_MERGE_COOLDOWN_MS,
+};
