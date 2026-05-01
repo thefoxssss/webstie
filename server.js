@@ -3260,6 +3260,7 @@ class AgarRoom extends colyseus.Room {
     this.setState(state);
 
     this.inputs = {};
+    this.clientsById = new Map();
     this.foodCounter = 0;
     this.cellCounter = 0;
 
@@ -3493,7 +3494,7 @@ class AgarRoom extends colyseus.Room {
       const wasAlive = player.isAlive;
       this.updatePlayerAggregate(id);
       if (wasAlive && !player.isAlive) {
-        const loserClient = this.clients.find((c) => c.sessionId === id);
+        const loserClient = this.clientsById.get(id);
         if (loserClient) loserClient.send("died", { killer: deathBy.get(id) || "another player" });
       }
     });
@@ -3505,6 +3506,7 @@ class AgarRoom extends colyseus.Room {
   }
 
   onJoin(client, options) {
+    this.clientsById.set(client.sessionId, client);
     const p = new AgarPlayer();
     p.id = client.sessionId;
     p.name = (options.name || "Anon").slice(0, 16);
@@ -3523,6 +3525,8 @@ class AgarRoom extends colyseus.Room {
   }
 
   onLeave(client, consented) {
+    this.clientsById.set(client.sessionId, null);
+    this.clientsById.delete(client.sessionId);
     this.state.cells.forEach((cell, cellId) => {
       if (cell.ownerId === client.sessionId) this.state.cells.delete(cellId);
     });
