@@ -4404,6 +4404,7 @@
                                     }
                                     enemy.health = 0;
                                 }
+                                removeDeadEnemies();
                             }, 500);
                         }
                         break;
@@ -4437,9 +4438,7 @@
                 }
                 
                 // CRITICAL FIX: Remove dead enemies after abilities execute
-                setTimeout(() => {
-                    removeDeadEnemies();
-                }, 100);
+                removeDeadEnemies();
             }
 
             update() {
