@@ -5,6 +5,7 @@
 <div id="ui"><h3>FPS Map Builder</h3>
 <label>Map file<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
 <button id='loadMapBtn' type='button'>Load Selected Map</button>
+<label>Upload JSON<input id='uploadJsonInput' type='file' accept='.json,application/json'></label>
 <label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
 <label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
 <button id='applySizeBtn' type='button'>Apply Size To Selected</button>
@@ -26,7 +27,7 @@ if (!THREE) {
 }
 THREE = THREE && (THREE.default ? THREE.default : THREE);
 (() => {
-const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode');
+const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode'),uploadJsonInput=document.getElementById('uploadJsonInput');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
 let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null;
 function renderBox(b, i){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); mesh.userData.boxIndex=i; scene.add(mesh); boxMeshes.push(mesh); }
@@ -48,6 +49,14 @@ function updateHandles(){
 function applySizeToSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; const b=boxes[selectedIndex]; b.size=[+sxEl.value||1,+syEl.value||1,+szEl.value||1]; b.pos[1]=b.size[1]/2; rerenderAll(); }
 
 async function loadMap(){ try{ if(!mapFileEl.value) return; const res=await fetch(`../data/fps/maps/${mapFileEl.value}.json`); if(!res.ok) throw new Error(`HTTP ${res.status}`); const map=await res.json(); boxes=Array.isArray(map.boxes)?map.boxes.map(b=>({...b,size:[...b.size],pos:[...b.pos]})):[]; mapNameEl.value=map.name||''; scriptEl.value=map.script||''; selectedIndex=-1; rerenderAll(); refreshStatus(`Loaded ${mapFileEl.value}.`);}catch(e){statusEl.textContent='Load failed: '+e.message;}}
+function loadMapObject(map, label = 'Uploaded map') {
+  boxes = Array.isArray(map.boxes) ? map.boxes.map(b => ({ ...b, size:[...b.size], pos:[...b.pos] })) : [];
+  mapNameEl.value = map.name || '';
+  scriptEl.value = map.script || '';
+  selectedIndex = -1;
+  rerenderAll();
+  refreshStatus(`Loaded ${label}.`);
+}
 function addBox(){const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[markerPos.x,sy/2,markerPos.z],material:matEl.value||'default'}; boxes.push(b); selectedIndex=boxes.length-1; rerenderAll(); refreshStatus();}
 function undo(){if(!boxes.length)return; boxes.pop(); if (selectedIndex >= boxes.length) selectedIndex = boxes.length - 1; rerenderAll(); refreshStatus();}
 function download(){const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); refreshStatus('Downloaded.');}
@@ -57,6 +66,19 @@ document.getElementById('addBtn').addEventListener('click',addBox);
 document.getElementById('undoBtn').addEventListener('click',undo);
 document.getElementById('applySizeBtn').addEventListener('click',applySizeToSelected);
 document.getElementById('downloadBtn').addEventListener('click',download);
+uploadJsonInput.addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const map = JSON.parse(text);
+    loadMapObject(map, file.name);
+  } catch (err) {
+    statusEl.textContent = `Upload failed: ${err.message}`;
+  } finally {
+    uploadJsonInput.value = '';
+  }
+});
 refreshStatus();
 
 if(!THREE){ statusEl.textContent='Three.js unavailable; JSON edit buttons still work.'; return; }
