@@ -7,6 +7,7 @@
 <button id='loadMapBtn' type='button'>Load Selected Map</button>
 <label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
 <label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
+<button id='applySizeBtn' type='button'>Apply Size To Selected</button>
 <button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo</button>
 <label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6'></textarea></label>
 <button id='downloadBtn' type='button'>Download JSON</button><pre id='status'></pre></div>
@@ -26,19 +27,34 @@ THREE = THREE && (THREE.default ? THREE.default : THREE);
 (() => {
 const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
-let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[];
-function renderBox(b){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); scene.add(mesh); boxMeshes.push(mesh); }
+let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null;
+function renderBox(b, i){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); mesh.userData.boxIndex=i; scene.add(mesh); boxMeshes.push(mesh); }
 function clearBoxes(){ while(boxMeshes.length){const mesh=boxMeshes.pop(); if(scene) scene.remove(mesh); mesh.geometry?.dispose?.(); mesh.material?.dispose?.();}}
 function refreshStatus(prefix=''){statusEl.textContent=`${prefix}${prefix?' ':''}Boxes: ${boxes.length}`;}
+function rerenderAll(){ clearBoxes(); boxes.forEach((b,i)=>renderBox(b,i)); updateHandles(); }
+function updateHandles(){
+  if (!scene) return;
+  handles.forEach(h=>scene.remove(h)); handles=[];
+  if (selectedIndex < 0 || !boxes[selectedIndex]) return;
+  const b = boxes[selectedIndex]; sxEl.value=b.size[0]; syEl.value=b.size[1]; szEl.value=b.size[2];
+  const axes = [{a:'x',c:0xff4444,v:new THREE.Vector3(1,0,0)},{a:'y',c:0x44ff44,v:new THREE.Vector3(0,1,0)},{a:'z',c:0x4488ff,v:new THREE.Vector3(0,0,1)}];
+  axes.forEach(({a,c,v})=>{ const cone = new THREE.Mesh(new THREE.ConeGeometry(0.35,1.2,12), new THREE.MeshBasicMaterial({color:c}));
+    const off = {x:b.size[0]/2+1.2,y:b.size[1]/2+1.2,z:b.size[2]/2+1.2}[a];
+    cone.position.set(b.pos[0]+v.x*off,b.pos[1]+v.y*off,b.pos[2]+v.z*off);
+    if (a==='x') cone.rotation.z=-Math.PI/2; if (a==='z') cone.rotation.x=Math.PI/2;
+    cone.userData={isHandle:true,axis:a}; scene.add(cone); handles.push(cone); });
+}
+function applySizeToSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; const b=boxes[selectedIndex]; b.size=[+sxEl.value||1,+syEl.value||1,+szEl.value||1]; b.pos[1]=b.size[1]/2; rerenderAll(); }
 
-async function loadMap(){ try{ if(!mapFileEl.value) return; const res=await fetch(`../data/fps/maps/${mapFileEl.value}.json`); if(!res.ok) throw new Error(`HTTP ${res.status}`); const map=await res.json(); boxes=Array.isArray(map.boxes)?map.boxes.map(b=>({...b,size:[...b.size],pos:[...b.pos]})):[]; mapNameEl.value=map.name||''; scriptEl.value=map.script||''; clearBoxes(); boxes.forEach(renderBox); refreshStatus(`Loaded ${mapFileEl.value}.`);}catch(e){statusEl.textContent='Load failed: '+e.message;}}
-function addBox(){const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[markerPos.x,sy/2,markerPos.z],material:matEl.value||'default'}; boxes.push(b); renderBox(b); refreshStatus();}
-function undo(){if(!boxes.length)return; boxes.pop(); const mesh=boxMeshes.pop(); if(mesh&&scene){scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose();} refreshStatus();}
+async function loadMap(){ try{ if(!mapFileEl.value) return; const res=await fetch(`../data/fps/maps/${mapFileEl.value}.json`); if(!res.ok) throw new Error(`HTTP ${res.status}`); const map=await res.json(); boxes=Array.isArray(map.boxes)?map.boxes.map(b=>({...b,size:[...b.size],pos:[...b.pos]})):[]; mapNameEl.value=map.name||''; scriptEl.value=map.script||''; selectedIndex=-1; rerenderAll(); refreshStatus(`Loaded ${mapFileEl.value}.`);}catch(e){statusEl.textContent='Load failed: '+e.message;}}
+function addBox(){const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[markerPos.x,sy/2,markerPos.z],material:matEl.value||'default'}; boxes.push(b); selectedIndex=boxes.length-1; rerenderAll(); refreshStatus();}
+function undo(){if(!boxes.length)return; boxes.pop(); if (selectedIndex >= boxes.length) selectedIndex = boxes.length - 1; rerenderAll(); refreshStatus();}
 function download(){const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); refreshStatus('Downloaded.');}
 
 document.getElementById('loadMapBtn').addEventListener('click',loadMap);
 document.getElementById('addBtn').addEventListener('click',addBox);
 document.getElementById('undoBtn').addEventListener('click',undo);
+document.getElementById('applySizeBtn').addEventListener('click',applySizeToSelected);
 document.getElementById('downloadBtn').addEventListener('click',download);
 refreshStatus();
 
@@ -58,7 +74,27 @@ window.addEventListener('blur', clearHeldKeys);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearHeldKeys();
 });
-canvas.addEventListener('mousedown',()=>mouseDown=true); window.addEventListener('mouseup',()=>mouseDown=false); window.addEventListener('mousemove',e=>{if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));});
+canvas.addEventListener('mousedown',(e)=>{
+  mouseDown=true;
+  const rect=canvas.getBoundingClientRect();
+  const ndc=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  const pick=ray.intersectObjects([...handles,...boxMeshes])[0];
+  if (pick?.object?.userData?.isHandle) dragHandleAxis=pick.object.userData.axis;
+  else if (pick?.object?.userData?.boxIndex>=0) { selectedIndex=pick.object.userData.boxIndex; updateHandles(); }
+});
+window.addEventListener('mouseup',()=>{mouseDown=false; dragHandleAxis=null;});
+window.addEventListener('mousemove',e=>{
+  if (dragHandleAxis && selectedIndex>=0 && boxes[selectedIndex]) {
+    const delta = e.movementX * 0.05;
+    const axisIndex = dragHandleAxis === 'x' ? 0 : dragHandleAxis === 'y' ? 1 : 2;
+    boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
+    boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
+    rerenderAll();
+    return;
+  }
+  if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));
+});
 (function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,sp); if(keys.d)camera.position.addScaledVector(right,-sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); markerPos={x:marker.position.x,z:marker.position.z}; } renderer.render(scene,camera);})();
 })();
 </script></body></html>
