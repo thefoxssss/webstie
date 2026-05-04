@@ -24,8 +24,10 @@ button:hover{background:#1b2f5c}
   <select id="fileMenu" class="toolbtn">
     <option value="">File</option>
     <option value="new">New</option>
-    <option value="load_builtin">Load Built-in</option>
+    <option value="load_builtin">Load Built-in Map</option>
     <option value="upload">Upload JSON</option>
+    <option value="save_draft">Save Draft</option>
+    <option value="restore_draft">Restore Draft</option>
     <option value="download">Download JSON</option>
   </select>
   <select id="editMenu" class="toolbtn">
@@ -40,8 +42,6 @@ button:hover{background:#1b2f5c}
   <button id="modeMoveBtn" class="toolbtn" type="button">🧭 Move</button>
   <button id="snapToggleBtn" class="toolbtn" type="button">🧲 Snap: ON</button>
   <button id="focusSelectedBtn" class="toolbtn" type="button">🎯 Focus</button>
-  <button id="saveDraftBtn" class="toolbtn" type="button">💾 Save Draft</button>
-  <button id="restoreDraftBtn" class="toolbtn" type="button">♻️ Restore Draft</button>
 </div>
 <div class="content"><h3>FPS Map Builder</h3>
 <div class="section">
@@ -129,9 +129,7 @@ document.getElementById('modeScaleBtn').addEventListener('click',()=>{arrowModeE
 document.getElementById('modeMoveBtn').addEventListener('click',()=>{arrowModeEl.value='move'; refreshStatus('Arrow mode: Move.');});
 document.getElementById('snapToggleBtn').addEventListener('click',(e)=>{snapEnabled=!snapEnabled; e.currentTarget.textContent=`🧲 Snap: ${snapEnabled?'ON':'OFF'}`;});
 document.getElementById('focusSelectedBtn').addEventListener('click',()=>{ if(selectedIndex<0||!boxes[selectedIndex]||!camera) return; const p=boxes[selectedIndex].pos; camera.position.set(p[0]+12,p[1]+12,p[2]+12); });
-document.getElementById('saveDraftBtn').addEventListener('click',saveDraft);
-document.getElementById('restoreDraftBtn').addEventListener('click',restoreDraft);
-fileMenu.addEventListener('change',()=>{const v=fileMenu.value; if(v==='new') newMap(); if(v==='load_builtin') loadMap(); if(v==='upload') uploadJsonInput.click(); if(v==='download') download(); fileMenu.value='';});
+fileMenu.addEventListener('change',()=>{const v=fileMenu.value; if(v==='new') newMap(); if(v==='load_builtin') loadMap(); if(v==='upload') uploadJsonInput.click(); if(v==='save_draft') saveDraft(); if(v==='restore_draft') restoreDraft(); if(v==='download') download(); fileMenu.value='';});
 editMenu.addEventListener('change',()=>{const v=editMenu.value; if(v==='undo') undo(); if(v==='duplicate') duplicateSelected(); if(v==='delete') deleteSelected(); editMenu.value='';});
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Delete') { e.preventDefault(); deleteSelected(); }
