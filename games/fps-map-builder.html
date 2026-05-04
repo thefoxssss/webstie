@@ -17,6 +17,8 @@ button{cursor:pointer;font-weight:600}
 button:hover{background:#1b2f5c}
 #status{white-space:pre-wrap;background:#0a1327;border:1px solid #253a66;border-radius:6px;padding:8px;min-height:42px}
 .kbd{font-family:monospace;background:#152445;border:1px solid #3a4f7e;border-radius:4px;padding:1px 5px}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.primary{background:#2a4da2;border-color:#4f77d9}
 </style>
 </head><body>
 <div id="ui">
@@ -44,6 +46,13 @@ button:hover{background:#1b2f5c}
   <button id="focusSelectedBtn" class="toolbtn" type="button">🎯 Focus</button>
 </div>
 <div class="content"><h3>FPS Map Builder</h3>
+<div class="section">
+<div class="hint"><b>Quick Start</b><br>1) Load or Upload a map<br>2) Click ground + <b>Add Box</b><br>3) Click box, drag arrows to Move/Scale<br>4) File → Download JSON</div>
+<div class="quick">
+  <button id="quickAddBtn" class="primary" type="button">➕ Add Box</button>
+  <button id="quickExportBtn" class="primary" type="button">⬇ Export JSON</button>
+</div>
+</div>
 <div class="section">
 <div class="hint">Load built-in maps, upload custom JSON, edit, then export.</div>
 <label>Built-in map<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
@@ -131,6 +140,8 @@ document.getElementById('snapToggleBtn').addEventListener('click',(e)=>{snapEnab
 document.getElementById('focusSelectedBtn').addEventListener('click',()=>{ if(selectedIndex<0||!boxes[selectedIndex]||!camera) return; const p=boxes[selectedIndex].pos; camera.position.set(p[0]+12,p[1]+12,p[2]+12); });
 fileMenu.addEventListener('change',()=>{const v=fileMenu.value; if(v==='new') newMap(); if(v==='load_builtin') loadMap(); if(v==='upload') uploadJsonInput.click(); if(v==='save_draft') saveDraft(); if(v==='restore_draft') restoreDraft(); if(v==='download') download(); fileMenu.value='';});
 editMenu.addEventListener('change',()=>{const v=editMenu.value; if(v==='undo') undo(); if(v==='duplicate') duplicateSelected(); if(v==='delete') deleteSelected(); editMenu.value='';});
+document.getElementById('quickAddBtn').addEventListener('click', addBox);
+document.getElementById('quickExportBtn').addEventListener('click', download);
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Delete') { e.preventDefault(); deleteSelected(); }
   if (e.key.toLowerCase() === 'd' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); duplicateSelected(); }
