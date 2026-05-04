@@ -2,9 +2,13 @@
 <html><head><meta charset="utf-8"><title>FPS Map Builder</title>
 <style>
 body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;display:flex;height:100vh;background:#0b1220;color:#dbe5ff}
-#ui{width:380px;background:linear-gradient(180deg,#111a2e,#0e1629);padding:14px;overflow:auto;border-right:1px solid #2a3a60}
+#ui{width:420px;background:linear-gradient(180deg,#111a2e,#0e1629);padding:0;overflow:auto;border-right:1px solid #2a3a60}
 #view{flex:1;display:block}
 h3{margin:4px 0 10px 0}
+.menubar{display:flex;gap:8px;background:#0b1428;border-bottom:1px solid #2d406b;padding:8px 10px;position:sticky;top:0;z-index:5}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;background:#0e1a33;border-bottom:1px solid #2d406b;padding:8px 10px;position:sticky;top:40px;z-index:4}
+.toolbtn{width:auto;padding:6px 10px}
+.content{padding:12px}
 .section{background:#0e1a33;border:1px solid #28385c;border-radius:8px;padding:10px;margin-bottom:10px}
 .hint{font-size:12px;color:#9fb3df;line-height:1.4}
 label{display:block;font-size:12px;color:#b7c7ef;margin-top:6px}
@@ -14,7 +18,29 @@ button:hover{background:#1b2f5c}
 #status{white-space:pre-wrap;background:#0a1327;border:1px solid #253a66;border-radius:6px;padding:8px;min-height:42px}
 </style>
 </head><body>
-<div id="ui"><h3>FPS Map Builder</h3>
+<div id="ui">
+<div class="menubar">
+  <select id="fileMenu" class="toolbtn">
+    <option value="">File</option>
+    <option value="new">New</option>
+    <option value="load_builtin">Load Built-in</option>
+    <option value="upload">Upload JSON</option>
+    <option value="download">Download JSON</option>
+  </select>
+  <select id="editMenu" class="toolbtn">
+    <option value="">Edit</option>
+    <option value="undo">Undo</option>
+    <option value="duplicate">Duplicate Selected</option>
+    <option value="delete">Delete Selected</option>
+  </select>
+</div>
+<div class="toolbar">
+  <button id="modeScaleBtn" class="toolbtn" type="button">📏 Scale</button>
+  <button id="modeMoveBtn" class="toolbtn" type="button">🧭 Move</button>
+  <button id="snapToggleBtn" class="toolbtn" type="button">🧲 Snap: ON</button>
+  <button id="focusSelectedBtn" class="toolbtn" type="button">🎯 Focus</button>
+</div>
+<div class="content"><h3>FPS Map Builder</h3>
 <div class="section">
 <div class="hint">Load built-in maps, upload custom JSON, edit, then export.</div>
 <label>Built-in map<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
@@ -33,7 +59,7 @@ button:hover{background:#1b2f5c}
 <label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6' placeholder='Optional JS script for runtime map behavior'></textarea></label>
 <button id='downloadBtn' type='button'>Download JSON</button>
 </div>
-<pre id='status'></pre></div>
+<pre id='status'></pre></div></div>
 <canvas id="view"></canvas>
 <script type="module">
 let THREE = window.THREE;
@@ -48,9 +74,9 @@ if (!THREE) {
 }
 THREE = THREE && (THREE.default ? THREE.default : THREE);
 (() => {
-const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode'),uploadJsonInput=document.getElementById('uploadJsonInput');
+const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode'),uploadJsonInput=document.getElementById('uploadJsonInput'),fileMenu=document.getElementById('fileMenu'),editMenu=document.getElementById('editMenu');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
-let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null;
+let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null; let snapEnabled=true;
 function renderBox(b, i){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); mesh.userData.boxIndex=i; scene.add(mesh); boxMeshes.push(mesh); }
 function clearBoxes(){ while(boxMeshes.length){const mesh=boxMeshes.pop(); if(scene) scene.remove(mesh); mesh.geometry?.dispose?.(); mesh.material?.dispose?.();}}
 function refreshStatus(prefix=''){statusEl.textContent=`${prefix}${prefix?' ':''}Boxes: ${boxes.length}`;}
@@ -80,6 +106,9 @@ function loadMapObject(map, label = 'Uploaded map') {
 }
 function addBox(){const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[markerPos.x,sy/2,markerPos.z],material:matEl.value||'default'}; boxes.push(b); selectedIndex=boxes.length-1; rerenderAll(); refreshStatus();}
 function undo(){if(!boxes.length)return; boxes.pop(); if (selectedIndex >= boxes.length) selectedIndex = boxes.length - 1; rerenderAll(); refreshStatus();}
+function duplicateSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; const b=boxes[selectedIndex]; const copy={...b,size:[...b.size],pos:[b.pos[0]+2,b.pos[1],b.pos[2]+2],material:b.material}; boxes.push(copy); selectedIndex=boxes.length-1; rerenderAll(); refreshStatus('Duplicated.'); }
+function deleteSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; boxes.splice(selectedIndex,1); selectedIndex=Math.min(selectedIndex,boxes.length-1); rerenderAll(); refreshStatus('Deleted.'); }
+function newMap(){ boxes=[]; selectedIndex=-1; mapNameEl.value='New Map'; scriptEl.value=''; rerenderAll(); refreshStatus('New map.'); }
 function download(){const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); refreshStatus('Downloaded.');}
 
 document.getElementById('loadMapBtn').addEventListener('click',loadMap);
@@ -87,6 +116,12 @@ document.getElementById('addBtn').addEventListener('click',addBox);
 document.getElementById('undoBtn').addEventListener('click',undo);
 document.getElementById('applySizeBtn').addEventListener('click',applySizeToSelected);
 document.getElementById('downloadBtn').addEventListener('click',download);
+document.getElementById('modeScaleBtn').addEventListener('click',()=>{arrowModeEl.value='scale'; refreshStatus('Arrow mode: Scale.');});
+document.getElementById('modeMoveBtn').addEventListener('click',()=>{arrowModeEl.value='move'; refreshStatus('Arrow mode: Move.');});
+document.getElementById('snapToggleBtn').addEventListener('click',(e)=>{snapEnabled=!snapEnabled; e.currentTarget.textContent=`🧲 Snap: ${snapEnabled?'ON':'OFF'}`;});
+document.getElementById('focusSelectedBtn').addEventListener('click',()=>{ if(selectedIndex<0||!boxes[selectedIndex]||!camera) return; const p=boxes[selectedIndex].pos; camera.position.set(p[0]+12,p[1]+12,p[2]+12); });
+fileMenu.addEventListener('change',()=>{const v=fileMenu.value; if(v==='new') newMap(); if(v==='load_builtin') loadMap(); if(v==='upload') uploadJsonInput.click(); if(v==='download') download(); fileMenu.value='';});
+editMenu.addEventListener('change',()=>{const v=editMenu.value; if(v==='undo') undo(); if(v==='duplicate') duplicateSelected(); if(v==='delete') deleteSelected(); editMenu.value='';});
 uploadJsonInput.addEventListener('change', async (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -135,9 +170,11 @@ window.addEventListener('mousemove',e=>{
     const mode = arrowModeEl.value;
     if (mode === 'move') {
       boxes[selectedIndex].pos[axisIndex] += delta;
+      if (snapEnabled) boxes[selectedIndex].pos[axisIndex] = Math.round(boxes[selectedIndex].pos[axisIndex]);
       if (axisIndex === 1) boxes[selectedIndex].pos[1] = Math.max(0.5, boxes[selectedIndex].pos[1]);
     } else {
       boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
+      if (snapEnabled) boxes[selectedIndex].size[axisIndex] = Math.round(boxes[selectedIndex].size[axisIndex]);
       boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
     }
     rerenderAll();
