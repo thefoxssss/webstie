@@ -8,6 +8,7 @@
 <label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
 <label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
 <button id='applySizeBtn' type='button'>Apply Size To Selected</button>
+<label>Arrow Mode<select id='arrowMode'><option value='scale'>Scale</option><option value='move'>Move</option></select></label>
 <button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo</button>
 <label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6'></textarea></label>
 <button id='downloadBtn' type='button'>Download JSON</button><pre id='status'></pre></div>
@@ -25,7 +26,7 @@ if (!THREE) {
 }
 THREE = THREE && (THREE.default ? THREE.default : THREE);
 (() => {
-const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status');
+const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
 let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null;
 function renderBox(b, i){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); mesh.userData.boxIndex=i; scene.add(mesh); boxMeshes.push(mesh); }
@@ -88,8 +89,14 @@ window.addEventListener('mousemove',e=>{
   if (dragHandleAxis && selectedIndex>=0 && boxes[selectedIndex]) {
     const delta = dragHandleAxis === 'y' ? (-e.movementY * 0.05) : (e.movementX * 0.05);
     const axisIndex = dragHandleAxis === 'x' ? 0 : dragHandleAxis === 'y' ? 1 : 2;
-    boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
-    boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
+    const mode = arrowModeEl.value;
+    if (mode === 'move') {
+      boxes[selectedIndex].pos[axisIndex] += delta;
+      if (axisIndex === 1) boxes[selectedIndex].pos[1] = Math.max(0.5, boxes[selectedIndex].pos[1]);
+    } else {
+      boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
+      boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
+    }
     rerenderAll();
     return;
   }
