@@ -86,7 +86,7 @@ canvas.addEventListener('mousedown',(e)=>{
 window.addEventListener('mouseup',()=>{mouseDown=false; dragHandleAxis=null;});
 window.addEventListener('mousemove',e=>{
   if (dragHandleAxis && selectedIndex>=0 && boxes[selectedIndex]) {
-    const delta = e.movementX * 0.05;
+    const delta = dragHandleAxis === 'y' ? (-e.movementY * 0.05) : (e.movementX * 0.05);
     const axisIndex = dragHandleAxis === 'x' ? 0 : dragHandleAxis === 'y' ? 1 : 2;
     boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
     boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
@@ -95,6 +95,6 @@ window.addEventListener('mousemove',e=>{
   }
   if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));
 });
-(function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,sp); if(keys.d)camera.position.addScaledVector(right,-sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); markerPos={x:marker.position.x,z:marker.position.z}; } renderer.render(scene,camera);})();
+(function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), dir).normalize(); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,-sp); if(keys.d)camera.position.addScaledVector(right,sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); markerPos={x:marker.position.x,z:marker.position.z}; } renderer.render(scene,camera);})();
 })();
 </script></body></html>
