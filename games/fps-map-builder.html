@@ -1,18 +1,39 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>FPS Map Builder</title>
-<style>body{margin:0;font-family:monospace;display:flex;height:100vh}#ui{width:340px;background:#111;color:#eee;padding:10px;overflow:auto}#view{flex:1;display:block}button,input,select,textarea{width:100%;margin:4px 0;background:#222;color:#eee;border:1px solid #444}</style>
+<style>
+body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;display:flex;height:100vh;background:#0b1220;color:#dbe5ff}
+#ui{width:380px;background:linear-gradient(180deg,#111a2e,#0e1629);padding:14px;overflow:auto;border-right:1px solid #2a3a60}
+#view{flex:1;display:block}
+h3{margin:4px 0 10px 0}
+.section{background:#0e1a33;border:1px solid #28385c;border-radius:8px;padding:10px;margin-bottom:10px}
+.hint{font-size:12px;color:#9fb3df;line-height:1.4}
+label{display:block;font-size:12px;color:#b7c7ef;margin-top:6px}
+button,input,select,textarea{width:100%;margin:5px 0;background:#152445;color:#eef4ff;border:1px solid #3a4f7e;border-radius:6px;padding:8px;box-sizing:border-box}
+button{cursor:pointer;font-weight:600}
+button:hover{background:#1b2f5c}
+#status{white-space:pre-wrap;background:#0a1327;border:1px solid #253a66;border-radius:6px;padding:8px;min-height:42px}
+</style>
 </head><body>
 <div id="ui"><h3>FPS Map Builder</h3>
-<label>Map file<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
+<div class="section">
+<div class="hint">Load built-in maps, upload custom JSON, edit, then export.</div>
+<label>Built-in map<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
 <button id='loadMapBtn' type='button'>Load Selected Map</button>
-<label>Upload JSON<input id='uploadJsonInput' type='file' accept='.json,application/json'></label>
+<label>Upload map JSON<input id='uploadJsonInput' type='file' accept='.json,application/json'></label>
+</div>
+<div class="section">
 <label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
 <label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
 <button id='applySizeBtn' type='button'>Apply Size To Selected</button>
-<label>Arrow Mode<select id='arrowMode'><option value='scale'>Scale</option><option value='move'>Move</option></select></label>
-<button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo</button>
-<label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6'></textarea></label>
-<button id='downloadBtn' type='button'>Download JSON</button><pre id='status'></pre></div>
+<label>Arrow Mode<select id='arrowMode'><option value='scale'>Scale with Arrows</option><option value='move'>Move with Arrows</option></select></label>
+<button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo Last Box</button>
+<div class="hint">Click a box to select it. Drag colored arrows to scale/move.</div>
+</div>
+<div class="section">
+<label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6' placeholder='Optional JS script for runtime map behavior'></textarea></label>
+<button id='downloadBtn' type='button'>Download JSON</button>
+</div>
+<pre id='status'></pre></div>
 <canvas id="view"></canvas>
 <script type="module">
 let THREE = window.THREE;
