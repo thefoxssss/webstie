@@ -12,7 +12,17 @@
 <button id='downloadBtn' type='button'>Download JSON</button><pre id='status'></pre></div>
 <canvas id="view"></canvas>
 <script type="module">
-import * as THREE from "../node_modules/three/build/three.module.js";
+let THREE = window.THREE;
+if (!THREE) {
+  try {
+    THREE = await import("https://unpkg.com/three@0.161.0/build/three.module.js");
+  } catch (_) {
+    try {
+      THREE = await import("https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js");
+    } catch (_) {}
+  }
+}
+THREE = THREE && (THREE.default ? THREE.default : THREE);
 (() => {
 const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
