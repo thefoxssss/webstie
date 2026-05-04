@@ -44,9 +44,21 @@ refreshStatus();
 
 if(!THREE){ statusEl.textContent='Three.js unavailable; JSON edit buttons still work.'; return; }
 const canvas=document.getElementById('view'); renderer=new THREE.WebGLRenderer({canvas,antialias:true}); scene=new THREE.Scene(); scene.background=new THREE.Color(0x333344); camera=new THREE.PerspectiveCamera(75,1,0.1,1000); camera.position.set(20,20,20);
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 const resize=()=>{const w=Math.max(300,window.innerWidth-340),h=window.innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();}; window.addEventListener('resize',resize); resize();
 scene.add(new THREE.AmbientLight(0x888888)); const dl=new THREE.DirectionalLight(0xffffff,1); dl.position.set(10,20,10); scene.add(dl); scene.add(new THREE.GridHelper(240,120)); floor=new THREE.Mesh(new THREE.PlaneGeometry(240,240),new THREE.MeshBasicMaterial({visible:false})); floor.rotation.x=-Math.PI/2; scene.add(floor); marker=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x00ff00,wireframe:true})); marker.position.y=.5; scene.add(marker);
-let yaw=0,pitch=-.4,mouseDown=false; const keys={}; const ray=new THREE.Raycaster(); window.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true); window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false); canvas.addEventListener('mousedown',()=>mouseDown=true); window.addEventListener('mouseup',()=>mouseDown=false); window.addEventListener('mousemove',e=>{if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));});
+let yaw=0,pitch=-.4,mouseDown=false; const keys={}; const ray=new THREE.Raycaster();
+const clearHeldKeys = () => {
+  for (const key of Object.keys(keys)) delete keys[key];
+  mouseDown = false;
+};
+window.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+window.addEventListener('blur', clearHeldKeys);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearHeldKeys();
+});
+canvas.addEventListener('mousedown',()=>mouseDown=true); window.addEventListener('mouseup',()=>mouseDown=false); window.addEventListener('mousemove',e=>{if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));});
 (function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,sp); if(keys.d)camera.position.addScaledVector(right,-sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); markerPos={x:marker.position.x,z:marker.position.z}; } renderer.render(scene,camera);})();
 })();
 </script></body></html>
