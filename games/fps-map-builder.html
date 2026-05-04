@@ -40,6 +40,8 @@ button:hover{background:#1b2f5c}
   <button id="modeMoveBtn" class="toolbtn" type="button">🧭 Move</button>
   <button id="snapToggleBtn" class="toolbtn" type="button">🧲 Snap: ON</button>
   <button id="focusSelectedBtn" class="toolbtn" type="button">🎯 Focus</button>
+  <button id="saveDraftBtn" class="toolbtn" type="button">💾 Save Draft</button>
+  <button id="restoreDraftBtn" class="toolbtn" type="button">♻️ Restore Draft</button>
 </div>
 <div class="content"><h3>FPS Map Builder</h3>
 <div class="section">
@@ -51,6 +53,7 @@ button:hover{background:#1b2f5c}
 <div class="section">
 <label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
 <label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
+<label>Grid Snap Step<input id='gridStep' type='number' value='1' min='0.25' step='0.25'></label>
 <button id='applySizeBtn' type='button'>Apply Size To Selected</button>
 <label>Arrow Mode<select id='arrowMode'><option value='scale'>Scale with Arrows</option><option value='move'>Move with Arrows</option></select></label>
 <button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo Last Box</button>
@@ -77,7 +80,7 @@ if (!THREE) {
 }
 THREE = THREE && (THREE.default ? THREE.default : THREE);
 (() => {
-const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode'),uploadJsonInput=document.getElementById('uploadJsonInput'),fileMenu=document.getElementById('fileMenu'),editMenu=document.getElementById('editMenu'),selectionInfoEl=document.getElementById('selectionInfo');
+const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode'),uploadJsonInput=document.getElementById('uploadJsonInput'),fileMenu=document.getElementById('fileMenu'),editMenu=document.getElementById('editMenu'),selectionInfoEl=document.getElementById('selectionInfo'),gridStepEl=document.getElementById('gridStep');
 const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
 let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null; let snapEnabled=true;
 function renderBox(b, i){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); mesh.userData.boxIndex=i; scene.add(mesh); boxMeshes.push(mesh); }
@@ -114,6 +117,8 @@ function duplicateSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return;
 function deleteSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; boxes.splice(selectedIndex,1); selectedIndex=Math.min(selectedIndex,boxes.length-1); rerenderAll(); refreshStatus('Deleted.'); }
 function newMap(){ boxes=[]; selectedIndex=-1; mapNameEl.value='New Map'; scriptEl.value=''; rerenderAll(); refreshStatus('New map.'); }
 function download(){const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); refreshStatus('Downloaded.');}
+function saveDraft(){ localStorage.setItem('fpsMapBuilderDraft', JSON.stringify({name:mapNameEl.value,script:scriptEl.value,boxes,material:matEl.value,arrowMode:arrowModeEl.value,snapEnabled,gridStep:gridStepEl.value})); refreshStatus('Draft saved.'); }
+function restoreDraft(){ const raw=localStorage.getItem('fpsMapBuilderDraft'); if(!raw){refreshStatus('No draft found.'); return;} try{ const d=JSON.parse(raw); boxes=Array.isArray(d.boxes)?d.boxes:[]; mapNameEl.value=d.name||'New Map'; scriptEl.value=d.script||''; matEl.value=d.material||'default'; arrowModeEl.value=d.arrowMode||'scale'; snapEnabled=!!d.snapEnabled; gridStepEl.value=d.gridStep||1; document.getElementById('snapToggleBtn').textContent=`🧲 Snap: ${snapEnabled?'ON':'OFF'}`; selectedIndex=-1; rerenderAll(); refreshStatus('Draft restored.'); }catch(e){refreshStatus('Draft restore failed.');}}
 
 document.getElementById('loadMapBtn').addEventListener('click',loadMap);
 document.getElementById('addBtn').addEventListener('click',addBox);
@@ -124,6 +129,8 @@ document.getElementById('modeScaleBtn').addEventListener('click',()=>{arrowModeE
 document.getElementById('modeMoveBtn').addEventListener('click',()=>{arrowModeEl.value='move'; refreshStatus('Arrow mode: Move.');});
 document.getElementById('snapToggleBtn').addEventListener('click',(e)=>{snapEnabled=!snapEnabled; e.currentTarget.textContent=`🧲 Snap: ${snapEnabled?'ON':'OFF'}`;});
 document.getElementById('focusSelectedBtn').addEventListener('click',()=>{ if(selectedIndex<0||!boxes[selectedIndex]||!camera) return; const p=boxes[selectedIndex].pos; camera.position.set(p[0]+12,p[1]+12,p[2]+12); });
+document.getElementById('saveDraftBtn').addEventListener('click',saveDraft);
+document.getElementById('restoreDraftBtn').addEventListener('click',restoreDraft);
 fileMenu.addEventListener('change',()=>{const v=fileMenu.value; if(v==='new') newMap(); if(v==='load_builtin') loadMap(); if(v==='upload') uploadJsonInput.click(); if(v==='download') download(); fileMenu.value='';});
 editMenu.addEventListener('change',()=>{const v=editMenu.value; if(v==='undo') undo(); if(v==='duplicate') duplicateSelected(); if(v==='delete') deleteSelected(); editMenu.value='';});
 window.addEventListener('keydown', (e) => {
@@ -180,11 +187,11 @@ window.addEventListener('mousemove',e=>{
     const mode = arrowModeEl.value;
     if (mode === 'move') {
       boxes[selectedIndex].pos[axisIndex] += delta;
-      if (snapEnabled) boxes[selectedIndex].pos[axisIndex] = Math.round(boxes[selectedIndex].pos[axisIndex]);
+      if (snapEnabled) { const step=Math.max(0.25, +gridStepEl.value||1); boxes[selectedIndex].pos[axisIndex] = Math.round(boxes[selectedIndex].pos[axisIndex]/step)*step; }
       if (axisIndex === 1) boxes[selectedIndex].pos[1] = Math.max(0.5, boxes[selectedIndex].pos[1]);
     } else {
       boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
-      if (snapEnabled) boxes[selectedIndex].size[axisIndex] = Math.round(boxes[selectedIndex].size[axisIndex]);
+      if (snapEnabled) { const step=Math.max(0.25, +gridStepEl.value||1); boxes[selectedIndex].size[axisIndex] = Math.round(boxes[selectedIndex].size[axisIndex]/step)*step; }
       boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
     }
     rerenderAll();
