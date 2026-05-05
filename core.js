@@ -3304,14 +3304,8 @@ window.updateBankOverviewVisuals = () => {
       const assetPercentage = Math.max(0, Math.min(100, (assets / total) * 100));
       fillEl.style.width = `${assetPercentage}%`;
 
-      // Update color based on debt ratio
-      if (assetPercentage < 25) {
-        textEl.style.color = "#ef4444"; // Red (High Debt)
-      } else if (assetPercentage < 75) {
-        textEl.style.color = "#f59e0b"; // Yellow (Medium Debt)
-      } else {
-        textEl.style.color = "#f87171"; // Default soft red
-      }
+      // Keep terminal color
+      textEl.style.color = "#f00";
     }
   }
 };
@@ -3321,44 +3315,10 @@ export function updateBankLog() {
   div.innerHTML = transactionLog
     .map((t) => {
       if (t.type === "event") {
-        const icon = "📝";
-        const title = escapeHtml(String(t.tag || "SYSTEM"));
-        const desc = escapeHtml(String(t.msg || ""));
-        return `
-          <div class="bank-entry">
-            <div class="bank-entry-icon">${icon}</div>
-            <div class="bank-entry-details">
-              <div class="bank-entry-title">${title}</div>
-              <div class="bank-entry-time">${t.ts} • ${desc}</div>
-            </div>
-            <div class="bank-entry-amount" style="color: #9ca3af;">LOG</div>
-          </div>
-        `;
+        return `<div class="bank-entry"><span>${t.ts} [${escapeHtml(String(t.tag || "SYSTEM"))}] ${escapeHtml(String(t.msg || ""))}</span><span style="color:#9ad">LOG</span></div>`;
       }
       const amount = Number(t.amount || 0);
-      const isPositive = amount >= 0;
-      const amountColor = isPositive ? "#22c55e" : "#ef4444";
-      const sign = isPositive ? "+" : "";
-
-      // Determine icon based on message content
-      let icon = "💸";
-      const msgLower = String(t.msg || "").toLowerCase();
-      if (msgLower.includes("loan")) icon = "🏦";
-      else if (msgLower.includes("stock")) icon = "📈";
-      else if (msgLower.includes("transfer") || msgLower.includes("sent")) icon = "✉️";
-      else if (msgLower.includes("job") || msgLower.includes("pay")) icon = "💼";
-      else if (msgLower.includes("game") || msgLower.includes("win")) icon = "🎮";
-
-      return `
-        <div class="bank-entry">
-          <div class="bank-entry-icon">${icon}</div>
-          <div class="bank-entry-details">
-            <div class="bank-entry-title">${escapeHtml(String(t.msg || ""))}</div>
-            <div class="bank-entry-time">${t.ts}</div>
-          </div>
-          <div class="bank-entry-amount" style="color: ${amountColor};">${sign}$${amount}</div>
-        </div>
-      `;
+      return `<div class="bank-entry"><span>${t.ts} ${escapeHtml(String(t.msg || ""))}</span><span style="color:${amount >= 0 ? "#0f0" : "#f00"}">${amount >= 0 ? "+" : ""}$${amount}</span></div>`;
     })
     .join("");
 
@@ -3499,7 +3459,7 @@ window.toggleConfigOverlay = () => {
 // --- Bank Internal Tab Navigation ---
 window.switchBankTab = (tabId) => {
   // Update nav buttons
-  document.querySelectorAll(".bank-nav-btn").forEach(btn => {
+  document.querySelectorAll(".term-nav-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.tab === tabId);
   });
 
@@ -3515,7 +3475,7 @@ window.switchBankTab = (tabId) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".bank-nav-btn").forEach(btn => {
+  document.querySelectorAll(".term-nav-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       window.switchBankTab(e.target.dataset.tab);
     });

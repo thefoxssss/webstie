@@ -672,38 +672,35 @@
 
     <!-- Bank overlay with transaction log. -->
     <div class="overlay menu-overlay" id="overlayBank">
-      <div class="bank-app-container">
-        <div class="bank-app-header">
-          <h2>THE BANK</h2>
-          <button class="bank-app-close" onclick="window.closeOverlays()">✕</button>
+      <div class="score-box" style="display: flex; flex-direction: column; min-height: 500px;">
+        <h2 style="text-align: center">THE BANK</h2>
+
+        <div class="term-nav">
+          <button class="term-nav-btn active" data-tab="overview">[ OVERVIEW ]</button>
+          <button class="term-nav-btn" data-tab="transfer">[ TRANSFER ]</button>
+          <button class="term-nav-btn" data-tab="loans">[ LOANS ]</button>
+          <button class="term-nav-btn" data-tab="stocks">[ STOCKS ]</button>
         </div>
 
-        <div class="bank-app-nav">
-          <button class="bank-nav-btn active" data-tab="overview">OVERVIEW</button>
-          <button class="bank-nav-btn" data-tab="transfer">TRANSFER</button>
-          <button class="bank-nav-btn" data-tab="loans">LOANS</button>
-          <button class="bank-nav-btn" data-tab="stocks">STOCKS</button>
-        </div>
-
-        <div class="bank-app-content">
+        <div class="bank-app-content" style="flex: 1; margin-top: 10px;">
           <!-- Overview Tab -->
           <div class="bank-tab-pane active" id="bankTab-overview">
             <div class="bank-balance-card">
               <div class="bank-balance-label">TOTAL NET WORTH</div>
-              <div class="bank-balance-value">$<span id="bankDisplay">0</span></div>
+              <div class="bank-balance-value" style="color: #0f0;">$<span id="bankDisplay">0</span></div>
               <div class="bank-balance-ratios" id="bankDebtRatioContainer">
                 <div class="bank-ratio-bar">
                   <div class="bank-ratio-fill" id="bankDebtRatioFill" style="width: 0%"></div>
                 </div>
                 <div class="bank-ratio-labels">
-                  <span style="color: #4ade80;">ASSETS</span>
-                  <span style="color: #f87171;" id="bankDebtRatioText">DEBT</span>
+                  <span style="color: #0f0;">ASSETS</span>
+                  <span style="color: #f00;" id="bankDebtRatioText">DEBT</span>
                 </div>
               </div>
             </div>
 
             <div class="bank-section-title">RECENT ACTIVITY</div>
-            <div class="bank-app-log" id="bankLog"></div>
+            <div class="bank-log" id="bankLog"></div>
           </div>
 
           <!-- Transfer Tab -->
@@ -712,14 +709,14 @@
               <div class="bank-section-title">SEND MONEY</div>
               <div class="bank-transfer">
                 <input
-                  class="bank-app-input bank-transfer-input"
+                  class="term-input bank-transfer-input"
                   id="bankTransferUser"
                   type="text"
                   maxlength="20"
                   placeholder="PLAYER NAME"
                 />
                 <input
-                  class="bank-app-input bank-transfer-input"
+                  class="term-input bank-transfer-input"
                   id="bankTransferAmount"
                   type="number"
                   min="1"
@@ -727,12 +724,12 @@
                   placeholder="AMOUNT ($)"
                 />
                 <div class="bank-transfer-presets" id="bankTransferPresets">
-                  <button class="bank-app-btn bank-preset-btn" data-amount="100">$100</button>
-                  <button class="bank-app-btn bank-preset-btn" data-amount="500">$500</button>
-                  <button class="bank-app-btn bank-preset-btn" data-amount="1000">$1000</button>
-                  <button class="bank-app-btn bank-preset-btn" data-amount="max">MAX</button>
+                  <button class="term-btn bank-preset-btn" data-amount="100">$100</button>
+                  <button class="term-btn bank-preset-btn" data-amount="500">$500</button>
+                  <button class="term-btn bank-preset-btn" data-amount="1000">$1000</button>
+                  <button class="term-btn bank-preset-btn" data-amount="max">MAX</button>
                 </div>
-                <button class="bank-app-btn primary" id="bankTransferSend">SEND MONEY</button>
+                <button class="term-btn" id="bankTransferSend" style="margin-top: 5px;">SEND MONEY</button>
                 <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
                 <div id="bankTransferMsg" class="bank-transfer-msg"></div>
               </div>
@@ -755,7 +752,7 @@
                   </div>
                 </div>
                 <input
-                  class="bank-app-input bank-transfer-input"
+                  class="term-input bank-transfer-input"
                   id="loanAmount"
                   type="number"
                   min="100"
@@ -764,8 +761,8 @@
                   placeholder="LOAN AMOUNT ($100-$10,000)"
                 />
                 <div class="bank-loan-actions">
-                  <button class="bank-app-btn primary" id="loanTakeBtn">TAKE LOAN</button>
-                  <button class="bank-app-btn outline" id="loanRepayBtn">REPAY ALL</button>
+                  <button class="term-btn" id="loanTakeBtn">TAKE LOAN</button>
+                  <button class="term-btn" id="loanRepayBtn">REPAY ALL</button>
                 </div>
                 <div id="bankLoanMsg" class="bank-transfer-msg"></div>
               </div>
@@ -788,15 +785,15 @@
                     <canvas id="stockChart" width="420" height="170"></canvas>
                     <div id="stockDetailMeta" class="stock-detail-meta">NO DATA</div>
                     <div class="stock-multipliers" id="stockMultiplierBtns">
-                      <button class="bank-app-btn stock-mult-btn active" data-mult="1">x1</button>
-                      <button class="bank-app-btn stock-mult-btn" data-mult="5">x5</button>
-                      <button class="bank-app-btn stock-mult-btn" data-mult="10">x10</button>
-                      <button class="bank-app-btn stock-mult-btn" data-mult="25">x25</button>
-                      <button class="bank-app-btn stock-mult-btn" data-mult="MAX">MAX</button>
+                      <button class="term-btn stock-mult-btn active" data-mult="1">x1</button>
+                      <button class="term-btn stock-mult-btn" data-mult="5">x5</button>
+                      <button class="term-btn stock-mult-btn" data-mult="10">x10</button>
+                      <button class="term-btn stock-mult-btn" data-mult="25">x25</button>
+                      <button class="term-btn stock-mult-btn" data-mult="MAX">MAX</button>
                     </div>
                     <div class="stock-actions">
-                      <button class="bank-app-btn success" id="stockBuyBtn">BUY 1</button>
-                      <button class="bank-app-btn danger" id="stockSellBtn">SELL 1</button>
+                      <button class="term-btn" id="stockBuyBtn" style="color: #0f0; border-color: #0f0;">BUY 1</button>
+                      <button class="term-btn" id="stockSellBtn" style="color: #f00; border-color: #f00;">SELL 1</button>
                     </div>
                     <div id="stockTradeMsg" class="bank-transfer-msg"></div>
                   </div>
@@ -805,6 +802,10 @@
             </div>
           </div>
         </div>
+
+        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
+          CLOSE
+        </button>
       </div>
     </div>
 
