@@ -3289,17 +3289,82 @@ export function logBankEvent(msg, tag = "SYSTEM") {
 }
 
 // Render the merged bank + event log history into the overlay.
+window.updateBankOverviewVisuals = () => {
+  const assets = Number(myMoney);
+  const debt = Number(loanData.debt || 0);
+  const total = assets + debt;
+
+  const fillEl = document.getElementById("bankDebtRatioFill");
+  const textEl = document.getElementById("bankDebtRatioText");
+
+  if (fillEl && textEl) {
+    if (total === 0) {
+      fillEl.style.width = "100%"; // All assets (0/0)
+    } else {
+      const assetPercentage = Math.max(0, Math.min(100, (assets / total) * 100));
+      fillEl.style.width = `${assetPercentage}%`;
+
+      // Update color based on debt ratio
+      if (assetPercentage < 25) {
+        textEl.style.color = "#ef4444"; // Red (High Debt)
+      } else if (assetPercentage < 75) {
+        textEl.style.color = "#f59e0b"; // Yellow (Medium Debt)
+      } else {
+        textEl.style.color = "#f87171"; // Default soft red
+      }
+    }
+  }
+};
+
 export function updateBankLog() {
   const div = document.getElementById("bankLog");
   div.innerHTML = transactionLog
     .map((t) => {
       if (t.type === "event") {
-        return `<div class="bank-entry"><span>${t.ts} [${escapeHtml(String(t.tag || "SYSTEM"))}] ${escapeHtml(String(t.msg || ""))}</span><span style="color:#9ad">LOG</span></div>`;
+        const icon = "📝";
+        const title = escapeHtml(String(t.tag || "SYSTEM"));
+        const desc = escapeHtml(String(t.msg || ""));
+        return `
+          <div class="bank-entry">
+            <div class="bank-entry-icon">${icon}</div>
+            <div class="bank-entry-details">
+              <div class="bank-entry-title">${title}</div>
+              <div class="bank-entry-time">${t.ts} • ${desc}</div>
+            </div>
+            <div class="bank-entry-amount" style="color: #9ca3af;">LOG</div>
+          </div>
+        `;
       }
       const amount = Number(t.amount || 0);
-      return `<div class="bank-entry"><span>${t.ts} ${escapeHtml(String(t.msg || ""))}</span><span style="color:${amount >= 0 ? "#0f0" : "#f00"}">${amount >= 0 ? "+" : ""}$${amount}</span></div>`;
+      const isPositive = amount >= 0;
+      const amountColor = isPositive ? "#22c55e" : "#ef4444";
+      const sign = isPositive ? "+" : "";
+
+      // Determine icon based on message content
+      let icon = "💸";
+      const msgLower = String(t.msg || "").toLowerCase();
+      if (msgLower.includes("loan")) icon = "🏦";
+      else if (msgLower.includes("stock")) icon = "📈";
+      else if (msgLower.includes("transfer") || msgLower.includes("sent")) icon = "✉️";
+      else if (msgLower.includes("job") || msgLower.includes("pay")) icon = "💼";
+      else if (msgLower.includes("game") || msgLower.includes("win")) icon = "🎮";
+
+      return `
+        <div class="bank-entry">
+          <div class="bank-entry-icon">${icon}</div>
+          <div class="bank-entry-details">
+            <div class="bank-entry-title">${escapeHtml(String(t.msg || ""))}</div>
+            <div class="bank-entry-time">${t.ts}</div>
+          </div>
+          <div class="bank-entry-amount" style="color: ${amountColor};">${sign}$${amount}</div>
+        </div>
+      `;
     })
     .join("");
+
+  if (typeof updateBankOverviewVisuals === 'function') {
+    updateBankOverviewVisuals();
+  }
 }
 
 // Kick off anonymous auth so we can load/save data immediately.
@@ -3389,6 +3454,8 @@ function runOverlayOpenHooks(id) {
     setText("bankTransferMsg", "");
     setText("bankLoanMsg", "");
     setText("stockTradeMsg", "");
+    // Default to the overview tab when opening the bank
+    if (window.switchBankTab) window.switchBankTab('overview');
   }
   if (id === "overlayGamebox") {
     if (typeof window.__ensureGameboxHasGame === "function") window.__ensureGameboxHasGame();
@@ -3428,6 +3495,32 @@ window.toggleConfigOverlay = () => {
     openConfigOverlay();
   }
 };
+
+// --- Bank Internal Tab Navigation ---
+window.switchBankTab = (tabId) => {
+  // Update nav buttons
+  document.querySelectorAll(".bank-nav-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tabId);
+  });
+
+  // Update tab content panes
+  document.querySelectorAll(".bank-tab-pane").forEach(pane => {
+    pane.classList.toggle("active", pane.id === `bankTab-${tabId}`);
+  });
+
+  // Update overview visuals if overview is selected
+  if (tabId === 'overview' && typeof updateBankOverviewVisuals === 'function') {
+    updateBankOverviewVisuals();
+  }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".bank-nav-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      window.switchBankTab(e.target.dataset.tab);
+    });
+  });
+});
 
 window.toggleTopPanelOverlay = (id) => {
   if (id === "overlayAdmin" && !isGodUser()) return;
@@ -3680,6 +3773,11 @@ export function updateUI() {
   }
   bankEl.innerText = formatBankAmount(myMoney);
   if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
+
+  if (typeof updateBankOverviewVisuals === 'function') {
+    updateBankOverviewVisuals();
+  }
+
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);

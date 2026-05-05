@@ -672,103 +672,139 @@
 
     <!-- Bank overlay with transaction log. -->
     <div class="overlay menu-overlay" id="overlayBank">
-      <div class="score-box">
-        <h2 style="text-align: center">THE BANK</h2>
-        <div
-          style="
-            text-align: center;
-            font-size: 20px;
-            margin: 20px 0;
-            color: #0f0;
-          "
-        >
-          $<span id="bankDisplay">0</span>
+      <div class="bank-app-container">
+        <div class="bank-app-header">
+          <h2>THE BANK</h2>
+          <button class="bank-app-close" onclick="window.closeOverlays()">✕</button>
         </div>
-        <div style="text-align: center; font-size: 10px; margin-bottom: 10px">
-          RECENT TRANSACTIONS
+
+        <div class="bank-app-nav">
+          <button class="bank-nav-btn active" data-tab="overview">OVERVIEW</button>
+          <button class="bank-nav-btn" data-tab="transfer">TRANSFER</button>
+          <button class="bank-nav-btn" data-tab="loans">LOANS</button>
+          <button class="bank-nav-btn" data-tab="stocks">STOCKS</button>
         </div>
-        <div class="bank-transfer">
-          <input
-            class="term-input bank-transfer-input"
-            id="bankTransferUser"
-            type="text"
-            maxlength="20"
-            placeholder="PLAYER NAME"
-          />
-          <input
-            class="term-input bank-transfer-input"
-            id="bankTransferAmount"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="AMOUNT ($)"
-          />
-          <div class="bank-transfer-presets" id="bankTransferPresets">
-            <button class="term-btn bank-preset-btn" data-amount="100">$100</button>
-            <button class="term-btn bank-preset-btn" data-amount="500">$500</button>
-            <button class="term-btn bank-preset-btn" data-amount="1000">$1000</button>
-            <button class="term-btn bank-preset-btn" data-amount="max">MAX</button>
-          </div>
-          <button class="term-btn" id="bankTransferSend">SEND MONEY</button>
-          <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
-          <div id="bankTransferMsg" class="bank-transfer-msg"></div>
-        </div>
-        <div class="bank-loan">
-          <div class="bank-loan-title">HIGH-RISK LOANS</div>
-          <div class="bank-loan-stats">
-            <span>DEBT: <strong id="loanDebt">$0</strong></span>
-            <span>RATE: <strong id="loanRate">0%</strong></span>
-          </div>
-          <input
-            class="term-input bank-transfer-input"
-            id="loanAmount"
-            type="number"
-            min="100"
-            max="10000"
-            step="50"
-            placeholder="LOAN AMOUNT ($100-$10,000)"
-          />
-          <div class="bank-loan-actions">
-            <button class="term-btn" id="loanTakeBtn">TAKE LOAN</button>
-            <button class="term-btn" id="loanRepayBtn">REPAY ALL</button>
-          </div>
-          <div id="bankLoanMsg" class="bank-transfer-msg"></div>
-        </div>
-        <div class="stock-market">
-          <div class="stock-market-header">
-            <div>SIM STOCK MARKET</div>
-            <div id="stockPortfolioValue">PORTFOLIO: $0</div>
-          </div>
-          <div class="stock-market-grid">
-            <div id="stockList" class="stock-list"></div>
-            <div class="stock-detail">
-              <div id="stockDetailName" class="stock-detail-title">SELECT A STOCK</div>
-              <div id="stockDetailPrice" class="stock-detail-price">$0.00</div>
-              <canvas id="stockChart" width="420" height="170"></canvas>
-              <div id="stockDetailMeta" class="stock-detail-meta">NO DATA</div>
-              <div class="stock-multipliers" id="stockMultiplierBtns">
-                <button class="term-btn stock-mult-btn active" data-mult="1">x1</button>
-                <button class="term-btn stock-mult-btn" data-mult="5">x5</button>
-                <button class="term-btn stock-mult-btn" data-mult="10">x10</button>
-                <button class="term-btn stock-mult-btn" data-mult="25">x25</button>
-                <button class="term-btn stock-mult-btn" data-mult="MAX">MAX</button>
+
+        <div class="bank-app-content">
+          <!-- Overview Tab -->
+          <div class="bank-tab-pane active" id="bankTab-overview">
+            <div class="bank-balance-card">
+              <div class="bank-balance-label">TOTAL NET WORTH</div>
+              <div class="bank-balance-value">$<span id="bankDisplay">0</span></div>
+              <div class="bank-balance-ratios" id="bankDebtRatioContainer">
+                <div class="bank-ratio-bar">
+                  <div class="bank-ratio-fill" id="bankDebtRatioFill" style="width: 0%"></div>
+                </div>
+                <div class="bank-ratio-labels">
+                  <span style="color: #4ade80;">ASSETS</span>
+                  <span style="color: #f87171;" id="bankDebtRatioText">DEBT</span>
+                </div>
               </div>
-              <div class="stock-actions">
-                <button class="term-btn" id="stockBuyBtn">BUY 1</button>
-                <button class="term-btn" id="stockSellBtn">SELL 1</button>
+            </div>
+
+            <div class="bank-section-title">RECENT ACTIVITY</div>
+            <div class="bank-app-log" id="bankLog"></div>
+          </div>
+
+          <!-- Transfer Tab -->
+          <div class="bank-tab-pane" id="bankTab-transfer">
+            <div class="bank-card">
+              <div class="bank-section-title">SEND MONEY</div>
+              <div class="bank-transfer">
+                <input
+                  class="bank-app-input bank-transfer-input"
+                  id="bankTransferUser"
+                  type="text"
+                  maxlength="20"
+                  placeholder="PLAYER NAME"
+                />
+                <input
+                  class="bank-app-input bank-transfer-input"
+                  id="bankTransferAmount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="AMOUNT ($)"
+                />
+                <div class="bank-transfer-presets" id="bankTransferPresets">
+                  <button class="bank-app-btn bank-preset-btn" data-amount="100">$100</button>
+                  <button class="bank-app-btn bank-preset-btn" data-amount="500">$500</button>
+                  <button class="bank-app-btn bank-preset-btn" data-amount="1000">$1000</button>
+                  <button class="bank-app-btn bank-preset-btn" data-amount="max">MAX</button>
+                </div>
+                <button class="bank-app-btn primary" id="bankTransferSend">SEND MONEY</button>
+                <div class="bank-transfer-help">TIP: PRESS ENTER TO SEND</div>
+                <div id="bankTransferMsg" class="bank-transfer-msg"></div>
               </div>
-              <div id="stockTradeMsg" class="bank-transfer-msg"></div>
+            </div>
+          </div>
+
+          <!-- Loans Tab -->
+          <div class="bank-tab-pane" id="bankTab-loans">
+            <div class="bank-card">
+              <div class="bank-section-title">HIGH-RISK LOANS</div>
+              <div class="bank-loan">
+                <div class="bank-loan-stats">
+                  <div class="bank-stat-box">
+                    <span class="bank-stat-label">CURRENT DEBT</span>
+                    <strong class="bank-stat-value text-red" id="loanDebt">$0</strong>
+                  </div>
+                  <div class="bank-stat-box">
+                    <span class="bank-stat-label">INTEREST RATE</span>
+                    <strong class="bank-stat-value text-yellow" id="loanRate">0%</strong>
+                  </div>
+                </div>
+                <input
+                  class="bank-app-input bank-transfer-input"
+                  id="loanAmount"
+                  type="number"
+                  min="100"
+                  max="10000"
+                  step="50"
+                  placeholder="LOAN AMOUNT ($100-$10,000)"
+                />
+                <div class="bank-loan-actions">
+                  <button class="bank-app-btn primary" id="loanTakeBtn">TAKE LOAN</button>
+                  <button class="bank-app-btn outline" id="loanRepayBtn">REPAY ALL</button>
+                </div>
+                <div id="bankLoanMsg" class="bank-transfer-msg"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stocks Tab -->
+          <div class="bank-tab-pane" id="bankTab-stocks">
+            <div class="bank-card stock-market-card">
+              <div class="stock-market">
+                <div class="stock-market-header">
+                  <div class="bank-section-title">SIM STOCK MARKET</div>
+                  <div id="stockPortfolioValue" class="stock-portfolio-val">PORTFOLIO: $0</div>
+                </div>
+                <div class="stock-market-grid">
+                  <div id="stockList" class="stock-list"></div>
+                  <div class="stock-detail">
+                    <div id="stockDetailName" class="stock-detail-title">SELECT A STOCK</div>
+                    <div id="stockDetailPrice" class="stock-detail-price">$0.00</div>
+                    <canvas id="stockChart" width="420" height="170"></canvas>
+                    <div id="stockDetailMeta" class="stock-detail-meta">NO DATA</div>
+                    <div class="stock-multipliers" id="stockMultiplierBtns">
+                      <button class="bank-app-btn stock-mult-btn active" data-mult="1">x1</button>
+                      <button class="bank-app-btn stock-mult-btn" data-mult="5">x5</button>
+                      <button class="bank-app-btn stock-mult-btn" data-mult="10">x10</button>
+                      <button class="bank-app-btn stock-mult-btn" data-mult="25">x25</button>
+                      <button class="bank-app-btn stock-mult-btn" data-mult="MAX">MAX</button>
+                    </div>
+                    <div class="stock-actions">
+                      <button class="bank-app-btn success" id="stockBuyBtn">BUY 1</button>
+                      <button class="bank-app-btn danger" id="stockSellBtn">SELL 1</button>
+                    </div>
+                    <div id="stockTradeMsg" class="bank-transfer-msg"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="bank-log" id="bankLog"></div>
-        <button
-          class="term-btn"
-          style="margin-top: 20px"
-          onclick="window.closeOverlays()"
-        >
-          CLOSE
-        </button>
       </div>
     </div>
 
