@@ -291,9 +291,19 @@ function createEditorTexture(type) {
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
   if (type === 'brick') {
-    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(0, 0, 128, 128);
-    ctx.strokeStyle = '#5f3d1e';
-    for (let y = 0; y < 128; y += 16) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(128, y); ctx.stroke(); }
+    ctx.fillStyle = '#b9b4ad';
+    ctx.fillRect(0, 0, 128, 128);
+    const brickW = 24;
+    const brickH = 12;
+    for (let y = 0; y < 128; y += brickH + 2) {
+      const rowOffset = (Math.floor(y / (brickH + 2)) % 2) ? brickW / 2 : 0;
+      for (let x = -rowOffset; x < 128; x += brickW + 2) {
+        ctx.fillStyle = '#9f3f33';
+        ctx.fillRect(x + 1, y + 1, brickW, brickH);
+        ctx.fillStyle = '#7d2e25';
+        ctx.fillRect(x + 1, y + brickH - 2, brickW, 2);
+      }
+    }
   } else if (type === 'grass') {
     ctx.fillStyle = '#3b7f31'; ctx.fillRect(0, 0, 128, 128);
     ctx.fillStyle = '#2f6b27'; for (let i = 0; i < 500; i++) ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
