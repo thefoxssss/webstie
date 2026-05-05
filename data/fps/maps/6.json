@@ -1,0 +1,990 @@
+{
+  "schema": "fps-map-v2",
+  "name": "Custom Map",
+  "boxes": [
+    {
+      "pos": [
+        0,
+        -1,
+        0
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        100.08103481257892,
+        1,
+        100.426483915122
+      ],
+      "material": "asphalt"
+    }
+  ],
+  "spawns": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "team": 0
+    }
+  ],
+  "lights": [
+    {
+      "pos": [
+        0,
+        2,
+        2
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        1,
+        2,
+        3
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        2,
+        2,
+        4
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        3,
+        2,
+        5
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        4,
+        2,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        5,
+        2,
+        7
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        6,
+        2,
+        8
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        7,
+        2,
+        9
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        8,
+        2,
+        10
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        9,
+        2,
+        11
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        10,
+        2,
+        12
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        11,
+        2,
+        13
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        12,
+        2,
+        14
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        13,
+        2,
+        15
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        14,
+        2,
+        16
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        15,
+        2,
+        17
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        16,
+        2,
+        18
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        17,
+        2,
+        19
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        18,
+        2,
+        20
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        19,
+        2,
+        21
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        20,
+        2,
+        22
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        21,
+        2,
+        23
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        22,
+        2,
+        24
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        23,
+        2,
+        25
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        24,
+        2,
+        26
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        25,
+        2,
+        27
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        26,
+        2,
+        28
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        27,
+        2,
+        29
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        28,
+        2,
+        30
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        29,
+        2,
+        31
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    },
+    {
+      "pos": [
+        30,
+        2,
+        32
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "lightType": "point",
+      "intensity": 1,
+      "color": "#ffffff"
+    }
+  ],
+  "pickups": [
+    {
+      "pos": [
+        0,
+        0,
+        4
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        1,
+        0,
+        5
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        2,
+        0,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        3,
+        0,
+        7
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        4,
+        0,
+        8
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        5,
+        0,
+        9
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        6,
+        0,
+        10
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        7,
+        0,
+        11
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        8,
+        0,
+        12
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        9,
+        0,
+        13
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        10,
+        0,
+        14
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        11,
+        0,
+        15
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        12,
+        0,
+        16
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        13,
+        0,
+        17
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    },
+    {
+      "pos": [
+        14,
+        0,
+        18
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "material": "default",
+      "pickupType": "health"
+    }
+  ],
+  "environment": {
+    "background": 988970,
+    "fogColor": 988970,
+    "floorTexture": "concrete"
+  }
+}
