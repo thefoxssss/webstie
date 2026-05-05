@@ -399,8 +399,8 @@ function handleCameraMovement() {
   const speed = keys.shift ? 0.4 : 0.15;
   if (keys.w) camera.position.addScaledVector(dir, speed);
   if (keys.s) camera.position.addScaledVector(dir, -speed);
-  if (keys.a) camera.position.addScaledVector(right, -speed);
-  if (keys.d) camera.position.addScaledVector(right, speed);
+  if (keys.a) camera.position.addScaledVector(right, speed);
+  if (keys.d) camera.position.addScaledVector(right, -speed);
   camera.lookAt(camera.position.clone().add(dir));
 }
 
