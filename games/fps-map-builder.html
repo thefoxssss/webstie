@@ -186,7 +186,7 @@ body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg-d
 <footer class="bottom-bar">
   <span id="statusText">Ready</span>
   <div style="flex:1"></div>
-  <span>Shortcuts: <span class="kbd">W</span> <span class="kbd">E</span> <span class="kbd">R</span> | <span class="kbd">F</span> Focus | <span class="kbd">Del</span> Delete | <span class="kbd">Ctrl+D</span> Duplicate</span>
+  <span>Shortcuts: <span class="kbd">W</span> <span class="kbd">E</span> <span class="kbd">R</span> | <span class="kbd">F</span> Focus | <span class="kbd">Del</span> Delete | <span class="kbd">Ctrl+D</span> Duplicate | <span class="kbd">Ctrl+C</span> Copy | <span class="kbd">Ctrl+V</span> Paste | <span class="kbd">Ctrl+Z</span> Undo</span>
 </footer>
 
 <input type="file" id="uploadInput" style="display:none" accept=".json">
@@ -209,6 +209,9 @@ let objects = []; // { type, mesh, data }
 let selectedIndex = -1;
 let snapEnabled = true;
 let gridStep = 1;
+let copiedObject = null;
+let undoStack = [];
+const textureCache = {};
 
 const canvas = document.getElementById('view');
 const outlinerEl = document.getElementById('outliner');
@@ -269,6 +272,9 @@ function init() {
   transformControls.addEventListener('change', () => {
     if (selectedIndex >= 0) syncObjectDataFromMesh(selectedIndex);
   });
+  transformControls.addEventListener('dragging-changed', (event) => {
+    if (!event.value) saveHistoryState();
+  });
   scene.add(transformControls);
 
   window.addEventListener('resize', onResize);
@@ -277,6 +283,75 @@ function init() {
 
   refreshOutliner();
   updateStatus("Editor Ready");
+}
+
+function createEditorTexture(type) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (type === 'brick') {
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(0, 0, 128, 128);
+    ctx.strokeStyle = '#5f3d1e';
+    for (let y = 0; y < 128; y += 16) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(128, y); ctx.stroke(); }
+  } else if (type === 'grass') {
+    ctx.fillStyle = '#3b7f31'; ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#2f6b27'; for (let i = 0; i < 500; i++) ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+  } else if (type === 'asphalt') {
+    ctx.fillStyle = '#3c3f45'; ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#5f636a'; for (let i = 0; i < 300; i++) ctx.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+  } else if (type === 'metal') {
+    ctx.fillStyle = '#6b7280'; ctx.fillRect(0, 0, 128, 128);
+    ctx.strokeStyle = '#4b5563'; for (let x = 0; x < 128; x += 16) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 128); ctx.stroke(); }
+  } else if (type === 'concrete') {
+    ctx.fillStyle = '#7d7d7d'; ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#6d6d6d'; for (let i = 0; i < 500; i++) ctx.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+  } else if (type === 'wood') {
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(0, 0, 128, 128);
+    ctx.strokeStyle = '#6e4521'; for (let y = 0; y < 128; y += 12) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(128, y + 4); ctx.stroke(); }
+  } else {
+    ctx.fillStyle = '#94a3b8'; ctx.fillRect(0, 0, 128, 128);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  return texture;
+}
+
+function getEditorTexture(type) {
+  if (!textureCache[type]) textureCache[type] = createEditorTexture(type);
+  return textureCache[type];
+}
+
+function applyObjectVisual(obj) {
+  if (obj.type !== 'box') return;
+  const materialName = obj.data.material || 'default';
+  obj.mesh.material = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    map: getEditorTexture(materialName)
+  });
+}
+
+function serializeCurrentMap() {
+  return {
+    boxes: objects.filter(o => o.type === 'box').map(o => JSON.parse(JSON.stringify(o.data))),
+    spawns: objects.filter(o => o.type === 'spawn').map(o => JSON.parse(JSON.stringify(o.data))),
+    lights: objects.filter(o => o.type === 'light').map(o => JSON.parse(JSON.stringify(o.data))),
+    pickups: objects.filter(o => o.type === 'pickup').map(o => JSON.parse(JSON.stringify(o.data)))
+  };
+}
+
+function saveHistoryState() {
+  undoStack.push(serializeCurrentMap());
+  if (undoStack.length > 100) undoStack.shift();
+}
+
+function undoLastAction() {
+  if (undoStack.length <= 1) return;
+  undoStack.pop();
+  loadMapData(undoStack[undoStack.length - 1], { saveHistory: false });
+  updateStatus('Undo');
 }
 
 function onResize() {
@@ -368,7 +443,9 @@ function addObject(type, data = {}) {
   mesh.userData.index = objects.length;
 
   scene.add(mesh);
-  objects.push({ type, mesh, data: finalData });
+  const obj = { type, mesh, data: finalData };
+  objects.push(obj);
+  applyObjectVisual(obj);
 
   selectObject(objects.length - 1);
   refreshOutliner();
@@ -398,6 +475,7 @@ function syncObjectDataFromMesh(index) {
 
 function deleteSelected() {
   if (selectedIndex < 0) return;
+  saveHistoryState();
   const obj = objects[selectedIndex];
   scene.remove(obj.mesh);
   objects.splice(selectedIndex, 1);
@@ -412,11 +490,34 @@ function deleteSelected() {
 
 function duplicateSelected() {
   if (selectedIndex < 0) return;
+  saveHistoryState();
   const original = objects[selectedIndex];
   const newData = JSON.parse(JSON.stringify(original.data));
   newData.pos[0] += 1;
   newData.pos[2] += 1;
   addObject(original.type, newData);
+}
+
+function copySelected() {
+  if (selectedIndex < 0) return;
+  const original = objects[selectedIndex];
+  copiedObject = {
+    type: original.type,
+    data: JSON.parse(JSON.stringify(original.data))
+  };
+  updateStatus(`Copied ${original.type}`);
+}
+
+function pasteCopiedObject() {
+  if (!copiedObject) return;
+  saveHistoryState();
+  const newData = JSON.parse(JSON.stringify(copiedObject.data));
+  if (Array.isArray(newData.pos) && newData.pos.length === 3) {
+    newData.pos[0] += 1;
+    newData.pos[2] += 1;
+  }
+  addObject(copiedObject.type, newData);
+  updateStatus(`Pasted ${copiedObject.type}`);
 }
 
 // UI Refresh
@@ -541,6 +642,7 @@ function updateSelectedProp(key, index, value) {
   if (key === 'pos') mesh.position.set(...obj.data.pos);
   if (key === 'rot') mesh.rotation.set(...obj.data.rot);
   if (key === 'size') mesh.scale.set(...obj.data.size);
+  if (key === 'material') applyObjectVisual(obj);
 
   updateStatus(`Updated ${key}`);
 }
@@ -559,7 +661,7 @@ async function loadBuiltin() {
   }
 }
 
-function loadMapData(map) {
+function loadMapData(map, options = { saveHistory: true }) {
   // Clear
   objects.forEach(o => scene.remove(o.mesh));
   objects = [];
@@ -571,6 +673,7 @@ function loadMapData(map) {
 
   selectObject(-1);
   refreshOutliner();
+  if (options.saveHistory !== false) saveHistoryState();
 }
 
 function downloadJson() {
@@ -651,6 +754,18 @@ function initEventListeners() {
       e.preventDefault();
       duplicateSelected();
     }
+    if (e.key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      copySelected();
+    }
+    if (e.key.toLowerCase() === 'v' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      pasteCopiedObject();
+    }
+    if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      undoLastAction();
+    }
   });
 
   // Handle snapping initially
@@ -681,5 +796,6 @@ canvas.addEventListener('click', (e) => {
 });
 
 init();
+saveHistoryState();
 </script>
 </body></html>
