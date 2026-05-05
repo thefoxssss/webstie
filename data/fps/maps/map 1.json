@@ -1,0 +1,158 @@
+{
+  "schema": "fps-map-v2",
+  "name": "Custom Map",
+  "boxes": [
+    {
+      "pos": [
+        -20,
+        6,
+        -20
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        16,
+        12,
+        16
+      ],
+      "material": "brick"
+    },
+    {
+      "pos": [
+        20,
+        8,
+        -20
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        16,
+        16,
+        16
+      ],
+      "material": "brick"
+    },
+    {
+      "pos": [
+        -20,
+        4,
+        20
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        16,
+        8,
+        16
+      ],
+      "material": "brick"
+    },
+    {
+      "pos": [
+        20,
+        6,
+        20
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        16,
+        12,
+        16
+      ],
+      "material": "brick"
+    },
+    {
+      "pos": [
+        0,
+        4,
+        -27
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        40,
+        8,
+        2
+      ],
+      "material": "brick"
+    },
+    {
+      "pos": [
+        0,
+        4,
+        27
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        40,
+        8,
+        2
+      ],
+      "material": "brick"
+    },
+    {
+      "pos": [
+        0,
+        0.5,
+        0
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        12.972202084720436,
+        1,
+        13.75393211137051
+      ],
+      "material": "concrete"
+    },
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "rot": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        4,
+        2,
+        4
+      ],
+      "material": "concrete"
+    }
+  ],
+  "spawns": [],
+  "lights": [],
+  "pickups": [],
+  "environment": {
+    "background": 988970,
+    "fogColor": 988970,
+    "floorTexture": "concrete"
+  }
+}
