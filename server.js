@@ -150,6 +150,22 @@ async function requestOilQuoteBody(url) {
 }
 const builderServerDirectory = new Map();
 const fpsServerDirectory = new Map();
+function getFpsMapCatalog() {
+  const dir = path.join(__dirname, "data", "fps", "maps");
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((file) => /^\d+\.json$/.test(file))
+    .map((file) => {
+      const id = Number(path.basename(file, ".json"));
+      let name = `MAP ${id}`;
+      try {
+        const map = JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
+        name = map.name || map.title || `MAP ${id}`;
+      } catch {}
+      return { id, name };
+    })
+    .sort((a, b) => a.id - b.id);
+}
 
 const gameServer = new colyseus.Server({
   transport: new WebSocketTransport({
@@ -2983,6 +2999,8 @@ class FPSRoom extends colyseus.Room {
     this.serverName = options.serverName || "Arena Server";
     this.setMetadata({ serverName: this.serverName });
     this.setState(new FPSState());
+    this.availableMapIds = getFpsMapCatalog().map((m) => m.id);
+    if (this.availableMapIds.length === 0) this.availableMapIds = [0];
 
     if (options.mapId !== undefined) {
       this.state.mapId = options.mapId;
@@ -2990,13 +3008,16 @@ class FPSRoom extends colyseus.Room {
     this.loadMapJSON(this.state.mapId);
     this.spawnPickups();
 
-    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    this.mapVotes = {};
+    this.availableMapIds.forEach((id) => { this.mapVotes[id] = 0; });
     this.playerVotes = new Map();
 
     this.onMessage("voteMap", (client, mapId) => {
       if (!this.state.roundOver) return;
+      if (!this.availableMapIds.includes(mapId)) return;
       if (this.playerVotes.has(client.sessionId)) {
-        this.mapVotes[this.playerVotes.get(client.sessionId)]--;
+        const prevVote = this.playerVotes.get(client.sessionId);
+        if (this.mapVotes[prevVote] !== undefined) this.mapVotes[prevVote]--;
       }
       this.playerVotes.set(client.sessionId, mapId);
       this.mapVotes[mapId]++;
@@ -3186,12 +3207,12 @@ class FPSRoom extends colyseus.Room {
 
   resetRound() {
     // Tally votes
-    let winningMap = 0;
+    let winningMap = this.availableMapIds[0] ?? 0;
     let maxVotes = -1;
-    for (let i = 0; i <= 5; i++) {
-      if (this.mapVotes[i] > maxVotes) {
-        maxVotes = this.mapVotes[i];
-        winningMap = i;
+    for (const mapId of this.availableMapIds) {
+      if ((this.mapVotes[mapId] || 0) > maxVotes) {
+        maxVotes = this.mapVotes[mapId] || 0;
+        winningMap = mapId;
       }
     }
     this.state.mapId = winningMap;
@@ -3199,7 +3220,8 @@ class FPSRoom extends colyseus.Room {
     this.state.roundOver = false;
     this.spawnPickups();
     this.state.winnerName = "";
-    this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    this.mapVotes = {};
+    this.availableMapIds.forEach((id) => { this.mapVotes[id] = 0; });
     this.playerVotes.clear();
 
     // Reset CTF State
@@ -3845,6 +3867,9 @@ app.get("/fps-servers", (req, res) => {
     return a.serverName.localeCompare(b.serverName);
   });
   res.json({ servers });
+});
+app.get("/fps-maps", (req, res) => {
+  res.json({ maps: getFpsMapCatalog() });
 });
 
 if (require.main === module) {
