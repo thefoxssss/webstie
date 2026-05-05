@@ -1980,6 +1980,21 @@
         <div style="text-align: center; margin: 8px 0 4px">
           <button class="term-btn" id="bjCashOutBtn" style="display: none">DONE / CASH OUT</button>
         </div>
+
+        <div id="bjChatContainer" class="hangman-chat" style="display: none; margin-top: 15px; width: 100%; max-width: 300px; margin-left: auto; margin-right: auto;">
+          <div class="hangman-panel hangman-chat-log" id="bjChatLog" style="height: 150px;"></div>
+          <div class="hangman-chat-input" style="flex-direction: row;">
+            <input
+              type="text"
+              id="bjChatInput"
+              class="term-input"
+              placeholder="CHAT..."
+              maxlength="40"
+              style="flex: 1; margin-bottom: 0;"
+            />
+            <button class="term-btn" id="bjChatBtn" style="width: auto;">SEND</button>
+          </div>
+        </div>
         <div id="bjBetBtns">
           <div style="text-align: center; margin-bottom: 5px">
             BET: $<span id="bjBetVal">0</span>

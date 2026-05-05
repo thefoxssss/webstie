@@ -2533,6 +2533,27 @@ canvas {
   color: #000;
   transform: translateY(-5px);
 }
+.bj-chip:active {
+  transform: scale(0.9);
+  box-shadow: 0 0 5px var(--accent);
+}
+
+@keyframes resultPulse {
+  0% { transform: scale(1); text-shadow: 0 0 5px currentColor; }
+  50% { transform: scale(1.1); text-shadow: 0 0 15px currentColor; }
+  100% { transform: scale(1); text-shadow: 0 0 5px currentColor; }
+}
+
+.bj-message-highlight {
+  animation: resultPulse 0.5s ease-out;
+  color: #0f0; /* Default highlight to green, can be changed via JS */
+}
+
+.bj-message-bust {
+  animation: resultPulse 0.5s ease-out;
+  color: #f00;
+}
+
 .bj-all-in {
   border-color: #ffcc00;
   color: #ffcc00;
