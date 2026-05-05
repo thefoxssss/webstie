@@ -77,6 +77,53 @@ const fpsTeam = document.getElementById("fpsTeam");
 const fpsObjective = document.getElementById("fpsObjective");
 const fpsCtfScore = document.getElementById("fpsCtfScore");
 const fpsTeamSelect = document.getElementById("fpsTeamSelect");
+const fpsMapVoteButtons = document.getElementById("fpsMapVoteButtons");
+const fpsMapSelect = document.getElementById("fpsMapSelect");
+let availableMaps = [
+  { id: 0, name: "CLASSIC" },
+  { id: 1, name: "CITY" },
+  { id: 2, name: "MAZE" },
+  { id: 3, name: "SPACE STATION" },
+  { id: 4, name: "SNIPER TOWER" },
+  { id: 5, name: "CTF TWO FORTS" }
+];
+
+function renderMapMenus() {
+  if (fpsMapSelect) {
+    fpsMapSelect.innerHTML = "";
+    availableMaps.forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = String(m.id);
+      opt.textContent = `MAP: ${String(m.name || `MAP ${m.id}`).toUpperCase()}`;
+      fpsMapSelect.appendChild(opt);
+    });
+  }
+  if (fpsMapVoteButtons) {
+    fpsMapVoteButtons.innerHTML = "";
+    availableMaps.forEach((m) => {
+      const btn = document.createElement("button");
+      btn.className = "term-btn";
+      btn.onclick = () => window.voteMap(m.id);
+      btn.innerHTML = `${String(m.name || `MAP ${m.id}`).toUpperCase()} <span id="mapVote${m.id}">(0)</span>`;
+      fpsMapVoteButtons.appendChild(btn);
+    });
+  }
+}
+
+async function loadAvailableMaps() {
+  try {
+    const endpoint = getColyseusEndpoint().replace("ws", "http");
+    const res = await fetch(`${endpoint}/fps-maps`);
+    if (!res.ok) return;
+    const payload = await res.json();
+    if (Array.isArray(payload.maps) && payload.maps.length > 0) {
+      availableMaps = payload.maps.map((m) => ({ id: Number(m.id), name: m.name || `MAP ${m.id}` }));
+      renderMapMenus();
+    }
+  } catch (err) {
+    console.warn("Could not load FPS map catalog:", err);
+  }
+}
 
 function getColyseusEndpoint() {
   const mode = networkSelect.value;
@@ -230,12 +277,10 @@ function setupRoom() {
   });
 
   room.onMessage("mapVotes", (votes) => {
-    document.getElementById("mapVote0").textContent = `(${votes[0]})`;
-    document.getElementById("mapVote1").textContent = `(${votes[1]})`;
-    document.getElementById("mapVote2").textContent = `(${votes[2]})`;
-    if (document.getElementById("mapVote3")) document.getElementById("mapVote3").textContent = `(${votes[3] || 0})`;
-    if (document.getElementById("mapVote4")) document.getElementById("mapVote4").textContent = `(${votes[4] || 0})`;
-    if (document.getElementById("mapVote5")) document.getElementById("mapVote5").textContent = `(${votes[5] || 0})`;
+    availableMaps.forEach((m) => {
+      const voteEl = document.getElementById(`mapVote${m.id}`);
+      if (voteEl) voteEl.textContent = `(${votes[m.id] || 0})`;
+    });
   });
 
   room.state.listen("roundOver", (isOver) => {
@@ -2168,6 +2213,8 @@ export function initFps() {
   btnCreate.onclick = createRoom;
   btnJoin.onclick = () => joinRoom();
 
+  renderMapMenus();
+  loadAvailableMaps();
   fetchServers();
 }
 
