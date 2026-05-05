@@ -1,213 +1,685 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>FPS Map Builder</title>
 <style>
-body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;display:flex;height:100vh;background:#0b1220;color:#dbe5ff}
-#ui{width:420px;background:linear-gradient(180deg,#111a2e,#0e1629);padding:0;overflow:auto;border-right:1px solid #2a3a60}
-#view{flex:1;display:block}
-h3{margin:4px 0 10px 0}
-.menubar{display:flex;gap:8px;background:#0b1428;border-bottom:1px solid #2d406b;padding:8px 10px;position:sticky;top:0;z-index:5}
-.toolbar{display:flex;gap:6px;flex-wrap:wrap;background:#0e1a33;border-bottom:1px solid #2d406b;padding:8px 10px;position:sticky;top:40px;z-index:4}
-.toolbtn{width:auto;padding:6px 10px}
-.content{padding:12px}
-.section{background:#0e1a33;border:1px solid #28385c;border-radius:8px;padding:10px;margin-bottom:10px}
-.hint{font-size:12px;color:#9fb3df;line-height:1.4}
-label{display:block;font-size:12px;color:#b7c7ef;margin-top:6px}
-button,input,select,textarea{width:100%;margin:5px 0;background:#152445;color:#eef4ff;border:1px solid #3a4f7e;border-radius:6px;padding:8px;box-sizing:border-box}
-button{cursor:pointer;font-weight:600}
-button:hover{background:#1b2f5c}
-#status{white-space:pre-wrap;background:#0a1327;border:1px solid #253a66;border-radius:6px;padding:8px;min-height:42px}
-.kbd{font-family:monospace;background:#152445;border:1px solid #3a4f7e;border-radius:4px;padding:1px 5px}
-.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.primary{background:#2a4da2;border-color:#4f77d9}
+:root {
+  --bg-darker: #090e18;
+  --bg-dark: #0f172a;
+  --bg-light: #1e293b;
+  --bg-accent: #334155;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --border: #334155;
+}
+body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg-darker);color:var(--text-main);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* Top Navigation */
+.top-nav {
+  height: 48px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  z-index: 10;
+}
+.brand { font-weight: 700; color: var(--accent); font-size: 18px; margin-right: 12px; }
+.top-nav .actions { display: flex; gap: 8px; }
+.top-nav button { background: var(--bg-light); border: 1px solid var(--border); color: var(--text-main); padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.top-nav button:hover { background: var(--bg-accent); }
+.top-nav button.primary { background: var(--accent); border-color: var(--accent); }
+.top-nav button.primary:hover { background: var(--accent-hover); }
+
+/* Main Layout */
+.main-layout { flex: 1; display: flex; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  background: var(--bg-dark);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.right-sidebar { border-right: none; border-left: 1px solid var(--border); width: 320px; }
+
+.section-title {
+  padding: 10px 16px;
+  background: var(--bg-darker);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.outliner-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.outliner-item {
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.outliner-item:hover { background: var(--bg-light); }
+.outliner-item.selected { background: var(--accent); color: white; }
+
+.add-actions {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.add-actions button { background: var(--bg-light); border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.add-actions button:hover { background: var(--bg-accent); }
+
+/* Viewport Area */
+.viewport-area { flex: 1; position: relative; display: flex; flex-direction: column; background: #000; }
+.viewport-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(4px);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border);
+  z-index: 5;
+}
+.viewport-toolbar button { background: transparent; border: none; color: var(--text-muted); padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.viewport-toolbar button.active { background: var(--accent); color: white; }
+.viewport-toolbar .spacer { width: 1px; background: var(--border); margin: 4px; }
+
+#view { flex: 1; outline: none; }
+
+/* Inspector */
+.inspector-content { flex: 1; overflow-y: auto; padding: 16px; }
+.empty-msg { text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 14px; }
+.property-group { margin-bottom: 20px; }
+.property-group h4 { margin: 0 0 12px 0; font-size: 13px; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.property-row { display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
+.property-row label { flex: 1; font-size: 12px; color: var(--text-muted); }
+.property-row input, .property-row select { width: 140px; background: var(--bg-darker); border: 1px solid var(--border); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+.property-row input:focus { border-color: var(--accent); outline: none; }
+
+/* Bottom Bar */
+.bottom-bar {
+  height: 24px;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.kbd { background: var(--bg-light); border: 1px solid var(--border); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 10px; }
 </style>
 </head><body>
-<div id="ui">
-<div class="menubar">
-  <select id="fileMenu" class="toolbtn">
-    <option value="">File</option>
-    <option value="new">New</option>
-    <option value="load_builtin">Load Built-in Map</option>
-    <option value="upload">Upload JSON</option>
-    <option value="save_draft">Save Draft</option>
-    <option value="restore_draft">Restore Draft</option>
-    <option value="download">Download JSON</option>
-  </select>
-  <select id="editMenu" class="toolbtn">
-    <option value="">Edit</option>
-    <option value="undo">Undo</option>
-    <option value="duplicate">Duplicate Selected</option>
-    <option value="delete">Delete Selected</option>
-  </select>
+
+<div class="top-nav">
+  <div class="brand">FPS MAP EDITOR</div>
+  <div class="actions">
+    <button id="btnNew">New</button>
+    <button id="btnOpen">Open JSON</button>
+    <button id="btnSave">Save Draft</button>
+    <button id="btnDownload" class="primary">Download JSON</button>
+  </div>
+  <div style="flex:1"></div>
+  <div class="actions">
+    <select id="builtinMaps" style="background:var(--bg-light); color:var(--text-main); border:1px solid var(--border); border-radius:4px; padding:4px;">
+      <option value="">-- Built-in Maps --</option>
+      <option value="0">0 Classic</option>
+      <option value="1">1 City</option>
+      <option value="2">2 Maze</option>
+      <option value="3">3 Space</option>
+      <option value="4">4 Sniper</option>
+      <option value="5">5 CTF</option>
+    </select>
+    <button id="btnLoadBuiltin">Load</button>
+  </div>
 </div>
-<div class="toolbar">
-  <button id="modeScaleBtn" class="toolbtn" type="button">📏 Scale</button>
-  <button id="modeMoveBtn" class="toolbtn" type="button">🧭 Move</button>
-  <button id="snapToggleBtn" class="toolbtn" type="button">🧲 Snap: ON</button>
-  <button id="focusSelectedBtn" class="toolbtn" type="button">🎯 Focus</button>
+
+<div class="main-layout">
+  <aside class="sidebar left-sidebar">
+    <div class="section-title">Outliner</div>
+    <div id="outliner" class="outliner-list">
+      <!-- Objects listed here -->
+    </div>
+    <div class="add-actions">
+      <button id="addBoxBtn" title="Add Cube">Cube</button>
+      <button id="addSpawnBtn" title="Add Player Spawn">Spawn</button>
+      <button id="addLightBtn" title="Add Light Source">Light</button>
+      <button id="addPickupBtn" title="Add Pickup">Pickup</button>
+    </div>
+  </aside>
+
+  <main class="viewport-area">
+    <div class="viewport-toolbar">
+      <button id="toolMove" class="active">Move (W)</button>
+      <button id="toolRotate">Rotate (E)</button>
+      <button id="toolScale">Scale (R)</button>
+      <div class="spacer"></div>
+      <button id="btnSnap">Snap: ON</button>
+      <button id="btnFocus">Focus (F)</button>
+    </div>
+    <canvas id="view"></canvas>
+  </main>
+
+  <aside class="sidebar right-sidebar">
+    <div class="section-title">Inspector</div>
+    <div id="inspector" class="inspector-content">
+      <div class="empty-msg">Select an object to view properties</div>
+    </div>
+  </aside>
 </div>
-<div class="content"><h3>FPS Map Builder</h3>
-<div class="section">
-<div class="hint"><b>Quick Start</b><br>1) Load or Upload a map<br>2) Click ground + <b>Add Box</b><br>3) Click box, drag arrows to Move/Scale<br>4) File → Download JSON</div>
-<div class="quick">
-  <button id="quickAddBtn" class="primary" type="button">➕ Add Box</button>
-  <button id="quickExportBtn" class="primary" type="button">⬇ Export JSON</button>
-</div>
-</div>
-<div class="section">
-<div class="hint">Load built-in maps, upload custom JSON, edit, then export.</div>
-<label>Built-in map<select id='mapFile'><option value=''>-- New Map --</option><option value='0'>0 Classic</option><option value='1'>1 City</option><option value='2'>2 Maze</option><option value='3'>3 Space</option><option value='4'>4 Sniper</option><option value='5'>5 CTF</option></select></label>
-<button id='loadMapBtn' type='button'>Load Selected Map</button>
-<label>Upload map JSON<input id='uploadJsonInput' type='file' accept='.json,application/json'></label>
-</div>
-<div class="section">
-<label>Material<select id='mat'><option>default</option><option>brick</option><option>grass</option><option>asphalt</option><option>metal</option><option>concrete</option><option>wood</option></select></label>
-<label>Size X<input id='sx' type='number' value='4'></label><label>Size Y<input id='sy' type='number' value='4'></label><label>Size Z<input id='sz' type='number' value='4'></label>
-<label>Grid Snap Step<input id='gridStep' type='number' value='1' min='0.25' step='0.25'></label>
-<button id='applySizeBtn' type='button'>Apply Size To Selected</button>
-<label>Arrow Mode<select id='arrowMode'><option value='scale'>Scale with Arrows</option><option value='move'>Move with Arrows</option></select></label>
-<button id='addBtn' type='button'>Add Box At Cursor</button><button id='undoBtn' type='button'>Undo Last Box</button>
-<div class="hint">Click a box to select it. Drag colored arrows to scale/move.</div>
-<div class="hint">Shortcuts: <span class="kbd">N</span> New, <span class="kbd">Ctrl+S</span> Download, <span class="kbd">Delete</span> Remove Selected, <span class="kbd">D</span> Duplicate.</div>
-<div id="selectionInfo" class="hint">No object selected.</div>
-</div>
-<div class="section">
-<label>Map Name<input id='mapName' value='New Map'></label><label>Optional script<textarea id='script' rows='6' placeholder='Optional JS script for runtime map behavior'></textarea></label>
-<button id='downloadBtn' type='button'>Download JSON</button>
-</div>
-<pre id='status'></pre></div></div>
-<canvas id="view"></canvas>
+
+<footer class="bottom-bar">
+  <span id="statusText">Ready</span>
+  <div style="flex:1"></div>
+  <span>Shortcuts: <span class="kbd">W</span> <span class="kbd">E</span> <span class="kbd">R</span> | <span class="kbd">F</span> Focus | <span class="kbd">Del</span> Delete | <span class="kbd">Ctrl+D</span> Duplicate</span>
+</footer>
+
+<input type="file" id="uploadInput" style="display:none" accept=".json">
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
+  }
+}
+</script>
+
 <script type="module">
-let THREE = window.THREE;
-if (!THREE) {
-  try {
-    THREE = await import("https://unpkg.com/three@0.161.0/build/three.module.js");
-  } catch (_) {
-    try {
-      THREE = await import("https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js");
-    } catch (_) {}
+import * as THREE from 'three';
+import { TransformControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/TransformControls.js';
+
+// State
+let scene, camera, renderer, transformControls;
+let objects = []; // { type, mesh, data }
+let selectedIndex = -1;
+let snapEnabled = true;
+let gridStep = 1;
+
+const canvas = document.getElementById('view');
+const outlinerEl = document.getElementById('outliner');
+const inspectorEl = document.getElementById('inspector');
+const statusText = document.getElementById('statusText');
+
+// UI Elements
+const btnNew = document.getElementById('btnNew');
+const btnOpen = document.getElementById('btnOpen');
+const btnSave = document.getElementById('btnSave');
+const btnDownload = document.getElementById('btnDownload');
+const builtinMaps = document.getElementById('builtinMaps');
+const btnLoadBuiltin = document.getElementById('btnLoadBuiltin');
+const uploadInput = document.getElementById('uploadInput');
+
+const toolMove = document.getElementById('toolMove');
+const toolRotate = document.getElementById('toolRotate');
+const toolScale = document.getElementById('toolScale');
+const btnSnap = document.getElementById('btnSnap');
+const btnFocus = document.getElementById('btnFocus');
+
+const addBoxBtn = document.getElementById('addBoxBtn');
+const addSpawnBtn = document.getElementById('addSpawnBtn');
+const addLightBtn = document.getElementById('addLightBtn');
+const addPickupBtn = document.getElementById('addPickupBtn');
+
+// Init
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0f172a);
+
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+  camera.position.set(10, 10, 10);
+  camera.lookAt(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(width, height, false);
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(10, 20, 10);
+  scene.add(sun);
+
+  // Grid
+  const grid = new THREE.GridHelper(100, 100, 0x334155, 0x1e293b);
+  scene.add(grid);
+
+  // Controls
+  transformControls = new TransformControls(camera, renderer.domElement);
+  transformControls.addEventListener('dragging-changed', (event) => {
+    // Disable camera movement if we had any
+    // orbitControls.enabled = !event.value;
+  });
+  transformControls.addEventListener('change', () => {
+    if (selectedIndex >= 0) syncObjectDataFromMesh(selectedIndex);
+  });
+  scene.add(transformControls);
+
+  window.addEventListener('resize', onResize);
+  initEventListeners();
+  animate();
+
+  refreshOutliner();
+  updateStatus("Editor Ready");
+}
+
+function onResize() {
+  const width = canvas.parentElement.clientWidth;
+  const height = canvas.parentElement.clientHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height, false);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  handleCameraMovement();
+  renderer.render(scene, camera);
+}
+
+// Camera Movement (Fly Style)
+const keys = {};
+window.addEventListener('keydown', e => { if(document.activeElement.tagName !== 'INPUT') keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+let yaw = -Math.PI / 4, pitch = -Math.PI / 4;
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 2) canvas.requestPointerLock();
+});
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement === canvas) {
+    yaw -= e.movementX * 0.003;
+    pitch -= e.movementY * 0.003;
+    pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
   }
-}
-THREE = THREE && (THREE.default ? THREE.default : THREE);
-(() => {
-const mapFileEl=document.getElementById('mapFile'),matEl=document.getElementById('mat'),sxEl=document.getElementById('sx'),syEl=document.getElementById('sy'),szEl=document.getElementById('sz'),mapNameEl=document.getElementById('mapName'),scriptEl=document.getElementById('script'),statusEl=document.getElementById('status'),arrowModeEl=document.getElementById('arrowMode'),uploadJsonInput=document.getElementById('uploadJsonInput'),fileMenu=document.getElementById('fileMenu'),editMenu=document.getElementById('editMenu'),selectionInfoEl=document.getElementById('selectionInfo'),gridStepEl=document.getElementById('gridStep');
-const mats={default:{color:0x999999},brick:{color:0x999999,texture:'brick'},grass:{color:0x888888,texture:'grass'},asphalt:{color:0x888888,texture:'asphalt'},metal:{color:0x888888,texture:'metal'},concrete:{color:0x888888,texture:'concrete'},wood:{color:0x8b5a2b,texture:'wood'}};
-let boxes=[]; let markerPos={x:0,z:0}; let scene=null, camera=null, renderer=null, floor=null, marker=null; const boxMeshes=[]; let selectedIndex=-1; let handles=[]; let dragHandleAxis=null; let snapEnabled=true;
-function renderBox(b, i){ if(!scene||!THREE) return; const m=mats[b.material]||mats.default; const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.size[0],b.size[1],b.size[2]),new THREE.MeshPhongMaterial({color:m.color||0xccc})); mesh.position.set(b.pos[0],b.pos[1],b.pos[2]); mesh.userData.boxIndex=i; scene.add(mesh); boxMeshes.push(mesh); }
-function clearBoxes(){ while(boxMeshes.length){const mesh=boxMeshes.pop(); if(scene) scene.remove(mesh); mesh.geometry?.dispose?.(); mesh.material?.dispose?.();}}
-function refreshStatus(prefix=''){statusEl.textContent=`${prefix}${prefix?' ':''}Boxes: ${boxes.length}`;}
-function rerenderAll(){ clearBoxes(); boxes.forEach((b,i)=>renderBox(b,i)); updateHandles(); }
-function updateHandles(){
-  if (!scene) return;
-  handles.forEach(h=>scene.remove(h)); handles=[];
-  if (selectedIndex < 0 || !boxes[selectedIndex]) { selectionInfoEl.textContent='No object selected.'; return; }
-  const b = boxes[selectedIndex]; sxEl.value=b.size[0]; syEl.value=b.size[1]; szEl.value=b.size[2];
-  selectionInfoEl.textContent = `Selected #${selectedIndex + 1}  Pos(${b.pos.map(v=>v.toFixed(1)).join(', ')})  Size(${b.size.map(v=>v.toFixed(1)).join(', ')})`;
-  const axes = [{a:'x',c:0xff4444,v:new THREE.Vector3(1,0,0)},{a:'y',c:0x44ff44,v:new THREE.Vector3(0,1,0)},{a:'z',c:0x4488ff,v:new THREE.Vector3(0,0,1)}];
-  axes.forEach(({a,c,v})=>{ const cone = new THREE.Mesh(new THREE.ConeGeometry(0.35,1.2,12), new THREE.MeshBasicMaterial({color:c}));
-    const off = {x:b.size[0]/2+1.2,y:b.size[1]/2+1.2,z:b.size[2]/2+1.2}[a];
-    cone.position.set(b.pos[0]+v.x*off,b.pos[1]+v.y*off,b.pos[2]+v.z*off);
-    if (a==='x') cone.rotation.z=-Math.PI/2; if (a==='z') cone.rotation.x=Math.PI/2;
-    cone.userData={isHandle:true,axis:a}; scene.add(cone); handles.push(cone); });
-}
-function applySizeToSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; const b=boxes[selectedIndex]; b.size=[+sxEl.value||1,+syEl.value||1,+szEl.value||1]; b.pos[1]=b.size[1]/2; rerenderAll(); }
-
-async function loadMap(){ try{ if(!mapFileEl.value) return; const res=await fetch(`../data/fps/maps/${mapFileEl.value}.json`); if(!res.ok) throw new Error(`HTTP ${res.status}`); const map=await res.json(); boxes=Array.isArray(map.boxes)?map.boxes.map(b=>({...b,size:[...b.size],pos:[...b.pos]})):[]; mapNameEl.value=map.name||''; scriptEl.value=map.script||''; selectedIndex=-1; rerenderAll(); refreshStatus(`Loaded ${mapFileEl.value}.`);}catch(e){statusEl.textContent='Load failed: '+e.message;}}
-function loadMapObject(map, label = 'Uploaded map') {
-  boxes = Array.isArray(map.boxes) ? map.boxes.map(b => ({ ...b, size:[...b.size], pos:[...b.pos] })) : [];
-  mapNameEl.value = map.name || '';
-  scriptEl.value = map.script || '';
-  selectedIndex = -1;
-  rerenderAll();
-  refreshStatus(`Loaded ${label}.`);
-}
-function addBox(){const sx=+sxEl.value||1,sy=+syEl.value||1,sz=+szEl.value||1; const b={size:[sx,sy,sz],pos:[markerPos.x,sy/2,markerPos.z],material:matEl.value||'default'}; boxes.push(b); selectedIndex=boxes.length-1; rerenderAll(); refreshStatus();}
-function undo(){if(!boxes.length)return; boxes.pop(); if (selectedIndex >= boxes.length) selectedIndex = boxes.length - 1; rerenderAll(); refreshStatus();}
-function duplicateSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; const b=boxes[selectedIndex]; const copy={...b,size:[...b.size],pos:[b.pos[0]+2,b.pos[1],b.pos[2]+2],material:b.material}; boxes.push(copy); selectedIndex=boxes.length-1; rerenderAll(); refreshStatus('Duplicated.'); }
-function deleteSelected(){ if(selectedIndex<0||!boxes[selectedIndex]) return; boxes.splice(selectedIndex,1); selectedIndex=Math.min(selectedIndex,boxes.length-1); rerenderAll(); refreshStatus('Deleted.'); }
-function newMap(){ boxes=[]; selectedIndex=-1; mapNameEl.value='New Map'; scriptEl.value=''; rerenderAll(); refreshStatus('New map.'); }
-function download(){const map={schema:'fps-map-v1',name:mapNameEl.value||'New Map',environment:{background:0x333344,fogType:'linear',fogColor:0x333344,fogNear:20,fogFar:180,floorTexture:'concrete',floorColor:0x666666,floorRepeatX:20,floorRepeatY:20},materials:mats,boxes,script:scriptEl.value||''}; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(map,null,2)],{type:'application/json'})); a.download='custom-map.json'; a.click(); refreshStatus('Downloaded.');}
-function saveDraft(){ localStorage.setItem('fpsMapBuilderDraft', JSON.stringify({name:mapNameEl.value,script:scriptEl.value,boxes,material:matEl.value,arrowMode:arrowModeEl.value,snapEnabled,gridStep:gridStepEl.value})); refreshStatus('Draft saved.'); }
-function restoreDraft(){ const raw=localStorage.getItem('fpsMapBuilderDraft'); if(!raw){refreshStatus('No draft found.'); return;} try{ const d=JSON.parse(raw); boxes=Array.isArray(d.boxes)?d.boxes:[]; mapNameEl.value=d.name||'New Map'; scriptEl.value=d.script||''; matEl.value=d.material||'default'; arrowModeEl.value=d.arrowMode||'scale'; snapEnabled=!!d.snapEnabled; gridStepEl.value=d.gridStep||1; document.getElementById('snapToggleBtn').textContent=`🧲 Snap: ${snapEnabled?'ON':'OFF'}`; selectedIndex=-1; rerenderAll(); refreshStatus('Draft restored.'); }catch(e){refreshStatus('Draft restore failed.');}}
-
-document.getElementById('loadMapBtn').addEventListener('click',loadMap);
-document.getElementById('addBtn').addEventListener('click',addBox);
-document.getElementById('undoBtn').addEventListener('click',undo);
-document.getElementById('applySizeBtn').addEventListener('click',applySizeToSelected);
-document.getElementById('downloadBtn').addEventListener('click',download);
-document.getElementById('modeScaleBtn').addEventListener('click',()=>{arrowModeEl.value='scale'; refreshStatus('Arrow mode: Scale.');});
-document.getElementById('modeMoveBtn').addEventListener('click',()=>{arrowModeEl.value='move'; refreshStatus('Arrow mode: Move.');});
-document.getElementById('snapToggleBtn').addEventListener('click',(e)=>{snapEnabled=!snapEnabled; e.currentTarget.textContent=`🧲 Snap: ${snapEnabled?'ON':'OFF'}`;});
-document.getElementById('focusSelectedBtn').addEventListener('click',()=>{ if(selectedIndex<0||!boxes[selectedIndex]||!camera) return; const p=boxes[selectedIndex].pos; camera.position.set(p[0]+12,p[1]+12,p[2]+12); });
-fileMenu.addEventListener('change',()=>{const v=fileMenu.value; if(v==='new') newMap(); if(v==='load_builtin') loadMap(); if(v==='upload') uploadJsonInput.click(); if(v==='save_draft') saveDraft(); if(v==='restore_draft') restoreDraft(); if(v==='download') download(); fileMenu.value='';});
-editMenu.addEventListener('change',()=>{const v=editMenu.value; if(v==='undo') undo(); if(v==='duplicate') duplicateSelected(); if(v==='delete') deleteSelected(); editMenu.value='';});
-document.getElementById('quickAddBtn').addEventListener('click', addBox);
-document.getElementById('quickExportBtn').addEventListener('click', download);
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Delete') { e.preventDefault(); deleteSelected(); }
-  if (e.key.toLowerCase() === 'd' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); duplicateSelected(); }
-  if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); newMap(); }
-  if (e.key.toLowerCase() === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); download(); }
 });
-uploadJsonInput.addEventListener('change', async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const map = JSON.parse(text);
-    loadMapObject(map, file.name);
-  } catch (err) {
-    statusEl.textContent = `Upload failed: ${err.message}`;
-  } finally {
-    uploadJsonInput.value = '';
+document.addEventListener('mouseup', () => {
+  if (document.pointerLockElement === canvas) document.exitPointerLock();
+});
+
+function handleCameraMovement() {
+  if (document.pointerLockElement !== canvas) return;
+  const dir = new THREE.Vector3(
+    Math.sin(yaw) * Math.cos(pitch),
+    Math.sin(pitch),
+    Math.cos(yaw) * Math.cos(pitch)
+  );
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), dir).normalize();
+  const speed = keys.shift ? 0.4 : 0.15;
+  if (keys.w) camera.position.addScaledVector(dir, speed);
+  if (keys.s) camera.position.addScaledVector(dir, -speed);
+  if (keys.a) camera.position.addScaledVector(right, -speed);
+  if (keys.d) camera.position.addScaledVector(right, speed);
+  camera.lookAt(camera.position.clone().add(dir));
+}
+
+// Object Management
+function addObject(type, data = {}) {
+  let mesh;
+  const defaultData = { pos: [0, 0, 0], rot: [0, 0, 0], size: [1, 1, 1], material: 'default' };
+  const finalData = { ...defaultData, ...data };
+
+  if (type === 'box') {
+    mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshPhongMaterial({ color: 0x94a3b8 })
+    );
+  } else if (type === 'spawn') {
+    mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 2, 8),
+      new THREE.MeshBasicMaterial({ color: 0x22c55e, wireframe: true })
+    );
+    finalData.team = data.team || 0;
+  } else if (type === 'light') {
+    mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xeab308 })
+    );
+    finalData.lightType = data.lightType || 'point';
+    finalData.intensity = data.intensity || 1;
+    finalData.color = data.color || '#ffffff';
+  } else if (type === 'pickup') {
+    mesh = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.5),
+      new THREE.MeshBasicMaterial({ color: 0x3b82f6, wireframe: true })
+    );
+    finalData.pickupType = data.pickupType || 'health';
   }
-});
-refreshStatus();
 
-if(!THREE){ statusEl.textContent='Three.js unavailable; JSON edit buttons still work.'; return; }
-const canvas=document.getElementById('view'); renderer=new THREE.WebGLRenderer({canvas,antialias:true}); scene=new THREE.Scene(); scene.background=new THREE.Color(0x333344); camera=new THREE.PerspectiveCamera(75,1,0.1,1000); camera.position.set(20,20,20);
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-const resize=()=>{const w=Math.max(300,window.innerWidth-340),h=window.innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();}; window.addEventListener('resize',resize); resize();
-scene.add(new THREE.AmbientLight(0x888888)); const dl=new THREE.DirectionalLight(0xffffff,1); dl.position.set(10,20,10); scene.add(dl); scene.add(new THREE.GridHelper(240,120)); floor=new THREE.Mesh(new THREE.PlaneGeometry(240,240),new THREE.MeshBasicMaterial({visible:false})); floor.rotation.x=-Math.PI/2; scene.add(floor); marker=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x00ff00,wireframe:true})); marker.position.y=.5; scene.add(marker);
-let yaw=0,pitch=-.4,mouseDown=false; const keys={}; const ray=new THREE.Raycaster();
-const clearHeldKeys = () => {
-  for (const key of Object.keys(keys)) delete keys[key];
-  mouseDown = false;
-};
-window.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
-window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-window.addEventListener('blur', clearHeldKeys);
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) clearHeldKeys();
-});
-canvas.addEventListener('mousedown',(e)=>{
-  mouseDown=true;
-  const rect=canvas.getBoundingClientRect();
-  const ndc=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
-  ray.setFromCamera(ndc,camera);
-  const pick=ray.intersectObjects([...handles,...boxMeshes])[0];
-  if (pick?.object?.userData?.isHandle) dragHandleAxis=pick.object.userData.axis;
-  else if (pick?.object?.userData?.boxIndex>=0) { selectedIndex=pick.object.userData.boxIndex; updateHandles(); }
-});
-window.addEventListener('mouseup',()=>{mouseDown=false; dragHandleAxis=null;});
-window.addEventListener('mousemove',e=>{
-  if (dragHandleAxis && selectedIndex>=0 && boxes[selectedIndex]) {
-    const delta = dragHandleAxis === 'y' ? (-e.movementY * 0.05) : (e.movementX * 0.05);
-    const axisIndex = dragHandleAxis === 'x' ? 0 : dragHandleAxis === 'y' ? 1 : 2;
-    const mode = arrowModeEl.value;
-    if (mode === 'move') {
-      boxes[selectedIndex].pos[axisIndex] += delta;
-      if (snapEnabled) { const step=Math.max(0.25, +gridStepEl.value||1); boxes[selectedIndex].pos[axisIndex] = Math.round(boxes[selectedIndex].pos[axisIndex]/step)*step; }
-      if (axisIndex === 1) boxes[selectedIndex].pos[1] = Math.max(0.5, boxes[selectedIndex].pos[1]);
-    } else {
-      boxes[selectedIndex].size[axisIndex] = Math.max(1, boxes[selectedIndex].size[axisIndex] + delta);
-      if (snapEnabled) { const step=Math.max(0.25, +gridStepEl.value||1); boxes[selectedIndex].size[axisIndex] = Math.round(boxes[selectedIndex].size[axisIndex]/step)*step; }
-      boxes[selectedIndex].pos[1] = boxes[selectedIndex].size[1] / 2;
-    }
-    rerenderAll();
+  mesh.position.set(...finalData.pos);
+  mesh.rotation.set(...finalData.rot);
+  mesh.scale.set(...finalData.size);
+  mesh.userData.index = objects.length;
+
+  scene.add(mesh);
+  objects.push({ type, mesh, data: finalData });
+
+  selectObject(objects.length - 1);
+  refreshOutliner();
+  updateStatus(`Added ${type}`);
+}
+
+function selectObject(index) {
+  selectedIndex = index;
+  if (index >= 0) {
+    const obj = objects[index];
+    transformControls.attach(obj.mesh);
+  } else {
+    transformControls.detach();
+  }
+  refreshOutliner();
+  refreshInspector();
+}
+
+function syncObjectDataFromMesh(index) {
+  const obj = objects[index];
+  const mesh = obj.mesh;
+  obj.data.pos = [mesh.position.x, mesh.position.y, mesh.position.z];
+  obj.data.rot = [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z];
+  obj.data.size = [mesh.scale.x, mesh.scale.y, mesh.scale.z];
+  refreshInspector();
+}
+
+function deleteSelected() {
+  if (selectedIndex < 0) return;
+  const obj = objects[selectedIndex];
+  scene.remove(obj.mesh);
+  objects.splice(selectedIndex, 1);
+
+  // Re-index
+  objects.forEach((o, i) => o.mesh.userData.index = i);
+
+  selectObject(-1);
+  refreshOutliner();
+  updateStatus("Object Deleted");
+}
+
+function duplicateSelected() {
+  if (selectedIndex < 0) return;
+  const original = objects[selectedIndex];
+  const newData = JSON.parse(JSON.stringify(original.data));
+  newData.pos[0] += 1;
+  newData.pos[2] += 1;
+  addObject(original.type, newData);
+}
+
+// UI Refresh
+function refreshOutliner() {
+  outlinerEl.innerHTML = '';
+  objects.forEach((obj, i) => {
+    const div = document.createElement('div');
+    div.className = `outliner-item ${i === selectedIndex ? 'selected' : ''}`;
+    div.innerHTML = `<span>${getIcon(obj.type)}</span> ${obj.type} #${i+1}`;
+    div.onclick = () => selectObject(i);
+    outlinerEl.appendChild(div);
+  });
+}
+
+function getIcon(type) {
+  if (type === 'box') return '📦';
+  if (type === 'spawn') return '🚩';
+  if (type === 'light') return '💡';
+  if (type === 'pickup') return '➕';
+  return '❓';
+}
+
+function refreshInspector() {
+  if (selectedIndex < 0) {
+    inspectorEl.innerHTML = '<div class="empty-msg">Select an object to view properties</div>';
     return;
   }
-  if(!mouseDown)return; yaw-=e.movementX*.003; pitch=Math.max(-1.45,Math.min(1.45,pitch-e.movementY*.003));
+  const obj = objects[selectedIndex];
+  const d = obj.data;
+
+  let html = `
+    <div class="property-group">
+      <h4>Transform</h4>
+      ${renderPropRow('Pos X', 'number', d.pos[0], v => updateSelectedProp('pos', 0, v))}
+      ${renderPropRow('Pos Y', 'number', d.pos[1], v => updateSelectedProp('pos', 1, v))}
+      ${renderPropRow('Pos Z', 'number', d.pos[2], v => updateSelectedProp('pos', 2, v))}
+      <div style="height:8px"></div>
+      ${renderPropRow('Size X', 'number', d.size[0], v => updateSelectedProp('size', 0, v))}
+      ${renderPropRow('Size Y', 'number', d.size[1], v => updateSelectedProp('size', 1, v))}
+      ${renderPropRow('Size Z', 'number', d.size[2], v => updateSelectedProp('size', 2, v))}
+    </div>
+  `;
+
+  if (obj.type === 'box') {
+    html += `
+      <div class="property-group">
+        <h4>Material</h4>
+        ${renderPropRow('Type', 'select', d.material, v => updateSelectedProp('material', null, v), ['default', 'brick', 'grass', 'asphalt', 'metal', 'concrete', 'wood'])}
+      </div>
+    `;
+  } else if (obj.type === 'spawn') {
+    html += `
+      <div class="property-group">
+        <h4>Spawn Settings</h4>
+        ${renderPropRow('Team ID', 'number', d.team, v => updateSelectedProp('team', null, v))}
+        <div class="hint" style="font-size:10px; color:var(--text-muted); margin-top:4px;">0=FFA/None, 1=Red, 2=Blue</div>
+      </div>
+    `;
+  } else if (obj.type === 'light') {
+    html += `
+      <div class="property-group">
+        <h4>Light Settings</h4>
+        ${renderPropRow('Type', 'select', d.lightType, v => updateSelectedProp('lightType', null, v), ['point', 'directional'])}
+        ${renderPropRow('Intensity', 'number', d.intensity, v => updateSelectedProp('intensity', null, v))}
+        ${renderPropRow('Color', 'color', d.color, v => updateSelectedProp('color', null, v))}
+      </div>
+    `;
+  } else if (obj.type === 'pickup') {
+    html += `
+      <div class="property-group">
+        <h4>Pickup Settings</h4>
+        ${renderPropRow('Type', 'select', d.pickupType, v => updateSelectedProp('pickupType', null, v), ['health', 'armor'])}
+      </div>
+    `;
+  }
+
+  inspectorEl.innerHTML = html;
+
+  // Re-attach event listeners for inputs
+  inspectorEl.querySelectorAll('input, select').forEach(el => {
+    el.onchange = (e) => {
+      const val = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+      el._callback(val);
+    };
+  });
+}
+
+function renderPropRow(label, type, value, callback, options = []) {
+  let input = '';
+  if (type === 'select') {
+    input = `<select>${options.map(o => `<option value="${o}" ${o === value ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  } else {
+    input = `<input type="${type}" value="${value}" step="0.5">`;
+  }
+
+  const id = 'prop_' + Math.random().toString(36).substr(2, 9);
+  // Temporary storage of callback
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el._callback = callback;
+  }, 0);
+
+  return `
+    <div class="property-row">
+      <label>${label}</label>
+      <div id="${id}_container">${input.replace('<input', `<input id="${id}"`).replace('<select', `<select id="${id}"`)}</div>
+    </div>
+  `;
+}
+
+function updateSelectedProp(key, index, value) {
+  if (selectedIndex < 0) return;
+  const obj = objects[selectedIndex];
+  if (index !== null) {
+    obj.data[key][index] = value;
+  } else {
+    obj.data[key] = value;
+  }
+
+  // Apply to mesh
+  const mesh = obj.mesh;
+  if (key === 'pos') mesh.position.set(...obj.data.pos);
+  if (key === 'rot') mesh.rotation.set(...obj.data.rot);
+  if (key === 'size') mesh.scale.set(...obj.data.size);
+
+  updateStatus(`Updated ${key}`);
+}
+
+// I/O
+async function loadBuiltin() {
+  const id = builtinMaps.value;
+  if (!id) return;
+  try {
+    const res = await fetch(`../data/fps/maps/${id}.json`);
+    const map = await res.json();
+    loadMapData(map);
+    updateStatus(`Loaded built-in map ${id}`);
+  } catch (e) {
+    updateStatus("Load failed: " + e.message);
+  }
+}
+
+function loadMapData(map) {
+  // Clear
+  objects.forEach(o => scene.remove(o.mesh));
+  objects = [];
+
+  if (map.boxes) map.boxes.forEach(b => addObject('box', b));
+  if (map.spawns) map.spawns.forEach(s => addObject('spawn', s));
+  if (map.lights) map.lights.forEach(l => addObject('light', l));
+  if (map.pickups) map.pickups.forEach(p => addObject('pickup', p));
+
+  selectObject(-1);
+  refreshOutliner();
+}
+
+function downloadJson() {
+  const map = {
+    schema: 'fps-map-v2',
+    name: 'Custom Map',
+    boxes: objects.filter(o => o.type === 'box').map(o => o.data),
+    spawns: objects.filter(o => o.type === 'spawn').map(o => o.data),
+    lights: objects.filter(o => o.type === 'light').map(o => o.data),
+    pickups: objects.filter(o => o.type === 'pickup').map(o => o.data),
+    environment: {
+      background: 0x0f172a,
+      fogColor: 0x0f172a,
+      floorTexture: 'concrete'
+    }
+  };
+  const blob = new Blob([JSON.stringify(map, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'map.json';
+  a.click();
+  updateStatus("Map Downloaded");
+}
+
+function updateStatus(msg) {
+  statusText.textContent = msg;
+}
+
+// Event Listeners
+function initEventListeners() {
+  addBoxBtn.onclick = () => addObject('box');
+  addSpawnBtn.onclick = () => addObject('spawn');
+  addLightBtn.onclick = () => addObject('light');
+  addPickupBtn.onclick = () => addObject('pickup');
+
+  toolMove.onclick = () => { transformControls.setMode('translate'); updateToolBtns('move'); };
+  toolRotate.onclick = () => { transformControls.setMode('rotate'); updateToolBtns('rotate'); };
+  toolScale.onclick = () => { transformControls.setMode('scale'); updateToolBtns('scale'); };
+
+  btnSnap.onclick = () => {
+    snapEnabled = !snapEnabled;
+    transformControls.setTranslationSnap(snapEnabled ? gridStep : null);
+    transformControls.setRotationSnap(snapEnabled ? THREE.MathUtils.degToRad(15) : null);
+    transformControls.setScaleSnap(snapEnabled ? 0.25 : null);
+    btnSnap.textContent = `Snap: ${snapEnabled ? 'ON' : 'OFF'}`;
+  };
+
+  btnFocus.onclick = () => {
+    if (selectedIndex >= 0) {
+      const pos = objects[selectedIndex].mesh.position;
+      camera.position.set(pos.x + 5, pos.y + 5, pos.z + 5);
+      camera.lookAt(pos);
+    }
+  };
+
+  btnNew.onclick = () => { if(confirm("Clear current map?")) loadMapData({}); };
+  btnOpen.onclick = () => uploadInput.click();
+  btnDownload.onclick = downloadJson;
+  btnLoadBuiltin.onclick = loadBuiltin;
+
+  uploadInput.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const text = await file.text();
+      loadMapData(JSON.parse(text));
+    }
+  };
+
+  window.addEventListener('keydown', e => {
+    if (document.activeElement.tagName === 'INPUT') return;
+    if (e.key.toLowerCase() === 'w') toolMove.click();
+    if (e.key.toLowerCase() === 'e') toolRotate.click();
+    if (e.key.toLowerCase() === 'r') toolScale.click();
+    if (e.key.toLowerCase() === 'f') btnFocus.click();
+    if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+    if (e.key.toLowerCase() === 'd' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      duplicateSelected();
+    }
+  });
+
+  // Handle snapping initially
+  transformControls.setTranslationSnap(gridStep);
+}
+
+function updateToolBtns(mode) {
+  [toolMove, toolRotate, toolScale].forEach(b => b.classList.remove('active'));
+  if (mode === 'move') toolMove.classList.add('active');
+  if (mode === 'rotate') toolRotate.classList.add('active');
+  if (mode === 'scale') toolScale.classList.add('active');
+}
+
+// Raycasting for selection
+canvas.addEventListener('click', (e) => {
+  if (transformControls.dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const mouse = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1
+  );
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
+  if (intersects.length > 0) {
+    selectObject(intersects[0].object.userData.index);
+  }
 });
-(function tick(){requestAnimationFrame(tick); const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)); camera.lookAt(camera.position.clone().add(dir)); const right=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), dir).normalize(); const sp=.6; if(keys.w)camera.position.addScaledVector(dir,sp); if(keys.s)camera.position.addScaledVector(dir,-sp); if(keys.a)camera.position.addScaledVector(right,-sp); if(keys.d)camera.position.addScaledVector(right,sp); ray.set(camera.position,dir); const hit=ray.intersectObject(floor)[0]; if(hit){ marker.position.set(Math.round(hit.point.x),0.5,Math.round(hit.point.z)); markerPos={x:marker.position.x,z:marker.position.z}; } renderer.render(scene,camera);})();
-})();
-</script></body></html>
+
+init();
+</script>
+</body></html>
