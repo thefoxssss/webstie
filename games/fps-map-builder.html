@@ -191,8 +191,16 @@ body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg-d
 
 <input type="file" id="uploadInput" style="display:none" accept=".json">
 
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
+  }
+}
+</script>
+
 <script type="module">
-import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import * as THREE from 'three';
 import { TransformControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/TransformControls.js';
 
 // State
