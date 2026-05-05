@@ -2524,6 +2524,20 @@ schema.defineTypes(FPSState, {
 });
 
 class FPSRoom extends colyseus.Room {
+  loadMapJSON(mapId) {
+    try {
+      const p = path.join(__dirname, "data", "fps", "maps", `${mapId}.json`);
+      if (fs.existsSync(p)) {
+        this.mapData = JSON.parse(fs.readFileSync(p, "utf8"));
+      } else {
+        this.mapData = null;
+      }
+    } catch (e) {
+      console.error("Failed to load map JSON:", e);
+      this.mapData = null;
+    }
+  }
+
   getBalancedTeam() {
     let redCount = 0;
     let blueCount = 0;
@@ -2535,6 +2549,13 @@ class FPSRoom extends colyseus.Room {
   }
 
   getSafeSpawn(mapId, team = 0) {
+    if (this.mapData && this.mapData.spawns && this.mapData.spawns.length > 0) {
+      const relevantSpawns = this.mapData.spawns.filter(s => s.team === team || s.team === 0 || team === 0);
+      const spawnList = relevantSpawns.length > 0 ? relevantSpawns : this.mapData.spawns;
+      const s = spawnList[Math.floor(Math.random() * spawnList.length)];
+      return { x: s.pos[0], y: s.pos[1] + 1.5, z: s.pos[2] };
+    }
+
     let x = (Math.random() * 40 - 20) * 2;
     let z = (Math.random() * 40 - 20) * 2;
     let y = 1.5;
@@ -2617,9 +2638,22 @@ class FPSRoom extends colyseus.Room {
       this.state.pickups.set(p.id, p);
     };
 
-    for (let i = 0; i < 5; i++) {
-      spawnPickup(0, -30, 30, -30, 30); // Health
-      spawnPickup(1, -30, 30, -30, 30); // Armor
+    if (this.mapData && this.mapData.pickups && this.mapData.pickups.length > 0) {
+      this.mapData.pickups.forEach(p => {
+        const type = p.pickupType === 'armor' ? 1 : 0;
+        const pk = new FPSPickup();
+        pk.id = Math.random().toString(36).substr(2, 9);
+        pk.type = type;
+        pk.x = p.pos[0];
+        pk.y = p.pos[1] + 1.0;
+        pk.z = p.pos[2];
+        this.state.pickups.set(pk.id, pk);
+      });
+    } else {
+      for (let i = 0; i < 5; i++) {
+        spawnPickup(0, -30, 30, -30, 30); // Health
+        spawnPickup(1, -30, 30, -30, 30); // Armor
+      }
     }
   }
 
@@ -2953,6 +2987,8 @@ class FPSRoom extends colyseus.Room {
     if (options.mapId !== undefined) {
       this.state.mapId = options.mapId;
     }
+    this.loadMapJSON(this.state.mapId);
+    this.spawnPickups();
 
     this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     this.playerVotes = new Map();
@@ -3159,7 +3195,9 @@ class FPSRoom extends colyseus.Room {
       }
     }
     this.state.mapId = winningMap;
+    this.loadMapJSON(this.state.mapId);
     this.state.roundOver = false;
+    this.spawnPickups();
     this.state.winnerName = "";
     this.mapVotes = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     this.playerVotes.clear();

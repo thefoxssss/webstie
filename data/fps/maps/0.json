@@ -1,0 +1,169 @@
+{
+  "schema": "fps-map-v1",
+  "id": 0,
+  "name": "Classic Arena",
+  "environment": {
+    "background": 5614318,
+    "fogType": "linear",
+    "fogColor": 5614318,
+    "fogNear": 20,
+    "fogFar": 150,
+    "floorTexture": "grass",
+    "floorColor": 8947848,
+    "floorRepeatX": 20,
+    "floorRepeatY": 20
+  },
+  "materials": {
+    "default": {
+      "color": 10066329
+    },
+    "brick": {
+      "color": 10066329,
+      "texture": "brick",
+      "repeat": [
+        2,
+        1
+      ]
+    },
+    "grass": {
+      "color": 8947848,
+      "texture": "grass"
+    },
+    "asphalt": {
+      "color": 8947848,
+      "texture": "asphalt"
+    },
+    "metal": {
+      "color": 8947848,
+      "texture": "metal"
+    },
+    "concrete": {
+      "color": 5592405,
+      "texture": "concrete"
+    },
+    "wood": {
+      "color": 9136731,
+      "texture": "wood"
+    }
+  },
+  "boxes": [
+    {
+      "size": [
+        100,
+        10,
+        2
+      ],
+      "pos": [
+        0,
+        5,
+        -50
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        100,
+        10,
+        2
+      ],
+      "pos": [
+        0,
+        5,
+        50
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        2,
+        10,
+        100
+      ],
+      "pos": [
+        -50,
+        5,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        2,
+        10,
+        100
+      ],
+      "pos": [
+        50,
+        5,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        10,
+        8,
+        10
+      ],
+      "pos": [
+        0,
+        4,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        6,
+        4,
+        2
+      ],
+      "pos": [
+        -20,
+        2,
+        -20
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        6,
+        4,
+        2
+      ],
+      "pos": [
+        20,
+        2,
+        20
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        2,
+        4,
+        6
+      ],
+      "pos": [
+        -20,
+        2,
+        20
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        2,
+        4,
+        6
+      ],
+      "pos": [
+        20,
+        2,
+        -20
+      ],
+      "material": "concrete"
+    }
+  ],
+  "script": ""
+}

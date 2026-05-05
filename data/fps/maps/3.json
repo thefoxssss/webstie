@@ -1,0 +1,169 @@
+{
+  "schema": "fps-map-v1",
+  "id": 3,
+  "name": "Space Station",
+  "environment": {
+    "background": 328976,
+    "fogType": "linear",
+    "fogColor": 328976,
+    "fogNear": 20,
+    "fogFar": 150,
+    "floorTexture": "metal",
+    "floorColor": 8947848,
+    "floorRepeatX": 10,
+    "floorRepeatY": 10
+  },
+  "materials": {
+    "default": {
+      "color": 10066329
+    },
+    "brick": {
+      "color": 10066329,
+      "texture": "brick",
+      "repeat": [
+        2,
+        1
+      ]
+    },
+    "grass": {
+      "color": 8947848,
+      "texture": "grass"
+    },
+    "asphalt": {
+      "color": 8947848,
+      "texture": "asphalt"
+    },
+    "metal": {
+      "color": 8947848,
+      "texture": "metal"
+    },
+    "concrete": {
+      "color": 5592405,
+      "texture": "concrete"
+    },
+    "wood": {
+      "color": 9136731,
+      "texture": "wood"
+    }
+  },
+  "boxes": [
+    {
+      "size": [
+        100,
+        20,
+        2
+      ],
+      "pos": [
+        0,
+        10,
+        -50
+      ],
+      "material": "default"
+    },
+    {
+      "size": [
+        100,
+        20,
+        2
+      ],
+      "pos": [
+        0,
+        10,
+        50
+      ],
+      "material": "default"
+    },
+    {
+      "size": [
+        2,
+        20,
+        100
+      ],
+      "pos": [
+        -50,
+        10,
+        0
+      ],
+      "material": "default"
+    },
+    {
+      "size": [
+        2,
+        20,
+        100
+      ],
+      "pos": [
+        50,
+        10,
+        0
+      ],
+      "material": "default"
+    },
+    {
+      "size": [
+        20,
+        10,
+        20
+      ],
+      "pos": [
+        0,
+        5,
+        0
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        10,
+        6,
+        30
+      ],
+      "pos": [
+        0,
+        3,
+        25
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        10,
+        6,
+        30
+      ],
+      "pos": [
+        0,
+        3,
+        -25
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        30,
+        6,
+        10
+      ],
+      "pos": [
+        25,
+        3,
+        0
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        30,
+        6,
+        10
+      ],
+      "pos": [
+        -25,
+        3,
+        0
+      ],
+      "material": "metal"
+    }
+  ],
+  "script": ""
+}

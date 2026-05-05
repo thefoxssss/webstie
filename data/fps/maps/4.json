@@ -1,0 +1,156 @@
+{
+  "schema": "fps-map-v1",
+  "id": 4,
+  "name": "Sniper",
+  "environment": {
+    "background": 14544639,
+    "fogType": "linear",
+    "fogColor": 14544639,
+    "fogNear": 20,
+    "fogFar": 250,
+    "floorTexture": "grass",
+    "floorColor": 8947848,
+    "floorRepeatX": 20,
+    "floorRepeatY": 20
+  },
+  "materials": {
+    "default": {
+      "color": 10066329
+    },
+    "brick": {
+      "color": 10066329,
+      "texture": "brick",
+      "repeat": [
+        2,
+        1
+      ]
+    },
+    "grass": {
+      "color": 8947848,
+      "texture": "grass"
+    },
+    "asphalt": {
+      "color": 8947848,
+      "texture": "asphalt"
+    },
+    "metal": {
+      "color": 8947848,
+      "texture": "metal"
+    },
+    "concrete": {
+      "color": 5592405,
+      "texture": "concrete"
+    },
+    "wood": {
+      "color": 9136731,
+      "texture": "wood"
+    }
+  },
+  "boxes": [
+    {
+      "size": [
+        10,
+        20,
+        10
+      ],
+      "pos": [
+        0,
+        10,
+        -40
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        10,
+        20,
+        10
+      ],
+      "pos": [
+        0,
+        10,
+        40
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        2,
+        8,
+        100
+      ],
+      "pos": [
+        -30,
+        4,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        2,
+        8,
+        100
+      ],
+      "pos": [
+        30,
+        4,
+        0
+      ],
+      "material": "brick"
+    },
+    {
+      "size": [
+        4,
+        3,
+        4
+      ],
+      "pos": [
+        -10,
+        1.5,
+        0
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        4,
+        3,
+        4
+      ],
+      "pos": [
+        10,
+        1.5,
+        0
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        4,
+        3,
+        4
+      ],
+      "pos": [
+        0,
+        1.5,
+        10
+      ],
+      "material": "concrete"
+    },
+    {
+      "size": [
+        4,
+        3,
+        4
+      ],
+      "pos": [
+        0,
+        1.5,
+        -10
+      ],
+      "material": "concrete"
+    }
+  ],
+  "script": ""
+}

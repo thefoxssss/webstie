@@ -1,0 +1,169 @@
+{
+  "schema": "fps-map-v1",
+  "id": 2,
+  "name": "Maze",
+  "environment": {
+    "background": 2236962,
+    "fogType": "linear",
+    "fogColor": 2236962,
+    "fogNear": 5,
+    "fogFar": 80,
+    "floorTexture": "concrete",
+    "floorColor": 5592405,
+    "floorRepeatX": 20,
+    "floorRepeatY": 20
+  },
+  "materials": {
+    "default": {
+      "color": 10066329
+    },
+    "brick": {
+      "color": 10066329,
+      "texture": "brick",
+      "repeat": [
+        2,
+        1
+      ]
+    },
+    "grass": {
+      "color": 8947848,
+      "texture": "grass"
+    },
+    "asphalt": {
+      "color": 8947848,
+      "texture": "asphalt"
+    },
+    "metal": {
+      "color": 8947848,
+      "texture": "metal"
+    },
+    "concrete": {
+      "color": 5592405,
+      "texture": "concrete"
+    },
+    "wood": {
+      "color": 9136731,
+      "texture": "wood"
+    }
+  },
+  "boxes": [
+    {
+      "size": [
+        100,
+        6,
+        2
+      ],
+      "pos": [
+        0,
+        3,
+        -50
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        100,
+        6,
+        2
+      ],
+      "pos": [
+        0,
+        3,
+        50
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        2,
+        6,
+        100
+      ],
+      "pos": [
+        -50,
+        3,
+        0
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        2,
+        6,
+        100
+      ],
+      "pos": [
+        50,
+        3,
+        0
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        48,
+        6,
+        2
+      ],
+      "pos": [
+        -18,
+        3,
+        -32
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        2,
+        6,
+        36
+      ],
+      "pos": [
+        -42,
+        3,
+        -12
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        2,
+        6,
+        30
+      ],
+      "pos": [
+        -20,
+        3,
+        -3
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        26,
+        6,
+        2
+      ],
+      "pos": [
+        -6,
+        3,
+        14
+      ],
+      "material": "metal"
+    },
+    {
+      "size": [
+        2,
+        6,
+        26
+      ],
+      "pos": [
+        6,
+        3,
+        -4
+      ],
+      "material": "metal"
+    }
+  ],
+  "script": ""
+}
