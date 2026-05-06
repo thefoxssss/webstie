@@ -263,31 +263,15 @@ body.desktop-shell-mode .wrap,
 body.desktop-shell-mode .dropdown-content {
   display: none !important;
 }
-.desktop-login-screen,
 .desktop-shell {
   position: fixed;
   inset: 0;
   z-index: 3000;
 }
-.desktop-login-screen {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(160deg, #1f3b73, #10213f 55%, #0b1222);
-}
-.desktop-login-card {
-  width: min(440px, 90vw);
-  display: grid;
-  gap: 12px;
-  background: rgba(10, 20, 40, 0.88);
-  border: 1px solid #8fb6ff;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
-  padding: 24px;
-}
-.desktop-login-card label { display: grid; gap: 8px; font-size: 10px; }
-.desktop-login-card input, .desktop-login-card button, .desktop-search, .desktop-signout, .desktop-settings-btn, .desktop-pin {
+.desktop-search, .desktop-signout, .desktop-settings-btn, .desktop-pin {
   font: inherit; border: 1px solid #8fb6ff; background: #0f1d36; color: #e6f0ff; padding: 8px 10px;
 }
-.desktop-shell.hidden, .desktop-login-screen.hidden { display: none; }
+.desktop-shell.hidden { display: none; }
 .desktop-workspace {
   position: absolute; inset: 0 0 46px 0;
   background: radial-gradient(circle at 20% 20%, #2e5cad 0, #173770 45%, #0a1c3f 100%);
@@ -1543,15 +1527,15 @@ body.desktop-shell-mode .dropdown-content {
 
 /* LOGIN */
 #overlayLogin {
-  background: rgba(0, 0, 0, 0.98);
+  background: radial-gradient(circle at 20% 20%, #2e5cad 0, #173770 45%, #0a1c3f 100%);
   z-index: 9000;
 }
 .login-box {
-  border: 2px solid var(--accent);
+  border: 1px solid #8fb6ff;
   padding: 40px;
   text-align: center;
-  box-shadow: 0 0 30px var(--accent-dim);
-  background: #050505;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+  background: rgba(10, 20, 40, 0.9);
   width: 400px;
 }
 

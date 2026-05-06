@@ -1401,17 +1401,7 @@ initDesktopShell();
 
 function initDesktopShell() {
   document.body.classList.add("desktop-shell-mode");
-  const loginScreen = document.createElement("section");
-  loginScreen.className = "desktop-login-screen";
-  loginScreen.innerHTML = `
-    <form class="desktop-login-card" autocomplete="on">
-      <h1>Welcome</h1>
-      <p>Sign in to continue to Arcade Desktop</p>
-      <label>Username<input name="username" type="text" required autocomplete="username" value="Player One" /></label>
-      <label>Password<input name="password" type="password" required autocomplete="current-password" value="password123" /></label>
-      <button type="submit">Sign in</button>
-    </form>`;
-
+  const loginOverlay = document.getElementById("overlayLogin");
   const desktop = document.createElement("section");
   desktop.className = "desktop-shell hidden";
   desktop.innerHTML = `<div class="desktop-workspace"></div>
@@ -1421,7 +1411,7 @@ function initDesktopShell() {
       <button class="desktop-signout">Sign out</button>
       <div class="desktop-system-info"><button class="desktop-settings-btn">⚙ Settings</button><span class="desktop-clock">00:00</span></div>
     </div>`;
-  document.body.append(loginScreen, desktop);
+  document.body.appendChild(desktop);
 
   const workspace = desktop.querySelector(".desktop-workspace");
   const pinned = desktop.querySelector(".desktop-pinned");
@@ -1429,7 +1419,9 @@ function initDesktopShell() {
   const openWindows = new Map();
   let zIndex = 4000;
   const desktopApps = [
-    { name: "Games", icon: "🎮", open: () => document.getElementById("menuToggle")?.click() },
+    { name: "Snake", icon: "🐍", open: () => openGame("snake") },
+    { name: "Pong", icon: "🏓", open: () => openGame("pong") },
+    { name: "Runner", icon: "🏃", open: () => openGame("runner") },
     { name: "Bank", icon: "🏦", open: () => window.toggleTopPanelOverlay("overlayBank") },
     { name: "Shop", icon: "🛒", open: () => window.toggleTopPanelOverlay("overlayShop") },
     { name: "Inventory", icon: "🎒", open: () => window.toggleTopPanelOverlay("overlayInventory") },
@@ -1511,20 +1503,27 @@ function initDesktopShell() {
     icon.style.left = `${24 + (index % 2) * 100}px`;
     icon.style.top = `${24 + Math.floor(index / 2) * 110}px`;
     icon.innerHTML = `<span>${app.icon}</span><small>${app.name}</small>`;
-    icon.addEventListener("dblclick", () => openAppWindow(app));
+    icon.addEventListener("click", () => openAppWindow(app));
     makeDraggable(icon, icon);
     workspace.appendChild(icon);
   });
 
-  loginScreen.querySelector("form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    loginScreen.classList.add("hidden");
-    desktop.classList.remove("hidden");
-  });
+  const syncDesktopVisibility = () => {
+    const isLoginActive = loginOverlay?.classList.contains("active");
+    desktop.classList.toggle("hidden", Boolean(isLoginActive));
+  };
+  syncDesktopVisibility();
+  if (loginOverlay) {
+    new MutationObserver(syncDesktopVisibility).observe(loginOverlay, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  }
+
   desktop.querySelector(".desktop-signout").addEventListener("click", () => {
     window.closeOverlays();
+    loginOverlay?.classList.add("active");
     desktop.classList.add("hidden");
-    loginScreen.classList.remove("hidden");
   });
   desktop.querySelector(".desktop-settings-btn").addEventListener("click", () => window.toggleConfigOverlay());
 }
