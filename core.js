@@ -3289,6 +3289,27 @@ export function logBankEvent(msg, tag = "SYSTEM") {
 }
 
 // Render the merged bank + event log history into the overlay.
+window.updateBankOverviewVisuals = () => {
+  const assets = Number(myMoney);
+  const debt = Number(loanData.debt || 0);
+  const total = assets + debt;
+
+  const fillEl = document.getElementById("bankDebtRatioFill");
+  const textEl = document.getElementById("bankDebtRatioText");
+
+  if (fillEl && textEl) {
+    if (total === 0) {
+      fillEl.style.width = "100%"; // All assets (0/0)
+    } else {
+      const assetPercentage = Math.max(0, Math.min(100, (assets / total) * 100));
+      fillEl.style.width = `${assetPercentage}%`;
+
+      // Keep terminal color
+      textEl.style.color = "#f00";
+    }
+  }
+};
+
 export function updateBankLog() {
   const div = document.getElementById("bankLog");
   div.innerHTML = transactionLog
@@ -3300,6 +3321,10 @@ export function updateBankLog() {
       return `<div class="bank-entry"><span>${t.ts} ${escapeHtml(String(t.msg || ""))}</span><span style="color:${amount >= 0 ? "#0f0" : "#f00"}">${amount >= 0 ? "+" : ""}$${amount}</span></div>`;
     })
     .join("");
+
+  if (typeof updateBankOverviewVisuals === 'function') {
+    updateBankOverviewVisuals();
+  }
 }
 
 // Kick off anonymous auth so we can load/save data immediately.
@@ -3389,6 +3414,8 @@ function runOverlayOpenHooks(id) {
     setText("bankTransferMsg", "");
     setText("bankLoanMsg", "");
     setText("stockTradeMsg", "");
+    // Default to the overview tab when opening the bank
+    if (window.switchBankTab) window.switchBankTab('overview');
   }
   if (id === "overlayGamebox") {
     if (typeof window.__ensureGameboxHasGame === "function") window.__ensureGameboxHasGame();
@@ -3428,6 +3455,32 @@ window.toggleConfigOverlay = () => {
     openConfigOverlay();
   }
 };
+
+// --- Bank Internal Tab Navigation ---
+window.switchBankTab = (tabId) => {
+  // Update nav buttons
+  document.querySelectorAll(".term-nav-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tabId);
+  });
+
+  // Update tab content panes
+  document.querySelectorAll(".bank-tab-pane").forEach(pane => {
+    pane.classList.toggle("active", pane.id === `bankTab-${tabId}`);
+  });
+
+  // Update overview visuals if overview is selected
+  if (tabId === 'overview' && typeof updateBankOverviewVisuals === 'function') {
+    updateBankOverviewVisuals();
+  }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".term-nav-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      window.switchBankTab(e.target.dataset.tab);
+    });
+  });
+});
 
 window.toggleTopPanelOverlay = (id) => {
   if (id === "overlayAdmin" && !isGodUser()) return;
@@ -3680,6 +3733,11 @@ export function updateUI() {
   }
   bankEl.innerText = formatBankAmount(myMoney);
   if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
+
+  if (typeof updateBankOverviewVisuals === 'function') {
+    updateBankOverviewVisuals();
+  }
+
   setText("loanDebt", `$${Math.max(0, Math.round(loanData.debt || 0))}`);
   setText("loanRate", `${Math.round((loanData.rate || 0) * 100)}%`);
   setText("profName", myName);

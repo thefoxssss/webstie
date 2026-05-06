@@ -3783,87 +3783,215 @@ body.reduce-motion *::after {
   box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
 }
 
-.bank-log {
-  max-height: 150px;
-  overflow-y: auto;
-  text-align: left;
-  font-size: 8px;
-  color: #aaa;
-  margin-top: 10px;
-  border-top: 1px solid #333;
-  padding-top: 5px;
+/* Terminal Bank Styling */
+.term-nav {
+  display: flex;
+  justify-content: space-around;
+  border-bottom: 1px dashed #333;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
 }
-.bank-entry {
+
+.term-nav-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-family: monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.term-nav-btn:hover {
+  color: #fff;
+}
+
+.term-nav-btn.active {
+  color: #0f0;
+  font-weight: bold;
+}
+
+.bank-tab-pane {
+  display: none;
+}
+
+.bank-tab-pane.active {
+  display: block;
+}
+
+.bank-balance-card {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px dashed #333;
+}
+
+.bank-balance-label {
+  font-size: 10px;
+  color: #aaa;
   margin-bottom: 5px;
+}
+
+.bank-balance-value {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.bank-balance-ratios {
+  margin-top: 10px;
+}
+
+.bank-ratio-bar {
+  height: 4px;
+  background-color: #f00;
+  width: 80%;
+  margin: 0 auto 5px auto;
+}
+
+.bank-ratio-fill {
+  height: 100%;
+  background-color: #0f0;
+  transition: width 0.5s ease;
+}
+
+.bank-ratio-labels {
   display: flex;
   justify-content: space-between;
+  width: 80%;
+  margin: 0 auto;
+  font-size: 8px;
+}
+
+.bank-section-title {
+  text-align: center;
+  font-size: 10px;
+  color: #aaa;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed #333;
+  padding-bottom: 5px;
+}
+
+.bank-card {
+  margin-bottom: 15px;
+}
+
+.bank-log {
+  max-height: 250px;
+  overflow-y: auto;
+  text-align: left;
+  font-size: 9px;
+  color: #aaa;
+}
+
+.bank-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed #222;
+}
+
+.bank-entry-icon {
+  display: none; /* Hide icons in terminal mode */
+}
+
+.bank-entry-details {
+  flex: 1;
+}
+
+.bank-entry-title {
+  color: #ccc;
+  margin-bottom: 2px;
+}
+
+.bank-entry-time {
+  font-size: 8px;
+  color: #777;
+}
+
+.bank-entry-amount {
+  font-weight: bold;
 }
 
 .bank-transfer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.bank-transfer-input {
-  margin-bottom: 0;
-  font-size: 12px;
-  padding: 8px;
+  gap: 4px;
 }
 
 .bank-transfer-presets {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.bank-preset-btn {
-  padding: 6px;
-  font-size: 9px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .bank-transfer-help {
   text-align: center;
-  color: #777;
-  font-size: 8px;
+  color: #6b7280;
+  font-size: 10px;
+  margin-top: 8px;
 }
 
 .bank-transfer-msg {
-  min-height: 12px;
-  font-size: 10px;
+  min-height: 16px;
+  font-size: 12px;
   text-align: center;
-  color: #aaa;
+  color: #9ca3af;
+  margin-top: 8px;
 }
 
-
 .bank-loan {
-  border-top: 1px dashed #333;
-  margin-top: 10px;
-  padding-top: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.bank-loan-title {
-  text-align: center;
-  font-size: 10px;
-  color: #f80;
-  letter-spacing: 0.5px;
-}
-
 .bank-loan-stats {
   display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: #aaa;
+  justify-content: space-around;
+  margin-bottom: 15px;
 }
+
+.bank-stat-box {
+  text-align: center;
+}
+
+.bank-stat-label {
+  display: block;
+  font-size: 8px;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.bank-stat-value {
+  font-size: 14px;
+}
+
+.text-red { color: #f00; }
+.text-yellow { color: #ff0; }
+.text-green { color: #0f0; }
 
 .bank-loan-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
+}
+
+/* Override existing stock market styles for the bank app */
+.stock-market-card .stock-market {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.stock-portfolio-val {
+  font-weight: bold;
+  color: #aaa;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 
