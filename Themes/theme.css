@@ -258,6 +258,67 @@ body::before {
   display: none;
 }
 
+body.desktop-shell-mode .top-bar,
+body.desktop-shell-mode .wrap,
+body.desktop-shell-mode .dropdown-content {
+  display: none !important;
+}
+.desktop-login-screen,
+.desktop-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+}
+.desktop-login-screen {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, #1f3b73, #10213f 55%, #0b1222);
+}
+.desktop-login-card {
+  width: min(440px, 90vw);
+  display: grid;
+  gap: 12px;
+  background: rgba(10, 20, 40, 0.88);
+  border: 1px solid #8fb6ff;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  padding: 24px;
+}
+.desktop-login-card label { display: grid; gap: 8px; font-size: 10px; }
+.desktop-login-card input, .desktop-login-card button, .desktop-search, .desktop-signout, .desktop-settings-btn, .desktop-pin {
+  font: inherit; border: 1px solid #8fb6ff; background: #0f1d36; color: #e6f0ff; padding: 8px 10px;
+}
+.desktop-shell.hidden, .desktop-login-screen.hidden { display: none; }
+.desktop-workspace {
+  position: absolute; inset: 0 0 46px 0;
+  background: radial-gradient(circle at 20% 20%, #2e5cad 0, #173770 45%, #0a1c3f 100%);
+}
+.desktop-taskbar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
+  background: rgba(12, 20, 40, 0.96); border-top: 1px solid #7ea5ed;
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 4px 10px;
+}
+.desktop-pinned { display: flex; gap: 6px; overflow-x: auto; }
+.desktop-system-info { display: flex; gap: 10px; align-items: center; font-size: 10px; }
+.desktop-icon {
+  position: absolute; width: 80px; display: grid; place-items: center; gap: 8px;
+  background: transparent; border: 1px solid transparent; color: #fff; padding: 8px;
+}
+.desktop-icon:hover { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.08); }
+.desktop-icon span { font-size: 30px; }
+.desktop-icon small { font-size: 9px; text-align: center; }
+.desktop-window {
+  position: absolute; width: min(480px, 82vw); min-height: 220px;
+  background: #122446; border: 1px solid #8fb6ff; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+.desktop-window-head {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #1f3f79; border-bottom: 1px solid #8fb6ff; padding: 6px 8px; cursor: move;
+}
+.desktop-window-head button { margin-left: 4px; width: 28px; }
+.desktop-window-body { padding: 16px; font-size: 11px; }
+.desktop-window.minimized { display: none; }
+.desktop-window.maximized { left: 0 !important; top: 0 !important; width: 100% !important; height: calc(100% - 46px); }
+
 .april-fools-active .top-bar {
   animation: aprilGlow 1.4s ease-in-out infinite;
 }

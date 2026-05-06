@@ -1397,6 +1397,137 @@ initGameVisibilityGuards();
 initGameScroller();
 initMainSiteSearch();
 initHomeRecentGames();
+initDesktopShell();
+
+function initDesktopShell() {
+  document.body.classList.add("desktop-shell-mode");
+  const loginScreen = document.createElement("section");
+  loginScreen.className = "desktop-login-screen";
+  loginScreen.innerHTML = `
+    <form class="desktop-login-card" autocomplete="on">
+      <h1>Welcome</h1>
+      <p>Sign in to continue to Arcade Desktop</p>
+      <label>Username<input name="username" type="text" required autocomplete="username" value="Player One" /></label>
+      <label>Password<input name="password" type="password" required autocomplete="current-password" value="password123" /></label>
+      <button type="submit">Sign in</button>
+    </form>`;
+
+  const desktop = document.createElement("section");
+  desktop.className = "desktop-shell hidden";
+  desktop.innerHTML = `<div class="desktop-workspace"></div>
+    <div class="desktop-taskbar">
+      <input class="desktop-search" type="search" placeholder="Search apps, games, settings..." />
+      <div class="desktop-pinned"></div>
+      <button class="desktop-signout">Sign out</button>
+      <div class="desktop-system-info"><button class="desktop-settings-btn">⚙ Settings</button><span class="desktop-clock">00:00</span></div>
+    </div>`;
+  document.body.append(loginScreen, desktop);
+
+  const workspace = desktop.querySelector(".desktop-workspace");
+  const pinned = desktop.querySelector(".desktop-pinned");
+  const clock = desktop.querySelector(".desktop-clock");
+  const openWindows = new Map();
+  let zIndex = 4000;
+  const desktopApps = [
+    { name: "Games", icon: "🎮", open: () => document.getElementById("menuToggle")?.click() },
+    { name: "Bank", icon: "🏦", open: () => window.toggleTopPanelOverlay("overlayBank") },
+    { name: "Shop", icon: "🛒", open: () => window.toggleTopPanelOverlay("overlayShop") },
+    { name: "Inventory", icon: "🎒", open: () => window.toggleTopPanelOverlay("overlayInventory") },
+    { name: "Profile", icon: "👤", open: () => window.toggleTopPanelOverlay("overlayProfile") },
+    { name: "Chat", icon: "💬", open: () => window.toggleTopPanelOverlay("globalChat") },
+  ];
+
+  const updateClock = () => {
+    clock.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  function bringToFront(win) {
+    zIndex += 1;
+    win.style.zIndex = zIndex;
+  }
+
+  function makeDraggable(handle, el, onMove = null) {
+    let dragging = false, startX = 0, startY = 0, baseX = 0, baseY = 0;
+    handle.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      const rect = el.getBoundingClientRect();
+      baseX = rect.left; baseY = rect.top;
+      bringToFront(el);
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const left = baseX + (e.clientX - startX);
+      const top = baseY + (e.clientY - startY);
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      onMove?.(left, top);
+    });
+    handle.addEventListener("pointerup", () => { dragging = false; });
+  }
+
+  function openAppWindow(app) {
+    if (openWindows.has(app.name)) {
+      const existing = openWindows.get(app.name);
+      existing.classList.remove("minimized");
+      bringToFront(existing);
+      return;
+    }
+    const win = document.createElement("article");
+    win.className = "desktop-window";
+    win.style.left = `${120 + openWindows.size * 40}px`;
+    win.style.top = `${80 + openWindows.size * 30}px`;
+    win.innerHTML = `<header class="desktop-window-head"><strong>${app.icon} ${app.name}</strong><div><button data-action="min">—</button><button data-action="max">□</button><button data-action="close">✕</button></div></header><div class="desktop-window-body"><p>Launch ${app.name} tools from this desktop app.</p><button class="desktop-launch-btn">Open ${app.name}</button></div>`;
+    workspace.appendChild(win);
+    bringToFront(win);
+    makeDraggable(win.querySelector(".desktop-window-head"), win);
+    win.querySelector(".desktop-launch-btn").addEventListener("click", () => app.open());
+    win.querySelectorAll("button[data-action]").forEach((btn) => btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      if (action === "close") { win.remove(); openWindows.delete(app.name); pin.remove(); }
+      if (action === "min") win.classList.add("minimized");
+      if (action === "max") win.classList.toggle("maximized");
+    }));
+    win.addEventListener("pointerdown", () => bringToFront(win));
+    openWindows.set(app.name, win);
+
+    const pin = document.createElement("button");
+    pin.className = "desktop-pin";
+    pin.textContent = app.name;
+    pin.addEventListener("click", () => {
+      if (!openWindows.has(app.name)) return openAppWindow(app);
+      win.classList.toggle("minimized");
+      bringToFront(win);
+    });
+    pinned.appendChild(pin);
+  }
+
+  desktopApps.forEach((app, index) => {
+    const icon = document.createElement("button");
+    icon.className = "desktop-icon";
+    icon.style.left = `${24 + (index % 2) * 100}px`;
+    icon.style.top = `${24 + Math.floor(index / 2) * 110}px`;
+    icon.innerHTML = `<span>${app.icon}</span><small>${app.name}</small>`;
+    icon.addEventListener("dblclick", () => openAppWindow(app));
+    makeDraggable(icon, icon);
+    workspace.appendChild(icon);
+  });
+
+  loginScreen.querySelector("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    loginScreen.classList.add("hidden");
+    desktop.classList.remove("hidden");
+  });
+  desktop.querySelector(".desktop-signout").addEventListener("click", () => {
+    window.closeOverlays();
+    desktop.classList.add("hidden");
+    loginScreen.classList.remove("hidden");
+  });
+  desktop.querySelector(".desktop-settings-btn").addEventListener("click", () => window.toggleConfigOverlay());
+}
 
 function hideGameOverModal() {
   const modal = document.getElementById("modalGameOver");
