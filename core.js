@@ -525,11 +525,20 @@ export class DrawSystem {
     this.commands.push({ kind: "line", color, width, x1, y1, x2, y2 });
   }
 
+  circle(color, x, y, radius) {
+    this.commands.push({ kind: "circle", color, x, y, radius });
+  }
+
+  text(color, x, y, value, font = "16px monospace") {
+    this.commands.push({ kind: "text", color, x, y, value, font });
+  }
+
   flush() {
     const ctx = this.ctx;
     let fillStyle = "";
     let strokeStyle = "";
     let lineWidth = 1;
+    let font = "";
     for (const cmd of this.commands) {
       if (cmd.kind === "clear" || cmd.kind === "rect") {
         if (fillStyle !== cmd.color) {
@@ -537,6 +546,28 @@ export class DrawSystem {
           ctx.fillStyle = fillStyle;
         }
         ctx.fillRect(cmd.x, cmd.y, cmd.w, cmd.h);
+        continue;
+      }
+      if (cmd.kind === "circle") {
+        if (fillStyle !== cmd.color) {
+          fillStyle = cmd.color;
+          ctx.fillStyle = fillStyle;
+        }
+        ctx.beginPath();
+        ctx.arc(cmd.x, cmd.y, cmd.radius, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+      if (cmd.kind === "text") {
+        if (fillStyle !== cmd.color) {
+          fillStyle = cmd.color;
+          ctx.fillStyle = fillStyle;
+        }
+        if (font !== cmd.font) {
+          font = cmd.font;
+          ctx.font = font;
+        }
+        ctx.fillText(cmd.value, cmd.x, cmd.y);
         continue;
       }
       if (strokeStyle !== cmd.color) {
