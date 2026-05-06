@@ -2431,6 +2431,8 @@ const AGAR_MERGE_COOLDOWN_MS = 9000;
 const FPS_GATLING_WEAPON_ID = 3;
 const FPS_GATLING_DAMAGE_TAKEN_MULTIPLIER = 0.5;
 const FPS_GATLING_FIRING_GRACE_MS = 250;
+const FPS_GATLING_GRENADE_SPEED = 1.6;
+const FPS_GATLING_GRENADE_LIFE_MS = 1200;
 
 const agarServerDirectory = new Map();
 
@@ -2447,6 +2449,7 @@ class FPSPlayer extends schema.Schema {
     this.name = "Unknown";
     this.team = 0; // 0=FFA, 1=Red, 2=Blue
     this.killStreak = 0;
+    this.weapon = 0;
     this.gatlingFiringUntil = 0;
   }
 }
@@ -2461,6 +2464,7 @@ schema.defineTypes(FPSPlayer, {
   name: "string",
   team: "number",
   killStreak: "number",
+  weapon: "number",
   gatlingFiringUntil: "number"
 });
 
@@ -2955,9 +2959,29 @@ class FPSRoom extends colyseus.Room {
     });
   }
 
+  createFpsGrenadeProjectile(ownerId, origin, dir, options = {}) {
+    if (!origin || !dir) return null;
+    const proj = new FPSProjectile();
+    proj.id = Math.random().toString(36).substr(2, 9);
+    proj.ownerId = ownerId;
+    proj.type = options.type || 1; // 1=Frag, 2=Smoke, 3=Flash
+    proj.x = origin.x;
+    proj.y = origin.y;
+    proj.z = origin.z;
+    proj.dx = dir.x;
+    proj.dy = dir.y + (options.arc ?? 0.2);
+    proj.dz = dir.z;
+    proj.speed = options.speed || 1.0;
+    proj.life = options.life || 1500;
+    if (![proj.x, proj.y, proj.z, proj.dx, proj.dy, proj.dz].every(Number.isFinite)) return null;
+    this.state.projectiles.set(proj.id, proj);
+    return proj;
+  }
+
   handleElimination(shooter, shooterClient, victim, victimClient) {
     victim.health = 0;
     victim.killStreak = 0;
+    victim.weapon = 0;
     if (shooter && shooterClient && shooter !== victim) {
       shooter.kills += 1;
       shooter.killStreak += 1;
@@ -3039,6 +3063,16 @@ class FPSRoom extends colyseus.Room {
       this.broadcast("mapVotes", this.mapVotes);
     });
 
+    this.onMessage("switchWeapon", (client, weaponId) => {
+      if (this.state.roundOver) return;
+      const player = this.state.players.get(client.sessionId);
+      if (!player || player.health <= 0) return;
+      const id = Number(weaponId);
+      if (!Number.isInteger(id) || id < 0 || id > FPS_GATLING_WEAPON_ID) return;
+      if (id === FPS_GATLING_WEAPON_ID && player.killStreak < 5) return;
+      player.weapon = id;
+    });
+
     this.onMessage("move", (client, data) => {
       if (this.state.roundOver) return;
       const player = this.state.players.get(client.sessionId);
@@ -3058,6 +3092,9 @@ class FPSRoom extends colyseus.Room {
       if (this.state.mapId === 5 && shooter.team === 0) return;
       const weaponId = Number(data.weaponId);
       if (weaponId === FPS_GATLING_WEAPON_ID && shooter.killStreak < 5) return;
+      if (Number.isInteger(weaponId) && weaponId >= 0 && weaponId <= FPS_GATLING_WEAPON_ID) {
+        shooter.weapon = weaponId;
+      }
       if (weaponId === FPS_GATLING_WEAPON_ID) {
         shooter.gatlingFiringUntil = Date.now() + FPS_GATLING_FIRING_GRACE_MS;
       }
@@ -3165,25 +3202,31 @@ class FPSRoom extends colyseus.Room {
       });
     });
 
+    this.onMessage("shootGatlingGrenade", (client, data) => {
+      if (this.state.roundOver) return;
+      const shooter = this.state.players.get(client.sessionId);
+      if (!shooter || shooter.health <= 0) return;
+      if (this.state.mapId === 5 && shooter.team === 0) return;
+      if (shooter.weapon !== FPS_GATLING_WEAPON_ID || shooter.killStreak < 5) return;
+
+      shooter.gatlingFiringUntil = Date.now() + FPS_GATLING_FIRING_GRACE_MS;
+      this.createFpsGrenadeProjectile(client.sessionId, data.origin, data.dir, {
+        type: 1,
+        arc: 0.08,
+        speed: FPS_GATLING_GRENADE_SPEED,
+        life: FPS_GATLING_GRENADE_LIFE_MS
+      });
+    });
+
     this.onMessage("throwGrenade", (client, data) => {
       if (this.state.roundOver) return;
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
       if (this.state.mapId === 5 && shooter.team === 0) return;
 
-      const proj = new FPSProjectile();
-      proj.id = Math.random().toString(36).substr(2, 9);
-      proj.ownerId = client.sessionId;
-      proj.type = (data.type || 0) + 1; // 1=Frag, 2=Smoke, 3=Flash
-      proj.x = data.origin.x;
-      proj.y = data.origin.y;
-      proj.z = data.origin.z;
-      proj.dx = data.dir.x;
-      proj.dy = data.dir.y + 0.2; // slight upward throw
-      proj.dz = data.dir.z;
-      proj.speed = 1.0;
-      proj.life = 1500; // 1.5 seconds until boom
-      this.state.projectiles.set(proj.id, proj);
+      this.createFpsGrenadeProjectile(client.sessionId, data.origin, data.dir, {
+        type: (data.type || 0) + 1
+      });
     });
 
     this.onMessage("joinTeam", (client, teamId) => {
