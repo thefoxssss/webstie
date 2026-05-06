@@ -3041,6 +3041,8 @@ class FPSRoom extends colyseus.Room {
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
       if (this.state.mapId === 5 && shooter.team === 0) return;
+      const weaponId = Number(data.weaponId);
+      if (weaponId === 3 && shooter.killStreak < 5) return;
 
       this.broadcast("shoot", { origin: data.origin, dir: data.dir }, { except: client });
 
@@ -3091,8 +3093,9 @@ class FPSRoom extends colyseus.Room {
 
       if (hitClient) {
         let damage = 25;
-        if (data.weaponId === 1) damage = 20; // Shotgun per bullet
-        if (data.weaponId === 2) damage = 100; // Sniper
+        if (weaponId === 1) damage = 20; // Shotgun per bullet
+        if (weaponId === 2) damage = 100; // Sniper
+        if (weaponId === 3) damage = 10; // Gatling
         const target = hitClient.player;
 
         if (target.armor > 0) {

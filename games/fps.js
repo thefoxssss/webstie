@@ -4,7 +4,7 @@ let room = null;
 let scene, camera, renderer, controls;
 let raycaster;
 let floorMesh;
-let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, weapon: 0, team: 0 };
+let localPlayer = { id: "", x: 0, y: 1.5, z: 0, health: 100, kills: 0, killStreak: 0, weapon: 0, team: 0 };
 let otherPlayers = {}; // id -> { mesh, data, targetPos, targetRotY, lastNetUpdate }
 let gunMesh;
 let muzzleFlash, muzzleLight;
@@ -244,6 +244,8 @@ function setupRoom() {
   });
 
   room.onMessage("killed", (data) => {
+    localPlayer.killStreak = 0;
+    if (localPlayer.weapon === 3) switchWeapon(0);
     unzoomSniper();
     fpsDeathMessage.textContent = `FRAGGED BY ${data.killer}`;
     fpsDeathScreen.style.display = "flex";
@@ -307,6 +309,7 @@ function setupRoom() {
       localPlayer.id = sessionId;
       localPlayer.health = player.health;
       localPlayer.kills = player.kills;
+      localPlayer.killStreak = player.killStreak;
       localPlayer.team = player.team;
       grenades = 2;
       updateGrenadeUI();
@@ -320,6 +323,9 @@ function setupRoom() {
       player.listen("kills", (val) => {
         localPlayer.kills = val;
         fpsKills.textContent = val;
+      });
+      player.listen("killStreak", (val) => {
+        localPlayer.killStreak = val;
         if (!isGatlingUnlocked() && localPlayer.weapon === 3) {
           switchWeapon(0);
         }
@@ -1246,7 +1252,7 @@ const WEAPONS = [
   { name: "PISTOL", color: 0x555555, cooldown: 400, damage: 25, spread: 0, magSize: 12, reloadTime: 1200 },
   { name: "SHOTGUN", color: 0x882222, cooldown: 1000, damage: 20, spread: 0.1, bullets: 5, magSize: 6, reloadTime: 2000 },
   { name: "SNIPER", color: 0x228822, cooldown: 1500, damage: 100, spread: 0, magSize: 2, reloadTime: 2500 },
-  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3600, immobilizesOnFire: true }
+  { name: "GATLING", color: 0xccaa22, cooldown: 80, damage: 10, spread: 0.03, magSize: 250, reloadTime: 3600, immobilizesOnFire: true, unlockKillStreak: 5 }
 ];
 
 function resetGatlingRamp() {
@@ -1552,11 +1558,18 @@ function createGunModel(id) {
   }
 }
 
+function isGatlingUnlocked() {
+  return isWeaponUnlocked(3);
+}
+
 function isWeaponUnlocked(id) {
   if (id === 3 && isGodUser()) {
     return true;
   }
   const w = WEAPONS[id];
+  if (w && w.unlockKillStreak) {
+    return localPlayer.killStreak >= w.unlockKillStreak;
+  }
   if (w && w.unlockKills) {
     return localPlayer.kills >= w.unlockKills;
   }
@@ -1565,7 +1578,13 @@ function isWeaponUnlocked(id) {
 
 function switchWeapon(id) {
   if (id >= WEAPONS.length) return;
-  if (!isWeaponUnlocked(id)) return;
+  if (!isWeaponUnlocked(id)) {
+    const w = WEAPONS[id];
+    if (w && w.unlockKillStreak) {
+      fpsHint.textContent = `${w.name} unlocks at a ${w.unlockKillStreak}-kill streak.`;
+    }
+    return;
+  }
   unzoomSniper();
   isReloading = false;
   resetGatlingRamp();
@@ -1639,6 +1658,11 @@ function tryFireWeapon() {
   if (!controls.isLocked) return;
   if (localPlayer.health <= 0) return;
   if (isReloading) return; // Cannot fire while reloading
+
+  if (!isWeaponUnlocked(localPlayer.weapon)) {
+    switchWeapon(0);
+    return;
+  }
 
   const weapon = WEAPONS[localPlayer.weapon];
   const now = performance.now();
@@ -2200,6 +2224,7 @@ export function initFps() {
   resetGatlingRamp();
   isPrimaryFireHeld = false;
   localPlayer.team = 0;
+  localPlayer.killStreak = 0;
   updateGrenadeUI();
   updateCtfHud();
   updateTeamSelectUI();
