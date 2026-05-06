@@ -1,4 +1,4 @@
-import { state, isInputFocused, escapeHtml, isGodUser } from "../core.js";
+import { state, isInputFocused, escapeHtml } from "../core.js";
 
 let room = null;
 let scene, camera, renderer, controls;
@@ -1563,9 +1563,6 @@ function isGatlingUnlocked() {
 }
 
 function isWeaponUnlocked(id) {
-  if (id === 3 && isGodUser()) {
-    return true;
-  }
   const w = WEAPONS[id];
   if (w && w.unlockKillStreak) {
     return localPlayer.killStreak >= w.unlockKillStreak;
