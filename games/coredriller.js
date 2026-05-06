@@ -121,8 +121,10 @@ export function updateCoreDriller() {
   const thrustPower = 78 + upgrades.drill * 8;
   if (thrustOn && drill.fuel > 0) {
     drill.vy += thrustPower * dt;
-    drill.fuel = Math.max(0, drill.fuel - (11 - upgrades.fuel * 0.55) * dt);
-    drill.heat += (13 - upgrades.coolant * 0.75) * dt;
+    const thrustFuelDrain = Math.max(2.5, 11 - upgrades.fuel * 0.55);
+    const thrustHeatGain = Math.max(1.5, 13 - upgrades.coolant * 0.75);
+    drill.fuel = Math.max(0, drill.fuel - thrustFuelDrain * dt);
+    drill.heat += thrustHeatGain * dt;
   } else {
     drill.vy += 28 * dt;
   }
@@ -238,8 +240,11 @@ export function initCoreDriller() {
   state.currentGame = "coredriller";
   loadHighScores();
 
-  const canvas = document.getElementById("coreDrillerCanvas");
-  if (!canvas) return;
+  const canvas = document.getElementById("coreDrillerCanvas") || document.getElementById("coredrillerCanvas");
+  if (!canvas) {
+    showToast("CORE DRILLER UI FAILED TO LOAD", "⚠️");
+    return;
+  }
   draw = new DrawSystem(canvas.getContext("2d"));
   kernel = new EngineKernel({ fixedHz: 60 });
 

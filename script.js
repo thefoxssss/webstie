@@ -238,6 +238,10 @@ function renderInGameShopPanel(game, overlayId) {
 function getOverlayIdForGame(gameId) {
   if (!gameId) return "";
   if (gameId === "voice") return "globalChat";
+  if (gameId === "coredriller") {
+    // Support both historical ID variants used in markup.
+    return document.getElementById("overlayCoredriller") ? "overlayCoredriller" : "overlayCoreDriller";
+  }
   return `overlay${gameId === "ttt" ? gameId.toUpperCase() : gameId.charAt(0).toUpperCase() + gameId.slice(1)}`;
 }
 
