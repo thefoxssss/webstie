@@ -1168,6 +1168,9 @@ const STOCK_BASE_PRICES = {
   OIL: 80,
 };
 
+const MARKET_FLOAT_PER_STOCK = 120000;
+const MAX_SENTIMENT_EVENTS = 160;
+
 let stopMarketSync = null;
 let oilQuoteState = {
   price: null,
@@ -1186,6 +1189,12 @@ function buildInitialStockState() {
         return Number((start * (1 + Math.sin(angle) * 0.05)).toFixed(2));
       }),
       lastMove: 0,
+      buyVolume: 0,
+      sellVolume: 0,
+      totalVolume: 0,
+      holders: {},
+      marketCapShares: MARKET_FLOAT_PER_STOCK,
+      sentiment: [],
     };
   });
 }
@@ -1223,11 +1232,34 @@ function normalizeMarketStocks(inputStocks = []) {
       : [];
     const history = (parsedHistory.length ? parsedHistory : [price]).slice(-80).map((value) => Number(value.toFixed(2)));
     const parsedMove = Number(source.lastMove);
+    const buyVolume = Math.max(0, Math.floor(Number(source.buyVolume) || 0));
+    const sellVolume = Math.max(0, Math.floor(Number(source.sellVolume) || 0));
+    const totalVolume = Math.max(0, Math.floor(Number(source.totalVolume) || (buyVolume + sellVolume)));
+    const rawHolders = source.holders && typeof source.holders === "object" ? source.holders : {};
+    const holders = {};
+    Object.keys(rawHolders).forEach((uid) => {
+      const shares = Math.max(0, Math.floor(Number(rawHolders[uid]) || 0));
+      if (shares > 0) holders[uid] = shares;
+    });
+    const marketCapShares = Math.max(1000, Math.floor(Number(source.marketCapShares) || MARKET_FLOAT_PER_STOCK));
+    const sentiment = Array.isArray(source.sentiment)
+      ? source.sentiment.slice(-MAX_SENTIMENT_EVENTS).map((evt) => ({
+        t: Math.max(0, Math.floor(Number(evt?.t) || 0)),
+        side: evt?.side === "sell" ? "sell" : "buy",
+        shares: Math.max(1, Math.floor(Number(evt?.shares) || 1)),
+      }))
+      : [];
     return {
       ...entry,
       price: Number(price.toFixed(2)),
       history,
       lastMove: Number.isFinite(parsedMove) ? parsedMove : 0,
+      buyVolume,
+      sellVolume,
+      totalVolume,
+      holders,
+      marketCapShares,
+      sentiment,
     };
   });
 }
@@ -1242,6 +1274,12 @@ function getInitialMarketPayload() {
       price: stock.price,
       history: stock.history,
       lastMove: stock.lastMove,
+      buyVolume: stock.buyVolume,
+      sellVolume: stock.sellVolume,
+      totalVolume: stock.totalVolume,
+      holders: stock.holders,
+      marketCapShares: stock.marketCapShares,
+      sentiment: stock.sentiment,
     })),
   };
 }
@@ -1320,11 +1358,29 @@ function evolveMarketStocks(stocks) {
         lastMove,
       };
     }
-    const drift = (Math.random() - 0.49) * 0.09;
-    const momentum = (Number(stock.lastMove) || 0) * 0.35;
-    const swing = (Math.random() - 0.5) * 0.04;
     const current = clampEconomyNumber(stock.price, { min: 3, max: MAX_STOCK_PRICE });
-    const next = clampEconomyNumber(current * (1 + drift + momentum + swing), { min: 3, max: MAX_STOCK_PRICE });
+    const holders = stock.holders && typeof stock.holders === "object" ? stock.holders : {};
+    const holderShares = Object.values(holders);
+    const totalHeld = holderShares.reduce((sum, shares) => sum + (Number(shares) || 0), 0);
+    const marketCapShares = Math.max(1000, Math.floor(Number(stock.marketCapShares) || MARKET_FLOAT_PER_STOCK));
+    const floatShares = Math.max(1, marketCapShares - totalHeld);
+    const recentSentiment = Array.isArray(stock.sentiment) ? stock.sentiment.slice(-30) : [];
+    const buyPressure = recentSentiment.filter((evt) => evt.side === "buy").reduce((sum, evt) => sum + evt.shares, 0);
+    const sellPressure = recentSentiment.filter((evt) => evt.side === "sell").reduce((sum, evt) => sum + evt.shares, 0);
+    const netPressure = (buyPressure - sellPressure) / Math.max(20, marketCapShares * 0.02);
+    const volumeRatio = Math.min(1, (Number(stock.totalVolume) || 0) / Math.max(100, marketCapShares * 0.15));
+    const largestHolder = holderShares.length ? Math.max(...holderShares) : 0;
+    const concentration = holderShares.length > 0 ? largestHolder / Math.max(1, totalHeld) : 0;
+    const concentrationDrift = (0.2 - concentration) * 0.012;
+    const scarcityBoost = (1 - (floatShares / marketCapShares)) * 0.02;
+    const momentum = (Number(stock.lastMove) || 0) * 0.25;
+    const imbalance = Math.abs(netPressure);
+    const volatility = 0.003 + (volumeRatio * 0.015) + (imbalance * 0.02);
+    const sentimentShock = (Math.random() - 0.5) * volatility;
+    const spike = imbalance > 0.35 ? (Math.random() - 0.5) * imbalance * 0.035 : 0;
+    const rawMove = (netPressure * 0.08) + concentrationDrift + scarcityBoost + momentum + sentimentShock + spike;
+    const boundedMove = Math.max(-0.28, Math.min(0.28, rawMove));
+    const next = clampEconomyNumber(current * (1 + boundedMove), { min: 3, max: MAX_STOCK_PRICE });
     const lastMove = (next - current) / current;
     const history = [...(Array.isArray(stock.history) ? stock.history : []), Number(next.toFixed(2))].slice(-80);
     return {
@@ -1399,6 +1455,12 @@ async function tickStockMarket() {
           price: stock.price,
           history: stock.history,
           lastMove: stock.lastMove,
+          buyVolume: stock.buyVolume,
+          sellVolume: stock.sellVolume,
+          totalVolume: stock.totalVolume,
+          holders: stock.holders,
+          marketCapShares: stock.marketCapShares,
+          sentiment: stock.sentiment,
         })),
       });
     });
@@ -1636,6 +1698,64 @@ function tradeStock(isBuy) {
     myMoney = clampEconomyNumber(Number((myMoney + totalPayout).toFixed(2)), { min: 0, max: MAX_BANK_MONEY });
     logTransaction(`SELL ${stock.symbol} x${tradeShares}`, totalPayout);
     setText("stockTradeMsg", `SOLD ${tradeShares} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
+  }
+
+  const side = isBuy ? "buy" : "sell";
+  const symbol = stock.symbol;
+  const uid = String(myUid || myName || "local");
+  try {
+    const ref = marketDocRef();
+    runTransaction(db, async (t) => {
+      const snap = await t.get(ref);
+      const payload = snap.exists() ? snap.data() : getInitialMarketPayload();
+      const stocks = normalizeMarketStocks(payload.stocks);
+      const idx = stocks.findIndex((entry) => entry.symbol === symbol);
+      if (idx < 0) return;
+      const target = { ...stocks[idx] };
+      const holders = { ...(target.holders || {}) };
+      const prevShares = Math.max(0, Math.floor(Number(holders[uid]) || 0));
+      const nextShares = Math.max(0, Math.floor(Number(stockData.holdings[symbol]) || 0));
+      if (nextShares > 0) holders[uid] = nextShares;
+      else delete holders[uid];
+      target.holders = holders;
+      target.buyVolume = Math.max(0, Math.floor(Number(target.buyVolume) || 0) + (side === "buy" ? tradeShares : 0));
+      target.sellVolume = Math.max(0, Math.floor(Number(target.sellVolume) || 0) + (side === "sell" ? tradeShares : 0));
+      target.totalVolume = Math.max(0, Math.floor(Number(target.totalVolume) || 0) + tradeShares);
+      const sentiment = Array.isArray(target.sentiment) ? [...target.sentiment] : [];
+      sentiment.push({ t: Date.now(), side, shares: tradeShares });
+      target.sentiment = sentiment.slice(-MAX_SENTIMENT_EVENTS);
+      const shareDelta = Math.abs(nextShares - prevShares);
+      if (shareDelta > 0) {
+        const floatFactor = Math.max(0.05, 1 - (Object.values(holders).reduce((sum, v) => sum + v, 0) / Math.max(1, target.marketCapShares || MARKET_FLOAT_PER_STOCK)));
+        const pressureSign = side === "buy" ? 1 : -1;
+        const impact = pressureSign * (shareDelta / Math.max(10, (target.marketCapShares || MARKET_FLOAT_PER_STOCK) * floatFactor));
+        const volatilityBoost = tradeShares > 250 ? 1.9 : tradeShares > 80 ? 1.35 : 1;
+        const adjusted = clampEconomyNumber(target.price * (1 + (impact * 0.55 * volatilityBoost)), { min: 3, max: MAX_STOCK_PRICE });
+        target.lastMove = target.price > 0 ? (adjusted - target.price) / target.price : 0;
+        target.price = Number(adjusted.toFixed(2));
+        target.history = [...(Array.isArray(target.history) ? target.history : [target.price]), target.price].slice(-80);
+      }
+      stocks[idx] = target;
+      t.set(ref, {
+        version: 2,
+        updatedAt: Date.now(),
+        lastTickAt: Number(payload.lastTickAt) || 0,
+        stocks: stocks.map((entry) => ({
+          symbol: entry.symbol,
+          price: entry.price,
+          history: entry.history,
+          lastMove: entry.lastMove,
+          buyVolume: entry.buyVolume,
+          sellVolume: entry.sellVolume,
+          totalVolume: entry.totalVolume,
+          holders: entry.holders,
+          marketCapShares: entry.marketCapShares,
+          sentiment: entry.sentiment,
+        })),
+      });
+    }).catch(() => {});
+  } catch {
+    // Local trade already applied for responsiveness.
   }
 
   updateUI();
@@ -4340,6 +4460,12 @@ async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = mini
           price: stock.price,
           history: stock.history,
           lastMove: stock.lastMove,
+          buyVolume: stock.buyVolume,
+          sellVolume: stock.sellVolume,
+          totalVolume: stock.totalVolume,
+          holders: stock.holders,
+          marketCapShares: stock.marketCapShares,
+          sentiment: stock.sentiment,
         })),
       });
     });
