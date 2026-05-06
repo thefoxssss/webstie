@@ -492,10 +492,10 @@ function updateRecentGames(game) {
 function initHomeRecentGames() {
   const listEl = document.getElementById("recentGamesList");
   const metaEl = document.getElementById("recentGamesMeta");
-  if (!listEl || !Array.isArray(window.GAME_DIRECTORY_ENTRIES)) return;
+  if (!listEl || !Array.isArray(GAME_DIRECTORY_ENTRIES)) return;
 
   const directoryById = new Map(
-    window.GAME_DIRECTORY_ENTRIES.map((entry) => [entry.id, entry]),
+    GAME_DIRECTORY_ENTRIES.map((entry) => [entry.id, entry]),
   );
 
   const renderRecentGames = () => {
