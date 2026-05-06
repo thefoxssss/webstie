@@ -43,9 +43,9 @@ const crouchSpeed = 20.0;
 const jumpVelocity = 15.0;
 const gravity = 40.0;
 const groundFriction = 10.0;
-const airFriction = 1.2;
-const airAcceleration = 55.0;
-const maxAirSpeed = 95.0;
+const airFriction = 3.5;
+const airAcceleration = 22.0;
+const maxAirSpeed = 60.0;
 let prevTime = performance.now();
 
 // Bullet tracers
