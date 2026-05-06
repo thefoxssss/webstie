@@ -1285,16 +1285,38 @@ function initOverlayTabsWindowManager() {
   const loginOverlay = document.getElementById("overlayLogin");
   if (loginOverlay) loginOverlay.classList.add("secure-login-only");
   const tabHost = document.createElement("div");
-  tabHost.id = "overlayTabHost";
+  tabHost.id = "overlayTaskbar";
   document.body.appendChild(tabHost);
   let zIndex = 1600;
   const windows = Array.from(document.querySelectorAll(".overlay")).filter((overlay) => overlay.id !== "overlayLogin");
   const icon = { min: "▁", full: "⛶", close: "✕" };
+  const windowState = new Map();
 
   const titleFor = (overlay) => {
     const label = overlay.querySelector("h1, h2, .score-title")?.textContent?.trim();
     return (label || overlay.id.replace(/^overlay/, "") || "WINDOW").slice(0, 24);
   };
+  const clampWindowToViewport = (overlay) => {
+    const topClearance = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue("--topbar-clearance"), 10) || 50;
+    const taskbarHeight = 48;
+    const rect = overlay.getBoundingClientRect();
+    const maxLeft = Math.max(0, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(topClearance + 8, window.innerHeight - taskbarHeight - rect.height - 8);
+    const nextLeft = Math.min(Math.max(0, rect.left), maxLeft);
+    const nextTop = Math.min(Math.max(topClearance + 8, rect.top), maxTop);
+    overlay.style.left = `${nextLeft}px`;
+    overlay.style.top = `${nextTop}px`;
+  };
+
+  const scaleWindow = (overlay, delta) => {
+    const current = windowState.get(overlay.id) || { scale: 1 };
+    const nextScale = Math.max(0.75, Math.min(1.5, (current.scale || 1) + delta));
+    windowState.set(overlay.id, { ...current, scale: nextScale });
+    overlay.style.transform = `scale(${nextScale})`;
+    overlay.style.transformOrigin = "top left";
+    clampWindowToViewport(overlay);
+  };
+
   const syncTabs = () => {
     const active = windows.filter((w) => w.classList.contains("active"));
     tabHost.innerHTML = "";
@@ -1316,6 +1338,31 @@ function initOverlayTabsWindowManager() {
           overlay.style.zIndex = String(++zIndex);
         }
       });
+      tab.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        scaleWindow(overlay, event.deltaY > 0 ? -0.05 : 0.05);
+      }, { passive: false });
+      tab.addEventListener("mousedown", (event) => {
+        if (event.target?.dataset?.act) return;
+        const rect = overlay.getBoundingClientRect();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startLeft = rect.left;
+        const startTop = rect.top;
+        const onMove = (moveEvent) => {
+          const nextLeft = startLeft + (moveEvent.clientX - startX);
+          const nextTop = startTop + (moveEvent.clientY - startY);
+          overlay.style.left = `${nextLeft}px`;
+          overlay.style.top = `${nextTop}px`;
+          clampWindowToViewport(overlay);
+        };
+        const onUp = () => {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
       tab.addEventListener("dragstart", () => tab.classList.add("dragging"));
       tab.addEventListener("dragend", () => tab.classList.remove("dragging"));
       tabHost.appendChild(tab);
@@ -1334,6 +1381,7 @@ function initOverlayTabsWindowManager() {
 
   windows.forEach((overlay) => {
     overlay.classList.add("window-overlay");
+    if (!windowState.has(overlay.id)) windowState.set(overlay.id, { scale: 1 });
     overlay.addEventListener("mousedown", () => {
       overlay.style.zIndex = String(++zIndex);
     });

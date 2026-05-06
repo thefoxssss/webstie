@@ -1438,7 +1438,10 @@ body::before {
   left: 2vw;
   width: min(96vw, 1100px);
   height: calc(100vh - var(--topbar-clearance) - 64px);
-  resize: both;
+  max-width: 96vw;
+  max-height: calc(100vh - var(--topbar-clearance) - 56px);
+  border: 2px solid var(--accent);
+  box-sizing: border-box;
   overflow: auto;
 }
 .window-overlay.overlay-fullscreen {
@@ -1453,9 +1456,9 @@ body::before {
   z-index: 9999;
   background: #000;
 }
-#overlayTabHost {
+#overlayTaskbar {
   position: fixed;
-  top: var(--topbar-clearance);
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 1700;
@@ -1463,9 +1466,11 @@ body::before {
   gap: 6px;
   padding: 4px 8px;
   overflow-x: auto;
+  background: rgba(0, 0, 0, 0.95);
+  border-top: 2px solid var(--accent);
 }
 .overlay-tab-chip {
-  border: 1px solid var(--accent);
+  border: 2px solid var(--accent);
   background: rgba(0,0,0,.85);
   color: var(--accent);
   display: inline-flex;
@@ -1473,7 +1478,9 @@ body::before {
   gap: 8px;
   padding: 4px 8px;
   font-size: 10px;
+  cursor: grab;
 }
+.overlay-tab-chip:active { cursor: grabbing; }
 .overlay-tab-actions i { font-style: normal; padding: 0 4px; cursor: pointer; }
 
 
