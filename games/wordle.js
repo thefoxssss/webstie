@@ -10,6 +10,7 @@ let guesses = [];
 let gameFinished = false;
 let keyStates = {}; // 'correct', 'present', 'absent'
 let pendingFlipRow = -1;
+let didLoseLastGame = false;
 
 // Default stats
 const DEFAULT_STATS = {
@@ -62,6 +63,7 @@ function startNewGame() {
   gameFinished = false;
   keyStates = {};
   pendingFlipRow = -1;
+  didLoseLastGame = false;
 
   updateGrid();
   updateKeyboard();
@@ -179,6 +181,7 @@ function submitGuess() {
         }, 1500);
     } else if (guesses.length >= 6) {
         gameFinished = true;
+        didLoseLastGame = true;
         setText('wordleStatus', `TRACE FAILED — WORD: ${targetWord}`);
         updateAndSaveStats(false, guesses.length);
         setTimeout(() => {
@@ -267,6 +270,17 @@ function updateStatsUI() {
 
     setText('wordleStatStreak', stats.currentStreak);
     setText('wordleStatMaxStreak', stats.maxStreak);
+
+    const answerReveal = document.getElementById('wordleAnswerReveal');
+    if (answerReveal) {
+        if (didLoseLastGame) {
+            answerReveal.style.display = 'block';
+            answerReveal.innerText = `WORD WAS: ${targetWord}`;
+        } else {
+            answerReveal.style.display = 'none';
+            answerReveal.innerText = '';
+        }
+    }
 
     const distContainer = document.getElementById('wordleGuessDist');
     if (distContainer) {
