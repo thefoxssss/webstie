@@ -269,16 +269,16 @@ body.desktop-shell-mode .dropdown-content {
   z-index: 3000;
 }
 .desktop-search, .desktop-signout, .desktop-settings-btn, .desktop-pin {
-  font: inherit; border: 1px solid #8fb6ff; background: #0f1d36; color: #e6f0ff; padding: 8px 10px;
+  font: inherit; border: 1px solid var(--accent); background: rgba(0, 0, 0, 0.92); color: var(--accent); padding: 8px 10px;
 }
 .desktop-shell.hidden { display: none; }
 .desktop-workspace {
   position: absolute; inset: 0 0 46px 0;
-  background: radial-gradient(circle at 20% 20%, #2e5cad 0, #173770 45%, #0a1c3f 100%);
+  background: radial-gradient(circle at 20% 20%, rgba(0, 255, 0, 0.14) 0, rgba(0, 0, 0, 0.95) 55%, #050505 100%);
 }
 .desktop-taskbar {
   position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
-  background: rgba(12, 20, 40, 0.96); border-top: 1px solid #7ea5ed;
+  background: rgba(0, 0, 0, 0.96); border-top: 1px solid var(--accent);
   display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 4px 10px;
 }
 .desktop-pinned { display: flex; gap: 6px; overflow-x: auto; }
@@ -292,11 +292,11 @@ body.desktop-shell-mode .dropdown-content {
 .desktop-icon small { font-size: 9px; text-align: center; }
 .desktop-window {
   position: absolute; width: min(480px, 82vw); min-height: 220px;
-  background: #122446; border: 1px solid #8fb6ff; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  background: rgba(5, 5, 5, 0.98); border: 1px solid var(--accent); box-shadow: 0 0 24px var(--accent-dim);
 }
 .desktop-window-head {
   display: flex; justify-content: space-between; align-items: center;
-  background: #1f3f79; border-bottom: 1px solid #8fb6ff; padding: 6px 8px; cursor: move;
+  background: rgba(0, 255, 0, 0.12); border-bottom: 1px solid var(--accent); padding: 6px 8px; cursor: move;
 }
 .desktop-window-head button { margin-left: 4px; width: 28px; }
 .desktop-window-body { padding: 16px; font-size: 11px; }
@@ -1527,15 +1527,15 @@ body.desktop-shell-mode .dropdown-content {
 
 /* LOGIN */
 #overlayLogin {
-  background: radial-gradient(circle at 20% 20%, #2e5cad 0, #173770 45%, #0a1c3f 100%);
+  background: rgba(0, 0, 0, 0.98);
   z-index: 9000;
 }
 .login-box {
-  border: 1px solid #8fb6ff;
+  border: 2px solid var(--accent);
   padding: 40px;
   text-align: center;
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
-  background: rgba(10, 20, 40, 0.9);
+  box-shadow: 0 0 30px var(--accent-dim);
+  background: #050505;
   width: 400px;
 }
 

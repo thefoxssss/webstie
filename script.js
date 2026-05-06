@@ -1472,11 +1472,11 @@ function initDesktopShell() {
     win.className = "desktop-window";
     win.style.left = `${120 + openWindows.size * 40}px`;
     win.style.top = `${80 + openWindows.size * 30}px`;
-    win.innerHTML = `<header class="desktop-window-head"><strong>${app.icon} ${app.name}</strong><div><button data-action="min">—</button><button data-action="max">□</button><button data-action="close">✕</button></div></header><div class="desktop-window-body"><p>Launch ${app.name} tools from this desktop app.</p><button class="desktop-launch-btn">Open ${app.name}</button></div>`;
+    win.innerHTML = `<header class="desktop-window-head"><strong>${app.icon} ${app.name}</strong><div><button data-action="min">—</button><button data-action="max">□</button><button data-action="close">✕</button></div></header><div class="desktop-window-body"><p>${app.name} is running. Use window controls to manage this app.</p></div>`;
     workspace.appendChild(win);
     bringToFront(win);
     makeDraggable(win.querySelector(".desktop-window-head"), win);
-    win.querySelector(".desktop-launch-btn").addEventListener("click", () => app.open());
+    app.open();
     win.querySelectorAll("button[data-action]").forEach((btn) => btn.addEventListener("click", () => {
       const action = btn.dataset.action;
       if (action === "close") { win.remove(); openWindows.delete(app.name); pin.remove(); }
