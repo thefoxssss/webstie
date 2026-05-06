@@ -131,8 +131,8 @@ function submitGuess() {
     }
 
     if (!ALLOWED_GUESSES.has(currentGuess)) {
-        showToast("NOT IN WORD LIST", "⚠️");
-        return;
+        // Allow any 5-letter guess so gameplay never gets stuck if the allow-list is out of sync.
+        showToast("WORD NOT IN LIST — CHECKING ANYWAY", "ℹ️");
     }
 
     guesses.push(currentGuess);
