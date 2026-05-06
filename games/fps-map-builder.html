@@ -133,6 +133,7 @@ body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg-d
     <button id="btnOpen">Open JSON</button>
     <button id="btnSave">Save Draft</button>
     <button id="btnDownload" class="primary">Download JSON</button>
+    <button id="btnPlaytest">Playtest</button>
   </div>
   <div style="flex:1"></div>
   <div class="actions">
@@ -211,6 +212,8 @@ let snapEnabled = true;
 let gridStep = 1;
 let copiedObject = null;
 let undoStack = [];
+let playtestMode = false;
+let playtestVelocityY = 0;
 const textureCache = {};
 
 const canvas = document.getElementById('view');
@@ -223,6 +226,7 @@ const btnNew = document.getElementById('btnNew');
 const btnOpen = document.getElementById('btnOpen');
 const btnSave = document.getElementById('btnSave');
 const btnDownload = document.getElementById('btnDownload');
+const btnPlaytest = document.getElementById('btnPlaytest');
 const builtinMaps = document.getElementById('builtinMaps');
 const btnLoadBuiltin = document.getElementById('btnLoadBuiltin');
 const uploadInput = document.getElementById('uploadInput');
@@ -411,7 +415,51 @@ function handleCameraMovement() {
   if (keys.s) camera.position.addScaledVector(dir, -speed);
   if (keys.a) camera.position.addScaledVector(right, speed);
   if (keys.d) camera.position.addScaledVector(right, -speed);
+
+  if (playtestMode) {
+    const gravity = 0.015;
+    const groundHeight = 1.8;
+    playtestVelocityY -= gravity;
+    if (keys[' ']) {
+      const onGround = camera.position.y <= groundHeight + 0.05;
+      if (onGround) playtestVelocityY = 0.28;
+    }
+    camera.position.y += playtestVelocityY;
+    if (camera.position.y < groundHeight) {
+      camera.position.y = groundHeight;
+      playtestVelocityY = 0;
+    }
+  }
+
   camera.lookAt(camera.position.clone().add(dir));
+}
+
+
+function getPrimarySpawnPosition() {
+  const spawnObj = objects.find(o => o.type === 'spawn');
+  if (spawnObj) return new THREE.Vector3(...spawnObj.data.pos);
+  return new THREE.Vector3(0, 2, 0);
+}
+
+function setPlaytestMode(enabled) {
+  playtestMode = enabled;
+  if (enabled) {
+    const spawn = getPrimarySpawnPosition();
+    camera.position.set(spawn.x, spawn.y + 1.8, spawn.z);
+    playtestVelocityY = 0;
+    selectObject(-1);
+    transformControls.enabled = false;
+    canvas.requestPointerLock();
+    updateStatus('Playtest mode: WASD move, Shift sprint, Space jump, Esc exit');
+    btnPlaytest.textContent = 'Stop Playtest';
+    btnPlaytest.classList.add('primary');
+  } else {
+    transformControls.enabled = true;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+    updateStatus('Editor Ready');
+    btnPlaytest.textContent = 'Playtest';
+    btnPlaytest.classList.remove('primary');
+  }
 }
 
 // Object Management
@@ -744,6 +792,7 @@ function initEventListeners() {
   btnOpen.onclick = () => uploadInput.click();
   btnDownload.onclick = downloadJson;
   btnLoadBuiltin.onclick = loadBuiltin;
+  btnPlaytest.onclick = () => setPlaytestMode(!playtestMode);
 
   uploadInput.onchange = async (e) => {
     const file = e.target.files[0];
@@ -758,24 +807,28 @@ function initEventListeners() {
     if (e.key.toLowerCase() === 'w') toolMove.click();
     if (e.key.toLowerCase() === 'e') toolRotate.click();
     if (e.key.toLowerCase() === 'r') toolScale.click();
-    if (e.key.toLowerCase() === 'f') btnFocus.click();
-    if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
-    if (e.key.toLowerCase() === 'd' && (e.ctrlKey || e.metaKey)) {
+    if (e.key.toLowerCase() === 'f' && !playtestMode) btnFocus.click();
+    if (!playtestMode && (e.key === 'Delete' || e.key === 'Backspace')) deleteSelected();
+    if (!playtestMode && e.key.toLowerCase() === 'd' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       duplicateSelected();
     }
-    if (e.key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)) {
+    if (!playtestMode && e.key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       copySelected();
     }
-    if (e.key.toLowerCase() === 'v' && (e.ctrlKey || e.metaKey)) {
+    if (!playtestMode && e.key.toLowerCase() === 'v' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       pasteCopiedObject();
     }
-    if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
+    if (!playtestMode && e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       undoLastAction();
     }
+  });
+
+  document.addEventListener('pointerlockchange', () => {
+    if (playtestMode && document.pointerLockElement !== canvas) setPlaytestMode(false);
   });
 
   // Handle snapping initially
