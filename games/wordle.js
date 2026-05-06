@@ -9,6 +9,7 @@ let currentGuess = "";
 let guesses = [];
 let gameFinished = false;
 let keyStates = {}; // 'correct', 'present', 'absent'
+let pendingFlipRow = -1;
 
 // Default stats
 const DEFAULT_STATS = {
@@ -60,6 +61,7 @@ function startNewGame() {
   guesses = [];
   gameFinished = false;
   keyStates = {};
+  pendingFlipRow = -1;
 
   updateGrid();
   updateKeyboard();
@@ -162,6 +164,7 @@ function submitGuess() {
     });
 
     currentGuess = "";
+    pendingFlipRow = guesses.length - 1;
     updateGrid();
     updateKeyboard();
 
@@ -231,15 +234,19 @@ function updateGrid() {
 
             if (row < guesses.length) {
                 cell.classList.add(guessStates[col]);
-                // Add a small delay for animation effect
-                cell.style.animationDelay = `${col * 0.1}s`;
-                cell.classList.add('flip');
+                if (row === pendingFlipRow) {
+                    // Animate only the newly submitted row once.
+                    cell.style.animationDelay = `${col * 0.1}s`;
+                    cell.classList.add('flip');
+                }
             }
 
             rowDiv.appendChild(cell);
         }
         grid.appendChild(rowDiv);
     }
+
+    pendingFlipRow = -1;
 }
 
 function updateKeyboard() {
