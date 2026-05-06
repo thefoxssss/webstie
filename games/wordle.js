@@ -10,7 +10,7 @@ let guesses = [];
 let gameFinished = false;
 let keyStates = {}; // 'correct', 'present', 'absent'
 let pendingFlipRow = -1;
-let gameOutcome = null; // 'win', 'lose', or null for active game
+let lastLostWord = "";
 
 // Default stats
 const DEFAULT_STATS = {
@@ -63,7 +63,7 @@ function startNewGame() {
   gameFinished = false;
   keyStates = {};
   pendingFlipRow = -1;
-  gameOutcome = null;
+  lastLostWord = "";
 
   updateGrid();
   updateKeyboard();
@@ -173,8 +173,8 @@ function submitGuess() {
     const lastGuess = guesses[guesses.length - 1];
     if (lastGuess === targetWord) {
         gameFinished = true;
-        setText('wordleStatus', `ACCESS GRANTED — WORD: ${targetWord}`);
-        gameOutcome = 'win';
+        setText('wordleStatus', 'ACCESS GRANTED');
+        lastLostWord = "";
         playSuccessSound();
         updateAndSaveStats(true, guesses.length);
         setTimeout(() => {
@@ -182,7 +182,7 @@ function submitGuess() {
         }, 1500);
     } else if (guesses.length >= 6) {
         gameFinished = true;
-        gameOutcome = 'lose';
+        lastLostWord = targetWord;
         setText('wordleStatus', `TRACE FAILED — WORD: ${targetWord}`);
         updateAndSaveStats(false, guesses.length);
         setTimeout(() => {
@@ -280,9 +280,9 @@ function updateStatsUI() {
 
     const revealEl = document.getElementById('wordleStatsReveal');
     if (revealEl) {
-        if (gameOutcome === 'lose') {
+        if (lastLostWord) {
             revealEl.style.display = 'block';
-            revealEl.innerText = `WORD WAS: ${targetWord}`;
+            revealEl.innerText = `WORD WAS: ${lastLostWord}`;
         } else {
             revealEl.style.display = 'none';
             revealEl.innerText = '';
