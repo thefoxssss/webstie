@@ -25,9 +25,58 @@ let bjRoomCode = null;
 let bjRoomUnsub = null;
 let bjMySeatIdx = -1;
 let bjLastPhase = "";
+let bjChat = [];
 let soloRounds = 0;
 const suits = ["♠", "♥", "♦", "♣"];
 const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+
+
+// Sound Effects using Web Audio API
+function playCardDealSound() {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  const ctx = window._audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  window._audioCtx = ctx;
+  if (ctx.state === "suspended") ctx.resume();
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(300, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
+
+  gain.gain.setValueAtTime(0.5, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.1);
+}
+
+function playChipSound() {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  const ctx = window._audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  window._audioCtx = ctx;
+  if (ctx.state === "suspended") ctx.resume();
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(800, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.05);
+
+  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.05);
+}
 
 // Initialize Blackjack overlay into the unified game menu.
 export function initBJ() {
@@ -62,10 +111,12 @@ window.bjSelect = (mode) => {
     setText("bjHostLabel", "DEALER");
     document.querySelector(".bj-pot-display").style.display = "none";
     document.getElementById("bjSide").innerHTML = "";
+    document.getElementById("bjChatContainer").style.display = "none";
     startSoloBetting();
   } else {
     document.getElementById("bjCashOutBtn").style.display = "none";
     document.querySelector(".bj-pot-display").style.display = "block";
+    document.getElementById("bjChatContainer").style.display = "flex";
   }
   beep(400, "square", 0.1);
 };
@@ -216,6 +267,14 @@ async function endSolo() {
   soloRounds++;
   if (soloRounds === 10) unlockAchievement("lonely");
   setText("bjMessage", msg);
+  const msgEl = document.getElementById("bjMessage");
+  msgEl.className = "";
+  void msgEl.offsetWidth; // trigger reflow
+  if (msg.includes("WIN") || msg.includes("WON") || msg.includes("BLACKJACK")) {
+    msgEl.className = "bj-message-highlight";
+  } else if (msg.includes("BUST") || msg.includes("LOSE") || msg.includes("LOST")) {
+    msgEl.className = "bj-message-bust";
+  }
   state.myMoney += win;
   updBJ();
   bjCurrentBet = 0;
@@ -253,7 +312,7 @@ document.getElementById("btnCreateBJ").onclick = async () => {
     null,
     null,
   ];
-  await setDoc(getBJRef(code), { seats: seats, deck: [], phase: "lobby", activeSeat: 0, pot: 0 });
+  await setDoc(getBJRef(code), { seats: seats, deck: [], phase: "lobby", activeSeat: 0, pot: 0, chat: [] });
   joinBJ(code, 0);
 };
 
@@ -431,8 +490,33 @@ function handleBJUpdate(d) {
     else if (me.status === "push") msg = "PUSH";
     else msg = "LOST";
     setText("bjMessage", msg);
+    const msgEl = document.getElementById("bjMessage");
+    msgEl.className = "";
+    void msgEl.offsetWidth; // trigger reflow
+    if (msg.includes("WON") || msg.includes("WIN") || msg.includes("BLACKJACK")) {
+      msgEl.className = "bj-message-highlight";
+    } else if (msg.includes("LOST") || msg.includes("BUST") || msg.includes("LOSE")) {
+      msgEl.className = "bj-message-bust";
+    }
     deckLabel.innerText = bjMySeatIdx === 0 ? "NEXT" : "WAIT";
   }
+
+  if (d.chat) {
+    const chatLog = document.getElementById("bjChatLog");
+    // Only re-render if count changed
+    if (d.chat.length !== bjChat.length || d.chat.length === 0) {
+      bjChat = d.chat;
+      chatLog.innerHTML = "";
+      bjChat.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "hangman-chat-line";
+        div.innerHTML = `<div class="hangman-chat-name">${escapeHtml(msg.n)}</div><div class="hangman-chat-text">${escapeHtml(msg.t)}</div>`;
+        chatLog.appendChild(div);
+      });
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  }
+
   bjLastPhase = d.phase;
 }
 
@@ -592,6 +676,7 @@ document.querySelectorAll(".bj-chip").forEach((c) => {
     if (c.id === "bjClear") bjCurrentBet = 0;
     else if (c.id === "bjAllIn") bjCurrentBet = state.myMoney;
     else if (state.myMoney >= bjCurrentBet + v) bjCurrentBet += v;
+    playChipSound();
     updBJ();
   };
 });
@@ -621,6 +706,7 @@ function calcHand(h) {
 }
 // Render a single card into the specified hand element.
 function renderNewCard(c, elId, hidden = false, index = 0, animate = true) {
+  if (animate) setTimeout(playCardDealSound, index * 150);
   const d = document.createElement("div");
   d.className = "bj-card" + (hidden ? " hidden" : "") + (animate ? " deal-anim" : "");
   if (animate) d.style.animationDelay = `${index * 0.15}s`;
@@ -700,4 +786,29 @@ registerGameStop(async () => {
     await exitBJRoom();
   }
   cleanupBJ();
+});
+
+
+// Blackjack Chat
+document.getElementById("bjChatBtn").onclick = async () => {
+  if (bjMode !== "multi" || !bjRoomCode) return;
+  const input = document.getElementById("bjChatInput");
+  const txt = input.value.trim();
+  if (!txt) return;
+  input.value = "";
+  try {
+    const ref = getBJRef(bjRoomCode);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const d = snap.data();
+    const chat = d.chat || [];
+    chat.push({ n: state.myName, t: txt });
+    if (chat.length > 20) chat.shift();
+    await updateDoc(ref, { chat: chat });
+  } catch (e) {
+    console.error("Chat error", e);
+  }
+};
+document.getElementById("bjChatInput").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") document.getElementById("bjChatBtn").click();
 });
