@@ -2713,6 +2713,18 @@ class FPSRoom extends colyseus.Room {
     }
   }
 
+  projectileHitPlayer(proj) {
+    let hit = false;
+    const owner = this.state.players.get(proj.ownerId);
+    this.state.players.forEach((target, targetId) => {
+      if (hit || target.health <= 0 || targetId === proj.ownerId) return;
+      if (this.state.mapId === 5 && owner && owner.team !== 0 && owner.team === target.team) return;
+      const dist = Math.sqrt((target.x - proj.x)**2 + (target.y - proj.y)**2 + (target.z - proj.z)**2);
+      if (dist < 3) hit = true;
+    });
+    return hit;
+  }
+
   simulateTick() {
     if (this.state.roundOver) return;
 
@@ -2758,7 +2770,7 @@ class FPSRoom extends colyseus.Room {
 
         this.bounceGrenadeOnWalls(proj);
 
-        if (proj.life <= 0) {
+        if (this.projectileHitPlayer(proj) || proj.life <= 0) {
            this.explodeGrenade(proj.x, proj.y, proj.z, proj.ownerId, proj.type);
            this.state.projectiles.delete(projId);
         }
@@ -3207,8 +3219,10 @@ class FPSRoom extends colyseus.Room {
       const shooter = this.state.players.get(client.sessionId);
       if (!shooter || shooter.health <= 0) return;
       if (this.state.mapId === 5 && shooter.team === 0) return;
-      if (shooter.weapon !== FPS_GATLING_WEAPON_ID || shooter.killStreak < 5) return;
+      const weaponId = Number(data.weaponId);
+      if (weaponId !== FPS_GATLING_WEAPON_ID || shooter.killStreak < 5) return;
 
+      shooter.weapon = FPS_GATLING_WEAPON_ID;
       shooter.gatlingFiringUntil = Date.now() + FPS_GATLING_FIRING_GRACE_MS;
       this.createFpsGrenadeProjectile(client.sessionId, data.origin, data.dir, {
         type: 1,

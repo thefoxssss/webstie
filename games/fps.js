@@ -1763,7 +1763,8 @@ function tryFireWeapon() {
     }
     room.send("shootGatlingGrenade", {
       origin: { x: origin.x, y: origin.y, z: origin.z },
-      dir: { x: grenadeDir.x, y: grenadeDir.y, z: grenadeDir.z }
+      dir: { x: grenadeDir.x, y: grenadeDir.y, z: grenadeDir.z },
+      weaponId: localPlayer.weapon
     });
     return;
   }
