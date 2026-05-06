@@ -196,6 +196,7 @@ export const DEFAULT_CREW_LOGO = {
 let crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO };
 let seasonData = { id: "", xp: 0, hall: [] };
 let adminSettings = {};
+let desktopConfig = {};
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
 const MAX_BANK_MONEY = 999999999999;
@@ -3415,8 +3416,14 @@ onAuthStateChanged(auth, async (u) => {
 // Update clock/ping display and check time-based achievements.
 setInterval(() => {
   const d = new Date();
-  setText("sysClock", d.toLocaleTimeString("en-GB"));
-  setText("sysPing", Math.floor(Math.random() * 40 + 10) + "ms");
+  const timeStr = d.toLocaleTimeString("en-GB");
+  const pingStr = Math.floor(Math.random() * 40 + 10) + "ms";
+
+  setText("sysClock", timeStr);
+  setText("sysPing", pingStr);
+  setText("taskbarClock", timeStr);
+  setText("taskbarPing", pingStr);
+
   if (d.getMinutes() === 37) unlockAchievement("leet");
   if (d.getHours() === 3) unlockAchievement("insomniac");
 }, 1000);
@@ -3553,15 +3560,69 @@ window.toggleTopPanelOverlay = (id) => {
 // Open an overlay by id, optionally render its contents.
 export function openGame(id) {
   if (id === "overlayAdmin" && !isGodUser()) return;
-  if (id === "overlayConfig") {
-    openConfigOverlay();
-    return;
+  if (id === "overlayMaintenance" || id === "overlayLogin") {
+      const el = document.getElementById(id);
+      if (el) {
+          closeOverlays();
+          el.classList.add("active");
+          runOverlayOpenHooks(id);
+      }
+      return;
   }
-  closeOverlays();
-  const el = document.getElementById(id);
-  if (el) el.classList.add("active");
-  document.body.classList.toggle("overlay-open", Boolean(el));
-  runOverlayOpenHooks(id);
+
+  const contentElement = document.getElementById(id);
+  if (!contentElement) return;
+
+  // Get app info
+  let title = "App";
+  let icon = "🎮";
+
+  if (id === "overlayBank") { title = "BANK"; icon = "🏦"; }
+  else if (id === "overlayShop") { title = "SHOP"; icon = "🛒"; }
+  else if (id === "overlayInventory") { title = "BAG"; icon = "🎒"; }
+  else if (id === "overlayProfile") { title = "PROFILE"; icon = "👤"; }
+  else if (id === "overlaySeason") { title = "SEASON"; icon = "🗓️"; }
+  else if (id === "overlayCrew") { title = "CREW"; icon = "🏴‍☠️"; }
+  else if (id === "globalChat") { title = "CHAT"; icon = "💬"; }
+  else if (id === "overlayConfig") { title = "CONFIG"; icon = "⚙️"; }
+  else if (id === "overlayAdmin") { title = "ADMIN"; icon = "⚡"; }
+  else if (id === "overlayGamebox") { title = "GAMES"; icon = "🎮"; }
+  else if (id === "overlayTrending") { title = "TRENDING"; icon = "📈"; }
+  else if (id === "overlayRecentGames") { title = "RECENT"; icon = "🕒"; }
+  else if (id === "overlayUpdates") { title = "UPDATES"; icon = "📜"; }
+  else {
+      // Find in catalog
+      const gameId = id.replace("overlay", "").toLowerCase();
+      const entry = GAME_DIRECTORY_ENTRIES.find(g => g.id === gameId || g.id === id.replace("overlay", ""));
+      if (entry) {
+          title = entry.title;
+          icon = entry.icon || "🎮";
+      }
+  }
+
+  const excludedFromWMS = [];
+  const isExcluded = excludedFromWMS.includes(id);
+
+  if (window.WMS && !isExcluded) {
+      window.WMS.createWindow(id, title, contentElement, { icon });
+      runOverlayOpenHooks(id);
+
+      // Specifically for games, we might need to launch them
+      if (id.startsWith("overlay") && id !== "overlayBank" && id !== "overlayShop" && id !== "overlayInventory" && id !== "overlayProfile" && id !== "overlaySeason" && id !== "overlayCrew" && id !== "overlayAdmin" && id !== "overlayConfig" && id !== "overlayGamebox") {
+          const gameKey = id.replace("overlay", "").toLowerCase();
+          if (typeof window.launchGame === "function") {
+              // Only launch if not already current
+              if (state.currentGame !== gameKey) {
+                 window.launchGame(gameKey, "wms");
+              }
+          }
+      }
+  } else {
+      // Fallback
+      closeOverlays();
+      contentElement.classList.add("active");
+      runOverlayOpenHooks(id);
+  }
 }
 
 // Close overlays and clear dropdown state.
@@ -3723,6 +3784,7 @@ function loadProfile(data) {
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
   loanData.debt = clampEconomyNumber(loanData.debt, { min: 0, max: MAX_LOAN_DEBT });
   adminSettings = data.adminSettings || {};
+  desktopConfig = data.desktopConfig || {};
   hideStatus = Boolean(data.hideStatus);
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
   crewData = { tag: "", role: "SOLO", motto: "", recruitmentOpen: true, goal: 5000, bank: 0, wins: 0, members: [], logo: DEFAULT_CREW_LOGO, ...(data.crewData || crewData || {}) };
@@ -3768,18 +3830,22 @@ function loadProfile(data) {
 // Render all user-facing UI fields based on the latest state.
 export function updateUI() {
   setText("displayUser", myName);
+  setText("taskbarUsername", myName);
   const bankEl = document.getElementById("globalBank");
+  const taskbarBankEl = document.getElementById("taskbarBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
-  const currentVal = getComparableMoney(bankEl.innerText);
+  const currentVal = bankEl ? getComparableMoney(bankEl.innerText) : 0;
   myMoney = clampEconomyNumber(myMoney, { min: 0, max: MAX_BANK_MONEY });
   loanData.debt = clampEconomyNumber(loanData.debt, { min: 0, max: MAX_LOAN_DEBT });
   const nextVal = getComparableMoney(myMoney);
-  if (currentVal !== nextVal) {
+  const bankStr = formatBankAmount(myMoney);
+  if (bankEl && currentVal !== nextVal) {
     bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
-  bankEl.innerText = formatBankAmount(myMoney);
-  if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
+  if (bankEl) bankEl.innerText = bankStr;
+  if (taskbarBankEl) taskbarBankEl.innerText = bankStr;
+  if (bankOverlayEl) bankOverlayEl.innerText = bankStr;
 
   if (typeof updateBankOverviewVisuals === 'function') {
     updateBankOverviewVisuals();
@@ -4780,6 +4846,7 @@ export async function saveStats() {
     crewData,
     seasonData,
     adminSettings,
+    desktopConfig,
     hideStatus,
     lastLogin: Date.now(),
   };
@@ -4802,6 +4869,7 @@ export async function saveStats() {
         crewData,
         seasonData,
     adminSettings,
+    desktopConfig,
         hideStatus,
       }),
     "SAVE PROFILE",
@@ -5776,6 +5844,41 @@ document.getElementById("btnRegister").onclick = async () => {
     beep(100, "sawtooth", 0.5);
   }
 };
+
+let loginDebounceTimer = null;
+document.getElementById("usernameInput").addEventListener("input", (e) => {
+    const username = e.target.value.trim().toUpperCase();
+    const rankDisplay = document.getElementById("loginRankDisplay");
+    const rankBadge = document.getElementById("loginRankBadge");
+    const rankLabel = document.getElementById("loginRankLabel");
+
+    clearTimeout(loginDebounceTimer);
+
+    if (username.length >= 3) {
+        loginDebounceTimer = setTimeout(async () => {
+            try {
+                const ref = doc(db, "gooner_users", username);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const money = Number(data.money) || 0;
+                    const rankData = getRankData(money, username);
+
+                    rankBadge.innerText = rankData.badge;
+                    rankBadge.className = `rank-badge ${rankData.className}`;
+                    rankLabel.innerText = `RANK: ${rankData.label}`;
+                    rankDisplay.style.display = "flex";
+                } else {
+                    rankDisplay.style.display = "none";
+                }
+            } catch (err) {
+                rankDisplay.style.display = "none";
+            }
+        }, 500);
+    } else {
+        rankDisplay.style.display = "none";
+    }
+});
 
 document.getElementById("usernameInput").addEventListener("keydown", (event) => {
   if (event.key === "Enter") document.getElementById("btnLogin").click();
@@ -7316,5 +7419,16 @@ export function updateBuilderInventoryState(hotbar, inventory, armor) {
     builderInventory = inventory;
     builderArmor = armor;
 }
+
+export function saveDesktopConfig(appId, left, top) {
+    desktopConfig[appId] = { left, top };
+    saveStats();
+}
+
+export function getDesktopConfig() {
+    return desktopConfig;
+}
+
+window.saveDesktopConfig = saveDesktopConfig;
 
 export { builderHotbar, builderInventory, builderArmor };

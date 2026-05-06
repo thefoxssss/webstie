@@ -100,6 +100,8 @@ import { initMines } from "./games/mines.js";
 import "./games/fnaf.js";
 import { initFps } from "./games/fps.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
+import { initDesktop, createDesktopIcon } from "./wms.js";
+import { getDesktopConfig } from "./core.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
@@ -293,18 +295,18 @@ function initSharedGamebox() {
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
-  window.closeOverlays();
+  // window.closeOverlays(); // Don't close others, we are in WMS
 
   // We bypass mountGameOverlayIntoGamebox so the game takes over the screen
   // with its own full-page overlay instead of opening in a sub-frame.
   const overlayId = getOverlayIdForGame(game);
-  const el = document.getElementById(overlayId);
-  if (el) {
-    el.classList.remove("gamebox-mounted");
-    el.classList.add("active");
+
+  if (source !== "wms") {
+      openGame(overlayId);
+      return;
   }
 
-  renderInGameShopPanel(game, overlayId);
+  // renderInGameShopPanel(game, overlayId); // Removed as Shop is now a separate app
   if (game === "pong") initPong();
   if (game === "snake") initSnake();
   if (game === "runner") initRunner();
@@ -1388,7 +1390,7 @@ function initAprilFoolsBibiMode() {
 initSharedGamebox();
 disableInGameExitButtons();
 initPerGameFullscreenButtons();
-initTopBarOverlayControls();
+// initTopBarOverlayControls(); // Removed as we are using WMS now
 initOverlayBackdropExit();
 initAprilFoolsBibiMode();
 initAdminTabs();
@@ -1397,6 +1399,69 @@ initGameVisibilityGuards();
 initGameScroller();
 initMainSiteSearch();
 initHomeRecentGames();
+
+// Initialize desktop
+initDesktop();
+
+// Load game catalog as desktop icons
+GAME_DIRECTORY_ENTRIES.forEach(game => {
+    if (!game.hidden) {
+        createDesktopIcon({
+            id: game.id,
+            title: game.title,
+            icon: game.icon || "🎮",
+            overlayId: `overlay${game.id === "ttt" ? game.id.toUpperCase() : game.id.charAt(0).toUpperCase() + game.id.slice(1)}`
+        });
+    }
+});
+
+// Initialize widgets
+setTimeout(() => {
+    openGame("overlayTrending");
+    openGame("overlayRecentGames");
+    openGame("overlayUpdates");
+}, 500);
+
+// Apply desktop config (positions)
+setTimeout(() => {
+    const config = getDesktopConfig();
+    Object.keys(config).forEach(appId => {
+        const icon = document.getElementById(`icon-${appId}`);
+        if (icon) {
+            icon.style.left = config[appId].left;
+            icon.style.top = config[appId].top;
+            icon.style.position = "absolute";
+        }
+    });
+}, 1000);
+
+// Taskbar Actions
+document.getElementById("taskbarConfigBtn").onclick = () => window.toggleConfigOverlay();
+document.getElementById("signoutBtn").onclick = () => {
+    localStorage.clear();
+    location.reload();
+};
+
+const taskbarSearchInput = document.getElementById("taskbarSearchInput");
+if (taskbarSearchInput) {
+    taskbarSearchInput.addEventListener("input", (e) => {
+        const query = e.target.value;
+        const siteSearchInput = document.getElementById("siteSearchInput");
+        if (siteSearchInput) {
+            siteSearchInput.value = query;
+            siteSearchInput.dispatchEvent(new Event("input"));
+        }
+    });
+
+    taskbarSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            const siteSearchForm = document.getElementById("siteSearchForm");
+            if (siteSearchForm) {
+                siteSearchForm.requestSubmit();
+            }
+        }
+    });
+}
 
 function hideGameOverModal() {
   const modal = document.getElementById("modalGameOver");
