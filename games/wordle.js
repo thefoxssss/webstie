@@ -171,7 +171,7 @@ function submitGuess() {
     const lastGuess = guesses[guesses.length - 1];
     if (lastGuess === targetWord) {
         gameFinished = true;
-        setText('wordleStatus', 'ACCESS GRANTED');
+        setText('wordleStatus', `ACCESS GRANTED — WORD: ${targetWord}`);
         playSuccessSound();
         updateAndSaveStats(true, guesses.length);
         setTimeout(() => {
