@@ -2428,6 +2428,9 @@ const AGAR_MAX_CELLS = 8;
 const AGAR_SPLIT_MIN_RADIUS = 24;
 const AGAR_SPLIT_LAUNCH_SPEED = 24;
 const AGAR_MERGE_COOLDOWN_MS = 9000;
+const FPS_GATLING_WEAPON_ID = 3;
+const FPS_GATLING_DAMAGE_TAKEN_MULTIPLIER = 0.5;
+const FPS_GATLING_FIRING_GRACE_MS = 250;
 
 const agarServerDirectory = new Map();
 
@@ -2444,6 +2447,7 @@ class FPSPlayer extends schema.Schema {
     this.name = "Unknown";
     this.team = 0; // 0=FFA, 1=Red, 2=Blue
     this.killStreak = 0;
+    this.gatlingFiringUntil = 0;
   }
 }
 schema.defineTypes(FPSPlayer, {
@@ -2456,7 +2460,8 @@ schema.defineTypes(FPSPlayer, {
   kills: "number",
   name: "string",
   team: "number",
-  killStreak: "number"
+  killStreak: "number",
+  gatlingFiringUntil: "number"
 });
 
 class FPSPickup extends schema.Schema {
@@ -2858,6 +2863,28 @@ class FPSRoom extends colyseus.Room {
     }
   }
 
+  isPlayerFiringGatling(player) {
+    return player && player.gatlingFiringUntil && Date.now() <= player.gatlingFiringUntil;
+  }
+
+  getDamageAfterPlayerMitigation(target, amount) {
+    if (this.isPlayerFiringGatling(target)) {
+      return amount * FPS_GATLING_DAMAGE_TAKEN_MULTIPLIER;
+    }
+    return amount;
+  }
+
+  applyDamageToPlayer(target, amount) {
+    const damage = this.getDamageAfterPlayerMitigation(target, amount);
+    if (target.armor > 0) {
+      const armorDmg = Math.min(target.armor, damage);
+      target.armor -= armorDmg;
+      target.health -= (damage - armorDmg);
+    } else {
+      target.health -= damage;
+    }
+  }
+
   explodeRocket(ex, ey, ez, ownerId) {
     this.broadcast("rocketExplode", { x: ex, y: ey, z: ez });
     const radius = 15;
@@ -2873,13 +2900,7 @@ class FPSRoom extends colyseus.Room {
       const dist = Math.sqrt((target.x - ex)**2 + (target.y - ey)**2 + (target.z - ez)**2);
       if (dist <= radius) {
         const damage = Math.floor(maxDamage * (1 - (dist / radius)));
-        if (target.armor > 0) {
-          const armorDmg = Math.min(target.armor, damage);
-          target.armor -= armorDmg;
-          target.health -= (damage - armorDmg);
-        } else {
-          target.health -= damage;
-        }
+        this.applyDamageToPlayer(target, damage);
 
         let hitClient = this.clients.find(c => c.sessionId === targetId);
         if (hitClient) {
@@ -2911,13 +2932,7 @@ class FPSRoom extends colyseus.Room {
       if (type === 1) { // Frag
           if (dist <= radius) {
             const damage = Math.floor(maxDamage * (1 - (dist / radius)));
-            if (target.armor > 0) {
-              const armorDmg = Math.min(target.armor, damage);
-              target.armor -= armorDmg;
-              target.health -= (damage - armorDmg);
-            } else {
-              target.health -= damage;
-            }
+            this.applyDamageToPlayer(target, damage);
 
             let hitClient = this.clients.find(c => c.sessionId === targetId);
             if (hitClient) {
@@ -3042,7 +3057,10 @@ class FPSRoom extends colyseus.Room {
       if (!shooter || shooter.health <= 0) return;
       if (this.state.mapId === 5 && shooter.team === 0) return;
       const weaponId = Number(data.weaponId);
-      if (weaponId === 3 && shooter.killStreak < 5) return;
+      if (weaponId === FPS_GATLING_WEAPON_ID && shooter.killStreak < 5) return;
+      if (weaponId === FPS_GATLING_WEAPON_ID) {
+        shooter.gatlingFiringUntil = Date.now() + FPS_GATLING_FIRING_GRACE_MS;
+      }
 
       this.broadcast("shoot", { origin: data.origin, dir: data.dir }, { except: client });
 
@@ -3095,16 +3113,10 @@ class FPSRoom extends colyseus.Room {
         let damage = 25;
         if (weaponId === 1) damage = 20; // Shotgun per bullet
         if (weaponId === 2) damage = 100; // Sniper
-        if (weaponId === 3) damage = 10; // Gatling
+        if (weaponId === FPS_GATLING_WEAPON_ID) damage = 10; // Gatling
         const target = hitClient.player;
 
-        if (target.armor > 0) {
-          const armorDmg = Math.min(target.armor, damage);
-          target.armor -= armorDmg;
-          target.health -= (damage - armorDmg);
-        } else {
-          target.health -= damage;
-        }
+        this.applyDamageToPlayer(target, damage);
 
         if (target.health > 0) {
           client.send("hitmarker", { killed: false });
@@ -3145,13 +3157,7 @@ class FPSRoom extends colyseus.Room {
 
         const t = 1 - (dist / radius);
         const damage = Math.max(20, Math.round(100 * t));
-        if (target.armor > 0) {
-          const armorDmg = Math.min(target.armor, damage);
-          target.armor -= armorDmg;
-          target.health -= (damage - armorDmg);
-        } else {
-          target.health -= damage;
-        }
+        this.applyDamageToPlayer(target, damage);
         if (target.health <= 0) {
           const victimClient = this.clients.find(c => c.sessionId === targetId);
           this.handleElimination(shooter, client, target, victimClient);
