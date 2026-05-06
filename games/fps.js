@@ -405,6 +405,9 @@ function setupRoom() {
     player.listen("kills", () => {
       updateLeaderboard();
     });
+    player.listen("killStreak", () => {
+      updateLeaderboard();
+    });
     updateLeaderboard();
   });
 
@@ -472,9 +475,11 @@ function updateLeaderboard() {
   room.state.players.forEach(p => players.push(p));
   players.sort((a,b) => b.kills - a.kills);
 
-  fpsLeaderboardList.innerHTML = players.map(p =>
-    `<div>${escapeHtml(p.name)}: ${p.kills}</div>`
-  ).join("");
+  fpsLeaderboardList.innerHTML = players.map(p => {
+    const kills = Number(p.kills) || 0;
+    const killStreak = Number(p.killStreak) || 0;
+    return `<div>${escapeHtml(p.name)}: ${kills} kills | ${killStreak} streak</div>`;
+  }).join("");
 }
 
 function teamLabel(teamId) {
