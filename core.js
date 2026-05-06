@@ -4071,13 +4071,18 @@ async function adminApplySettingAction({ key, type, action, value, successLabel 
     mutateRemote: (targetData) => {
       const settings = { ...(targetData?.adminSettings || {}) };
       const currentValue = settings[key];
-      settings[key] = applySettingAction(currentValue, action, type, value);
-      return { adminSettings: settings };
+      const nextValue = applySettingAction(currentValue, action, type, value);
+      settings[key] = nextValue;
+      const patch = { adminSettings: settings };
+      if (["role", "status", "permissions", "tags", "restrictions"].includes(key)) patch[key] = nextValue;
+      return patch;
     },
     mutateLocal: () => {
       adminSettings = adminSettings || {};
       const currentValue = adminSettings[key];
-      adminSettings[key] = applySettingAction(currentValue, action, type, value);
+      const nextValue = applySettingAction(currentValue, action, type, value);
+      adminSettings[key] = nextValue;
+      if (key === "role") crewData.role = String(nextValue || crewData.role || "MEMBER");
     },
     successToast: (targets) => `${successLabel} FOR ${targets.length} PLAYER(S)`,
     failToast: "SETTING UPDATE FAILED",
@@ -4276,16 +4281,30 @@ export async function adminSetPortfolioSharesFromInput() {
   });
 }
 
-async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = minimumPrice) {
+async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = minimumPrice, excludedSymbols = []) {
   const ref = marketDocRef();
   const floor = Math.max(0, Number(minimumPrice) || 0);
   const fallback = Math.max(floor, Number(fallbackPrice) || floor);
+  const skipSymbols = new Set(
+    (Array.isArray(excludedSymbols) ? excludedSymbols : [excludedSymbols])
+      .map((symbol) => String(symbol || "").trim().toUpperCase())
+      .filter(Boolean)
+  );
   try {
     await runTransaction(db, async (t) => {
       const snap = await t.get(ref);
       const payload = snap.exists() ? snap.data() : getInitialMarketPayload();
       const shifted = normalizeMarketStocks(payload.stocks).map((stock) => {
         const current = Math.max(floor, Number(stock.price) || fallback);
+        if (skipSymbols.has(String(stock.symbol || "").toUpperCase())) {
+          const history = [...(Array.isArray(stock.history) ? stock.history : []), current].slice(-80);
+          return {
+            ...stock,
+            price: current,
+            lastMove: 0,
+            history,
+          };
+        }
         const next = Math.max(floor, Number((current * multiplier).toFixed(2)));
         const history = [...(Array.isArray(stock.history) ? stock.history : []), next].slice(-80);
         return {
@@ -4311,6 +4330,15 @@ async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = mini
   } catch {
     marketState.stocks = normalizeMarketStocks(marketState.stocks).map((stock) => {
       const current = Math.max(floor, Number(stock.price) || fallback);
+      if (skipSymbols.has(String(stock.symbol || "").toUpperCase())) {
+        const history = [...(Array.isArray(stock.history) ? stock.history : []), current].slice(-80);
+        return {
+          ...stock,
+          price: current,
+          lastMove: 0,
+          history,
+        };
+      }
       const next = Math.max(floor, Number((current * multiplier).toFixed(2)));
       const history = [...(Array.isArray(stock.history) ? stock.history : []), next].slice(-80);
       return {
@@ -4326,7 +4354,7 @@ async function setMarketShift(multiplier, minimumPrice = 3, fallbackPrice = mini
 
 export async function adminMarketCrashToZero() {
   if (!isGodUser()) return;
-  await setMarketShift(0, 0.01, 0.01);
+  await setMarketShift(0, 0.01, 0.01, [OIL_SYMBOL]);
   showToast("MARKET CRASHED TO ZERO", "📉");
   await saveStats();
 }
@@ -6329,7 +6357,7 @@ function renderChatTab() {
       }
       row.appendChild(text);
 
-      const canTargetUser = canReplyToUser;
+      const canTargetUser = user && user !== "ANON" && (canReplyToUser || canUseChatModeration());
       if (canTargetUser && !isContinuation) {
         const canModerateChat = canUseChatModeration();
 
