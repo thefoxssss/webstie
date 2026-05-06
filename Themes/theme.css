@@ -4912,3 +4912,822 @@ body.reduce-motion *::after {
 /* Added for FPS fullscreen */
 #fpsGame:fullscreen { width: 100vw !important; height: 100vh !important; background: black; }
 #fpsGame:fullscreen canvas { width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; margin: 0 !important; object-fit: contain; }
+
+
+/* ===== FPS Map Builder ===== */
+body.fps-map-builder{
+  --bg-darker: #090e18;
+  --bg-dark: #0f172a;
+  --bg-light: #1e293b;
+  --bg-accent: #334155;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --border: #334155;
+}
+body.fps-map-builder{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg-darker);color:var(--text-main);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* Top Navigation */
+body.fps-map-builder .top-nav{
+  height: 48px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  z-index: 10;
+}
+body.fps-map-builder .brand{ font-weight: 700; color: var(--accent); font-size: 18px; margin-right: 12px; }
+body.fps-map-builder .top-nav .actions{ display: flex; gap: 8px; }
+body.fps-map-builder .top-nav button{ background: var(--bg-light); border: 1px solid var(--border); color: var(--text-main); padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; }
+body.fps-map-builder .top-nav button:hover{ background: var(--bg-accent); }
+body.fps-map-builder .top-nav button.primary{ background: var(--accent); border-color: var(--accent); }
+body.fps-map-builder .top-nav button.primary:hover{ background: var(--accent-hover); }
+
+/* Main Layout */
+body.fps-map-builder .main-layout{ flex: 1; display: flex; overflow: hidden; }
+
+/* Sidebar */
+body.fps-map-builder .sidebar{
+  width: 280px;
+  background: var(--bg-dark);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+body.fps-map-builder .right-sidebar{ border-right: none; border-left: 1px solid var(--border); width: 320px; }
+
+body.fps-map-builder .section-title{
+  padding: 10px 16px;
+  background: var(--bg-darker);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+body.fps-map-builder .outliner-list{ flex: 1; overflow-y: auto; padding: 4px 0; }
+body.fps-map-builder .outliner-item{
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+body.fps-map-builder .outliner-item:hover{ background: var(--bg-light); }
+body.fps-map-builder .outliner-item.selected{ background: var(--accent); color: white; }
+
+body.fps-map-builder .add-actions{
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.fps-map-builder .add-actions button{ background: var(--bg-light); border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+body.fps-map-builder .add-actions button:hover{ background: var(--bg-accent); }
+
+/* Viewport Area */
+body.fps-map-builder .viewport-area{ flex: 1; position: relative; display: flex; flex-direction: column; background: #000; }
+body.fps-map-builder .viewport-toolbar{
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(4px);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border);
+  z-index: 5;
+}
+body.fps-map-builder .viewport-toolbar button{ background: transparent; border: none; color: var(--text-muted); padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+body.fps-map-builder .viewport-toolbar button.active{ background: var(--accent); color: white; }
+body.fps-map-builder .viewport-toolbar .spacer{ width: 1px; background: var(--border); margin: 4px; }
+
+body.fps-map-builder #view{ flex: 1; outline: none; }
+
+/* Inspector */
+body.fps-map-builder .inspector-content{ flex: 1; overflow-y: auto; padding: 16px; }
+body.fps-map-builder .empty-msg{ text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 14px; }
+body.fps-map-builder .property-group{ margin-bottom: 20px; }
+body.fps-map-builder .property-group h4{ margin: 0 0 12px 0; font-size: 13px; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+body.fps-map-builder .property-row{ display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
+body.fps-map-builder .property-row label{ flex: 1; font-size: 12px; color: var(--text-muted); }
+body.fps-map-builder .property-row input, body.fps-map-builder .property-row select{ width: 140px; background: var(--bg-darker); border: 1px solid var(--border); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+body.fps-map-builder .property-row input:focus{ border-color: var(--accent); outline: none; }
+
+/* Bottom Bar */
+body.fps-map-builder .bottom-bar{
+  height: 24px;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+body.fps-map-builder .kbd{ background: var(--bg-light); border: 1px solid var(--border); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 10px; }
+
+/* ===== Shadow Assassin Safe Rooms ===== */
+body.shadow-assassin-safe-rooms *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+body.shadow-assassin-safe-rooms{
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+body.shadow-assassin-safe-rooms #gameCanvas{
+            border: 2px solid #8b4513;
+            box-shadow: 0 0 30px rgba(139, 69, 19, 0.5);
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: min(calc(100vw - 24px), calc((100vh - 24px) * 1.7143), 1200px);
+            max-width: 1200px;
+            aspect-ratio: 1200 / 700;
+            height: auto;
+            max-height: calc(100vh - 24px);
+        }
+
+body.shadow-assassin-safe-rooms #ui{
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            width: max-content;
+            max-width: min(260px, calc(100vw - 40px));
+        }
+
+body.shadow-assassin-safe-rooms .special-abilities-panel{
+            margin-top: 15px;
+            padding-top: 10px;
+        }
+
+body.shadow-assassin-safe-rooms #keybinds{
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 13px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            min-width: 200px;
+        }
+
+body.shadow-assassin-safe-rooms #keybinds h3{
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+body.shadow-assassin-safe-rooms .keybind-item{
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+        }
+
+body.shadow-assassin-safe-rooms .keybind-key{
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+body.shadow-assassin-safe-rooms .keybind-ability{
+            color: #ccc;
+        }
+
+body.shadow-assassin-safe-rooms #mythicPanel{
+            position: absolute;
+            top: 20px;
+            left: 250px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #ffd700;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 80vh;
+            min-width: 400px;
+            max-width: 500px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+        }
+
+body.shadow-assassin-safe-rooms #mythicPanel h2{
+            color: #ffd700;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-shadow: 0 0 15px #ffd700;
+            animation: mythicPulse 2s ease-in-out infinite;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(139, 69, 19, 0.3);
+            border: 1px solid #8b4513;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability:hover{
+            background: rgba(139, 69, 19, 0.5);
+            border-color: #ffd700;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability.active{
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability-name{
+            color: #fff;
+            font-size: 12px;
+            flex: 1;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability-toggle{
+            width: 40px;
+            height: 20px;
+            background: #444;
+            border: 2px solid #666;
+            border-radius: 10px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability.active .mythic-ability-toggle{
+            background: #4caf50;
+            border-color: #66bb6a;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability-toggle::after{
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+
+body.shadow-assassin-safe-rooms .mythic-ability.active .mythic-ability-toggle::after{
+            left: 20px;
+        }
+
+body.shadow-assassin-safe-rooms #mythicToggleBtn{
+            position: absolute;
+            top: 120px;
+            left: 20px;
+            background: linear-gradient(135deg, #daa520, #ffd700);
+            border: 3px solid #ffd700;
+            padding: 12px 18px;
+            color: #000;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            animation: godPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes godPulse {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+            }
+        }
+
+body.shadow-assassin-safe-rooms #mythicToggleBtn:hover{
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            transform: scale(1.08);
+            box-shadow: 0 0 35px rgba(255, 215, 0, 1);
+        }
+        }
+
+body.shadow-assassin-safe-rooms .health-bar{
+            width: 200px;
+            height: 20px;
+            background: #222;
+            border: 2px solid #8b4513;
+            margin-top: 5px;
+            position: relative;
+        }
+
+body.shadow-assassin-safe-rooms .health-fill{
+            height: 100%;
+            background: linear-gradient(90deg, #dc143c, #8b0000);
+            transition: width 0.3s;
+        }
+
+body.shadow-assassin-safe-rooms .controls{
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #aaa;
+            font-size: 12px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: none;
+        }
+
+body.shadow-assassin-safe-rooms #tutorialOverlay{
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 300;
+        }
+
+body.shadow-assassin-safe-rooms .tutorial-card{
+            width: min(92vw, 720px);
+            background: rgba(10, 10, 10, 0.96);
+            border: 3px solid #ffd700;
+            border-radius: 8px;
+            padding: 22px;
+            color: #fff;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.35);
+        }
+
+body.shadow-assassin-safe-rooms .tutorial-card h2{
+            color: #ffd700;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+body.shadow-assassin-safe-rooms .tutorial-grid{
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 16px;
+            margin: 12px 0 16px;
+            font-size: 13px;
+        }
+
+body.shadow-assassin-safe-rooms .tutorial-actions{
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+body.shadow-assassin-safe-rooms .title{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+body.shadow-assassin-safe-rooms .title h1{
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #8b4513;
+            text-shadow: 0 0 20px rgba(139, 69, 19, 0.8);
+        }
+
+body.shadow-assassin-safe-rooms .title p{
+            font-size: 18px;
+            color: #ccc;
+        }
+
+body.shadow-assassin-safe-rooms .fade-out{
+            animation: fadeOut 2s forwards;
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-screen{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-container{
+            text-align: center;
+            color: #fff;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-title{
+            font-size: 36px;
+            color: #ffd700;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-options{
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card{
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 3px solid #8b4513;
+            padding: 20px;
+            width: 250px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card:hover{
+            transform: translateY(-10px);
+            border-color: #ffd700;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card h3{
+            color: #ffd700;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card .level{
+            color: #ff8c00;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card p{
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card.mythic{
+            border-color: #ff00ff;
+            animation: mythicGlow 2s ease-in-out infinite;
+        }
+
+body.shadow-assassin-safe-rooms .upgrade-card.mythic h3{
+            color: #ff00ff;
+            text-shadow: 0 0 15px #ff00ff;
+        }
+
+        @keyframes mythicGlow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 0, 255, 0.6), 0 0 40px rgba(255, 0, 255, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(255, 0, 255, 0.8), 0 0 60px rgba(255, 0, 255, 0.6);
+            }
+        }
+
+body.shadow-assassin-safe-rooms .game-over-screen{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+body.shadow-assassin-safe-rooms .game-over-title{
+            font-size: 48px;
+            color: #ff0000;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+        }
+
+body.shadow-assassin-safe-rooms .game-over-stats{
+            color: #ffd700;
+            font-size: 20px;
+            margin-bottom: 30px;
+        }
+
+body.shadow-assassin-safe-rooms .button-container{
+            display: flex;
+            gap: 20px;
+        }
+
+body.shadow-assassin-safe-rooms .game-button{
+            background: linear-gradient(135deg, #8b4513, #654321);
+            border: 3px solid #ffd700;
+            padding: 15px 40px;
+            color: #fff;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+body.shadow-assassin-safe-rooms .game-button:hover{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
+            background: linear-gradient(135deg, #a0522d, #8b4513);
+        }
+
+body.shadow-assassin-safe-rooms .game-button:active{
+            transform: translateY(-2px);
+        }
+        
+body.shadow-assassin-safe-rooms .game-button:disabled{
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+            border-color: #666;
+        }
+        
+body.shadow-assassin-safe-rooms .game-button:disabled:hover{
+            transform: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+        }
+        
+body.shadow-assassin-safe-rooms .main-menu{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+body.shadow-assassin-safe-rooms .main-menu h1{
+            font-size: 64px;
+            color: #8b4513;
+            text-shadow: 0 0 30px rgba(139, 69, 19, 0.9);
+            margin-bottom: 50px;
+            animation: titlePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+body.shadow-assassin-safe-rooms .menu-buttons{
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+body.shadow-assassin-safe-rooms .menu-button{
+            background: linear-gradient(135deg, #8b4513, #654321);
+            border: 3px solid #ffd700;
+            padding: 20px 60px;
+            color: #fff;
+            font-size: 24px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            min-width: 300px;
+        }
+
+body.shadow-assassin-safe-rooms .menu-button:hover{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
+            background: linear-gradient(135deg, #a0522d, #8b4513);
+        }
+
+body.shadow-assassin-safe-rooms .settings-menu{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 201;
+        }
+
+body.shadow-assassin-safe-rooms .settings-container{
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 3px solid #8b4513;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+body.shadow-assassin-safe-rooms .settings-container h2{
+            color: #ffd700;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+body.shadow-assassin-safe-rooms .skill-tree-container{
+            background: radial-gradient(circle at top, #1a2340 0%, #0b0f1d 65%, #06070f 100%);
+            border: 2px solid #33d2ff;
+            box-shadow: 0 0 25px rgba(51, 210, 255, 0.35);
+            padding: 28px;
+            max-width: 980px;
+            width: 95%;
+            max-height: 86vh;
+            overflow-y: auto;
+        }
+
+body.shadow-assassin-safe-rooms .skill-tree-grid{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(200px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+body.shadow-assassin-safe-rooms .skill-node{
+            background: linear-gradient(160deg, rgba(20, 29, 55, 0.95), rgba(12, 16, 30, 0.95));
+            border: 1px solid #2f4f7a;
+            border-left: 4px solid #33d2ff;
+            color: #dce8ff;
+            padding: 12px;
+            min-height: 130px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+body.shadow-assassin-safe-rooms .skill-node:hover{
+            transform: translateY(-2px);
+            box-shadow: 0 0 12px rgba(51, 210, 255, 0.4);
+            border-color: #56e0ff;
+        }
+
+body.shadow-assassin-safe-rooms .skill-node.locked{
+            opacity: 0.62;
+            border-left-color: #607190;
+            filter: grayscale(0.35);
+        }
+
+body.shadow-assassin-safe-rooms .skill-node.maxed{
+            border-left-color: #8dff89;
+            box-shadow: 0 0 10px rgba(141, 255, 137, 0.45);
+        }
+
+body.shadow-assassin-safe-rooms .skill-node button{
+            margin-top: auto;
+            padding: 8px 10px;
+            border: 1px solid #37b6ff;
+            background: rgba(10, 27, 47, 0.85);
+            color: #9be7ff;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+body.shadow-assassin-safe-rooms .skill-node button:disabled{
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+body.shadow-assassin-safe-rooms .setting-item{
+            margin-bottom: 25px;
+            color: #fff;
+        }
+
+body.shadow-assassin-safe-rooms .setting-item label{
+            display: block;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #ffd700;
+        }
+
+body.shadow-assassin-safe-rooms .setting-item input[type="range"]{
+            width: 100%;
+            height: 8px;
+            background: #444;
+            outline: none;
+            border-radius: 4px;
+        }
+
+body.shadow-assassin-safe-rooms .setting-item input[type="range"]::-webkit-slider-thumb{
+            width: 20px;
+            height: 20px;
+            background: #ffd700;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+body.shadow-assassin-safe-rooms .setting-value{
+            display: inline-block;
+            margin-left: 15px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+body.shadow-assassin-safe-rooms .toggle-button{
+            padding: 10px 20px;
+            background: #444;
+            border: 2px solid #666;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+body.shadow-assassin-safe-rooms .toggle-button.active{
+            background: #ffd700;
+            border-color: #ffd700;
+            color: #000;
+        }
+
+body.shadow-assassin-safe-rooms .setting-item select{
+            width: 100%;
+            padding: 10px;
+            background: #444;
+            border: 2px solid #666;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+body.shadow-assassin-safe-rooms #safeRoomScreen{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 50, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+        }
+
+body.shadow-assassin-safe-rooms #safeRoomScreen h2{
+            color: #00ff00;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+        }
+
+body.shadow-assassin-safe-rooms #safeRoomScreen p{
+            color: #90ee90;
+            font-size: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+        }
