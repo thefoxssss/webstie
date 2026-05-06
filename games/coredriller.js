@@ -251,7 +251,7 @@ export function initCoreDriller() {
 
   resetRun();
   updateHud();
-  kernel.start(updateCoreDriller, drawCoreDriller, { startPausedUntilInput: true });
+  kernel.start(updateCoreDriller, drawCoreDriller);
 }
 
 document.addEventListener("keydown", (e) => {
