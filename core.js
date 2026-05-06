@@ -3531,15 +3531,7 @@ window.toggleTopPanelOverlay = (id) => {
   const target = document.getElementById(id);
   if (!target) return;
 
-  const isClosingSameOverlay = target.classList.contains("active");
-
-  TOP_PANEL_OVERLAY_IDS.forEach((overlayId) => {
-    if (overlayId === id) return;
-    const overlay = document.getElementById(overlayId);
-    if (overlay) overlay.classList.remove("active");
-  });
-
-  if (isClosingSameOverlay) {
+  if (target.classList.contains("active")) {
     target.classList.remove("active");
   } else {
     target.classList.add("active");
@@ -3557,10 +3549,10 @@ export function openGame(id) {
     openConfigOverlay();
     return;
   }
-  closeOverlays();
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
-  document.body.classList.toggle("overlay-open", Boolean(el));
+  const hasActiveOverlay = Boolean(document.querySelector(".overlay.active"));
+  document.body.classList.toggle("overlay-open", hasActiveOverlay);
   runOverlayOpenHooks(id);
 }
 

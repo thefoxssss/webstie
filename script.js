@@ -1281,6 +1281,72 @@ function initOverlayBackdropExit() {
   });
 }
 
+function initOverlayTabsWindowManager() {
+  const loginOverlay = document.getElementById("overlayLogin");
+  if (loginOverlay) loginOverlay.classList.add("secure-login-only");
+  const tabHost = document.createElement("div");
+  tabHost.id = "overlayTabHost";
+  document.body.appendChild(tabHost);
+  let zIndex = 1600;
+  const windows = Array.from(document.querySelectorAll(".overlay")).filter((overlay) => overlay.id !== "overlayLogin");
+  const icon = { min: "▁", full: "⛶", close: "✕" };
+
+  const titleFor = (overlay) => {
+    const label = overlay.querySelector("h1, h2, .score-title")?.textContent?.trim();
+    return (label || overlay.id.replace(/^overlay/, "") || "WINDOW").slice(0, 24);
+  };
+  const syncTabs = () => {
+    const active = windows.filter((w) => w.classList.contains("active"));
+    tabHost.innerHTML = "";
+    active.forEach((overlay) => {
+      const tab = document.createElement("button");
+      tab.className = "overlay-tab-chip";
+      tab.draggable = true;
+      tab.dataset.overlayId = overlay.id;
+      tab.innerHTML = `<span>${titleFor(overlay)}</span><span class="overlay-tab-actions"><i data-act="min">${icon.min}</i><i data-act="full">${icon.full}</i><i data-act="close">${icon.close}</i></span>`;
+      tab.addEventListener("click", (event) => {
+        const action = event.target?.dataset?.act;
+        if (action === "close" || action === "min") {
+          overlay.classList.remove("active", "overlay-fullscreen");
+        } else if (action === "full") {
+          overlay.classList.toggle("overlay-fullscreen");
+          overlay.classList.add("active");
+        } else {
+          overlay.classList.add("active");
+          overlay.style.zIndex = String(++zIndex);
+        }
+      });
+      tab.addEventListener("dragstart", () => tab.classList.add("dragging"));
+      tab.addEventListener("dragend", () => tab.classList.remove("dragging"));
+      tabHost.appendChild(tab);
+    });
+    document.body.classList.toggle("overlay-open", active.length > 0 || Boolean(loginOverlay?.classList.contains("active")));
+  };
+
+  tabHost.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    const dragging = tabHost.querySelector(".dragging");
+    if (!dragging) return;
+    const after = Array.from(tabHost.querySelectorAll(".overlay-tab-chip:not(.dragging)")).find((el) => event.clientX < el.getBoundingClientRect().left + el.offsetWidth / 2);
+    if (!after) tabHost.appendChild(dragging);
+    else tabHost.insertBefore(dragging, after);
+  });
+
+  windows.forEach((overlay) => {
+    overlay.classList.add("window-overlay");
+    overlay.addEventListener("mousedown", () => {
+      overlay.style.zIndex = String(++zIndex);
+    });
+    const observer = new MutationObserver(syncTabs);
+    observer.observe(overlay, { attributes: true, attributeFilter: ["class"] });
+  });
+  if (loginOverlay) {
+    const observer = new MutationObserver(syncTabs);
+    observer.observe(loginOverlay, { attributes: true, attributeFilter: ["class"] });
+  }
+  syncTabs();
+}
+
 function initAprilFoolsBibiMode() {
   const now = new Date();
   const isAprilFools = now.getUTCMonth() === 3 && now.getUTCDate() === 1;
@@ -1390,6 +1456,7 @@ disableInGameExitButtons();
 initPerGameFullscreenButtons();
 initTopBarOverlayControls();
 initOverlayBackdropExit();
+initOverlayTabsWindowManager();
 initAprilFoolsBibiMode();
 initAdminTabs();
 initGameCanvasSizing();
