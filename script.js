@@ -489,6 +489,55 @@ function updateRecentGames(game) {
   writeStoredGameList(GAME_LIBRARY_RECENTS_KEY, recents);
 }
 
+function initHomeRecentGames() {
+  const listEl = document.getElementById("recentGamesList");
+  const metaEl = document.getElementById("recentGamesMeta");
+  if (!listEl || !Array.isArray(window.GAME_DIRECTORY_ENTRIES)) return;
+
+  const directoryById = new Map(
+    window.GAME_DIRECTORY_ENTRIES.map((entry) => [entry.id, entry]),
+  );
+
+  const renderRecentGames = () => {
+    const recents = readStoredGameList(GAME_LIBRARY_RECENTS_KEY)
+      .filter((gameId) => directoryById.has(gameId))
+      .slice(0, GAME_LIBRARY_RECENT_LIMIT);
+
+    if (metaEl) {
+      metaEl.textContent = recents.length
+        ? `LAST ${recents.length} GAME${recents.length === 1 ? "" : "S"} PLAYED.`
+        : "PLAY A GAME TO FILL THIS LIST.";
+    }
+
+    if (!recents.length) {
+      listEl.innerHTML = '<div class="trending-empty">NO RECENT GAMES YET.</div>';
+      return;
+    }
+
+    listEl.innerHTML = "";
+    recents.forEach((gameId, index) => {
+      const entry = directoryById.get(gameId);
+      if (!entry) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "trending-game-btn";
+      button.innerHTML = `
+        <span class="trending-rank">#${index + 1}</span>
+        <span>${entry.title || gameId}</span>
+        <span class="trending-count">${entry.icon || "🎮"}</span>
+      `;
+      button.addEventListener("click", () => window.launchGame(gameId, "home-recent"));
+      listEl.appendChild(button);
+    });
+  };
+
+  renderRecentGames();
+  document.addEventListener("gooner:games-library-updated", renderRecentGames);
+  window.addEventListener("storage", (event) => {
+    if (event.key === GAME_LIBRARY_RECENTS_KEY) renderRecentGames();
+  });
+}
+
 
 function sizeCanvasToViewport(canvas) {
   if (!canvas) return;
@@ -1347,6 +1396,7 @@ initGameCanvasSizing();
 initGameVisibilityGuards();
 initGameScroller();
 initMainSiteSearch();
+initHomeRecentGames();
 
 function hideGameOverModal() {
   const modal = document.getElementById("modalGameOver");
