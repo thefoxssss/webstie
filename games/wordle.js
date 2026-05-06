@@ -10,6 +10,7 @@ let guesses = [];
 let gameFinished = false;
 let keyStates = {}; // 'correct', 'present', 'absent'
 let pendingFlipRow = -1;
+let didLoseLastGame = false;
 
 // Default stats
 const DEFAULT_STATS = {
@@ -62,6 +63,7 @@ function startNewGame() {
   gameFinished = false;
   keyStates = {};
   pendingFlipRow = -1;
+  didLoseLastGame = false;
 
   updateGrid();
   updateKeyboard();
@@ -106,14 +108,17 @@ function handleKeyDown(e) {
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
     if (e.key === 'Enter') {
+        e.preventDefault();
         submitGuess();
     } else if (e.key === 'Backspace') {
+        e.preventDefault();
         if (currentGuess.length > 0) {
             currentGuess = currentGuess.slice(0, -1);
             updateGrid();
             beep(200, "sine", 0.05);
         }
     } else if (/^[A-Za-z]$/.test(e.key)) {
+        e.preventDefault();
         if (currentGuess.length < 5) {
             currentGuess += e.key.toUpperCase();
             updateGrid();
@@ -129,8 +134,8 @@ function submitGuess() {
     }
 
     if (!ALLOWED_GUESSES.has(currentGuess)) {
-        showToast("NOT IN WORD LIST", "⚠️");
-        return;
+        // Allow any 5-letter guess so gameplay never gets stuck if the allow-list is out of sync.
+        showToast("WORD NOT IN LIST — CHECKING ANYWAY", "ℹ️");
     }
 
     guesses.push(currentGuess);
@@ -179,6 +184,7 @@ function submitGuess() {
         }, 1500);
     } else if (guesses.length >= 6) {
         gameFinished = true;
+        didLoseLastGame = true;
         setText('wordleStatus', `TRACE FAILED — WORD: ${targetWord}`);
         updateAndSaveStats(false, guesses.length);
         setTimeout(() => {
@@ -267,6 +273,17 @@ function updateStatsUI() {
 
     setText('wordleStatStreak', stats.currentStreak);
     setText('wordleStatMaxStreak', stats.maxStreak);
+
+    const answerReveal = document.getElementById('wordleAnswerReveal');
+    if (answerReveal) {
+        if (didLoseLastGame) {
+            answerReveal.style.display = 'block';
+            answerReveal.innerText = `WORD WAS: ${targetWord}`;
+        } else {
+            answerReveal.style.display = 'none';
+            answerReveal.innerText = '';
+        }
+    }
 
     const distContainer = document.getElementById('wordleGuessDist');
     if (distContainer) {
