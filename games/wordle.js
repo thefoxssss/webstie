@@ -108,14 +108,17 @@ function handleKeyDown(e) {
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
     if (e.key === 'Enter') {
+        e.preventDefault();
         submitGuess();
     } else if (e.key === 'Backspace') {
+        e.preventDefault();
         if (currentGuess.length > 0) {
             currentGuess = currentGuess.slice(0, -1);
             updateGrid();
             beep(200, "sine", 0.05);
         }
     } else if (/^[A-Za-z]$/.test(e.key)) {
+        e.preventDefault();
         if (currentGuess.length < 5) {
             currentGuess += e.key.toUpperCase();
             updateGrid();
