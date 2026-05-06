@@ -198,6 +198,10 @@ let seasonData = { id: "", xp: 0, hall: [] };
 let adminSettings = {};
 const MIN_LOAN_AMOUNT = 100;
 const MAX_LOAN_AMOUNT = 10000;
+const MAX_BANK_MONEY = 999999999999;
+const MAX_LOAN_DEBT = 999999999999;
+const MAX_STOCK_PRICE = 99999999;
+const MAX_STOCK_SHARES = 999999999;
 const SEASON_STARTING_MONEY = 1000;
 const ONLINE_STATUS_WINDOW_MS = 120000;
 const STOCK_MULTIPLIERS = [1, 5, 10, 25, "MAX"];
@@ -1186,6 +1190,15 @@ function buildInitialStockState() {
   });
 }
 
+
+function clampEconomyNumber(value, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const parsed = Number(value);
+  if (parsed === Infinity) return max;
+  if (parsed === -Infinity) return min;
+  if (!Number.isFinite(parsed)) return min;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 const marketState = {
   stocks: buildInitialStockState(),
 };
@@ -1204,7 +1217,7 @@ function normalizeMarketStocks(inputStocks = []) {
   return STOCK_SYMBOLS.map((entry) => {
     const source = bySymbol.get(entry.symbol) || {};
     const parsedPrice = Number(source.price);
-    const price = Number.isFinite(parsedPrice) ? Math.max(3, parsedPrice) : (STOCK_BASE_PRICES[entry.symbol] || 100);
+    const price = Number.isFinite(parsedPrice) ? clampEconomyNumber(parsedPrice, { min: 3, max: MAX_STOCK_PRICE }) : (STOCK_BASE_PRICES[entry.symbol] || 100);
     const parsedHistory = Array.isArray(source.history)
       ? source.history.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0)
       : [];
@@ -1247,8 +1260,8 @@ function applyLiveOilPriceToMarket() {
   if (!Number.isFinite(livePrice) || livePrice <= 0) return false;
   const oilStock = marketState.stocks.find((stock) => stock.symbol === OIL_SYMBOL);
   if (!oilStock) return false;
-  const current = Math.max(3, Number(oilStock.price) || 3);
-  const next = Number(livePrice.toFixed(2));
+  const current = clampEconomyNumber(oilStock.price, { min: 3, max: MAX_STOCK_PRICE });
+  const next = clampEconomyNumber(Number(livePrice.toFixed(2)), { min: 3, max: MAX_STOCK_PRICE });
   oilStock.price = next;
   oilStock.lastMove = current > 0 ? (next - current) / current : 0;
   if (Array.isArray(oilStock.history) && oilStock.history.length > 0) {
@@ -1296,8 +1309,8 @@ function evolveMarketStocks(stocks) {
   return stocks.map((stock) => {
     if (stock.symbol === OIL_SYMBOL) {
       const livePrice = Number(oilQuoteState.price);
-      const current = Math.max(3, Number(stock.price) || 3);
-      const next = (Number.isFinite(livePrice) && livePrice > 0) ? Number(livePrice.toFixed(2)) : current;
+      const current = clampEconomyNumber(stock.price, { min: 3, max: MAX_STOCK_PRICE });
+      const next = (Number.isFinite(livePrice) && livePrice > 0) ? clampEconomyNumber(Number(livePrice.toFixed(2)), { min: 3, max: MAX_STOCK_PRICE }) : current;
       const history = [...(Array.isArray(stock.history) && stock.history.length ? stock.history : [current]), next].slice(-80);
       const lastMove = current > 0 ? (next - current) / current : 0;
       return {
@@ -1310,8 +1323,8 @@ function evolveMarketStocks(stocks) {
     const drift = (Math.random() - 0.49) * 0.09;
     const momentum = (Number(stock.lastMove) || 0) * 0.35;
     const swing = (Math.random() - 0.5) * 0.04;
-    const current = Math.max(3, Number(stock.price) || 3);
-    const next = Math.max(3, current * (1 + drift + momentum + swing));
+    const current = clampEconomyNumber(stock.price, { min: 3, max: MAX_STOCK_PRICE });
+    const next = clampEconomyNumber(current * (1 + drift + momentum + swing), { min: 3, max: MAX_STOCK_PRICE });
     const lastMove = (next - current) / current;
     const history = [...(Array.isArray(stock.history) ? stock.history : []), Number(next.toFixed(2))].slice(-80);
     return {
@@ -1417,7 +1430,7 @@ function ensureStockProfile() {
 
 function getPortfolioValue() {
   return marketState.stocks.reduce((total, stock) => {
-    const shares = Number(stockData.holdings?.[stock.symbol] || 0);
+    const shares = Math.floor(clampEconomyNumber(stockData.holdings?.[stock.symbol] || 0, { min: 0, max: MAX_STOCK_SHARES }));
     return total + shares * stock.price;
   }, 0);
 }
@@ -1526,7 +1539,7 @@ function renderStockMarket() {
   marketState.stocks.forEach((stock) => {
     const row = document.createElement("button");
     row.className = `stock-row ${selected.symbol === stock.symbol ? "active" : ""}`;
-    const shares = Number(stockData.holdings?.[stock.symbol] || 0);
+    const shares = Math.floor(clampEconomyNumber(stockData.holdings?.[stock.symbol] || 0, { min: 0, max: MAX_STOCK_SHARES }));
     const prev = stock.history.length > 1 ? stock.history[stock.history.length - 2] : stock.price;
     const dayMove = ((stock.price - prev) / (prev || 1)) * 100;
     row.innerHTML = `<span>${escapeHtml(stock.symbol)} (${shares})</span><span style="color:${dayMove >= 0 ? "#0f0" : "#f55"}">${formatStockMoney(stock.price)}</span>`;
@@ -1537,7 +1550,7 @@ function renderStockMarket() {
     list.appendChild(row);
   });
 
-  const holdings = Number(stockData.holdings?.[selected.symbol] || 0);
+  const holdings = Math.floor(clampEconomyNumber(stockData.holdings?.[selected.symbol] || 0, { min: 0, max: MAX_STOCK_SHARES }));
   const buyMultiplier = stockData.buyMultiplier || 1;
   const tradeLabel = buyMultiplier === "MAX" ? "MAX" : buyMultiplier;
   setText("stockDetailName", `${selected.name} (${selected.symbol})`);
@@ -1590,7 +1603,7 @@ function tradeStock(isBuy) {
   if (!stock) return;
 
   const selectedMultiplier = stockData.buyMultiplier || 1;
-  const owned = Number(stockData.holdings[stock.symbol] || 0);
+  const owned = Math.floor(clampEconomyNumber(stockData.holdings[stock.symbol] || 0, { min: 0, max: MAX_STOCK_SHARES }));
   const tradeShares = selectedMultiplier === "MAX"
     ? (isBuy ? Math.floor(myMoney / stock.price) : owned)
     : Number(selectedMultiplier || 1);
@@ -1609,8 +1622,8 @@ function tradeStock(isBuy) {
       setText("stockTradeMsg", `NOT ENOUGH CASH FOR ${tradeShares} SHARES`);
       return;
     }
-    myMoney = Number((myMoney - totalCost).toFixed(2));
-    stockData.holdings[stock.symbol] = owned + tradeShares;
+    myMoney = clampEconomyNumber(Number((myMoney - totalCost).toFixed(2)), { min: 0, max: MAX_BANK_MONEY });
+    stockData.holdings[stock.symbol] = Math.floor(clampEconomyNumber(owned + tradeShares, { min: 0, max: MAX_STOCK_SHARES }));
     logTransaction(`BUY ${stock.symbol} x${tradeShares}`, -totalCost);
     setText("stockTradeMsg", `BOUGHT ${tradeShares} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
   } else {
@@ -1619,8 +1632,8 @@ function tradeStock(isBuy) {
       return;
     }
     const totalPayout = Number((stock.price * tradeShares).toFixed(2));
-    stockData.holdings[stock.symbol] = owned - tradeShares;
-    myMoney = Number((myMoney + totalPayout).toFixed(2));
+    stockData.holdings[stock.symbol] = Math.floor(clampEconomyNumber(owned - tradeShares, { min: 0, max: MAX_STOCK_SHARES }));
+    myMoney = clampEconomyNumber(Number((myMoney + totalPayout).toFixed(2)), { min: 0, max: MAX_BANK_MONEY });
     logTransaction(`SELL ${stock.symbol} x${tradeShares}`, totalPayout);
     setText("stockTradeMsg", `SOLD ${tradeShares} ${stock.symbol} @ ${formatStockMoney(stock.price)}`);
   }
@@ -3665,7 +3678,7 @@ function getRankProgress(money) {
 // Populate local state from stored profile data.
 function loadProfile(data) {
   myName = data.name;
-  myMoney = data.money;
+  myMoney = clampEconomyNumber(data.money, { min: 0, max: MAX_BANK_MONEY });
   myStats = data.stats || { games: 0, wpm: 0, wins: 0 };
   myAchievements = data.achievements || [];
   myInventory = data.inventory || [];
@@ -3677,6 +3690,7 @@ function loadProfile(data) {
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
+  loanData.debt = clampEconomyNumber(loanData.debt, { min: 0, max: MAX_LOAN_DEBT });
   adminSettings = data.adminSettings || {};
   hideStatus = Boolean(data.hideStatus);
   stockData = data.stockData || { holdings: {}, selected: "GOON", buyMultiplier: 1 };
@@ -3711,7 +3725,7 @@ function loadProfile(data) {
   const lastLogin = data.lastLogin || 0;
   const now = Date.now();
   if (now - lastLogin > 86400000) {
-    myMoney += 100;
+    myMoney = clampEconomyNumber(myMoney + 100, { min: 0, max: MAX_BANK_MONEY });
     showToast("DAILY BONUS: $100", "💰");
   }
   updateDoc(doc(db, "gooner_users", myName), { lastLogin: now });
@@ -3726,6 +3740,8 @@ export function updateUI() {
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
   const currentVal = getComparableMoney(bankEl.innerText);
+  myMoney = clampEconomyNumber(myMoney, { min: 0, max: MAX_BANK_MONEY });
+  loanData.debt = clampEconomyNumber(loanData.debt, { min: 0, max: MAX_LOAN_DEBT });
   const nextVal = getComparableMoney(myMoney);
   if (currentVal !== nextVal) {
     bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
@@ -4784,10 +4800,10 @@ function takeLoan() {
 
   const randomRate = (Math.floor(Math.random() * 19) + 18) / 100;
   const now = Date.now();
-  loanData.debt = amount;
+  loanData.debt = clampEconomyNumber(amount, { min: 0, max: MAX_LOAN_DEBT });
   loanData.rate = randomRate;
   loanData.lastInterestAt = now;
-  myMoney += amount;
+  myMoney = clampEconomyNumber(myMoney + amount, { min: 0, max: MAX_BANK_MONEY });
   logTransaction(`HIGH-RISK LOAN @ ${Math.round(randomRate * 100)}% APR`, amount);
   formatLoanStatus(`LOAN APPROVED: +$${amount} @ ${Math.round(randomRate * 100)}%`, "#f80");
   amountInput.value = "";
@@ -4806,8 +4822,8 @@ function repayLoan() {
     return;
   }
 
-  loanData.debt = Math.max(0, loanData.debt - pay);
-  myMoney -= pay;
+  loanData.debt = clampEconomyNumber(loanData.debt - pay, { min: 0, max: MAX_LOAN_DEBT });
+  myMoney = clampEconomyNumber(myMoney - pay, { min: 0, max: MAX_BANK_MONEY });
   logTransaction("LOAN REPAYMENT", -pay);
   if (loanData.debt <= 0) {
     loanData.debt = 0;
@@ -4841,7 +4857,7 @@ function applyLoanInterestTick() {
   }
   const growth = Math.round(debt - loanData.debt);
   if (growth <= 0) return;
-  loanData.debt = debt;
+  loanData.debt = clampEconomyNumber(debt, { min: 0, max: MAX_LOAN_DEBT });
   loanData.lastInterestAt = last + cycles * tickMs;
   logTransaction("LOAN INTEREST ACCRUED", -growth);
   formatLoanStatus(`INTEREST ACCRUED: +$${growth} DEBT`, "#f66");
