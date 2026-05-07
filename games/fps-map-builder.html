@@ -715,8 +715,13 @@ function initTestControls() {
     isTesting = true;
     testMapOverlay.style.display = 'flex';
     document.querySelector('.top-nav').style.display = 'none';
-    document.querySelector('.main-layout').style.display = 'none';
     document.querySelector('.bottom-bar').style.display = 'none';
+    document.querySelector('.left-sidebar').style.display = 'none';
+    document.querySelector('.right-sidebar').style.display = 'none';
+    document.querySelector('.viewport-toolbar').style.display = 'none';
+
+    // Force resize to ensure canvas takes full screen
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 
     const spawns = objects.filter(o => o.type === 'spawn');
     if (spawns.length > 0) {
@@ -735,8 +740,12 @@ function initTestControls() {
     isTesting = false;
     testMapOverlay.style.display = 'none';
     document.querySelector('.top-nav').style.display = 'flex';
-    document.querySelector('.main-layout').style.display = 'flex';
     document.querySelector('.bottom-bar').style.display = 'flex';
+    document.querySelector('.left-sidebar').style.display = 'flex';
+    document.querySelector('.right-sidebar').style.display = 'flex';
+    document.querySelector('.viewport-toolbar').style.display = 'flex';
+
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
     cancelAnimationFrame(testGameLoopId);
 
     camera.position.set(10, 10, 10);
