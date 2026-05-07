@@ -11,6 +11,7 @@
     <button id="btnOpen">Open JSON</button>
     <button id="btnSave">Save Draft</button>
     <button id="btnDownload" class="primary">Download JSON</button>
+    <button id="btnTestMap" style="background:#22c55e; color:white;">Test Map</button>
   </div>
   <div style="flex:1"></div>
   <div class="actions">
@@ -39,6 +40,15 @@
       <button id="addLightBtn" title="Add Light Source">Light</button>
       <button id="addPickupBtn" title="Add Pickup">Pickup</button>
     </div>
+    <div class="section-title">Prefabs</div>
+    <div class="add-actions">
+      <button id="addWallBtn">Wall</button>
+      <button id="addFloorBtn">Floor</button>
+      <button id="addDoorwayBtn">Doorway</button>
+      <button id="addWindowBtn">Window</button>
+      <button id="addStairsBtn">Stairs</button>
+      <button id="addRoomBtn">Room</button>
+    </div>
   </aside>
 
   <main class="viewport-area">
@@ -48,9 +58,18 @@
       <button id="toolScale">Scale (R)</button>
       <div class="spacer"></div>
       <button id="btnSnap">Snap: ON</button>
+      <select id="snapStep" style="background:var(--bg-light); color:var(--text-main); border:1px solid var(--border); border-radius:4px; padding:4px; margin-right:8px;" title="Snap Size">
+        <option value="0.1">0.1</option>
+        <option value="0.25">0.25</option>
+        <option value="0.5">0.5</option>
+        <option value="1" selected>1.0</option>
+        <option value="2">2.0</option>
+        <option value="4">4.0</option>
+      </select>
       <button id="btnFocus">Focus (F)</button>
     </div>
     <canvas id="view"></canvas>
+    <div id="selectionBox" style="display:none; position:absolute; border:1px solid #3b82f6; background:rgba(59, 130, 246, 0.2); pointer-events:none;"></div>
   </main>
 
   <aside class="sidebar right-sidebar">
@@ -80,11 +99,13 @@
 <script type="module">
 import * as THREE from 'three';
 import { TransformControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/TransformControls.js';
+import { PointerLockControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/PointerLockControls.js';
 
 // State
 let scene, camera, renderer, transformControls;
 let objects = []; // { type, mesh, data }
-let selectedIndex = -1;
+let selectedIndices = [];
+let selectionGroup = new THREE.Group();
 let snapEnabled = true;
 let gridStep = 1;
 let copiedObject = null;
@@ -92,6 +113,11 @@ let undoStack = [];
 const textureCache = {};
 
 const canvas = document.getElementById('view');
+const selectionBoxEl = document.getElementById('selectionBox');
+let isBoxSelecting = false;
+let boxSelectStart = new THREE.Vector2();
+let boxSelectEnd = new THREE.Vector2();
+const testMapOverlay = document.getElementById('testMapOverlay');
 const outlinerEl = document.getElementById('outliner');
 const inspectorEl = document.getElementById('inspector');
 const statusText = document.getElementById('statusText');
@@ -101,6 +127,7 @@ const btnNew = document.getElementById('btnNew');
 const btnOpen = document.getElementById('btnOpen');
 const btnSave = document.getElementById('btnSave');
 const btnDownload = document.getElementById('btnDownload');
+const btnTestMap = document.getElementById('btnTestMap');
 const builtinMaps = document.getElementById('builtinMaps');
 const btnLoadBuiltin = document.getElementById('btnLoadBuiltin');
 const uploadInput = document.getElementById('uploadInput');
@@ -115,6 +142,13 @@ const addBoxBtn = document.getElementById('addBoxBtn');
 const addSpawnBtn = document.getElementById('addSpawnBtn');
 const addLightBtn = document.getElementById('addLightBtn');
 const addPickupBtn = document.getElementById('addPickupBtn');
+const addWallBtn = document.getElementById('addWallBtn');
+const addFloorBtn = document.getElementById('addFloorBtn');
+const addDoorwayBtn = document.getElementById('addDoorwayBtn');
+const addWindowBtn = document.getElementById('addWindowBtn');
+const addStairsBtn = document.getElementById('addStairsBtn');
+const addRoomBtn = document.getElementById('addRoomBtn');
+const snapStepEl = document.getElementById('snapStep');
 
 // Init
 function init() {
@@ -141,6 +175,8 @@ function init() {
   const grid = new THREE.GridHelper(100, 100, 0x334155, 0x1e293b);
   scene.add(grid);
 
+  scene.add(selectionGroup);
+
   // Controls
   transformControls = new TransformControls(camera, renderer.domElement);
   transformControls.addEventListener('dragging-changed', (event) => {
@@ -148,7 +184,7 @@ function init() {
     // orbitControls.enabled = !event.value;
   });
   transformControls.addEventListener('change', () => {
-    if (selectedIndex >= 0) syncObjectDataFromMesh(selectedIndex);
+    selectedIndices.forEach(i => syncObjectDataFromMesh(i));
   });
   transformControls.addEventListener('dragging-changed', (event) => {
     if (!event.value) saveHistoryState();
@@ -277,6 +313,7 @@ document.addEventListener('mouseup', () => {
 });
 
 function handleCameraMovement() {
+  if (isTesting) return;
   if (document.pointerLockElement !== canvas) return;
   const dir = new THREE.Vector3(
     Math.sin(yaw) * Math.cos(pitch),
@@ -291,6 +328,7 @@ function handleCameraMovement() {
   if (keys.d) camera.position.addScaledVector(right, -speed);
   camera.lookAt(camera.position.clone().add(dir));
 }
+
 
 // Object Management
 function addObject(type, data = {}) {
@@ -335,19 +373,44 @@ function addObject(type, data = {}) {
   objects.push(obj);
   applyObjectVisual(obj);
 
-  selectObject(objects.length - 1);
+  selectObject(objects.length - 1, false);
   refreshOutliner();
   updateStatus(`Added ${type}`);
 }
 
-function selectObject(index) {
-  selectedIndex = index;
-  if (index >= 0) {
-    const obj = objects[index];
-    transformControls.attach(obj.mesh);
+function selectObject(index, additive = false) {
+  selectedIndices.forEach(i => {
+    if (objects[i] && objects[i].mesh) scene.attach(objects[i].mesh);
+  });
+  transformControls.detach();
+
+  if (index === -1) {
+    selectedIndices = [];
+  } else if (additive) {
+    const idx = selectedIndices.indexOf(index);
+    if (idx >= 0) {
+      selectedIndices.splice(idx, 1);
+    } else {
+      selectedIndices.push(index);
+    }
   } else {
-    transformControls.detach();
+    selectedIndices = [index];
   }
+
+  if (selectedIndices.length > 0) {
+    selectionGroup.position.set(0, 0, 0);
+    selectionGroup.rotation.set(0, 0, 0);
+    selectionGroup.scale.set(1, 1, 1);
+
+    const firstMesh = objects[selectedIndices[0]].mesh;
+    firstMesh.getWorldPosition(selectionGroup.position);
+
+    selectedIndices.forEach(i => {
+      selectionGroup.attach(objects[i].mesh);
+    });
+    transformControls.attach(selectionGroup);
+  }
+
   refreshOutliner();
   refreshInspector();
 }
@@ -355,57 +418,94 @@ function selectObject(index) {
 function syncObjectDataFromMesh(index) {
   const obj = objects[index];
   const mesh = obj.mesh;
-  obj.data.pos = [mesh.position.x, mesh.position.y, mesh.position.z];
-  obj.data.rot = [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z];
-  obj.data.size = [mesh.scale.x, mesh.scale.y, mesh.scale.z];
-  refreshInspector();
+  const pos = new THREE.Vector3();
+  const rot = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  mesh.matrixWorld.decompose(pos, rot, scale);
+  const euler = new THREE.Euler().setFromQuaternion(rot);
+
+  obj.data.pos = [pos.x, pos.y, pos.z];
+  obj.data.rot = [euler.x, euler.y, euler.z];
+  obj.data.size = [scale.x, scale.y, scale.z];
+
+  if (selectedIndices[0] === index) refreshInspector();
 }
 
 function deleteSelected() {
-  if (selectedIndex < 0) return;
+  if (selectedIndices.length === 0) return;
   saveHistoryState();
-  const obj = objects[selectedIndex];
-  scene.remove(obj.mesh);
-  objects.splice(selectedIndex, 1);
 
-  // Re-index
+  selectedIndices.forEach(i => {
+    if (objects[i] && objects[i].mesh) scene.attach(objects[i].mesh);
+  });
+  transformControls.detach();
+
+  selectedIndices.sort((a,b) => b - a);
+  selectedIndices.forEach(i => {
+    const obj = objects[i];
+    scene.remove(obj.mesh);
+    if(obj.mesh.geometry) obj.mesh.geometry.dispose();
+    objects.splice(i, 1);
+  });
+
   objects.forEach((o, i) => o.mesh.userData.index = i);
 
-  selectObject(-1);
+  selectedIndices = [];
   refreshOutliner();
-  updateStatus("Object Deleted");
+  refreshInspector();
+  updateStatus("Objects Deleted");
 }
 
 function duplicateSelected() {
-  if (selectedIndex < 0) return;
+  if (selectedIndices.length === 0) return;
   saveHistoryState();
-  const original = objects[selectedIndex];
-  const newData = JSON.parse(JSON.stringify(original.data));
-  newData.pos[0] += 1;
-  newData.pos[2] += 1;
-  addObject(original.type, newData);
+
+  const toAdd = [];
+  selectedIndices.forEach(i => {
+    const original = objects[i];
+    const newData = JSON.parse(JSON.stringify(original.data));
+    newData.pos[0] += 1;
+    newData.pos[2] += 1;
+    toAdd.push({type: original.type, data: newData});
+  });
+
+  selectedIndices = [];
+  toAdd.forEach(item => {
+    addObject(item.type, item.data);
+    selectedIndices.push(objects.length - 1);
+  });
+  selectObject(-1);
+  selectedIndices = toAdd.map((_, idx) => objects.length - toAdd.length + idx);
+  selectedIndices.forEach(idx => selectObject(idx, true));
 }
 
 function copySelected() {
-  if (selectedIndex < 0) return;
-  const original = objects[selectedIndex];
-  copiedObject = {
-    type: original.type,
-    data: JSON.parse(JSON.stringify(original.data))
-  };
-  updateStatus(`Copied ${original.type}`);
+  if (selectedIndices.length === 0) return;
+  copiedObject = selectedIndices.map(i => ({
+    type: objects[i].type,
+    data: JSON.parse(JSON.stringify(objects[i].data))
+  }));
+  updateStatus(`Copied ${selectedIndices.length} objects`);
 }
 
 function pasteCopiedObject() {
-  if (!copiedObject) return;
+  if (!copiedObject || copiedObject.length === 0) return;
   saveHistoryState();
-  const newData = JSON.parse(JSON.stringify(copiedObject.data));
-  if (Array.isArray(newData.pos) && newData.pos.length === 3) {
-    newData.pos[0] += 1;
-    newData.pos[2] += 1;
-  }
-  addObject(copiedObject.type, newData);
-  updateStatus(`Pasted ${copiedObject.type}`);
+
+  const toSelect = [];
+  copiedObject.forEach(item => {
+    const newData = JSON.parse(JSON.stringify(item.data));
+    if (Array.isArray(newData.pos) && newData.pos.length === 3) {
+      newData.pos[0] += 1;
+      newData.pos[2] += 1;
+    }
+    addObject(item.type, newData);
+    toSelect.push(objects.length - 1);
+  });
+
+  selectObject(-1);
+  toSelect.forEach(idx => selectObject(idx, true));
+  updateStatus(`Pasted ${copiedObject.length} objects`);
 }
 
 // UI Refresh
@@ -413,9 +513,9 @@ function refreshOutliner() {
   outlinerEl.innerHTML = '';
   objects.forEach((obj, i) => {
     const div = document.createElement('div');
-    div.className = `outliner-item ${i === selectedIndex ? 'selected' : ''}`;
+    div.className = `outliner-item ${selectedIndices.includes(i) ? 'selected' : ''}`;
     div.innerHTML = `<span>${getIcon(obj.type)}</span> ${obj.type} #${i+1}`;
-    div.onclick = () => selectObject(i);
+    div.onclick = (e) => selectObject(i, e.shiftKey || e.ctrlKey || e.metaKey);
     outlinerEl.appendChild(div);
   });
 }
@@ -429,11 +529,12 @@ function getIcon(type) {
 }
 
 function refreshInspector() {
-  if (selectedIndex < 0) {
+  if (selectedIndices.length === 0) {
     inspectorEl.innerHTML = '<div class="empty-msg">Select an object to view properties</div>';
     return;
   }
-  const obj = objects[selectedIndex];
+  const obj = objects[selectedIndices[0]];
+  const multiText = selectedIndices.length > 1 ? `<div class="hint">(${selectedIndices.length} items selected. Edits apply to all.)</div>` : '';
   const d = obj.data;
 
   let html = `
@@ -482,7 +583,7 @@ function refreshInspector() {
     `;
   }
 
-  inspectorEl.innerHTML = html;
+  inspectorEl.innerHTML = multiText + html;
 
   // Re-attach event listeners for inputs
   inspectorEl.querySelectorAll('input, select').forEach(el => {
@@ -517,20 +618,21 @@ function renderPropRow(label, type, value, callback, options = []) {
 }
 
 function updateSelectedProp(key, index, value) {
-  if (selectedIndex < 0) return;
-  const obj = objects[selectedIndex];
-  if (index !== null) {
-    obj.data[key][index] = value;
-  } else {
-    obj.data[key] = value;
-  }
+  if (selectedIndices.length === 0) return;
+  selectedIndices.forEach(i => {
+    const obj = objects[i];
+    if (index !== null) {
+      obj.data[key][index] = value;
+    } else {
+      obj.data[key] = value;
+    }
 
-  // Apply to mesh
-  const mesh = obj.mesh;
-  if (key === 'pos') mesh.position.set(...obj.data.pos);
-  if (key === 'rot') mesh.rotation.set(...obj.data.rot);
-  if (key === 'size') mesh.scale.set(...obj.data.size);
-  if (key === 'material') applyObjectVisual(obj);
+    const mesh = obj.mesh;
+    if (key === 'pos') mesh.position.set(...obj.data.pos);
+    if (key === 'rot') mesh.rotation.set(...obj.data.rot);
+    if (key === 'size') mesh.scale.set(...obj.data.size);
+    if (key === 'material') applyObjectVisual(obj);
+  });
 
   updateStatus(`Updated ${key}`);
 }
@@ -592,6 +694,138 @@ function updateStatus(msg) {
 }
 
 // Event Listeners
+
+let isTesting = false;
+let testControls;
+let testVelocity = new THREE.Vector3();
+let testDirection = new THREE.Vector3();
+let testMoveForward = false;
+let testMoveBackward = false;
+let testMoveLeft = false;
+let testMoveRight = false;
+let testCanJump = false;
+let testPrevTime = performance.now();
+let testGameLoopId = null;
+
+function initTestControls() {
+  testControls = new PointerLockControls(camera, document.body);
+  scene.add(testControls.getObject());
+
+  testControls.addEventListener('lock', () => {
+    isTesting = true;
+    testMapOverlay.style.display = 'flex';
+    document.querySelector('.top-nav').style.display = 'none';
+    document.querySelector('.bottom-bar').style.display = 'none';
+    document.querySelector('.left-sidebar').style.display = 'none';
+    document.querySelector('.right-sidebar').style.display = 'none';
+    document.querySelector('.viewport-toolbar').style.display = 'none';
+
+    // Force resize to ensure canvas takes full screen
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+
+    const spawns = objects.filter(o => o.type === 'spawn');
+    if (spawns.length > 0) {
+      const sp = spawns[0].mesh.position;
+      testControls.getObject().position.set(sp.x, sp.y + 1, sp.z);
+    } else {
+      testControls.getObject().position.y = 2;
+    }
+
+    transformControls.detach();
+    testPrevTime = performance.now();
+    testLoop();
+  });
+
+  testControls.addEventListener('unlock', () => {
+    isTesting = false;
+    testMapOverlay.style.display = 'none';
+    document.querySelector('.top-nav').style.display = 'flex';
+    document.querySelector('.bottom-bar').style.display = 'flex';
+    document.querySelector('.left-sidebar').style.display = 'flex';
+    document.querySelector('.right-sidebar').style.display = 'flex';
+    document.querySelector('.viewport-toolbar').style.display = 'flex';
+
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+    cancelAnimationFrame(testGameLoopId);
+
+    camera.position.set(10, 10, 10);
+    camera.lookAt(0,0,0);
+    yaw = -Math.PI/4;
+    pitch = -Math.PI/4;
+  });
+}
+
+function testLoop() {
+  if (!isTesting) return;
+  testGameLoopId = requestAnimationFrame(testLoop);
+
+  const time = performance.now();
+  const delta = (time - testPrevTime) / 1000;
+
+  testVelocity.x -= testVelocity.x * 10.0 * delta;
+  testVelocity.z -= testVelocity.z * 10.0 * delta;
+  testVelocity.y -= 40.0 * delta;
+
+  testDirection.z = Number(testMoveForward) - Number(testMoveBackward);
+  testDirection.x = Number(testMoveRight) - Number(testMoveLeft);
+  testDirection.normalize();
+
+  if (testMoveForward || testMoveBackward) testVelocity.z -= testDirection.z * 40.0 * delta;
+  if (testMoveLeft || testMoveRight) testVelocity.x -= testDirection.x * 40.0 * delta;
+
+  testControls.moveRight(-testVelocity.x * delta);
+  testControls.moveForward(-testVelocity.z * delta);
+  testControls.getObject().position.y += (testVelocity.y * delta);
+
+  let highestFloor = 0;
+  const px = testControls.getObject().position.x;
+  const pz = testControls.getObject().position.z;
+
+  objects.forEach(obj => {
+    if (obj.type === 'box') {
+      const box = new THREE.Box3().setFromObject(obj.mesh);
+      if (px > box.min.x - 0.5 && px < box.max.x + 0.5 && pz > box.min.z - 0.5 && pz < box.max.z + 0.5) {
+        if (box.max.y > highestFloor && testControls.getObject().position.y - 1.5 >= box.max.y - 0.5) {
+          highestFloor = box.max.y;
+        }
+      }
+    }
+  });
+
+  if (testControls.getObject().position.y < highestFloor + 1.5) {
+    testVelocity.y = 0;
+    testControls.getObject().position.y = highestFloor + 1.5;
+    testCanJump = true;
+  }
+
+  renderer.render(scene, camera);
+  testPrevTime = time;
+}
+
+function addPrefab(parts) {
+  saveHistoryState();
+  const toSelect = [];
+
+  let baseX = 0; let baseY = 0; let baseZ = 0;
+  if (selectedIndices.length > 0) {
+    const p = objects[selectedIndices[0]].mesh.position;
+    baseX = p.x; baseY = p.y; baseZ = p.z;
+  }
+
+  parts.forEach(p => {
+    addObject('box', {
+      pos: [p.pos[0] + baseX, p.pos[1] + baseY, p.pos[2] + baseZ],
+      size: p.size,
+      material: p.material || 'default'
+    });
+    toSelect.push(objects.length - 1);
+  });
+
+  selectObject(-1);
+  toSelect.forEach(idx => selectObject(idx, true));
+  updateStatus("Added Prefab");
+}
+
 function initEventListeners() {
   addBoxBtn.onclick = () => addObject('box');
   addSpawnBtn.onclick = () => addObject('spawn');
@@ -610,9 +844,29 @@ function initEventListeners() {
     btnSnap.textContent = `Snap: ${snapEnabled ? 'ON' : 'OFF'}`;
   };
 
+  snapStepEl.onchange = () => {
+    gridStep = parseFloat(snapStepEl.value);
+    if (snapEnabled) {
+      transformControls.setTranslationSnap(gridStep);
+    }
+  };
+
+  btnTestMap.onclick = () => {
+    if (!testControls) initTestControls();
+    testControls.lock();
+  };
+
+  addWallBtn.onclick = () => addPrefab([ { pos: [0, 2, 0], size: [4, 4, 1] } ]);
+  addFloorBtn.onclick = () => addPrefab([ { pos: [0, 0, 0], size: [4, 1, 4] } ]);
+  addDoorwayBtn.onclick = () => addPrefab([ { pos: [-1.5, 2, 0], size: [1, 4, 1] }, { pos: [1.5, 2, 0], size: [1, 4, 1] }, { pos: [0, 4.5, 0], size: [4, 1, 1] } ]);
+  addWindowBtn.onclick = () => addPrefab([ { pos: [-1.5, 2, 0], size: [1, 4, 1] }, { pos: [1.5, 2, 0], size: [1, 4, 1] }, { pos: [0, 0.5, 0], size: [2, 1, 1] }, { pos: [0, 4.5, 0], size: [4, 1, 1] } ]);
+  addStairsBtn.onclick = () => addPrefab([ { pos: [0, 0.5, 0], size: [4, 1, 1] }, { pos: [0, 1.5, -1], size: [4, 1, 1] }, { pos: [0, 2.5, -2], size: [4, 1, 1] }, { pos: [0, 3.5, -3], size: [4, 1, 1] } ]);
+  addRoomBtn.onclick = () => addPrefab([ { pos: [0, 0, 0], size: [10, 1, 10] }, { pos: [0, 5, 0], size: [10, 1, 10] }, { pos: [0, 2.5, -4.5], size: [10, 4, 1] }, { pos: [0, 2.5, 4.5], size: [10, 4, 1] }, { pos: [-4.5, 2.5, 0], size: [1, 4, 8] }, { pos: [4.5, 2.5, 0], size: [1, 4, 8] } ]);
+
+
   btnFocus.onclick = () => {
-    if (selectedIndex >= 0) {
-      const pos = objects[selectedIndex].mesh.position;
+    if (selectedIndices.length > 0) {
+      const pos = objects[selectedIndices[0]].mesh.position;
       camera.position.set(pos.x + 5, pos.y + 5, pos.z + 5);
       camera.lookAt(pos);
     }
@@ -631,8 +885,27 @@ function initEventListeners() {
     }
   };
 
+
   window.addEventListener('keydown', e => {
+    if (isTesting) {
+      switch (e.code) {
+        case 'ArrowUp':
+        case 'KeyW': testMoveForward = true; break;
+        case 'ArrowLeft':
+        case 'KeyA': testMoveLeft = true; break;
+        case 'ArrowDown':
+        case 'KeyS': testMoveBackward = true; break;
+        case 'ArrowRight':
+        case 'KeyD': testMoveRight = true; break;
+        case 'Space':
+          if (testCanJump === true) testVelocity.y += 15.0;
+          testCanJump = false;
+          break;
+      }
+      return;
+    }
     if (document.activeElement.tagName === 'INPUT') return;
+
     if (e.key.toLowerCase() === 'w') toolMove.click();
     if (e.key.toLowerCase() === 'e') toolRotate.click();
     if (e.key.toLowerCase() === 'r') toolScale.click();
@@ -667,23 +940,109 @@ function updateToolBtns(mode) {
   if (mode === 'scale') toolScale.classList.add('active');
 }
 
-// Raycasting for selection
-canvas.addEventListener('click', (e) => {
-  if (transformControls.dragging) return;
+// Raycasting and Box Selection
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button !== 0 || transformControls.dragging) return;
+  if (document.pointerLockElement === canvas) return;
+
   const rect = canvas.getBoundingClientRect();
   const mouse = new THREE.Vector2(
     ((e.clientX - rect.left) / rect.width) * 2 - 1,
     -((e.clientY - rect.top) / rect.height) * 2 + 1
   );
+
   const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
+
   if (intersects.length > 0) {
-    selectObject(intersects[0].object.userData.index);
+    isBoxSelecting = false;
+    selectObject(intersects[0].object.userData.index, e.shiftKey || e.ctrlKey || e.metaKey);
+  } else {
+    isBoxSelecting = true;
+    boxSelectStart.set(e.clientX, e.clientY);
+    boxSelectEnd.copy(boxSelectStart);
+    selectionBoxEl.style.display = 'block';
+    selectionBoxEl.style.left = e.clientX + 'px';
+    selectionBoxEl.style.top = e.clientY + 'px';
+    selectionBoxEl.style.width = '0px';
+    selectionBoxEl.style.height = '0px';
   }
 });
+
+document.addEventListener('mousemove', (e) => {
+  if (!isBoxSelecting) return;
+  boxSelectEnd.set(e.clientX, e.clientY);
+
+  const minX = Math.min(boxSelectStart.x, boxSelectEnd.x);
+  const maxX = Math.max(boxSelectStart.x, boxSelectEnd.x);
+  const minY = Math.min(boxSelectStart.y, boxSelectEnd.y);
+  const maxY = Math.max(boxSelectStart.y, boxSelectEnd.y);
+
+  selectionBoxEl.style.left = minX + 'px';
+  selectionBoxEl.style.top = minY + 'px';
+  selectionBoxEl.style.width = (maxX - minX) + 'px';
+  selectionBoxEl.style.height = (maxY - minY) + 'px';
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (!isBoxSelecting) return;
+  isBoxSelecting = false;
+  selectionBoxEl.style.display = 'none';
+
+  if (boxSelectStart.distanceTo(boxSelectEnd) < 5) {
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) selectObject(-1);
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const minX = Math.min(boxSelectStart.x, boxSelectEnd.x) - rect.left;
+  const maxX = Math.max(boxSelectStart.x, boxSelectEnd.x) - rect.left;
+  const minY = Math.min(boxSelectStart.y, boxSelectEnd.y) - rect.top;
+  const maxY = Math.max(boxSelectStart.y, boxSelectEnd.y) - rect.top;
+
+  const toSelect = [];
+  objects.forEach((obj, i) => {
+    const pos = new THREE.Vector3();
+    obj.mesh.getWorldPosition(pos);
+    pos.project(camera);
+
+    if (pos.z > 1) return;
+
+    const px = (pos.x * 0.5 + 0.5) * rect.width;
+    const py = (-(pos.y * 0.5) + 0.5) * rect.height;
+
+    if (px >= minX && px <= maxX && py >= minY && py <= maxY) {
+      toSelect.push(i);
+    }
+  });
+
+  if (!e.shiftKey && !e.ctrlKey && !e.metaKey) selectObject(-1);
+  toSelect.forEach(idx => selectObject(idx, true));
+});
+
+
+
+  window.addEventListener('keyup', e => {
+    if (isTesting) {
+      switch (e.code) {
+        case 'ArrowUp':
+        case 'KeyW': testMoveForward = false; break;
+        case 'ArrowLeft':
+        case 'KeyA': testMoveLeft = false; break;
+        case 'ArrowDown':
+        case 'KeyS': testMoveBackward = false; break;
+        case 'ArrowRight':
+        case 'KeyD': testMoveRight = false; break;
+      }
+    }
+  });
 
 init();
 saveHistoryState();
 </script>
+<div id="testMapOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; justify-content:center; align-items:center;">
+    <div style="color:white; font-size:24px; font-weight:bold; text-shadow:2px 2px 0 #000; background:rgba(0,0,0,0.5); padding:10px 20px; border-radius:8px;">TEST MODE - Press ESC to Exit</div>
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:white; font-size:20px;">+</div>
+  </div>
 </body></html>
