@@ -570,7 +570,7 @@
           </div>
           <div class="badge-grid" id="badgeGrid"></div>
         </div>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
         >
@@ -587,7 +587,7 @@
         <div id="bdRarity">COMMON</div>
         <p id="bdDesc">This achievement is locked.</p>
         <div id="bdReward">REWARD: $???</div>
-        <button
+        <button class="term-btn" onclick="document.getElementById('modalBadgeDetail').classList.remove('active')">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
           onclick="
@@ -749,7 +749,7 @@
         <div class="inventory-grid" id="inventoryList">
           <div class="inventory-empty">BAG IS EMPTY.</div>
         </div>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
         >
@@ -766,7 +766,7 @@
           BALANCE: $<span id="shopBank">0</span>
         </div>
         <div class="shop-list" id="shopList"></div>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
         >
@@ -1130,47 +1130,47 @@
           CONFIG
         </h2>
         <div class="config-row">
-          <span>THEME</span
+          <span>THEME</span>
           ><input type="color" id="themeColor" value="#ffffff" />
         </div>
         <div class="config-row">
-          <span>MATRIX</span
+          <span>MATRIX</span>
           ><button class="menu-btn" id="matrixToggle">OFF</button>
         </div>
         <div class="config-row">
-          <span>SCANLINES</span
+          <span>SCANLINES</span>
           ><input type="range" id="scanSlider" min="0" max="100" value="50" />
         </div>
         <div class="config-row">
-          <span>FLICKER</span
+          <span>FLICKER</span>
           ><button class="menu-btn" id="flickerToggle">ON</button>
         </div>
         <div class="config-row">
-          <span>VOLUME</span
+          <span>VOLUME</span>
           ><input type="range" id="volSlider" min="0" max="100" value="50" />
         </div>
         <div class="config-row">
-          <span>FULLSCREEN</span
+          <span>FULLSCREEN</span>
           ><button class="menu-btn" id="fsToggle">TOGGLE</button>
         </div>
         <div class="config-row">
-          <span>UI SCALE</span
+          <span>UI SCALE</span>
           ><input type="range" id="uiScaleSlider" min="85" max="110" step="1" value="100" />
         </div>
         <div class="config-row">
-          <span>TEXT SIZE</span
+          <span>TEXT SIZE</span>
           ><input type="range" id="uiTextSlider" min="9" max="13" step="1" value="11" />
         </div>
         <div class="config-row">
-          <span>HIGH CONTRAST</span
+          <span>HIGH CONTRAST</span>
           ><button class="menu-btn" id="contrastToggle">OFF</button>
         </div>
         <div class="config-row">
-          <span>REDUCED MOTION</span
+          <span>REDUCED MOTION</span>
           ><button class="menu-btn" id="motionToggle">OFF</button>
         </div>
         <div class="config-row">
-          <span>STATUS VISIBILITY</span
+          <span>STATUS VISIBILITY</span>
           ><button class="menu-btn" id="statusVisibilityToggle">VISIBLE</button>
         <div class="config-row"><span>DESKTOP TEXT</span><button class="menu-btn" id="bgTextToggle">ON</button></div>
         </div>
@@ -1181,7 +1181,7 @@
         >
           LOGOUT
         </button>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
         >
@@ -1261,7 +1261,7 @@
     <div class="overlay" id="overlayType">
       <h1>TYPE RUNNER</h1>
       <div class="type-stats">
-        <span>TIME: <span id="typeTimer">0</span>s</span
+        <span>TIME: <span id="typeTimer">0</span>s</span>
         ><span>WPM: <span id="typeWPM">0</span></span>
       </div>
       <div
@@ -1918,8 +1918,8 @@
           <div class="bj-score" id="bjPlayerScore"></div>
         </div>
         <div class="bj-controls" id="bjGameBtns" style="display: none">
-          <button class="term-btn" id="bjHit">HIT</button
-          ><button class="term-btn" id="bjDouble" style="border-left: 1px solid var(--accent); border-right: 1px solid var(--accent);">DOUBLE</button
+          <button class="term-btn" id="bjHit">HIT</button>
+          ><button class="term-btn" id="bjDouble" style="border-left: 1px solid var(--accent); border-right: 1px solid var(--accent);">DOUBLE</button>
           ><button class="term-btn" id="bjStand">STAND</button>
         </div>
         <div style="text-align: center; margin: 8px 0 4px">
