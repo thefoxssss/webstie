@@ -152,8 +152,10 @@ const shieldActiveUntil = Object.create(null);
 const shieldDeactivateTimerIds = Object.create(null);
 const shieldReadyTimerIds = Object.create(null);
 let keysPressed = {};
-let chatCount = 0;
-let isChatInitialized = false;
+
+
+
+
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
@@ -257,7 +259,6 @@ let activeSeasonSubTab = "solo";
 let cachedSeasonBoards = { solo: [], gang: [] };
 let hideStatus = false;
 let stopChatPresenceSync = null;
-let chatPresenceByUser = {};
 
 function getUserStatusState(lastLogin, isHidden = false) {
   if (isHidden) return "hidden";
@@ -789,6 +790,8 @@ function updateAdminMenu() {
   const adminName = document.getElementById("adminName");
   const hasAccess = isGodUser();
   if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
+  const tbAdmin = document.getElementById("tabAdminMenu");
+  if (tbAdmin) tbAdmin.style.display = hasAccess ? "block" : "none";
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
   if (isChatInitialized && document.getElementById("chatHistory")) renderChatTab();
 }
@@ -3833,6 +3836,8 @@ function loadProfile(data) {
 export function updateUI() {
   setText("displayUser", myName);
   setText("taskbarUsername", myName);
+  const tbBadge = document.getElementById("taskbarRankBadge");
+  if (tbBadge) { tbBadge.innerText = rankData.badge; tbBadge.className = "rank-badge " + rankData.className; }
   const bankEl = document.getElementById("globalBank");
   const taskbarBankEl = document.getElementById("taskbarBank");
   const bankOverlayEl = document.getElementById("bankDisplay");

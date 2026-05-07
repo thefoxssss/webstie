@@ -58,6 +58,9 @@ export class AppWindow {
 
     const content = document.createElement("div");
     content.className = "window-content";
+    if (this.id.startsWith("overlay") && !["overlayBank", "overlayShop", "overlayInventory", "overlayProfile", "overlaySeason", "overlayCrew", "overlayAdmin", "overlayConfig", "overlayGamebox", "overlayTrending", "overlayRecentGames", "overlayUpdates"].includes(this.id)) {
+        content.classList.add("game-container-16-9");
+    }
 
     // Move content from original overlay to window
     if (this.contentElement) {
@@ -203,6 +206,47 @@ export class AppWindow {
     }
   }
 
+  showContextMenu(e) {
+    e.preventDefault();
+    let existing = document.querySelector(".context-menu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.className = "context-menu";
+    menu.style.left = e.clientX + "px";
+    menu.style.top = (e.clientY - 60) + "px";
+    menu.style.display = "flex";
+
+    const favoriteBtn = document.createElement("button");
+    favoriteBtn.textContent = this.isFavorited ? "Unfavorite" : "Favorite";
+    favoriteBtn.onclick = () => {
+      this.toggleFavorite();
+      menu.remove();
+    };
+
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "Close";
+    closeBtn.onclick = () => {
+      this.close();
+      menu.remove();
+    };
+
+    menu.appendChild(favoriteBtn);
+    menu.appendChild(closeBtn);
+    document.body.appendChild(menu);
+
+    const removeMenu = () => {
+      menu.remove();
+      document.removeEventListener("click", removeMenu);
+    };
+    setTimeout(() => document.addEventListener("click", removeMenu), 10);
+  }
+
+  toggleFavorite() {
+    this.isFavorited = !this.isFavorited;
+    this.elements.tab.classList.toggle("favorited", this.isFavorited);
+  }
+
   toggleMaximize() {
     this.isMaximized = !this.isMaximized;
     this.elements.window.classList.toggle("maximized", this.isMaximized);
@@ -222,7 +266,12 @@ export class AppWindow {
     }
 
     this.elements.window.remove();
-    this.elements.tab.remove();
+    if (!this.isFavorited) {
+        this.elements.tab.remove();
+    } else {
+        this.elements.tab.classList.remove("active");
+        this.isMinimized = true;
+    }
 
     // Notify WMS manager
     if (window.WMS) {

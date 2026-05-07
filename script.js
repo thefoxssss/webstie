@@ -1542,3 +1542,23 @@ document.getElementById("goExit").onclick = () => {
   closeOverlays();
   hideGameOverModal();
 };
+
+const userMenuBtn = document.getElementById('userMenuBtn');
+const userMenuDropdown = document.getElementById('userMenuDropdown');
+if (userMenuBtn && userMenuDropdown) {
+    userMenuBtn.onclick = (e) => {
+        e.stopPropagation();
+        userMenuDropdown.classList.toggle('active');
+    };
+    document.addEventListener('click', () => {
+        userMenuDropdown.classList.remove('active');
+    });
+}
+
+const taskbarSignout = document.getElementById('taskbarSignout');
+if (taskbarSignout) {
+    taskbarSignout.onclick = () => {
+        localStorage.clear();
+        location.reload();
+    };
+}

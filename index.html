@@ -2743,9 +2743,7 @@
     <!-- Taskbar -->
     <div id="taskbar" class="taskbar">
         <div class="taskbar-left">
-            <button id="signoutBtn" class="taskbar-item signout-btn">
-                <span id="taskbarUsername">ANON</span> [SIGNOUT]
-            </button>
+            <div class="user-menu-container"><button id="userMenuBtn" class="taskbar-item user-btn"><span id="taskbarRankBadge" class="rank-badge rank-iron">⬢</span> <span id="taskbarUsername">ANON</span></button><div id="userMenuDropdown" class="user-menu-dropdown"><button onclick="window.openGame('overlayBank')">BANK</button><button onclick="window.openGame('overlayShop')">SHOP</button><button onclick="window.openGame('overlayInventory')">INVENTORY</button><button onclick="window.openGame('overlayProfile')">PROFILE</button><button onclick="window.openGame('overlaySeason')">SEASON</button><button onclick="window.openGame('overlayCrew')">CREW</button><button onclick="window.openGame('globalChat')">CHAT</button><button id="tabAdminMenu" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button><button id="taskbarSignout">SIGNOUT</button></div></div>
             <div class="taskbar-search">
                 <input type="text" id="taskbarSearchInput" placeholder="Search..." autocomplete="off">
             </div>
