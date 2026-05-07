@@ -1436,11 +1436,9 @@ setTimeout(() => {
 }, 1000);
 
 // Taskbar Actions
-document.getElementById("taskbarConfigBtn").onclick = () => window.toggleConfigOverlay();
-document.getElementById("signoutBtn").onclick = () => {
-    localStorage.clear();
-    location.reload();
-};
+if (document.getElementById("taskbarConfigBtn")) {
+    document.getElementById("taskbarConfigBtn").onclick = () => window.toggleConfigOverlay();
+}
 
 const taskbarSearchInput = document.getElementById("taskbarSearchInput");
 if (taskbarSearchInput) {

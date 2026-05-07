@@ -3841,6 +3841,7 @@ function loadProfile(data) {
 export function updateUI() {
   setText("displayUser", myName);
   setText("taskbarUsername", myName);
+  const rankData = getRankData(myMoney);
   const tbBadge = document.getElementById("taskbarRankBadge");
   if (tbBadge) { tbBadge.innerText = rankData.badge; tbBadge.className = "rank-badge " + rankData.className; }
   const bankEl = document.getElementById("globalBank");
@@ -3884,7 +3885,6 @@ export function updateUI() {
   renderSeasonPanel();
   renderLiveOps();
   const rank = getRank(myMoney);
-  const rankData = getRankData(myMoney);
   setText("displayRank", "[" + rank + "]");
   setText("displayRankBadge", rankData.badge);
   setText("profRank", rank);
@@ -6053,6 +6053,15 @@ document.getElementById("motionToggle").onclick = () => {
   writeUiConfig({ reducedMotion: enabled });
 };
 
+
+document.getElementById("bgTextToggle").onclick = (e) => {
+    const bgText = document.getElementById("desktop-bg-text");
+    if (!bgText) return;
+    const isVisible = bgText.style.display !== "none";
+    bgText.style.display = isVisible ? "none" : "block";
+    e.target.innerText = isVisible ? "OFF" : "ON";
+    writeUiConfig({ bgTextEnabled: !isVisible });
+};
 document.getElementById("statusVisibilityToggle").onclick = async () => {
   applyStatusVisibilityToggle(!hideStatus);
   writeUiConfig({ hideStatus });
@@ -6073,6 +6082,12 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
   applyStatusVisibilityToggle(Boolean(config.hideStatus));
+  const bgTextEnabled = config.bgTextEnabled !== false;
+  const bgText = document.getElementById("desktop-bg-text");
+  if (bgText) bgText.style.display = bgTextEnabled ? "block" : "none";
+  const bgTextToggle = document.getElementById("bgTextToggle");
+  if (bgTextToggle) bgTextToggle.innerText = bgTextEnabled ? "ON" : "OFF";
+
   const uiScaleSlider = document.getElementById("uiScaleSlider");
   const uiTextSlider = document.getElementById("uiTextSlider");
   if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
