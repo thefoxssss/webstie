@@ -6236,6 +6236,7 @@ if (clockEl) {
       clockTimer = null;
     }
   });
+}
 
 let lastChatAt = 0;
 let lastChatMsg = "";
