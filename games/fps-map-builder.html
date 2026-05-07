@@ -1277,24 +1277,53 @@ const mcGridDisplay = document.getElementById('mcGridDisplay');
 let mcMode = 'wall'; // 'wall' | 'room'
 let drawnShapes = [];
 let mcIsDrawing = false;
-let mcStartPos = { x: 0, y: 0 };
-let mcCurrentPos = { x: 0, y: 0 };
-const MC_SCALE = 20; // 20px = 1m
+let mcIsPanning = false;
+let mcLastMouse = { x: 0, y: 0 };
+
+// Camera state: zoom is px per meter, camX/Y is center of view in world meters
+let mcZoom = 40;
+let mcCamX = 0;
+let mcCamY = 0;
 
 function mcSnap(val) {
-  const stepPixels = gridStep * MC_SCALE;
-  return Math.round(val / stepPixels) * stepPixels;
+  return Math.round(val / gridStep) * gridStep;
 }
 
-function mcToWorld(px) {
-  return (px - 1000) / MC_SCALE;
+function worldToCanvas(wx, wy) {
+  const cx = mcCanvas.width / 2 + (wx - mcCamX) * mcZoom;
+  const cy = mcCanvas.height / 2 + (wy - mcCamY) * mcZoom;
+  return { x: cx, y: cy };
 }
+
+function canvasToWorld(cx, cy) {
+  const wx = (cx - mcCanvas.width / 2) / mcZoom + mcCamX;
+  const wy = (cy - mcCanvas.height / 2) / mcZoom + mcCamY;
+  return { x: wx, y: wy };
+}
+
+let mcStartPos = { x: 0, y: 0 }; // World units
+let mcCurrentPos = { x: 0, y: 0 }; // World units
 
 btnMapCreator.onclick = () => {
   mcOverlay.style.display = 'flex';
   mcGridDisplay.textContent = gridStep;
+  mcCamX = 0; mcCamY = 0;
+  resizeMcCanvas();
   renderMcCanvas();
 };
+
+function resizeMcCanvas() {
+  const container = document.getElementById('mcCanvasContainer');
+  mcCanvas.width = container.clientWidth;
+  mcCanvas.height = container.clientHeight;
+}
+
+window.addEventListener('resize', () => {
+  if (mcOverlay.style.display === 'flex') {
+    resizeMcCanvas();
+    renderMcCanvas();
+  }
+});
 
 mcCloseBtn.onclick = () => mcOverlay.style.display = 'none';
 
@@ -1305,20 +1334,68 @@ mcClearBtn.onclick = () => { if(confirm("Clear all drawings?")) { drawnShapes = 
 
 mcCanvas.onmousedown = (e) => {
   const rect = mcCanvas.getBoundingClientRect();
-  mcIsDrawing = true;
-  mcStartPos = { x: mcSnap(e.clientX - rect.left), y: mcSnap(e.clientY - rect.top) };
-  mcCurrentPos = { ...mcStartPos };
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  if (e.button === 1 || (e.button === 0 && keys[' '])) {
+    mcIsPanning = true;
+    mcLastMouse = { x: e.clientX, y: e.clientY };
+    return;
+  }
+
+  if (e.button === 0) {
+    mcIsDrawing = true;
+    const world = canvasToWorld(mouseX, mouseY);
+    mcStartPos = { x: mcSnap(world.x), y: mcSnap(world.y) };
+    mcCurrentPos = { ...mcStartPos };
+  }
+};
+
+mcCanvas.onwheel = (e) => {
+  e.preventDefault();
+  const rect = mcCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const before = canvasToWorld(mouseX, mouseY);
+  mcZoom *= (e.deltaY > 0 ? 0.9 : 1.1);
+  mcZoom = Math.max(5, Math.min(mcZoom, 200));
+  const after = canvasToWorld(mouseX, mouseY);
+
+  mcCamX += (before.x - after.x);
+  mcCamY += (before.y - after.y);
+  renderMcCanvas();
 };
 
 window.addEventListener('mousemove', (e) => {
-  if (!mcIsDrawing || mcOverlay.style.display === 'none') return;
+  if (mcOverlay.style.display === 'none') return;
   const rect = mcCanvas.getBoundingClientRect();
-  mcCurrentPos = { x: mcSnap(e.clientX - rect.left), y: mcSnap(e.clientY - rect.top) };
-  renderMcCanvas();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  if (mcIsPanning) {
+    const dx = (e.clientX - mcLastMouse.x) / mcZoom;
+    const dy = (e.clientY - mcLastMouse.y) / mcZoom;
+    mcCamX -= dx;
+    mcCamY -= dy;
+    mcLastMouse = { x: e.clientX, y: e.clientY };
+    renderMcCanvas();
+    return;
+  }
+
+  const world = canvasToWorld(mouseX, mouseY);
+  document.getElementById('mcCoordsDisplay').textContent = `${world.x.toFixed(1)}m, ${world.y.toFixed(1)}m`;
+
+  if (mcIsDrawing) {
+    mcCurrentPos = { x: mcSnap(world.x), y: mcSnap(world.y) };
+    renderMcCanvas();
+  }
 });
 
 window.addEventListener('mouseup', (e) => {
-  if (!mcIsDrawing || mcOverlay.style.display === 'none') return;
+  if (mcOverlay.style.display === 'none') return;
+  if (mcIsPanning) { mcIsPanning = false; return; }
+  if (!mcIsDrawing) return;
   mcIsDrawing = false;
   if (mcStartPos.x === mcCurrentPos.x && mcStartPos.y === mcCurrentPos.y) return;
   drawnShapes.push({ type: mcMode, start: { ...mcStartPos }, end: { ...mcCurrentPos } });
@@ -1328,27 +1405,39 @@ window.addEventListener('mouseup', (e) => {
 function renderMcCanvas() {
   mcCtx.clearRect(0, 0, mcCanvas.width, mcCanvas.height);
 
+  // World Axes
+  const origin = worldToCanvas(0, 0);
+  mcCtx.strokeStyle = '#334155';
+  mcCtx.lineWidth = 1;
+  mcCtx.beginPath(); mcCtx.moveTo(0, origin.y); mcCtx.lineTo(mcCanvas.width, origin.y); mcCtx.stroke();
+  mcCtx.beginPath(); mcCtx.moveTo(origin.x, 0); mcCtx.lineTo(origin.x, mcCanvas.height); mcCtx.stroke();
+
   // Grid
   mcCtx.strokeStyle = '#1e293b';
-  mcCtx.lineWidth = 1;
-  const step = gridStep * MC_SCALE;
-  for(let x=0; x<mcCanvas.width; x+=step) { mcCtx.beginPath(); mcCtx.moveTo(x,0); mcCtx.lineTo(x,mcCanvas.height); mcCtx.stroke(); }
-  for(let y=0; y<mcCanvas.height; y+=step) { mcCtx.beginPath(); mcCtx.moveTo(0,y); mcCtx.lineTo(mcCanvas.width,y); mcCtx.stroke(); }
+  mcCtx.lineWidth = 0.5;
+  const startWorld = canvasToWorld(0, 0);
+  const endWorld = canvasToWorld(mcCanvas.width, mcCanvas.height);
+  const step = gridStep || 1;
 
-  // Center axes
-  mcCtx.strokeStyle = '#334155';
-  mcCtx.lineWidth = 2;
-  mcCtx.beginPath(); mcCtx.moveTo(1000, 0); mcCtx.lineTo(1000, 2000); mcCtx.stroke();
-  mcCtx.beginPath(); mcCtx.moveTo(0, 1000); mcCtx.lineTo(2000, 1000); mcCtx.stroke();
+  for(let x = Math.floor(startWorld.x / step) * step; x <= endWorld.x; x += step) {
+    const c = worldToCanvas(x, 0);
+    mcCtx.beginPath(); mcCtx.moveTo(c.x, 0); mcCtx.lineTo(c.x, mcCanvas.height); mcCtx.stroke();
+  }
+  for(let y = Math.floor(startWorld.y / step) * step; y <= endWorld.y; y += step) {
+    const c = worldToCanvas(0, y);
+    mcCtx.beginPath(); mcCtx.moveTo(0, c.y); mcCtx.lineTo(mcCanvas.width, c.y); mcCtx.stroke();
+  }
 
   // Drawn shapes
   mcCtx.lineWidth = 3;
   drawnShapes.forEach(s => {
     mcCtx.strokeStyle = s.type === 'wall' ? '#3b82f6' : '#22c55e';
+    const cStart = worldToCanvas(s.start.x, s.start.y);
+    const cEnd = worldToCanvas(s.end.x, s.end.y);
     if (s.type === 'wall') {
-      mcCtx.beginPath(); mcCtx.moveTo(s.start.x, s.start.y); mcCtx.lineTo(s.end.x, s.end.y); mcCtx.stroke();
+      mcCtx.beginPath(); mcCtx.moveTo(cStart.x, cStart.y); mcCtx.lineTo(cEnd.x, cEnd.y); mcCtx.stroke();
     } else {
-      mcCtx.strokeRect(s.start.x, s.start.y, s.end.x - s.start.x, s.end.y - s.start.y);
+      mcCtx.strokeRect(cStart.x, cStart.y, cEnd.x - cStart.x, cEnd.y - cStart.y);
     }
   });
 
@@ -1356,10 +1445,12 @@ function renderMcCanvas() {
   if (mcIsDrawing) {
     mcCtx.strokeStyle = '#f59e0b';
     mcCtx.setLineDash([5, 5]);
+    const cStart = worldToCanvas(mcStartPos.x, mcStartPos.y);
+    const cEnd = worldToCanvas(mcCurrentPos.x, mcCurrentPos.y);
     if (mcMode === 'wall') {
-      mcCtx.beginPath(); mcCtx.moveTo(mcStartPos.x, mcStartPos.y); mcCtx.lineTo(mcCurrentPos.x, mcCurrentPos.y); mcCtx.stroke();
+      mcCtx.beginPath(); mcCtx.moveTo(cStart.x, cStart.y); mcCtx.lineTo(cEnd.x, cEnd.y); mcCtx.stroke();
     } else {
-      mcCtx.strokeRect(mcStartPos.x, mcStartPos.y, mcCurrentPos.x - mcStartPos.x, mcCurrentPos.y - mcStartPos.y);
+      mcCtx.strokeRect(cStart.x, cStart.y, cEnd.x - cStart.x, cEnd.y - cStart.y);
     }
     mcCtx.setLineDash([]);
   }
@@ -1372,20 +1463,20 @@ mcGenerateBtn.onclick = () => {
 
   drawnShapes.forEach(s => {
     if (s.type === 'wall') {
-      const dx = mcToWorld(s.end.x) - mcToWorld(s.start.x);
-      const dz = mcToWorld(s.end.y) - mcToWorld(s.start.y);
+      const dx = s.end.x - s.start.x;
+      const dz = s.end.y - s.start.y;
       const length = Math.sqrt(dx*dx + dz*dz);
       const angle = -Math.atan2(dz, dx);
-      const px = (mcToWorld(s.start.x) + mcToWorld(s.end.x)) / 2;
-      const pz = (mcToWorld(s.start.y) + mcToWorld(s.end.y)) / 2;
+      const px = (s.start.x + s.end.x) / 2;
+      const pz = (s.start.y + s.end.y) / 2;
       addObject('box', {
         pos: [px, wallHeight/2, pz],
         size: [length, wallHeight, wallThickness],
         rot: [0, angle, 0]
       }, true);
     } else if (s.type === 'room') {
-      const x1 = mcToWorld(s.start.x); const z1 = mcToWorld(s.start.y);
-      const x2 = mcToWorld(s.end.x); const z2 = mcToWorld(s.end.y);
+      const x1 = s.start.x; const z1 = s.start.y;
+      const x2 = s.end.x; const z2 = s.end.y;
       const minX = Math.min(x1, x2); const maxX = Math.max(x1, x2);
       const minZ = Math.min(z1, z2); const maxZ = Math.max(z1, z2);
       const w = maxX - minX; const d = maxZ - minZ;
@@ -1426,11 +1517,12 @@ mcGenerateBtn.onclick = () => {
     <div style="flex:1"></div>
     <button id="mcCloseBtn">Close</button>
   </div>
-  <div id="mcCanvasContainer" style="flex:1; overflow:auto; background:#05080f; border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; position:relative;">
-    <canvas id="mcCanvas" width="2000" height="2000"></canvas>
+  <div id="mcCanvasContainer" style="flex:1; background:#05080f; border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; position:relative; overflow:hidden;">
+    <canvas id="mcCanvas"></canvas>
+    <div id="mcCoordsDisplay" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 8px; border-radius:4px; font-family:monospace; pointer-events:none;">0.0m, 0.0m</div>
   </div>
   <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">
-    Click and drag to draw. Snaps to grid step: <span id="mcGridDisplay">1.0</span>. Walls use default height 4.
+    Click and drag to draw. MMB/Space+LMB to pan. Scroll to zoom. Snaps to grid step: <span id="mcGridDisplay">1.0</span>. Walls use default height 4.
   </div>
 </div>
 
