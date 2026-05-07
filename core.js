@@ -23,6 +23,11 @@ import {
   getDocs,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { GAME_DIRECTORY_ENTRIES, LEADERBOARD_GAME_COLUMNS } from "./gameCatalog.js";
+let chatCount = 0;
+let isChatInitialized = false;
+let globallyMutedUsers = new Set();
+let chatPresenceByUser = {};
+
 
 // Firebase project configuration.
 const defaultFirebaseConfig = {
