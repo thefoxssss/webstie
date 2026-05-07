@@ -12,6 +12,7 @@
     <button id="btnSave">Save Draft</button>
     <button id="btnDownload" class="primary">Download JSON</button>
     <button id="btnTestMap" style="background:#22c55e; color:white;">Test Map</button>
+    <button id="btnMapCreator" style="background:#8b5cf6; color:white;">Map Creator</button>
   </div>
   <div style="flex:1"></div>
   <div class="actions">
@@ -111,6 +112,16 @@ let gridStep = 1;
 let copiedObject = null;
 let undoStack = [];
 const textureCache = {};
+let mapConfig = {
+  name: 'Custom Map',
+  background: '#0f172a',
+  fogColor: '#0f172a',
+  fogNear: 20,
+  fogFar: 150,
+  floorTexture: 'concrete',
+  floorColor: '#888888'
+};
+let floorMesh;
 
 const canvas = document.getElementById('view');
 const selectionBoxEl = document.getElementById('selectionBox');
@@ -175,6 +186,14 @@ function init() {
   const grid = new THREE.GridHelper(100, 100, 0x334155, 0x1e293b);
   scene.add(grid);
 
+  // Floor
+  const floorGeo = new THREE.PlaneGeometry(200, 200);
+  const floorMat = new THREE.MeshPhongMaterial({ color: 0x888888 });
+  floorMesh = new THREE.Mesh(floorGeo, floorMat);
+  floorMesh.rotation.x = -Math.PI / 2;
+  floorMesh.position.y = -0.01; // Slightly below grid
+  scene.add(floorMesh);
+
   scene.add(selectionGroup);
 
   // Controls
@@ -196,6 +215,7 @@ function init() {
   animate();
 
   refreshOutliner();
+  refreshInspector();
   updateStatus("Editor Ready");
 }
 
@@ -262,7 +282,9 @@ function serializeCurrentMap() {
     boxes: objects.filter(o => o.type === 'box').map(o => JSON.parse(JSON.stringify(o.data))),
     spawns: objects.filter(o => o.type === 'spawn').map(o => JSON.parse(JSON.stringify(o.data))),
     lights: objects.filter(o => o.type === 'light').map(o => JSON.parse(JSON.stringify(o.data))),
-    pickups: objects.filter(o => o.type === 'pickup').map(o => JSON.parse(JSON.stringify(o.data)))
+    pickups: objects.filter(o => o.type === 'pickup').map(o => JSON.parse(JSON.stringify(o.data))),
+    environment: { ...mapConfig },
+    name: mapConfig.name
   };
 }
 
@@ -356,7 +378,7 @@ function handleCameraMovement() {
 
 
 // Object Management
-function addObject(type, data = {}) {
+function addObject(type, data = {}, silent = false) {
   let mesh;
   const defaultData = { pos: [0, 0, 0], rot: [0, 0, 0], size: [1, 1, 1], material: 'default' };
   const finalData = { ...defaultData, ...data };
@@ -388,24 +410,43 @@ function addObject(type, data = {}) {
     finalData.pickupType = data.pickupType || 'health';
   }
 
+  finalData.id = data.id || Math.random().toString(36).substr(2, 9);
+  finalData.parentId = data.parentId || null;
+
   mesh.position.set(...finalData.pos);
   mesh.rotation.set(...finalData.rot);
   mesh.scale.set(...finalData.size);
   mesh.userData.index = objects.length;
 
   scene.add(mesh);
+  const parentObj = finalData.parentId ? objects.find(o => o.data.id === finalData.parentId) : null;
+  if (parentObj) {
+    parentObj.mesh.attach(mesh);
+  }
+
   const obj = { type, mesh, data: finalData };
   objects.push(obj);
   applyObjectVisual(obj);
 
-  selectObject(objects.length - 1, false);
-  refreshOutliner();
-  updateStatus(`Added ${type}`);
+  if (!silent) {
+    selectObject(objects.length - 1, false);
+    refreshOutliner();
+    updateStatus(`Added ${type}`);
+  }
+  return objects.length - 1;
 }
 
 function selectObject(index, additive = false) {
   selectedIndices.forEach(i => {
-    if (objects[i] && objects[i].mesh) scene.attach(objects[i].mesh);
+    const obj = objects[i];
+    if (obj && obj.mesh) {
+      const parentObj = obj.data.parentId ? objects.find(o => o.data.id === obj.data.parentId) : null;
+      if (parentObj) {
+        parentObj.mesh.attach(obj.mesh);
+      } else {
+        scene.attach(obj.mesh);
+      }
+    }
   });
   transformControls.detach();
 
@@ -460,16 +501,33 @@ function deleteSelected() {
   if (selectedIndices.length === 0) return;
   saveHistoryState();
 
+  // Detach all before deletion
   selectedIndices.forEach(i => {
     if (objects[i] && objects[i].mesh) scene.attach(objects[i].mesh);
   });
   transformControls.detach();
 
-  selectedIndices.sort((a,b) => b - a);
+  // Find all descendants of selected items
+  const indicesToDelete = new Set();
+  const findDescendants = (parentId) => {
+    objects.forEach((obj, idx) => {
+      if (obj.data.parentId === parentId) {
+        indicesToDelete.add(idx);
+        findDescendants(obj.data.id);
+      }
+    });
+  };
+
   selectedIndices.forEach(i => {
+    indicesToDelete.add(i);
+    findDescendants(objects[i].data.id);
+  });
+
+  const sortedIndices = Array.from(indicesToDelete).sort((a, b) => b - a);
+  sortedIndices.forEach(i => {
     const obj = objects[i];
-    scene.remove(obj.mesh);
-    if(obj.mesh.geometry) obj.mesh.geometry.dispose();
+    if (obj.mesh.parent) obj.mesh.parent.remove(obj.mesh);
+    if (obj.mesh.geometry) obj.mesh.geometry.dispose();
     objects.splice(i, 1);
   });
 
@@ -489,6 +547,7 @@ function duplicateSelected() {
   selectedIndices.forEach(i => {
     const original = objects[i];
     const newData = JSON.parse(JSON.stringify(original.data));
+    delete newData.id; // Force new ID
     newData.pos[0] += 1;
     newData.pos[2] += 1;
     toAdd.push({type: original.type, data: newData});
@@ -520,6 +579,7 @@ function pasteCopiedObject() {
   const toSelect = [];
   copiedObject.forEach(item => {
     const newData = JSON.parse(JSON.stringify(item.data));
+    delete newData.id; // Force new ID
     if (Array.isArray(newData.pos) && newData.pos.length === 3) {
       newData.pos[0] += 1;
       newData.pos[2] += 1;
@@ -536,13 +596,23 @@ function pasteCopiedObject() {
 // UI Refresh
 function refreshOutliner() {
   outlinerEl.innerHTML = '';
-  objects.forEach((obj, i) => {
+
+  const renderItem = (obj, depth = 0) => {
+    const i = objects.indexOf(obj);
     const div = document.createElement('div');
     div.className = `outliner-item ${selectedIndices.includes(i) ? 'selected' : ''}`;
+    div.style.paddingLeft = (16 + depth * 16) + 'px';
     div.innerHTML = `<span>${getIcon(obj.type)}</span> ${obj.type} #${i+1}`;
     div.onclick = (e) => selectObject(i, e.shiftKey || e.ctrlKey || e.metaKey);
     outlinerEl.appendChild(div);
-  });
+
+    // Render children
+    const children = objects.filter(o => o.data.parentId === obj.data.id);
+    children.forEach(child => renderItem(child, depth + 1));
+  };
+
+  const rootObjects = objects.filter(o => !o.data.parentId);
+  rootObjects.forEach(obj => renderItem(obj, 0));
 }
 
 function getIcon(type) {
@@ -555,7 +625,22 @@ function getIcon(type) {
 
 function refreshInspector() {
   if (selectedIndices.length === 0) {
-    inspectorEl.innerHTML = '<div class="empty-msg">Select an object to view properties</div>';
+    let html = `
+      <div class="property-group">
+        <h4>Map Settings</h4>
+        ${renderPropRow('Map Name', 'text', mapConfig.name, v => updateMapProp('name', v))}
+        ${renderPropRow('Background', 'color', mapConfig.background, v => updateMapProp('background', v))}
+        <div style="height:8px"></div>
+        ${renderPropRow('Fog Color', 'color', mapConfig.fogColor, v => updateMapProp('fogColor', v))}
+        ${renderPropRow('Fog Near', 'number', mapConfig.fogNear, v => updateMapProp('fogNear', v))}
+        ${renderPropRow('Fog Far', 'number', mapConfig.fogFar, v => updateMapProp('fogFar', v))}
+        <div style="height:8px"></div>
+        ${renderPropRow('Floor Texture', 'select', mapConfig.floorTexture, v => updateMapProp('floorTexture', v), ['default', 'brick', 'grass', 'asphalt', 'metal', 'concrete', 'wood'])}
+        ${renderPropRow('Floor Color', 'color', mapConfig.floorColor, v => updateMapProp('floorColor', v))}
+      </div>
+    `;
+    inspectorEl.innerHTML = html;
+    attachInspectorListeners();
     return;
   }
   const obj = objects[selectedIndices[0]];
@@ -572,6 +657,28 @@ function refreshInspector() {
       ${renderPropRow('Size X', 'number', d.size[0], v => updateSelectedProp('size', 0, v))}
       ${renderPropRow('Size Y', 'number', d.size[1], v => updateSelectedProp('size', 1, v))}
       ${renderPropRow('Size Z', 'number', d.size[2], v => updateSelectedProp('size', 2, v))}
+    </div>
+  `;
+
+  const isDescendant = (potentialParentId, targetId) => {
+    let curr = objects.find(o => o.data.id === potentialParentId);
+    while (curr && curr.data.parentId) {
+      if (curr.data.parentId === targetId) return true;
+      curr = objects.find(o => o.data.id === curr.data.parentId);
+    }
+    return false;
+  };
+
+  html += `
+    <div class="property-group">
+      <h4>Hierarchy</h4>
+      ${renderPropRow('Parent', 'select', d.parentId || '', v => updateParent(v), [
+        '',
+        ...objects.filter((o, idx) =>
+          !selectedIndices.includes(idx) &&
+          !isDescendant(o.data.id, d.id)
+        ).map(o => o.data.id)
+      ])}
     </div>
   `;
 
@@ -609,12 +716,14 @@ function refreshInspector() {
   }
 
   inspectorEl.innerHTML = multiText + html;
+  attachInspectorListeners();
+}
 
-  // Re-attach event listeners for inputs
+function attachInspectorListeners() {
   inspectorEl.querySelectorAll('input, select').forEach(el => {
     el.onchange = (e) => {
       const val = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
-      el._callback(val);
+      if (el._callback) el._callback(val);
     };
   });
 }
@@ -640,6 +749,58 @@ function renderPropRow(label, type, value, callback, options = []) {
       <div id="${id}_container">${input.replace('<input', `<input id="${id}"`).replace('<select', `<select id="${id}"`)}</div>
     </div>
   `;
+}
+
+function updateMapProp(key, value) {
+  mapConfig[key] = value;
+  applyMapConfigToScene();
+  updateStatus(`Updated Map ${key}`);
+}
+
+function applyMapConfigToScene() {
+  if (!scene) return;
+  scene.background = new THREE.Color(mapConfig.background);
+  if (scene.fog) {
+    scene.fog.color.set(mapConfig.fogColor);
+    scene.fog.near = mapConfig.fogNear;
+    scene.fog.far = mapConfig.fogFar;
+  } else {
+    scene.fog = new THREE.Fog(mapConfig.fogColor, mapConfig.fogNear, mapConfig.fogFar);
+  }
+
+  if (floorMesh) {
+    floorMesh.material.color.set(mapConfig.floorColor);
+    floorMesh.material.map = getEditorTexture(mapConfig.floorTexture);
+    floorMesh.material.needsUpdate = true;
+  }
+}
+
+function updateParent(parentId) {
+  if (selectedIndices.length === 0) return;
+  parentId = parentId || null;
+
+  saveHistoryState();
+  selectedIndices.forEach(i => {
+    const obj = objects[i];
+    const oldParentId = obj.data.parentId;
+    if (oldParentId === parentId) return;
+
+    obj.data.parentId = parentId;
+    const parentObj = parentId ? objects.find(o => o.data.id === parentId) : null;
+
+    if (selectedIndices.includes(i)) {
+      // If currently selected, we are in selectionGroup.
+      // We don't need to change parenting of mesh yet, selectObject will handle it on detach.
+    } else {
+      if (parentObj) {
+        parentObj.mesh.attach(obj.mesh);
+      } else {
+        scene.attach(obj.mesh);
+      }
+    }
+  });
+  refreshOutliner();
+  refreshInspector();
 }
 
 function updateSelectedProp(key, index, value) {
@@ -678,32 +839,58 @@ async function loadBuiltin() {
 
 function loadMapData(map, options = { saveHistory: true }) {
   // Clear
-  objects.forEach(o => scene.remove(o.mesh));
+  objects.forEach(o => {
+    if (o.mesh.parent) o.mesh.parent.remove(o.mesh);
+  });
   objects = [];
 
-  if (map.boxes) map.boxes.forEach(b => addObject('box', b));
-  if (map.spawns) map.spawns.forEach(s => addObject('spawn', s));
-  if (map.lights) map.lights.forEach(l => addObject('light', l));
-  if (map.pickups) map.pickups.forEach(p => addObject('pickup', p));
+  if (map.environment) {
+    mapConfig = { ...mapConfig, ...map.environment };
+    if (map.name) mapConfig.name = map.name;
+    applyMapConfigToScene();
+  }
+
+  const allData = [
+    ...(map.boxes || []).map(d => ({ type: 'box', data: d })),
+    ...(map.spawns || []).map(d => ({ type: 'spawn', data: d })),
+    ...(map.lights || []).map(d => ({ type: 'light', data: d })),
+    ...(map.pickups || []).map(d => ({ type: 'pickup', data: d }))
+  ];
+
+  // First pass: add all objects (without parenting to avoid missing parents)
+  allData.forEach(item => {
+    const data = { ...item.data, parentId: null }; // Temporarily no parent
+    const idx = addObject(item.type, data, true);
+    // Restore the actual parentId in data
+    objects[idx].data.parentId = item.data.parentId || null;
+    if (item.data.id) objects[idx].data.id = item.data.id;
+  });
+
+  // Second pass: setup parenting
+  objects.forEach(obj => {
+    if (obj.data.parentId) {
+      const parentObj = objects.find(o => o.data.id === obj.data.parentId);
+      if (parentObj) {
+        parentObj.mesh.attach(obj.mesh);
+      }
+    }
+  });
 
   selectObject(-1);
   refreshOutliner();
+  refreshInspector();
   if (options.saveHistory !== false) saveHistoryState();
 }
 
 function downloadJson() {
   const map = {
     schema: 'fps-map-v2',
-    name: 'Custom Map',
+    name: mapConfig.name,
     boxes: objects.filter(o => o.type === 'box').map(o => o.data),
     spawns: objects.filter(o => o.type === 'spawn').map(o => o.data),
     lights: objects.filter(o => o.type === 'light').map(o => o.data),
     pickups: objects.filter(o => o.type === 'pickup').map(o => o.data),
-    environment: {
-      background: 0x0f172a,
-      fogColor: 0x0f172a,
-      floorTexture: 'concrete'
-    }
+    environment: { ...mapConfig }
   };
   const blob = new Blob([JSON.stringify(map, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -838,16 +1025,17 @@ function addPrefab(parts) {
   }
 
   parts.forEach(p => {
-    addObject('box', {
+    const idx = addObject('box', {
       pos: [p.pos[0] + baseX, p.pos[1] + baseY, p.pos[2] + baseZ],
       size: p.size,
       material: p.material || 'default'
-    });
-    toSelect.push(objects.length - 1);
+    }, true);
+    toSelect.push(idx);
   });
 
   selectObject(-1);
   toSelect.forEach(idx => selectObject(idx, true));
+  refreshOutliner();
   updateStatus("Added Prefab");
 }
 
@@ -899,6 +1087,10 @@ function initEventListeners() {
 
   btnNew.onclick = () => { if(confirm("Clear current map?")) loadMapData({}); };
   btnOpen.onclick = () => uploadInput.click();
+  btnSave.onclick = () => {
+    localStorage.setItem('fps_map_draft', JSON.stringify(serializeCurrentMap()));
+    updateStatus("Draft Saved to LocalStorage");
+  };
   btnDownload.onclick = downloadJson;
   btnLoadBuiltin.onclick = loadBuiltin;
 
@@ -1069,9 +1261,177 @@ document.addEventListener('mouseup', (e) => {
 
 init();
 saveHistoryState();
+
+// Map Creator Logic
+const mcOverlay = document.getElementById('mapCreatorOverlay');
+const mcCanvas = document.getElementById('mcCanvas');
+const mcCtx = mcCanvas.getContext('2d');
+const btnMapCreator = document.getElementById('btnMapCreator');
+const mcWallBtn = document.getElementById('mcWallBtn');
+const mcRoomBtn = document.getElementById('mcRoomBtn');
+const mcClearBtn = document.getElementById('mcClearBtn');
+const mcGenerateBtn = document.getElementById('mcGenerateBtn');
+const mcCloseBtn = document.getElementById('mcCloseBtn');
+const mcGridDisplay = document.getElementById('mcGridDisplay');
+
+let mcMode = 'wall'; // 'wall' | 'room'
+let drawnShapes = [];
+let mcIsDrawing = false;
+let mcStartPos = { x: 0, y: 0 };
+let mcCurrentPos = { x: 0, y: 0 };
+const MC_SCALE = 20; // 20px = 1m
+
+function mcSnap(val) {
+  const stepPixels = gridStep * MC_SCALE;
+  return Math.round(val / stepPixels) * stepPixels;
+}
+
+function mcToWorld(px) {
+  return (px - 1000) / MC_SCALE;
+}
+
+btnMapCreator.onclick = () => {
+  mcOverlay.style.display = 'flex';
+  mcGridDisplay.textContent = gridStep;
+  renderMcCanvas();
+};
+
+mcCloseBtn.onclick = () => mcOverlay.style.display = 'none';
+
+mcWallBtn.onclick = () => { mcMode = 'wall'; mcWallBtn.classList.add('active'); mcRoomBtn.classList.remove('active'); };
+mcRoomBtn.onclick = () => { mcMode = 'room'; mcRoomBtn.classList.add('active'); mcWallBtn.classList.remove('active'); };
+
+mcClearBtn.onclick = () => { if(confirm("Clear all drawings?")) { drawnShapes = []; renderMcCanvas(); } };
+
+mcCanvas.onmousedown = (e) => {
+  const rect = mcCanvas.getBoundingClientRect();
+  mcIsDrawing = true;
+  mcStartPos = { x: mcSnap(e.clientX - rect.left), y: mcSnap(e.clientY - rect.top) };
+  mcCurrentPos = { ...mcStartPos };
+};
+
+window.addEventListener('mousemove', (e) => {
+  if (!mcIsDrawing || mcOverlay.style.display === 'none') return;
+  const rect = mcCanvas.getBoundingClientRect();
+  mcCurrentPos = { x: mcSnap(e.clientX - rect.left), y: mcSnap(e.clientY - rect.top) };
+  renderMcCanvas();
+});
+
+window.addEventListener('mouseup', (e) => {
+  if (!mcIsDrawing || mcOverlay.style.display === 'none') return;
+  mcIsDrawing = false;
+  if (mcStartPos.x === mcCurrentPos.x && mcStartPos.y === mcCurrentPos.y) return;
+  drawnShapes.push({ type: mcMode, start: { ...mcStartPos }, end: { ...mcCurrentPos } });
+  renderMcCanvas();
+});
+
+function renderMcCanvas() {
+  mcCtx.clearRect(0, 0, mcCanvas.width, mcCanvas.height);
+
+  // Grid
+  mcCtx.strokeStyle = '#1e293b';
+  mcCtx.lineWidth = 1;
+  const step = gridStep * MC_SCALE;
+  for(let x=0; x<mcCanvas.width; x+=step) { mcCtx.beginPath(); mcCtx.moveTo(x,0); mcCtx.lineTo(x,mcCanvas.height); mcCtx.stroke(); }
+  for(let y=0; y<mcCanvas.height; y+=step) { mcCtx.beginPath(); mcCtx.moveTo(0,y); mcCtx.lineTo(mcCanvas.width,y); mcCtx.stroke(); }
+
+  // Center axes
+  mcCtx.strokeStyle = '#334155';
+  mcCtx.lineWidth = 2;
+  mcCtx.beginPath(); mcCtx.moveTo(1000, 0); mcCtx.lineTo(1000, 2000); mcCtx.stroke();
+  mcCtx.beginPath(); mcCtx.moveTo(0, 1000); mcCtx.lineTo(2000, 1000); mcCtx.stroke();
+
+  // Drawn shapes
+  mcCtx.lineWidth = 3;
+  drawnShapes.forEach(s => {
+    mcCtx.strokeStyle = s.type === 'wall' ? '#3b82f6' : '#22c55e';
+    if (s.type === 'wall') {
+      mcCtx.beginPath(); mcCtx.moveTo(s.start.x, s.start.y); mcCtx.lineTo(s.end.x, s.end.y); mcCtx.stroke();
+    } else {
+      mcCtx.strokeRect(s.start.x, s.start.y, s.end.x - s.start.x, s.end.y - s.start.y);
+    }
+  });
+
+  // Active preview
+  if (mcIsDrawing) {
+    mcCtx.strokeStyle = '#f59e0b';
+    mcCtx.setLineDash([5, 5]);
+    if (mcMode === 'wall') {
+      mcCtx.beginPath(); mcCtx.moveTo(mcStartPos.x, mcStartPos.y); mcCtx.lineTo(mcCurrentPos.x, mcCurrentPos.y); mcCtx.stroke();
+    } else {
+      mcCtx.strokeRect(mcStartPos.x, mcStartPos.y, mcCurrentPos.x - mcStartPos.x, mcCurrentPos.y - mcStartPos.y);
+    }
+    mcCtx.setLineDash([]);
+  }
+}
+
+mcGenerateBtn.onclick = () => {
+  saveHistoryState();
+  const wallHeight = 4;
+  const wallThickness = 0.5;
+
+  drawnShapes.forEach(s => {
+    if (s.type === 'wall') {
+      const dx = mcToWorld(s.end.x) - mcToWorld(s.start.x);
+      const dz = mcToWorld(s.end.y) - mcToWorld(s.start.y);
+      const length = Math.sqrt(dx*dx + dz*dz);
+      const angle = -Math.atan2(dz, dx);
+      const px = (mcToWorld(s.start.x) + mcToWorld(s.end.x)) / 2;
+      const pz = (mcToWorld(s.start.y) + mcToWorld(s.end.y)) / 2;
+      addObject('box', {
+        pos: [px, wallHeight/2, pz],
+        size: [length, wallHeight, wallThickness],
+        rot: [0, angle, 0]
+      }, true);
+    } else if (s.type === 'room') {
+      const x1 = mcToWorld(s.start.x); const z1 = mcToWorld(s.start.y);
+      const x2 = mcToWorld(s.end.x); const z2 = mcToWorld(s.end.y);
+      const minX = Math.min(x1, x2); const maxX = Math.max(x1, x2);
+      const minZ = Math.min(z1, z2); const maxZ = Math.max(z1, z2);
+      const w = maxX - minX; const d = maxZ - minZ;
+
+      // Floor
+      addObject('box', { pos: [(minX + maxX)/2, 0, (minZ + maxZ)/2], size: [w, 0.2, d], material: 'concrete' }, true);
+      // 4 Walls
+      addObject('box', { pos: [(minX + maxX)/2, wallHeight/2, minZ], size: [w, wallHeight, wallThickness] }, true);
+      addObject('box', { pos: [(minX + maxX)/2, wallHeight/2, maxZ], size: [w, wallHeight, wallThickness] }, true);
+      addObject('box', { pos: [minX, wallHeight/2, (minZ + maxZ)/2], size: [wallThickness, wallHeight, d] }, true);
+      addObject('box', { pos: [maxX, wallHeight/2, (minZ + maxZ)/2], size: [wallThickness, wallHeight, d] }, true);
+    }
+  });
+
+  drawnShapes = [];
+  mcOverlay.style.display = 'none';
+  selectObject(-1);
+  refreshOutliner();
+  updateStatus(`Generated ${objects.length} objects total`);
+};
+
 </script>
 <div id="testMapOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; justify-content:center; align-items:center;">
     <div style="color:white; font-size:24px; font-weight:bold; text-shadow:2px 2px 0 #000; background:rgba(0,0,0,0.5); padding:10px 20px; border-radius:8px;">TEST MODE - Press ESC to Exit</div>
     <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:white; font-size:20px;">+</div>
   </div>
+
+<div id="mapCreatorOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; flex-direction:column; padding:40px;">
+  <div class="top-nav" style="background:var(--bg-dark); border:1px solid var(--border); border-radius:8px 8px 0 0; flex-shrink:0;">
+    <div class="brand" style="font-size:14px;">TOP-DOWN DRAWING GENERATOR</div>
+    <div class="actions">
+      <button id="mcWallBtn" class="active">Wall Tool</button>
+      <button id="mcRoomBtn">Room Tool</button>
+      <button id="mcClearBtn">Clear All</button>
+      <div style="width:20px"></div>
+      <button id="mcGenerateBtn" class="primary">Generate in Editor</button>
+    </div>
+    <div style="flex:1"></div>
+    <button id="mcCloseBtn">Close</button>
+  </div>
+  <div id="mcCanvasContainer" style="flex:1; overflow:auto; background:#05080f; border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; position:relative;">
+    <canvas id="mcCanvas" width="2000" height="2000"></canvas>
+  </div>
+  <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">
+    Click and drag to draw. Snaps to grid step: <span id="mcGridDisplay">1.0</span>. Walls use default height 4.
+  </div>
+</div>
+
 </body></html>
