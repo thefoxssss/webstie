@@ -255,6 +255,18 @@ let cachedSeasonBoards = { solo: [], gang: [] };
 let hideStatus = false;
 let stopChatPresenceSync = null;
 let chatPresenceByUser = {};
+let chatCount = 0;
+let lastChatAt = 0;
+let lastChatMsg = "";
+let activeChatTab = "global";
+let stopChatListener = null;
+let stopChatMuteListener = null;
+let activeDmUser = "";
+let globallyMutedUsers = new Set();
+let isChatInitialized = false;
+let isChatModerationModeEnabled = true;
+const emittedBubbleMessageKeys = new Set();
+const MAX_EMITTED_BUBBLE_KEYS = 400;
 
 function getUserStatusState(lastLogin, isHidden = false) {
   if (isHidden) return "hidden";
@@ -3770,15 +3782,15 @@ export function updateUI() {
   setText("displayUser", myName);
   const bankEl = document.getElementById("globalBank");
   const bankOverlayEl = document.getElementById("bankDisplay");
-  const currentVal = getComparableMoney(bankEl.innerText);
+  const currentVal = getComparableMoney(bankEl?.innerText);
   myMoney = clampEconomyNumber(myMoney, { min: 0, max: MAX_BANK_MONEY });
   loanData.debt = clampEconomyNumber(loanData.debt, { min: 0, max: MAX_LOAN_DEBT });
   const nextVal = getComparableMoney(myMoney);
-  if (currentVal !== nextVal) {
+  if (bankEl && currentVal !== nextVal) {
     bankEl.style.color = nextVal > currentVal ? "#0f0" : "#f00";
     setTimeout(() => (bankEl.style.color = "var(--accent)"), 500);
   }
-  bankEl.innerText = formatBankAmount(myMoney);
+  if (bankEl) bankEl.innerText = formatBankAmount(myMoney);
   if (bankOverlayEl) bankOverlayEl.innerText = formatBankAmount(myMoney);
 
   if (typeof updateBankOverviewVisuals === 'function') {
@@ -3805,18 +3817,18 @@ export function updateUI() {
   renderCrewPanel();
   renderSeasonPanel();
   renderLiveOps();
-  const rank = getRank(myMoney);
-  const rankData = getRankData(myMoney);
+  const playerRankData = getRankData(myMoney);
+  const rank = playerRankData.label;
   setText("displayRank", "[" + rank + "]");
-  setText("displayRankBadge", rankData.badge);
+  setText("displayRankBadge", playerRankData.badge);
   setText("profRank", rank);
-  setText("profRankBadge", rankData.badge);
+  setText("profRankBadge", playerRankData.badge);
   setText("profSummaryRank", "[" + rank + "]");
   const rankBadgeEls = [document.getElementById("displayRankBadge"), document.getElementById("profRankBadge")];
   rankBadgeEls.forEach((el) => {
     if (!el) return;
-    el.className = `rank-badge ${rankData.className}`;
-    el.title = `${rankData.label} RANK BADGE`;
+    el.className = `rank-badge ${playerRankData.className}`;
+    el.title = `${playerRankData.label} RANK BADGE`;
   });
   const rankProgress = getRankProgress(myMoney);
   setText("profProgressLabel", rankProgress.label);
@@ -6143,18 +6155,6 @@ if (clockEl) {
   });
 }
 
-let chatCount = 0;
-let lastChatAt = 0;
-let lastChatMsg = "";
-let activeChatTab = "global";
-let stopChatListener = null;
-let stopChatMuteListener = null;
-let activeDmUser = "";
-let globallyMutedUsers = new Set();
-let isChatInitialized = false;
-let isChatModerationModeEnabled = true;
-const emittedBubbleMessageKeys = new Set();
-const MAX_EMITTED_BUBBLE_KEYS = 400;
 
 function getStatusStateForUser(username) {
   const normalized = normalizeUsername(username || "");
@@ -7225,7 +7225,7 @@ export function resetLossStreak() {
 // Listen for space/enter to quickly restart after game over.
 function quickRestartListener(e) {
   if (e.key === " " || e.key === "Enter") {
-    document.getElementById("goRestart").click();
+    document.getElementById("goRestart")?.click();
     window.removeEventListener("keydown", quickRestartListener);
   }
 }

@@ -1400,20 +1400,26 @@ initHomeRecentGames();
 
 function hideGameOverModal() {
   const modal = document.getElementById("modalGameOver");
+  if (!modal) return;
   modal.classList.remove("active");
   document.querySelectorAll(".game-over-host").forEach((el) => el.classList.remove("game-over-host"));
   document.body.appendChild(modal);
 }
 
+function activateOverlay(id) {
+  document.getElementById(id)?.classList.add("active");
+}
+
 // Restart the last game from the game-over modal.
-document.getElementById("goRestart").onclick = () => {
+const restartButton = document.getElementById("goRestart");
+if (restartButton) restartButton.onclick = () => {
   hideGameOverModal();
   clearRestartListener();
   if (state.currentGame === "snake") initSnake();
   if (state.currentGame === "pong") initPong();
   if (state.currentGame === "runner") initRunner();
   if (state.currentGame === "geo") {
-    document.getElementById("overlayGeo").classList.add("active");
+    activateOverlay("overlayGeo");
     window.showGeoMenu();
   }
   if (state.currentGame === "flappy") initFlappy();
@@ -1438,41 +1444,42 @@ document.getElementById("goRestart").onclick = () => {
   if (state.currentGame === "hexfall") initHexfall();
   if (state.currentGame === "mines") {
     initMines();
-    document.getElementById("overlayMines").classList.add("active");
+    activateOverlay("overlayMines");
   }
   if (state.currentGame === "baccarat") {
     initBaccarat();
-    document.getElementById("overlayBaccarat").classList.add("active");
+    activateOverlay("overlayBaccarat");
   }
   if (state.currentGame === "craps") {
     initCraps();
-    document.getElementById("overlayCraps").classList.add("active");
+    activateOverlay("overlayCraps");
   }
   if (state.currentGame === "videopoker") {
     initVideoPoker();
-    document.getElementById("overlayVideopoker").classList.add("active");
+    activateOverlay("overlayVideopoker");
   }
   if (state.currentGame === "roulette") {
     initRoulette();
-    document.getElementById("overlayRoulette").classList.add("active");
+    activateOverlay("overlayRoulette");
   }
   if (state.currentGame === "slots") {
     initSlots();
-    document.getElementById("overlaySlots").classList.add("active");
+    activateOverlay("overlaySlots");
   }
   if (state.currentGame === "blackjack") {
     state.myMoney = 1000;
     initBJ();
-    document.getElementById("overlayBlackjack").classList.add("active");
+    activateOverlay("overlayBlackjack");
   }
   if (state.currentGame === "war") {
     initWar();
-    document.getElementById("overlayWar").classList.add("active");
+    activateOverlay("overlayWar");
   }
 };
 
 // Exit the current game and close all overlays.
-document.getElementById("goExit").onclick = () => {
+const exitButton = document.getElementById("goExit");
+if (exitButton) exitButton.onclick = () => {
   stopAllGames();
   closeOverlays();
   hideGameOverModal();
