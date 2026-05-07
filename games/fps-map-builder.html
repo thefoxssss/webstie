@@ -68,7 +68,7 @@
       </select>
       <button id="btnFocus">Focus (F)</button>
     </div>
-    <canvas id="view"></canvas>
+    <canvas id="view" tabindex="0"></canvas>
     <div id="selectionBox" style="display:none; position:absolute; border:1px solid #3b82f6; background:rgba(59, 130, 246, 0.2); pointer-events:none;"></div>
   </main>
 
@@ -83,7 +83,7 @@
 <footer class="bottom-bar">
   <span id="statusText">Ready</span>
   <div style="flex:1"></div>
-  <span>Shortcuts: <span class="kbd">W</span> <span class="kbd">E</span> <span class="kbd">R</span> | <span class="kbd">F</span> Focus | <span class="kbd">Del</span> Delete | <span class="kbd">Ctrl+D</span> Duplicate | <span class="kbd">Ctrl+C</span> Copy | <span class="kbd">Ctrl+V</span> Paste | <span class="kbd">Ctrl+Z</span> Undo</span>
+  <span>Shortcuts: RMB + mouse to fly, <span class="kbd">WASD</span> move | <span class="kbd">W</span> <span class="kbd">E</span> <span class="kbd">R</span> tools | <span class="kbd">F</span> Focus | <span class="kbd">Del</span> Delete | <span class="kbd">Ctrl+D</span> Duplicate | <span class="kbd">Ctrl+C</span> Copy | <span class="kbd">Ctrl+V</span> Paste | <span class="kbd">Ctrl+Z</span> Undo</span>
 </footer>
 
 <input type="file" id="uploadInput" style="display:none" accept=".json">
@@ -294,12 +294,37 @@ function animate() {
 
 // Camera Movement (Fly Style)
 const keys = {};
-window.addEventListener('keydown', e => { if(document.activeElement.tagName !== 'INPUT') keys[e.key.toLowerCase()] = true; });
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+const flyCameraKeyCodes = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight']);
+
+function isTextEntryActive() {
+  const activeEl = document.activeElement;
+  if (!activeEl) return false;
+  const tag = activeEl.tagName;
+  return activeEl.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
+
+function isFlyCameraActive() {
+  return document.pointerLockElement === canvas;
+}
+
+window.addEventListener('keydown', e => {
+  if (isTextEntryActive()) return;
+  keys[e.key.toLowerCase()] = true;
+  if (isFlyCameraActive() && flyCameraKeyCodes.has(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+  if (isFlyCameraActive() && flyCameraKeyCodes.has(e.code)) e.preventDefault();
+});
 
 let yaw = -Math.PI / 4, pitch = -Math.PI / 4;
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('mousedown', (e) => {
-  if (e.button === 2) canvas.requestPointerLock();
+  if (e.button === 2) {
+    e.preventDefault();
+    canvas.focus({ preventScroll: true });
+    canvas.requestPointerLock();
+  }
 });
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas) {
@@ -308,8 +333,8 @@ document.addEventListener('mousemove', (e) => {
     pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
   }
 });
-document.addEventListener('mouseup', () => {
-  if (document.pointerLockElement === canvas) document.exitPointerLock();
+document.addEventListener('mouseup', (e) => {
+  if (e.button === 2 && isFlyCameraActive()) document.exitPointerLock();
 });
 
 function handleCameraMovement() {
@@ -904,7 +929,11 @@ function initEventListeners() {
       }
       return;
     }
-    if (document.activeElement.tagName === 'INPUT') return;
+    if (isTextEntryActive()) return;
+    if (isFlyCameraActive()) {
+      if (flyCameraKeyCodes.has(e.code)) e.preventDefault();
+      return;
+    }
 
     if (e.key.toLowerCase() === 'w') toolMove.click();
     if (e.key.toLowerCase() === 'e') toolRotate.click();
