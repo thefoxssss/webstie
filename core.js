@@ -152,6 +152,8 @@ const shieldActiveUntil = Object.create(null);
 const shieldDeactivateTimerIds = Object.create(null);
 const shieldReadyTimerIds = Object.create(null);
 let keysPressed = {};
+let chatCount = 0;
+let isChatInitialized = false;
 let lossStreak = 0;
 let jobData = { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
 let loanData = { debt: 0, rate: 0, lastInterestAt: 0 };
@@ -6121,16 +6123,6 @@ export function claimAprilFoolsSecretItem() {
 }
 
 // Secret: clicking the logo many times gives a reward.
-document.getElementById("mainBtn").onclick = () => {
-  logoClicks++;
-  if (logoClicks === 50) {
-    unlockAchievement("spammer");
-    showToast("SECRET FOUND", "🤫", "500 Credits");
-    myMoney += 500;
-    saveStats();
-    logoClicks = 0;
-  }
-};
 let bgClicks = 0;
 // Secret: clicking empty background counts towards a hidden badge.
 document.addEventListener("click", (e) => {
@@ -6244,17 +6236,13 @@ if (clockEl) {
       clockTimer = null;
     }
   });
-}
 
-let chatCount = 0;
 let lastChatAt = 0;
 let lastChatMsg = "";
 let activeChatTab = "global";
 let stopChatListener = null;
 let stopChatMuteListener = null;
 let activeDmUser = "";
-let globallyMutedUsers = new Set();
-let isChatInitialized = false;
 let isChatModerationModeEnabled = true;
 const emittedBubbleMessageKeys = new Set();
 const MAX_EMITTED_BUBBLE_KEYS = 400;
