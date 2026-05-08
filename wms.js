@@ -3,16 +3,72 @@
  * Handles window lifecycle, dragging, resizing, and taskbar integration.
  */
 
+const SYSTEM_DESKTOP_APPS = [
+  { id: "bank", title: "BANK", icon: "🏦", overlayId: "overlayBank" },
+  { id: "shop", title: "SHOP", icon: "🛒", overlayId: "overlayShop" },
+  { id: "inventory", title: "BAG", icon: "🎒", overlayId: "overlayInventory" },
+  { id: "profile", title: "PROFILE", icon: "👤", overlayId: "overlayProfile" },
+  { id: "season", title: "SEASON", icon: "🗓️", overlayId: "overlaySeason" },
+  { id: "crew", title: "CREW", icon: "🏴‍☠️", overlayId: "overlayCrew" },
+  { id: "chat", title: "CHAT", icon: "💬", overlayId: "globalChat" },
+  { id: "config", title: "CONFIG", icon: "⚙️", overlayId: "overlayConfig" },
+  { id: "games", title: "GAMES", icon: "🎮", overlayId: "overlayGamebox" },
+  { id: "trending", title: "TRENDING", icon: "📈", overlayId: "overlayTrending" },
+  { id: "recent", title: "RECENT", icon: "🕒", overlayId: "overlayRecentGames" },
+  { id: "updates", title: "UPDATES", icon: "📜", overlayId: "overlayUpdates" },
+  { id: "admin", title: "ADMIN", icon: "⚡", overlayId: "overlayAdmin", adminOnly: true },
+];
+
+const DEFAULT_WINDOW_STATE = { width: 800, height: 600, x: 100, y: 50 };
+
+function getDesktopConfig() {
+  return typeof window.getDesktopConfig === "function" ? window.getDesktopConfig() || {} : {};
+}
+
+function getConfigForApp(appId) {
+  return getDesktopConfig()[appId] || {};
+}
+
+function saveDesktopAppState(appId, patch = {}) {
+  if (typeof window.saveDesktopConfig === "function") {
+    window.saveDesktopConfig(appId, patch);
+  }
+}
+
+function getAppIdForOverlayId(overlayId) {
+  const systemApp = SYSTEM_DESKTOP_APPS.find((app) => app.overlayId === overlayId);
+  if (systemApp) return systemApp.id;
+  if (overlayId === "globalChat") return "chat";
+  if (!overlayId.startsWith("overlay")) return overlayId;
+  const raw = overlayId.slice("overlay".length);
+  if (raw === "TTT") return "ttt";
+  return raw.charAt(0).toLowerCase() + raw.slice(1);
+}
+
+function getFallbackAppInfo(overlayId) {
+  const appId = getAppIdForOverlayId(overlayId);
+  const systemApp = SYSTEM_DESKTOP_APPS.find((app) => app.id === appId || app.overlayId === overlayId);
+  if (systemApp) return systemApp;
+  const icon = document.querySelector(`.desktop-icon[data-overlay-id="${overlayId}"]`);
+  return {
+    id: appId,
+    title: icon?.dataset.title || appId.toUpperCase(),
+    icon: icon?.dataset.icon || "🎮",
+    overlayId,
+  };
+}
+
 export class AppWindow {
   constructor(id, title, contentElement, options = {}) {
     this.id = id;
+    this.appId = options.appId || getAppIdForOverlayId(id);
     this.title = title;
     this.contentElement = contentElement; // This is the original overlay content
+    this.contentPlaceholder = null;
+    const savedWindow = getConfigForApp(this.appId).window || {};
     this.options = {
-      width: options.width || 800,
-      height: options.height || 600,
-      x: options.x || 100,
-      y: options.y || 50,
+      ...DEFAULT_WINDOW_STATE,
+      ...savedWindow,
       minWidth: options.minWidth || 300,
       minHeight: options.minHeight || 200,
       icon: options.icon || "🎮",
@@ -34,8 +90,8 @@ export class AppWindow {
     win.className = "window";
     win.style.width = `${this.options.width}px`;
     win.style.height = `${this.options.height}px`;
-    win.style.left = `${this.options.x}px`;
-    win.style.top = `${this.options.y}px`;
+    win.style.left = `${Math.max(0, Math.min(this.options.x, window.innerWidth - 120))}px`;
+    win.style.top = `${Math.max(0, Math.min(this.options.y, window.innerHeight - 90))}px`;
     win.style.zIndex = this.zIndex;
 
     const resizer = document.createElement("div");
@@ -62,12 +118,13 @@ export class AppWindow {
         content.classList.add("game-container-16-9");
     }
 
-    // Move content from original overlay to window
+    // Move the original overlay node into the window so existing DOM queries by id
+    // keep working while CSS neutralizes the fullscreen overlay positioning.
     if (this.contentElement) {
-        // Some overlays might have multiple children, wrap them or move them all
-        while (this.contentElement.firstChild) {
-            content.appendChild(this.contentElement.firstChild);
-        }
+        this.contentPlaceholder = document.createComment(`wms-placeholder-${this.id}`);
+        this.contentElement.parentNode?.insertBefore(this.contentPlaceholder, this.contentElement);
+        this.contentElement.classList.remove("active");
+        content.appendChild(this.contentElement);
     }
 
     win.appendChild(header);
@@ -121,6 +178,20 @@ export class AppWindow {
     this.elements.window.onmousedown = () => this.focus();
   }
 
+  saveWindowState(extra = {}) {
+    saveDesktopAppState(this.appId, {
+      window: {
+        x: this.elements.window.offsetLeft,
+        y: this.elements.window.offsetTop,
+        width: this.elements.window.offsetWidth,
+        height: this.elements.window.offsetHeight,
+        isMaximized: this.isMaximized,
+        isMinimized: this.isMinimized,
+        ...extra,
+      },
+    });
+  }
+
   resizeStart(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -146,6 +217,7 @@ export class AppWindow {
     const stopResize = () => {
         document.removeEventListener('mousemove', doResize);
         document.removeEventListener('mouseup', stopResize);
+        this.saveWindowState();
     };
 
     document.addEventListener('mousemove', doResize);
@@ -233,6 +305,7 @@ export class AppWindow {
     const closeDragElement = () => {
       document.onmouseup = null;
       document.onmousemove = null;
+      this.saveWindowState();
     };
 
     document.onmousemove = elementDrag;
@@ -262,9 +335,11 @@ export class AppWindow {
     if (this.isMinimized) {
       this.elements.window.style.display = "none";
       this.elements.tab.classList.remove("active");
+      this.saveWindowState({ isMinimized: true });
     } else {
       this.elements.window.style.display = "flex";
       this.focus();
+      this.saveWindowState({ isMinimized: false });
     }
   }
 
@@ -307,9 +382,7 @@ export class AppWindow {
   toggleFavorite() {
     this.isFavorited = !this.isFavorited;
     this.elements.tab.classList.toggle("favorited", this.isFavorited);
-    if (window.saveDesktopConfig) {
-        window.saveDesktopConfig(this.id, this.elements.window.style.left, this.elements.window.style.top, { isFavorited: this.isFavorited });
-    }
+    saveDesktopAppState(this.appId, { isFavorited: this.isFavorited });
   }
 
   toggleMaximize() {
@@ -321,6 +394,7 @@ export class AppWindow {
     } else {
       this.elements.maximizeBtn.textContent = "🗖";
     }
+    this.saveWindowState();
   }
 
   close() {
@@ -332,11 +406,12 @@ export class AppWindow {
         }
     }
 
-    // Move content back to its original overlay container
-    if (this.contentElement) {
-        while (this.elements.content.firstChild) {
-            this.contentElement.appendChild(this.elements.content.firstChild);
-        }
+    // Move the original overlay node back where it came from.
+    if (this.contentElement && this.contentPlaceholder?.parentNode) {
+        this.contentElement.classList.remove("active");
+        this.contentPlaceholder.parentNode.insertBefore(this.contentElement, this.contentPlaceholder);
+        this.contentPlaceholder.remove();
+        this.contentPlaceholder = null;
     }
 
     this.elements.window.remove();
@@ -346,6 +421,8 @@ export class AppWindow {
         this.elements.tab.classList.remove("active");
         this.isMinimized = true;
     }
+
+    saveDesktopAppState(this.appId, { isOpen: false, window: { isMinimized: false } });
 
     // Notify WMS manager
     if (window.WMS) {
@@ -367,9 +444,14 @@ class WindowManager {
             return win;
         }
 
-        const win = new AppWindow(id, title, contentElement, options);
+        const appId = options?.appId || getAppIdForOverlayId(id);
+        const win = new AppWindow(id, title, contentElement, { ...options, appId });
         this.windows.set(id, win);
-        win.focus();
+        saveDesktopAppState(appId, { isOpen: true });
+        const savedWindow = getConfigForApp(appId).window || {};
+        if (savedWindow.isMaximized) win.toggleMaximize();
+        if (savedWindow.isMinimized) win.toggleMinimize();
+        if (!win.isMinimized) win.focus();
         return win;
     }
 
@@ -382,47 +464,57 @@ class WindowManager {
     }
 }
 
-window.WMS = new WindowManager();
+window.WMS = window.WMS || new WindowManager();
+
+export function openDesktopApp(overlayId) {
+    const contentElement = document.getElementById(overlayId);
+    if (!contentElement || !window.WMS) return null;
+    const app = getFallbackAppInfo(overlayId);
+    return window.WMS.createWindow(overlayId, app.title, contentElement, { icon: app.icon, appId: app.id });
+}
+
+if (typeof window.openGame !== "function") {
+    window.openGame = openDesktopApp;
+}
+
+export function initTaskbarFallbacks() {
+    const configBtn = document.getElementById("taskbarConfigBtn");
+    if (configBtn && configBtn.dataset.desktopFallbackReady !== "1") {
+        configBtn.dataset.desktopFallbackReady = "1";
+        configBtn.onclick = () => window.openGame?.("overlayConfig");
+    }
+
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const userMenuDropdown = document.getElementById("userMenuDropdown");
+    if (userMenuBtn && userMenuDropdown && userMenuBtn.dataset.desktopFallbackReady !== "1") {
+        userMenuBtn.dataset.desktopFallbackReady = "1";
+        userMenuBtn.onclick = (event) => {
+            event.stopPropagation();
+            userMenuDropdown.classList.toggle("active");
+        };
+        document.addEventListener("click", () => userMenuDropdown.classList.remove("active"));
+    }
+}
 
 export function initDesktop() {
     const desktop = document.getElementById("desktop");
     if (!desktop) return;
 
-    // Filtered apps: removed those already in the taskbar or user menu
-    const apps = [
-        // { id: "bank", title: "BANK", icon: "🏦", overlayId: "overlayBank" },
-        // { id: "shop", title: "SHOP", icon: "🛒", overlayId: "overlayShop" },
-        // { id: "inventory", title: "BAG", icon: "🎒", overlayId: "overlayInventory" },
-        // { id: "profile", title: "PROFILE", icon: "👤", overlayId: "overlayProfile" },
-        // { id: "season", title: "SEASON", icon: "🗓️", overlayId: "overlaySeason" },
-        // { id: "crew", title: "CREW", icon: "🏴‍☠️", overlayId: "overlayCrew" },
-        // { id: "chat", title: "CHAT", icon: "💬", overlayId: "globalChat" },
-        // { id: "config", title: "CONFIG", icon: "⚙️", overlayId: "overlayConfig" },
-        // { id: "admin", title: "ADMIN", icon: "⚡", overlayId: "overlayAdmin", adminOnly: true },
-        // { id: "games", title: "GAMES", icon: "🎮", overlayId: "overlayGamebox" },
-    ];
-
-    // Load favorite/pinned apps from desktopConfig
-    if (typeof window.getDesktopConfig === "function") {
-        const config = window.getDesktopConfig();
-        Object.keys(config).forEach(appId => {
-            if (config[appId].isFavorited) {
-                // Pin logic handled by individual AppWindow instances,
-                // but icons can be recreated here if they represent non-system apps.
-            }
-        });
-    }
-
-    apps.forEach(app => {
+    SYSTEM_DESKTOP_APPS.forEach(app => {
         createDesktopIcon(app);
     });
+    applyDesktopConfig();
 }
 
 export function createDesktopIcon(app) {
     const desktop = document.getElementById("desktop");
+    if (!desktop || document.getElementById(`icon-${app.id}`)) return;
     const icon = document.createElement("div");
     icon.className = "desktop-icon";
     icon.id = `icon-${app.id}`;
+    icon.dataset.overlayId = app.overlayId;
+    icon.dataset.title = app.title;
+    icon.dataset.icon = app.icon || "🎮";
     icon.innerHTML = `
         <div class="desktop-icon-img">${app.icon}</div>
         <div class="desktop-icon-label">${app.title}</div>
@@ -433,20 +525,29 @@ export function createDesktopIcon(app) {
         icon.classList.add("admin-icon");
     }
 
-    icon.ondblclick = () => {
+    const openApp = () => {
         if (typeof window.openGame === "function") {
             window.openGame(app.overlayId);
+        } else {
+            openDesktopApp(app.overlayId);
         }
     };
 
-    // Support single click for mobile
-    icon.onclick = (e) => {
-        if (window.innerWidth <= 768) {
-            if (typeof window.openGame === "function") {
-                window.openGame(app.overlayId);
-            }
+    icon.ondblclick = openApp;
+    icon.onclick = () => {
+        if (icon.dataset.dragged === "1") {
+            icon.dataset.dragged = "0";
+            return;
         }
+        openApp();
     };
+
+    const saved = getConfigForApp(app.id);
+    if (saved.left && saved.top) {
+        icon.style.left = saved.left;
+        icon.style.top = saved.top;
+        icon.style.position = "absolute";
+    }
 
     desktop.appendChild(icon);
     setupIconDraggable(icon, app.id);
@@ -454,6 +555,7 @@ export function createDesktopIcon(app) {
 
 function setupIconDraggable(icon, appId) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    let didDrag = false;
 
     icon.onmousedown = dragMouseDown;
 
@@ -461,6 +563,7 @@ function setupIconDraggable(icon, appId) {
         e.preventDefault();
         pos3 = e.clientX;
         pos4 = e.clientY;
+        didDrag = false;
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
 
@@ -474,6 +577,8 @@ function setupIconDraggable(icon, appId) {
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
         pos4 = e.clientY;
+        didDrag = true;
+        icon.dataset.dragged = "1";
         icon.style.top = (icon.offsetTop - pos2) + "px";
         icon.style.left = (icon.offsetLeft - pos1) + "px";
         icon.style.position = "absolute";
@@ -484,8 +589,38 @@ function setupIconDraggable(icon, appId) {
         document.onmousemove = null;
 
         // Save position to state
-        if (window.saveDesktopConfig) {
-            window.saveDesktopConfig(appId, icon.style.left, icon.style.top);
+        if (didDrag && window.saveDesktopConfig) {
+            window.saveDesktopConfig(appId, { left: icon.style.left, top: icon.style.top });
         }
     }
 }
+
+
+export function applyDesktopConfig() {
+    const config = getDesktopConfig();
+    Object.keys(config).forEach(appId => {
+        const icon = document.getElementById(`icon-${appId}`);
+        const appConfig = config[appId] || {};
+        if (icon && appConfig.left && appConfig.top) {
+            icon.style.left = appConfig.left;
+            icon.style.top = appConfig.top;
+            icon.style.position = "absolute";
+        }
+    });
+}
+
+export function restoreOpenDesktopApps() {
+    const config = getDesktopConfig();
+    Object.keys(config).forEach(appId => {
+        const appConfig = config[appId] || {};
+        if (!appConfig.isOpen) return;
+        const icon = document.getElementById(`icon-${appId}`);
+        const overlayId = icon?.dataset.overlayId || SYSTEM_DESKTOP_APPS.find((app) => app.id === appId)?.overlayId;
+        if (overlayId && typeof window.openGame === "function") {
+            window.openGame(overlayId);
+        }
+    });
+}
+
+window.applyDesktopConfig = applyDesktopConfig;
+window.restoreOpenDesktopApps = restoreOpenDesktopApps;

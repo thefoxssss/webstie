@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1"
     />
     <meta name="app-version" content="dev" />
-    <title>GOONER TERMINAL V32 [PVP FIX]</title>
+    <title>GOONER OS</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap"
       rel="stylesheet"
@@ -2697,9 +2697,28 @@
                 <span class="stat-label">CASH:</span> $<span id="taskbarBank">0</span>
             </div>
             <div class="taskbar-item sys-clock" id="taskbarClock">00:00:00</div>
-            <button id="taskbarConfigBtn" class="taskbar-item config-icon" title="Settings">⚙️</button>
+            <button id="taskbarConfigBtn" class="taskbar-item config-icon" title="Settings" onclick="window.openGame?.('overlayConfig')">⚙️</button>
         </div>
     </div>
+
+    <!-- Desktop shell bootstrap: keeps icons/taskbar usable even if the full app bundle is still loading. -->
+    <script type="module">
+      import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
+      import { initDesktop, createDesktopIcon, initTaskbarFallbacks } from "./wms.js";
+
+      initDesktop();
+      GAME_DIRECTORY_ENTRIES.forEach((game) => {
+        if (!game.hidden) {
+          createDesktopIcon({
+            id: game.id,
+            title: game.title,
+            icon: game.icon || "🎮",
+            overlayId: `overlay${game.id === "ttt" ? game.id.toUpperCase() : game.id.charAt(0).toUpperCase() + game.id.slice(1)}`,
+          });
+        }
+      });
+      initTaskbarFallbacks();
+    </script>
 
     <!-- Main entrypoint script (loads all game modules). -->
     <script type="module" src="script.js"></script>
