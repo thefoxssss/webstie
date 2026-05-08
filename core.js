@@ -801,6 +801,7 @@ function updateAdminMenu() {
   if (tbAdmin) tbAdmin.style.display = hasAccess ? "block" : "none";
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
   if (isChatInitialized && document.getElementById("chatHistory")) renderChatTab();
+  syncMaintenanceOverlay();
 }
 
 
@@ -1402,23 +1403,26 @@ function subscribeToGlobalMarket() {
   }, () => {});
 }
 
+function syncMaintenanceOverlay() {
+  const maintenanceOverlay = document.getElementById("overlayMaintenance");
+  if (!maintenanceOverlay) return;
+
+  if (isMaintenanceMode && !isGodUser()) {
+    maintenanceOverlay.classList.add("active");
+    document.body.classList.add("overlay-open");
+  } else {
+    maintenanceOverlay.classList.remove("active");
+    const hasActiveOverlay = Boolean(document.querySelector(".overlay.active:not(#overlayMaintenance)"));
+    document.body.classList.toggle("overlay-open", hasActiveOverlay);
+  }
+}
+
 function subscribeToMaintenanceMode() {
   if (stopMaintenanceSync) return;
   const ref = doc(db, GLOBAL_MARKET_COLLECTION, "maintenance_mode");
   stopMaintenanceSync = onSnapshot(ref, (snap) => {
     isMaintenanceMode = snap.exists() ? Boolean(snap.data().active) : false;
-    const maintenanceOverlay = document.getElementById("overlayMaintenance");
-    if (maintenanceOverlay) {
-      if (isMaintenanceMode && !isGodUser()) {
-        maintenanceOverlay.classList.add("active");
-        document.body.classList.add("overlay-open");
-      } else {
-        maintenanceOverlay.classList.remove("active");
-        // Only toggle overlay-open if no other overlays are active
-        const hasActiveOverlay = Boolean(document.querySelector(".overlay.active:not(#overlayMaintenance)"));
-        document.body.classList.toggle("overlay-open", hasActiveOverlay);
-      }
-    }
+    syncMaintenanceOverlay();
   }, () => {});
 }
 
@@ -3522,7 +3526,7 @@ window.toggleConfigOverlay = () => {
 // --- Bank Internal Tab Navigation ---
 window.switchBankTab = (tabId) => {
   // Update nav buttons
-  document.querySelectorAll(".term-nav-btn").forEach(btn => {
+  document.querySelectorAll("#overlayBank .term-nav-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.tab === tabId);
   });
 
@@ -3537,10 +3541,28 @@ window.switchBankTab = (tabId) => {
   }
 };
 
+window.switchConfigTab = (tabId) => {
+  if (typeof window.beep === "function") window.beep(400, "square", 0.05);
+  // Update nav buttons
+  document.querySelectorAll("#overlayConfig .term-nav-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.configTab === tabId);
+  });
+
+  // Update tab content panes
+  document.querySelectorAll(".config-tab-pane").forEach(pane => {
+    pane.classList.toggle("active", pane.id === `configTab-${tabId}`);
+  });
+};
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".term-nav-btn").forEach(btn => {
+  document.querySelectorAll("#overlayBank .term-nav-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       window.switchBankTab(e.target.dataset.tab);
+    });
+  });
+  document.querySelectorAll("#overlayConfig .term-nav-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      window.switchConfigTab(e.target.dataset.configTab);
     });
   });
 });
@@ -3616,6 +3638,7 @@ export function openGame(id) {
   const isExcluded = excludedFromWMS.includes(id);
 
   if (window.WMS && !isExcluded) {
+      if (typeof window.beep === "function") window.beep(400, "square", 0.05);
       window.WMS.createWindow(id, title, contentElement, { icon });
       runOverlayOpenHooks(id);
 
@@ -3678,6 +3701,9 @@ async function login(username, pin) {
   const normalizedPin = normalizePin(pin);
   if (!isValidCredentials(normalized, normalizedPin)) {
     return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
+  }
+  if (isMaintenanceMode && !isGodUser(normalized)) {
+      return "MAINTENANCE MODE ACTIVE";
   }
   try {
     const ref = doc(db, "gooner_users", normalized);
@@ -3921,6 +3947,9 @@ async function register(username, pin) {
   const normalizedPin = normalizePin(pin);
   if (!isValidCredentials(normalized, normalizedPin)) {
     return "USE 3-10 CHAR CODENAME + 4-DIGIT PIN";
+  }
+  if (isMaintenanceMode && !isGodUser(normalized)) {
+      return "MAINTENANCE MODE ACTIVE";
   }
   const data = {
     name: normalized,

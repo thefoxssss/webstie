@@ -47,6 +47,7 @@ body.rainbow-mode {
   -webkit-tap-highlight-color: transparent;
   cursor: default;
   user-select: none;
+  max-width: 100%;
 }
 button,
 input,
@@ -956,6 +957,9 @@ body::before {
   background: rgba(0, 0, 0, 0.93);
   box-shadow: 0 0 14px rgba(0, 255, 136, 0.16);
   overflow: hidden;
+  position: fixed;
+  bottom: 50px;
+  z-index: 2005;
 }
 
 .site-search-dropdown.active {
@@ -1716,8 +1720,10 @@ body::before {
 
 .window.maximized {
   inset: 0 !important;
-  width: 100% !important;
+  width: 100vw !important;
   height: calc(100vh - 50px) !important;
+  border: none;
+  box-shadow: none;
 }
 
 .window-resizer {
@@ -3234,16 +3240,18 @@ canvas {
 
 #overlayConfig {
   align-items: flex-start;
-  justify-content: flex-start;
-  padding: 8px 14px 14px;
+  justify-content: flex-end;
+  padding: 8px 14px 60px;
   z-index: 1300;
   background: rgba(0, 0, 0, 0.42);
   backdrop-filter: blur(1.5px);
+  pointer-events: none;
 }
 
 #overlayConfig .config-box {
-  margin-top: 0;
+  margin-top: auto;
   margin-left: 0;
+  pointer-events: auto;
 }
 .config-row {
   display: flex;
@@ -4186,6 +4194,14 @@ body.reduce-motion *::after {
 }
 
 .bank-tab-pane.active {
+  display: block;
+}
+
+.config-tab-pane {
+  display: none;
+}
+
+.config-tab-pane.active {
   display: block;
 }
 
@@ -6159,7 +6175,7 @@ body {
 /* 16:9 Game Container */
 .game-container-16-9 {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 100%;
     background: #000;
     display: flex;
     align-items: center;
@@ -6168,10 +6184,16 @@ body {
     overflow: hidden;
 }
 
-.game-container-16-9 canvas {
-    max-width: 100%;
-    max-height: 100%;
+.game-container-16-9 canvas,
+.game-container-16-9 .embedded-game-frame,
+.game-container-16-9 #fnafGame,
+.game-container-16-9 #fpsGame {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
     object-fit: contain;
+    background: #000;
 }
 
 /* Context Menu */
