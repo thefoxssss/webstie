@@ -23,6 +23,9 @@
   <body class="flicker-on">
     <!-- Matrix canvas + boot overlay effects (toggled by JS). -->
     <canvas id="matrixCanvas"></canvas>
+
+    <!-- Window container for program apps -->
+    <div id="window-container"></div>
     <div id="hackOverlay">
       <div>ROOT ACCESS REQUESTED...</div>
       <div>BYPASSING FIREWALL...</div>
@@ -31,53 +34,6 @@
     <!-- Toast container for transient notifications. -->
     <div id="toastBox"></div>
 
-    <!-- Global top navigation + system status. -->
-    <div class="top-bar">
-      <div class="top-bar-left">
-        <button id="tabMainMenu" class="menu-btn" onclick="window.closeOverlays()">
-          HOME
-        </button>
-        <button id="tabChat" class="menu-btn" onclick="window.toggleTopPanelOverlay('globalChat')">
-          CHAT
-        </button>
-        <button id="tabConfig" class="menu-btn" onclick="window.toggleConfigOverlay()">
-          CONFIG
-        </button>
-      </div>
-      <div class="sys-info">
-        <span id="sysClock">00:00:00</span> | PING:
-        <span id="sysPing">24ms</span> | BANK: $<span id="globalBank">0</span>
-      </div>
-      <div class="top-bar-actions">
-        <button id="tabBank" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayBank')">
-          BANK
-        </button>
-        <button id="tabShop" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayShop')">
-          SHOP
-        </button>
-        <button id="tabInventory" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayInventory')">
-          INVENTORY
-        </button>
-        <button id="tabProfile" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayProfile')">
-          PROFILE
-        </button>
-        <button id="tabSeason" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlaySeason')">
-          SEASON
-        </button>
-        <button id="tabCrew" class="menu-btn" onclick="window.toggleTopPanelOverlay('overlayCrew')">
-          CREW
-        </button>
-        <button
-          class="menu-btn"
-          id="tabAdmin"
-          onclick="window.toggleTopPanelOverlay('overlayAdmin')"
-          style="display: none; border-color: #ffd700; color: #ffd700"
-        >
-          ADMIN
-        </button>
-        <button class="menu-btn" id="menuToggle">GAMES</button>
-      </div>
-    </div>
 
     <div class="dropdown-content" id="menuDropdown"></div>
 
@@ -98,8 +54,17 @@
         <div class="trending-month-chart" id="trendingMonthChart">
           <div class="trending-empty">COLLECTING SIGNAL DATA...</div>
         </div>
-        <button class="term-btn panel-overlay-exit" type="button" onclick="window.closeOverlays()">EXIT</button>
       </div>
+    </div>
+
+    <div class="overlay menu-overlay" id="overlayRecentGames">
+        <div class="score-box panel-overlay-box">
+            <h2>RECENT GAMES</h2>
+            <div class="trending-meta" id="recentGamesMeta">YOUR MOST RECENTLY PLAYED GAMES.</div>
+            <div class="trending-games-list" id="recentGamesList">
+                <div class="trending-empty">NO RECENT GAMES YET.</div>
+            </div>
+        </div>
     </div>
 
     <div class="overlay menu-overlay" id="overlayUpdates">
@@ -112,7 +77,6 @@
             <li><span>SYNC</span> LOADING MERGED CHANGELOG...</li>
           </ul>
         </div>
-        <button class="term-btn panel-overlay-exit" type="button" onclick="window.closeOverlays()">EXIT</button>
       </div>
     </div>
 
@@ -418,9 +382,7 @@
           </div>
         </div>
 
-        <button class="term-btn" style="margin-top: 20px; width: 100%; border-color: #ffd700; color: #ffd700;" onclick="window.closeOverlays()">
-          CLOSE ADMIN
-        </button>
+          <button class="term-btn" onclick="window.closeOverlays()">CLOSE ADMIN</button>
       </div>
     </div>
     <!-- Global text chat dock + Voice Lounge integration. -->
@@ -482,100 +444,73 @@
           <div id="voiceAudioContainer" style="display: none;"></div>
         </div>
 
-        <button class="term-btn" style="margin-top: 15px; padding: 10px; font-size: 10px;" onclick="window.closeOverlays()">
-          CLOSE TERMINAL
-        </button>
+          <button class="term-btn" onclick="window.closeOverlays()">CLOSE TERMINAL</button>
       </div>
     </div>
+    <div id="desktop-bg-text" class="desktop-bg-text">GOONER</div>
 
-    <!-- Landing splash section + operator info. -->
-    <div class="wrap">
-      <div class="gooner-btn" id="mainBtn">GOONER</div>
-      <form class="site-search" id="siteSearchForm" role="search" aria-label="Site search">
-        <input
-          id="siteSearchInput"
-          class="term-input"
-          type="search"
-          placeholder="SEARCH SITE OR GAMES..."
-          maxlength="40"
-        />
-        <button class="term-btn" id="siteSearchBtn" type="submit">SEARCH</button>
+    <!-- Desktop area -->
+    <div id="desktop" class="wrap">
+      <!-- Icons will be generated here -->
+
+      <!-- Hidden search form for logic compatibility -->
+      <form id="siteSearchForm" style="display:none">
+          <input id="siteSearchInput" type="text">
+          <button id="siteSearchBtn" type="submit"></button>
       </form>
-      <div id="siteSearchDropdown" class="site-search-dropdown" role="listbox" aria-label="Site search suggestions"></div>
-      <div id="siteSearchMeta" class="site-search-meta">TIP: TYPE A GAME, MENU TAB, OR PANEL (E.G. BANK, TRENDING, UPDATE LOG).</div>
-      <div class="subtitle">TERMINAL ONLINE</div>
-      <div style="margin-top: 20px; font-size: 10px">
-        OPERATOR: <span id="displayUser">ANON</span>
-        <span id="displayRankBadge" class="rank-badge rank-iron">⬢</span>
-        <span
-          id="displayRank"
-          style="color: var(--accent); background: var(--accent-dim); padding: 2px 5px"
-          >[IRON]</span
-        >
-      </div>
-      <section class="random-game-cta" aria-label="Games">
-        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayGamebox">GAMES</button></h2>
-        <button class="trending-game-btn random-game-btn" id="randomGameBtn" type="button">
-          <span class="trending-rank">🎲</span>
-          <span>RANDOM GAME</span>
-          <span class="trending-count">LAUNCH</span>
-        </button>
-      </section>
-      <section class="recent-games" aria-label="Recent games">
-        <h2>RECENT GAMES</h2>
-        <div class="trending-meta" id="recentGamesMeta">YOUR MOST RECENTLY PLAYED GAMES.</div>
-        <div class="trending-games-list" id="recentGamesList">
-          <div class="trending-empty">NO RECENT GAMES YET.</div>
-        </div>
-      </section>
-      <section class="trending-games" aria-label="Trending games">
-        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayTrending">TRENDING GAMES // LAST 24H</button></h2>
-        <div class="trending-meta" id="trendingGamesMeta">SCANNING PLAYER TRAFFIC...</div>
-        <div class="trending-games-list" id="trendingGamesList">
-          <div class="trending-empty">NO TRAFFIC SIGNAL YET.</div>
-        </div>
-      </section>
-      <section class="update-log" aria-label="Update log" id="updateLogPanel" data-github-owner="thefoxssss" data-github-repo="webstie">
-        <h2><button class="panel-title-btn" type="button" data-open-overlay="overlayUpdates">UPDATE LOG</button></h2>
-        <ul id="updateLogList">
-          <li><span>#01</span> LOADING LATEST UPDATES...</li>
-        </ul>
-      </section>
+      <div id="siteSearchDropdown" class="site-search-dropdown"></div>
+      <div id="siteSearchMeta" style="display:none"></div>
     </div>
 
     <!-- Login overlay shown on initial load or when logged out. -->
     <div class="overlay active" id="overlayLogin">
       <div class="login-box">
-        <h1 style="margin-bottom: 30px">SECURE LOGIN</h1>
-        <input
-          type="text"
-          id="usernameInput"
-          class="term-input"
-          placeholder="CODENAME"
-          maxlength="10"
-        />
-        <input
-          type="password"
-          id="pinInput"
-          class="term-input"
-          placeholder="4-DIGIT PIN"
-          maxlength="4"
-          style="letter-spacing: 5px"
-        />
-        <div style="display: flex; gap: 10px">
-          <button class="term-btn" id="btnLogin">LOGIN</button>
+        <div class="login-header">
+            <div class="login-logo">GOONER OS</div>
+            <h1>SECURE TERMINAL ACCESS</h1>
+        </div>
+
+        <div class="login-rank-display" id="loginRankDisplay" style="display: none;">
+            <span id="loginRankBadge" class="rank-badge">⬢</span>
+            <span id="loginRankLabel">[IDENTIFYING...]</span>
+        </div>
+
+        <div class="login-fields">
+            <input
+              type="text"
+              id="usernameInput"
+              class="term-input"
+              placeholder="CODENAME"
+              maxlength="10"
+            />
+            <input
+              type="password"
+              id="pinInput"
+              class="term-input"
+              placeholder="4-DIGIT PIN"
+              maxlength="4"
+              style="letter-spacing: 10px"
+            />
+        </div>
+
+        <div class="login-actions">
+          <button class="term-btn" id="btnLogin">INITIALIZE SESSION</button>
           <button
             class="term-btn"
             id="btnRegister"
             style="border-color: #0f0; color: #0f0"
           >
-            REGISTER
+            ENLIST OPERATOR
           </button>
         </div>
         <p
           id="loginMsg"
-          style="font-size: 10px; margin-top: 20px; color: yellow"
+          style="font-size: 10px; margin-top: 20px; color: yellow; min-height: 12px;"
         ></p>
+
+        <div class="login-footer">
+            <div class="system-status">SYSTEM READY // ENCRYPTION ENABLED</div>
+        </div>
       </div>
     </div>
 
@@ -635,13 +570,12 @@
           </div>
           <div class="badge-grid" id="badgeGrid"></div>
         </div>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
-          onclick="window.closeOverlays()"
         >
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -653,7 +587,7 @@
         <div id="bdRarity">COMMON</div>
         <p id="bdDesc">This achievement is locked.</p>
         <div id="bdReward">REWARD: $???</div>
-        <button
+        <button class="term-btn" onclick="document.getElementById('modalBadgeDetail').classList.remove('active')">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
           onclick="
@@ -662,8 +596,8 @@
               .classList.remove('active')
           "
         >
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -800,9 +734,8 @@
           </div>
         </div>
 
-        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -816,13 +749,12 @@
         <div class="inventory-grid" id="inventoryList">
           <div class="inventory-empty">BAG IS EMPTY.</div>
         </div>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
-          onclick="window.closeOverlays()"
         >
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -834,13 +766,12 @@
           BALANCE: $<span id="shopBank">0</span>
         </div>
         <div class="shop-list" id="shopList"></div>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
-          onclick="window.closeOverlays()"
         >
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -917,9 +848,8 @@
           </div>
         </div>
         <div id="jobsMsg" class="jobs-msg"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -1046,7 +976,6 @@
           <div class="score-list" id="seasonBoardList"></div>
         </div>
         <div class="score-list" id="seasonHall"></div>
-        <button class="term-btn" style="margin-top: 20px" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -1133,7 +1062,6 @@
         </div>
 
         <p id="crewMsg" style="font-size: 10px; color: #aaa; margin-top: 10px; text-align: center; min-height: 12px;"></p>
-        <button class="term-btn" style="margin-top: 14px" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -1202,48 +1130,49 @@
           CONFIG
         </h2>
         <div class="config-row">
-          <span>THEME</span
+          <span>THEME</span>
           ><input type="color" id="themeColor" value="#ffffff" />
         </div>
         <div class="config-row">
-          <span>MATRIX</span
+          <span>MATRIX</span>
           ><button class="menu-btn" id="matrixToggle">OFF</button>
         </div>
         <div class="config-row">
-          <span>SCANLINES</span
+          <span>SCANLINES</span>
           ><input type="range" id="scanSlider" min="0" max="100" value="50" />
         </div>
         <div class="config-row">
-          <span>FLICKER</span
+          <span>FLICKER</span>
           ><button class="menu-btn" id="flickerToggle">ON</button>
         </div>
         <div class="config-row">
-          <span>VOLUME</span
+          <span>VOLUME</span>
           ><input type="range" id="volSlider" min="0" max="100" value="50" />
         </div>
         <div class="config-row">
-          <span>FULLSCREEN</span
+          <span>FULLSCREEN</span>
           ><button class="menu-btn" id="fsToggle">TOGGLE</button>
         </div>
         <div class="config-row">
-          <span>UI SCALE</span
+          <span>UI SCALE</span>
           ><input type="range" id="uiScaleSlider" min="85" max="110" step="1" value="100" />
         </div>
         <div class="config-row">
-          <span>TEXT SIZE</span
+          <span>TEXT SIZE</span>
           ><input type="range" id="uiTextSlider" min="9" max="13" step="1" value="11" />
         </div>
         <div class="config-row">
-          <span>HIGH CONTRAST</span
+          <span>HIGH CONTRAST</span>
           ><button class="menu-btn" id="contrastToggle">OFF</button>
         </div>
         <div class="config-row">
-          <span>REDUCED MOTION</span
+          <span>REDUCED MOTION</span>
           ><button class="menu-btn" id="motionToggle">OFF</button>
         </div>
         <div class="config-row">
-          <span>STATUS VISIBILITY</span
+          <span>STATUS VISIBILITY</span>
           ><button class="menu-btn" id="statusVisibilityToggle">VISIBLE</button>
+        <div class="config-row"><span>DESKTOP TEXT</span><button class="menu-btn" id="bgTextToggle">ON</button></div>
         </div>
         <button
           class="term-btn"
@@ -1252,13 +1181,12 @@
         >
           LOGOUT
         </button>
-        <button
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button><!--
           class="term-btn"
           style="margin-top: 20px"
-          onclick="window.closeConfigOverlay()"
         >
-          CLOSE
-        </button>
+
+        <button class="term-btn" onclick="window.closeOverlays()">CLOSE</button>
       </div>
     </div>
 
@@ -1325,16 +1253,15 @@
         <button class="term-btn" style="margin-top: 20px;" onclick="window.showGeoMenu()">BACK TO MENU</button>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Typing speed mini-game. -->
     <div class="overlay" id="overlayType">
       <h1>TYPE RUNNER</h1>
       <div class="type-stats">
-        <span>TIME: <span id="typeTimer">0</span>s</span
+        <span>TIME: <span id="typeTimer">0</span>s</span>
         ><span>WPM: <span id="typeWPM">0</span></span>
       </div>
       <div
@@ -1351,9 +1278,8 @@
       >
         RESTART
       </button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Fnaf mini-game. -->
@@ -1394,9 +1320,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Pong mini-game. -->
@@ -1414,9 +1339,8 @@
           HARD
         </button>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Snake mini-game. -->
@@ -1435,9 +1359,8 @@
         <div class="touch-btn" data-sk="down">▼</div>
         <div class="touch-btn" data-sk="right">▶</div>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Endless runner mini-game. -->
@@ -1449,9 +1372,8 @@
       <div class="mobile-hint active" style="margin-top: 20px">
         PRESS SPACE TO JUMP
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Core Breaker mini-game overlay. -->
@@ -1461,7 +1383,6 @@
       <div style="margin-bottom: 10px" id="coreBreakerScore">SCORE: 0 | LIVES: 3</div>
       <canvas id="coreBreakerCanvas" width="800" height="450"></canvas>
       <div class="mobile-hint active" style="margin-top: 12px">A/D OR ←/→ TO MOVE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
 
@@ -1472,7 +1393,6 @@
       <div style="margin-bottom: 10px" id="neonDefenderScore">SCORE: 0</div>
       <canvas id="neonDefenderCanvas" width="800" height="450"></canvas>
       <div class="mobile-hint active" style="margin-top: 12px">MOVE MOUSE TO AIM AUTO-FIRE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Void Miner mini-game overlay. -->
@@ -1483,7 +1403,6 @@
       <canvas id="voidMinerCanvas" width="800" height="500"></canvas>
       <button id="voidMinerFullscreenBtn" style="margin-top: 10px">FULLSCREEN</button>
       <div class="mobile-hint active" style="margin-top: 12px">W/↑ THRUST • A,D / ←,→ ROTATE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Core Driller mini-game overlay. -->
@@ -1493,7 +1412,6 @@
       <div style="margin-bottom: 10px" id="coreDrillerHud">DEPTH:0m SCORE:0 FUEL:100 HEAT:0 HULL:100 UP:0</div>
       <canvas id="coreDrillerCanvas" width="820" height="500"></canvas>
       <div class="mobile-hint active" style="margin-top: 12px">W/↑ DRILL • S/↓ BRAKE • A,D / ←,→ STRAFE</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Shadow Assassin embedded mini-game overlay. -->
@@ -1505,9 +1423,8 @@
         title="Shadow Assassin"
         allowfullscreen
       ></iframe>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Dodge Grid mini-game overlay. -->
@@ -1519,9 +1436,8 @@
       <div class="mobile-hint active" style="margin-top: 20px">
         ARROWS OR WASD TO EVADE
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
 
@@ -1582,9 +1498,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Slot machine mini-game overlay. -->
@@ -1666,9 +1581,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Multiplayer Tic Tac Toe overlay. -->
@@ -1720,9 +1634,8 @@
           PLAY AGAIN
         </button>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Ultimate Tic-Tac-Toe overlay (online multiplayer + AI). -->
@@ -1755,7 +1668,6 @@
         <div class="uttt-grid" id="ultimatetttGrid"><div class="uttt-mini-board"><button class="uttt-cell" data-board="0" data-cell="0"></button><button class="uttt-cell" data-board="0" data-cell="1"></button><button class="uttt-cell" data-board="0" data-cell="2"></button><button class="uttt-cell" data-board="0" data-cell="3"></button><button class="uttt-cell" data-board="0" data-cell="4"></button><button class="uttt-cell" data-board="0" data-cell="5"></button><button class="uttt-cell" data-board="0" data-cell="6"></button><button class="uttt-cell" data-board="0" data-cell="7"></button><button class="uttt-cell" data-board="0" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="1" data-cell="0"></button><button class="uttt-cell" data-board="1" data-cell="1"></button><button class="uttt-cell" data-board="1" data-cell="2"></button><button class="uttt-cell" data-board="1" data-cell="3"></button><button class="uttt-cell" data-board="1" data-cell="4"></button><button class="uttt-cell" data-board="1" data-cell="5"></button><button class="uttt-cell" data-board="1" data-cell="6"></button><button class="uttt-cell" data-board="1" data-cell="7"></button><button class="uttt-cell" data-board="1" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="2" data-cell="0"></button><button class="uttt-cell" data-board="2" data-cell="1"></button><button class="uttt-cell" data-board="2" data-cell="2"></button><button class="uttt-cell" data-board="2" data-cell="3"></button><button class="uttt-cell" data-board="2" data-cell="4"></button><button class="uttt-cell" data-board="2" data-cell="5"></button><button class="uttt-cell" data-board="2" data-cell="6"></button><button class="uttt-cell" data-board="2" data-cell="7"></button><button class="uttt-cell" data-board="2" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="3" data-cell="0"></button><button class="uttt-cell" data-board="3" data-cell="1"></button><button class="uttt-cell" data-board="3" data-cell="2"></button><button class="uttt-cell" data-board="3" data-cell="3"></button><button class="uttt-cell" data-board="3" data-cell="4"></button><button class="uttt-cell" data-board="3" data-cell="5"></button><button class="uttt-cell" data-board="3" data-cell="6"></button><button class="uttt-cell" data-board="3" data-cell="7"></button><button class="uttt-cell" data-board="3" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="4" data-cell="0"></button><button class="uttt-cell" data-board="4" data-cell="1"></button><button class="uttt-cell" data-board="4" data-cell="2"></button><button class="uttt-cell" data-board="4" data-cell="3"></button><button class="uttt-cell" data-board="4" data-cell="4"></button><button class="uttt-cell" data-board="4" data-cell="5"></button><button class="uttt-cell" data-board="4" data-cell="6"></button><button class="uttt-cell" data-board="4" data-cell="7"></button><button class="uttt-cell" data-board="4" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="5" data-cell="0"></button><button class="uttt-cell" data-board="5" data-cell="1"></button><button class="uttt-cell" data-board="5" data-cell="2"></button><button class="uttt-cell" data-board="5" data-cell="3"></button><button class="uttt-cell" data-board="5" data-cell="4"></button><button class="uttt-cell" data-board="5" data-cell="5"></button><button class="uttt-cell" data-board="5" data-cell="6"></button><button class="uttt-cell" data-board="5" data-cell="7"></button><button class="uttt-cell" data-board="5" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="6" data-cell="0"></button><button class="uttt-cell" data-board="6" data-cell="1"></button><button class="uttt-cell" data-board="6" data-cell="2"></button><button class="uttt-cell" data-board="6" data-cell="3"></button><button class="uttt-cell" data-board="6" data-cell="4"></button><button class="uttt-cell" data-board="6" data-cell="5"></button><button class="uttt-cell" data-board="6" data-cell="6"></button><button class="uttt-cell" data-board="6" data-cell="7"></button><button class="uttt-cell" data-board="6" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="7" data-cell="0"></button><button class="uttt-cell" data-board="7" data-cell="1"></button><button class="uttt-cell" data-board="7" data-cell="2"></button><button class="uttt-cell" data-board="7" data-cell="3"></button><button class="uttt-cell" data-board="7" data-cell="4"></button><button class="uttt-cell" data-board="7" data-cell="5"></button><button class="uttt-cell" data-board="7" data-cell="6"></button><button class="uttt-cell" data-board="7" data-cell="7"></button><button class="uttt-cell" data-board="7" data-cell="8"></button></div><div class="uttt-mini-board"><button class="uttt-cell" data-board="8" data-cell="0"></button><button class="uttt-cell" data-board="8" data-cell="1"></button><button class="uttt-cell" data-board="8" data-cell="2"></button><button class="uttt-cell" data-board="8" data-cell="3"></button><button class="uttt-cell" data-board="8" data-cell="4"></button><button class="uttt-cell" data-board="8" data-cell="5"></button><button class="uttt-cell" data-board="8" data-cell="6"></button><button class="uttt-cell" data-board="8" data-cell="7"></button><button class="uttt-cell" data-board="8" data-cell="8"></button></div></div>
         <button class="term-btn" id="ultimatetttReset" style="margin-top:14px;display:none">PLAY AGAIN</button>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Wordle overlay. -->
@@ -1842,7 +1754,6 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
         <span class="icon">×</span><span class="text">EXIT</span>
       </button>
     </div>
@@ -1936,9 +1847,8 @@
           </div>
         </div>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Solo + multiplayer Blackjack overlay. -->
@@ -2008,8 +1918,8 @@
           <div class="bj-score" id="bjPlayerScore"></div>
         </div>
         <div class="bj-controls" id="bjGameBtns" style="display: none">
-          <button class="term-btn" id="bjHit">HIT</button
-          ><button class="term-btn" id="bjDouble" style="border-left: 1px solid var(--accent); border-right: 1px solid var(--accent);">DOUBLE</button
+          <button class="term-btn" id="bjHit">HIT</button>
+          ><button class="term-btn" id="bjDouble" style="border-left: 1px solid var(--accent); border-right: 1px solid var(--accent);">DOUBLE</button>
           ><button class="term-btn" id="bjStand">STAND</button>
         </div>
         <div style="text-align: center; margin: 8px 0 4px">
@@ -2049,9 +1959,8 @@
           </div>
         </div>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Mines overlay. -->
@@ -2101,9 +2010,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Baccarat overlay. -->
@@ -2150,9 +2058,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Craps overlay. -->
@@ -2190,9 +2097,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Video Poker overlay. -->
@@ -2226,9 +2132,8 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Solo + multiplayer War overlay. -->
@@ -2276,7 +2181,6 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- FPS overlay. -->
@@ -2359,7 +2263,6 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Builder Room overlay. -->
@@ -2422,7 +2325,6 @@
           WASD TO MOVE. CLICK TO BUILD. SHIFT-CLICK TO BREAK. PRESS I FOR IN-GAME INVENTORY.
         </div>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayWar">
@@ -2478,7 +2380,6 @@
         </div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Firebase multiplayer physics arena game. -->
@@ -2527,9 +2428,8 @@
         <button class="menu-btn" id="baReplayBtn">REPLAY (HOST)</button>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
 
@@ -2569,7 +2469,6 @@
         <canvas id="saCanvas" width="780" height="460"></canvas>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Flappy Goon mini-game overlay. -->
@@ -2579,9 +2478,8 @@
       <div style="margin-bottom: 10px" id="flappyScore">SCORE: 0</div>
       <canvas id="flappyCanvas" width="400" height="600"></canvas>
       <div class="mobile-hint active">TAP TO FLAP</div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">
-        EXIT SYSTEM
-      </button>
+
+      <button class="term-btn" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Firebase multiplayer top-down drift racing game. -->
@@ -2621,7 +2519,6 @@
         <div id="driftWinner" class="bonk-winner"></div>
       </div>
 
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Custom 16-bit CPU emulator overlay. -->
@@ -2679,7 +2576,6 @@
           <pre id="emuTerminalOutput" class="emu-output"></pre>
         </div>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
 
@@ -2692,7 +2588,6 @@
       <canvas id="byteblitzCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS MOVE. TAP TO REPOSITION + FIRE</div>
       <button class="term-btn" id="byteblitzAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayCiphercrack">
@@ -2704,7 +2599,6 @@
       <canvas id="ciphercrackCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">TAP / CLICK ADJACENT SYMBOLS TO BUILD THE CHAIN</div>
       <button class="term-btn" id="ciphercrackAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayAstrohop">
@@ -2716,7 +2610,6 @@
       <canvas id="astrohopCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS TO MOVE · TAP JUMP · DOUBLE-TAP DASH</div>
       <button class="term-btn" id="astrohopAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayPulsestack">
@@ -2728,7 +2621,6 @@
       <canvas id="pulsestackCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
       <button class="term-btn" id="pulsestackAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayGlitchgate">
@@ -2740,7 +2632,6 @@
       <canvas id="glitchgateCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
       <button class="term-btn" id="glitchgateAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayOrbweaver">
@@ -2752,7 +2643,6 @@
       <canvas id="orbweaverCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
       <button class="term-btn" id="orbweaverAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayLaserlock">
@@ -2764,7 +2654,6 @@
       <canvas id="laserlockCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
       <button class="term-btn" id="laserlockAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayMetromaze">
@@ -2776,7 +2665,6 @@
       <canvas id="metromazeCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS TO MOVE. TAP TO STEP ON MOBILE</div>
       <button class="term-btn" id="metromazeAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayStacksmash">
@@ -2788,7 +2676,6 @@
       <canvas id="stacksmashCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">CLICK / TAP TARGETS TO SCORE</div>
       <button class="term-btn" id="stacksmashAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <div class="overlay" id="overlayQuantumflip">
@@ -2800,7 +2687,6 @@
       <canvas id="quantumflipCanvas" width="800" height="420"></canvas>
       <div class="mobile-hint active" style="margin-top: 10px">WASD / ARROWS TO MOVE. TAP TO DASH ON MOBILE</div>
       <button class="term-btn" id="quantumflipAction" style="margin-top: 14px">START ROUND</button>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Hexfall mini-game overlay. -->
@@ -2839,7 +2725,6 @@
           <p id="hexfallRoundWinner" style="color: white; font-size: 18px; margin-bottom: 20px; text-shadow: 1px 1px 0 #000;">Winner: Unknown</p>
         </div>
       </div>
-      <button class="exit-btn-fixed" onclick="window.closeOverlays()">EXIT SYSTEM</button>
     </div>
 
     <!-- Game-over modal shared across mini-games. -->
@@ -2853,6 +2738,29 @@
       <button class="menu-btn" id="goExit">
         EXIT TO MENU
       </button>
+    </div>
+
+    <!-- Taskbar -->
+    <div id="taskbar" class="taskbar">
+        <div class="taskbar-left">
+            <div class="user-menu-container"><button id="userMenuBtn" class="taskbar-item user-btn"><span id="taskbarRankBadge" class="rank-badge rank-iron">⬢</span> <span id="taskbarUsername">ANON</span></button><div id="userMenuDropdown" class="user-menu-dropdown"><button onclick="window.openGame('overlayBank')">BANK</button><button onclick="window.openGame('overlayShop')">SHOP</button><button onclick="window.openGame('overlayInventory')">INVENTORY</button><button onclick="window.openGame('overlayProfile')">PROFILE</button><button onclick="window.openGame('overlaySeason')">SEASON</button><button onclick="window.openGame('overlayCrew')">CREW</button><button onclick="window.openGame('globalChat')">CHAT</button><button id="tabAdminMenu" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button><button id="taskbarSignout">SIGNOUT</button></div></div>
+            <div class="taskbar-search">
+                <input type="text" id="taskbarSearchInput" placeholder="Search..." autocomplete="off">
+            </div>
+        </div>
+        <div id="taskbar-apps" class="taskbar-center">
+            <!-- App tabs will appear here -->
+        </div>
+        <div class="taskbar-right">
+            <div class="taskbar-item sys-stat">
+                <span class="stat-label">PING:</span> <span id="taskbarPing">--ms</span>
+            </div>
+            <div class="taskbar-item sys-stat">
+                <span class="stat-label">CASH:</span> $<span id="taskbarBank">0</span>
+            </div>
+            <div class="taskbar-item sys-clock" id="taskbarClock">00:00:00</div>
+            <button id="taskbarConfigBtn" class="taskbar-item config-icon" title="Settings">⚙️</button>
+        </div>
     </div>
 
     <!-- Main entrypoint script (loads all game modules). -->
