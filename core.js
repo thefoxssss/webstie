@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
-  getFirestore,
+  initializeFirestore,
   collection,
   doc,
   setDoc,
@@ -132,7 +132,9 @@ export function handleFirebaseError(error, context = "FIREBASE", fallback = "") 
 }
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 
 // Local player state (mirrors Firestore on sync).
 let myUid = null;
