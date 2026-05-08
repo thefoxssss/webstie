@@ -1788,7 +1788,6 @@ body::before {
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(20px);
   z-index: 9000;
-  display: flex;
   justify-content: center;
   align-items: center;
 }
