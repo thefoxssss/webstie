@@ -153,6 +153,7 @@ window.adminUnlockAllAchievements = adminUnlockAllAchievements;
 window.updateHighScore = updateHighScore;
 window.initVoice = initVoice;
 window.leaveVoiceRoom = leaveVoiceRoom;
+window.beep = beep;
 
 
 
@@ -1016,7 +1017,8 @@ function initMainSiteSearch() {
   }
 
   function renderSuggestions(rawQuery) {
-    if (document.activeElement !== input) {
+    const taskbarInput = document.getElementById("taskbarSearchInput");
+    if (document.activeElement !== input && document.activeElement !== taskbarInput) {
       hideSuggestions();
       return;
     }
@@ -1415,12 +1417,6 @@ GAME_DIRECTORY_ENTRIES.forEach(game => {
     }
 });
 
-// Initialize widgets
-setTimeout(() => {
-    openGame("overlayTrending");
-    openGame("overlayRecentGames");
-    openGame("overlayUpdates");
-}, 500);
 
 // Apply desktop config (positions)
 setTimeout(() => {
@@ -1545,6 +1541,7 @@ const userMenuBtn = document.getElementById('userMenuBtn');
 const userMenuDropdown = document.getElementById('userMenuDropdown');
 if (userMenuBtn && userMenuDropdown) {
     userMenuBtn.onclick = (e) => {
+        if (typeof window.beep === "function") window.beep(400, "square", 0.05);
         e.stopPropagation();
         userMenuDropdown.classList.toggle('active');
     };

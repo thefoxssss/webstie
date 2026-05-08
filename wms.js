@@ -90,11 +90,23 @@ export class AppWindow {
   }
 
   createTaskbarTab() {
-    const tab = document.createElement("button");
+    const tab = document.createElement("div");
     tab.className = "taskbar-tab";
     tab.id = `tab-${this.id}`;
-    tab.innerHTML = `<span class="tab-icon">${this.options.icon}</span> <span class="tab-text">${this.title}</span>`;
-    tab.onclick = () => this.toggleMinimize();
+    tab.innerHTML = `
+        <span class="tab-icon">${this.options.icon}</span>
+        <span class="tab-text">${this.title}</span>
+        <button class="tab-close-btn" title="Close">×</button>
+    `;
+
+    tab.onclick = (e) => {
+        if (e.target.classList.contains("tab-close-btn")) {
+            e.stopPropagation();
+            this.close();
+        } else {
+            this.toggleMinimize();
+        }
+    };
 
     document.getElementById("taskbar-apps").appendChild(tab);
     this.elements.tab = tab;
@@ -160,10 +172,59 @@ export class AppWindow {
       let top = this.elements.window.offsetTop - pos2;
       let left = this.elements.window.offsetLeft - pos1;
 
-      // Basic boundary check
-      const desktop = document.getElementById("desktop");
-      if (top < 0) top = 0;
-      if (left < 0) left = 0;
+      // Snap to edges
+      const snapThreshold = 20;
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight - 50; // Taskbar height
+
+      if (left < snapThreshold) left = 0;
+      if (top < snapThreshold) top = 0;
+      if (screenWidth - (left + this.elements.window.offsetWidth) < snapThreshold) {
+          left = screenWidth - this.elements.window.offsetWidth;
+      }
+      if (screenHeight - (top + this.elements.window.offsetHeight) < snapThreshold) {
+          top = screenHeight - this.elements.window.offsetHeight;
+      }
+
+      // Top-middle snap logic
+      if (top === 0 && Math.abs(left + this.elements.window.offsetWidth / 2 - screenWidth / 2) < snapThreshold * 2) {
+          if (!this.isMaximized) {
+              this.toggleMaximize();
+              return;
+          }
+      }
+
+      // Prevent overlapping by snapping to sides
+      if (window.WMS) {
+          window.WMS.windows.forEach((win, id) => {
+              if (id === this.id || win.isMinimized) return;
+              const otherWin = win.elements.window;
+              const rect1 = this.elements.window.getBoundingClientRect();
+              const rect2 = otherWin.getBoundingClientRect();
+
+              const buffer = 10;
+              const isOverlapping = !(rect1.right < rect2.left - buffer ||
+                                     rect1.left > rect2.right + buffer ||
+                                     rect1.bottom < rect2.top - buffer ||
+                                     rect1.top > rect2.bottom + buffer);
+
+              if (isOverlapping) {
+                  // Find nearest non-overlapping side
+                  const dists = [
+                      { side: 'left', d: Math.abs(rect1.right - rect2.left) },
+                      { side: 'right', d: Math.abs(rect1.left - rect2.right) },
+                      { side: 'top', d: Math.abs(rect1.bottom - rect2.top) },
+                      { side: 'bottom', d: Math.abs(rect1.top - rect2.bottom) }
+                  ];
+                  const nearest = dists.sort((a, b) => a.d - b.d)[0];
+
+                  if (nearest.side === 'left') left = rect2.left - this.elements.window.offsetWidth;
+                  if (nearest.side === 'right') left = rect2.right;
+                  if (nearest.side === 'top') top = rect2.top - this.elements.window.offsetHeight;
+                  if (nearest.side === 'bottom') top = rect2.bottom;
+              }
+          });
+      }
 
       this.elements.window.style.top = top + "px";
       this.elements.window.style.left = left + "px";
@@ -196,6 +257,7 @@ export class AppWindow {
   }
 
   toggleMinimize() {
+    if (typeof window.beep === "function") window.beep(300, "square", 0.05);
     this.isMinimized = !this.isMinimized;
     if (this.isMinimized) {
       this.elements.window.style.display = "none";
@@ -245,9 +307,13 @@ export class AppWindow {
   toggleFavorite() {
     this.isFavorited = !this.isFavorited;
     this.elements.tab.classList.toggle("favorited", this.isFavorited);
+    if (window.saveDesktopConfig) {
+        window.saveDesktopConfig(this.id, this.elements.window.style.left, this.elements.window.style.top, { isFavorited: this.isFavorited });
+    }
   }
 
   toggleMaximize() {
+    if (typeof window.beep === "function") window.beep(500, "square", 0.05);
     this.isMaximized = !this.isMaximized;
     this.elements.window.classList.toggle("maximized", this.isMaximized);
     if (this.isMaximized) {
@@ -258,6 +324,14 @@ export class AppWindow {
   }
 
   close() {
+    if (typeof window.beep === "function") window.beep(200, "square", 0.05);
+    // Call stopAllGames if this was a game window
+    if (this.id.startsWith("overlay") && !["overlayBank", "overlayShop", "overlayInventory", "overlayProfile", "overlaySeason", "overlayCrew", "overlayAdmin", "overlayConfig", "overlayGamebox", "overlayTrending", "overlayRecentGames", "overlayUpdates"].includes(this.id)) {
+        if (typeof window.stopAllGames === "function") {
+            window.stopAllGames();
+        }
+    }
+
     // Move content back to its original overlay container
     if (this.contentElement) {
         while (this.elements.content.firstChild) {
@@ -314,23 +388,30 @@ export function initDesktop() {
     const desktop = document.getElementById("desktop");
     if (!desktop) return;
 
-    // Default desktop apps
+    // Filtered apps: removed those already in the taskbar or user menu
     const apps = [
-        { id: "bank", title: "BANK", icon: "🏦", overlayId: "overlayBank" },
-        { id: "shop", title: "SHOP", icon: "🛒", overlayId: "overlayShop" },
-        { id: "inventory", title: "BAG", icon: "🎒", overlayId: "overlayInventory" },
-        { id: "profile", title: "PROFILE", icon: "👤", overlayId: "overlayProfile" },
-        { id: "season", title: "SEASON", icon: "🗓️", overlayId: "overlaySeason" },
-        { id: "crew", title: "CREW", icon: "🏴‍☠️", overlayId: "overlayCrew" },
-        { id: "chat", title: "CHAT", icon: "💬", overlayId: "globalChat" },
-        { id: "config", title: "CONFIG", icon: "⚙️", overlayId: "overlayConfig" },
-        { id: "admin", title: "ADMIN", icon: "⚡", overlayId: "overlayAdmin", adminOnly: true },
-        { id: "games", title: "GAMES", icon: "🎮", overlayId: "overlayGamebox" },
+        // { id: "bank", title: "BANK", icon: "🏦", overlayId: "overlayBank" },
+        // { id: "shop", title: "SHOP", icon: "🛒", overlayId: "overlayShop" },
+        // { id: "inventory", title: "BAG", icon: "🎒", overlayId: "overlayInventory" },
+        // { id: "profile", title: "PROFILE", icon: "👤", overlayId: "overlayProfile" },
+        // { id: "season", title: "SEASON", icon: "🗓️", overlayId: "overlaySeason" },
+        // { id: "crew", title: "CREW", icon: "🏴‍☠️", overlayId: "overlayCrew" },
+        // { id: "chat", title: "CHAT", icon: "💬", overlayId: "globalChat" },
+        // { id: "config", title: "CONFIG", icon: "⚙️", overlayId: "overlayConfig" },
+        // { id: "admin", title: "ADMIN", icon: "⚡", overlayId: "overlayAdmin", adminOnly: true },
+        // { id: "games", title: "GAMES", icon: "🎮", overlayId: "overlayGamebox" },
     ];
 
-    // Add games from catalog
-    // Note: This requires importing GAME_DIRECTORY_ENTRIES, which we can do via window global if needed
-    // or just rely on the script.js to call a method.
+    // Load favorite/pinned apps from desktopConfig
+    if (typeof window.getDesktopConfig === "function") {
+        const config = window.getDesktopConfig();
+        Object.keys(config).forEach(appId => {
+            if (config[appId].isFavorited) {
+                // Pin logic handled by individual AppWindow instances,
+                // but icons can be recreated here if they represent non-system apps.
+            }
+        });
+    }
 
     apps.forEach(app => {
         createDesktopIcon(app);
