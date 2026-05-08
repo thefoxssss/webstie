@@ -3,6 +3,77 @@
  * Handles window lifecycle, dragging, resizing, and taskbar integration.
  */
 
+
+const FALLBACK_APP_METADATA = Object.freeze({
+    overlayBank: { title: "BANK", icon: "🏦" },
+    overlayShop: { title: "SHOP", icon: "🛒" },
+    overlayInventory: { title: "BAG", icon: "🎒" },
+    overlayProfile: { title: "PROFILE", icon: "👤" },
+    overlaySeason: { title: "SEASON", icon: "🗓️" },
+    overlayCrew: { title: "CREW", icon: "🏴‍☠️" },
+    globalChat: { title: "CHAT", icon: "💬" },
+    overlayConfig: { title: "CONFIG", icon: "⚙️" },
+    overlayAdmin: { title: "ADMIN", icon: "⚡" },
+    overlayGamebox: { title: "GAMES", icon: "🎮" },
+    overlayTrending: { title: "TRENDING", icon: "📈" },
+    overlayRecentGames: { title: "RECENT", icon: "🕒" },
+    overlayUpdates: { title: "UPDATES", icon: "📜" },
+});
+
+function escapeAttributeValue(value) {
+    return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function resolveFallbackAppMetadata(id) {
+    const desktopIcon = document.querySelector(`.desktop-icon[data-overlay-id="${escapeAttributeValue(id)}"]`);
+    if (desktopIcon) {
+        return {
+            title: desktopIcon.dataset.appTitle || FALLBACK_APP_METADATA[id]?.title || "App",
+            icon: desktopIcon.dataset.appIcon || FALLBACK_APP_METADATA[id]?.icon || "🎮",
+        };
+    }
+    return FALLBACK_APP_METADATA[id] || { title: "App", icon: "🎮" };
+}
+
+function openGameFallback(id) {
+    const contentElement = document.getElementById(id);
+    if (!contentElement) return;
+
+    const { title, icon } = resolveFallbackAppMetadata(id);
+    if (window.WMS) {
+        window.WMS.createWindow(id, title, contentElement, { icon });
+        return;
+    }
+
+    document.querySelectorAll(".overlay").forEach((overlay) => overlay.classList.remove("active"));
+    contentElement.classList.add("active");
+    document.body.classList.add("overlay-open");
+}
+
+export function installFallbackOpenGame() {
+    if (typeof window.openGame === "function" && !window.openGame.__wmsFallback) return;
+    window.openGame = openGameFallback;
+    window.openGame.__wmsFallback = true;
+}
+
+export function installTaskbarFallbacks() {
+    const configBtn = document.getElementById("taskbarConfigBtn");
+    if (configBtn && !configBtn.onclick) {
+        configBtn.onclick = () => window.openGame?.("overlayConfig");
+    }
+
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const userMenuDropdown = document.getElementById("userMenuDropdown");
+    if (userMenuBtn && userMenuDropdown && !userMenuBtn.onclick) {
+        userMenuBtn.onclick = (event) => {
+            event.stopPropagation();
+            userMenuDropdown.classList.toggle("active");
+        };
+        userMenuDropdown.onclick = (event) => event.stopPropagation();
+        document.addEventListener("click", () => userMenuDropdown.classList.remove("active"));
+    }
+}
+
 export class AppWindow {
   constructor(id, title, contentElement, options = {}) {
     this.id = id;
@@ -383,6 +454,7 @@ class WindowManager {
 }
 
 window.WMS = new WindowManager();
+installFallbackOpenGame();
 
 export function initDesktop() {
     const desktop = document.getElementById("desktop");
@@ -420,9 +492,22 @@ export function initDesktop() {
 
 export function createDesktopIcon(app) {
     const desktop = document.getElementById("desktop");
+    if (!desktop) return null;
+
+    const existingIcon = document.getElementById(`icon-${app.id}`);
+    if (existingIcon) {
+        existingIcon.dataset.overlayId = app.overlayId;
+        existingIcon.dataset.appTitle = app.title;
+        existingIcon.dataset.appIcon = app.icon || "🎮";
+        return existingIcon;
+    }
+
     const icon = document.createElement("div");
     icon.className = "desktop-icon";
     icon.id = `icon-${app.id}`;
+    icon.dataset.overlayId = app.overlayId;
+    icon.dataset.appTitle = app.title;
+    icon.dataset.appIcon = app.icon || "🎮";
     icon.innerHTML = `
         <div class="desktop-icon-img">${app.icon}</div>
         <div class="desktop-icon-label">${app.title}</div>
@@ -433,27 +518,25 @@ export function createDesktopIcon(app) {
         icon.classList.add("admin-icon");
     }
 
-    icon.ondblclick = () => {
+    icon.onclick = () => {
+        if (icon.__suppressNextOpen) {
+            icon.__suppressNextOpen = false;
+            return;
+        }
         if (typeof window.openGame === "function") {
             window.openGame(app.overlayId);
         }
     };
 
-    // Support single click for mobile
-    icon.onclick = (e) => {
-        if (window.innerWidth <= 768) {
-            if (typeof window.openGame === "function") {
-                window.openGame(app.overlayId);
-            }
-        }
-    };
-
     desktop.appendChild(icon);
     setupIconDraggable(icon, app.id);
+    return icon;
 }
 
 function setupIconDraggable(icon, appId) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    let startX = 0, startY = 0;
+    let didDrag = false;
 
     icon.onmousedown = dragMouseDown;
 
@@ -461,6 +544,9 @@ function setupIconDraggable(icon, appId) {
         e.preventDefault();
         pos3 = e.clientX;
         pos4 = e.clientY;
+        startX = e.clientX;
+        startY = e.clientY;
+        didDrag = false;
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
 
@@ -474,6 +560,10 @@ function setupIconDraggable(icon, appId) {
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
         pos4 = e.clientY;
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) {
+            didDrag = true;
+            icon.__suppressNextOpen = true;
+        }
         icon.style.top = (icon.offsetTop - pos2) + "px";
         icon.style.left = (icon.offsetLeft - pos1) + "px";
         icon.style.position = "absolute";
@@ -482,6 +572,8 @@ function setupIconDraggable(icon, appId) {
     function closeDragElement() {
         document.onmouseup = null;
         document.onmousemove = null;
+
+        if (!didDrag) return;
 
         // Save position to state
         if (window.saveDesktopConfig) {

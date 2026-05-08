@@ -2697,10 +2697,12 @@
                 <span class="stat-label">CASH:</span> $<span id="taskbarBank">0</span>
             </div>
             <div class="taskbar-item sys-clock" id="taskbarClock">00:00:00</div>
-            <button id="taskbarConfigBtn" class="taskbar-item config-icon" title="Settings">⚙️</button>
+            <button id="taskbarConfigBtn" class="taskbar-item config-icon" title="Settings" onclick="window.openGame?.('overlayConfig')">⚙️</button>
         </div>
     </div>
 
+    <!-- Desktop shell bootstrap: local-only WMS/icons before the full app bundle. -->
+    <script type="module" src="desktop-shell.js"></script>
     <!-- Main entrypoint script (loads all game modules). -->
     <script type="module" src="script.js"></script>
   </body>
