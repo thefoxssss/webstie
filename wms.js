@@ -45,6 +45,19 @@ function getAppIdForOverlayId(overlayId) {
   return raw.charAt(0).toLowerCase() + raw.slice(1);
 }
 
+function getFallbackAppInfo(overlayId) {
+  const appId = getAppIdForOverlayId(overlayId);
+  const systemApp = SYSTEM_DESKTOP_APPS.find((app) => app.id === appId || app.overlayId === overlayId);
+  if (systemApp) return systemApp;
+  const icon = document.querySelector(`.desktop-icon[data-overlay-id="${overlayId}"]`);
+  return {
+    id: appId,
+    title: icon?.dataset.title || appId.toUpperCase(),
+    icon: icon?.dataset.icon || "🎮",
+    overlayId,
+  };
+}
+
 export class AppWindow {
   constructor(id, title, contentElement, options = {}) {
     this.id = id;
@@ -451,7 +464,37 @@ class WindowManager {
     }
 }
 
-window.WMS = new WindowManager();
+window.WMS = window.WMS || new WindowManager();
+
+export function openDesktopApp(overlayId) {
+    const contentElement = document.getElementById(overlayId);
+    if (!contentElement || !window.WMS) return null;
+    const app = getFallbackAppInfo(overlayId);
+    return window.WMS.createWindow(overlayId, app.title, contentElement, { icon: app.icon, appId: app.id });
+}
+
+if (typeof window.openGame !== "function") {
+    window.openGame = openDesktopApp;
+}
+
+export function initTaskbarFallbacks() {
+    const configBtn = document.getElementById("taskbarConfigBtn");
+    if (configBtn && configBtn.dataset.desktopFallbackReady !== "1") {
+        configBtn.dataset.desktopFallbackReady = "1";
+        configBtn.onclick = () => window.openGame?.("overlayConfig");
+    }
+
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const userMenuDropdown = document.getElementById("userMenuDropdown");
+    if (userMenuBtn && userMenuDropdown && userMenuBtn.dataset.desktopFallbackReady !== "1") {
+        userMenuBtn.dataset.desktopFallbackReady = "1";
+        userMenuBtn.onclick = (event) => {
+            event.stopPropagation();
+            userMenuDropdown.classList.toggle("active");
+        };
+        document.addEventListener("click", () => userMenuDropdown.classList.remove("active"));
+    }
+}
 
 export function initDesktop() {
     const desktop = document.getElementById("desktop");
@@ -470,6 +513,8 @@ export function createDesktopIcon(app) {
     icon.className = "desktop-icon";
     icon.id = `icon-${app.id}`;
     icon.dataset.overlayId = app.overlayId;
+    icon.dataset.title = app.title;
+    icon.dataset.icon = app.icon || "🎮";
     icon.innerHTML = `
         <div class="desktop-icon-img">${app.icon}</div>
         <div class="desktop-icon-label">${app.title}</div>
@@ -480,19 +525,21 @@ export function createDesktopIcon(app) {
         icon.classList.add("admin-icon");
     }
 
-    icon.ondblclick = () => {
+    const openApp = () => {
         if (typeof window.openGame === "function") {
             window.openGame(app.overlayId);
+        } else {
+            openDesktopApp(app.overlayId);
         }
     };
 
-    // Support single click for mobile
-    icon.onclick = (e) => {
-        if (window.innerWidth <= 768) {
-            if (typeof window.openGame === "function") {
-                window.openGame(app.overlayId);
-            }
+    icon.ondblclick = openApp;
+    icon.onclick = () => {
+        if (icon.dataset.dragged === "1") {
+            icon.dataset.dragged = "0";
+            return;
         }
+        openApp();
     };
 
     const saved = getConfigForApp(app.id);
@@ -531,6 +578,7 @@ function setupIconDraggable(icon, appId) {
         pos3 = e.clientX;
         pos4 = e.clientY;
         didDrag = true;
+        icon.dataset.dragged = "1";
         icon.style.top = (icon.offsetTop - pos2) + "px";
         icon.style.left = (icon.offsetLeft - pos1) + "px";
         icon.style.position = "absolute";
