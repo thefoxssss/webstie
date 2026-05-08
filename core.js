@@ -799,6 +799,9 @@ function updateAdminMenu() {
   if (adminBtn) adminBtn.style.display = hasAccess ? "inline-block" : "none";
   const tbAdmin = document.getElementById("tabAdminMenu");
   if (tbAdmin) tbAdmin.style.display = hasAccess ? "block" : "none";
+  document.querySelectorAll(".admin-icon").forEach((icon) => {
+    icon.style.display = hasAccess ? "flex" : "none";
+  });
   if (adminName) adminName.innerText = hasAccess ? myName : "LOCKED";
   if (isChatInitialized && document.getElementById("chatHistory")) renderChatTab();
   syncMaintenanceOverlay();
@@ -3510,17 +3513,7 @@ export function closeConfigOverlay() {
 window.openConfigOverlay = openConfigOverlay;
 window.closeConfigOverlay = closeConfigOverlay;
 window.toggleConfigOverlay = () => {
-  if (typeof window.toggleTopPanelOverlay === "function") {
-    window.toggleTopPanelOverlay("overlayConfig");
-    return;
-  }
-  const configOverlay = document.getElementById("overlayConfig");
-  if (!configOverlay) return;
-  if (configOverlay.classList.contains("active")) {
-    closeConfigOverlay();
-  } else {
-    openConfigOverlay();
-  }
+  openGame("overlayConfig");
 };
 
 // --- Bank Internal Tab Navigation ---
@@ -3863,6 +3856,10 @@ function loadProfile(data) {
   updateMatrixToggle();
   updateAdminMenu();
   applyStatusVisibilityToggle(hideStatus);
+  if (typeof window.applyDesktopConfig === "function") window.applyDesktopConfig();
+  if (typeof window.restoreOpenDesktopApps === "function") {
+    requestAnimationFrame(() => window.restoreOpenDesktopApps());
+  }
 }
 
 // Render all user-facing UI fields based on the latest state.
@@ -7465,9 +7462,29 @@ export function updateBuilderInventoryState(hotbar, inventory, armor) {
     builderArmor = armor;
 }
 
-export function saveDesktopConfig(appId, left, top) {
-    desktopConfig[appId] = { left, top };
-    saveStats();
+let desktopConfigSaveTimer = null;
+
+export function saveDesktopConfig(appId, leftOrPatch, top, extra = {}) {
+    if (!appId) return;
+    const patch = typeof leftOrPatch === "object" && leftOrPatch !== null
+        ? leftOrPatch
+        : { left: leftOrPatch, top, ...extra };
+    const previous = desktopConfig[appId] || {};
+    const previousWindow = previous.window || {};
+    const nextWindow = patch.window ? { ...previousWindow, ...patch.window } : previousWindow;
+    desktopConfig[appId] = {
+        ...previous,
+        ...patch,
+        ...(patch.window ? { window: nextWindow } : {}),
+    };
+    if (myName !== "ANON") {
+        const localProfile = getLocalProfile(myName) || { name: myName, pin: localStorage.getItem("goonerPin") || "0000" };
+        saveLocalProfileSnapshot({ ...localProfile, desktopConfig });
+    }
+    clearTimeout(desktopConfigSaveTimer);
+    desktopConfigSaveTimer = setTimeout(() => {
+        saveStats().catch((error) => console.warn("Desktop config save failed", error));
+    }, 250);
 }
 
 export function getDesktopConfig() {
@@ -7475,5 +7492,6 @@ export function getDesktopConfig() {
 }
 
 window.saveDesktopConfig = saveDesktopConfig;
+window.getDesktopConfig = getDesktopConfig;
 
 export { builderHotbar, builderInventory, builderArmor };
