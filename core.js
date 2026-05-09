@@ -3932,6 +3932,9 @@ export function updateUI() {
   if (myMoney >= 1000000) unlockAchievement("millionaire");
   updateMatrixToggle();
   updateAdminMenu();
+  if (typeof window.restoreDesktopSession === "function") {
+    window.setTimeout(() => window.restoreDesktopSession(), 0);
+  }
   if (myMoney === 0) {
     unlockAchievement("rug_pulled");
     myMoney = 10;
@@ -7466,7 +7469,9 @@ export function updateBuilderInventoryState(hotbar, inventory, armor) {
 }
 
 export function saveDesktopConfig(appId, left, top) {
-    desktopConfig[appId] = { left, top };
+    const existing = desktopConfig[appId] || {};
+    const extra = arguments[3] || {};
+    desktopConfig[appId] = { ...existing, ...extra, left, top };
     saveStats();
 }
 
