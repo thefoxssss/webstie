@@ -81,7 +81,10 @@ const app = express();
 app.use(cors());
 
 app.get("/vendor/colyseus.js", (req, res) => {
-  res.sendFile(path.join(__dirname, "node_modules", "colyseus.js", "dist", "colyseus.js"));
+  res.type("application/javascript");
+  const bundledClient = path.join(__dirname, "vendor", "colyseus.js");
+  const installedClient = path.join(__dirname, "node_modules", "colyseus.js", "dist", "colyseus.js");
+  res.sendFile(fs.existsSync(bundledClient) ? bundledClient : installedClient);
 });
 app.use((req, res, next) => {
   if (/^\/(?:\.git|node_modules|__pycache__|archive)(?:\/|$)/.test(req.path) || /^\/(?:server\.js|package(?:-lock)?\.json)$/.test(req.path)) {
