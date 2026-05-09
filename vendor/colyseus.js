@@ -1,3 +1,37 @@
+// Browser polyfill shim for Buffer/global/process used by this bundle.
+(function(g){
+  if (!g.global) g.global = g;
+  if (!g.process) g.process = { env: {} };
+  if (!g.Buffer) {
+    class BufferPolyfill extends Uint8Array {
+      static from(input, encoding='utf8') {
+        if (typeof input === 'string') {
+          if (encoding === 'base64') {
+            const bin = atob(input); const out = new BufferPolyfill(bin.length);
+            for (let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+            return out;
+          }
+          return new BufferPolyfill(new TextEncoder().encode(input));
+        }
+        if (ArrayBuffer.isView(input)) return new BufferPolyfill(input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength));
+        if (input instanceof ArrayBuffer) return new BufferPolyfill(input.slice(0));
+        return new BufferPolyfill(input || 0);
+      }
+      static alloc(size) { return new BufferPolyfill(size); }
+      static isBuffer(v) { return v instanceof Uint8Array; }
+      static concat(list, totalLength) {
+        const len = totalLength ?? list.reduce((a,b)=>a+b.length,0); const out = new BufferPolyfill(len);
+        let off=0; for (const part of list){ out.set(part, off); off += part.length; }
+        return out;
+      }
+      toString(encoding='utf8') {
+        if (encoding === 'base64') { let s=''; for (let i=0;i<this.length;i++) s += String.fromCharCode(this[i]); return btoa(s); }
+        return new TextDecoder().decode(this);
+      }
+    }
+    g.Buffer = BufferPolyfill;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : window);
 // colyseus.js@0.15.28 (@colyseus/schema 2.0.9)
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('events'), require('https'), require('http'), require('net'), require('tls'), require('crypto'), require('stream'), require('url'), require('zlib'), require('bufferutil'), require('buffer'), require('utf-8-validate')) :
