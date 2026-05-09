@@ -257,7 +257,7 @@ body::before {
   border: 1px solid var(--accent-dim);
   color: var(--accent);
   height: 36px;
-  padding: 0 15px;
+  padding: 0 10px 0 12px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -284,7 +284,36 @@ body::before {
 }
 
 .tab-icon {
+  flex: 0 0 auto;
   font-size: 14px;
+}
+
+
+.tab-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskbar-tab .tab-close-btn {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.taskbar-tab .tab-close-btn:hover,
+.taskbar-tab .tab-close-btn:focus-visible {
+  background: transparent;
+  color: #fff;
 }
 
 .desktop-icon {
