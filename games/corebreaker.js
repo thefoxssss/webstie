@@ -321,6 +321,10 @@ export function initCoreBreaker() {
   loadHighScores();
 
   const canvas = document.getElementById("coreBreakerCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayCorebreaker")) {
+        const win = window.WMS.windows.get("overlayCorebreaker");
+        canvas = win.elements.content.querySelector("#coreBreakerCanvas") || canvas;
+    }
   if (!canvas) return;
   ctx = canvas.getContext("2d");
   draw = new DrawSystem(ctx);
@@ -363,4 +367,4 @@ document.addEventListener("keyup", (event) => {
 
 registerGameStop(() => {
   kernel?.stop();
-});
+}, "corebreaker");

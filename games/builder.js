@@ -39,7 +39,11 @@ let selectedRoomId = null;
         CRAFTING_TABLE: "craftingTable",
     };
 
-    const canvas = document.getElementById("builderCanvas");
+    let canvas = document.getElementById("builderCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayBuilder")) {
+        const win = window.WMS.windows.get("overlayBuilder");
+        canvas = win.elements.content.querySelector("#builderCanvas") || canvas;
+    }
     const ctx = canvas.getContext("2d");
     const menu = document.getElementById("builderMenu");
     const gameArea = document.getElementById("builderGame");

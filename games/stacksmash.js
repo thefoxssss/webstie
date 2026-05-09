@@ -31,6 +31,10 @@ export function initStackSmash() {
   state.currentGame = "stacksmash";
 
   const canvas = document.getElementById("stacksmashCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayStacksmash")) {
+      const win = window.WMS.windows.get("overlayStacksmash");
+      canvas = win.elements.content.querySelector("#stacksmashCanvas") || canvas;
+  }
   const action = document.getElementById("stacksmashAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -115,5 +119,5 @@ export function initStackSmash() {
 
   run = { timer, raf: 0, canvas };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "stacksmash");
 }

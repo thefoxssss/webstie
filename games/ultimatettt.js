@@ -260,4 +260,4 @@ document.getElementById("utttStartBtn").onclick = startOnlineGame;
 document.getElementById("ultimatetttReset").onclick = resetOnlineGame;
 document.getElementById("ultimatetttGrid").onclick = onGridClick;
 
-registerGameStop(stop);
+registerGameStop(stop, "uttt");

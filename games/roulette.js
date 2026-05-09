@@ -236,4 +236,4 @@ registerGameStop(() => {
   }
   isSpinning = false;
   syncBetsUi();
-});
+}, "roulette");

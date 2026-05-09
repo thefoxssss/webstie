@@ -386,4 +386,4 @@ registerGameStop(() => {
   hmRoomCode = null;
   hmIsHost = false;
   hmLocalGame = null;
-});
+}, "hangman");

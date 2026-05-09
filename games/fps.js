@@ -66,6 +66,10 @@ const serverList = document.getElementById("fpsServerList");
 const fpsGame = document.getElementById("fpsGame");
 const fpsMenu = document.getElementById("fpsMenu");
 const fpsCanvas = document.getElementById("fpsCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayFps")) {
+        const win = window.WMS.windows.get("overlayFps");
+        fpsCanvas = win.elements.content.querySelector("#fpsCanvas") || fpsCanvas;
+    }
 const fpsHealth = document.getElementById("fpsHealth");
 const fpsKills = document.getElementById("fpsKills");
 const fpsLeaderboardList = document.getElementById("fpsLeaderboardList");
@@ -1292,7 +1296,13 @@ function initThreeJs() {
 
   camera = new THREE.PerspectiveCamera(75, 800 / 450, 0.1, 1000);
 
-  renderer = new THREE.WebGLRenderer({ canvas: fpsCanvas, antialias: true });
+  // Re-query canvas in case it was moved by WMS
+  let targetCanvas = fpsCanvas;
+  if (window.WMS && window.WMS.windows.has("overlayFps")) {
+      const win = window.WMS.windows.get("overlayFps");
+      targetCanvas = win.elements.content.querySelector("#fpsCanvas") || fpsCanvas;
+  }
+  renderer = new THREE.WebGLRenderer({ canvas: targetCanvas, antialias: true });
   const updateRendererSize = () => {
     const width = Math.max(1, Math.floor(fpsGame.clientWidth || 800));
     const height = Math.max(1, Math.floor(fpsGame.clientHeight || 450));

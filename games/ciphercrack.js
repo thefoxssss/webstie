@@ -98,6 +98,10 @@ export function initCipherCrack() {
   state.currentGame = "ciphercrack";
 
   const canvas = document.getElementById("ciphercrackCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayCiphercrack")) {
+      const win = window.WMS.windows.get("overlayCiphercrack");
+      canvas = win.elements.content.querySelector("#ciphercrackCanvas") || canvas;
+  }
   const action = document.getElementById("ciphercrackAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -284,5 +288,5 @@ export function initCipherCrack() {
 
   run = { timer, raf: 0, canvas };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "ciphercrack");
 }

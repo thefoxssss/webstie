@@ -188,6 +188,10 @@ export function initRunner() {
   loadHighScores();
 
   const canvas = document.getElementById("runnerCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayRunner")) {
+        const win = window.WMS.windows.get("overlayRunner");
+        canvas = win.elements.content.querySelector("#runnerCanvas") || canvas;
+    }
   ctx = canvas.getContext("2d");
   drawSystem = new DrawSystem(ctx);
   kernel = new EngineKernel({ fixedHz: 60 });
@@ -219,4 +223,4 @@ document.addEventListener("keydown", (event) => {
 
 registerGameStop(() => {
   kernel?.stop();
-});
+}, "runner");

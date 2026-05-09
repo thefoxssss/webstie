@@ -51,6 +51,10 @@ export function initSnake() {
   dispatch({ type: "SET_CURRENT_GAME", payload: "snake" });
   loadHighScores();
   sCv = document.getElementById("snakeCanvas");
+    if (window.WMS && window.WMS.windows.has("overlaySnake")) {
+        const win = window.WMS.windows.get("overlaySnake");
+        sCv = win.elements.content.querySelector("#snakeCanvas") || sCv;
+    }
   sCtx = sCv.getContext("2d");
   snake = [{ x: 10, y: 10 }];
   food = randomFood();
@@ -150,4 +154,4 @@ document.addEventListener("keydown", (e) => {
 
 registerGameStop(() => {
   unsubscribeFromGameLoop("snake");
-});
+}, "snake");

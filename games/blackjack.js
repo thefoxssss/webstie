@@ -786,7 +786,7 @@ registerGameStop(async () => {
     await exitBJRoom();
   }
   cleanupBJ();
-});
+}, "blackjack");
 
 
 // Blackjack Chat

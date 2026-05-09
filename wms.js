@@ -79,11 +79,23 @@ export class AppWindow {
     this.id = id;
     this.title = title;
     this.contentElement = contentElement; // This is the original overlay content
+
+    // Load from config if available
+    const savedConfig = window.getDesktopConfig ? window.getDesktopConfig()[id] : null;
+
+    let defaultWidth = options.width || 800;
+    let defaultHeight = options.height || 600;
+
+    if (id === "overlayConfig") {
+        defaultWidth = 350;
+        defaultHeight = 550;
+    }
+
     this.options = {
-      width: options.width || 800,
-      height: options.height || 600,
-      x: options.x || 100,
-      y: options.y || 50,
+      width: savedConfig?.width || defaultWidth,
+      height: savedConfig?.height || defaultHeight,
+      x: savedConfig?.left ? parseInt(savedConfig.left) : (options.x || 100),
+      y: savedConfig?.top ? parseInt(savedConfig.top) : (options.y || 50),
       minWidth: options.minWidth || 300,
       minHeight: options.minHeight || 200,
       icon: options.icon || "🎮",
@@ -123,7 +135,7 @@ export class AppWindow {
       <div class="window-controls">
         <button class="window-btn minimize-btn" title="Minimize">➖</button>
         <button class="window-btn maximize-btn" title="Maximize">🗖</button>
-        <button class="window-btn close-btn" title="Close">✖</button>
+        <button class="window-btn close-btn" title="Close" style="background:transparent; border:none; color:#fff; cursor:pointer; font-size:16px; padding:0 5px;">✖</button>
       </div>
     `;
 
@@ -167,7 +179,7 @@ export class AppWindow {
     tab.innerHTML = `
         <span class="tab-icon">${this.options.icon}</span>
         <span class="tab-text">${this.title}</span>
-        <button class="tab-close-btn" title="Close">×</button>
+        <button class="tab-close-btn" title="Close" style="background:transparent; border:none; color:#fff; cursor:pointer; font-size:16px; margin-left:5px; padding:0 5px;">×</button>
     `;
 
     tab.onclick = (e) => {
@@ -190,6 +202,40 @@ export class AppWindow {
     this.elements.maximizeBtn.onclick = () => this.toggleMaximize();
     this.elements.closeBtn.onclick = () => this.close();
     this.elements.window.onmousedown = () => this.focus();
+  }
+
+  focus(isInternal = false) {
+    const allWindows = document.querySelectorAll(".window");
+    let maxZ = 100;
+    allWindows.forEach(w => {
+      const z = parseInt(w.style.zIndex || 100);
+      if (z > maxZ) maxZ = z;
+      w.classList.remove("active-window");
+    });
+
+    this.zIndex = maxZ + 1;
+    this.elements.window.style.zIndex = this.zIndex;
+    this.elements.window.classList.add("active-window");
+
+    if (this.elements.tab) {
+        document.querySelectorAll(".taskbar-tab").forEach(t => t.classList.remove("active"));
+        this.elements.tab.classList.add("active");
+    }
+
+    if (isInternal) return;
+
+    // If focusing a game window, update currentGame in state
+    const systemOverlays = ["overlayBank", "overlayShop", "overlayInventory", "overlayProfile", "overlaySeason", "overlayCrew", "overlayAdmin", "overlayConfig", "overlayGamebox", "overlayTrending", "overlayRecentGames", "overlayUpdates"];
+    if (this.id.startsWith("overlay") && !systemOverlays.includes(this.id)) {
+        let gameId = this.id.replace("overlay", "").toLowerCase();
+        if (this.id === "overlayTTT") gameId = "ttt";
+        if (this.id === "overlaySmasharena") gameId = "sa";
+        if (this.id === "overlayUltimatettt") gameId = "uttt";
+
+        if (window.state && window.state.currentGame !== gameId) {
+            window.state.currentGame = gameId;
+        }
+    }
   }
 
   resizeStart(e) {
@@ -217,6 +263,7 @@ export class AppWindow {
     const stopResize = () => {
         document.removeEventListener('mousemove', doResize);
         document.removeEventListener('mouseup', stopResize);
+        this.saveToConfig();
     };
 
     document.addEventListener('mousemove', doResize);
@@ -229,72 +276,36 @@ export class AppWindow {
 
     this.focus();
 
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initialLeft = this.elements.window.offsetLeft;
+    const initialTop = this.elements.window.offsetTop;
 
     const elementDrag = (e) => {
       e.preventDefault();
-      pos1 = pos3 - e.clientX;
-      pos2 = pos4 - e.clientY;
-      pos3 = e.clientX;
-      pos4 = e.clientY;
 
-      let top = this.elements.window.offsetTop - pos2;
-      let left = this.elements.window.offsetLeft - pos1;
+      let left = initialLeft + (e.clientX - startX);
+      let top = initialTop + (e.clientY - startY);
 
       // Snap to edges
       const snapThreshold = 20;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight - 50; // Taskbar height
 
-      if (left < snapThreshold) left = 0;
-      if (top < snapThreshold) top = 0;
-      if (screenWidth - (left + this.elements.window.offsetWidth) < snapThreshold) {
+      if (Math.abs(left) < snapThreshold) left = 0;
+      if (Math.abs(top) < snapThreshold) top = 0;
+      if (Math.abs(screenWidth - (left + this.elements.window.offsetWidth)) < snapThreshold) {
           left = screenWidth - this.elements.window.offsetWidth;
       }
-      if (screenHeight - (top + this.elements.window.offsetHeight) < snapThreshold) {
+      if (Math.abs(screenHeight - (top + this.elements.window.offsetHeight)) < snapThreshold) {
           top = screenHeight - this.elements.window.offsetHeight;
       }
 
-      // Top-middle snap logic
+      // Top-middle snap logic for maximization
       if (top === 0 && Math.abs(left + this.elements.window.offsetWidth / 2 - screenWidth / 2) < snapThreshold * 2) {
-          if (!this.isMaximized) {
-              this.toggleMaximize();
-              return;
-          }
-      }
-
-      // Prevent overlapping by snapping to sides
-      if (window.WMS) {
-          window.WMS.windows.forEach((win, id) => {
-              if (id === this.id || win.isMinimized) return;
-              const otherWin = win.elements.window;
-              const rect1 = this.elements.window.getBoundingClientRect();
-              const rect2 = otherWin.getBoundingClientRect();
-
-              const buffer = 10;
-              const isOverlapping = !(rect1.right < rect2.left - buffer ||
-                                     rect1.left > rect2.right + buffer ||
-                                     rect1.bottom < rect2.top - buffer ||
-                                     rect1.top > rect2.bottom + buffer);
-
-              if (isOverlapping) {
-                  // Find nearest non-overlapping side
-                  const dists = [
-                      { side: 'left', d: Math.abs(rect1.right - rect2.left) },
-                      { side: 'right', d: Math.abs(rect1.left - rect2.right) },
-                      { side: 'top', d: Math.abs(rect1.bottom - rect2.top) },
-                      { side: 'bottom', d: Math.abs(rect1.top - rect2.bottom) }
-                  ];
-                  const nearest = dists.sort((a, b) => a.d - b.d)[0];
-
-                  if (nearest.side === 'left') left = rect2.left - this.elements.window.offsetWidth;
-                  if (nearest.side === 'right') left = rect2.right;
-                  if (nearest.side === 'top') top = rect2.top - this.elements.window.offsetHeight;
-                  if (nearest.side === 'bottom') top = rect2.bottom;
-              }
-          });
+          this.toggleMaximize();
+          closeDragElement();
+          return;
       }
 
       this.elements.window.style.top = top + "px";
@@ -304,27 +315,24 @@ export class AppWindow {
     const closeDragElement = () => {
       document.onmouseup = null;
       document.onmousemove = null;
+      this.saveToConfig();
     };
 
     document.onmousemove = elementDrag;
     document.onmouseup = closeDragElement;
   }
 
-  focus() {
-    const allWindows = document.querySelectorAll(".window");
-    let maxZ = 100;
-    allWindows.forEach(w => {
-      const z = parseInt(w.style.zIndex);
-      if (z > maxZ) maxZ = z;
-      w.classList.remove("active-window");
-    });
-
-    this.zIndex = maxZ + 1;
-    this.elements.window.style.zIndex = this.zIndex;
-    this.elements.window.classList.add("active-window");
-
-    document.querySelectorAll(".taskbar-tab").forEach(t => t.classList.remove("active"));
-    this.elements.tab.classList.add("active");
+  saveToConfig() {
+    if (window.saveDesktopConfig) {
+        window.saveDesktopConfig(this.id, {
+            left: this.elements.window.style.left,
+            top: this.elements.window.style.top,
+            width: this.elements.window.offsetWidth,
+            height: this.elements.window.offsetHeight,
+            maximized: this.isMaximized,
+            isOpen: true
+        });
+    }
   }
 
   toggleMinimize() {
@@ -392,13 +400,21 @@ export class AppWindow {
     } else {
       this.elements.maximizeBtn.textContent = "🗖";
     }
+    this.saveToConfig();
   }
 
   close() {
     if (typeof window.beep === "function") window.beep(200, "square", 0.05);
-    // Call stopAllGames if this was a game window
+    // Stop the specific game if this was a game window
     if (this.id.startsWith("overlay") && !["overlayBank", "overlayShop", "overlayInventory", "overlayProfile", "overlaySeason", "overlayCrew", "overlayAdmin", "overlayConfig", "overlayGamebox", "overlayTrending", "overlayRecentGames", "overlayUpdates"].includes(this.id)) {
-        if (typeof window.stopAllGames === "function") {
+        let gameId = this.id.replace("overlay", "").toLowerCase();
+        if (this.id === "overlayTTT") gameId = "ttt";
+        if (this.id === "overlaySmasharena") gameId = "sa";
+        if (this.id === "overlayUltimatettt") gameId = "uttt";
+
+        if (typeof window.stopGame === "function") {
+            window.stopGame(gameId);
+        } else if (typeof window.stopAllGames === "function") {
             window.stopAllGames();
         }
     }
@@ -416,6 +432,10 @@ export class AppWindow {
     } else {
         this.elements.tab.classList.remove("active");
         this.isMinimized = true;
+    }
+
+    if (window.saveDesktopConfig) {
+        window.saveDesktopConfig(this.id, { isOpen: false });
     }
 
     // Notify WMS manager
@@ -450,6 +470,19 @@ class WindowManager {
 
     closeAll() {
         this.windows.forEach(win => win.close());
+    }
+
+    restoreState() {
+        if (typeof window.getDesktopConfig === "function") {
+            const config = window.getDesktopConfig();
+            Object.keys(config).forEach(appId => {
+                if (config[appId].isOpen) {
+                    if (typeof window.openGame === "function") {
+                        window.openGame(appId);
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -564,8 +597,16 @@ function setupIconDraggable(icon, appId) {
             didDrag = true;
             icon.__suppressNextOpen = true;
         }
-        icon.style.top = (icon.offsetTop - pos2) + "px";
-        icon.style.left = (icon.offsetLeft - pos1) + "px";
+
+        let newTop = icon.offsetTop - pos2;
+        let newLeft = icon.offsetLeft - pos1;
+
+        // Snap to grid
+        newTop = Math.round(newTop / 20) * 20;
+        newLeft = Math.round(newLeft / 20) * 20;
+
+        icon.style.top = newTop + "px";
+        icon.style.left = newLeft + "px";
         icon.style.position = "absolute";
     }
 

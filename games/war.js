@@ -356,4 +356,4 @@ bindWarHandlers();
 
 registerGameStop(() => {
   cleanupWar();
-});
+}, "war");

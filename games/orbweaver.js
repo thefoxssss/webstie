@@ -27,6 +27,10 @@ export function initOrbWeaver() {
   stop();
   state.currentGame = "orbweaver";
   const canvas = document.getElementById("orbweaverCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayOrbweaver")) {
+      const win = window.WMS.windows.get("overlayOrbweaver");
+      canvas = win.elements.content.querySelector("#orbweaverCanvas") || canvas;
+  }
   const action = document.getElementById("orbweaverAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -117,5 +121,5 @@ export function initOrbWeaver() {
 
   run = { timer, raf: 0, canvas };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "orbweaver");
 }

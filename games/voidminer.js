@@ -162,6 +162,10 @@ function updateFullscreenButtonLabel() {
 
 async function toggleVoidMinerFullscreen() {
   const canvas = document.getElementById("voidMinerCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayVoidminer")) {
+        const win = window.WMS.windows.get("overlayVoidminer");
+        canvas = win.elements.content.querySelector("#voidMinerCanvas") || canvas;
+    }
   if (!canvas) return;
 
   if (document.fullscreenElement === canvas) {
@@ -318,6 +322,10 @@ export function initVoidMiner() {
   loadHighScores();
 
   const canvas = document.getElementById("voidMinerCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayVoidminer")) {
+        const win = window.WMS.windows.get("overlayVoidminer");
+        canvas = win.elements.content.querySelector("#voidMinerCanvas") || canvas;
+    }
   if (!canvas) return;
   fullscreenBtn = document.getElementById("voidMinerFullscreenBtn");
   if (fullscreenBtn && !fullscreenBtn.dataset.bound) {
@@ -384,4 +392,4 @@ document.addEventListener("fullscreenchange", updateFullscreenButtonLabel);
 
 registerGameStop(() => {
   kernel?.stop();
-});
+}, "voidminer");

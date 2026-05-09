@@ -76,6 +76,10 @@ export function initGeometry(levelId = "stereo_madness") {
   state.currentGame = "geo";
   loadHighScores();
   const cv = document.getElementById("geoCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayGeo")) {
+        const win = window.WMS.windows.get("overlayGeo");
+        cv = win.elements.content.querySelector("#geoCanvas") || cv;
+    }
   const ctx = cv.getContext("2d");
   if (gAnim) cancelAnimationFrame(gAnim);
   gCanvasRef = cv;
@@ -138,6 +142,10 @@ function loopGeometry(ctx, now) {
   gLastTime = now;
 
   const cv = document.getElementById("geoCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayGeo")) {
+        const win = window.WMS.windows.get("overlayGeo");
+        cv = win.elements.content.querySelector("#geoCanvas") || cv;
+    }
   if (!ctx) ctx = cv.getContext("2d");
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
@@ -265,4 +273,4 @@ function unbindGeoControls() {
 registerGameStop(() => {
   if (gAnim) cancelAnimationFrame(gAnim);
   unbindGeoControls();
-});
+}, "geo");

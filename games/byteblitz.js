@@ -75,6 +75,10 @@ export function initByteBlitz() {
   state.currentGame = "byteblitz";
 
   const canvas = document.getElementById("byteblitzCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayByteblitz")) {
+      const win = window.WMS.windows.get("overlayByteblitz");
+      canvas = win.elements.content.querySelector("#byteblitzCanvas") || canvas;
+  }
   const action = document.getElementById("byteblitzAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -312,5 +316,5 @@ export function initByteBlitz() {
 
   run = { timer, raf: 0, canvas, onKeyDown, onKeyUp };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "byteblitz");
 }

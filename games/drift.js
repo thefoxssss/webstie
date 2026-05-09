@@ -279,7 +279,11 @@ function renderHud(data) {
 }
 
 function drawTrack(data) {
-  const cv = document.getElementById("driftCanvas");
+  let cv = document.getElementById("driftCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayDrift")) {
+      const win = window.WMS.windows.get("overlayDrift");
+      cv = win.elements.content.querySelector("#driftCanvas") || cv;
+  }
   const ctx = cv.getContext("2d");
   ctx.clearRect(0, 0, cv.width, cv.height);
 
@@ -587,4 +591,4 @@ registerGameStop(() => {
   keyState.right = false;
   keyState.drift = false;
   stopSession();
-});
+}, "drift");

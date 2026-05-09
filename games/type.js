@@ -229,4 +229,4 @@ setInterval(() => {
 // Clear any active intervals when leaving the game.
 registerGameStop(() => {
   if (typeInterval) clearInterval(typeInterval);
-});
+}, "type");

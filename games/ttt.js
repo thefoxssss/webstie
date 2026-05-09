@@ -146,4 +146,4 @@ registerGameStop(() => {
   if (tttUnsub) tttUnsub();
   tttUnsub = null;
   aiMode = null;
-});
+}, "ttt");

@@ -31,7 +31,7 @@ export function initWordle() {
 
   registerGameStop(() => {
     document.removeEventListener('keydown', handleKeyDown);
-  });
+  }, "wordle");
 }
 
 function getWordleStats() {

@@ -239,6 +239,10 @@ export function initCoreDriller() {
   loadHighScores();
 
   const canvas = document.getElementById("coreDrillerCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayCoredriller")) {
+        const win = window.WMS.windows.get("overlayCoredriller");
+        canvas = win.elements.content.querySelector("#coreDrillerCanvas") || canvas;
+    }
   if (!canvas) return;
   draw = new DrawSystem(canvas.getContext("2d"));
   kernel = new EngineKernel({ fixedHz: 60 });
@@ -276,4 +280,4 @@ document.addEventListener("keyup", (e) => {
 
 registerGameStop(() => {
   kernel?.stop();
-});
+}, "coredriller");

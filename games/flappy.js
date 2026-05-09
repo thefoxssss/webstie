@@ -75,7 +75,7 @@ function loopFlappy(now) {
     : 1;
   fLastTime = now;
 
-  const ctx = document.getElementById("flappyCanvas").getContext("2d");
+  const ctx = (window.WMS && window.WMS.windows.has("overlayFlappy") ? window.WMS.windows.get("overlayFlappy").elements.content.querySelector("#flappyCanvas") : document.getElementById("flappyCanvas")).getContext("2d");
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 400, 600);
   if (state.keysPressed[" "]) {
@@ -153,4 +153,4 @@ document.getElementById("flappyCanvas").onclick = () => {
 // Cancel animation loop on exit.
 registerGameStop(() => {
   if (fAnim) cancelAnimationFrame(fAnim);
-});
+}, "flappy");

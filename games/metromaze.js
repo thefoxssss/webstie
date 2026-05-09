@@ -218,6 +218,10 @@ export function initMetroMaze() {
   state.currentGame = "metromaze";
 
   const canvas = document.getElementById("metromazeCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayMetromaze")) {
+      const win = window.WMS.windows.get("overlayMetromaze");
+      canvas = win.elements.content.querySelector("#metromazeCanvas") || canvas;
+  }
   const action = document.getElementById("metromazeAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -418,5 +422,5 @@ export function initMetroMaze() {
 
   run = { timer, raf: 0, canvas, onKeyDown };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "metromaze");
 }

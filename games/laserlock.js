@@ -28,6 +28,10 @@ export function initLaserLock() {
   state.currentGame = "laserlock";
 
   const canvas = document.getElementById("laserlockCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayLaserlock")) {
+      const win = window.WMS.windows.get("overlayLaserlock");
+      canvas = win.elements.content.querySelector("#laserlockCanvas") || canvas;
+  }
   const action = document.getElementById("laserlockAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -115,5 +119,5 @@ export function initLaserLock() {
 
   run = { timer, raf: 0, canvas };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "laserlock");
 }

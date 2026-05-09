@@ -56,6 +56,10 @@ export function initQuantumFlip() {
   state.currentGame = "quantumflip";
 
   const canvas = document.getElementById("quantumflipCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayQuantumflip")) {
+      const win = window.WMS.windows.get("overlayQuantumflip");
+      canvas = win.elements.content.querySelector("#quantumflipCanvas") || canvas;
+  }
   const action = document.getElementById("quantumflipAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -262,5 +266,5 @@ export function initQuantumFlip() {
 
   run = { timer, raf: 0, canvas, onKeyDown, onKeyUp };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "quantumflip");
 }

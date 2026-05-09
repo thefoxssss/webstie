@@ -151,7 +151,11 @@ let builderArmor = null;
 let builderCharacterSprite = null;
 let transactionLog = [];
 let globalVol = 0.5;
+let masterVol = Number(localStorage.getItem("goonerMasterVol") ?? 0.5);
+let uiVol = Number(localStorage.getItem("goonerUiVol") ?? 0.5);
+let gameVol = Number(localStorage.getItem("goonerGameVol") ?? 0.5);
 let currentGame = null;
+let activeGames = new Set();
 const SHIELD_ACTIVE_MS = 2000;
 const SHIELD_COOLDOWN_MS = 5000;
 const shieldCooldowns = Object.create(null);
@@ -260,6 +264,8 @@ export const PermissionBits = Object.freeze({
 
 // Register per-game cleanup hooks (each game adds a stop function).
 const gameStops = [];
+const gameStopMap = new Map(); // gameId -> [stopFn, ...]
+window.gameStops = gameStops; // Expose globally for legacy scripts
 let seasonBoardUnsub = null;
 let activeSeasonTab = "";
 let activeSeasonSubTab = "solo";
@@ -343,6 +349,30 @@ export const state = {
   },
   set globalVol(value) {
     globalVol = value;
+  },
+  get masterVol() {
+    return masterVol;
+  },
+  set masterVol(value) {
+    masterVol = value;
+    localStorage.setItem("goonerMasterVol", value);
+  },
+  get uiVol() {
+    return uiVol;
+  },
+  set uiVol(value) {
+    uiVol = value;
+    localStorage.setItem("goonerUiVol", value);
+  },
+  get gameVol() {
+    return gameVol;
+  },
+  set gameVol(value) {
+    gameVol = value;
+    localStorage.setItem("goonerGameVol", value);
+  },
+  get activeGames() {
+    return activeGames;
   },
   get currentGame() {
     return currentGame;
@@ -1696,15 +1726,42 @@ setInterval(() => {
 }, 2000);
 
 // Allow games to register a cleanup routine when overlays close.
-export function registerGameStop(stopFn) {
-  gameStops.push(stopFn);
+export function registerGameStop(stopFn, gameId = null) {
+  if (gameId) {
+    if (!gameStopMap.has(gameId)) gameStopMap.set(gameId, []);
+    gameStopMap.get(gameId).push(stopFn);
+  } else {
+    gameStops.push(stopFn);
+  }
+}
+
+export function stopGame(gameId) {
+    if (gameId === "voice") {
+        if (typeof window.leaveVoiceRoom === "function") window.leaveVoiceRoom();
+    }
+
+    // Run ID-specific stop functions
+    if (gameStopMap.has(gameId)) {
+        gameStopMap.get(gameId).forEach(fn => fn());
+        gameStopMap.delete(gameId);
+    }
+
+    activeGames.delete(gameId);
+    if (currentGame === gameId) {
+        currentGame = null;
+        syncGameLeaderboardButton();
+    }
 }
 
 // Stop all running games and reset transient input state.
 export function stopAllGames() {
   gameStops.forEach((stopFn) => stopFn());
+  gameStopMap.forEach((fns) => fns.forEach(fn => fn()));
+  gameStopMap.clear();
+
   if (typeof window.leaveVoiceRoom === "function") window.leaveVoiceRoom();
   currentGame = null;
+  activeGames.clear();
   syncGameLeaderboardButton();
   keysPressed = {};
   window.removeEventListener("keydown", quickRestartListener);
@@ -1726,7 +1783,7 @@ export class Synth {
     osc.type = type;
     osc.frequency.setValueAtTime(freq, now);
     env.gain.setValueAtTime(0.0001, now);
-    env.gain.exponentialRampToValueAtTime(0.07 * globalVol, now + attack);
+    env.gain.exponentialRampToValueAtTime(0.07 * uiVol * masterVol, now + attack);
     env.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(attack + decay, len));
     osc.connect(env);
     env.connect(this.master);
@@ -3426,6 +3483,11 @@ onAuthStateChanged(auth, async (u) => {
     refreshTrendingGames();
     refreshTrendingMonthGraph();
     refreshUpdateLogFromMergedPrs();
+
+    // Restore windows after profile/config loaded
+    if (window.WMS) {
+        window.WMS.restoreState();
+    }
   }
 });
 
@@ -3639,17 +3701,21 @@ export function openGame(id) {
 
   if (window.WMS && !isExcluded) {
       if (typeof window.beep === "function") window.beep(400, "square", 0.05);
-      window.WMS.createWindow(id, title, contentElement, { icon });
+      const isNewWindow = !window.WMS.windows.has(id);
+      const win = window.WMS.createWindow(id, title, contentElement, { icon });
+
+      if (!isNewWindow) {
+          win.focus(true); // Focus internally to avoid recursion
+      }
+
       runOverlayOpenHooks(id);
 
       // Specifically for games, we might need to launch them
-      if (id.startsWith("overlay") && id !== "overlayBank" && id !== "overlayShop" && id !== "overlayInventory" && id !== "overlayProfile" && id !== "overlaySeason" && id !== "overlayCrew" && id !== "overlayAdmin" && id !== "overlayConfig" && id !== "overlayGamebox") {
+      if (id.startsWith("overlay") && !["overlayBank", "overlayShop", "overlayInventory", "overlayProfile", "overlaySeason", "overlayCrew", "overlayAdmin", "overlayConfig", "overlayGamebox", "overlayTrending", "overlayRecentGames", "overlayUpdates"].includes(id)) {
           const gameKey = id.replace("overlay", "").toLowerCase();
           if (typeof window.launchGame === "function") {
-              // Only launch if not already current
-              if (state.currentGame !== gameKey) {
-                 window.launchGame(gameKey, "wms");
-              }
+              // Re-initialize game state
+              window.launchGame(gameKey, "wms");
           }
       }
   } else {
@@ -3817,6 +3883,9 @@ function loadProfile(data) {
   builderHotbar = data.builderHotbar || null;
   builderArmor = data.builderArmor || null;
   builderCharacterSprite = sanitizePixelLogo(data.builderCharacterSprite || null, DEFAULT_CREW_LOGO);
+  masterVol = data.masterVol ?? masterVol;
+  uiVol = data.uiVol ?? uiVol;
+  gameVol = data.gameVol ?? gameVol;
   myItemToggles = { ...(data.itemToggles || {}), ...loadLocalShopToggles(data.name) };
   jobData = data.jobs || { cooldowns: {}, completed: { cashier: 0, frontdesk: 0, delivery: 0, stocker: 0, janitor: 0, barista: 0 } };
   loanData = data.loanData || { debt: 0, rate: 0, lastInterestAt: 0 };
@@ -4883,6 +4952,9 @@ export async function saveStats() {
     builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
     builderArmor: builderArmor === undefined ? null : builderArmor,
     builderCharacterSprite: sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO),
+    masterVol,
+    uiVol,
+    gameVol,
     jobs: jobData,
     loanData,
     stockData,
@@ -4906,6 +4978,9 @@ export async function saveStats() {
         builderHotbar: Array.isArray(builderHotbar) ? builderHotbar.map(item => item === undefined ? null : item) : null,
         builderArmor: builderArmor === undefined ? null : builderArmor,
         builderCharacterSprite: sanitizePixelLogo(builderCharacterSprite, DEFAULT_CREW_LOGO),
+        masterVol,
+        uiVol,
+        gameVol,
         jobs: jobData,
         loanData,
         stockData,
@@ -6039,8 +6114,14 @@ document.getElementById("themeColor").oninput = (e) => {
   document.documentElement.style.setProperty("--accent-glow", `rgba(${glowR},${glowG},${glowB},${glowAlpha})`);
 };
 // Volume slider controls global audio volume.
-document.getElementById("volSlider").oninput = (e) => {
-  globalVol = e.target.value / 100;
+document.getElementById("masterVolSlider").oninput = (e) => {
+  state.masterVol = e.target.value / 100;
+};
+document.getElementById("uiVolSlider").oninput = (e) => {
+  state.uiVol = e.target.value / 100;
+};
+document.getElementById("gameVolSlider").oninput = (e) => {
+  state.gameVol = e.target.value / 100;
 };
 // Scanline slider controls overlay opacity.
 document.getElementById("scanSlider").oninput = (e) =>
@@ -6123,6 +6204,13 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   const uiTextSlider = document.getElementById("uiTextSlider");
   if (uiScaleSlider) uiScaleSlider.value = String(Math.round(uiScale * 100));
   if (uiTextSlider) uiTextSlider.value = String(uiTextSize);
+
+  const mVolSlider = document.getElementById("masterVolSlider");
+  const uVolSlider = document.getElementById("uiVolSlider");
+  const gVolSlider = document.getElementById("gameVolSlider");
+  if (mVolSlider) mVolSlider.value = String(Math.round(masterVol * 100));
+  if (uVolSlider) uVolSlider.value = String(Math.round(uiVol * 100));
+  if (gVolSlider) gVolSlider.value = String(Math.round(gameVol * 100));
 })();
 
 // Konami code sequence for a hidden Matrix unlock.
@@ -7420,27 +7508,30 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
-  const activeOverlays = Array.from(document.querySelectorAll(".overlay.active"));
-  const activeGameOverlay =
-    activeOverlays.find((overlay) =>
-      overlay.classList.contains("game-overlay") || overlay.querySelector("canvas, .embedded-game-frame")
-    ) || activeOverlays[activeOverlays.length - 1] || null;
 
-  const gameSurface = activeGameOverlay?.querySelector("canvas, .embedded-game-frame");
+  const win = window.WMS?.windows.get(`overlay${game.charAt(0).toUpperCase()}${game.slice(1)}`);
+  const gameContent = win?.elements.content || document.getElementById(`overlay${game.charAt(0).toUpperCase()}${game.slice(1)}`);
+  const gameSurface = gameContent?.querySelector("canvas, .embedded-game-frame");
+
   let modalHost = null;
-  if (gameSurface?.parentElement) {
+  if (gameSurface) {
     if (gameSurface.parentElement.classList.contains("game-surface-host")) {
       modalHost = gameSurface.parentElement;
     } else {
       const surfaceHost = document.createElement("div");
       surfaceHost.className = "game-surface-host";
+      surfaceHost.style.width = gameSurface.style.width || (gameSurface.width + 'px');
+      surfaceHost.style.height = gameSurface.style.height || (gameSurface.height + 'px');
+      surfaceHost.style.position = 'relative';
+      surfaceHost.style.display = 'inline-block';
       gameSurface.parentElement.insertBefore(surfaceHost, gameSurface);
       surfaceHost.appendChild(gameSurface);
       modalHost = surfaceHost;
     }
   }
+
   if (!modalHost) {
-    modalHost = activeGameOverlay?.querySelector(".game-content-shell") || activeGameOverlay || document.body;
+    modalHost = gameContent || document.body;
   }
 
   modalHost.classList.add("game-over-host");
@@ -7465,8 +7556,9 @@ export function updateBuilderInventoryState(hotbar, inventory, armor) {
     builderArmor = armor;
 }
 
-export function saveDesktopConfig(appId, left, top) {
-    desktopConfig[appId] = { left, top };
+export function saveDesktopConfig(appId, config) {
+    if (!desktopConfig[appId]) desktopConfig[appId] = {};
+    Object.assign(desktopConfig[appId], config);
     saveStats();
 }
 

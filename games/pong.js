@@ -39,6 +39,10 @@ export function initPong() {
   state.currentGame = "pong";
   loadHighScores();
   pCv = document.getElementById("pongCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayPong")) {
+        const win = window.WMS.windows.get("overlayPong");
+        pCv = win.elements.content.querySelector("#pongCanvas") || pCv;
+    }
   pCtx = pCv.getContext("2d");
   pSc = 0;
   aiSc = 0;
@@ -126,4 +130,4 @@ function loopPong(now) {
 // Clear animation frame when exiting the game.
 registerGameStop(() => {
   if (pAnim) cancelAnimationFrame(pAnim);
-});
+}, "pong");

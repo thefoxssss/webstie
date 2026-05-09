@@ -29,6 +29,10 @@ export function initGlitchGate() {
   stop();
   state.currentGame = "glitchgate";
   const canvas = document.getElementById("glitchgateCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayGlitchgate")) {
+      const win = window.WMS.windows.get("overlayGlitchgate");
+      canvas = win.elements.content.querySelector("#glitchgateCanvas") || canvas;
+  }
   const action = document.getElementById("glitchgateAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -120,5 +124,5 @@ export function initGlitchGate() {
 
   run = { timer, raf: 0, canvas };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "glitchgate");
 }

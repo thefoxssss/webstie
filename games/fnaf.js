@@ -50,8 +50,19 @@ let networkPlayers = {};
 
 window.initFnaf = () => {
   canvas = document.getElementById("fnafCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayFnaf")) {
+        const win = window.WMS.windows.get("overlayFnaf");
+        canvas = win.elements.content.querySelector("#fnafCanvas") || canvas;
+    }
   if (!canvas) return;
   ctx = canvas.getContext("2d", { alpha: false }); // alpha false for perf
+
+  // If WMS is active, re-query canvas in case it was moved to a new window
+  if (window.WMS && window.WMS.windows.has("overlayFnaf")) {
+      const win = window.WMS.windows.get("overlayFnaf");
+      canvas = win.elements.content.querySelector("#fnafCanvas") || canvas;
+      ctx = canvas.getContext("2d", { alpha: false });
+  }
 
   isFnafRunning = true;
 

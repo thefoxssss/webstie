@@ -51,6 +51,7 @@ import {
   adminUnlockAllAchievements,
   trackGamePlay,
   updateHighScore,
+  stopGame,
   getShopItemById,
   claimAprilFoolsSecretItem,
   openGameLeaderboard,
@@ -105,6 +106,7 @@ import { getDesktopConfig } from "./core.js";
 
 // Expose select helpers globally for inline HTML event handlers.
 window.openGame = openGame;
+window.stopGame = stopGame;
 window.closeOverlays = closeOverlays;
 window.showGameOver = showGameOver;
 window.buyItem = buyItem;
@@ -238,10 +240,13 @@ function renderInGameShopPanel(game, overlayId) {
   overlay.appendChild(panel);
 }
 
-function getOverlayIdForGame(gameId) {
+export function getOverlayIdForGame(gameId) {
   if (!gameId) return "";
   if (gameId === "voice") return "globalChat";
-  return `overlay${gameId === "ttt" ? gameId.toUpperCase() : gameId.charAt(0).toUpperCase() + gameId.slice(1)}`;
+  if (gameId === "ttt") return "overlayTTT";
+  if (gameId === "sa") return "overlaySmasharena";
+  if (gameId === "uttt") return "overlayUltimatettt";
+  return `overlay${gameId.charAt(0).toUpperCase()}${gameId.slice(1)}`;
 }
 
 const SHARED_GAME_OVERLAY_ID = "overlayGamebox";
@@ -298,14 +303,23 @@ window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
   // window.closeOverlays(); // Don't close others, we are in WMS
 
-  // We bypass mountGameOverlayIntoGamebox so the game takes over the screen
-  // with its own full-page overlay instead of opening in a sub-frame.
   const overlayId = getOverlayIdForGame(game);
 
   if (source !== "wms") {
       openGame(overlayId);
       return;
   }
+
+  if (state.activeGames.has(game)) {
+      state.currentGame = game;
+      resizeAllGameCanvases();
+      // Dispatch a resume event for games that need to restart loops
+      window.dispatchEvent(new CustomEvent(`gooner:resume-${game}`));
+      return;
+  }
+
+  state.currentGame = game;
+  state.activeGames.add(game);
 
   // renderInGameShopPanel(game, overlayId); // Removed as Shop is now a separate app
   if (game === "pong") initPong();
@@ -1027,6 +1041,17 @@ function initMainSiteSearch() {
     if (!activeSuggestions.length) {
       hideSuggestions();
       return;
+    }
+
+    // Position dropdown based on which input is active
+    if (document.activeElement === taskbarInput) {
+        dropdown.style.bottom = "50px";
+        dropdown.style.top = "auto";
+        dropdown.style.left = taskbarInput.getBoundingClientRect().left + "px";
+    } else {
+        dropdown.style.top = (input.getBoundingClientRect().bottom) + "px";
+        dropdown.style.bottom = "auto";
+        dropdown.style.left = input.getBoundingClientRect().left + "px";
     }
 
     dropdown.innerHTML = activeSuggestions

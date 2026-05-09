@@ -59,6 +59,10 @@ export function initPulseStack() {
   state.currentGame = "pulsestack";
 
   const canvas = document.getElementById("pulsestackCanvas");
+  if (window.WMS && window.WMS.windows.has("overlayPulsestack")) {
+      const win = window.WMS.windows.get("overlayPulsestack");
+      canvas = win.elements.content.querySelector("#pulsestackCanvas") || canvas;
+  }
   const action = document.getElementById("pulsestackAction");
   if (!canvas || !action) return;
   const ctx = canvas.getContext("2d");
@@ -123,5 +127,5 @@ export function initPulseStack() {
 
   run = { timer, raf: 0, canvas };
   run.raf = window.requestAnimationFrame(frame);
-  registerGameStop(stop);
+  registerGameStop(stop, "pulsestack");
 }

@@ -41,6 +41,10 @@ export function initDodge() {
   state.currentGame = "dodge";
   loadHighScores();
   dCv = document.getElementById("dodgeCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayDodge")) {
+        const win = window.WMS.windows.get("overlayDodge");
+        dCv = win.elements.content.querySelector("#dodgeCanvas") || dCv;
+    }
   dCtx = dCv.getContext("2d");
   player = {
     x: CANVAS_W / 2 - 15,
@@ -330,4 +334,4 @@ function loopDodge(now) {
 
 registerGameStop(() => {
   if (dAnim) cancelAnimationFrame(dAnim);
-});
+}, "dodge");

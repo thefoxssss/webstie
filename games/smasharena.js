@@ -208,7 +208,15 @@ function simulateTick(match) {
 }
 
 function render(stateData) {
-  const canvas = document.getElementById("saCanvas");
+  let canvas = document.getElementById("saCanvas");
+    if (window.WMS && window.WMS.windows.has("overlaySmasharena")) {
+        const win = window.WMS.windows.get("overlaySmasharena");
+        canvas = win.elements.content.querySelector("#saCanvas") || canvas;
+    }
+  if (window.WMS && window.WMS.windows.has("overlaySmasharena")) {
+      const win = window.WMS.windows.get("overlaySmasharena");
+      canvas = win.elements.content.querySelector("#saCanvas") || canvas;
+  }
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const p1 = stateData.players?.p1;
@@ -439,4 +447,4 @@ document.getElementById("saStartBtn")?.addEventListener("click", async () => {
   colyseusRoom.send("start");
 });
 bindControls();
-registerGameStop(stopSession);
+registerGameStop(stopSession, "sa");

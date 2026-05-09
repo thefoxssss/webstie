@@ -26,7 +26,11 @@ export function initAgar() {
     let animationFrameId;
     let selectedRoomId = null;
 
-    const canvas = document.getElementById("agarCanvas");
+    let canvas = document.getElementById("agarCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayAgar")) {
+        const win = window.WMS.windows.get("overlayAgar");
+        canvas = win.elements.content.querySelector("#agarCanvas") || canvas;
+    }
     const ctx = canvas.getContext("2d");
 
     const menu = document.getElementById("agarMenu");

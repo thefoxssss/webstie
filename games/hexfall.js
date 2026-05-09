@@ -224,7 +224,15 @@ function onJoined(r) {
 }
 
 function initThreeJS() {
-  const canvas = document.getElementById("hexfallCanvas");
+  let canvas = document.getElementById("hexfallCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayHexfall")) {
+        const win = window.WMS.windows.get("overlayHexfall");
+        canvas = win.elements.content.querySelector("#hexfallCanvas") || canvas;
+    }
+  if (window.WMS && window.WMS.windows.has("overlayHexfall")) {
+      const win = window.WMS.windows.get("overlayHexfall");
+      canvas = win.elements.content.querySelector("#hexfallCanvas") || canvas;
+  }
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0a1a);
@@ -422,4 +430,4 @@ registerGameStop(() => {
   moveState.left = false;
   moveState.right = false;
   moveState.jump = false;
-});
+}, "hexfall");

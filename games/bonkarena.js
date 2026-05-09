@@ -290,7 +290,15 @@ function renderState(data) {
 }
 
 function drawArena(data) {
-  const cv = document.getElementById("baCanvas");
+  let cv = document.getElementById("baCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayBonk")) {
+        const win = window.WMS.windows.get("overlayBonk");
+        cv = win.elements.content.querySelector("#baCanvas") || cv;
+    }
+  if (window.WMS && window.WMS.windows.has("overlayBonk")) {
+      const win = window.WMS.windows.get("overlayBonk");
+      cv = win.elements.content.querySelector("#baCanvas") || cv;
+  }
   const ctx = cv.getContext("2d");
   const drawState = getClientRenderState(data);
   ctx.clearRect(0, 0, cv.width, cv.height);
@@ -710,4 +718,4 @@ document.getElementById("baReplayBtn").onclick = async () => {
 registerGameStop(() => {
   keyState = { up: false, down: false, left: false, right: false };
   stopSession();
-});
+}, "bonk");

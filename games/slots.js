@@ -401,4 +401,4 @@ registerGameStop(() => {
   autoSpinMode = false;
   if (machineEl) machineEl.classList.remove("spinning");
   updateButtons();
-});
+}, "slots");

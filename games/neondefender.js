@@ -259,6 +259,10 @@ export function initNeonDefender() {
   loadHighScores();
 
   const canvas = document.getElementById("neonDefenderCanvas");
+    if (window.WMS && window.WMS.windows.has("overlayNeondefender")) {
+        const win = window.WMS.windows.get("overlayNeondefender");
+        canvas = win.elements.content.querySelector("#neonDefenderCanvas") || canvas;
+    }
   if (!canvas) return;
   draw = new DrawSystem(canvas.getContext("2d"));
   kernel = new EngineKernel({ fixedHz: 60 });
@@ -285,4 +289,4 @@ document.addEventListener("mousemove", (event) => {
 
 registerGameStop(() => {
   kernel?.stop();
-});
+}, "neondefender");
