@@ -3,6 +3,45 @@
  * Handles window lifecycle, dragging, resizing, and taskbar integration.
  */
 
+const SCALABLE_APP_WINDOW_IDS = new Set([
+    "overlayBank",
+    "overlayShop",
+    "overlayInventory",
+    "overlayProfile",
+    "overlaySeason",
+    "overlayCrew",
+    "globalChat",
+    "overlayAdmin",
+    "overlayGamebox",
+    "overlayTrending",
+    "overlayRecentGames",
+    "overlayUpdates",
+    "overlayConfig",
+]);
+
+const SCALABLE_APP_DESIGN_WIDTHS = Object.freeze({
+    overlayAdmin: 1000,
+    overlayBank: 1000,
+    overlayShop: 1000,
+    overlaySeason: 1000,
+    overlayCrew: 1000,
+    overlayGamebox: 1000,
+    overlayTrending: 980,
+    overlayUpdates: 980,
+    overlayRecentGames: 760,
+    overlayInventory: 760,
+    overlayProfile: 760,
+    globalChat: 760,
+    overlayConfig: 760,
+});
+
+function isScalableAppWindow(id) {
+    return SCALABLE_APP_WINDOW_IDS.has(id);
+}
+
+function getScalableAppDesignWidth(id, fallbackWidth) {
+    return SCALABLE_APP_DESIGN_WIDTHS[id] || fallbackWidth || 800;
+}
 
 const FALLBACK_APP_METADATA = Object.freeze({
     overlayBank: { title: "BANK", icon: "🏦" },
@@ -93,6 +132,9 @@ export class AppWindow {
     this.isMinimized = false;
     this.isMaximized = false;
     this.zIndex = 100;
+    this.isScalableApp = isScalableAppWindow(id);
+    this.scaleObserver = null;
+    this.scaleRaf = 0;
 
     this.elements = {};
     this.createWindowElement();
@@ -129,15 +171,30 @@ export class AppWindow {
 
     const content = document.createElement("div");
     content.className = "window-content";
+    if (this.isScalableApp) {
+        content.classList.add("scalable-window-content");
+    }
     if (this.id.startsWith("overlay") && !["overlayBank", "overlayShop", "overlayInventory", "overlayProfile", "overlaySeason", "overlayCrew", "overlayAdmin", "overlayConfig", "overlayGamebox", "overlayTrending", "overlayRecentGames", "overlayUpdates"].includes(this.id)) {
         content.classList.add("game-container-16-9");
     }
+
+    const scaleFrame = this.isScalableApp ? document.createElement("div") : null;
+    const scaleSurface = this.isScalableApp ? document.createElement("div") : null;
+    if (scaleFrame && scaleSurface) {
+        scaleFrame.className = "window-scale-frame";
+        scaleSurface.className = "window-scale-surface";
+        scaleSurface.style.setProperty("--window-scale-design-width", `${getScalableAppDesignWidth(this.id, this.options.width)}px`);
+        scaleFrame.appendChild(scaleSurface);
+        content.appendChild(scaleFrame);
+    }
+
+    const contentHost = scaleSurface || content;
 
     // Move content from original overlay to window
     if (this.contentElement) {
         // Some overlays might have multiple children, wrap them or move them all
         while (this.contentElement.firstChild) {
-            content.appendChild(this.contentElement.firstChild);
+            contentHost.appendChild(this.contentElement.firstChild);
         }
     }
 
@@ -150,6 +207,8 @@ export class AppWindow {
       window: win,
       header: header,
       content: content,
+      scaleFrame: scaleFrame,
+      scaleSurface: scaleSurface,
       resizer: resizer,
       minimizeBtn: header.querySelector(".minimize-btn"),
       maximizeBtn: header.querySelector(".maximize-btn"),
@@ -158,6 +217,54 @@ export class AppWindow {
 
     // Create taskbar tab
     this.createTaskbarTab();
+
+    if (this.isScalableApp) {
+      this.setupContentScaling();
+    }
+  }
+
+  setupContentScaling() {
+    if (!this.elements.content || !this.elements.scaleSurface || !this.elements.scaleFrame) return;
+
+    const scheduleScaleUpdate = () => {
+      if (this.scaleRaf) return;
+      this.scaleRaf = requestAnimationFrame(() => {
+        this.scaleRaf = 0;
+        this.updateContentScale();
+      });
+    };
+
+    this.scheduleScaleUpdate = scheduleScaleUpdate;
+
+    if (typeof ResizeObserver === "function") {
+      this.scaleObserver = new ResizeObserver(scheduleScaleUpdate);
+      this.scaleObserver.observe(this.elements.content);
+      this.scaleObserver.observe(this.elements.scaleSurface);
+    }
+
+    window.addEventListener("resize", scheduleScaleUpdate);
+    this.removeScaleResizeListener = () => window.removeEventListener("resize", scheduleScaleUpdate);
+    scheduleScaleUpdate();
+  }
+
+  updateContentScale() {
+    const { content, scaleFrame, scaleSurface } = this.elements;
+    if (!content || !scaleFrame || !scaleSurface) return;
+
+    const contentWidth = Math.max(1, content.clientWidth);
+    const previousTransform = scaleSurface.style.transform;
+    scaleSurface.style.transform = "scale(1)";
+
+    const designWidth = getScalableAppDesignWidth(this.id, this.options.width);
+    const naturalWidth = Math.max(designWidth, scaleSurface.scrollWidth, scaleSurface.offsetWidth, 1);
+    const naturalHeight = Math.max(scaleSurface.scrollHeight, scaleSurface.offsetHeight, 1);
+    const scale = Math.min(1, contentWidth / naturalWidth);
+
+    scaleSurface.style.transform = previousTransform;
+    scaleSurface.style.setProperty("--window-app-scale", String(scale));
+    scaleSurface.style.transform = `scale(${scale})`;
+    scaleFrame.style.width = `${Math.ceil(naturalWidth * scale)}px`;
+    scaleFrame.style.height = `${Math.ceil(naturalHeight * scale)}px`;
   }
 
   createTaskbarTab() {
@@ -212,6 +319,7 @@ export class AppWindow {
         if (newHeight > this.options.minHeight) {
             this.elements.window.style.height = newHeight + 'px';
         }
+        this.scheduleScaleUpdate?.();
     };
 
     const stopResize = () => {
@@ -328,6 +436,7 @@ export class AppWindow {
     } else {
       this.elements.window.style.display = "flex";
       this.focus();
+      this.scheduleScaleUpdate?.();
     }
   }
 
@@ -384,6 +493,7 @@ export class AppWindow {
     } else {
       this.elements.maximizeBtn.textContent = "🗖";
     }
+    this.scheduleScaleUpdate?.();
   }
 
   close() {
@@ -395,10 +505,21 @@ export class AppWindow {
         }
     }
 
+    if (this.scaleObserver) {
+        this.scaleObserver.disconnect();
+        this.scaleObserver = null;
+    }
+    this.removeScaleResizeListener?.();
+    if (this.scaleRaf) {
+        cancelAnimationFrame(this.scaleRaf);
+        this.scaleRaf = 0;
+    }
+
     // Move content back to its original overlay container
     if (this.contentElement) {
-        while (this.elements.content.firstChild) {
-            this.contentElement.appendChild(this.elements.content.firstChild);
+        const contentHost = this.elements.scaleSurface || this.elements.content;
+        while (contentHost.firstChild) {
+            this.contentElement.appendChild(contentHost.firstChild);
         }
     }
 

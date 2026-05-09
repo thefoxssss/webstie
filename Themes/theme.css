@@ -6393,3 +6393,32 @@ body {
     height: min(320px, 42vh);
   }
 }
+
+/* WMS app windows shrink menu UIs instead of clipping them when resized. */
+.window-content.scalable-window-content {
+  align-items: flex-start;
+  overflow: auto;
+}
+
+.window-scale-frame {
+  flex: 0 0 auto;
+  position: relative;
+  min-width: 0;
+  max-width: none;
+}
+
+.window-scale-surface {
+  width: var(--window-scale-design-width, 800px);
+  max-width: none;
+  min-width: 0;
+  transform: scale(var(--window-app-scale, 1));
+  transform-origin: top left;
+}
+
+.window-scale-surface > .score-box,
+.window-scale-surface > .chat-box,
+.window-scale-surface > .config-box,
+.window-scale-surface > .menu-box {
+  width: 100% !important;
+  max-width: none !important;
+}
