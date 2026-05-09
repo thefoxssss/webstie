@@ -100,7 +100,7 @@ import { initMines } from "./games/mines.js";
 import "./games/fnaf.js";
 import { initFps } from "./games/fps.js";
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
-import { initDesktop, createDesktopIcon } from "./wms.js";
+import { initDesktop, createDesktopIcon, arrangeDesktopIcons } from "./wms.js";
 import { getDesktopConfig } from "./core.js";
 
 // Expose select helpers globally for inline HTML event handlers.
@@ -1418,17 +1418,9 @@ GAME_DIRECTORY_ENTRIES.forEach(game => {
 });
 
 
-// Apply desktop config (positions)
+// Apply desktop config (positions), snapping to the desktop grid and nudging collisions.
 setTimeout(() => {
-    const config = getDesktopConfig();
-    Object.keys(config).forEach(appId => {
-        const icon = document.getElementById(`icon-${appId}`);
-        if (icon) {
-            icon.style.left = config[appId].left;
-            icon.style.top = config[appId].top;
-            icon.style.position = "absolute";
-        }
-    });
+    arrangeDesktopIcons(getDesktopConfig());
 }, 1000);
 
 // Taskbar Actions

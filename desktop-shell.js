@@ -1,5 +1,6 @@
 import { GAME_DIRECTORY_ENTRIES } from "./gameCatalog.js";
 import {
+    arrangeDesktopIcons,
     createDesktopIcon,
     initDesktop,
     installFallbackOpenGame,
@@ -24,3 +25,5 @@ GAME_DIRECTORY_ENTRIES.forEach((game) => {
         overlayId: toOverlayId(game.id),
     });
 });
+
+arrangeDesktopIcons();

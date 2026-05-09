@@ -522,52 +522,224 @@ export function createDesktopIcon(app) {
 
     desktop.appendChild(icon);
     setupIconDraggable(icon, app.id);
+    arrangeDesktopIcons(typeof window.getDesktopConfig === "function" ? window.getDesktopConfig() : {});
     return icon;
 }
 
+const DESKTOP_ICON_GRID_X = 100;
+const DESKTOP_ICON_GRID_Y = 100;
+const DESKTOP_ICON_DRAG_THRESHOLD = 5;
+
+function getDesktopMetrics() {
+    const desktop = document.getElementById("desktop");
+    const styles = desktop ? window.getComputedStyle(desktop) : null;
+    const paddingLeft = parseFloat(styles?.paddingLeft) || 0;
+    const paddingRight = parseFloat(styles?.paddingRight) || 0;
+    const paddingTop = parseFloat(styles?.paddingTop) || 0;
+    const paddingBottom = parseFloat(styles?.paddingBottom) || 0;
+
+    return {
+        desktop,
+        rect: desktop?.getBoundingClientRect() || { left: 0, top: 0 },
+        paddingLeft,
+        paddingRight,
+        paddingTop,
+        paddingBottom,
+    };
+}
+
+function parsePixelValue(value) {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getGridColumnCount() {
+    const { desktop, paddingLeft, paddingRight } = getDesktopMetrics();
+    if (!desktop) return 1;
+
+    const usableWidth = desktop.clientWidth - paddingLeft - paddingRight;
+    return Math.max(1, Math.floor(usableWidth / DESKTOP_ICON_GRID_X));
+}
+
+function clampToDesktop(icon, left, top, { allowVerticalOverflow = false } = {}) {
+    const { desktop, paddingRight, paddingBottom } = getDesktopMetrics();
+    if (!desktop) return { left, top };
+
+    const maxLeft = Math.max(0, desktop.clientWidth - paddingRight - icon.offsetWidth);
+    const maxTop = allowVerticalOverflow
+        ? Math.max(top, desktop.clientHeight - paddingBottom - icon.offsetHeight)
+        : Math.max(0, desktop.clientHeight - paddingBottom - icon.offsetHeight);
+
+    return {
+        left: Math.min(Math.max(left, 0), maxLeft),
+        top: Math.min(Math.max(top, 0), maxTop),
+    };
+}
+
+function snapToGrid(icon, left, top, options = {}) {
+    const { paddingLeft, paddingTop } = getDesktopMetrics();
+    const snappedLeft = paddingLeft + Math.round((left - paddingLeft) / DESKTOP_ICON_GRID_X) * DESKTOP_ICON_GRID_X;
+    const snappedTop = paddingTop + Math.round((top - paddingTop) / DESKTOP_ICON_GRID_Y) * DESKTOP_ICON_GRID_Y;
+    return clampToDesktop(icon, snappedLeft, snappedTop, options);
+}
+
+function gridKey(left, top) {
+    const { paddingLeft, paddingTop } = getDesktopMetrics();
+    const column = Math.round((left - paddingLeft) / DESKTOP_ICON_GRID_X);
+    const row = Math.round((top - paddingTop) / DESKTOP_ICON_GRID_Y);
+    return `${column},${row}`;
+}
+
+function findAvailableGridPosition(icon, preferredLeft, preferredTop, occupiedCells) {
+    const { paddingLeft, paddingTop } = getDesktopMetrics();
+    const columnCount = getGridColumnCount();
+    const preferred = snapToGrid(icon, preferredLeft, preferredTop, { allowVerticalOverflow: true });
+    const preferredColumn = Math.max(0, Math.round((preferred.left - paddingLeft) / DESKTOP_ICON_GRID_X));
+    const preferredRow = Math.max(0, Math.round((preferred.top - paddingTop) / DESKTOP_ICON_GRID_Y));
+    const startIndex = preferredRow * columnCount + Math.min(preferredColumn, columnCount - 1);
+    const maxAttempts = Math.max(occupiedCells.size + columnCount + 1, 2000);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const index = startIndex + attempt;
+        const column = index % columnCount;
+        const row = Math.floor(index / columnCount);
+        const left = paddingLeft + column * DESKTOP_ICON_GRID_X;
+        const top = paddingTop + row * DESKTOP_ICON_GRID_Y;
+        const snapped = clampToDesktop(icon, left, top, { allowVerticalOverflow: true });
+        const key = gridKey(snapped.left, snapped.top);
+
+        if (!occupiedCells.has(key)) {
+            occupiedCells.add(key);
+            return snapped;
+        }
+    }
+
+    return preferred;
+}
+
+function setIconPosition(icon, left, top, options = {}) {
+    const clamped = clampToDesktop(icon, left, top, options);
+    icon.style.left = `${clamped.left}px`;
+    icon.style.top = `${clamped.top}px`;
+    icon.style.position = "absolute";
+}
+
+function positionIconOnGrid(icon, preferredLeft, preferredTop, occupiedCells) {
+    const { paddingLeft, paddingTop } = getDesktopMetrics();
+    const left = preferredLeft ?? (icon.offsetLeft || paddingLeft);
+    const top = preferredTop ?? (icon.offsetTop || paddingTop);
+    const position = findAvailableGridPosition(icon, left, top, occupiedCells);
+    setIconPosition(icon, position.left, position.top, { allowVerticalOverflow: true });
+    return position;
+}
+
+function getOccupiedGridCells(excludedIcon = null) {
+    const desktop = document.getElementById("desktop");
+    const occupiedCells = new Set();
+    if (!desktop) return occupiedCells;
+
+    desktop.querySelectorAll(".desktop-icon").forEach((icon) => {
+        if (icon === excludedIcon || icon.style.display === "none") return;
+
+        const snapped = snapToGrid(icon, icon.offsetLeft, icon.offsetTop, { allowVerticalOverflow: true });
+        occupiedCells.add(gridKey(snapped.left, snapped.top));
+    });
+
+    return occupiedCells;
+}
+
+export function arrangeDesktopIcons(config = {}) {
+    const desktop = document.getElementById("desktop");
+    if (!desktop) return;
+
+    const occupiedCells = new Set();
+    desktop.querySelectorAll(".desktop-icon").forEach((icon) => {
+        if (icon.style.display === "none") return;
+
+        const appId = icon.id?.startsWith("icon-") ? icon.id.slice(5) : "";
+        const savedConfig = config[appId] || {};
+        positionIconOnGrid(
+            icon,
+            parsePixelValue(savedConfig.left),
+            parsePixelValue(savedConfig.top),
+            occupiedCells,
+        );
+    });
+}
+
 function setupIconDraggable(icon, appId) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     let startX = 0, startY = 0;
+    let dragOffsetX = 0, dragOffsetY = 0;
     let didDrag = false;
+    let previousInlinePosition = "";
+    let previousInlineLeft = "";
+    let previousInlineTop = "";
 
     icon.onmousedown = dragMouseDown;
 
+
     function dragMouseDown(e) {
+        if (e.button !== 0) return;
         e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+
+        const iconRect = icon.getBoundingClientRect();
+        const { rect: desktopRect } = getDesktopMetrics();
+        previousInlinePosition = icon.style.position;
+        previousInlineLeft = icon.style.left;
+        previousInlineTop = icon.style.top;
+        dragOffsetX = e.clientX - iconRect.left;
+        dragOffsetY = e.clientY - iconRect.top;
         startX = e.clientX;
         startY = e.clientY;
         didDrag = false;
+
+        // Convert flex-positioned icons to absolute positioning before dragging so
+        // the pointer keeps the same grab point instead of jumping to an edge.
+        setIconPosition(icon, iconRect.left - desktopRect.left, iconRect.top - desktopRect.top);
+
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
 
         document.querySelectorAll(".desktop-icon").forEach(i => i.classList.remove("selected"));
-        icon.classList.add("selected");
+        icon.classList.add("selected", "dragging");
     }
 
     function elementDrag(e) {
         e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) {
+
+        const { rect: desktopRect } = getDesktopMetrics();
+        const nextLeft = e.clientX - desktopRect.left - dragOffsetX;
+        const nextTop = e.clientY - desktopRect.top - dragOffsetY;
+
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) > DESKTOP_ICON_DRAG_THRESHOLD) {
             didDrag = true;
             icon.__suppressNextOpen = true;
         }
-        icon.style.top = (icon.offsetTop - pos2) + "px";
-        icon.style.left = (icon.offsetLeft - pos1) + "px";
-        icon.style.position = "absolute";
+
+        setIconPosition(icon, nextLeft, nextTop);
     }
 
     function closeDragElement() {
         document.onmouseup = null;
         document.onmousemove = null;
+        icon.classList.remove("dragging");
 
-        if (!didDrag) return;
+        if (!didDrag) {
+            icon.style.position = previousInlinePosition;
+            icon.style.left = previousInlineLeft;
+            icon.style.top = previousInlineTop;
+            return;
+        }
 
-        // Save position to state
+        const snapped = findAvailableGridPosition(
+            icon,
+            icon.offsetLeft,
+            icon.offsetTop,
+            getOccupiedGridCells(icon),
+        );
+        setIconPosition(icon, snapped.left, snapped.top);
+
+        // Save snapped position to state
         if (window.saveDesktopConfig) {
             window.saveDesktopConfig(appId, icon.style.left, icon.style.top);
         }
