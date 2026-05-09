@@ -14,6 +14,13 @@
     />
 
     <link rel="stylesheet" href="Themes/theme.css" />
+    <!-- Polyfills required by the Colyseus browser bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+    <script>
+      window.global = window;
+      if (!window.Buffer && window.buffer && window.buffer.Buffer) window.Buffer = window.buffer.Buffer;
+      if (!window.process) window.process = { env: {} };
+    </script>
     <!-- Colyseus Client Script -->
     <script src="/vendor/colyseus.js" onerror="this.onerror=null;this.src='https://unpkg.com/colyseus.js@0.15.0/dist/colyseus.js'"></script>
     <!-- Three.js for 3D Games -->
