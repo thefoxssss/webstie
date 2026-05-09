@@ -91,6 +91,11 @@ async function refreshFnafServers() {
   try {
     const res = await fetch(`${endpoint}/fnaf_servers`);
     if (!res.ok) throw new Error("Failed to fetch fnaf servers");
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("application/json")) {
+      const sample = (await res.text()).slice(0, 120).replace(/\s+/g, " ");
+      throw new Error(`Server list returned non-JSON (${contentType || "unknown content-type"}): ${sample}`);
+    }
     const servers = await res.json();
 
     listEl.innerHTML = "";
@@ -124,8 +129,8 @@ async function refreshFnafServers() {
       listEl.appendChild(row);
     });
   } catch (err) {
-    console.error(err);
-    listEl.innerHTML = "<div style='color:red;'>ERROR LOADING SERVERS</div>";
+    console.error("refreshFnafServers failed:", err);
+    listEl.innerHTML = `<div style='color:red;'>ERROR LOADING SERVERS<br/><small>${String(err.message || err)}</small></div>`;
   }
 }
 
