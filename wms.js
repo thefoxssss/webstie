@@ -525,49 +525,122 @@ export function createDesktopIcon(app) {
     return icon;
 }
 
+const DESKTOP_ICON_GRID_X = 100;
+const DESKTOP_ICON_GRID_Y = 100;
+const DESKTOP_ICON_DRAG_THRESHOLD = 5;
+
 function setupIconDraggable(icon, appId) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     let startX = 0, startY = 0;
+    let dragOffsetX = 0, dragOffsetY = 0;
     let didDrag = false;
+    let previousInlinePosition = "";
+    let previousInlineLeft = "";
+    let previousInlineTop = "";
 
     icon.onmousedown = dragMouseDown;
 
+    function getDesktopMetrics() {
+        const desktop = document.getElementById("desktop");
+        const styles = desktop ? window.getComputedStyle(desktop) : null;
+        const paddingLeft = parseFloat(styles?.paddingLeft) || 0;
+        const paddingRight = parseFloat(styles?.paddingRight) || 0;
+        const paddingTop = parseFloat(styles?.paddingTop) || 0;
+        const paddingBottom = parseFloat(styles?.paddingBottom) || 0;
+
+        return {
+            desktop,
+            rect: desktop?.getBoundingClientRect() || { left: 0, top: 0 },
+            paddingLeft,
+            paddingRight,
+            paddingTop,
+            paddingBottom,
+        };
+    }
+
+    function clampToDesktop(left, top) {
+        const { desktop, paddingRight, paddingBottom } = getDesktopMetrics();
+        if (!desktop) return { left, top };
+
+        const maxLeft = Math.max(0, desktop.clientWidth - paddingRight - icon.offsetWidth);
+        const maxTop = Math.max(0, desktop.clientHeight - paddingBottom - icon.offsetHeight);
+
+        return {
+            left: Math.min(Math.max(left, 0), maxLeft),
+            top: Math.min(Math.max(top, 0), maxTop),
+        };
+    }
+
+    function snapToGrid(left, top) {
+        const { paddingLeft, paddingTop } = getDesktopMetrics();
+        const snappedLeft = paddingLeft + Math.round((left - paddingLeft) / DESKTOP_ICON_GRID_X) * DESKTOP_ICON_GRID_X;
+        const snappedTop = paddingTop + Math.round((top - paddingTop) / DESKTOP_ICON_GRID_Y) * DESKTOP_ICON_GRID_Y;
+        return clampToDesktop(snappedLeft, snappedTop);
+    }
+
+    function setIconPosition(left, top) {
+        const clamped = clampToDesktop(left, top);
+        icon.style.left = `${clamped.left}px`;
+        icon.style.top = `${clamped.top}px`;
+        icon.style.position = "absolute";
+    }
+
     function dragMouseDown(e) {
+        if (e.button !== 0) return;
         e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+
+        const iconRect = icon.getBoundingClientRect();
+        const { rect: desktopRect } = getDesktopMetrics();
+        previousInlinePosition = icon.style.position;
+        previousInlineLeft = icon.style.left;
+        previousInlineTop = icon.style.top;
+        dragOffsetX = e.clientX - iconRect.left;
+        dragOffsetY = e.clientY - iconRect.top;
         startX = e.clientX;
         startY = e.clientY;
         didDrag = false;
+
+        // Convert flex-positioned icons to absolute positioning before dragging so
+        // the pointer keeps the same grab point instead of jumping to an edge.
+        setIconPosition(iconRect.left - desktopRect.left, iconRect.top - desktopRect.top);
+
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
 
         document.querySelectorAll(".desktop-icon").forEach(i => i.classList.remove("selected"));
-        icon.classList.add("selected");
+        icon.classList.add("selected", "dragging");
     }
 
     function elementDrag(e) {
         e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) {
+
+        const { rect: desktopRect } = getDesktopMetrics();
+        const nextLeft = e.clientX - desktopRect.left - dragOffsetX;
+        const nextTop = e.clientY - desktopRect.top - dragOffsetY;
+
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) > DESKTOP_ICON_DRAG_THRESHOLD) {
             didDrag = true;
             icon.__suppressNextOpen = true;
         }
-        icon.style.top = (icon.offsetTop - pos2) + "px";
-        icon.style.left = (icon.offsetLeft - pos1) + "px";
-        icon.style.position = "absolute";
+
+        setIconPosition(nextLeft, nextTop);
     }
 
     function closeDragElement() {
         document.onmouseup = null;
         document.onmousemove = null;
+        icon.classList.remove("dragging");
 
-        if (!didDrag) return;
+        if (!didDrag) {
+            icon.style.position = previousInlinePosition;
+            icon.style.left = previousInlineLeft;
+            icon.style.top = previousInlineTop;
+            return;
+        }
 
-        // Save position to state
+        const snapped = snapToGrid(icon.offsetLeft, icon.offsetTop);
+        setIconPosition(snapped.left, snapped.top);
+
+        // Save snapped position to state
         if (window.saveDesktopConfig) {
             window.saveDesktopConfig(appId, icon.style.left, icon.style.top);
         }

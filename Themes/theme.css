@@ -310,6 +310,10 @@ body::before {
   border-color: var(--accent);
 }
 
+.desktop-icon.dragging {
+  transition: none;
+}
+
 .desktop-icon-img {
   font-size: 32px;
   filter: drop-shadow(0 0 5px var(--accent-glow));
