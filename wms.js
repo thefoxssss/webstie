@@ -257,14 +257,6 @@ export class AppWindow {
           top = screenHeight - this.elements.window.offsetHeight;
       }
 
-      // Top-middle snap logic
-      if (top === 0 && Math.abs(left + this.elements.window.offsetWidth / 2 - screenWidth / 2) < snapThreshold * 2) {
-          if (!this.isMaximized) {
-              this.toggleMaximize();
-              return;
-          }
-      }
-
       // Prevent overlapping by snapping to sides
       if (window.WMS) {
           window.WMS.windows.forEach((win, id) => {
