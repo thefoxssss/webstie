@@ -4763,6 +4763,19 @@ body.reduce-motion *::after {
   margin-bottom: 18px;
 }
 
+#overlayRoulette,
+#overlaySlots,
+#overlayMines,
+#overlayBaccarat,
+#overlayCraps,
+#overlayVideopoker {
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-items: center;
+  padding-bottom: 18px;
+}
+
 @media (max-width: 760px) {
   .overlay.game-overlay {
     padding: 10px 10px 14px;
