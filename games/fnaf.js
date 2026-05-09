@@ -1,5 +1,6 @@
 // fnaf.js - 3D Multiplayer Horror Survival Game (Raycaster)
 import { state } from "../core.js";
+import { getColyseusHttpUrl, getColyseusWsUrl, hasColyseusClient } from "./network.js";
 
 let canvas, ctx;
 let animationId;
@@ -83,15 +84,8 @@ async function refreshFnafServers() {
   const listEl = document.getElementById("fnafServerList");
   listEl.innerHTML = "LOADING SERVERS...";
 
-  let networkSelect = document.getElementById("fnafNetwork");
-  let selected = networkSelect ? networkSelect.value : "auto";
-  const isLocalEnv = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.search.includes("local=1");
-  let defaultServer = isLocalEnv ? "local" : "prod";
-
-  let endpoint = selected === "local" ? "http://localhost:2567" : "https://seahorse-app-mv4sg.ondigitalocean.app";
-  if (selected === "auto") {
-      endpoint = defaultServer === "local" ? "http://localhost:2567" : "https://seahorse-app-mv4sg.ondigitalocean.app";
-  }
+  const networkSelect = document.getElementById("fnafNetwork");
+  const endpoint = getColyseusHttpUrl(networkSelect);
 
 
   try {
@@ -149,16 +143,10 @@ async function startFnafGame(options) {
 
   // Colyseus Connect
   try {
-      let networkSelect = document.getElementById("fnafNetwork");
-      let selected = networkSelect ? networkSelect.value : "auto";
-      const isLocalEnv = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.search.includes("local=1");
-      let defaultServer = isLocalEnv ? "local" : "prod";
-
-      let endpoint = selected === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
-      if (selected === "auto") {
-          endpoint = defaultServer === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
-      }
-      const client = new Colyseus.Client(endpoint);
+      if (!hasColyseusClient()) throw new Error("Colyseus client failed to load");
+      const networkSelect = document.getElementById("fnafNetwork");
+      const endpoint = getColyseusWsUrl(networkSelect);
+      const client = new window.Colyseus.Client(endpoint);
 
       if (options.create) {
          fnafRoom = await client.create("fnaf_room", { serverName: options.serverName });

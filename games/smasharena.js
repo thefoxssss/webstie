@@ -1,15 +1,12 @@
 // Smash-style platform fighter with local bot mode and Colyseus online duels.
 import { registerGameStop, setText, showToast, state, firebase, isInputFocused, escapeHtml } from "../core.js";
+import { getColyseusWsUrl, hasColyseusClient } from "./network.js";
 
 const { doc, setDoc, onSnapshot, runTransaction, updateDoc } = firebase;
 // Colyseus client setup
 let colyseusClient = null;
-if (typeof Colyseus !== 'undefined') {
-  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "localhost:2567"
-    : "seahorse-app-mv4sg.ondigitalocean.app";
-  colyseusClient = new Colyseus.Client(`${wsProtocol}://${wsHost}`);
+if (hasColyseusClient()) {
+  colyseusClient = new window.Colyseus.Client(getColyseusWsUrl());
 }
 const GRAVITY = 0.72;
 const FRICTION = 0.86;
@@ -70,12 +67,8 @@ function resetOverlay() {
 export function initSmashArena() {
   stopSession();
   resetOverlay();
-  if (!colyseusClient && typeof Colyseus !== 'undefined') {
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      ? "localhost:2567"
-      : "seahorse-app-mv4sg.ondigitalocean.app";
-    colyseusClient = new Colyseus.Client(`${wsProtocol}://${wsHost}`);
+  if (!colyseusClient && hasColyseusClient()) {
+    colyseusClient = new window.Colyseus.Client(getColyseusWsUrl());
   }
 }
 

@@ -1,3 +1,5 @@
+import { getColyseusWsUrl, hasColyseusClient } from "./network.js";
+
 let voiceRoom = null;
 let localStream = null;
 let peers = {}; // mapping from sessionId to RTCPeerConnection
@@ -30,12 +32,8 @@ export function initVoice() {
 
 async function refreshVoiceRooms() {
     try {
-        if (typeof window.Colyseus === 'undefined') return;
-        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-          ? "localhost:2567"
-          : "seahorse-app-mv4sg.ondigitalocean.app";
-        const client = new window.Colyseus.Client(`${wsProtocol}://${wsHost}`);
+        if (!hasColyseusClient()) return;
+        const client = new window.Colyseus.Client(getColyseusWsUrl());
 
         const rooms = await client.getAvailableRooms("voice_room");
 
@@ -105,16 +103,12 @@ async function refreshVoiceRooms() {
 
 async function createOrJoinVoiceRoom(isCreate, joinRoomId = null) {
     try {
-        if (typeof window.Colyseus === 'undefined') {
+        if (!hasColyseusClient()) {
             alert("Colyseus library not loaded.");
             return;
         }
 
-        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const wsHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-          ? "localhost:2567"
-          : "seahorse-app-mv4sg.ondigitalocean.app";
-        const client = new window.Colyseus.Client(`${wsProtocol}://${wsHost}`);
+        const client = new window.Colyseus.Client(getColyseusWsUrl());
 
         // Get microphone access FIRST
         try {

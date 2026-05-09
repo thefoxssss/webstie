@@ -79,6 +79,23 @@ function layeredNoise(x, y, octaves, persistence, scale) {
 
 const app = express();
 app.use(cors());
+
+app.get("/vendor/colyseus.js", (req, res) => {
+  res.sendFile(path.join(__dirname, "node_modules", "colyseus.js", "dist", "colyseus.js"));
+});
+app.use((req, res, next) => {
+  if (/^\/(?:\.git|node_modules|__pycache__|archive)(?:\/|$)/.test(req.path) || /^\/(?:server\.js|package(?:-lock)?\.json)$/.test(req.path)) {
+    return res.sendStatus(404);
+  }
+  next();
+});
+app.use(express.static(__dirname, {
+  index: "index.html",
+  setHeaders(res, filePath) {
+    if (filePath.endsWith(".js")) res.type("application/javascript");
+  },
+}));
+
 const port = process.env.PORT || 2567;
 const OIL_QUOTE_SOURCES = [
   {
