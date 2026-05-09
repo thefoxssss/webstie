@@ -2148,7 +2148,7 @@ canvas {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .gamebox-mounted {
@@ -2158,9 +2158,9 @@ canvas {
   width: 100%;
   height: auto;
   min-height: 0;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-start;
-  overflow: hidden;
+  overflow: auto;
   padding: 0;
   border: 0;
 }
@@ -4760,7 +4760,31 @@ body.reduce-motion *::after {
   width: min(94vw, 720px);
   border: 1px solid var(--accent-dim);
   padding: 10px;
-  margin-bottom: 95px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 760px) {
+  .overlay.game-overlay {
+    padding: 10px 10px 14px;
+  }
+
+  .game-content-shell {
+    width: min(100%, 1200px);
+    padding: 8px 10px 10px;
+  }
+
+  .roulette-status {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .roulette-presets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .roulette-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .roulette-bet-row {
