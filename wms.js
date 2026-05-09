@@ -118,6 +118,11 @@ export class AppWindow {
     this.id = id;
     this.title = title;
     this.contentElement = contentElement; // This is the original overlay content
+    const appConfig = getAppDesktopConfig(id) || {};
+    const parsePx = (value, fallback) => {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
     this.options = {
       width: options.width || 800,
       height: options.height || 600,
@@ -128,6 +133,10 @@ export class AppWindow {
       icon: options.icon || "🎮",
       ...options
     };
+    this.options.width = parsePx(appConfig.windowWidth, this.options.width);
+    this.options.height = parsePx(appConfig.windowHeight, this.options.height);
+    this.options.x = parsePx(appConfig.left, this.options.x);
+    this.options.y = parsePx(appConfig.top, this.options.y);
 
     this.isMinimized = false;
     this.isMaximized = false;
@@ -323,6 +332,7 @@ export class AppWindow {
     };
 
     const stopResize = () => {
+        saveWindowState(this.id, this);
         document.removeEventListener('mousemove', doResize);
         document.removeEventListener('mouseup', stopResize);
     };
@@ -402,6 +412,7 @@ export class AppWindow {
     };
 
     const closeDragElement = () => {
+      saveWindowState(this.id, this);
       document.onmouseup = null;
       document.onmousemove = null;
     };
@@ -438,6 +449,7 @@ export class AppWindow {
       this.focus();
       this.scheduleScaleUpdate?.();
     }
+    saveWindowState(this.id, this);
   }
 
   showContextMenu(e) {
@@ -494,6 +506,7 @@ export class AppWindow {
       this.elements.maximizeBtn.textContent = "🗖";
     }
     this.scheduleScaleUpdate?.();
+    saveWindowState(this.id, this);
   }
 
   close() {
@@ -523,6 +536,9 @@ export class AppWindow {
         }
     }
 
+    if (window.saveDesktopConfig) {
+        window.saveDesktopConfig(this.id, this.elements.window.style.left, this.elements.window.style.top, { windowOpen: false });
+    }
     this.elements.window.remove();
     if (!this.isFavorited) {
         this.elements.tab.remove();
@@ -541,6 +557,7 @@ export class AppWindow {
 class WindowManager {
     constructor() {
         this.windows = new Map();
+        this.isRestoringSession = false;
     }
 
     createWindow(id, title, contentElement, options) {
@@ -554,6 +571,14 @@ class WindowManager {
         const win = new AppWindow(id, title, contentElement, options);
         this.windows.set(id, win);
         win.focus();
+        const appConfig = getAppDesktopConfig(id) || {};
+        if (appConfig.windowMaximized && !win.isMaximized) {
+            win.toggleMaximize();
+        }
+        if (appConfig.windowMinimized && !this.isRestoringSession && !win.isMinimized) {
+            win.toggleMinimize();
+        }
+        saveWindowState(id, win, { windowOpen: true });
         return win;
     }
 
@@ -602,6 +627,38 @@ export function initDesktop() {
         createDesktopIcon(app);
     });
 }
+
+function getAppDesktopConfig(appId) {
+    if (typeof window.getDesktopConfig !== "function") return null;
+    const config = window.getDesktopConfig();
+    return config?.[appId] || null;
+}
+
+function saveWindowState(appId, win, extra = {}) {
+    if (!window.saveDesktopConfig || !win?.elements?.window) return;
+    window.saveDesktopConfig(appId, win.elements.window.style.left, win.elements.window.style.top, {
+        windowWidth: win.elements.window.style.width,
+        windowHeight: win.elements.window.style.height,
+        windowMinimized: Boolean(win.isMinimized),
+        windowMaximized: Boolean(win.isMaximized),
+        windowOpen: true,
+        ...extra,
+    });
+}
+
+window.restoreDesktopSession = function restoreDesktopSession() {
+    if (!window.WMS || typeof window.getDesktopConfig !== "function" || typeof window.openGame !== "function") return;
+    if (window.WMS.isRestoringSession) return;
+    window.WMS.isRestoringSession = true;
+    const config = window.getDesktopConfig() || {};
+    Object.entries(config).forEach(([appId, appConfig]) => {
+        if (appConfig?.windowOpen) {
+            const overlayId = appId.startsWith("overlay") || appId === "globalChat" ? appId : `overlay${appId.charAt(0).toUpperCase()}${appId.slice(1)}`;
+            window.openGame(overlayId);
+        }
+    });
+    window.WMS.isRestoringSession = false;
+};
 
 export function createDesktopIcon(app) {
     const desktop = document.getElementById("desktop");
