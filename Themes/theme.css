@@ -6227,3 +6227,169 @@ body {
 .taskbar-tab.favorited {
     border-bottom: 2px solid var(--leg);
 }
+
+/* Keep primary menu panels horizontally contained on narrow windows. */
+.menu-overlay {
+  --menu-overlay-gutter: clamp(8px, 3vw, 20px);
+  padding-inline: var(--menu-overlay-gutter);
+  overflow-x: hidden;
+}
+
+.menu-overlay > .score-box,
+.menu-overlay > .menu-box,
+#globalChat > .chat-box,
+#overlayAdmin > .score-box,
+#overlayBank > .score-box,
+#overlayShop > .score-box,
+#overlayInventory > .score-box,
+#overlayProfile > .score-box,
+#overlaySeason > .score-box,
+#overlayCrew > .score-box,
+#overlayTrending > .score-box,
+#overlayRecentGames > .score-box,
+#overlayUpdates > .score-box {
+  width: min(100%, 1300px) !important;
+  max-width: calc(100vw - (var(--menu-overlay-gutter) * 2)) !important;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.menu-overlay .score-box,
+.menu-overlay .score-box *,
+.menu-overlay .menu-box,
+.menu-overlay .menu-box * {
+  min-width: 0;
+}
+
+.menu-overlay h1,
+.menu-overlay h2,
+.menu-overlay h3,
+.menu-overlay p,
+.menu-overlay button,
+.menu-overlay input,
+.menu-overlay select,
+.menu-overlay textarea,
+.menu-overlay .stat-row,
+.menu-overlay .score-tab,
+.menu-overlay .term-nav-btn,
+.menu-overlay .bank-entry,
+.menu-overlay .stock-row,
+.menu-overlay .shop-item,
+.menu-overlay .inventory-item,
+.menu-overlay .trending-game-btn {
+  overflow-wrap: anywhere;
+}
+
+.menu-overlay .score-tabs,
+.menu-overlay .term-nav,
+.menu-overlay .bank-transfer-presets,
+.menu-overlay .bank-loan-stats,
+.menu-overlay .bank-loan-actions,
+.menu-overlay .stock-market-header,
+.menu-overlay .stock-multipliers,
+.menu-overlay .stock-actions,
+.menu-overlay .shop-item-actions,
+.menu-overlay .crew-actions,
+.menu-overlay .chat-header,
+.menu-overlay .stat-row,
+.menu-overlay .bank-entry {
+  flex-wrap: wrap;
+}
+
+.menu-overlay .term-nav,
+.menu-overlay .chat-tabs,
+.menu-overlay .bank-transfer-presets,
+.menu-overlay .bank-loan-actions,
+.menu-overlay .stock-multipliers,
+.menu-overlay .stock-actions,
+.menu-overlay .crew-actions {
+  gap: 8px;
+}
+
+.menu-overlay .term-nav-btn,
+.menu-overlay .chat-tab,
+.menu-overlay .bank-preset-btn,
+.menu-overlay .stock-mult-btn,
+.menu-overlay .stock-actions .term-btn,
+.menu-overlay .crew-actions .term-btn {
+  min-width: 0;
+}
+
+.menu-overlay .term-nav {
+  justify-content: center;
+}
+
+.menu-overlay .term-nav-btn {
+  flex: 1 1 120px;
+}
+
+#overlayInventory .inventory-grid,
+#overlayShop .shop-list,
+#overlayProfile .profile-stats,
+#overlaySeason .score-list,
+#overlayCrew .crew-dashboard,
+#overlayCrew .crew-finder,
+#overlayTrending .trending-month-chart,
+#overlayRecentGames .trending-games-list,
+#overlayUpdates .update-log-scroll,
+#globalChat #chatHistory,
+#overlayAdmin .admin-layout,
+#overlayAdmin .admin-tabs-container,
+#overlayBank .bank-app-content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#overlayAdmin .admin-actions-overhaul {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+#overlayBank .stock-market-grid,
+#overlayCrew .crew-dashboard-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+#overlayShop .shop-item > div {
+  flex-basis: min(100%, 320px);
+}
+
+@media (max-width: 520px) {
+  .menu-overlay {
+    --menu-overlay-gutter: 8px;
+  }
+
+  .menu-overlay > .score-box,
+  .menu-overlay > .menu-box,
+  #globalChat > .chat-box {
+    padding: 10px !important;
+  }
+
+  .menu-overlay .score-tabs,
+  .menu-overlay .chat-tabs,
+  .menu-overlay .bank-transfer-presets,
+  .menu-overlay .stock-multipliers,
+  .menu-overlay .stock-actions,
+  .menu-overlay .crew-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-overlay .bank-loan-stats,
+  .menu-overlay .stock-market-header,
+  .menu-overlay .chat-header,
+  .menu-overlay .stat-row,
+  .menu-overlay .bank-entry,
+  .menu-overlay .shop-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #overlayBank .bank-balance-value,
+  #overlayProfile .profile-summary-rank,
+  #overlayCrew .crew-banner h3 {
+    font-size: clamp(13px, 6vw, 20px) !important;
+  }
+
+  #globalChat #chatHistory {
+    height: min(320px, 42vh);
+  }
+}
