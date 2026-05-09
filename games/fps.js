@@ -1,4 +1,5 @@
 import { state, isInputFocused, escapeHtml } from "../core.js";
+import { getColyseusHttpUrl, getColyseusWsUrl, hasColyseusClient } from "./network.js";
 
 let room = null;
 let scene, camera, renderer, controls;
@@ -35,8 +36,8 @@ let isSprinting = false;
 let isCrouching = false;
 let canJump = false;
 let isSniperZoomed = false;
-let velocity = new THREE.Vector3();
-let direction = new THREE.Vector3();
+let velocity;
+let direction;
 const speed = 40.0;
 const sprintSpeed = 70.0;
 const crouchSpeed = 20.0;
@@ -112,7 +113,7 @@ function renderMapMenus() {
 
 async function loadAvailableMaps() {
   try {
-    const endpoint = getColyseusEndpoint().replace("ws", "http");
+    const endpoint = getColyseusHttpUrl(networkSelect);
     const res = await fetch(`${endpoint}/fps-maps`);
     if (!res.ok) return;
     const payload = await res.json();
@@ -126,20 +127,27 @@ async function loadAvailableMaps() {
 }
 
 function getColyseusEndpoint() {
-  const mode = networkSelect.value;
-  if (mode === "local") return "ws://localhost:2567";
-  if (mode === "prod") return "wss://seahorse-app-mv4sg.ondigitalocean.app";
-  // Auto
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    return "ws://localhost:2567";
+  return getColyseusWsUrl(networkSelect);
+}
+
+function ensureFpsDependencies() {
+  if (!window.THREE || !window.THREE.PointerLockControls) {
+    fpsMenu.innerHTML = '<div style="color:#f66">3D ENGINE FAILED TO LOAD. REFRESH OR CHECK STATIC ASSET SERVING.</div>' + fpsMenu.innerHTML;
+    return false;
   }
-  return "wss://seahorse-app-mv4sg.ondigitalocean.app";
+  if (!hasColyseusClient()) {
+    fpsMenu.innerHTML = '<div style="color:#f66">MULTIPLAYER CLIENT FAILED TO LOAD. REFRESH OR CHECK /vendor/colyseus.js.</div>' + fpsMenu.innerHTML;
+    return false;
+  }
+  if (!velocity) velocity = new THREE.Vector3();
+  if (!direction) direction = new THREE.Vector3();
+  return true;
 }
 
 async function fetchServers() {
   serverList.innerHTML = "<div>SCANNING...</div>";
   try {
-    const endpoint = getColyseusEndpoint().replace("ws", "http");
+    const endpoint = getColyseusHttpUrl(networkSelect);
     const res = await fetch(`${endpoint}/fps-servers`);
     const payload = await res.json();
     const fpsRooms = payload.servers || [];
@@ -197,7 +205,7 @@ async function createRoom() {
   const mapId = mapSelect ? Number(mapSelect.value) : 0;
 
   try {
-    const client = new Colyseus.Client(getColyseusEndpoint());
+    const client = new window.Colyseus.Client(getColyseusEndpoint());
     room = await client.create("fps_room", { serverName, playerName: state.myName, mapId });
     setupRoom();
   } catch (err) {
@@ -208,7 +216,7 @@ async function createRoom() {
 
 async function joinRoom(roomId) {
   try {
-    const client = new Colyseus.Client(getColyseusEndpoint());
+    const client = new window.Colyseus.Client(getColyseusEndpoint());
     if (roomId) {
       room = await client.joinById(roomId, { playerName: state.myName });
     } else {
@@ -2218,6 +2226,7 @@ function animate() {
 
 export function initFps() {
   fpsMenu.style.display = "block";
+  if (!ensureFpsDependencies()) return;
   fpsGame.style.display = "none";
   fpsDeathScreen.style.display = "none";
   grenades = 2;

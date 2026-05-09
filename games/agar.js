@@ -1,25 +1,14 @@
 import { escapeHtml, state } from "../core.js";
+import { getColyseusHttpUrl, getColyseusWsUrl } from "./network.js";
 
 export function initAgar() {
-    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || !window.location.hostname || window.location.search.includes("local=1");
     const networkSelect = document.getElementById("agarNetwork");
-    const defaultServer = isLocal ? "local" : "prod";
     if (networkSelect && !networkSelect.value) {
         networkSelect.value = "auto";
     }
 
-    const getServerUrl = () => {
-        const selected = networkSelect?.value || "auto";
-        if (selected === "local") return "ws://localhost:2567";
-        if (selected === "prod") return "wss://seahorse-app-mv4sg.ondigitalocean.app";
-        return defaultServer === "local" ? "ws://localhost:2567" : "wss://seahorse-app-mv4sg.ondigitalocean.app";
-    };
-    const getServerHttpBase = () => {
-        const wsUrl = getServerUrl();
-        if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice(6)}`;
-        if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice(5)}`;
-        return wsUrl;
-    };
+    const getServerUrl = () => getColyseusWsUrl(networkSelect);
+    const getServerHttpBase = () => getColyseusHttpUrl(networkSelect);
 
     let room;
     let client;

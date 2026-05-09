@@ -4,6 +4,7 @@ import {
   dispatch,
   showToast
 } from "../core.js";
+import { getColyseusHttpUrl, getColyseusWsUrl, hasColyseusClient } from "./network.js";
 
 let room;
 let scene, camera, renderer, controls;
@@ -12,9 +13,9 @@ let playerMeshes = {};
 let localPlayerId = null;
 let isDead = false;
 let moveInterval;
-let velocity = new THREE.Vector3();
-let direction = new THREE.Vector3();
-let raycaster = new THREE.Raycaster();
+let velocity;
+let direction;
+let raycaster;
 let animationId;
 let prevTime = performance.now();
 let lastSyncTime = 0;
@@ -30,27 +31,36 @@ let hexfallKeyUpHandler = null;
 
 const HEX_RADIUS = 2.5;
 
+function getNetworkSelect() {
+  return document.getElementById("hexfallNetwork");
+}
+
 function getNetworkUrl() {
-  const select = document.getElementById("hexfallNetwork");
-  const net = select ? select.value : "auto";
-  if (net === "local") return "ws://localhost:2567";
-  if (net === "prod") return "wss://seahorse-app-mv4sg.ondigitalocean.app";
-  // auto
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    return "ws://localhost:2567";
-  }
-  return "wss://seahorse-app-mv4sg.ondigitalocean.app";
+  return getColyseusWsUrl(getNetworkSelect());
 }
 
 function getApiUrl() {
-  const wsUrl = getNetworkUrl();
-  if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice(6)}`;
-  if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice(5)}`;
-  return wsUrl;
+  return getColyseusHttpUrl(getNetworkSelect());
+}
+
+function ensureHexfallDependencies() {
+  if (!window.THREE || !window.THREE.PointerLockControls) {
+    showToast("3D ENGINE MISSING", "⚠️", "Refresh or check static assets.");
+    return false;
+  }
+  if (!hasColyseusClient()) {
+    showToast("MULTIPLAYER CLIENT MISSING", "⚠️", "Refresh or check /vendor/colyseus.js.");
+    return false;
+  }
+  if (!velocity) velocity = new THREE.Vector3();
+  if (!direction) direction = new THREE.Vector3();
+  if (!raycaster) raycaster = new THREE.Raycaster();
+  return true;
 }
 
 export function initHexfall() {
   dispatch({ type: "SET_CURRENT_GAME", payload: "hexfall" });
+  if (!ensureHexfallDependencies()) return;
   document.getElementById("hexfallMenu").style.display = "block";
   document.getElementById("hexfallGame").style.display = "none";
   document.getElementById("hexfallDeathScreen").style.display = "none";
@@ -109,7 +119,7 @@ function joinServer(options) {
   document.getElementById("hexfallGame").style.display = "block";
   document.getElementById("hexfallStatus").innerText = "CONNECTING...";
 
-  const client = new Colyseus.Client(getNetworkUrl());
+  const client = new window.Colyseus.Client(getNetworkUrl());
 
   const joinOpts = { playerName: state.bio?.name || state.username || "Guest" };
   if (options.create) {
