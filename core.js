@@ -7423,11 +7423,17 @@ export function showGameOver(game, score) {
   setText("gameOverText", "SYSTEM_FAILURE: SCORE_" + score);
   showToast(`RUN COMPLETE: +$${rewards.cashReward}`, "💸", `+${rewards.xpReward} SEASON XP`);
   const modal = document.getElementById("modalGameOver");
+  const overlayByGame = game
+    ? document.getElementById(`overlay${String(game) === "ttt" ? "TTT" : String(game).charAt(0).toUpperCase() + String(game).slice(1)}`)
+    : null;
   const activeOverlays = Array.from(document.querySelectorAll(".overlay.active"));
   const activeGameOverlay =
+    overlayByGame ||
     activeOverlays.find((overlay) =>
       overlay.classList.contains("game-overlay") || overlay.querySelector("canvas, .embedded-game-frame")
-    ) || activeOverlays[activeOverlays.length - 1] || null;
+    ) ||
+    activeOverlays[activeOverlays.length - 1] ||
+    null;
 
   const gameSurface = activeGameOverlay?.querySelector("canvas, .embedded-game-frame");
   let modalHost = null;
