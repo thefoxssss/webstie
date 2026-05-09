@@ -297,6 +297,8 @@ function initSharedGamebox() {
 // Launch a game by name, activate its overlay, and kick off its init routine.
 window.launchGame = (game, source = "direct") => {
   window.__goonerLastGameLaunchSource = source;
+  // Ensure previous game loops/intervals are fully stopped before starting another game.
+  if (typeof window.stopAllGames === "function") window.stopAllGames();
   // window.closeOverlays(); // Don't close others, we are in WMS
 
   // We bypass mountGameOverlayIntoGamebox so the game takes over the screen
