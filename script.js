@@ -55,6 +55,7 @@ import {
   claimAprilFoolsSecretItem,
   openGameLeaderboard,
   escapeHtml,
+  beep,
 } from "./core.js";
 import { initGeometry } from "./games/geo.js";
 import { initFlappy } from "./games/flappy.js";
