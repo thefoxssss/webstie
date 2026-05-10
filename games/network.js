@@ -12,22 +12,21 @@ function normalizeServerMode(selectOrMode) {
 function currentHost() {
   if (window.GOONER_MULTIPLAYER_HOST) return String(window.GOONER_MULTIPLAYER_HOST).replace(/^https?:\/\//, "").replace(/^wss?:\/\//, "");
   if (isLocalHost()) return "localhost:2567";
-  return window.location.host || LEGACY_PROD_HOST;
+  return LEGACY_PROD_HOST;
 }
 
 export function getColyseusWsUrl(selectOrMode = "auto") {
   const mode = normalizeServerMode(selectOrMode);
   if (mode === "local") return "ws://localhost:2567";
   if (mode === "prod") return `wss://${LEGACY_PROD_HOST}`;
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const protocol = "wss";
   return `${protocol}://${currentHost()}`;
 }
 
 export function getColyseusHttpUrl(selectOrMode = "auto") {
-  const wsUrl = getColyseusWsUrl(selectOrMode);
-  if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice(6)}`;
-  if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice(5)}`;
-  return wsUrl;
+  const mode = normalizeServerMode(selectOrMode);
+  if (mode === "local") return "http://localhost:2567";
+  return `https://${LEGACY_PROD_HOST}`;
 }
 
 export function hasColyseusClient() {
