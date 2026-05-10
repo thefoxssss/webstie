@@ -3637,7 +3637,7 @@ export function openGame(id) {
   const excludedFromWMS = [];
   const isExcluded = excludedFromWMS.includes(id);
 
-  if (window.WMS && !isExcluded) {
+  if (window.WMS && !isExcluded && !window.legacyUiEnabled) {
       if (typeof window.beep === "function") window.beep(400, "square", 0.05);
       window.WMS.createWindow(id, title, contentElement, { icon });
       runOverlayOpenHooks(id);
@@ -6088,6 +6088,14 @@ document.getElementById("motionToggle").onclick = () => {
 };
 
 
+document.getElementById("legacyUiToggle").onclick = (e) => {
+    const isLegacy = !window.legacyUiEnabled;
+    window.legacyUiEnabled = isLegacy;
+    e.target.innerText = isLegacy ? "ON" : "OFF";
+    writeUiConfig({ useLegacyUi: isLegacy });
+    location.reload();
+};
+
 document.getElementById("bgTextToggle").onclick = (e) => {
     const bgText = document.getElementById("desktop-bg-text");
     if (!bgText) return;
@@ -6116,6 +6124,17 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
   applyStatusVisibilityToggle(Boolean(config.hideStatus));
+  window.legacyUiEnabled = Boolean(config.useLegacyUi);
+
+  const desktopEl = document.getElementById("desktop");
+  const taskbarEl = document.getElementById("taskbar");
+  if (window.legacyUiEnabled) {
+    if (desktopEl) desktopEl.style.display = "none";
+    if (taskbarEl) taskbarEl.style.display = "none";
+  }
+
+  const legacyUiToggle = document.getElementById("legacyUiToggle");
+  if (legacyUiToggle) legacyUiToggle.innerText = window.legacyUiEnabled ? "ON" : "OFF";
   const bgTextEnabled = config.bgTextEnabled !== false;
   const bgText = document.getElementById("desktop-bg-text");
   if (bgText) bgText.style.display = bgTextEnabled ? "block" : "none";

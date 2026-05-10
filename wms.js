@@ -79,7 +79,7 @@ function openGameFallback(id) {
     if (!contentElement) return;
 
     const { title, icon } = resolveFallbackAppMetadata(id);
-    if (window.WMS) {
+    if (window.WMS && !window.legacyUiEnabled) {
         window.WMS.createWindow(id, title, contentElement, { icon });
         return;
     }
