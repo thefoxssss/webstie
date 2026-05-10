@@ -170,6 +170,7 @@ async function requestOilQuoteBody(url) {
 }
 const builderServerDirectory = new Map();
 const fpsServerDirectory = new Map();
+const voiceServerDirectory = new Map();
 function getFpsMapCatalog() {
   const dir = path.join(__dirname, "data", "fps", "maps");
   if (!fs.existsSync(dir)) return [];
@@ -2391,6 +2392,13 @@ class VoiceRoom extends colyseus.Room {
     this.maxClients = 4; // limit to 4 for peer-to-peer mesh
     this.setState(new VoiceState());
 
+    voiceServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      clients: this.clients.length,
+      maxClients: this.maxClients,
+      players: []
+    });
+
     // Relay WebRTC signaling messages
     this.onMessage("signal", (client, message) => {
         // message should contain { to: targetSessionId, data: signalData }
@@ -2415,6 +2423,20 @@ class VoiceRoom extends colyseus.Room {
     const names = [];
     this.state.players.forEach(p => names.push(p.name));
     this.setMetadata({ playerNames: names.join(", ") });
+
+    const d = voiceServerDirectory.get(this.roomId);
+    if (d) {
+      d.clients = this.clients.length;
+      d.players = [];
+      this.state.players.forEach((p) => {
+        d.players.push({ name: p.name });
+      });
+      voiceServerDirectory.set(this.roomId, d);
+    }
+  }
+
+  onDispose() {
+    voiceServerDirectory.delete(this.roomId);
   }
 
   onJoin(client, options) {
@@ -3891,6 +3913,14 @@ app.get("/fps-servers", (req, res) => {
   });
   res.json({ servers });
 });
+
+app.get("/voice-servers", (req, res) => {
+  const servers = Array.from(voiceServerDirectory.values()).sort((a, b) => {
+    return b.clients - a.clients;
+  });
+  res.json({ servers });
+});
+
 app.get("/fps-maps", (req, res) => {
   res.json({ maps: getFpsMapCatalog() });
 });

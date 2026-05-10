@@ -204,39 +204,8 @@ async function fetchServers() {
       serverList.appendChild(row);
     });
   } catch (err) {
-    console.warn("Primary FPS server catalog lookup failed; using Colyseus room listing fallback.", err);
-    try {
-      const client = new window.Colyseus.Client(getColyseusEndpoint());
-      const fpsRooms = await client.getAvailableRooms("fps_room");
-      serverList.innerHTML = "";
-      if (!fpsRooms.length) {
-        serverList.innerHTML = "<div>NO ACTIVE SERVERS. CREATE ONE.</div>";
-        return;
-      }
-      fpsRooms.forEach((r) => {
-        const row = document.createElement("div");
-        row.style.display = "flex";
-        row.style.justifyContent = "space-between";
-        row.style.padding = "5px";
-        row.style.borderBottom = "1px solid #333";
-
-        const info = document.createElement("span");
-        info.textContent = `${r.metadata?.serverName || r.roomId} (${r.clients}/${r.maxClients})`;
-
-        const btn = document.createElement("button");
-        btn.className = "term-btn";
-        btn.textContent = "JOIN";
-        btn.style.padding = "2px 8px";
-        btn.onclick = () => joinRoom(r.roomId);
-
-        row.appendChild(info);
-        row.appendChild(btn);
-        serverList.appendChild(row);
-      });
-    } catch (fallbackErr) {
-      serverList.innerHTML = "<div>ERROR FETCHING SERVERS.</div>";
-      console.error("FPS server listing fallback failed:", fallbackErr);
-    }
+    console.warn("Primary FPS server catalog lookup failed.", err);
+    serverList.innerHTML = "<div>ERROR FETCHING SERVERS.</div>";
   }
 }
 

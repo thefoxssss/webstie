@@ -1,4 +1,4 @@
-import { getColyseusWsUrl, hasColyseusClient } from "./network.js";
+import { getColyseusWsUrl, getColyseusHttpUrl, hasColyseusClient } from "./network.js";
 
 let voiceRoom = null;
 let localStream = null;
@@ -32,10 +32,11 @@ export function initVoice() {
 
 async function refreshVoiceRooms() {
     try {
-        if (!hasColyseusClient()) return;
-        const client = new window.Colyseus.Client(getColyseusWsUrl());
-
-        const rooms = await client.getAvailableRooms("voice_room");
+        const endpoint = getColyseusHttpUrl();
+        const res = await fetch(`${endpoint}/voice-servers`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        const rooms = payload.servers || [];
 
         const listDiv = document.getElementById("voiceRoomList");
         if (!listDiv) return;
@@ -64,13 +65,8 @@ async function refreshVoiceRooms() {
             clientsSpan.style.fontSize = "10px";
             clientsSpan.style.color = "var(--accent)";
 
-            let userNames = room.metadata && room.metadata.playerNames ? room.metadata.playerNames : "Empty";
-            if (!room.metadata || !room.metadata.playerNames) {
-                // Fallback for older server instances
-                clientsSpan.textContent = `USERS: ${room.clients} / ${room.maxClients}`;
-            } else {
-                clientsSpan.textContent = `USERS: ${userNames} (${room.clients}/${room.maxClients})`;
-            }
+            let userNames = room.players && room.players.length ? room.players.map(p => p.name).join(", ") : "Empty";
+            clientsSpan.textContent = `USERS: ${userNames} (${room.clients}/${room.maxClients})`;
 
             info.appendChild(nameSpan);
             info.appendChild(clientsSpan);
