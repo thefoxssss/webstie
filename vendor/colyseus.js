@@ -9254,7 +9254,9 @@
         };
         HTTP.prototype.request = function (method, path, options) {
             if (options === void 0) { options = {}; }
-            return httpie[method](this.client['getHttpEndpoint'](path), this.getOptions(options)).catch(function (e) {
+            var normalizedMethod = (method || 'get').toLowerCase();
+            var requestFn = httpie[normalizedMethod] || httpie.send.bind(httpie, normalizedMethod.toUpperCase());
+            return requestFn(this.client['getHttpEndpoint'](path), this.getOptions(options)).catch(function (e) {
                 var _a;
                 var status = e.statusCode; //  || -1
                 var message = ((_a = e.data) === null || _a === void 0 ? void 0 : _a.error) || e.statusMessage || e.message; //  || "offline"
