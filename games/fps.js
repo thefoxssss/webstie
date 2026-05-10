@@ -115,8 +115,7 @@ async function loadAvailableMaps() {
   try {
     const endpoint = getColyseusHttpUrl(networkSelect);
     const res = await fetch(`${endpoint}/fps-maps`);
-    if (!res.ok) return;
-    const payload = await res.json();
+    const payload = await safeJsonResponse(res, "FPS map catalog");
     if (Array.isArray(payload.maps) && payload.maps.length > 0) {
       availableMaps = payload.maps.map((m) => ({ id: Number(m.id), name: m.name || `MAP ${m.id}` }));
       renderMapMenus();
@@ -124,6 +123,17 @@ async function loadAvailableMaps() {
   } catch (err) {
     console.warn("Could not load FPS map catalog:", err);
   }
+}
+
+
+async function safeJsonResponse(res, contextLabel) {
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (!res.ok) throw new Error(`${contextLabel} request failed with status ${res.status}`);
+  if (!contentType.includes("application/json")) {
+    const bodyPreview = (await res.text()).slice(0, 120);
+    throw new Error(`${contextLabel} returned non-JSON payload (${contentType || "unknown"}): ${bodyPreview}`);
+  }
+  return res.json();
 }
 
 function getColyseusEndpoint() {
@@ -149,7 +159,7 @@ async function fetchServers() {
   try {
     const endpoint = getColyseusHttpUrl(networkSelect);
     const res = await fetch(`${endpoint}/fps-servers`);
-    const payload = await res.json();
+    const payload = await safeJsonResponse(res, "FPS server catalog");
     const fpsRooms = payload.servers || [];
 
     serverList.innerHTML = "";
@@ -194,8 +204,39 @@ async function fetchServers() {
       serverList.appendChild(row);
     });
   } catch (err) {
-    serverList.innerHTML = "<div>ERROR FETCHING SERVERS.</div>";
-    console.error(err);
+    console.warn("Primary FPS server catalog lookup failed; using Colyseus room listing fallback.", err);
+    try {
+      const client = new window.Colyseus.Client(getColyseusEndpoint());
+      const fpsRooms = await client.getAvailableRooms("fps_room");
+      serverList.innerHTML = "";
+      if (!fpsRooms.length) {
+        serverList.innerHTML = "<div>NO ACTIVE SERVERS. CREATE ONE.</div>";
+        return;
+      }
+      fpsRooms.forEach((r) => {
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.justifyContent = "space-between";
+        row.style.padding = "5px";
+        row.style.borderBottom = "1px solid #333";
+
+        const info = document.createElement("span");
+        info.textContent = `${r.metadata?.serverName || r.roomId} (${r.clients}/${r.maxClients})`;
+
+        const btn = document.createElement("button");
+        btn.className = "term-btn";
+        btn.textContent = "JOIN";
+        btn.style.padding = "2px 8px";
+        btn.onclick = () => joinRoom(r.roomId);
+
+        row.appendChild(info);
+        row.appendChild(btn);
+        serverList.appendChild(row);
+      });
+    } catch (fallbackErr) {
+      serverList.innerHTML = "<div>ERROR FETCHING SERVERS.</div>";
+      console.error("FPS server listing fallback failed:", fallbackErr);
+    }
   }
 }
 
