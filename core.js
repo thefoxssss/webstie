@@ -3594,7 +3594,7 @@ window.toggleTopPanelOverlay = (id) => {
 // Open an overlay by id, optionally render its contents.
 export function openGame(id) {
   if (id === "overlayAdmin" && !isGodUser()) return;
-  if (id === "overlayMaintenance" || id === "overlayLogin") {
+  if (id === "overlayMaintenance" || id === "overlayLogin" || window.legacyUiEnabled) {
       const el = document.getElementById(id);
       if (el) {
           closeOverlays();
