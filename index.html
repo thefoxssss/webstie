@@ -15,6 +15,10 @@
 
     <link rel="stylesheet" href="Themes/theme.css" />
     <!-- Colyseus Client Script -->
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+    <script>
+      if (window.buffer?.Buffer && !window.Buffer) window.Buffer = window.buffer.Buffer;
+    </script>
     <script src="/vendor/colyseus.js" onerror="this.onerror=null;this.src='https://unpkg.com/colyseus.js@0.15.0/dist/colyseus.js'"></script>
     <!-- Three.js for 3D Games -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

@@ -980,7 +980,16 @@ const blockColors = {
         btnRefreshServers.textContent = "LOADING...";
         try {
             const response = await fetch(`${getServerHttpBase()}/builder-servers`);
-            const payload = await response.json();
+            const raw = await response.text();
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${raw.slice(0, 120)}`);
+            }
+            let payload;
+            try {
+                payload = JSON.parse(raw);
+            } catch {
+                throw new Error(`Expected JSON but received: ${raw.slice(0, 120)}`);
+            }
             renderServerList(payload.servers || []);
         } catch (error) {
             console.error("Failed to load server list", error);
