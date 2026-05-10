@@ -651,8 +651,9 @@ function initTrial(id) {
         dash.rechargeAt = dash.charges < dash.maxCharges ? now + 1900 : 0;
       }
       const dashActive = now < dash.activeUntil;
+      const speedMultiplier = 1 + (bestDistance / 10000);
       const move = keys.left === keys.right ? 0 : keys.right ? 1 : -1;
-      const runSpeed = dashActive ? 285 : 205;
+      const runSpeed = (dashActive ? 285 : 205) * speedMultiplier;
       player.vx = move * runSpeed;
 
       cameraX = Math.max(0, player.x - 220);
@@ -660,7 +661,7 @@ function initTrial(id) {
       platformSpawnAt -= dt * 1000;
       ringSpawnAt -= dt * 1000;
       if (platformSpawnAt <= 0 && furthestPlatformX < cameraX + WIDTH + 860) {
-        platformSpawnAt = rand(520, 820);
+        platformSpawnAt = rand(520, 820) / Math.max(1, Math.sqrt(speedMultiplier));
         const w = rand(104, 178);
         const y = rand(HEIGHT - 196, HEIGHT - 72);
         const x = furthestPlatformX + rand(108, 200);
@@ -673,7 +674,7 @@ function initTrial(id) {
             y: y - 14,
             w: 24,
             h: 14,
-            vy: Math.random() < 0.45 ? rand(-38, 38) : 0,
+            vy: (Math.random() < 0.45 ? rand(-38, 38) : 0) * speedMultiplier,
           });
         }
       }
@@ -727,17 +728,40 @@ function initTrial(id) {
           streak += 1;
           combo = clamp(1 + Math.floor(streak / 2), 1, 12);
           bestCombo = Math.max(bestCombo, combo);
-          score += cfg.scoreBase + combo * 3 + (dashActive ? 7 : 0);
+          const gained = cfg.scoreBase + combo * 3 + (dashActive ? 7 : 0);
+          score += gained;
+          remainingMs += 300; // Time extension on ring collect
+
+          popups.push({
+            x: ring.x,
+            y: ring.y,
+            vy: -40,
+            text: `+${gained}`,
+            life: 1.0,
+            color: "#f3cf8e"
+          });
+
+          for (let i = 0; i < 10; i++) {
+            particles.push({
+              x: ring.x,
+              y: ring.y,
+              vx: rand(-60, 60),
+              vy: rand(-60, 60),
+              life: rand(0.3, 0.6),
+              color: "#f3cf8e"
+            });
+          }
         }
       }
 
-      const collided = hazards.some(
+      const collidedIdx = hazards.findIndex(
         (hazard) =>
           player.x + player.w / 2 > hazard.x &&
           player.x - player.w / 2 < hazard.x + hazard.w &&
           player.y + player.h / 2 > hazard.y &&
           player.y - player.h / 2 < hazard.y + hazard.h,
       );
+
       if (player.y > HEIGHT + 60) {
         remainingMs = 0;
         updateHud(id, score, combo, remainingMs);
@@ -745,21 +769,47 @@ function initTrial(id) {
         return;
       }
 
-      if (collided && !dashActive) {
-        score -= cfg.missPenalty + 4;
-        streak = 0;
-        combo = 1;
-        player.x = Math.max(180, bestDistance - 120);
-        player.y = HEIGHT - 74;
-        player.vx = 0;
-        player.vy = 0;
-        player.jumps = 0;
-        coyoteUntil = 0;
-      } else {
-        bestDistance = Math.max(bestDistance, player.x);
-        const forwardGain = Math.max(0, player.vx) / 230;
-        score += dt * (dashActive ? 5 : 2) + dt * forwardGain * 9;
+      if (collidedIdx !== -1) {
+        if (dashActive) {
+          const smashed = hazards.splice(collidedIdx, 1)[0];
+          score += 15;
+          remainingMs += 1500;
+
+          popups.push({
+            x: smashed.x,
+            y: smashed.y,
+            vy: -40,
+            text: "SMASH! +1.5s",
+            life: 1.0,
+            color: "#ffcf86"
+          });
+
+          for (let i = 0; i < 15; i++) {
+            particles.push({
+              x: smashed.x + smashed.w/2,
+              y: smashed.y + smashed.h/2,
+              vx: rand(-100, 100),
+              vy: rand(-100, 100),
+              life: rand(0.3, 0.7),
+              color: "#ffcf86"
+            });
+          }
+        } else {
+          score -= cfg.missPenalty + 4;
+          streak = 0;
+          combo = 1;
+          player.x = Math.max(180, bestDistance - 120);
+          player.y = HEIGHT - 74;
+          player.vx = 0;
+          player.vy = 0;
+          player.jumps = 0;
+          coyoteUntil = 0;
+        }
       }
+
+      bestDistance = Math.max(bestDistance, player.x);
+      const forwardGain = Math.max(0, player.vx) / 230;
+      score += dt * (dashActive ? 5 : 2) + dt * forwardGain * 9;
 
       while (platforms.length > 1 && platforms[0].x + platforms[0].w < cameraX - 260) platforms.shift();
       while (hazards.length && hazards[0].x + hazards[0].w < cameraX - 260) hazards.shift();
