@@ -3090,6 +3090,9 @@ class FPSRoom extends colyseus.Room {
       player.y = data.y;
       player.z = data.z;
       player.rotY = data.rotY;
+      if (data.firingGatling === true && player.killStreak >= 5) {
+        this.gatlingFiringUntil.set(client.sessionId, Date.now() + FPS_GATLING_FIRING_GRACE_MS);
+      }
     });
 
     this.onMessage("shoot", (client, data) => {
