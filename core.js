@@ -3637,7 +3637,7 @@ export function openGame(id) {
   const excludedFromWMS = [];
   const isExcluded = excludedFromWMS.includes(id);
 
-  if (window.WMS && !isExcluded) {
+  if (window.WMS && !isExcluded && !isLegacyTerminalLayoutEnabled()) {
       if (typeof window.beep === "function") window.beep(400, "square", 0.05);
       window.WMS.createWindow(id, title, contentElement, { icon });
       runOverlayOpenHooks(id);
@@ -5979,6 +5979,22 @@ function applyStatusVisibilityToggle(hidden) {
   const statusToggle = document.getElementById("statusVisibilityToggle");
   if (statusToggle) statusToggle.textContent = hideStatus ? "HIDDEN" : "VISIBLE";
 }
+
+function isLegacyTerminalLayoutEnabled() {
+  return document.body.classList.contains("legacy-terminal-layout");
+}
+
+function applyTerminalLayoutMode(mode) {
+  const normalizedMode = mode === "legacy" ? "legacy" : "wms";
+  const legacyEnabled = normalizedMode === "legacy";
+  document.body.classList.toggle("legacy-terminal-layout", legacyEnabled);
+  const layoutToggle = document.getElementById("terminalLayoutToggle");
+  if (layoutToggle) layoutToggle.textContent = legacyEnabled ? "LEGACY" : "WMS";
+  if (legacyEnabled && window.WMS) {
+    window.WMS.closeAll();
+    closeOverlays();
+  }
+}
 // Open the shared games panel from top navigation and keep menu-mash tracking.
 const menuToggleBtn = document.getElementById("menuToggle");
 const menuDropdownEl = document.getElementById("menuDropdown");
@@ -6107,12 +6123,20 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   }
 };
 
+document.getElementById("terminalLayoutToggle").onclick = () => {
+  const nextMode = isLegacyTerminalLayoutEnabled() ? "wms" : "legacy";
+  applyTerminalLayoutMode(nextMode);
+  writeUiConfig({ terminalLayoutMode: nextMode });
+};
+
 (function hydrateUiConfig() {
   const config = readUiConfig();
   const uiScale = Number(config.uiScale || 1);
   const uiTextSize = Number(config.uiTextSize || 11);
+  const terminalLayoutMode = config.terminalLayoutMode === "legacy" ? "legacy" : "wms";
   applyUiScale(uiScale);
   applyUiTextSize(uiTextSize);
+  applyTerminalLayoutMode(terminalLayoutMode);
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
   applyStatusVisibilityToggle(Boolean(config.hideStatus));
