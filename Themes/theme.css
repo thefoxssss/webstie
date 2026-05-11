@@ -222,17 +222,11 @@ body::before {
   width: min(96vw, 1200px);
 }
 
-/* Legacy terminal mode: strip WMS chrome and desktop icons. */
-body.legacy-terminal-layout #taskbar {
-  display: none;
-}
-
 body.legacy-terminal-layout #desktop {
-  padding-top: 70px;
+  padding-top: 116px;
   padding-bottom: 20px;
 }
 
-body.legacy-terminal-layout .desktop-icon,
 body.legacy-terminal-layout .window {
   display: none !important;
 }
@@ -243,6 +237,18 @@ body.legacy-terminal-layout .legacy-top-nav {
 
 body.legacy-terminal-layout {
   --topbar-clearance: 96px;
+}
+
+body.legacy-terminal-layout #taskbar {
+  display: flex;
+  top: 56px;
+  bottom: auto;
+  height: 42px;
+  z-index: 2050;
+}
+
+body.legacy-terminal-layout #taskbar-apps {
+  display: none;
 }
 
 body.legacy-terminal-layout #desktop-bg-text {
