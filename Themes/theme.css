@@ -209,6 +209,20 @@ body::before {
   backdrop-filter: blur(10px);
 }
 
+/* Legacy terminal mode: strip WMS chrome and desktop icons. */
+body.legacy-terminal-layout #taskbar {
+  display: none;
+}
+
+body.legacy-terminal-layout #desktop {
+  padding-bottom: 20px;
+}
+
+body.legacy-terminal-layout .desktop-icon,
+body.legacy-terminal-layout .window {
+  display: none !important;
+}
+
 .taskbar-left, .taskbar-right {
   display: flex;
   align-items: center;
