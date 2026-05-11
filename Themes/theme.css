@@ -245,6 +245,11 @@ body.legacy-terminal-layout {
   --topbar-clearance: 96px;
 }
 
+body.legacy-terminal-layout #desktop-bg-text {
+  display: block !important;
+  opacity: 0.22;
+}
+
 .taskbar-left, .taskbar-right {
   display: flex;
   align-items: center;
