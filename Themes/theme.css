@@ -209,18 +209,40 @@ body::before {
   backdrop-filter: blur(10px);
 }
 
+.legacy-top-nav {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2100;
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(96vw, 1200px);
+}
+
 /* Legacy terminal mode: strip WMS chrome and desktop icons. */
 body.legacy-terminal-layout #taskbar {
   display: none;
 }
 
 body.legacy-terminal-layout #desktop {
+  padding-top: 70px;
   padding-bottom: 20px;
 }
 
 body.legacy-terminal-layout .desktop-icon,
 body.legacy-terminal-layout .window {
   display: none !important;
+}
+
+body.legacy-terminal-layout .legacy-top-nav {
+  display: flex;
+}
+
+body.legacy-terminal-layout {
+  --topbar-clearance: 96px;
 }
 
 .taskbar-left, .taskbar-right {
