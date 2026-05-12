@@ -1097,6 +1097,18 @@
     </div>
 
     <!-- Configuration overlay for display/audio toggles. -->
+
+    <div class="overlay menu-overlay" id="overlayBrowser">
+      <div class="score-box panel-overlay-box" style="width:min(96vw,1200px);height:min(86vh,760px);display:flex;flex-direction:column;">
+        <h2>BROWSER // WEB VIEW</h2>
+        <p class="panel-overlay-meta">Open websites in a sandboxed iframe view.</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+          <input class="term-input" id="browserUrlInput" type="url" placeholder="https://example.com" value="https://example.com" style="flex:1;" />
+          <button class="term-btn" id="browserGoBtn" type="button">GO</button>
+        </div>
+        <iframe id="browserFrame" title="In-app browser" src="https://example.com" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" style="width:100%;flex:1;border:1px solid var(--accent-dim);background:#000;"></iframe>
+      </div>
+    </div>
     <div class="overlay menu-overlay" id="overlayConfig">
       <div class="config-box">
         <h2 style="text-align: center; border-bottom: 1px solid var(--accent); padding-bottom: 10px; margin-bottom: 20px;">CONFIG</h2>
@@ -2723,7 +2735,7 @@
     <!-- Taskbar -->
     <div id="taskbar" class="taskbar">
         <div class="taskbar-left">
-            <div class="user-menu-container"><button id="userMenuBtn" class="taskbar-item user-btn"><span id="taskbarRankBadge" class="rank-badge rank-iron">⬢</span> <span id="taskbarUsername">ANON</span></button><div id="userMenuDropdown" class="user-menu-dropdown"><button onclick="window.openGame('overlayBank')">BANK</button><button onclick="window.openGame('overlayShop')">SHOP</button><button onclick="window.openGame('overlayInventory')">INVENTORY</button><button onclick="window.openGame('overlayProfile')">PROFILE</button><button onclick="window.openGame('overlaySeason')">SEASON</button><button onclick="window.openGame('overlayCrew')">CREW</button><button onclick="window.openGame('globalChat')">CHAT</button><button onclick="window.openGame('overlayTrending')">TRENDING</button><button onclick="window.openGame('overlayUpdates')">UPDATES</button><button onclick="window.openGame('overlayRecentGames')">RECENT</button><button id="tabAdminMenu" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button><button id="taskbarSignout">SIGNOUT</button></div></div>
+            <div class="user-menu-container"><button id="userMenuBtn" class="taskbar-item user-btn"><span id="taskbarRankBadge" class="rank-badge rank-iron">⬢</span> <span id="taskbarUsername">ANON</span></button><div id="userMenuDropdown" class="user-menu-dropdown"><button onclick="window.openGame('overlayBank')">BANK</button><button onclick="window.openGame('overlayShop')">SHOP</button><button onclick="window.openGame('overlayInventory')">INVENTORY</button><button onclick="window.openGame('overlayProfile')">PROFILE</button><button onclick="window.openGame('overlaySeason')">SEASON</button><button onclick="window.openGame('overlayCrew')">CREW</button><button onclick="window.openGame('globalChat')">CHAT</button><button onclick="window.openGame('overlayTrending')">TRENDING</button><button onclick="window.openGame('overlayUpdates')">UPDATES</button><button onclick="window.openGame('overlayRecentGames')">RECENT</button><button onclick="window.openGame('overlayBrowser')">BROWSER</button><button id="tabAdminMenu" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button><button id="taskbarSignout">SIGNOUT</button></div></div>
             <div class="taskbar-search">
                 <input type="text" id="taskbarSearchInput" placeholder="Search..." autocomplete="off">
             </div>
@@ -2744,6 +2756,34 @@
     </div>
 
     <!-- Desktop shell bootstrap: local-only WMS/icons before the full app bundle. -->
+
+    <script>
+      (function () {
+        const input = document.getElementById('browserUrlInput');
+        const frame = document.getElementById('browserFrame');
+        const goBtn = document.getElementById('browserGoBtn');
+        if (!input || !frame || !goBtn) return;
+        function normalizeUrl(value) {
+          const raw = String(value || '').trim();
+          if (!raw) return 'https://example.com';
+          if (/^https?:\/\//i.test(raw)) return raw;
+          return `https://${raw}`;
+        }
+        function navigate() {
+          const next = normalizeUrl(input.value);
+          input.value = next;
+          frame.src = next;
+        }
+        goBtn.addEventListener('click', navigate);
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            navigate();
+          }
+        });
+      })();
+    </script>
+
     <script type="module" src="desktop-shell.js"></script>
     <!-- Main entrypoint script (loads all game modules). -->
     <script type="module" src="script.js"></script>

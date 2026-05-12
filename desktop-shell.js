@@ -26,4 +26,12 @@ GAME_DIRECTORY_ENTRIES.forEach((game) => {
     });
 });
 
+
+createDesktopIcon({
+    id: "browser",
+    title: "BROWSER",
+    icon: "🌐",
+    overlayId: "overlayBrowser",
+});
+
 arrangeDesktopIcons();
