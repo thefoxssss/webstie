@@ -89,10 +89,10 @@ export function initObby() {
       const pNames = Array.isArray(srv.players) ? srv.players : [];
       const names = pNames.length ? pNames.join(", ") : "No players";
 
-      row.innerHTML = \`
+      row.innerHTML = `
         <div style="font-size: 11px; color: #0f0;">\${srv.serverName || "Obby Server"}</div>
         <div style="font-size: 9px; opacity: 0.9; margin-top: 4px;">PLAYERS (\${srv.clients}/\${srv.maxClients}): \${names}</div>
-      \`;
+      `;
       row.onclick = () => {
         selectedRoomId = srv.roomId;
         renderServerList(servers);
@@ -106,7 +106,7 @@ export function initObby() {
     if (!btnRefresh) return;
     btnRefresh.textContent = "LOADING...";
     try {
-      const res = await fetch(\`\${getApiUrl()}/obby-servers\`);
+      const res = await fetch(`\${getApiUrl()}/obby-servers`);
       const data = await res.json();
       renderServerList(data.servers);
     } catch (e) {
