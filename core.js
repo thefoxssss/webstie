@@ -5953,6 +5953,24 @@ function writeUiConfig(nextConfig) {
   localStorage.setItem(UI_CONFIG_KEY, JSON.stringify({ ...readUiConfig(), ...nextConfig }));
 }
 
+function applyCustomBackground(imageDataUrl) {
+  const hasImage = typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:image/");
+  document.body.style.backgroundImage = hasImage ? `url(${imageDataUrl})` : "none";
+  document.body.style.backgroundSize = hasImage ? "cover" : "";
+  document.body.style.backgroundPosition = hasImage ? "center" : "";
+  document.body.style.backgroundRepeat = hasImage ? "no-repeat" : "";
+  document.body.style.backgroundAttachment = hasImage ? "fixed" : "";
+}
+
+async function persistCustomBackground(imageDataUrl) {
+  const nextDesktopConfig = { ...(desktopConfig || {}) };
+  if (imageDataUrl) nextDesktopConfig.customBackground = imageDataUrl;
+  else delete nextDesktopConfig.customBackground;
+  desktopConfig = nextDesktopConfig;
+  writeUiConfig({ customBackground: imageDataUrl || null });
+  if (myName !== "ANON") await saveStats();
+}
+
 function applyUiScale(value) {
   document.documentElement.style.setProperty("--ui-scale", String(value));
   document.body.style.zoom = `${value}`;
@@ -6041,6 +6059,33 @@ document.getElementById("themeColor").oninput = (e) => {
   const glowAlpha = luminance < 0.25 ? 0.95 : 0.7;
   document.documentElement.style.setProperty("--accent-glow", `rgba(${glowR},${glowG},${glowB},${glowAlpha})`);
 };
+
+document.getElementById("customBgUpload").onchange = async (e) => {
+  const [file] = Array.from(e.target.files || []);
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast("INVALID FILE", "🖼️", "Please upload an image file.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = typeof reader.result === "string" ? reader.result : "";
+    if (!dataUrl) return;
+    applyCustomBackground(dataUrl);
+    await persistCustomBackground(dataUrl);
+    showToast("BACKGROUND SAVED", "🖼️");
+  };
+  reader.onerror = () => showToast("UPLOAD FAILED", "⚠️");
+  reader.readAsDataURL(file);
+};
+
+document.getElementById("clearCustomBgBtn").onclick = async () => {
+  applyCustomBackground(null);
+  await persistCustomBackground(null);
+  const input = document.getElementById("customBgUpload");
+  if (input) input.value = "";
+  showToast("BACKGROUND CLEARED", "🧹");
+};
 // Volume slider controls global audio volume.
 document.getElementById("volSlider").oninput = (e) => {
   globalVol = e.target.value / 100;
@@ -6121,6 +6166,8 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   if (bgText) bgText.style.display = bgTextEnabled ? "block" : "none";
   const bgTextToggle = document.getElementById("bgTextToggle");
   if (bgTextToggle) bgTextToggle.innerText = bgTextEnabled ? "ON" : "OFF";
+  const customBackground = (desktopConfig && desktopConfig.customBackground) || config.customBackground || null;
+  applyCustomBackground(customBackground);
 
   const uiScaleSlider = document.getElementById("uiScaleSlider");
   const uiTextSlider = document.getElementById("uiTextSlider");
