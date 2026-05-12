@@ -18,7 +18,8 @@ const moveState = {
   backward: false,
   left: false,
   right: false,
-  jump: false
+  jump: false,
+  sprint: false
 };
 let keyDownHandler = null;
 let keyUpHandler = null;
@@ -27,6 +28,7 @@ let platforms = [];
 let killParts = [];
 let checkpoints = [];
 let currentCheckpointIndex = 0;
+const PLAYER_SIZE = { width: 1, height: 3, depth: 1 };
 
 function getNetworkSelect() {
   return document.getElementById("obbyNetwork");
@@ -274,6 +276,10 @@ export function initObby() {
         case "Space":
           moveState.jump = true;
           break;
+        case "ShiftLeft":
+        case "ShiftRight":
+          moveState.sprint = true;
+          break;
       }
     };
 
@@ -297,6 +303,10 @@ export function initObby() {
           break;
         case "Space":
           moveState.jump = false;
+          break;
+        case "ShiftLeft":
+        case "ShiftRight":
+          moveState.sprint = false;
           break;
       }
     };
@@ -454,6 +464,38 @@ export function initObby() {
     });
   }
 
+  function resolvePlatformCollisions(obj, oldPos) {
+    const playerHalf = new window.THREE.Vector3(PLAYER_SIZE.width / 2, PLAYER_SIZE.height / 2, PLAYER_SIZE.depth / 2);
+    const playerBox = new window.THREE.Box3().setFromCenterAndSize(obj.position, playerHalf.clone().multiplyScalar(2));
+
+    for (const platform of platforms) {
+      const platformBox = new window.THREE.Box3().setFromObject(platform);
+      if (!playerBox.intersectsBox(platformBox)) continue;
+
+      // Ignore floor contacts handled by vertical raycast landing logic.
+      const playerBottom = obj.position.y - playerHalf.y;
+      const playerTop = obj.position.y + playerHalf.y;
+      const platformTop = platformBox.max.y;
+      const platformBottom = platformBox.min.y;
+      const hitsFromAbove = playerBottom >= platformTop - 0.2 && velocity.y <= 0;
+      if (hitsFromAbove) continue;
+
+      // Horizontal push-out resolution.
+      const overlapX = Math.min(playerBox.max.x, platformBox.max.x) - Math.max(playerBox.min.x, platformBox.min.x);
+      const overlapZ = Math.min(playerBox.max.z, platformBox.max.z) - Math.max(playerBox.min.z, platformBox.min.z);
+
+      if (playerBottom < platformTop && playerTop > platformBottom) {
+        if (overlapX > 0 && overlapX <= overlapZ) {
+          obj.position.x = oldPos.x;
+          velocity.x = 0;
+        } else if (overlapZ > 0) {
+          obj.position.z = oldPos.z;
+          velocity.z = 0;
+        }
+      }
+    }
+  }
+
   function animate() {
     animationId = requestAnimationFrame(animate);
 
@@ -469,7 +511,9 @@ export function initObby() {
       direction.x = Number(moveState.right) - Number(moveState.left);
       direction.normalize();
 
-      const speed = 40.0;
+      const baseSpeed = 40.0;
+      const sprintMultiplier = moveState.sprint ? 1.7 : 1;
+      const speed = baseSpeed * sprintMultiplier;
       if (moveState.forward || moveState.backward) velocity.z -= direction.z * speed * delta;
       if (moveState.left || moveState.right) velocity.x -= direction.x * speed * delta;
 
@@ -509,6 +553,7 @@ export function initObby() {
       controls.moveRight(-velocity.x * delta);
       controls.moveForward(-velocity.z * delta);
       obj.position.y += velocity.y * delta;
+      resolvePlatformCollisions(obj, oldPos);
 
       // Check kill parts (lava)
       let touchedLava = false;
