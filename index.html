@@ -2827,6 +2827,12 @@
           historyIndex += 1;
           navigate(history[historyIndex], false);
         });
+        window.addEventListener('message', (event) => {
+          if (!event?.data || event.data.type !== 'browser-proxy-nav') return;
+          if (typeof event.data.url !== 'string') return;
+          navigate(event.data.url);
+        });
+
         reloadBtn.addEventListener('click', () => {
           if (historyIndex >= 0) {
             navigate(history[historyIndex], false);
