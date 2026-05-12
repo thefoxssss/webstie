@@ -1097,6 +1097,28 @@
     </div>
 
     <!-- Configuration overlay for display/audio toggles. -->
+
+    <div class="overlay menu-overlay" id="overlayBrowser">
+      <div class="score-box panel-overlay-box" style="width:min(96vw,1260px);height:min(88vh,800px);padding:0;overflow:hidden;display:flex;flex-direction:column;border-radius:10px;">
+        <div style="background:linear-gradient(180deg,#2c2f35,#22252b);border-bottom:1px solid #101217;padding:8px 12px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;display:inline-block;"></span>
+            <span style="width:12px;height:12px;border-radius:50%;background:#febc2e;display:inline-block;"></span>
+            <span style="width:12px;height:12px;border-radius:50%;background:#28c840;display:inline-block;"></span>
+            <div style="margin-left:8px;color:#d7dce5;font-size:11px;letter-spacing:.04em;">GOONER CHROME</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="term-btn" id="browserBackBtn" type="button">◀</button>
+            <button class="term-btn" id="browserForwardBtn" type="button">▶</button>
+            <button class="term-btn" id="browserReloadBtn" type="button">↻</button>
+            <input class="term-input" id="browserUrlInput" type="url" placeholder="Search or type URL" value="https://example.com" style="flex:1;background:#111722;border-color:#4e5d72;color:#e8eef7;border-radius:999px;padding-left:14px;" />
+            <button class="term-btn" id="browserGoBtn" type="button">GO</button>
+          </div>
+        </div>
+        <div id="browserStatus" style="font-size:10px;padding:4px 10px;border-bottom:1px solid #20242c;color:#9fb2c9;background:#12151b;">READY</div>
+        <iframe id="browserFrame" title="In-app browser" src="about:blank" style="width:100%;flex:1;border:0;background:#fff;"></iframe>
+      </div>
+    </div>
     <div class="overlay menu-overlay" id="overlayConfig">
       <div class="config-box">
         <h2 style="text-align: center; border-bottom: 1px solid var(--accent); padding-bottom: 10px; margin-bottom: 20px;">CONFIG</h2>
@@ -2723,7 +2745,7 @@
     <!-- Taskbar -->
     <div id="taskbar" class="taskbar">
         <div class="taskbar-left">
-            <div class="user-menu-container"><button id="userMenuBtn" class="taskbar-item user-btn"><span id="taskbarRankBadge" class="rank-badge rank-iron">⬢</span> <span id="taskbarUsername">ANON</span></button><div id="userMenuDropdown" class="user-menu-dropdown"><button onclick="window.openGame('overlayBank')">BANK</button><button onclick="window.openGame('overlayShop')">SHOP</button><button onclick="window.openGame('overlayInventory')">INVENTORY</button><button onclick="window.openGame('overlayProfile')">PROFILE</button><button onclick="window.openGame('overlaySeason')">SEASON</button><button onclick="window.openGame('overlayCrew')">CREW</button><button onclick="window.openGame('globalChat')">CHAT</button><button onclick="window.openGame('overlayTrending')">TRENDING</button><button onclick="window.openGame('overlayUpdates')">UPDATES</button><button onclick="window.openGame('overlayRecentGames')">RECENT</button><button id="tabAdminMenu" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button><button id="taskbarSignout">SIGNOUT</button></div></div>
+            <div class="user-menu-container"><button id="userMenuBtn" class="taskbar-item user-btn"><span id="taskbarRankBadge" class="rank-badge rank-iron">⬢</span> <span id="taskbarUsername">ANON</span></button><div id="userMenuDropdown" class="user-menu-dropdown"><button onclick="window.openGame('overlayBank')">BANK</button><button onclick="window.openGame('overlayShop')">SHOP</button><button onclick="window.openGame('overlayInventory')">INVENTORY</button><button onclick="window.openGame('overlayProfile')">PROFILE</button><button onclick="window.openGame('overlaySeason')">SEASON</button><button onclick="window.openGame('overlayCrew')">CREW</button><button onclick="window.openGame('globalChat')">CHAT</button><button onclick="window.openGame('overlayTrending')">TRENDING</button><button onclick="window.openGame('overlayUpdates')">UPDATES</button><button onclick="window.openGame('overlayRecentGames')">RECENT</button><button onclick="window.openGame('overlayBrowser')">BROWSER</button><button id="tabAdminMenu" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button><button id="taskbarSignout">SIGNOUT</button></div></div>
             <div class="taskbar-search">
                 <input type="text" id="taskbarSearchInput" placeholder="Search..." autocomplete="off">
             </div>
@@ -2744,6 +2766,79 @@
     </div>
 
     <!-- Desktop shell bootstrap: local-only WMS/icons before the full app bundle. -->
+
+    <script>
+      (function () {
+        const input = document.getElementById('browserUrlInput');
+        const frame = document.getElementById('browserFrame');
+        const goBtn = document.getElementById('browserGoBtn');
+        const backBtn = document.getElementById('browserBackBtn');
+        const forwardBtn = document.getElementById('browserForwardBtn');
+        const reloadBtn = document.getElementById('browserReloadBtn');
+        const statusEl = document.getElementById('browserStatus');
+        if (!input || !frame || !goBtn || !backBtn || !forwardBtn || !reloadBtn || !statusEl) return;
+
+        const history = [];
+        let historyIndex = -1;
+
+        function normalizeUrl(value) {
+          const raw = String(value || '').trim();
+          if (!raw) return 'https://example.com';
+          if (/^[a-z]+:\/\//i.test(raw)) return raw;
+          if (/\s/.test(raw)) return `https://duckduckgo.com/?q=${encodeURIComponent(raw)}`;
+          return `https://${raw}`;
+        }
+
+        async function navigate(rawUrl, pushToHistory = true) {
+          const target = normalizeUrl(rawUrl);
+          input.value = target;
+          statusEl.textContent = `LOADING ${target}`;
+          try {
+            const response = await fetch(`/api/browser-proxy?url=${encodeURIComponent(target)}`);
+            const payload = await response.json();
+            if (!response.ok || !payload?.ok) throw new Error(payload?.error || 'Proxy request failed');
+            frame.srcdoc = payload.content;
+            statusEl.textContent = `PROXY OK • ${payload.finalUrl || target}`;
+            if (pushToHistory) {
+              history.splice(historyIndex + 1);
+              history.push(target);
+              historyIndex = history.length - 1;
+            }
+          } catch (error) {
+            frame.srcdoc = `<html><body style="font-family:monospace;background:#111;color:#f88;padding:20px;">Failed to open URL.<br>${String(error?.message || error)}</body></html>`;
+            statusEl.textContent = 'PROXY ERROR';
+          }
+        }
+
+        goBtn.addEventListener('click', () => navigate(input.value));
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            navigate(input.value);
+          }
+        });
+        backBtn.addEventListener('click', () => {
+          if (historyIndex <= 0) return;
+          historyIndex -= 1;
+          navigate(history[historyIndex], false);
+        });
+        forwardBtn.addEventListener('click', () => {
+          if (historyIndex >= history.length - 1) return;
+          historyIndex += 1;
+          navigate(history[historyIndex], false);
+        });
+        reloadBtn.addEventListener('click', () => {
+          if (historyIndex >= 0) {
+            navigate(history[historyIndex], false);
+          } else {
+            navigate(input.value);
+          }
+        });
+
+        navigate(input.value);
+      })();
+    </script>
+
     <script type="module" src="desktop-shell.js"></script>
     <!-- Main entrypoint script (loads all game modules). -->
     <script type="module" src="script.js"></script>

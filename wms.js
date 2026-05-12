@@ -17,6 +17,7 @@ const SCALABLE_APP_WINDOW_IDS = new Set([
     "overlayRecentGames",
     "overlayUpdates",
     "overlayConfig",
+    "overlayBrowser",
 ]);
 
 const SCALABLE_APP_DESIGN_WIDTHS = Object.freeze({
@@ -33,6 +34,7 @@ const SCALABLE_APP_DESIGN_WIDTHS = Object.freeze({
     overlayProfile: 760,
     globalChat: 760,
     overlayConfig: 760,
+    overlayBrowser: 1200,
 });
 
 function isScalableAppWindow(id) {
@@ -52,6 +54,7 @@ const FALLBACK_APP_METADATA = Object.freeze({
     overlayCrew: { title: "CREW", icon: "🏴‍☠️" },
     globalChat: { title: "CHAT", icon: "💬" },
     overlayConfig: { title: "CONFIG", icon: "⚙️" },
+    overlayBrowser: { title: "BROWSER", icon: "🌐" },
     overlayAdmin: { title: "ADMIN", icon: "⚡" },
     overlayGamebox: { title: "GAMES", icon: "🎮" },
     overlayTrending: { title: "TRENDING", icon: "📈" },
