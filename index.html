@@ -1096,6 +1096,10 @@
       </div>
     </div>
 
+
+    <style>
+      #browserUrlInput::placeholder { color: #9fb2c9; opacity: 1; }
+    </style>
     <!-- Configuration overlay for display/audio toggles. -->
 
     <div class="overlay menu-overlay" id="overlayBrowser">
@@ -1111,7 +1115,7 @@
             <button class="term-btn" id="browserBackBtn" type="button">◀</button>
             <button class="term-btn" id="browserForwardBtn" type="button">▶</button>
             <button class="term-btn" id="browserReloadBtn" type="button">↻</button>
-            <input class="term-input" id="browserUrlInput" type="url" placeholder="Search or type URL" value="https://example.com" style="flex:1;background:#111722;border-color:#4e5d72;color:#e8eef7;border-radius:999px;padding-left:14px;" />
+            <input class="term-input" id="browserUrlInput" type="url" placeholder="Search or type URL" value="https://example.com" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:#0b1220;border:2px solid #5d7391;color:#ffffff;border-radius:999px;padding:10px 14px;margin:0;text-align:left;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none;caret-color:#ffffff;" />
             <button class="term-btn" id="browserGoBtn" type="button">GO</button>
           </div>
         </div>
