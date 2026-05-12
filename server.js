@@ -694,88 +694,9 @@ app.get("/api/oil-quote", async (req, res) => {
   }
 });
 
-app.get("/api/browser-proxy", async (req, res) => {
-  const rawUrl = String(req.query?.url || "").trim();
-  if (!rawUrl) return res.status(400).json({ ok: false, error: "missing url" });
-  let target;
-  try {
-    target = new URL(rawUrl);
-  } catch {
-    return res.status(400).json({ ok: false, error: "invalid url" });
-  }
-  if (!["http:", "https:"].includes(target.protocol)) {
-    return res.status(400).json({ ok: false, error: "unsupported protocol" });
-  }
-  try {
-    const response = await fetch(target.toString(), {
-      redirect: "follow",
-      headers: {
-        "user-agent": "Mozilla/5.0 (compatible; GoonerBrowserProxy/1.0)",
-        "accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
-      },
-    });
-    if (!response.ok) {
-      return res.status(502).json({ ok: false, error: `upstream ${response.status}` });
-    }
-    const contentType = String(response.headers.get("content-type") || "");
-    const bodyText = await response.text();
-    if (!/text\/html|application\/xhtml\+xml/i.test(contentType)) {
-      const escaped = bodyText
-        .slice(0, 20000)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return res.json({
-        ok: true,
-        finalUrl: response.url || target.toString(),
-        content: `<!doctype html><html><body style="font-family:monospace;white-space:pre-wrap;padding:16px;"><h3>Non-HTML response</h3><p>Type: ${contentType || "unknown"}</p><pre>${escaped}</pre></body></html>`,
-      });
-    }
-    const finalUrl = response.url || target.toString();
-    const navBridge = `<script>(function(){
-  function toAbs(url){ try { return new URL(url, document.baseURI).toString(); } catch { return null; } }
-  function sendNav(url){ if(!url) return; try { window.top.postMessage({ type: "browser-proxy-nav", url }, "*"); } catch {} }
-  document.addEventListener("click", function(event){
-    const anchor = event.target && event.target.closest ? event.target.closest("a[href]") : null;
-    if (!anchor) return;
-    const href = anchor.getAttribute("href") || "";
-    if (href.startsWith("#") || href.toLowerCase().startsWith("javascript:")) return;
-    const abs = toAbs(href);
-    if (!abs) return;
-    event.preventDefault();
-    sendNav(abs);
-  }, true);
-  document.addEventListener("submit", function(event){
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
-    const method = String(form.method || "get").toLowerCase();
-    if (method !== "get") return;
-    const action = form.getAttribute("action") || document.baseURI;
-    let abs = toAbs(action);
-    if (!abs) return;
-    const qs = new URLSearchParams(new FormData(form));
-    const u = new URL(abs);
-    for (const [k,v] of qs.entries()) u.searchParams.append(k, v);
-    event.preventDefault();
-    sendNav(u.toString());
-  }, true);
-})();</script>`;
-    const htmlWithBase = bodyText
-      .replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}">`)
-      .replace(/<\/body>/i, `${navBridge}</body>`);
-    const content = htmlWithBase.includes(navBridge)
-      ? htmlWithBase
-      : `${htmlWithBase}${navBridge}`;
-    res.set("cache-control", "no-store");
-    return res.json({
-      ok: true,
-      finalUrl,
-      content,
-    });
-  } catch (error) {
-    return res.status(502).json({ ok: false, error: String(error?.message || error) });
-  }
-});
+
+
+
 
 // --------------------------------------------------------
 // BASE TEST ROOM

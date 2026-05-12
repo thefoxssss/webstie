@@ -1096,6 +1096,10 @@
       </div>
     </div>
 
+
+    <style>
+      #browserUrlInput::placeholder { color: #9fb2c9; opacity: 1; }
+    </style>
     <!-- Configuration overlay for display/audio toggles. -->
 
     <div class="overlay menu-overlay" id="overlayBrowser">
@@ -1108,14 +1112,16 @@
             <div style="margin-left:8px;color:#d7dce5;font-size:11px;letter-spacing:.04em;">GOONER CHROME</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="term-btn" id="browserBackBtn" type="button">◀</button>
-            <button class="term-btn" id="browserForwardBtn" type="button">▶</button>
-            <button class="term-btn" id="browserReloadBtn" type="button">↻</button>
-            <input class="term-input" id="browserUrlInput" type="url" placeholder="Search or type URL" value="https://example.com" style="flex:1;background:#111722;border-color:#4e5d72;color:#e8eef7;border-radius:999px;padding-left:14px;" />
-            <button class="term-btn" id="browserGoBtn" type="button">GO</button>
+            <button class="term-btn" id="browserBackBtn" type="button" style="width:100px;margin:0;">◀</button>
+            <button class="term-btn" id="browserForwardBtn" type="button" style="width:100px;margin:0;">▶</button>
+            <button class="term-btn" id="browserReloadBtn" type="button" style="width:100px;margin:0;">↻</button>
           </div>
         </div>
-        <div id="browserStatus" style="font-size:10px;padding:4px 10px;border-bottom:1px solid #20242c;color:#9fb2c9;background:#12151b;">READY</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #20242c;color:#9fb2c9;background:#12151b;">
+          <div id="browserStatus" style="font-size:11px;white-space:nowrap;">READY</div>
+          <input class="term-input" id="browserUrlInput" type="url" placeholder="Type domain here" value="https://example.com" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:#0b1220;border:2px solid #5d7391;color:#ffffff;border-radius:8px;padding:7px 10px;margin:0;text-align:left;font-family:'Roboto Mono',monospace;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none;caret-color:#ffffff;" />
+          <button class="term-btn" id="browserGoBtn" type="button" style="width:90px;margin:0;">GO</button>
+        </div>
         <iframe id="browserFrame" title="In-app browser" src="about:blank" style="width:100%;flex:1;border:0;background:#fff;"></iframe>
       </div>
     </div>
@@ -2789,26 +2795,25 @@
           return `https://${raw}`;
         }
 
-        async function navigate(rawUrl, pushToHistory = true) {
+        function navigate(rawUrl, pushToHistory = true) {
           const target = normalizeUrl(rawUrl);
           input.value = target;
           statusEl.textContent = `LOADING ${target}`;
-          try {
-            const response = await fetch(`/api/browser-proxy?url=${encodeURIComponent(target)}`);
-            const payload = await response.json();
-            if (!response.ok || !payload?.ok) throw new Error(payload?.error || 'Proxy request failed');
-            frame.srcdoc = payload.content;
-            statusEl.textContent = `PROXY OK • ${payload.finalUrl || target}`;
-            if (pushToHistory) {
-              history.splice(historyIndex + 1);
-              history.push(target);
-              historyIndex = history.length - 1;
-            }
-          } catch (error) {
-            frame.srcdoc = `<html><body style="font-family:monospace;background:#111;color:#f88;padding:20px;">Failed to open URL.<br>${String(error?.message || error)}</body></html>`;
-            statusEl.textContent = 'PROXY ERROR';
+          frame.removeAttribute('srcdoc');
+          frame.src = target;
+          if (pushToHistory) {
+            history.splice(historyIndex + 1);
+            history.push(target);
+            historyIndex = history.length - 1;
           }
         }
+
+        frame.addEventListener('load', () => {
+          statusEl.textContent = `READY • ${input.value}`;
+        });
+        frame.addEventListener('error', () => {
+          statusEl.textContent = 'LOAD ERROR';
+        });
 
         goBtn.addEventListener('click', () => navigate(input.value));
         input.addEventListener('keydown', (event) => {
@@ -2827,12 +2832,6 @@
           historyIndex += 1;
           navigate(history[historyIndex], false);
         });
-        window.addEventListener('message', (event) => {
-          if (!event?.data || event.data.type !== 'browser-proxy-nav') return;
-          if (typeof event.data.url !== 'string') return;
-          navigate(event.data.url);
-        });
-
         reloadBtn.addEventListener('click', () => {
           if (historyIndex >= 0) {
             navigate(history[historyIndex], false);
