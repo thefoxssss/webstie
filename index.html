@@ -2630,6 +2630,43 @@
       <button class="term-btn" id="quantumflipAction" style="margin-top: 14px">START ROUND</button>
     </div>
 
+    <!-- Obby mini-game overlay. -->
+    <div class="overlay" id="overlayObby">
+        <div id="obbyMenu" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(0,0,0,0.85); border: 2px solid #0f0; padding: 20px; z-index: 10;">
+            <h1 style="color: #0f0; margin-top: 0;">OBBY</h1>
+            <p style="font-size: 10px; max-width: 300px; margin: 10px auto;">Jump across platforms, avoid the red lava, and reach the checkpoints! Can you make it to the end?</p>
+            <div style="margin: 15px 0;">
+                <label style="font-size: 10px; margin-right: 10px;">Network:</label>
+                <select id="obbyNetwork" style="background: #111; color: #0f0; border: 1px solid #0f0; font-family: 'Press Start 2P', monospace; font-size: 10px; padding: 5px;">
+                    <option value="auto">Auto (Best)</option>
+                    <option value="prod">Main Server</option>
+                    <option value="local">Local Development</option>
+                </select>
+            </div>
+
+            <div id="obbyServerList" style="margin-top: 15px; text-align: left; max-height: 150px; overflow-y: auto; background: #0a0a0a; border: 1px solid #0f0; padding: 10px; font-size: 10px;">
+                LOADING SERVERS...
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between;">
+                <button id="btnRefreshObbyServers" class="retro-btn" style="font-size: 8px; padding: 5px; width: 48%;">REFRESH SERVERS</button>
+                <button id="btnJoinObby" class="retro-btn" style="font-size: 8px; padding: 5px; width: 48%;">QUICK JOIN ANY</button>
+            </div>
+
+            <div style="margin-top: 15px; border-top: 1px dashed #0f0; padding-top: 15px;">
+                <input type="text" id="obbyServerName" placeholder="My Custom Server" style="background: #111; color: #0f0; border: 1px solid #0f0; font-family: 'Press Start 2P', monospace; font-size: 10px; padding: 5px; width: 100%; box-sizing: border-box; margin-bottom: 10px;" maxlength="20">
+                <button id="btnCreateObbyServer" class="retro-btn" style="width: 100%;">CREATE SERVER</button>
+            </div>
+        </div>
+
+        <div id="obbyGameContainer" style="display: none; width: 100%; height: 100%;">
+            <div id="obbyCanvasContainer" style="width: 100%; height: 100%;"></div>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; color: rgba(255, 255, 255, 0.5); font-size: 24px;">+</div>
+            <div style="position: absolute; top: 10px; left: 10px; color: #fff; text-shadow: 1px 1px 0 #000; pointer-events: none; z-index: 1;">
+                WASD/Arrows to move<br>Space to jump<br>Click to lock mouse<br>Esc to unlock
+            </div>
+        </div>
+    </div>
+
     <!-- Hexfall mini-game overlay. -->
     <div class="overlay" id="overlayHexfall">
       <h1>HEXFALL ARENA</h1>

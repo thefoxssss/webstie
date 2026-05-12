@@ -3658,6 +3658,116 @@ gameServer.define("voice_room", VoiceRoom);
 // --------------------------------------------------------
 // HEXFALL ROOM DEFINITION
 // --------------------------------------------------------
+
+class ObbyPlayer extends schema.Schema {
+  constructor() {
+    super();
+    this.x = 0;
+    this.y = 5;
+    this.z = 0;
+    this.rotY = 0;
+    this.isAlive = true;
+    this.currentCheckpoint = 0;
+    this.name = "";
+  }
+}
+schema.defineTypes(ObbyPlayer, {
+  x: "number",
+  y: "number",
+  z: "number",
+  rotY: "number",
+  isAlive: "boolean",
+  currentCheckpoint: "number",
+  name: "string"
+});
+
+class ObbyState extends schema.Schema {
+  constructor() {
+    super();
+    this.players = new schema.MapSchema();
+    this.status = "playing";
+  }
+}
+schema.defineTypes(ObbyState, {
+  players: { map: ObbyPlayer },
+  status: "string"
+});
+
+const obbyServerDirectory = new Map();
+
+class ObbyRoom extends colyseus.Room {
+  onCreate(options) {
+    this.maxClients = 20;
+    this.serverName = (options && typeof options.serverName === "string" && options.serverName.trim())
+      ? options.serverName.trim().slice(0, 24)
+      : "Public Obby";
+    this.setMetadata({ serverName: this.serverName });
+
+    this.setState(new ObbyState());
+
+    this.onMessage("move", (client, data) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p && p.isAlive) {
+        p.x = data.x;
+        p.y = data.y;
+        p.z = data.z;
+        p.rotY = data.rotY;
+      }
+    });
+
+    this.onMessage("checkpoint", (client, data) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p && p.isAlive) {
+        p.currentCheckpoint = Math.max(p.currentCheckpoint, data.index);
+      }
+    });
+
+    this.onMessage("die", (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p && p.isAlive) {
+        p.isAlive = false;
+        // respawn after a short delay
+        this.clock.setTimeout(() => {
+            if (this.state.players.has(client.sessionId)) {
+                this.state.players.get(client.sessionId).isAlive = true;
+            }
+        }, 1000);
+      }
+    });
+  }
+
+  onJoin(client, options) {
+    const p = new ObbyPlayer();
+    p.name = options.name || "Player";
+    this.state.players.set(client.sessionId, p);
+
+    obbyServerDirectory.set(this.roomId, {
+      roomId: this.roomId,
+      serverName: this.serverName,
+      clients: this.clients.length,
+      maxClients: this.maxClients,
+      players: Array.from(this.state.players.values()).map(p => p.name)
+    });
+  }
+
+  onLeave(client, consented) {
+    this.state.players.delete(client.sessionId);
+
+    if (this.clients.length === 0) {
+      obbyServerDirectory.delete(this.roomId);
+    } else {
+      obbyServerDirectory.set(this.roomId, {
+        roomId: this.roomId,
+        serverName: this.serverName,
+        clients: this.clients.length,
+        maxClients: this.maxClients,
+        players: Array.from(this.state.players.values()).map(p => p.name)
+      });
+    }
+  }
+}
+
+
 class HexfallPlayer extends schema.Schema {
   constructor() {
     super();
@@ -3877,9 +3987,16 @@ class HexfallRoom extends colyseus.Room {
 }
 
 gameServer.define("hexfall_room", HexfallRoom);
+gameServer.define("obby_room", ObbyRoom);
 
 gameServer.define("agar_room", AgarRoom);
 gameServer.define("fps_room", FPSRoom);
+
+
+app.get("/obby-servers", (req, res) => {
+  res.json({ servers: Array.from(obbyServerDirectory.values()) });
+});
+
 
 app.get("/hexfall-servers", (req, res) => {
   const servers = Array.from(hexfallServerDirectory.values()).sort((a, b) => {
@@ -3932,6 +4049,7 @@ if (require.main === module) {
 
 module.exports = {
   AgarRoom,
+  ObbyRoom,
   AgarState,
   AgarCell,
   AGAR_MAP_WIDTH,
