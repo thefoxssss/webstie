@@ -1112,14 +1112,16 @@
             <div style="margin-left:8px;color:#d7dce5;font-size:11px;letter-spacing:.04em;">GOONER CHROME</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="term-btn" id="browserBackBtn" type="button">◀</button>
-            <button class="term-btn" id="browserForwardBtn" type="button">▶</button>
-            <button class="term-btn" id="browserReloadBtn" type="button">↻</button>
-            <input class="term-input" id="browserUrlInput" type="url" placeholder="Search or type URL" value="https://example.com" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:#0b1220;border:2px solid #5d7391;color:#ffffff;border-radius:999px;padding:10px 14px;margin:0;text-align:left;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none;caret-color:#ffffff;" />
-            <button class="term-btn" id="browserGoBtn" type="button">GO</button>
+            <button class="term-btn" id="browserBackBtn" type="button" style="width:100px;margin:0;">◀</button>
+            <button class="term-btn" id="browserForwardBtn" type="button" style="width:100px;margin:0;">▶</button>
+            <button class="term-btn" id="browserReloadBtn" type="button" style="width:100px;margin:0;">↻</button>
           </div>
         </div>
-        <div id="browserStatus" style="font-size:10px;padding:4px 10px;border-bottom:1px solid #20242c;color:#9fb2c9;background:#12151b;">READY</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #20242c;color:#9fb2c9;background:#12151b;">
+          <div id="browserStatus" style="font-size:11px;white-space:nowrap;">READY</div>
+          <input class="term-input" id="browserUrlInput" type="url" placeholder="Type domain here" value="https://example.com" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:#0b1220;border:2px solid #5d7391;color:#ffffff;border-radius:8px;padding:7px 10px;margin:0;text-align:left;font-family:'Roboto Mono',monospace;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none;caret-color:#ffffff;" />
+          <button class="term-btn" id="browserGoBtn" type="button" style="width:90px;margin:0;">GO</button>
+        </div>
         <iframe id="browserFrame" title="In-app browser" src="about:blank" style="width:100%;flex:1;border:0;background:#fff;"></iframe>
       </div>
     </div>
