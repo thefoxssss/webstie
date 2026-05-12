@@ -18,7 +18,8 @@ const moveState = {
   backward: false,
   left: false,
   right: false,
-  jump: false
+  jump: false,
+  sprint: false
 };
 let keyDownHandler = null;
 let keyUpHandler = null;
@@ -274,6 +275,10 @@ export function initObby() {
         case "Space":
           moveState.jump = true;
           break;
+        case "ShiftLeft":
+        case "ShiftRight":
+          moveState.sprint = true;
+          break;
       }
     };
 
@@ -297,6 +302,10 @@ export function initObby() {
           break;
         case "Space":
           moveState.jump = false;
+          break;
+        case "ShiftLeft":
+        case "ShiftRight":
+          moveState.sprint = false;
           break;
       }
     };
@@ -469,7 +478,9 @@ export function initObby() {
       direction.x = Number(moveState.right) - Number(moveState.left);
       direction.normalize();
 
-      const speed = 40.0;
+      const baseSpeed = 40.0;
+      const sprintMultiplier = moveState.sprint ? 1.7 : 1;
+      const speed = baseSpeed * sprintMultiplier;
       if (moveState.forward || moveState.backward) velocity.z -= direction.z * speed * delta;
       if (moveState.left || moveState.right) velocity.x -= direction.x * speed * delta;
 
