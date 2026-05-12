@@ -13,19 +13,50 @@ import {
   isInputFocused,
 } from "../core.js";
 
-// Helper to build a long sequence. 'b' = block, 's' = spike, 'g' = gap, 'd' = double spike, 't' = triple block, '_' = long gap
-function parsePattern(str) {
-  return str.split("").filter(c => c !== " ");
-}
+// 10-row tilemap formats. 'b' = block, 's' = spike, ' ' = empty space.
+const EASY_GRID = [
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                          bbbbb                                                                       ",
+  "                                                     bbbb                                      bbbb                                                   ",
+  "                                s          bbbb       bb        s          bb         s s       bb               s s          bbbb                    ",
+  "            s         s        bbb         bbbbb               bbb        bbbb       bbbbb     bbbb             bbbbb        bbbb                     "
+];
 
-const EASY_PATTERN = parsePattern("b_s_b_b_s_g_b_s_s_g_b_b_s_b_g_s_g_b_s_b_b_s_g_b_g_s_b_s_b_g_b_b_b_s_s_g_b_b_s_b_g_s_b_s_g_b_b_s_g_b_b_b_s_s_g_b_s_b");
-const NORMAL_PATTERN = parsePattern("s_s_g_b_s_g_b_b_s_g_b_s_s_b_g_b_s_b_s_g_s_s_b_g_b_s_b_b_s_g_s_b_s_s_g_b_b_s_b_s_g_s_s_b_g_b_b_b_s_s_g_s_s_g_b_s_b_s_b");
-const HARD_PATTERN = parsePattern("b_s_s_g_s_s_g_b_b_s_s_g_s_g_s_b_b_s_s_g_b_s_b_s_s_g_s_s_b_b_s_s_g_b_b_s_g_s_s_b_g_s_s_s_g_b_b_s_s_g_s_b_s_s_g_s_s_s_g_b_b");
+const NORMAL_GRID = [
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                         bbb                                               bbbb                       ",
+  "                                                     b                                                  bbbb                                          ",
+  "                                          bbbb      bbb       s                     s   s                                           s                 ",
+  "                              bbbb         bb      bbbbb     bbb                   bbb bbb               bb                 bb     bbb                ",
+  "             s        s        bb         bbbb    bbbbbbb                                               bbbb               bbbb                       "
+];
+
+const HARD_GRID = [
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                                                                      ",
+  "                                                                                                   bbbb                                               ",
+  "                                                     bbbb                 bbbb                                                                        ",
+  "                                       bbbb                     s   s                 s   s                 s   s   s                                 ",
+  "                           s   s                               bbb bbb               bbb bbb               bbb bbb bbb                                ",
+  "                 s   s      bbb                                                                                                                       ",
+  "                bbb bbb                                                                                                                               "
+];
 
 const GEO_LEVELS = [
-  { id: "stereo_madness", name: "Level 1 - Easy", speed: 5.2, gravity: 0.85, jump: 12, sequence: EASY_PATTERN },
-  { id: "back_on_track", name: "Level 2 - Normal", speed: 6.0, gravity: 0.95, jump: 12.8, sequence: NORMAL_PATTERN },
-  { id: "polargeist", name: "Level 3 - Hard", speed: 7.0, gravity: 1.03, jump: 13.2, sequence: HARD_PATTERN },
+  { id: "stereo_madness", name: "Level 1 - Easy", speed: 5.2, gravity: 0.85, jump: 12, grid: EASY_GRID },
+  { id: "back_on_track", name: "Level 2 - Normal", speed: 6.0, gravity: 0.95, jump: 12.8, grid: NORMAL_GRID },
+  { id: "polargeist", name: "Level 3 - Hard", speed: 7.0, gravity: 1.03, jump: 13.2, grid: HARD_GRID },
 ];
 
 let gPlayer = {};
@@ -82,15 +113,34 @@ export function initGeometry(levelId = "stereo_madness") {
   gOverlayRef = document.getElementById("overlayGeo");
 
   applySelectedLevel(levelId);
-  gPlayer = { x: 100, y: 300, w: 30, h: 30, dy: 0, ang: 0, grounded: true };
+  gPlayer = { x: 100, y: 300, w: 30, h: 30, dy: 0, ang: 0, grounded: true, prevY: 300 };
   gObs = [];
   gScore = 0;
-  gSpawnDistanceRemaining = 200; // Initial delay
   gLastTime = 0;
-  gLevelPatternIndex = 0;
   geoStarted = false;
   gFinished = false;
-  gTotalObstacles = gCurrentLevel.sequence.filter(c => c === "b" || c === "s").length;
+  gTotalObstacles = 0;
+
+  // Build the level from the grid
+  const startXOffset = 800; // Delay before first obstacle appears
+  const tileSize = 30;
+  const grid = gCurrentLevel.grid;
+  // grid[9] is the floor row, so y = 320.
+  // Row i corresponds to y = 320 - (9 - i) * tileSize.
+  for (let r = 0; r < grid.length; r++) {
+    const rowStr = grid[r];
+    const yPos = 320 - (9 - r) * tileSize;
+    for (let c = 0; c < rowStr.length; c++) {
+      const char = rowStr[c];
+      if (char === "b") {
+        gObs.push({ x: startXOffset + c * tileSize, y: yPos, w: tileSize, h: tileSize, type: "block", passed: false });
+        gTotalObstacles++;
+      } else if (char === "s") {
+        gObs.push({ x: startXOffset + c * tileSize, y: yPos, w: tileSize, h: tileSize, type: "spike", passed: false });
+        gTotalObstacles++;
+      }
+    }
+  }
 
   updateGeoHud();
   bindGeoControls();
@@ -100,31 +150,6 @@ export function initGeometry(levelId = "stereo_madness") {
 function applySelectedLevel(levelId) {
   gCurrentLevel = GEO_LEVELS.find((level) => level.id === levelId) || GEO_LEVELS[0];
   gSpeed = gCurrentLevel.speed;
-}
-
-function spawnObstacle() {
-  if (gLevelPatternIndex >= gCurrentLevel.sequence.length) {
-    // End of level
-    gSpawnDistanceRemaining = 9999;
-    return;
-  }
-
-  const spawnType = gCurrentLevel.sequence[gLevelPatternIndex];
-  gLevelPatternIndex += 1;
-
-  if (spawnType === "g") {
-    gSpawnDistanceRemaining = 120;
-  } else if (spawnType === "_") {
-    gSpawnDistanceRemaining = 200;
-  } else if (spawnType === "b") {
-    gObs.push({ x: 800, y: 320, w: 30, h: 30, type: "block" });
-    gSpawnDistanceRemaining = 30; // Close together if immediately followed by another
-  } else if (spawnType === "s") {
-    gObs.push({ x: 800, y: 320, w: 30, h: 30, type: "spike" });
-    gSpawnDistanceRemaining = 30;
-  } else {
-    gSpawnDistanceRemaining = 100;
-  }
 }
 
 // Main loop for the geometry runner: physics, obstacles, rendering.
@@ -142,16 +167,49 @@ function loopGeometry(ctx, now) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, 800, 400);
   const currentSpeed = gSpeed * (hasActiveItem("item_slowmo") ? 0.8 : 1);
+
+  // First, move all obstacles
+  if (geoStarted && !gFinished) {
+    for (let i = 0; i < gObs.length; i++) {
+      gObs[i].x -= currentSpeed * simDtFrames;
+    }
+  }
+
+  // Update Y position
+  gPlayer.prevY = gPlayer.y;
   gPlayer.dy += gCurrentLevel.gravity * simDtFrames;
   gPlayer.y += gPlayer.dy * simDtFrames;
-  if (gPlayer.y > 320) {
-    gPlayer.y = 320;
+
+  // Determine highest floor under player
+  let highestFloorY = 350; // Default floor (matches player bottom when on the visual floor line at y=350)
+  let onBlock = false;
+
+  for (let i = 0; i < gObs.length; i++) {
+    const o = gObs[i];
+    if (o.type !== "block") continue;
+    // Check horizontal overlap
+    if (gPlayer.x < o.x + o.w && gPlayer.x + gPlayer.w > o.x) {
+      // Check if player was above the block in the previous frame
+      // Allow slight leniency (0.1) for floating point inaccuracies
+      if (gPlayer.prevY + gPlayer.h <= o.y + 0.1) {
+        if (o.y < highestFloorY) {
+          highestFloorY = o.y;
+          onBlock = true;
+        }
+      }
+    }
+  }
+
+  if (gPlayer.y + gPlayer.h > highestFloorY) {
+    gPlayer.y = highestFloorY - gPlayer.h;
     gPlayer.dy = 0;
     gPlayer.grounded = true;
     gPlayer.ang = Math.round(gPlayer.ang / (Math.PI / 2)) * (Math.PI / 2);
   } else {
+    gPlayer.grounded = false; // Player might have fallen off a block
     gPlayer.ang += 0.15 * simDtFrames;
   }
+
   ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -165,53 +223,60 @@ function loopGeometry(ctx, now) {
   ctx.fillRect(-gPlayer.w / 2, -gPlayer.h / 2, gPlayer.w, gPlayer.h);
   ctx.restore();
 
-  if (geoStarted && !gFinished) {
-    gSpawnDistanceRemaining -= currentSpeed * simDtFrames;
-    if (gSpawnDistanceRemaining <= 0) spawnObstacle();
-  }
-
   for (let i = gObs.length - 1; i >= 0; i--) {
     const o = gObs[i];
-    o.x -= currentSpeed * simDtFrames;
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
-    if (o.type === "spike") {
-      ctx.beginPath();
-      ctx.moveTo(o.x, o.y + 30);
-      ctx.lineTo(o.x + 15, o.y);
-      ctx.lineTo(o.x + 30, o.y + 30);
-      ctx.fill();
-    } else {
-      ctx.fillRect(o.x, o.y, o.w, o.h);
+
+    // Only render if roughly on screen
+    if (o.x < 800 && o.x + o.w > -50) {
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
+      if (o.type === "spike") {
+        ctx.beginPath();
+        ctx.moveTo(o.x, o.y + 30);
+        ctx.lineTo(o.x + 15, o.y);
+        ctx.lineTo(o.x + 30, o.y + 30);
+        ctx.fill();
+      } else {
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+      }
     }
+
     if (
       !gFinished &&
-      gPlayer.x < o.x + o.w - 5 &&
-      gPlayer.x + gPlayer.w > o.x + 5 &&
-      gPlayer.y < o.y + o.h - 5 &&
-      gPlayer.y + gPlayer.h > o.y + 5
+      gPlayer.x < o.x + o.w - 4 && // tight hitbox
+      gPlayer.x + gPlayer.w > o.x + 4 &&
+      gPlayer.y < o.y + o.h - 4 &&
+      gPlayer.y + gPlayer.h > o.y + 4
     ) {
-      const shieldResult = consumeShield("geo");
-      if (shieldResult) {
-        gObs.splice(i, 1);
-        if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
-        continue;
+      // If it's a block, we only collide if we aren't standing on it (handled by floor check)
+      if (o.type === "spike" || (o.type === "block" && gPlayer.y + gPlayer.h > o.y + 5)) {
+        const shieldResult = consumeShield("geo");
+        if (shieldResult) {
+          gScore++; // Count destroyed obstacle towards level completion
+          gObs.splice(i, 1);
+          if (shieldResult === "activated") showToast("SHIELD ACTIVATED", "🛡️");
+          continue;
+        }
+        let pct = Math.floor((gScore / gTotalObstacles) * 100);
+        if (pct > 100) pct = 100;
+        showGameOver("geo", `${pct}%`);
+        return;
       }
-      let pct = Math.floor((gScore / gTotalObstacles) * 100);
-      if (pct > 100) pct = 100;
-      showGameOver("geo", `${pct}%`);
-      return;
     }
+
+    if (!o.passed && o.x + o.w < gPlayer.x) {
+      o.passed = true;
+      gScore++;
+      updateGeoHud();
+    }
+
     if (o.x < -50) {
       gObs.splice(i, 1);
-      gScore++;
-      // We are done updating the highscore with just "score" and are using percentages instead for win/loss
-      updateGeoHud();
     }
   }
 
   // Win condition:
-  // All obstacles have been spawned, passed, and the screen is clear
-  if (geoStarted && !gFinished && gLevelPatternIndex >= gCurrentLevel.sequence.length && gObs.length === 0) {
+  // Passed all obstacles
+  if (geoStarted && !gFinished && gScore >= gTotalObstacles) {
     gFinished = true;
     updateGeoHud();
     showToast("LEVEL COMPLETE!", "🏆");
