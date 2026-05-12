@@ -43,6 +43,7 @@ export const GAME_DIRECTORY_ENTRIES = Object.freeze([
   { id: "fnaf", title: "FNAF 3D", description: "Multiplayer horror survival.", icon: "🐻", tags: ["arcade", "multiplayer", "survival"] },
   { id: "fps", title: "ARENA SHOOTER", description: "Fast-paced 3D multiplayer arena shooter.", icon: "🔫", tags: ["arcade", "multiplayer", "pvp", "fps"] },
   { id: "hexfall", title: "HEXFALL", description: "3D multiplayer hex survival arena.", icon: "⬢", tags: ["arcade", "skill", "puzzle", "multiplayer", "3d", "pvp"], shopItems: ["item_dodge_stabilizer", "item_shield"] },
+  { id: "obby", title: "ROBLOX OBBY", description: "3D multiplayer obstacle course. Jump, dodge, and reach the end!", icon: "🏃‍♂️", tags: ["arcade", "multiplayer", "3d", "skill", "platformer"] },
 ]);
 
 export const LEADERBOARD_GAME_COLUMNS = Object.freeze(
