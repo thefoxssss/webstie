@@ -732,12 +732,45 @@ app.get("/api/browser-proxy", async (req, res) => {
       });
     }
     const finalUrl = response.url || target.toString();
-    const htmlWithBase = bodyText.replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}">`);
+    const navBridge = `<script>(function(){
+  function toAbs(url){ try { return new URL(url, document.baseURI).toString(); } catch { return null; } }
+  function sendNav(url){ if(!url) return; try { window.top.postMessage({ type: "browser-proxy-nav", url }, "*"); } catch {} }
+  document.addEventListener("click", function(event){
+    const anchor = event.target && event.target.closest ? event.target.closest("a[href]") : null;
+    if (!anchor) return;
+    const href = anchor.getAttribute("href") || "";
+    if (href.startsWith("#") || href.toLowerCase().startsWith("javascript:")) return;
+    const abs = toAbs(href);
+    if (!abs) return;
+    event.preventDefault();
+    sendNav(abs);
+  }, true);
+  document.addEventListener("submit", function(event){
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    const method = String(form.method || "get").toLowerCase();
+    if (method !== "get") return;
+    const action = form.getAttribute("action") || document.baseURI;
+    let abs = toAbs(action);
+    if (!abs) return;
+    const qs = new URLSearchParams(new FormData(form));
+    const u = new URL(abs);
+    for (const [k,v] of qs.entries()) u.searchParams.append(k, v);
+    event.preventDefault();
+    sendNav(u.toString());
+  }, true);
+})();</script>`;
+    const htmlWithBase = bodyText
+      .replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}">`)
+      .replace(/<\/body>/i, `${navBridge}</body>`);
+    const content = htmlWithBase.includes(navBridge)
+      ? htmlWithBase
+      : `${htmlWithBase}${navBridge}`;
     res.set("cache-control", "no-store");
     return res.json({
       ok: true,
       finalUrl,
-      content: htmlWithBase,
+      content,
     });
   } catch (error) {
     return res.status(502).json({ ok: false, error: String(error?.message || error) });
