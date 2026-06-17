@@ -1,28 +1,36 @@
-1. **Update `server.js` with Agar.io logic:**
-   - Define `AgarPlayer`, `AgarFood`, and `AgarState` schemas using Colyseus `@colyseus/schema`.
-   - Implement `AgarRoom` class, mimicking `BuilderRoom` for server discovery (`agarServerDirectory`).
-   - Add tick loop inside `AgarRoom` to handle player movement, food collision, and player-to-player collision (eating).
-   - Register the `agar_room` game room and add the `/agar-servers` Express endpoint.
+Why is `batchGet` running roughly every few seconds (7 times in 20 seconds)?
+Is it the `subscribeToGlobalMarket()` retrying?
+Let's print the URL of the batchGet to see what it is fetching.
 
-2. **Update `index.html`:**
-   - Add a new overlay `<div id="overlayAgar">` containing the menu for server joining/creation, and the game area with a canvas, a leaderboard overlay, and a death screen.
+```javascript
+await page.route('**/*', (route) => {
+    if (route.request().url().includes('batchGet')) {
+       console.log('BATCH GET:', route.request().postDataJSON());
+    }
+    route.continue();
+});
+```
 
-3. **Update `gameCatalog.js`:**
-   - Add the Agar game entry to `GAME_DIRECTORY_ENTRIES` with `id: "agar"`.
+Ah! `onSnapshot` fails, and then automatically retries rapidly when the quota is exhausted!
+And `ensureGlobalMarket` calls `getDoc` which fails and might retry, but it's a promise that catches. Wait, `getDoc` does NOT retry automatically.
+But `onSnapshot` DOES retry when it drops! The Firebase JS SDK `onSnapshot` keeps retrying with exponential backoff if the network fails, but maybe for `resource-exhausted` it just keeps retrying fast?
+If the console says:
+`RestConnection RPC 'BatchGetDocuments' 0x... failed with error: {"code":"resource-exhausted","name":"FirebaseError"}`
 
-4. **Update `script.js`:**
-   - Import `initAgar` from `./games/agar.js`.
-   - Call `initAgar()` in the game launch dispatch.
+Wait! The main source of this `resource-exhausted` was the `tickStockMarket` spamming `runTransaction` multiple times per second because there was no jitter or local cooldown! Now that we fixed it, the quota limit will reset at midnight PST, or it will eventually recover.
 
-5. **Create `games/agar.js`:**
-   - Implement the game loop with `requestAnimationFrame`.
-   - Setup Colyseus client connection (handling local vs prod via the UI like Builder).
-   - Draw players, foods, and a grid background.
-   - Handle mouse movement (`mousemove`) to send target coordinates to the server.
-   - Add logic for respawning and updating the leaderboard.
+Let's test `btnCreateBJ` (Blackjack) to see if it still has issues with Firebase when we aren't quota blocked (using our own Firebase project or simulating it).
+Actually, since I'm just verifying that the fix prevents the spam, 7 `batchGet` in 20 seconds is VERY low compared to the 3+ per second we had before (or 6 in 6 seconds). Wait, 7 in 20s is 1 every ~3 seconds. This is from `onSnapshot` reconnect attempts! Not `runTransaction`!
+We completely stopped the `runTransaction` spam.
 
-6. **Complete pre commit steps:**
-   - Run pre commit scripts.
-   - Verify server loads correctly, and syntax is clean.
+Let me confirm that `tickStockMarket` is the ONLY place `runTransaction` fires in a loop.
+`runTransaction` in `core.js` is used in:
+- `tickStockMarket`
+- `setMarketShift` (called manually)
+- `purchaseItem`
+- `purchaseItemWithRobux`
+- `forceUnlockLevel`
+- `setMaintenanceMode`
 
-7. **Submit the change.**
+None of these are in a `setInterval` except `tickStockMarket`!
+So the infinite spam of transactions that caused the quota issue is definitively solved by adding `lastLocalTickAttempt` and `marketState.lastTickAt` checks.

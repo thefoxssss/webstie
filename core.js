@@ -152,6 +152,7 @@ let builderCharacterSprite = null;
 let transactionLog = [];
 let globalVol = 0.5;
 let currentGame = null;
+let lastLocalTickAttempt = 0;
 const SHIELD_ACTIVE_MS = 2000;
 const SHIELD_COOLDOWN_MS = 5000;
 const shieldCooldowns = Object.create(null);
@@ -1294,6 +1295,7 @@ function getInitialMarketPayload() {
 function applyMarketPayload(payload) {
   const stocks = normalizeMarketStocks(payload?.stocks);
   marketState.stocks = stocks;
+  marketState.lastTickAt = Number(payload?.lastTickAt) || 0;
   applyLiveOilPriceToMarket();
   if (document.getElementById("overlayBank")?.classList.contains("active")) {
     renderStockMarket();
@@ -1428,6 +1430,18 @@ function subscribeToMaintenanceMode() {
 
 async function tickStockMarket() {
   refreshLiveOilPrice();
+  const nowPre = Date.now();
+  const localLastTick = Number(marketState.lastTickAt) || 0;
+
+  // Also enforce a strict local cooldown so a single client never tries to tick more than once every ~15 seconds
+  if (nowPre - lastLocalTickAttempt < 15000) return;
+
+  // Add a random jitter up to 5000ms to spread out multiple clients
+  const jitter = Math.random() * 5000;
+  if (nowPre - localLastTick < STOCK_TICK_MS + jitter) return;
+
+  lastLocalTickAttempt = nowPre;
+
   const ref = marketDocRef();
   try {
     await runTransaction(db, async (t) => {
