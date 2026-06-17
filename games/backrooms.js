@@ -1,195 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>THE BACKROOMS</title>
-<style>
-  :root{
-    --hud:#d8cf9a;
-    --dim:#8a8260;
-    --danger:#c44536;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;}
-  body{font-family:'Courier New',monospace;color:var(--hud);user-select:none;-webkit-user-select:none;cursor:default;}
-  body.locked{cursor:none;}
-  #c{position:fixed;inset:0;display:block;}
-
-  /* ---------- atmosphere overlays ---------- */
-  #vignette{position:fixed;inset:0;pointer-events:none;z-index:5;
-    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,.5) 100%);}
-  #grain{position:fixed;inset:-25%;width:150%;height:150%;pointer-events:none;z-index:6;opacity:.045;}
-  #redpulse{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;
-    background:radial-gradient(ellipse at center, rgba(120,0,0,0) 28%, rgba(120,0,0,.65) 100%);}
-  #fade{position:fixed;inset:0;background:#000;z-index:40;opacity:1;transition:opacity .9s;pointer-events:none;}
-  #fade.on{pointer-events:all;}
-
-  /* ---------- HUD ---------- */
-  #hud{position:fixed;inset:0;z-index:10;pointer-events:none;display:none;}
-  #crosshair{position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px;border-radius:50%;
-    background:rgba(216,207,154,.6);box-shadow:0 0 4px rgba(0,0,0,.8);}
-  #crosshair.interact{width:18px;height:18px;margin:-9px;border:1px solid rgba(216,207,154,.85);background:none;border-radius:2px;}
-  #levelTag{position:absolute;top:14px;left:18px;font-size:13px;letter-spacing:2px;text-shadow:0 0 6px #000;opacity:.88;}
-  #levelTag .cls{display:block;font-size:10px;color:var(--dim);margin-top:3px;letter-spacing:3px;}
-  #objective{position:absolute;top:52px;left:18px;font-size:11px;color:var(--dim);letter-spacing:1px;text-shadow:0 0 6px #000;}
-  #objective::before{content:'> ';color:var(--hud);}
-  #bars{position:absolute;left:18px;bottom:18px;width:200px;}
-  .bar{margin-top:7px;}
-  .bar label{font-size:9px;letter-spacing:3px;color:var(--dim);}
-  .bar .track{height:6px;background:rgba(0,0,0,.55);border:1px solid rgba(216,207,154,.25);margin-top:2px;}
-  .bar .fill{height:100%;width:100%;transition:width .15s linear;}
-  #hpF{background:#a13d31;} #saF{background:#7d8a5a;} #stF{background:#b3a25c;} #pwF{background:#5a8aa0;}
-  #powerBar{display:none;}
-  #toast{position:absolute;left:50%;bottom:24%;transform:translateX(-50%);font-size:13px;letter-spacing:2px;
-    text-shadow:0 0 8px #000;opacity:0;transition:opacity .4s;text-align:center;max-width:80vw;}
-  #timer{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-size:10px;color:var(--dim);letter-spacing:3px;}
-  #invline{position:absolute;right:18px;bottom:18px;font-size:10px;color:var(--dim);letter-spacing:2px;text-align:right;text-shadow:0 0 6px #000;line-height:1.8;}
-  #invline b{color:var(--hud);font-weight:400;}
-  #keyhint{position:absolute;right:18px;top:14px;font-size:9px;color:#6e684e;letter-spacing:2px;text-align:right;line-height:1.7;}
-
-  /* ---------- minimap ---------- */
-  #mapWrap{position:absolute;right:18px;top:78px;width:148px;height:148px;border:1px solid rgba(216,207,154,.22);
-    background:rgba(0,0,0,.4);display:none;}
-  #mapWrap.show{display:block;}
-  #map{width:100%;height:100%;image-rendering:pixelated;display:block;}
-  #mapLabel{position:absolute;left:0;top:-14px;font-size:8px;color:var(--dim);letter-spacing:2px;}
-
-  /* ---------- screens ---------- */
-  .screen{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;
-    background:rgba(2,2,0,.93);text-align:center;padding:24px;}
-  .screen.show{display:flex;}
-  .screen h1{font-size:clamp(34px,7vw,62px);letter-spacing:14px;font-weight:400;color:#e8df9e;
-    text-shadow:0 0 34px rgba(200,180,60,.35);}
-  .screen .sub{margin-top:10px;font-size:11px;letter-spacing:5px;color:var(--dim);}
-  .screen p{max-width:600px;margin:26px 0;font-size:13px;line-height:1.95;color:#b5ad85;letter-spacing:1px;}
-  .screen button{background:none;border:1px solid var(--hud);color:var(--hud);
-    font-family:inherit;font-size:14px;letter-spacing:5px;padding:13px 44px;cursor:pointer;margin-top:6px;transition:background .2s;}
-  .screen button:hover,.screen button:focus-visible{background:rgba(216,207,154,.12);outline:none;}
-  .screen .ctl{margin-top:30px;font-size:10px;color:#6e684e;letter-spacing:2px;line-height:2.1;}
-  .screen .ctl b{color:var(--dim);font-weight:400;}
-  #deadScreen h1{color:#b0392c;text-shadow:0 0 30px rgba(176,57,44,.4);}
-  #winScreen h1{color:#9fb06a;text-shadow:0 0 30px rgba(120,150,60,.4);}
-  .stats{font-size:12px;color:var(--dim);letter-spacing:2px;line-height:2.2;margin-top:8px;}
-  .setting{display:flex;align-items:center;gap:14px;margin-top:22px;font-size:10px;letter-spacing:2px;color:var(--dim);}
-  .setting input[type=range]{width:180px;accent-color:#b3a25c;}
-  .lvlist{margin-top:22px;font-size:10px;letter-spacing:2px;color:#6e684e;line-height:1.9;}
-  .lvlist .done{color:var(--hud);}
-  .menuNav{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
-  .menuNav button{min-width:320px;}
-  .opts{display:flex;flex-direction:column;gap:6px;margin:18px 0;}
-  .seg{background:rgba(216,207,154,.06);border:1px solid var(--hud);color:var(--hud);font-family:inherit;
-    font-size:11px;letter-spacing:2px;padding:6px 16px;cursor:pointer;min-width:150px;}
-  .seg:hover{background:rgba(216,207,154,.16);}
-
-  /* ---------- level card ---------- */
-  #card{position:fixed;inset:0;z-index:45;display:none;flex-direction:column;align-items:center;justify-content:center;
-    pointer-events:none;text-align:center;}
-  #card .lv{font-size:clamp(26px,5vw,44px);letter-spacing:10px;color:#e8df9e;text-shadow:0 2px 20px #000;}
-  #card .cl{margin-top:12px;font-size:11px;letter-spacing:5px;color:var(--dim);}
-  #card .ds{margin-top:20px;font-size:12px;letter-spacing:2px;color:#a59c74;max-width:500px;line-height:1.95;padding:0 20px;}
-
-  @media (prefers-reduced-motion: reduce){ #fade{transition:none;} }
-</style>
-</head>
-<body>
-<canvas id="c"></canvas>
-
-<div id="vignette"></div>
-<canvas id="grain"></canvas>
-<div id="redpulse"></div>
-
-<div id="hud">
-  <div id="crosshair"></div>
-  <div id="levelTag"><span id="lvName"></span><span class="cls" id="lvClass"></span></div>
-  <div id="timer">00:00</div>
-  <div id="objective"></div>
-  <div id="keyhint">[TAB] MAP &nbsp; [F] LIGHT<br>[E] USE &nbsp; [C] CROUCH</div>
-  <div id="mapWrap"><div id="mapLabel">SECTOR MAP</div><canvas id="map" width="74" height="74"></canvas></div>
-  <div id="bars">
-    <div class="bar"><label>VITALS</label><div class="track"><div class="fill" id="hpF"></div></div></div>
-    <div class="bar"><label>SANITY</label><div class="track"><div class="fill" id="saF"></div></div></div>
-    <div class="bar"><label>STAMINA</label><div class="track"><div class="fill" id="stF"></div></div></div>
-    <div class="bar" id="powerBar"><label>LIGHT CELL</label><div class="track"><div class="fill" id="pwF"></div></div></div>
-  </div>
-  <div id="invline">ALMOND WATER &nbsp;<b id="invAlmond">0</b></div>
-  <div id="toast"></div>
-</div>
-
-<div id="card"><div class="lv" id="cardLv"></div><div class="cl" id="cardCl"></div><div class="ds" id="cardDs"></div></div>
-
-<div class="screen show" id="menuScreen">
-  <h1>THE BACKROOMS</h1>
-  <div class="sub">DO NOT NOCLIP OUT OF REALITY</div>
-  <p>If you're not careful and you noclip out of reality in the wrong areas, you'll end up in the Backrooms — nothing but the stink of old moist carpet, the madness of mono-yellow, the endless background noise of fluorescent lights at maximum hum-buzz, and approximately six hundred million square miles of randomly segmented empty rooms to be trapped in.<br><br>God save you if you hear something wandering nearby. Because it sure as hell has heard you.</p>
-  <div class="menuNav">
-    <button id="spBtn">SINGLE PLAYER</button>
-    <button id="mpBtn">MULTIPLAYER</button>
-    <button id="optBtn">OPTIONS</button>
-    <button id="helpBtn">HOW TO PLAY</button>
-  </div>
-</div>
-
-<div class="screen" id="optionsScreen">
-  <h1 style="font-size:30px;letter-spacing:8px;">OPTIONS</h1>
-  <div class="opts">
-    <div class="setting">MOUSE SENS <input id="optSens" type="range" min="4" max="40" value="18"><span id="optSensV">1.8</span></div>
-    <div class="setting">VOLUME <input id="optVol" type="range" min="0" max="100" value="55"><span id="optVolV">55</span></div>
-    <div class="setting">FIELD OF VIEW <input id="optFov" type="range" min="60" max="100" value="75"><span id="optFovV">75</span></div>
-    <div class="setting">DIFFICULTY <button class="seg" id="optDiff">NORMAL</button></div>
-    <div class="setting">INVERT Y <button class="seg" id="optInv">OFF</button></div>
-    <div class="setting">START AT LEVEL <button class="seg" id="optLevel">LEVEL 0 — THE LOBBY</button></div>
-  </div>
-  <button id="optBack">BACK</button>
-</div>
-
-<div class="screen" id="mpScreen">
-  <h1 style="font-size:30px;letter-spacing:8px;">MULTIPLAYER</h1>
-  <p><b>Local split-screen co-op</b> runs entirely on this one PC — two players, two views, one keyboard + a gamepad. <b>Online</b> co-op needs a small relay/signaling server, so it can't live inside a file you just double-click; a developer hooks it into the stubs below. Full build instructions ship alongside this game in <b>MULTIPLAYER_SPEC.md</b>.</p>
-  <div class="menuNav">
-    <button id="mpSplit">LOCAL SPLIT-SCREEN CO-OP</button>
-    <button id="mpHost">HOST ONLINE GAME</button>
-    <button id="mpJoin">JOIN ONLINE GAME</button>
-  </div>
-  <div id="mpNote" class="ctl"></div>
-  <button id="mpBack">BACK</button>
-</div>
-
-<div class="screen" id="helpScreen">
-  <h1 style="font-size:28px;letter-spacing:6px;">HOW TO PLAY</h1>
-  <p>You have noclipped out of reality. Descend through the levels to reach the M.E.G. outpost. Each level seals its exit until you finish its task — throw the breakers, drain the pools, key in the code, grab the keycard. <b>Almond water</b> restores your sanity, health, and flashlight. Watch your <b>SANITY</b> and <b>VITALS</b> — lose either and you are lost down here for good.</p>
-  <div class="ctl">
-    <b>WASD</b> MOVE &nbsp;·&nbsp; <b>MOUSE</b> LOOK &nbsp;·&nbsp; <b>SHIFT</b> SPRINT &nbsp;·&nbsp; <b>C</b> CROUCH<br>
-    <b>F</b> FLASHLIGHT &nbsp;·&nbsp; <b>E</b> INTERACT &nbsp;·&nbsp; <b>TAB</b> MAP &nbsp;·&nbsp; <b>ESC</b> PAUSE
-  </div>
-  <button id="helpBack">BACK</button>
-</div>
-
-<div class="screen" id="pauseScreen">
-  <h1 style="font-size:32px;letter-spacing:10px;">PAUSED</h1>
-  <p>The hum-buzz continues whether you move or not.</p>
-  <div class="setting">MOUSE SENS <input id="sensRange" type="range" min="4" max="40" value="18"><span id="sensVal">1.8</span></div>
-  <button id="resumeBtn">RESUME</button>
-  <div class="lvlist" id="progressList"></div>
-</div>
-
-<div class="screen" id="deadScreen">
-  <h1>LOST</h1>
-  <div class="sub" id="deathCause"></div>
-  <p id="deathFlavor"></p>
-  <button id="retryBtn">WANDER AGAIN</button>
-</div>
-
-<div class="screen" id="winScreen">
-  <h1>OUTPOST REACHED</h1>
-  <div class="sub">M.E.G. OUTPOST "HOPE"</div>
-  <p>Floodlights. Generators. Human voices. A wanderer in a hard hat pulls you behind the barricade and presses a warm bottle of almond water into your shaking hands.<br><br>"You came all the way down through Run For Your Life? Alone?" she says, eyes wide. "Get some rest. You're safe here."<br><br>For now.</p>
-  <div class="stats" id="winStats"></div>
-  <button id="againBtn">NOCLIP AGAIN</button>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
 /* ============================================================
    THE BACKROOMS — desktop survival horror
    L0 Lobby -> L1 Habitable Zone -> L37 Poolrooms -> L2 Pipe Dreams
@@ -197,22 +5,9 @@
    ============================================================ */
 'use strict';
 
-let __errEl=null;
-function reportErr(msg){
-  try{
-    if(!__errEl){
-      __errEl=document.createElement('div');
-      __errEl.style.cssText='position:fixed;left:8px;bottom:4px;z-index:99;font:11px monospace;color:#ff6b5a;text-shadow:0 0 4px #000;max-width:90vw;pointer-events:none;white-space:pre-wrap;';
-      (document.body||document.documentElement).appendChild(__errEl);
-    }
-    __errEl.textContent='ERR: '+msg;
-  }catch(_){}
-}
-addEventListener('error',e=>reportErr(e.message||String(e.error||e)));
-addEventListener('unhandledrejection',e=>reportErr(String(e.reason)));
 
-function __main(){
-const $=id=>document.getElementById(id)||document.createElement('div');
+
+const $ = id => document.querySelector('#overlayBackrooms #' + id) || document.createElement('div');
 
 /* ---------------- procedural textures ---------------- */
 function makeCanvas(s){ const c=document.createElement('canvas'); c.width=c.height=s; return [c, c.getContext('2d')]; }
@@ -500,8 +295,6 @@ function buildTextures(){
   T.siding=sidingCanvas(); T.grass=grassCanvas();
   T.smiler=new THREE.CanvasTexture(smilerCanvas());
 }
-buildTextures();
-
 function mergeGeo(base, matrices){
   const bp=base.attributes.position, bn=base.attributes.normal, bu=base.attributes.uv, bi=base.index;
   const n=matrices.length, vc=bp.count;
@@ -530,14 +323,14 @@ function mat4At(x,y,z,rx,ry){ const m=new THREE.Matrix4();
   if(ry) m.makeRotationY(ry); else if(rx) m.makeRotationX(rx);
   m.setPosition(x,y,z); return m; }
 
-/* ---------------- world state ---------------- */
+/* ---------------- world gameState ---------------- */
 const world={ group:null, grid:null, N:0, exit:null, glitchMesh:null, items:[], entities:[],
   steamSprites:[], theme:'', exitLight:null, water:null, seen:null,
   glitchProps:[], npcs:[], terrainFn:null };
 const player={ pos:new THREE.Vector3(), yaw:0, pitch:0, vel:new THREE.Vector3(),
   hp:100, sanity:100, stamina:100, power:100, radius:0.42, sprinting:false, crouch:false,
   bob:0, lastHit:-9, almonds:0, startTime:0, deaths:0, flashOn:true };
-let curLevel=0, state='menu', flashlight=null, playerLamp=null;
+let curLevel=0, gameState='menu', flashlight=null, playerLamp=null;
 const GAME={ sens:0.0018, volume:0.55, fov:75, invertY:false, diff:'normal', startLevel:0 };
 const DIFF={ easy:{drain:0.7,espeed:0.85,still:0.7,label:'EASY'},
              normal:{drain:1.0,espeed:1.0,still:1.0,label:'NORMAL'},
@@ -555,23 +348,106 @@ let SENS=GAME.sens;   // legacy alias, kept in sync with GAME.sens
      MP.host()              -> open a relay/WebRTC session, return a join code
      MP.join(code)          -> connect to a host session
      MP.sendState()         -> called each frame in 'host'/'join' to broadcast local player
-     MP.onRemoteState(data) -> called when a peer's state arrives; move their avatar
+     MP.onRemoteState(data) -> called when a peer's gameState arrives; move their avatar
    The single-player loop already exposes everything needed: world, player,
    makeHuman(), collide(), camera, renderer, scene. Hook points are marked
    with  // MP-HOOK  comments in frame() and the render call.
    ============================================================ */
-const MP={
-  mode:'single', players:[],
-  startSplitscreen(){ this.notImplemented('Local split-screen co-op'); },
-  host(){ this.notImplemented('Host online game'); return null; },
-  join(code){ this.notImplemented('Join online game'); },
-  sendState(){ /* implementer: broadcast {pos,yaw,level} */ },
-  onRemoteState(data){ /* implementer: update remote avatar from data */ },
-  notImplemented(what){
-    const n=document.getElementById('mpNote');
-    if(n) n.innerHTML=what+' is not wired up yet.<br>A developer can implement it via the stubs in this file and the steps in MULTIPLAYER_SPEC.md.';
-  }
+
+const MP = {};
+let colyseusClient = null;
+let currentRoom = null;
+let otherPlayers = new Map();
+
+MP.host = function() {
+    if(!colyseusClient) colyseusClient = new Colyseus.Client(window.getColyseusWsUrl());
+    $('mpNote').textContent = 'CREATING ROOM...';
+    colyseusClient.create('backrooms_room', { hostName: window.gameState?.username || 'Player' })
+        .then(room => {
+            currentRoom = room;
+            setupRoom(room);
+            MP.mode = 'host';
+            startGame();
+        }).catch(e => {
+            $('mpNote').textContent = 'ERROR HOSTING: ' + e.message;
+        });
 };
+
+MP.join = function(roomId) {
+    if(!colyseusClient) colyseusClient = new Colyseus.Client(window.getColyseusWsUrl());
+    $('mpNote').textContent = 'JOINING...';
+    colyseusClient.joinById(roomId, {})
+        .then(room => {
+            currentRoom = room;
+            setupRoom(room);
+            MP.mode = 'join';
+            startGame();
+        }).catch(e => {
+            $('mpNote').textContent = 'ERROR JOINING: ' + e.message;
+        });
+};
+
+function setupRoom(room) {
+    room.state.players.onAdd((p, sessionId) => {
+        if(sessionId === room.sessionId) return;
+
+        let avatar = makeHuman();
+        world.group.add(avatar.g);
+        otherPlayers.set(sessionId, { state: p, avatar: avatar });
+
+        p.onChange(() => {
+            let op = otherPlayers.get(sessionId);
+            if(op && op.avatar) {
+                op.avatar.g.position.set(p.x, p.y, p.z);
+                op.avatar.g.rotation.y = p.yaw;
+
+                if (Math.abs(p.vx) > 0.1 || Math.abs(p.vz) > 0.1) {
+                    const t = performance.now() / 1000;
+                    const sw = Math.sin(t * 10) * 0.5;
+                    op.avatar.arms[0].rotation.x = sw;
+                    op.avatar.arms[1].rotation.x = -sw;
+                    op.avatar.legs[0].rotation.x = -sw;
+                    op.avatar.legs[1].rotation.x = sw;
+                } else {
+                    op.avatar.arms[0].rotation.x = 0;
+                    op.avatar.arms[1].rotation.x = 0;
+                    op.avatar.legs[0].rotation.x = 0;
+                    op.avatar.legs[1].rotation.x = 0;
+                }
+            }
+        });
+    });
+
+    room.state.players.onRemove((p, sessionId) => {
+        let op = otherPlayers.get(sessionId);
+        if(op && op.avatar) {
+            world.group.remove(op.avatar.g);
+        }
+        otherPlayers.delete(sessionId);
+    });
+
+    room.onMessage("level_change", (data) => {
+        if(MP.mode === 'join' && curLevel !== data.level) {
+            enterLevel(data.level, false);
+        }
+    });
+}
+
+MP.sendState = function() {
+    if (currentRoom && (MP.mode === 'host' || MP.mode === 'join')) {
+        currentRoom.send("updatePosition", {
+            x: player.pos.x,
+            y: player.pos.y,
+            z: player.pos.z,
+            yaw: player.yaw,
+            vx: player.vel.x,
+            vz: player.vel.z
+        });
+    }
+};
+
+window.MP = MP;
+
 const progress=new Set();
 
 function cellToWorld(x,y,N){ return [ (x-(N-1)/2)*CELL, (y-(N-1)/2)*CELL ]; }
@@ -868,7 +744,7 @@ function buildLevel(idx){
 
   setupTask(L, ewx, ewz, grid, N, G);
 
-  try{ scatterProps(L, grid, N, G); }catch(e){ reportErr('PROPS: '+e.message); }
+  try{ scatterProps(L, grid, N, G); }catch(e){ console.error('PROPS: '+e.message); }
 
   /* ----- almond water ----- */
   const spots=farFloorCells(grid,N,6,1,1);
@@ -948,7 +824,7 @@ function makeEntity(type, wx, wz, G){
     tail.position.set(0,0.88,0.9); tail.rotation.x=-0.7; grp.add(tail);
     const halo=new THREE.PointLight(0xff5a2a,0.0,6,2); halo.position.set(0,0.7,-1); grp.add(halo);
     grp.position.set(wx,0,wz); G.add(grp);
-    return {type, mesh:grp, jaw, legs, halo, speed:5.0, wanderSpeed:1.4, aggroRange:13, state:'wander',
+    return {type, mesh:grp, jaw, legs, halo, speed:5.0, wanderSpeed:1.4, aggroRange:13, gameState:'wander',
       dir:Math.random()*7, dirT:0, growled:false, r:0.5};
   }
   if(type==='thing'){
@@ -989,7 +865,7 @@ function makeEntity(type, wx, wz, G){
     }
     const halo=new THREE.PointLight(0xff4030,0.55,8,2); halo.position.y=2.2; grp.add(halo);
     grp.position.set(wx,0,wz); G.add(grp);
-    return {type, mesh:grp, head, arms, halo, speed:4.6, wanderSpeed:3.6, aggroRange:999, state:'chase',
+    return {type, mesh:grp, head, arms, halo, speed:4.6, wanderSpeed:3.6, aggroRange:999, gameState:'chase',
       dir:Math.random()*7, dirT:0, growled:false, r:0.55};
   }
   // smiler — a jagged grin growing out of a faint dark mass
@@ -999,7 +875,7 @@ function makeEntity(type, wx, wz, G){
   sm.scale.set(1.7,1.7,1); grp.add(sm);
   const halo=new THREE.PointLight(0xcdd2ff, 0.30, 6, 2); grp.add(halo);
   grp.position.set(wx,1.6,wz); G.add(grp);
-  return {type, mesh:grp, grin:sm, body:bodySp, halo, speed:1.45, wanderSpeed:0.4, aggroRange:11, state:'wander',
+  return {type, mesh:grp, grin:sm, body:bodySp, halo, speed:1.45, wanderSpeed:0.4, aggroRange:11, gameState:'wander',
     dir:Math.random()*7, dirT:0, growled:false, r:0.45};
 }
 
@@ -1139,7 +1015,7 @@ function unlockExit(){
 }
 function checkUnlock(){ if(world.locked && world.taskType!=='code' && world.tasksDone>=world.tasksTotal) unlockExit(); }
 function tryInteract(){
-  if(state!=='play') return;
+  if(gameState!=='play') return;
   let best=null,bd=2.7;
   for(const o of world.interactables){ if(o.done && o.type!=='fragment') continue;
     const d=o.mesh.position.distanceTo(player.pos); if(d<bd){ bd=d; best=o; } }
@@ -1400,11 +1276,11 @@ function updateEntities(dt,t){
     // crouch shrinks detection range
     const aggro = e.aggroRange * (player.crouch?0.6:1) * (player.sprinting?1.25:1);
     let sees = e.type==='thing' ? true : (dist<aggro && lineOfSight(m.position.x,m.position.z,player.pos.x,player.pos.z));
-    if(sees && e.state!=='chase'){ e.state='chase'; if(!e.growled){ e.growled=true; AUDIO.sting(e.type); } }
-    if(!sees && dist>aggro*1.4 && e.type!=='thing'){ e.state='wander'; e.growled=false; }
+    if(sees && e.gameState!=='chase'){ e.gameState='chase'; if(!e.growled){ e.growled=true; AUDIO.sting(e.type); } }
+    if(!sees && dist>aggro*1.4 && e.type!=='thing'){ e.gameState='wander'; e.growled=false; }
 
     let vx=0,vz=0;
-    if(e.state==='chase'){
+    if(e.gameState==='chase'){
       const sm=diffNow().espeed; vx=dx/dist*e.speed*sm; vz=dz/dist*e.speed*sm;
       if(e.type==='smiler'){
         const look=( dx*Math.sin(player.yaw) + dz*Math.cos(player.yaw) )/dist;
@@ -1417,17 +1293,17 @@ function updateEntities(dt,t){
     }
     let nx=m.position.x+vx*dt, nz=m.position.z+vz*dt;
     [nx,nz]=collide(nx,nz,e.r);
-    if(Math.abs(nx-m.position.x)<0.001 && Math.abs(nz-m.position.z)<0.001 && e.state==='wander') e.dirT=0;
+    if(Math.abs(nx-m.position.x)<0.001 && Math.abs(nz-m.position.z)<0.001 && e.gameState==='wander') e.dirT=0;
     m.position.x=nx; m.position.z=nz;
 
     if(e.type==='hound'){
       m.rotation.y=Math.atan2(-(player.pos.x-nx), -(player.pos.z-nz));
-      if(e.state==='wander') m.rotation.y=-e.dir+Math.PI/2;
-      const gait=e.state==='chase'?16:7;
+      if(e.gameState==='wander') m.rotation.y=-e.dir+Math.PI/2;
+      const gait=e.gameState==='chase'?16:7;
       m.position.y=Math.abs(Math.sin(t*gait))*0.07;
       if(e.legs) for(let i=0;i<e.legs.length;i++) e.legs[i].rotation.x=Math.sin(t*gait+i*Math.PI/2)*0.6;
-      if(e.jaw) e.jaw.rotation.x=-Math.PI/2 + (e.state==='chase'? Math.abs(Math.sin(t*12))*0.5 : 0.04);
-      if(e.halo) e.halo.intensity=e.state==='chase'? 0.6+Math.sin(t*10)*0.2 : 0.0;
+      if(e.jaw) e.jaw.rotation.x=-Math.PI/2 + (e.gameState==='chase'? Math.abs(Math.sin(t*12))*0.5 : 0.04);
+      if(e.halo) e.halo.intensity=e.gameState==='chase'? 0.6+Math.sin(t*10)*0.2 : 0.0;
     } else if(e.type==='thing'){
       m.rotation.y=Math.atan2(player.pos.x-nx, player.pos.z-nz);
       m.position.y=Math.abs(Math.sin(t*7))*0.05;
@@ -1469,7 +1345,7 @@ const AUDIO={ ctx:null, master:null, humGain:null, started:false,
     const ng=C.createGain(); ng.gain.value=0.012; n.connect(f); f.connect(ng); ng.connect(this.master); n.start();
     this.noiseBuf=buf;
   },
-  resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
+  resume(){ if(this.ctx && this.ctx.gameState==='suspended') this.ctx.resume(); },
   setHum(v){ if(this.humGain) this.humGain.gain.setTargetAtTime(v,this.ctx.currentTime,0.4); },
   setVolume(v){ if(this.master) this.master.gain.value=v; },
   blip(freq,dur,vol,type){ if(!this.ctx) return; const C=this.ctx;
@@ -1504,12 +1380,12 @@ const AUDIO={ ctx:null, master:null, humGain:null, started:false,
 /* ---------------- input ---------------- */
 const keys={};
 addEventListener('keydown',e=>{
-  if(e.code==='Tab'){ e.preventDefault(); if(state==='play') $('mapWrap').classList.toggle('show'); }
-  if(e.code==='KeyF' && state==='play'){ toggleFlash(); }
+  if(e.code==='Tab'){ e.preventDefault(); if(gameState==='play') $('mapWrap').classList.toggle('show'); }
+  if(e.code==='KeyF' && gameState==='play'){ toggleFlash(); }
   if(keys[e.code]) return; keys[e.code]=true;
-  if(e.code==='Escape' && state==='play') pauseGame();
-  if(e.code==='KeyE' && state==='play') tryInteract();
-  if(state==='play' && world.keypadNear && world.taskType==='code' && world.locked){
+  if(e.code==='Escape' && gameState==='play') pauseGame();
+  if(e.code==='KeyE' && gameState==='play') tryInteract();
+  if(gameState==='play' && world.keypadNear && world.taskType==='code' && world.locked){
     const m=e.code.match(/^(?:Digit|Numpad)(\d)$/);
     if(m){ world.codeBuf=(world.codeBuf+m[1]).slice(-world.code.length);
       if(world.codeBuf.length>=world.code.length){
@@ -1531,16 +1407,16 @@ function toggleFlash(){
 
 camera.rotation.order='YXZ';
 document.addEventListener('mousemove',e=>{
-  if(state!=='play'||!document.pointerLockElement) return;
+  if(gameState!=='play'||!document.pointerLockElement) return;
   player.yaw-=e.movementX*GAME.sens;
   const iy=GAME.invertY?-1:1;
   player.pitch=Math.max(-1.45,Math.min(1.45,player.pitch-e.movementY*GAME.sens*iy));
 });
-canvas.addEventListener('click',()=>{ if(state==='play'&&!document.pointerLockElement) canvas.requestPointerLock(); });
+canvas.addEventListener('click',()=>{ if(gameState==='play'&&!document.pointerLockElement) canvas.requestPointerLock(); });
 document.addEventListener('pointerlockchange',()=>{
   const locked=!!document.pointerLockElement;
   document.body.classList.toggle('locked',locked);
-  if(!locked && state==='play') pauseGame();
+  if(!locked && gameState==='play') pauseGame();
 });
 
 /* sensitivity slider */
@@ -1636,7 +1512,7 @@ function startGame(){
   enterLevel(GAME.startLevel,true);
 }
 function enterLevel(idx, first){
-  state='loading'; fade(true);
+  gameState='loading'; fade(true);
   $('mapWrap').classList.remove('show');
   setTimeout(()=>{
     try{
@@ -1651,22 +1527,22 @@ function enterLevel(idx, first){
       fade(false);
       setTimeout(()=>{ card.style.transition='opacity 1s'; card.style.opacity=0;
         setTimeout(()=>{ card.style.display='none'; card.style.transition=''; },1000);
-        state='play';
+        gameState='play';
         $('hud').style.display='block';
         canvas.requestPointerLock();
         if(L.theme==='pipes') setTimeout(()=>toast('PRESS [F] — KILL THE LIGHT TO HIDE',true),2500);
         if(L.theme==='pools') setTimeout(()=>toast('THE WATER IS DEEP. SOMETHING SHARES IT.',true),2500);
         if(L.theme==='redrun') setTimeout(()=>toast('STOP MOVING AND YOU DIE. RUN.',true),2200);
       }, first?3400:2800);
-    }catch(err){ reportErr('BUILD: '+err.message); }
+    }catch(err){ console.error('BUILD: '+err.message); }
   },950);
 }
-function pauseGame(){ if(state!=='play') return; state='pause'; updateProgressList(); show('pauseScreen',true);
+function pauseGame(){ if(gameState!=='play') return; gameState='pause'; updateProgressList(); show('pauseScreen',true);
   if(document.pointerLockElement) document.exitPointerLock(); }
-function resumeGame(){ show('pauseScreen',false); state='play'; AUDIO.resume(); canvas.requestPointerLock(); }
+function resumeGame(){ show('pauseScreen',false); gameState='play'; AUDIO.resume(); canvas.requestPointerLock(); }
 function die(cause,flavor){
-  if(state!=='play') return;
-  state='dead'; player.deaths++;
+  if(gameState!=='play') return;
+  gameState='dead'; player.deaths++;
   if(document.pointerLockElement) document.exitPointerLock();
   $('deathCause').textContent=cause;
   $('deathFlavor').textContent=flavor;
@@ -1674,7 +1550,7 @@ function die(cause,flavor){
   AUDIO.hit(); show('deadScreen',true);
 }
 function win(){
-  state='win';
+  gameState='win';
   if(document.pointerLockElement) document.exitPointerLock();
   $('hud').style.display='none';
   const secs=(performance.now()-player.startTime)/1000;
@@ -1684,38 +1560,7 @@ function win(){
   show('winScreen',true);
 }
 function menuTo(id){ ['menuScreen','optionsScreen','mpScreen','helpScreen'].forEach(s=>show(s,false)); show(id,true); }
-$('spBtn').addEventListener('click',startGame);
-$('mpBtn').addEventListener('click',()=>{ $('mpNote').textContent=''; menuTo('mpScreen'); });
-$('optBtn').addEventListener('click',()=>{ refreshOptions(); menuTo('optionsScreen'); });
-$('helpBtn').addEventListener('click',()=>menuTo('helpScreen'));
-$('optBack').addEventListener('click',()=>menuTo('menuScreen'));
-$('mpBack').addEventListener('click',()=>menuTo('menuScreen'));
-$('helpBack').addEventListener('click',()=>menuTo('menuScreen'));
-$('mpSplit').addEventListener('click',()=>MP.startSplitscreen());
-$('mpHost').addEventListener('click',()=>MP.host());
-$('mpJoin').addEventListener('click',()=>MP.join(prompt('Enter host code:')||''));
 
-function refreshOptions(){
-  $('optSens').value=Math.round(GAME.sens*10000); $('optSensV').textContent=(GAME.sens*1000).toFixed(1);
-  $('optVol').value=Math.round(GAME.volume*100); $('optVolV').textContent=Math.round(GAME.volume*100);
-  $('optFov').value=GAME.fov; $('optFovV').textContent=GAME.fov;
-  $('optDiff').textContent=diffNow().label;
-  $('optInv').textContent=GAME.invertY?'ON':'OFF';
-  $('optLevel').textContent=LEVELS[GAME.startLevel].name+' — '+LEVELS[GAME.startLevel].title.replace(/"/g,'').toUpperCase();
-}
-$('optSens').addEventListener('input',e=>{ GAME.sens=(+e.target.value)/10000; SENS=GAME.sens; $('optSensV').textContent=(GAME.sens*1000).toFixed(1); });
-$('optVol').addEventListener('input',e=>{ GAME.volume=(+e.target.value)/100; AUDIO.setVolume(GAME.volume); $('optVolV').textContent=e.target.value; });
-$('optFov').addEventListener('input',e=>{ GAME.fov=+e.target.value; $('optFovV').textContent=e.target.value; });
-$('optDiff').addEventListener('click',()=>{ const order=['easy','normal','nightmare']; GAME.diff=order[(order.indexOf(GAME.diff)+1)%3]; $('optDiff').textContent=diffNow().label; });
-$('optInv').addEventListener('click',()=>{ GAME.invertY=!GAME.invertY; $('optInv').textContent=GAME.invertY?'ON':'OFF'; });
-$('optLevel').addEventListener('click',()=>{ GAME.startLevel=(GAME.startLevel+1)%LEVELS.length;
-  $('optLevel').textContent=LEVELS[GAME.startLevel].name+' — '+LEVELS[GAME.startLevel].title.replace(/"/g,'').toUpperCase(); });
-$('resumeBtn').addEventListener('click',resumeGame);
-$('retryBtn').addEventListener('click',()=>{
-  player.hp=100; player.sanity=100; player.stamina=100; player.power=100; player.flashOn=true;
-  show('deadScreen',false); enterLevel(curLevel,false);
-});
-$('againBtn').addEventListener('click',()=>{ show('winScreen',false); startGame(); });
 
 /* ---------------- main loop ---------------- */
 let kickPulse=0, stepAcc=0, flickerT=0, blackout=0, heartT=0, grainT=0, lastT=performance.now();
@@ -1723,7 +1568,7 @@ let kickPulse=0, stepAcc=0, flickerT=0, blackout=0, heartT=0, grainT=0, lastT=pe
 function tick(){
   requestAnimationFrame(tick);
   try{ frame(); }
-  catch(err){ reportErr(err.message+'\n'+((err.stack||'').split('\n')[1]||'').trim()); }
+  catch(err){ console.error(err.message+'\n'+((err.stack||'').split('\n')[1]||'').trim()); }
 }
 function frame(){
   syncSize();
@@ -1735,10 +1580,10 @@ function frame(){
   if(grainT>0.07){ grainT=0; redrawGrain();
     grainC.style.transform=`translate(${(Math.random()*30|0)-15}px,${(Math.random()*30|0)-15}px)`; }
 
-  if(state!=='play'){ renderer.render(scene,camera); return; }
+  if(gameState!=='play'){ renderer.render(scene,camera); return; }
   if(!isFinite(player.pos.x+player.pos.z+player.yaw+player.pitch)){
     player.pos.set(world.spawn.x,1.62,world.spawn.z); player.yaw=0; player.pitch=0;
-    reportErr('position reset (NaN)');
+    console.error('position reset (NaN)');
   }
   const L=LEVELS[curLevel];
 
@@ -1778,7 +1623,7 @@ function frame(){
   const targetFov=player.sprinting?GAME.fov+7:GAME.fov;
   camera.fov+= (targetFov-camera.fov)*Math.min(1,dt*6); camera.updateProjectionMatrix();
   playerLamp.position.set(player.pos.x,groundY+2.2,player.pos.z);
-  // MP-HOOK: local player state (player.pos, player.yaw, curLevel) is final here — MP.sendState() goes here
+  // MP-HOOK: local player gameState (player.pos, player.yaw, curLevel) is final here — MP.sendState() goes here
 
   /* --- flashlight power --- */
   if(L.flashlight){
@@ -1791,7 +1636,7 @@ function frame(){
   let drain=L.drain*diffNow().drain;
   for(const e of world.entities){
     const d=e.mesh.position.distanceTo(player.pos);
-    if(d<7&&e.state==='chase') drain+=2.2;
+    if(d<7&&e.gameState==='chase') drain+=2.2;
   }
   if(blackout>0) drain+=1.4;
   // Run For Your Life: standing still is lethal
@@ -1913,10 +1758,13 @@ function frame(){
     if(world.locked){
       if(!world._lockT || now-world._lockT>2600){ world._lockT=now; toast('SEALED — '+lockMsg()); }
     } else {
-    state='loading';
+    gameState='loading';
     AUDIO.noclip();
     progress.add(L.id);
-    if(curLevel<LEVELS.length-1){
+
+    if (curLevel < LEVELS.length - 1) {
+      if (currentRoom && MP.mode === 'host') currentRoom.send('changeLevel', { level: curLevel + 1 });
+
       const msgs={lobby:'YOU NOCLIP THROUGH THE WALL',warehouse:'YOU DESCEND THE STAIRWELL',
         pools:'YOU SLIP THROUGH THE DRAINAGE ARCH',pipes:'THE HATCH GIVES WAY BENEATH YOU'};
       toast(msgs[L.theme]||'DEEPER STILL',true);
@@ -1931,14 +1779,75 @@ function frame(){
   renderer.render(scene,camera);
 }
 tick();
-} /* end __main */
 
-function __boot(){
-  if(typeof THREE==='undefined'){ reportErr('waiting for three.js…'); setTimeout(__boot,300); return; }
-  try{ __main(); if(__errEl) __errEl.textContent=''; }catch(err){ reportErr('BOOT: '+err.message); }
+
+window.initBackrooms = function() {
+    buildTextures();
+    syncSize();
+
+    if (!window._backroomsEventsAttached) {
+        window._backroomsEventsAttached = true;
+        $('spBtn').addEventListener('click', startGame);
+        $('mpBtn').addEventListener('click', () => { $('mpNote').textContent = ''; menuTo('mpScreen'); fetchBackroomsServers(); });
+        $('optBtn').addEventListener('click', () => { refreshOptions(); menuTo('optionsScreen'); });
+        $('helpBtn').addEventListener('click', () => menuTo('helpScreen'));
+        $('optBack').addEventListener('click', () => menuTo('menuScreen'));
+        $('mpBack').addEventListener('click', () => menuTo('menuScreen'));
+        $('helpBack').addEventListener('click', () => menuTo('menuScreen'));
+        $('mpRefresh').addEventListener('click', () => fetchBackroomsServers());
+        $('mpHost').addEventListener('click', () => MP.host());
+
+        $('optSens').addEventListener('input', e => { GAME.sens = (+e.target.value) / 10000; SENS = GAME.sens; $('optSensV').textContent = (GAME.sens * 1000).toFixed(1); });
+        $('optVol').addEventListener('input', e => { GAME.volume = (+e.target.value) / 100; AUDIO.setVolume(GAME.volume); $('optVolV').textContent = e.target.value; });
+        $('optFov').addEventListener('input', e => { GAME.fov = +e.target.value; $('optFovV').textContent = e.target.value; });
+        $('optDiff').addEventListener('click', () => { const order = ['easy', 'normal', 'nightmare']; GAME.diff = order[(order.indexOf(GAME.diff) + 1) % 3]; $('optDiff').textContent = diffNow().label; });
+        $('optInv').addEventListener('click', () => { GAME.invertY = !GAME.invertY; $('optInv').textContent = GAME.invertY ? 'ON' : 'OFF'; });
+        $('optLevel').addEventListener('click', () => {
+            GAME.startLevel = (GAME.startLevel + 1) % LEVELS.length;
+            $('optLevel').textContent = LEVELS[GAME.startLevel].name + ' — ' + LEVELS[GAME.startLevel].title.replace(/"/g, '').toUpperCase();
+        });
+        $('resumeBtn').addEventListener('click', resumeGame);
+        $('retryBtn').addEventListener('click', () => {
+            player.hp = 100; player.sanity = 100; player.stamina = 100; player.power = 100; player.flashOn = true;
+            show('deadScreen', false); enterLevel(curLevel, false);
+        });
+        $('againBtn').addEventListener('click', () => { show('winScreen', false); startGame(); });
+    }
+
+    gameState = 'menu';
+    menuTo('menuScreen');
+
+    if (!window.backroomsTicking) {
+        window.backroomsTicking = true;
+        tick();
+    }
+};
+
+window.stopBackrooms = function() {
+    gameState = 'menu';
+    if (document.pointerLockElement) document.exitPointerLock();
+    if (AUDIO && AUDIO.setVolume) AUDIO.setVolume(0);
+};
+
+function fetchBackroomsServers() {
+    $('backroomsServerList').innerHTML = '<div style="color:var(--dim); font-size: 11px; text-align:center;">LOADING SERVERS...</div>';
+    fetch(window.getColyseusHttpUrl() + '/backrooms-servers')
+        .then(res => res.json())
+        .then(servers => {
+            if (servers.length === 0) {
+                $('backroomsServerList').innerHTML = '<div style="color:var(--dim); font-size: 11px; text-align:center;">NO SERVERS FOUND</div>';
+                return;
+            }
+            let html = '';
+            for (const s of servers) {
+                html += `<div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+                    <div>Host: ${s.hostName || 'Unknown'} <span style="color:var(--dim);">(${s.clients}/${s.maxClients})</span></div>
+                    <button style="padding:4px 10px; font-size:10px; min-width:auto;" onclick="MP.join('${s.roomId}')">JOIN</button>
+                </div>`;
+            }
+            $('backroomsServerList').innerHTML = html;
+        })
+        .catch(err => {
+            $('backroomsServerList').innerHTML = '<div style="color:var(--danger); font-size: 11px; text-align:center;">ERROR LOADING SERVERS</div>';
+        });
 }
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',__boot);
-else __boot();
-</script>
-</body>
-</html>

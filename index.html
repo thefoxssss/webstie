@@ -22,7 +22,8 @@
     <!-- Three.js for 3D Games -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-  </head>
+    <link rel="stylesheet" href="games/backrooms.css">
+</head>
   <body class="flicker-on">
     <!-- Matrix canvas + boot overlay effects (toggled by JS). -->
     <canvas id="matrixCanvas"></canvas>
@@ -2698,6 +2699,112 @@
     </div>
 
     <!-- Hexfall mini-game overlay. -->
+
+    <!-- Backrooms Overlay -->
+    <div class="overlay" id="overlayBackrooms">
+      <canvas id="c"></canvas>
+
+      <div id="vignette"></div>
+      <canvas id="grain"></canvas>
+      <div id="redpulse"></div>
+
+      <div id="hud">
+        <div id="crosshair"></div>
+        <div id="levelTag"><span id="lvName"></span><span class="cls" id="lvClass"></span></div>
+        <div id="timer">00:00</div>
+        <div id="objective"></div>
+        <div id="keyhint">[TAB] MAP &nbsp; [F] LIGHT<br>[E] USE &nbsp; [C] CROUCH</div>
+        <div id="mapWrap"><div id="mapLabel">SECTOR MAP</div><canvas id="map" width="74" height="74"></canvas></div>
+        <div id="bars">
+          <div class="bar"><label>VITALS</label><div class="track"><div class="fill" id="hpF"></div></div></div>
+          <div class="bar"><label>SANITY</label><div class="track"><div class="fill" id="saF"></div></div></div>
+          <div class="bar"><label>STAMINA</label><div class="track"><div class="fill" id="stF"></div></div></div>
+          <div class="bar" id="powerBar"><label>LIGHT CELL</label><div class="track"><div class="fill" id="pwF"></div></div></div>
+        </div>
+        <div id="invline">ALMOND WATER &nbsp;<b id="invAlmond">0</b></div>
+        <div id="toast"></div>
+      </div>
+
+      <div id="card"><div class="lv" id="cardLv"></div><div class="cl" id="cardCl"></div><div class="ds" id="cardDs"></div></div>
+
+      <div class="backrooms-screen show" id="menuScreen">
+        <h1>THE BACKROOMS</h1>
+        <div class="sub">DO NOT NOCLIP OUT OF REALITY</div>
+        <p>If you're not careful and you noclip out of reality in the wrong areas, you'll end up in the Backrooms — nothing but the stink of old moist carpet, the madness of mono-yellow, the endless background noise of fluorescent lights at maximum hum-buzz, and approximately six hundred million square miles of randomly segmented empty rooms to be trapped in.<br><br>God save you if you hear something wandering nearby. Because it sure as hell has heard you.</p>
+        <div class="menuNav">
+          <button id="spBtn">SINGLE PLAYER</button>
+          <button id="mpBtn">MULTIPLAYER</button>
+          <button id="optBtn">OPTIONS</button>
+          <button id="helpBtn">HOW TO PLAY</button>
+                <button id="backroomsQuitBtn" onclick="window.closeOverlays()">QUIT TO OS</button>
+        </div>
+      </div>
+
+      <div class="backrooms-screen" id="optionsScreen">
+        <h1 style="font-size:30px;letter-spacing:8px;">OPTIONS</h1>
+        <div class="opts">
+          <div class="setting">MOUSE SENS <input id="optSens" type="range" min="4" max="40" value="18"><span id="optSensV">1.8</span></div>
+          <div class="setting">VOLUME <input id="optVol" type="range" min="0" max="100" value="55"><span id="optVolV">55</span></div>
+          <div class="setting">FIELD OF VIEW <input id="optFov" type="range" min="60" max="100" value="75"><span id="optFovV">75</span></div>
+          <div class="setting">DIFFICULTY <button class="seg" id="optDiff">NORMAL</button></div>
+          <div class="setting">INVERT Y <button class="seg" id="optInv">OFF</button></div>
+          <div class="setting">START AT LEVEL <button class="seg" id="optLevel">LEVEL 0 — THE LOBBY</button></div>
+        </div>
+        <button id="optBack">BACK</button>
+      </div>
+
+
+      <div class="backrooms-screen" id="mpScreen">
+        <h1 style="font-size:30px;letter-spacing:8px;">MULTIPLAYER</h1>
+        <p>Find hosted rooms below to join, or host your own.</p>
+
+        <div id="backroomsServerList" style="margin: 20px 0; max-height: 200px; overflow-y: auto; text-align: left; background: rgba(0,0,0,0.5); padding: 10px; border: 1px solid var(--hud);">
+          <div style="color:var(--dim); font-size: 11px; text-align:center;">LOADING SERVERS...</div>
+        </div>
+        <div class="menuNav">
+          <button id="mpRefresh">REFRESH SERVERS</button>
+          <button id="mpHost">HOST ONLINE GAME</button>
+        </div>
+        <div id="mpNote" class="ctl"></div>
+  <button id="mpBack">BACK</button>
+</div>
+
+      <div class="backrooms-screen" id="helpScreen">
+        <h1 style="font-size:28px;letter-spacing:6px;">HOW TO PLAY</h1>
+        <p>You have noclipped out of reality. Descend through the levels to reach the M.E.G. outpost. Each level seals its exit until you finish its task — throw the breakers, drain the pools, key in the code, grab the keycard. <b>Almond water</b> restores your sanity, health, and flashlight. Watch your <b>SANITY</b> and <b>VITALS</b> — lose either and you are lost down here for good.</p>
+        <div class="ctl">
+          <b>WASD</b> MOVE &nbsp;·&nbsp; <b>MOUSE</b> LOOK &nbsp;·&nbsp; <b>SHIFT</b> SPRINT &nbsp;·&nbsp; <b>C</b> CROUCH<br>
+          <b>F</b> FLASHLIGHT &nbsp;·&nbsp; <b>E</b> INTERACT &nbsp;·&nbsp; <b>TAB</b> MAP &nbsp;·&nbsp; <b>ESC</b> PAUSE
+        </div>
+        <button id="helpBack">BACK</button>
+      </div>
+
+      <div class="backrooms-screen" id="pauseScreen">
+        <h1 style="font-size:32px;letter-spacing:10px;">PAUSED</h1>
+        <p>The hum-buzz continues whether you move or not.</p>
+        <div class="setting">MOUSE SENS <input id="sensRange" type="range" min="4" max="40" value="18"><span id="sensVal">1.8</span></div>
+        <button id="resumeBtn">RESUME</button>
+              <button id="quitLevelBtn" style="margin-top:20px;">QUIT LEVEL</button>
+        <div class="lvlist" id="progressList"></div>
+      </div>
+
+      <div class="backrooms-screen" id="deadScreen">
+        <h1>LOST</h1>
+        <div class="sub" id="deathCause"></div>
+        <p id="deathFlavor"></p>
+        <button id="retryBtn">WANDER AGAIN</button>
+              <button id="deadQuitBtn">QUIT TO MENU</button>
+      </div>
+
+      <div class="backrooms-screen" id="winScreen">
+        <h1>OUTPOST REACHED</h1>
+        <div class="sub">M.E.G. OUTPOST "HOPE"</div>
+        <p>Floodlights. Generators. Human voices. A wanderer in a hard hat pulls you behind the barricade and presses a warm bottle of almond water into your shaking hands.<br><br>"You came all the way down through Run For Your Life? Alone?" she says, eyes wide. "Get some rest. You're safe here."<br><br>For now.</p>
+        <div class="stats" id="winStats"></div>
+        <button id="againBtn">NOCLIP AGAIN</button>
+      </div>
+    </div>
+
     <div class="overlay" id="overlayHexfall">
       <h1>HEXFALL ARENA</h1>
       <div id="hexfallMenu" class="menu-box">
@@ -2847,5 +2954,6 @@
     <script type="module" src="desktop-shell.js"></script>
     <!-- Main entrypoint script (loads all game modules). -->
     <script type="module" src="script.js"></script>
-  </body>
+    <script type="module" src="games/backrooms.js"></script>
+</body>
 </html>

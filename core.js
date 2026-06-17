@@ -3673,6 +3673,9 @@ export function isInputFocused(event) {
 }
 
 export function closeOverlays() {
+  if (window.stopBackrooms) window.stopBackrooms();
+  const ob = document.getElementById('overlayBackrooms');
+  if (ob) ob.classList.remove('active');
   stopAllGames();
   document
     .querySelectorAll(".overlay")
