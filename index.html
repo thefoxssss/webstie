@@ -39,6 +39,21 @@
 
 
     <div class="dropdown-content" id="menuDropdown"></div>
+    <div id="legacyTopNav" class="legacy-top-nav" aria-label="Legacy terminal navigation">
+      <button id="tabConfig" class="menu-btn" onclick="window.openGame('overlayConfig')">CONFIG</button>
+      <button id="tabBank" class="menu-btn" onclick="window.openGame('overlayBank')">BANK</button>
+      <button id="tabShop" class="menu-btn" onclick="window.openGame('overlayShop')">SHOP</button>
+      <button id="tabInventory" class="menu-btn" onclick="window.openGame('overlayInventory')">BAG</button>
+      <button id="tabProfile" class="menu-btn" onclick="window.openGame('overlayProfile')">PROFILE</button>
+      <button id="tabSeason" class="menu-btn" onclick="window.openGame('overlaySeason')">SEASON</button>
+      <button id="tabCrew" class="menu-btn" onclick="window.openGame('overlayCrew')">CREW</button>
+      <button id="tabChat" class="menu-btn" onclick="window.openGame('globalChat')">CHAT</button>
+      <button class="menu-btn" onclick="window.openGame('overlayTrending')">TRENDING</button>
+      <button class="menu-btn" onclick="window.openGame('overlayUpdates')">UPDATES</button>
+      <button class="menu-btn" onclick="window.openGame('overlayRecentGames')">RECENT</button>
+      <button id="tabAdmin" class="menu-btn" onclick="window.openGame('overlayAdmin')" style="display:none">ADMIN</button>
+      <button id="menuToggle" class="menu-btn" onclick="window.openGame('overlayGamebox')">MENU</button>
+    </div>
 
     <div class="overlay menu-overlay" id="overlayMaintenance">
       <div class="maintenance-box">
@@ -1146,6 +1161,7 @@
         </div>
 
         <div id="configTab-visual" class="config-tab-pane">
+          <div class="config-row"><span>LAYOUT</span><button class="menu-btn" id="terminalLayoutToggle">WMS</button></div>
           <div class="config-row"><span>THEME</span><input type="color" id="themeColor" value="#ffffff" /></div>
           <div class="config-row"><span>CUSTOM BG</span><input type="file" id="customBgUpload" accept="image/*" style="max-width: 180px;" /></div>
           <div class="config-row"><span>BG ACTION</span><button class="menu-btn" id="clearCustomBgBtn">CLEAR</button></div>

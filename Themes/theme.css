@@ -209,6 +209,53 @@ body::before {
   backdrop-filter: blur(10px);
 }
 
+.legacy-top-nav {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2100;
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(96vw, 1200px);
+}
+
+body.legacy-terminal-layout #desktop {
+  padding-top: 116px;
+  padding-bottom: 20px;
+}
+
+body.legacy-terminal-layout .window {
+  display: none !important;
+}
+
+body.legacy-terminal-layout .legacy-top-nav {
+  display: flex;
+}
+
+body.legacy-terminal-layout {
+  --topbar-clearance: 96px;
+}
+
+body.legacy-terminal-layout #taskbar {
+  display: flex;
+  top: 56px;
+  bottom: auto;
+  height: 42px;
+  z-index: 2050;
+}
+
+body.legacy-terminal-layout #taskbar-apps {
+  display: none;
+}
+
+body.legacy-terminal-layout #desktop-bg-text {
+  display: block !important;
+  opacity: 0.22;
+}
+
 .taskbar-left, .taskbar-right {
   display: flex;
   align-items: center;

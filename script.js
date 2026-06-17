@@ -1397,7 +1397,7 @@ function initAprilFoolsBibiMode() {
 initSharedGamebox();
 disableInGameExitButtons();
 initPerGameFullscreenButtons();
-// initTopBarOverlayControls(); // Removed as we are using WMS now
+initTopBarOverlayControls();
 initOverlayBackdropExit();
 initAprilFoolsBibiMode();
 initAdminTabs();
