@@ -1,8 +1,3 @@
-
-  if (game === "backrooms") {
-      document.getElementById('overlayBackrooms').classList.add('active');
-      if (window.initBackrooms) window.initBackrooms();
-  }
 // Core shared state + Firebase persistence for the arcade.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {

@@ -354,6 +354,7 @@ let SENS=GAME.sens;   // legacy alias, kept in sync with GAME.sens
    with  // MP-HOOK  comments in frame() and the render call.
    ============================================================ */
 
+const MP = {};
 let colyseusClient = null;
 let currentRoom = null;
 let otherPlayers = new Map();
