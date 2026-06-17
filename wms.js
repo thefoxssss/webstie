@@ -364,10 +364,18 @@ export class AppWindow {
       let top = this.elements.window.offsetTop - pos2;
       let left = this.elements.window.offsetLeft - pos1;
 
+      const taskbarHeight = 50;
+      const clampToViewport = () => {
+          const maxLeft = Math.max(0, window.innerWidth - this.elements.window.offsetWidth);
+          const maxTop = Math.max(0, window.innerHeight - taskbarHeight - this.elements.window.offsetHeight);
+          left = Math.min(Math.max(left, 0), maxLeft);
+          top = Math.min(Math.max(top, 0), maxTop);
+      };
+
       // Snap to edges
       const snapThreshold = 20;
       const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight - 50; // Taskbar height
+      const screenHeight = window.innerHeight - taskbarHeight;
 
       if (left < snapThreshold) left = 0;
       if (top < snapThreshold) top = 0;
@@ -377,6 +385,8 @@ export class AppWindow {
       if (screenHeight - (top + this.elements.window.offsetHeight) < snapThreshold) {
           top = screenHeight - this.elements.window.offsetHeight;
       }
+
+      clampToViewport();
 
       // Prevent overlapping by snapping to sides
       if (window.WMS) {
@@ -409,6 +419,8 @@ export class AppWindow {
               }
           });
       }
+
+      clampToViewport();
 
       this.elements.window.style.top = top + "px";
       this.elements.window.style.left = left + "px";
