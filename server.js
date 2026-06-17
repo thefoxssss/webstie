@@ -170,6 +170,7 @@ async function requestOilQuoteBody(url) {
 }
 const builderServerDirectory = new Map();
 const fpsServerDirectory = new Map();
+const backroomsServerDirectory = new Map();
 const voiceServerDirectory = new Map();
 function getFpsMapCatalog() {
   const dir = path.join(__dirname, "data", "fps", "maps");
@@ -3995,6 +3996,82 @@ gameServer.define("obby_room", ObbyRoom);
 
 gameServer.define("agar_room", AgarRoom);
 gameServer.define("fps_room", FPSRoom);
+
+class BackroomsPlayer extends Schema {}
+type("number")(BackroomsPlayer.prototype, "x");
+type("number")(BackroomsPlayer.prototype, "y");
+type("number")(BackroomsPlayer.prototype, "z");
+type("number")(BackroomsPlayer.prototype, "yaw");
+type("number")(BackroomsPlayer.prototype, "vx");
+type("number")(BackroomsPlayer.prototype, "vz");
+
+class BackroomsState extends Schema {
+    constructor() {
+        super();
+        this.players = new MapSchema();
+        this.level = 0;
+    }
+}
+type({ map: BackroomsPlayer })(BackroomsState.prototype, "players");
+type("number")(BackroomsState.prototype, "level");
+
+class BackroomsRoom extends colyseus.Room {
+    onCreate(options) {
+        this.maxClients = 4;
+        this.setState(new BackroomsState());
+
+        this.setMetadata({
+            hostName: options.hostName || "Unknown Host"
+        });
+
+        backroomsServerDirectory.set(this.roomId, {
+            roomId: this.roomId,
+            hostName: options.hostName || "Unknown Host",
+            clients: 0,
+            maxClients: 4
+        });
+
+        this.onMessage("updatePosition", (client, data) => {
+            const p = this.state.players.get(client.sessionId);
+            if (p) {
+                p.x = data.x;
+                p.y = data.y;
+                p.z = data.z;
+                p.yaw = data.yaw;
+                p.vx = data.vx;
+                p.vz = data.vz;
+            }
+        });
+
+        this.onMessage("changeLevel", (client, data) => {
+            this.state.level = data.level;
+            this.broadcast("level_change", { level: data.level });
+        });
+    }
+
+    onJoin(client, options) {
+        const p = new BackroomsPlayer();
+        p.x = 0; p.y = 1.6; p.z = 0; p.yaw = 0; p.vx = 0; p.vz = 0;
+        this.state.players.set(client.sessionId, p);
+
+        const meta = backroomsServerDirectory.get(this.roomId);
+        if (meta) { meta.clients = this.clients.length; backroomsServerDirectory.set(this.roomId, meta); }
+
+        client.send("level_change", { level: this.state.level });
+    }
+
+    onLeave(client, consented) {
+        this.state.players.delete(client.sessionId);
+        const meta = backroomsServerDirectory.get(this.roomId);
+        if (meta) { meta.clients = this.clients.length; backroomsServerDirectory.set(this.roomId, meta); }
+    }
+
+    onDispose() {
+        backroomsServerDirectory.delete(this.roomId);
+    }
+}
+
+gameServer.define("backrooms_room", BackroomsRoom);
 
 
 app.get("/obby-servers", (req, res) => {

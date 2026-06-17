@@ -1,4 +1,5 @@
 export const GAME_DIRECTORY_ENTRIES = Object.freeze([
+  { id: "backrooms", title: "THE BACKROOMS", description: "Do not noclip out of reality in the wrong areas.", icon: "🏢", tags: ["arcade", "skill", "3d", "horror"] },
   { id: "geo", title: "GEO DASH", description: "Play official-style levels from Stereo Madness to Dash.", icon: "🟨", tags: ["arcade", "skill", "platformer", "reflex"], shopItems: ["item_slowmo", "item_shield"] },
   { id: "type", title: "TYPE RUNNER", description: "Type fast to outrun incoming threats.", icon: "⌨️", tags: ["arcade", "skill", "typing", "reflex"], shopItems: ["item_autotype"] },
   { id: "pong", title: "PONG", description: "Retro paddle battle with adjustable difficulty.", icon: "🏓", tags: ["arcade", "pvp", "retro", "duel"], shopItems: ["item_aimbot"] },
