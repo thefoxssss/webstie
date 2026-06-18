@@ -3635,7 +3635,7 @@ export function openGame(id) {
   }
 
   const excludedFromWMS = [];
-  const isExcluded = excludedFromWMS.includes(id);
+  const isExcluded = excludedFromWMS.includes(id) || window.legacyUiEnabled;
 
   if (window.WMS && !isExcluded) {
       if (typeof window.beep === "function") window.beep(400, "square", 0.05);
@@ -5992,6 +5992,26 @@ function applyReducedMotion(enabled) {
   if (motionToggle) motionToggle.textContent = enabled ? "ON" : "OFF";
 }
 
+function applyLegacyUi(enabled) {
+  window.legacyUiEnabled = Boolean(enabled);
+  const legacyToggle = document.getElementById("legacyUiToggle");
+  if (legacyToggle) legacyToggle.textContent = enabled ? "ON" : "OFF";
+
+  const desktop = document.getElementById("desktop");
+  const taskbar = document.getElementById("taskbar");
+
+  if (enabled) {
+    if (desktop) desktop.style.display = "none";
+    if (taskbar) taskbar.style.display = "none";
+    if (window.WMS && typeof window.WMS.closeAll === "function") {
+      window.WMS.closeAll();
+    }
+  } else {
+    if (desktop) desktop.style.display = "";
+    if (taskbar) taskbar.style.display = "";
+  }
+}
+
 function applyStatusVisibilityToggle(hidden) {
   hideStatus = Boolean(hidden);
   const statusToggle = document.getElementById("statusVisibilityToggle");
@@ -6141,6 +6161,12 @@ document.getElementById("bgTextToggle").onclick = (e) => {
     e.target.innerText = isVisible ? "OFF" : "ON";
     writeUiConfig({ bgTextEnabled: !isVisible });
 };
+
+document.getElementById("legacyUiToggle").onclick = () => {
+  const enabled = !window.legacyUiEnabled;
+  applyLegacyUi(enabled);
+  writeUiConfig({ legacyUiEnabled: enabled });
+};
 document.getElementById("statusVisibilityToggle").onclick = async () => {
   applyStatusVisibilityToggle(!hideStatus);
   writeUiConfig({ hideStatus });
@@ -6161,6 +6187,7 @@ document.getElementById("statusVisibilityToggle").onclick = async () => {
   applyContrastMode(Boolean(config.highContrast));
   applyReducedMotion(Boolean(config.reducedMotion));
   applyStatusVisibilityToggle(Boolean(config.hideStatus));
+  applyLegacyUi(Boolean(config.legacyUiEnabled));
   const bgTextEnabled = config.bgTextEnabled !== false;
   const bgText = document.getElementById("desktop-bg-text");
   if (bgText) bgText.style.display = bgTextEnabled ? "block" : "none";
