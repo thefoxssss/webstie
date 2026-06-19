@@ -23,6 +23,7 @@ let grenadeEffects = [];
 let gatlingMovementLockUntil = 0;
 let gatlingFireStartTime = 0;
 let gatlingLastShotTime = 0;
+let gatlingGrenadeMode = false;
 let isPrimaryFireHeld = false;
 let gameLoopId;
 let initialized = false;
@@ -41,6 +42,8 @@ let direction;
 const speed = 40.0;
 const sprintSpeed = 70.0;
 const crouchSpeed = 20.0;
+const GATLING_WEAPON_ID = 3;
+const GATLING_GRENADE_COOLDOWN = 450;
 const jumpVelocity = 15.0;
 const gravity = 40.0;
 let prevTime = performance.now();
@@ -263,7 +266,7 @@ function setupRoom() {
 
   room.onMessage("killed", (data) => {
     localPlayer.killStreak = 0;
-    if (localPlayer.weapon === 3) switchWeapon(0);
+    if (localPlayer.weapon === GATLING_WEAPON_ID) switchWeapon(0);
     unzoomSniper();
     fpsDeathMessage.textContent = `FRAGGED BY ${data.killer}`;
     fpsDeathScreen.style.display = "flex";
@@ -344,7 +347,7 @@ function setupRoom() {
       });
       player.listen("killStreak", (val) => {
         localPlayer.killStreak = val;
-        if (!isGatlingUnlocked() && localPlayer.weapon === 3) {
+        if (!isGatlingUnlocked() && localPlayer.weapon === GATLING_WEAPON_ID) {
           switchWeapon(0);
         }
       });
@@ -1441,7 +1444,12 @@ function onKeyDown(event) {
     case 'Digit1': switchWeapon(0); break;
     case 'Digit2': switchWeapon(1); break;
     case 'Digit3': switchWeapon(2); break;
-    case 'Digit4': switchWeapon(3); break;
+    case 'Digit4': switchWeapon(GATLING_WEAPON_ID); break;
+    case 'Minus':
+    case 'NumpadSubtract':
+      if (!event.repeat) toggleGatlingGrenadeMode();
+      event.preventDefault();
+      break;
     case 'KeyR': startReload(); break;
     case 'KeyG': throwGrenade(); break;
   }
@@ -1596,6 +1604,27 @@ function isWeaponUnlocked(id) {
   return true;
 }
 
+function setGatlingGrenadeMode(enabled) {
+  gatlingGrenadeMode = Boolean(enabled) && localPlayer.weapon === GATLING_WEAPON_ID && isWeaponUnlocked(GATLING_WEAPON_ID);
+  const w = WEAPONS[localPlayer.weapon];
+  const weaponSpan = document.getElementById("fpsWeapon");
+  if (weaponSpan && w) {
+    weaponSpan.textContent = gatlingGrenadeMode ? `${w.name}-GL` : w.name;
+  }
+  updateAmmoUI();
+}
+
+function toggleGatlingGrenadeMode() {
+  if (localPlayer.weapon !== GATLING_WEAPON_ID || !isWeaponUnlocked(GATLING_WEAPON_ID)) {
+    fpsHint.textContent = "Press - while holding the Gatling to toggle grenade mode.";
+    return;
+  }
+  setGatlingGrenadeMode(!gatlingGrenadeMode);
+  fpsHint.textContent = gatlingGrenadeMode
+    ? "Gatling grenade mode armed. Hold fire to launch grenades."
+    : "Gatling bullet mode armed.";
+}
+
 function switchWeapon(id) {
   if (id >= WEAPONS.length) return;
   if (!isWeaponUnlocked(id)) {
@@ -1608,15 +1637,15 @@ function switchWeapon(id) {
   unzoomSniper();
   isReloading = false;
   resetGatlingRamp();
+  if (id !== GATLING_WEAPON_ID) gatlingGrenadeMode = false;
   if (gunMesh) {
     gunMesh.rotation.x = 0;
     gunMesh.rotation.y = 0;
     gunMesh.rotation.z = 0;
   }
   localPlayer.weapon = id;
-  const w = WEAPONS[id];
-  document.getElementById("fpsWeapon").textContent = w.name;
-  updateAmmoUI();
+  if (room) room.send("switchWeapon", id);
+  setGatlingGrenadeMode(gatlingGrenadeMode);
   createGunModel(id);
 }
 
@@ -1628,7 +1657,8 @@ function updateAmmoUI() {
     ammoSpan.textContent = "RELOADING...";
     ammoSpan.style.color = "red";
   } else {
-    ammoSpan.textContent = currentAmmo + "/" + w.magSize;
+    const mode = gatlingGrenadeMode && localPlayer.weapon === GATLING_WEAPON_ID ? " GL" : "";
+    ammoSpan.textContent = currentAmmo + "/" + w.magSize + mode;
     ammoSpan.style.color = currentAmmo === 0 ? "red" : "orange";
   }
 }
@@ -1686,7 +1716,7 @@ function tryFireWeapon() {
 
   const weapon = WEAPONS[localPlayer.weapon];
   const now = performance.now();
-  if (localPlayer.weapon === 3 && gatlingLastShotTime > 0 && now - gatlingLastShotTime > 250) {
+  if (localPlayer.weapon === GATLING_WEAPON_ID && gatlingLastShotTime > 0 && now - gatlingLastShotTime > 250) {
     resetGatlingRamp();
   }
   if (now < nextFireTime) return;
@@ -1701,9 +1731,11 @@ function tryFireWeapon() {
   updateAmmoUI();
 
   let shotCooldown = weapon.cooldown;
-  if (localPlayer.weapon === 3) {
+  const isGatling = localPlayer.weapon === GATLING_WEAPON_ID;
+  const isGatlingGrenadeShot = isGatling && gatlingGrenadeMode;
+  if (isGatling) {
     if (!gatlingFireStartTime) gatlingFireStartTime = now;
-    shotCooldown = getGatlingCooldown(now);
+    shotCooldown = isGatlingGrenadeShot ? GATLING_GRENADE_COOLDOWN : getGatlingCooldown(now);
     gatlingLastShotTime = now;
   }
   nextFireTime = now + shotCooldown;
@@ -1735,8 +1767,24 @@ function tryFireWeapon() {
 
   const bullets = weapon.bullets || 1;
   let spread = weapon.spread || 0;
-  if (localPlayer.weapon === 3) {
+  if (isGatling) {
     spread = getGatlingSpread(now, spread);
+  }
+
+  if (isGatlingGrenadeShot) {
+    const grenadeDir = dir.clone();
+    if (spread > 0) {
+      grenadeDir.x += (Math.random() - 0.5) * spread;
+      grenadeDir.y += (Math.random() - 0.5) * spread;
+      grenadeDir.z += (Math.random() - 0.5) * spread;
+      grenadeDir.normalize();
+    }
+    room.send("shootGatlingGrenade", {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      dir: { x: grenadeDir.x, y: grenadeDir.y, z: grenadeDir.z },
+      weaponId: localPlayer.weapon
+    });
+    return;
   }
 
   for (let i = 0; i < bullets; i++) {
@@ -2226,7 +2274,7 @@ function animate() {
     gunMesh.rotation.x += (targetRotX - gunMesh.rotation.x) * dampFactor;
   }
 
-  if (isPrimaryFireHeld && localPlayer.weapon === 3) {
+  if (isPrimaryFireHeld && localPlayer.weapon === GATLING_WEAPON_ID) {
     tryFireWeapon();
   }
 
