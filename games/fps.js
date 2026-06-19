@@ -2176,7 +2176,8 @@ function animate() {
       const euler = new THREE.Euler(0, 0, 0, 'YXZ');
       euler.setFromQuaternion(camera.quaternion);
 
-      room.send("move", { x: pos.x, y: pos.y, z: pos.z, rotY: euler.y });
+      const firingGatling = localPlayer.weapon === 3 && isPrimaryFireHeld && !isReloading && ammo[3] > 0 && isGatlingUnlocked();
+      room.send("move", { x: pos.x, y: pos.y, z: pos.z, rotY: euler.y, firingGatling });
     }
   }
 
