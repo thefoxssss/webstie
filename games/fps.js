@@ -43,6 +43,10 @@ const sprintSpeed = 70.0;
 const crouchSpeed = 20.0;
 const jumpVelocity = 15.0;
 const gravity = 40.0;
+const groundFriction = 10.0;
+const airFriction = 3.5;
+const airAcceleration = 22.0;
+const maxAirSpeed = 60.0;
 let prevTime = performance.now();
 
 // Bullet tracers
@@ -2034,8 +2038,10 @@ function animate() {
 
   if (controls.isLocked && localPlayer.health > 0) {
     const movementLockedByWeapon = time < gatlingMovementLockUntil;
-    velocity.x -= velocity.x * 10.0 * delta;
-    velocity.z -= velocity.z * 10.0 * delta;
+    const onGround = canJump;
+    const friction = onGround ? groundFriction : airFriction;
+    velocity.x -= velocity.x * friction * delta;
+    velocity.z -= velocity.z * friction * delta;
     velocity.y -= gravity * delta; // 100.0 = mass
 
     direction.z = movementLockedByWeapon ? 0 : Number(moveForward) - Number(moveBackward);
@@ -2046,8 +2052,21 @@ function animate() {
     if (isSprinting) currentSpeed = sprintSpeed;
     if (isCrouching) currentSpeed = crouchSpeed;
 
-    if (!movementLockedByWeapon && (moveForward || moveBackward)) velocity.z -= direction.z * currentSpeed * delta;
-    if (!movementLockedByWeapon && (moveLeft || moveRight)) velocity.x -= direction.x * currentSpeed * delta;
+    if (!movementLockedByWeapon && (moveForward || moveBackward || moveLeft || moveRight)) {
+      if (onGround) {
+        velocity.z -= direction.z * currentSpeed * delta;
+        velocity.x -= direction.x * currentSpeed * delta;
+      } else {
+        velocity.z -= direction.z * airAcceleration * delta;
+        velocity.x -= direction.x * airAcceleration * delta;
+        const horizontalSpeed = Math.hypot(velocity.x, velocity.z);
+        if (horizontalSpeed > maxAirSpeed) {
+          const clamp = maxAirSpeed / horizontalSpeed;
+          velocity.x *= clamp;
+          velocity.z *= clamp;
+        }
+      }
+    }
 
     const playerRadius = 0.5;
     const dx = -velocity.x * delta;
