@@ -14,6 +14,10 @@
     />
 
     <link rel="stylesheet" href="Themes/theme.css" />
+    <script>
+      window.global = window.global || window;
+      window.process = window.process || { env: {} };
+    </script>
     <!-- Colyseus Client Script -->
     <script type="module">
       import * as Colyseus from "https://esm.sh/colyseus.js@0.15.28";
